@@ -525,11 +525,14 @@ sub initialize_environment
 # Subroutine to process the command line arguments.  Any arguments so
 # processed will be removed from @ARGV.
 # The arguments are generally documented in doc.html now.
+# NOTE: Don't call finish() from this routine, the lock hasn't been obtained.
+# NOTE: The options have not been loaded yet either.  Any option which
+# requires more than rudimentary processing should set a flag for later work.
 sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <mpyne\@grammarian.homelinux.net>\n";
-    my $version = "kdecvs-build 0.73\n";
+    my $version = "kdecvs-build 0.74\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -594,7 +597,10 @@ Options:
     --author             Output the author(s)\'s name.
     --version            Output the program version.
 DONE
-                finish();
+                # We haven't done any locking... no need to finish()
+                #  Avoids log-dir errors due to having not
+                #  read_options() and setup_logging_subsystem().
+                exit 0;
             };
 
             /^--install$/ && do {
@@ -612,7 +618,7 @@ DONE
                     {
                         print "Can't determine what modules have built.  You must\n";
                         print "specify explicitly on the command line.\n";
-                        finish (1);
+                        exit (1);
                     }
 
                     @install_list = <BUILTLIST>;
@@ -2006,10 +2012,11 @@ sub handle_install
 # Use some exception handling to avoid ucky error messages
 eval
 {
-    process_arguments();
-    read_options();
-    initialize_environment();
-    setup_logging_subsystem();
+    # Note to self:  Quit changing the order around.
+    process_arguments();       # Process --help, --install, etc. first.
+    read_options();            # If we're still here, read the options
+    initialize_environment();  # Initialize global env vars.
+    setup_logging_subsystem(); # Setup logging directories.
 
     dump_options() if debugging;
 };
