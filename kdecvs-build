@@ -25,6 +25,7 @@ use Fcntl;    # For sysopen constants
 # because I'm an adult and you're not! :-P
 my %global_opts = (
     "checkout-only"      => "",
+    "debug"              => "",
     "apply-qt-patches"   => "",
     "configure-flags"    => "",
     "qtdir"              => "",
@@ -150,8 +151,12 @@ sub log_command
         }
 
         # Redirect stdout and stderr to the given file.
-        open (STDOUT, ">$kdecvs/log/$filename");
-        open (STDERR, ">&STDOUT");
+        if (not get_option('global', 'debug'))
+        {
+            open (STDOUT, ">$kdecvs/log/$filename");
+            open (STDERR, ">&STDOUT");
+        }
+
         exec (@command);
     }
 }
@@ -323,6 +328,7 @@ sub initialize_environment
 # --version Print the version
 # --author  Print the author
 # --help    Print some help
+# --debug   Debug mode.  Logs everything to stdout as well.
 # --pretend Don't really perform any actions, just say would we would do.
 # --install Install all packages that have built successfully,
 #           if it is the only command-line option.  If it isn't, the
@@ -373,6 +379,7 @@ v2, and includes ABSOLUTELY NO WARRANTY!!!
 Options:
     --no-cvs             Skip contacting the CVS server.
     --no-build           Skip the build process.
+    --debug              Activates debug mode.
     --pretend (or -p)    Don't actually contact the CVS server, run make,
                          or create/delete files and directories.  Instead,
                          output what the script would have done.
@@ -419,6 +426,11 @@ DONE
 
             /^--no-cvs$/ && do {
                 $global_opts{'no-cvs'} = 1;
+                last SWITCH;
+            };
+
+            /^--debug$/ && do {
+                $global_opts{'debug'} = 1;
                 last SWITCH;
             };
 
@@ -1021,12 +1033,12 @@ sub run_cvs
     while (<CVS_LOG>)
     {
         # Count updates and patches together.
-        $hash_count{'updated'}++    if /^U/;
-        $hash_count{'updated'}++    if /^P/;
-        $hash_count{'added'}++      if /^A/;
-        $hash_count{'removed'}++    if /^R/;
-        $hash_count{'modified'}++   if /^M/;
-        $hash_count{'conflicted'}++ if /^C/;
+        $hash_count{'updated'}++    if /^U /;
+        $hash_count{'updated'}++    if /^P /;
+        $hash_count{'added'}++      if /^A /;
+        $hash_count{'removed'}++    if /^R /;
+        $hash_count{'modified'}++   if /^M /;
+        $hash_count{'conflicted'}++ if /^C /;
     }
 
     close CVS_LOG;
