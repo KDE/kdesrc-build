@@ -532,10 +532,8 @@ sub safe_unlink
         print "Would have unlinked ", shift, ".\n";
         return 1; # Return true
     }
-    else
-    {
-        return unlink (shift);
-    }
+    
+	return unlink (shift);
 }
 
 # Subroutine to execute the system call on the given list if the pretend
@@ -547,11 +545,9 @@ sub safe_system(@)
         print "Executing ", join(" ", @_), "\n";
         return system (@_) >> 8;
     }
-    else
-    {
-        print "Would have run ", join(' ', @_), ".\n";
-        return 0; # Return true
-    }
+	
+	print "Would have run ", join(' ', @_), ".\n";
+	return 0; # Return true
 }
 
 # Helper subroutine to create a directory, including any parent
@@ -794,7 +790,19 @@ sub handle_updates
 
     print "<<<  UPDATING CVS DIRECTORIES  >>>\n\n";
 
-    if (not -e "$ENV{HOME}/.cvspass")
+    if (not -e "$ENV{HOME}/.cvsrc")
+	{
+		print "You do not seem to have a .cvsrc.  Now creating a default... ";
+		open CVSRC, "> $ENV{HOME}/.cvsrc";
+		print CVSRC "cvs -z4 -q";
+		print CVSRC "diff -u3 -p";
+		print CVSRC "update -dP";
+		print CVSRC "checkout -P";
+		close CVSRC;
+		print "Done\n";
+	}
+	
+	if (not -e "$ENV{HOME}/.cvspass")
     {
         # We need to login.  We could use the Expect module to
         # simulate a user login, but that would add another
