@@ -70,7 +70,7 @@ my %global_opts = (
 my %package_opts; # Holds module-specific options.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
-my @install_list; # List of modules to install.
+my $install_flag; # True if we're in install mode.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 
@@ -329,6 +329,10 @@ sub log_command
     {
         # Parent
         waitpid $pid, 0;
+
+        # If the module fails building, set an internal flag in the module
+        # options with the name of the log file containing the error message.
+        $package_opts{$module}{'#error-log-file'} = "$logdir/$filename.log" if $?;
         return $?;
     }
     else
@@ -377,6 +381,7 @@ sub safe_make (@)
 
     if (pretending)
     {
+        return 1;
         $opts = join(' ', @_);
         print "\tWould have run make $opts > $logdir/build-$trynumber\n";
         return 0;
@@ -522,6 +527,45 @@ sub initialize_environment
     $ENV{'CVS_RSH'} = 'ssh' if $cvsserver =~ /^:ext:/;
 }
 
+# Subroutine to get a list of modules to install, either from the command line
+# if it's not empty, or based on the list of modules successfully built.
+sub get_install_list
+{
+    my @install_list;
+
+    if ($#ARGV > -1)
+    {
+        @install_list = @ARGV;
+        @ARGV = ();
+    }
+    else
+    {
+        # Get list of built items from $kdecvs/successfully-built
+        my $logdir = get_subdir_path('global', 'log-dir');
+
+        if (not open BUILTLIST, "<$logdir/latest/build-status")
+        {
+            print "Can't determine what modules have built.  You must\n";
+            print "specify explicitly on the command line.\n";
+            exit (1); # Don't finish, not lock has been taken.
+        }
+
+        while (<BUILTLIST>)
+        {
+            chomp;
+            if (/Succeeded/)
+            {
+                s/^([^:]+):.*/$1/;
+                push @install_list, $_;
+            }
+        }
+
+        close BUILTLIST;
+    }
+
+    return @install_list;
+}
+
 # Subroutine to process the command line arguments.  Any arguments so
 # processed will be removed from @ARGV.
 # The arguments are generally documented in doc.html now.
@@ -604,28 +648,7 @@ DONE
             };
 
             /^--install$/ && do {
-                if ($#ARGV > -1)
-                {
-                    @install_list = @ARGV;
-                    @ARGV = ();
-                }
-                else
-                {
-                    # Get list of built items from $kdecvs/successfully-built
-                    my $kdecvs = get_kdecvs_dir();
-
-                    if (not open BUILTLIST, "<$kdecvs/successfully-built")
-                    {
-                        print "Can't determine what modules have built.  You must\n";
-                        print "specify explicitly on the command line.\n";
-                        exit (1);
-                    }
-
-                    @install_list = <BUILTLIST>;
-                    chomp (@install_list);
-                    close BUILTLIST;
-                }
-
+                $install_flag = 1;
                 last SWITCH;
             };
 
@@ -656,7 +679,6 @@ DONE
 
             /^--no-build$/ && do {
                 $global_opts{'#manual-build'} = 1;
-                @build_list = ();
                 last SWITCH;
             };
 
@@ -1201,7 +1223,7 @@ sub handle_updates
         {
             print "Unable to make directory $kdecvs!\n$!\n";
             @build_list = (); # Clear out the build list, since we can't build.
-            @install_list = (); # Can't install either.
+            $install_flag = 0; # Can't install either.
             return 1;
         }
     }
@@ -1409,6 +1431,7 @@ sub run_cvs
     my $arg_ref = shift;
     my %hash_count;
     my $result;
+    my $force_refresh = 0;
     my $logdir = get_log_dir($module);
 
     # Do cvs update.
@@ -1432,6 +1455,9 @@ sub run_cvs
         $hash_count{'removed'}++    if /^R /;
         $hash_count{'modified'}++   if /^M /;
         $hash_count{'conflicted'}++ if /^C /;
+
+        # Check if we need to force a refresh.
+        $force_refresh = 1 if /^A / and /Makefile\.am/;
     }
 
     close CVS_LOG;
@@ -1456,6 +1482,13 @@ sub run_cvs
         my $ending_key = $value > 1 ? $key : ('1' . $key);
         my $ending = $endings{$ending_key};
         print "\t$value $ending.\n";
+    }
+
+    if ($force_refresh)
+    {
+        print "A new Makefile.am was added, the build system will be recreated.\n";
+        %package_opts{$module}{'refresh-build'} = 1;
+        %package_opts{$module}{'#cancel-clean'} = 1;
     }
 
     return $result;
@@ -1923,8 +1956,18 @@ sub handle_build
 
     if (scalar @fail_list > 0)
     {
+        my $homedir = $ENV{'HOME'};
+        my $logfile;
+
         print "\n<<<  PACKAGES FAILED BUILDING  >>>\n";
-        print join ("\n", @fail_list), "\n";
+        for (@fail_list)
+        {
+            $logfile = $package_opts{$_}{'#error-log-file'};
+            $logfile = "No log file" unless $logfile;
+            $logfile =~ s|$homedir|~|;
+
+            print "$_ - $logfile\n";
+        }
     }
 
     return ((scalar @fail_list) > 0) ? 1 : 0;
@@ -2054,7 +2097,7 @@ eval
     # Make sure unsermake is checked out automatically if needed
     adjust_update_list(\@update_list, \@build_list);
 
-    if ($#install_list == -1)
+    if (not $install_flag)
     {
         # No packages to install, we're in build mode
         $result = handle_updates (\@update_list);
@@ -2071,7 +2114,7 @@ eval
                 join (', ', @ARGV), "\n";
         }
 
-        $result = handle_install (@install_list);
+        $result = handle_install (get_install_list());
     }
 
     $time = localtime;
