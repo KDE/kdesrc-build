@@ -1,21 +1,5 @@
 #!/bin/bash
 
-if [ $EUID -ne 0 ]; then
-	echo "You must run this script as root!"
-	exit 1
-fi
-
-if [ $# -ne 1 ]; then
-	echo "You must pass the program version on the command line!"
-	exit 1
-fi
-
-# Check that I didn't forget to alter the version in the script.
-if [ "x`./kdecvs-build -v | grep $1`" == "x" ]; then
-	echo "kdecvs-build reports the wrong version, you must fix that first!"
-	exit 1
-fi
-
 VERSION="$1"
 
 # User to run this script on behalf of
@@ -30,6 +14,28 @@ WEB_PAGE_DIR="/var/www/localhost/htdocs/kdecvs-build"
 FILE_LIST="HISTORY TODO AUTHORS COPYING doc.html \
            kdecvs-build kdecvs-buildrc-sample"
 FILE_NAME="kdecvs-build-$VERSION.tar.gz"
+
+if [ $EUID -ne 0 ]; then
+	echo "You must run this script as root!"
+	exit 1
+fi
+
+if [ $# -ne 1 ]; then
+	echo "You must pass the program version on the command line!"
+	exit 1
+fi
+
+# Check that I didn't forget to alter the version in the script.
+if [ "x`./kdecvs-build -v | grep $VERSION`" == "x" ]; then
+	echo "kdecvs-build reports the wrong version, you must fix that first!"
+	exit 1
+fi
+
+# Check that I actually committed the changes to CVS.
+if [ "x`cvs diff $FILE_LIST 2>&1 | grep -v 'I know nothing'`" != 'x' ]; then
+	echo "You must commit your changes to CVS before running this script!"
+	exit 1
+fi
 
 if [ -e $FILE_NAME ]; then
 	echo "$FILE_NAME already exists!!"
