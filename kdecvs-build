@@ -24,24 +24,25 @@ use Fcntl;    # For sysopen constants
 # Remember kids, global variables are evil!  I only get to do this
 # because I'm an adult and you're not! :-P
 my %global_opts = (
-    "checkout-only"      => "",
-    "debug"              => "",
-    "apply-qt-patches"   => "",
-    "configure-flags"    => "",
-    "qtdir"              => "",
-    "kdedir"             => "",
-    "cxxflags"           => "",
-    "libpath"            => "",
-    "do-not-compile"     => "",
-    "binpath"            => "",
-    "no-cvs"             => "",
-    "refresh-build"      => "",
-    "reconfigure"        => "",
-    "release-tag"        => "",
-    "build-system-only"  => "",
-    "cvs-server"         => "",
-    "cvs-root"           => "$ENV{HOME}/kdecvs",
-    "lockfile"           => "$ENV{HOME}/.kdecvs-lock",
+    "checkout-only"       => "",
+    "debug"               => "",
+    "apply-qt-patches"    => "",
+    "configure-flags"     => "",
+    "qtdir"               => "",
+    "kdedir"              => "",
+    "cxxflags"            => "",
+    "libpath"             => "",
+    "do-not-compile"      => "",
+    "binpath"             => "",
+    "no-cvs"              => "",
+    "refresh-build"       => "",
+    "reconfigure"         => "",
+    "release-tag"         => "",
+    "build-system-only"   => "",
+    "install-after-build" => "1", # Default to true
+    "cvs-server"          => "",
+    "cvs-root"            => "$ENV{HOME}/kdecvs",
+    "lockfile"            => "$ENV{HOME}/.kdecvs-lock",
 
 # Deprecated in v0.6.  Logging is important, but doesn't
 # make sense to all be dumped to stdout.  I may add a simple
@@ -1273,7 +1274,12 @@ sub handle_build
         }
         else
         {
-            # Build succeeded
+            # Build succeeded, install unless we shouldn't
+            if (get_option($module, "install-after-build"))
+            {
+                handle_install($module);
+            }
+
             push @build_done, $module;
         }
     }
@@ -1328,7 +1334,7 @@ sub handle_install
     my $pretend = get_option ('global', 'pretend');
     my $result = 0;
 
-    for my $module (@install_list)
+    for my $module (@_)
     {
         if ($module eq "qt-copy")
         {
@@ -1409,7 +1415,7 @@ else
             join (', ', @ARGV), "\n";
     }
 
-    $result = handle_install ();
+    $result = handle_install (@install_list);
 }
 
 $time = localtime;
