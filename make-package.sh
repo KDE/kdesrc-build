@@ -21,7 +21,7 @@ if [ $EUID -ne 0 ]; then
 fi
 
 if [ $# -ne 1 ]; then
-	if [ $# -eq 2 -a $1 -eq --undo]; then
+	if [ $# -eq 2 -a $1 -eq --undo ]; then
 		$VERSION="$2"
 
 		# Delete the file
