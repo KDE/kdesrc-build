@@ -703,8 +703,8 @@ sub checkout_cvs_partial_dir
 # Only call the subroutine if the module has set a value to checkout-only.
 sub checkout_cvs_partial
 {
-    my $dir = shift;
-    my @dirlist = split (/\s+/, get_option ($dir, 'checkout-only'));
+    my $module = shift;
+    my @dirlist = split (/\s+/, get_option ($module, 'checkout-only'));
     my @args;
     my $kdecvs = get_option ('global', 'cvs-root');
     my $cvsroot = get_option ('global', 'cvs-server');
@@ -717,17 +717,17 @@ sub checkout_cvs_partial
     push (@dirlist, 'admin') if scalar grep (/^admin$/, @dirlist) == 0;
 
     @args = ('cvs', "-d$cvsroot");
-    push @args, (-e "$kdecvs/$dir") ? 'up' : 'co', '-l';
-    push @args, '-r', get_option($dir, "release-tag") if get_option($dir, 'release-tag');
-    push @args, $dir;
+    push @args, (-e "$kdecvs/$module") ? 'up' : 'co', '-l';
+    push @args, '-r', get_option($module, "release-tag") if get_option($module, 'release-tag');
+    push @args, $module;
 
     $result = safe_system (@args);
 
     if ($result)
     {
-        print "Error trying to partially checkout $dir!\n$!\n";
+        print "Error trying to partially checkout $module!\n$!\n";
         print "The module will be blocked from building.\n";
-        dont_build ($dir);
+        dont_build ($module);
 
         return;
     }
@@ -746,14 +746,14 @@ ITEM_LOOP: for $item (@dirlist)
         while (scalar (@dir_pieces))
         {
             # Don't recurse, we have more pieces.
-            $result = checkout_cvs_partial_dir ($dir, $piece, 0);
+            $result = checkout_cvs_partial_dir ($module, $piece, 0);
 
             if ($result)
             {
-                print "Unable to check out $dir/$piece!\n";
-                print "Module $dir will be blocked from building.\n";
+                print "Unable to check out $module/$piece!\n";
+                print "Module $module will be blocked from building.\n";
 
-                dont_build ($dir);
+                dont_build ($module);
                 next ITEM_LOOP;
             } 
 
@@ -761,14 +761,14 @@ ITEM_LOOP: for $item (@dirlist)
         }
 
         # Recurse here, we're finished with prior dirs.
-        $result = checkout_cvs_partial_dir ($dir, $piece, 1);
+        $result = checkout_cvs_partial_dir ($module, $piece, 1);
 
         if ($result)
         {
-            print "Unable to check out $dir/$piece!\n";
-            print "Module $dir will be blocked from building.\n";
+            print "Unable to check out $module/$piece!\n";
+            print "Module $module will be blocked from building.\n";
 
-            dont_build ($dir);
+            dont_build ($module);
             next;
         } 
     }
@@ -786,7 +786,7 @@ sub handle_updates
     my $kdecvs = get_option ('global', 'cvs-root');
     my $cvsroot = get_option ('global', 'cvs-server');
     my $result;
-    my $dir;
+    my $module;
 
     print "<<<  UPDATING CVS DIRECTORIES  >>>\n\n";
 
@@ -829,23 +829,23 @@ EOF
         }
     }
 
-    foreach $dir (@{$update_ref})
+    foreach $module (@{$update_ref})
     {
-        next if get_option($dir, 'no-cvs');
+        next if get_option($module, 'no-cvs');
 
-        if (-e "$kdecvs/$dir/CVS")
+        if (-e "$kdecvs/$module/CVS")
         {
             # The CVS directory already exists, so it has probably already been
             # checked out.
-            chdir ("$kdecvs/$dir");
-            print "---\nUpdating $dir\n---\n";
+            chdir ("$kdecvs/$module");
+            print "---\nUpdating $module\n---\n";
 
             # Repository already exists, update
-            if (get_option($dir, 'checkout-only'))
+            if (get_option($module, 'checkout-only'))
             {
                 # Don't check out the entire module, merely the
                 # parts the user wants
-                checkout_cvs_partial ($dir);
+                checkout_cvs_partial ($module);
                 next;
             }
 
@@ -853,34 +853,34 @@ EOF
             $result = safe_system ('cvs', 'up');
             if ($result)
             {
-                print "Error updating $dir, removing from list of packages to build.\n";
-                dont_build ($dir);
+                print "Error updating $module, removing from list of packages to build.\n";
+                dont_build ($module);
             }
         }
         else
         {
             chdir ("$kdecvs");
-            print "Checking out $dir\n";
+            print "Checking out $module\n";
 
             # Repository needs checked out
-            if (get_option ($dir, 'checkout-only'))
+            if (get_option ($module, 'checkout-only'))
             {
                 # Don't update the entire module, just the parts
                 # the user wants.
 
-                checkout_cvs_partial ($dir);
+                checkout_cvs_partial ($module);
                 next;
             }
 
             my @args = ('cvs', "-d$cvsroot", 'co');
-            push @args, '-r', get_option($dir, "release-tag") if get_option($dir, "release-tag");
-            push @args, $dir;
+            push @args, '-r', get_option($module, "release-tag") if get_option($module, "release-tag");
+            push @args, $module;
 
             $result = safe_system(@args);
             if ($result)
             {
-                print "Error checking out $dir, removing from list of packages to build.\n";
-                dont_build ($dir);
+                print "Error checking out $module, removing from list of packages to build.\n";
+                dont_build ($module);
             }
         }
     }
@@ -926,6 +926,47 @@ sub safe_configure($$)
     return log_command("$module-configure.log", \@commands);
 }
 
+# Subroutine to create the build system for a module.  This involves making
+# sure the directory exists and then running make -f Makefile.cvs.  This
+# subroutine assumes that the module is already downloaded.
+sub safe_create_build_system
+{
+    my $kdecvs = get_option('global', 'cvs-root');
+    my $module = shift;
+    my $result;
+    
+    if (get_option('global', 'pretend'))
+    {
+        print "Would have created $module\'s build system.\n";
+        return 0;
+    }
+    
+    chdir ("$kdecvs/$module");
+    update_module_environment ($module);
+    $result = log_command ("build-system", [ "make", "-f", "Makefile.cvs" ]);
+    
+    if ($result)
+    {
+        print "Unable to create build system for $module\n";
+        dont_build($module);
+    }
+    
+    return $result;
+}
+
+sub needs_refreshed
+{
+    my $kdecvs = get_option ('global', 'cvs-root');
+    my $module = shift;
+    
+    return 1 if ((not -e "$kdecvs/build/$module") ||
+        (-e "$kdecvs/build/$module/.refresh-me") ||
+        get_option($module, "refresh-build") ||
+        (not -e "$kdecvs/build/$module/Makefile"));
+    
+    return 0;
+}
+
 # Subroutine to setup the build system in a directory.  The first parameter
 # is the module name.  Returns boolean true on success, boolean false (0)
 # on failure.
@@ -933,61 +974,58 @@ sub setup_build_system
 {
     my $kdecvs = get_option ('global', 'cvs-root');
     my $result;
-    my $dir = shift;
+    my $module = shift;
 
-    if ((not -e "$kdecvs/build/$dir") || 
-        (-e "$kdecvs/build/$dir/.refresh-me") ||
-        get_option($dir, "refresh-build") ||
-        (not -e "$kdecvs/build/$dir/Makefile") )
+    if (needs_refreshed($module))
     {
         # The build system needs created, either because it doesn't exist, or
         # because the user has asked that it be completely rebuilt.
-        if ((not -e "$kdecvs/build/$dir") || (not -e "$kdecvs/build/$dir/Makefile"))
+        if ((not -e "$kdecvs/build/$module") || (not -e "$kdecvs/build/$module/Makefile"))
         {
-            print "\nPreparing for initial build of $dir\n";
+            print "\nPreparing for initial build of $module\n";
         }
         else
         {
-            print "\nRefreshing build system for $dir.\n";
+            print "\nRefreshing build system for $module.\n";
         }
 
         chdir ("$kdecvs/build");
 
         # Remove directory if it already exists.
-        if (-e "$kdecvs/build/$dir")
+        if (-e "$kdecvs/build/$module")
         {
-            $result = safe_system ('rm', '-rf', "$kdecvs/build/$dir");
+            $result = safe_system ('rm', '-rf', "$kdecvs/build/$module");
             if ($result)
             {
-                print "Unable to unlink $kdecvs/build/$dir, skipping.\n";
+                print "Unable to unlink $kdecvs/build/$module, skipping.\n";
                 return 0;
             }
         }
 
         # Clean qt-copy separately
-        if ($dir eq 'qt-copy')
+        if ($module eq 'qt-copy')
         {
             chdir ("$kdecvs/qt-copy");
-            safe_system ('make', 'clean') if ($dir eq 'qt-copy');
+            safe_system ('make', 'clean') if ($module eq 'qt-copy');
             chdir ("$kdecvs/build");
         }
 
         # Now create the directory
-        if (not super_mkdir ("$dir"))
+        if (not super_mkdir ("$module"))
         {
-            print "Unable to create directory $kdecvs/build/$dir, skipping.\n";
+            print "Unable to create directory $kdecvs/build/$module, skipping.\n";
             return 0;
         }
 
         # Note this is the checkout directory, not the build directory
-        chdir ("$kdecvs/$dir");
+        chdir ("$kdecvs/$module");
 
         # Update the PATH and other important environment variables.
-        update_module_environment ($dir);
+        update_module_environment ($module);
 
         # Run KDE's build preparation script
-        $result = (not -e 'configure' || ($dir eq 'qt-copy'))
-            ? safe_system ('make', '-f', 'Makefile.cvs')
+        $result = (not -e 'configure' || ($module eq 'qt-copy'))
+            ? safe_create_build_system ($module)
             : 0;
 
         if ($result)
@@ -996,7 +1034,7 @@ sub setup_build_system
             return 0;
         }
 
-        if (($dir eq "qt-copy") && get_option($dir, 'apply-qt-patches'))
+        if (($module eq "qt-copy") && get_option($module, 'apply-qt-patches'))
         {
             # Run apply-patches script
             $result = safe_apply_patches ();
@@ -1004,35 +1042,35 @@ sub setup_build_system
         }
 
         # Check to see if we're supposed to stop here
-        return 0 if get_option ($dir, 'build-system-only');
+        return 0 if get_option ($module, 'build-system-only');
 
         # Now we're in the build directory
         # qt-copy doesn't use this metaphor, however.
-        chdir ("$kdecvs/build/$dir") unless $dir eq 'qt-copy';
+        chdir ("$kdecvs/build/$module") unless $module eq 'qt-copy';
 
-        my @conf_args = split (/\s+/, get_option($dir, 'configure-flags'));
+        my @conf_args = split (/\s+/, get_option($module, 'configure-flags'));
 
         # Configure for srcdir != builddir build.
         # Also get the user's CXXFLAGS
-        my $cxxflags = get_option ($dir, 'cxxflags');
+        my $cxxflags = get_option ($module, 'cxxflags');
         $ENV{'CXXFLAGS'} = $cxxflags if $cxxflags;
 
-        setenv ('DO_NOT_COMPILE', get_option ($dir, 'do-not-compile'));
-        if ($dir ne 'qt-copy')
+        setenv ('DO_NOT_COMPILE', get_option ($module, 'do-not-compile'));
+        if ($module ne 'qt-copy')
         {
             my $kdedir = get_option ('global', 'kdedir');
             push @conf_args, "CXXFLAGS=$cxxflags" if $cxxflags;
             push @conf_args, "--prefix=$kdedir";
         }
 
-        $result = safe_configure ($dir, \@conf_args);
+        $result = safe_configure ($module, \@conf_args);
         if ($result)
         {
-            print "Unable to configure $dir!\n";
+            print "Unable to configure $module!\n";
             return 0;
         }
 
-        if ($dir eq 'qt-copy')
+        if ($module eq 'qt-copy')
         {
             # Mark the configure as having taken place.
             open MAKEFILE, ">$kdecvs/build/qt-copy/Makefile";
