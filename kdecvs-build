@@ -583,7 +583,7 @@ sub get_install_list
 sub process_arguments
 {
     my $arg;
-    my $author = "Michael Pyne <mpyne\@grammarian.homelinux.net>\n";
+    my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
     my $version = "kdecvs-build 0.75\n";
     my @argv;
 
@@ -591,10 +591,10 @@ sub process_arguments
     {
         SWITCH: {
             /^(-v)|(--version)$/ && do { print $version; exit; };
-            /^--author$/         && do { print $author; exit; };
+            /^--author$/         && do { print "$author\n"; exit; };
             /^(-h)|(--help)$/    && do {
                 print <<DONE;
-kdecvs-build version $version
+$version
 This script automates (well, attempts to :-) ) the download, build,
 and install process for KDE CVS.
 
@@ -606,7 +606,7 @@ creating the file, which you can find at the above site.
 Anyways, after setting up .kdecvs-buildrc, you can run this program
 from either the command-line or from cron.  It will automatically download
 the modules from CVS, create the build system, and configure and make
-the modules you tell it too.  If you\'d like, you can use this program to
+the modules you tell it to.  If you\'d like, you can use this program to
 install KDE as well, if you\'re building KDE for a single user.
 
 Basic synopsis, after setting up .kdecvs-buildrc:
@@ -618,26 +618,36 @@ in .kdecvs-buildrc will be used.  If you DO specify a package name, then
 your settings will still be read, but the script will try to build/install
 the package regardless of .kdecvs-buildrc
 
-Copyright (c) 2003, 2004 Michael Pyne <mpyne\@grammarian.homelinux.net>
+Copyright (c) 2003, 2004 $author
 The script is distributed under the terms of the GNU General Public License
 v2, and includes ABSOLUTELY NO WARRANTY!!!
 
 Options:
     --no-cvs             Skip contacting the CVS server.
     --no-build           Skip the build process.
-    --no-install         Don't automatically install after build.  Automatic
-                         install will still happen if install-after-build is
-                         set to true for the module in the config file.
+    --no-install         Don't automatically install after build.
+
+    --cvs-only           Update CVS only (Identical to --no-build at this
+                         point).
+    --build-only         Build only, don't CVS update or install.
+
+    --rc-file <filename> Read configuration from filename instead of default.
     --debug              Activates debug mode.
     --pretend (or -p)    Don't actually contact the CVS server, run make,
                          or create/delete files and directories.  Instead,
                          output what the script would have done.
+
+    --resume             Tries to resume the make process from the last time
+                         the script was run, without performing the CVS
+                         update.
+    --resume-from <pkg>  Starts building from the given package, without
+                         performing the CVS update.
+
     --refresh-build      Start the build from scratch.
     --reconfigure        Run configure again, but don't clean the build
                          directory or re-run make -f Makefile.cvs.
     --recreate-configure Run make -f Makefile.cvs again to redo the configure
                          script.
-    --rc-file <filename> Read configuration from filename instead of default.
     --no-rebuild-on-fail Don't try to rebuild a module from scratch if it
                          failed building and we didn't already try to build it
                          from scratch.
@@ -645,10 +655,15 @@ Options:
                          perform the build.
     --install            Try to install the packages passed on the command
                          line, or all packages in ~/.kdecvs-buildrc that don't
-                         have manual-build set.
+                         have manual-build set.  Building and CVS updates are
+                         not performed.
+
     --help               You\'re reading it. :-)
     --author             Output the author(s)\'s name.
     --version            Output the program version.
+
+You can get more help by reading the included HTML documentation, or going
+online to http://grammarian.homelinux.net/kdecvs-build/
 DONE
                 # We haven't done any locking... no need to finish()
                 #  Avoids log-dir errors due to having not
@@ -688,6 +703,20 @@ DONE
 
             /^--no-build$/ && do {
                 $global_opts{'#manual-build'} = 1;
+                last SWITCH;
+            };
+
+            # Although equivalent to --no-build at this point, someday the
+            # script may interpret the two differently, so get ready now.
+            /^--cvs-only$/ && do {      # Identically to --no-build
+                $global_opts{'#manual-build'} = 1;
+                last SWITCH;
+            };
+
+            # Don't run CVS or install
+            /^--build-only$/ && do {
+                $global_opts{'#no-cvs'} = 1;
+                $global_opts{'#install-after-build'} = 0;
                 last SWITCH;
             };
 
@@ -2090,7 +2119,7 @@ if ($@)
     # We encountered an error.
     print "Encountered an error in the execution of the script.\n";
     print "The error reported was $@\n";
-    print "Please e-mail a bug report to mpyne\@grammarian.homelinux.net\n";
+    print "Please e-mail a bug report to michael.pyne\@kdemail.net\n";
     print "with this information.\n";
 
     # Don't finish, because we haven't attained the lock yet.
@@ -2147,7 +2176,7 @@ if ($@)
     # We encountered an error.
     print "Encountered an error in the execution of the script.\n";
     print "The error reported was $@\n";
-    print "Please e-mail a bug report to mpyne\@grammarian.homelinux.net\n";
+    print "Please e-mail a bug report to michael.pyne\@kdemail.net\n";
     print "with this information.\n";
 
     # Don't finish, because we haven't attained the lock yet.
