@@ -625,6 +625,16 @@ sub initialize_environment
     my $cvsserver = get_option ('global', 'cvs-server');
     $ENV{'CVS_RSH'} = 'ssh' if $cvsserver =~ /^:ext:/;
 
+    my $pc_path = $ENV{'PKG_CONFIG_PATH'};
+    if ($ENV{'PKG_CONFIG_PATH'})
+    {
+        $ENV{'PKG_CONFIG_PATH'} = get_option('global', 'kdedir') . "/lib/pkgconfig:$pc_path";
+    }
+    else
+    {
+        $ENV{'PKG_CONFIG_PATH'} = get_option('global', 'kdedir') . "/lib/pkgconfig";
+    }
+
     setup_module_environment ('global');
 }
 
@@ -708,7 +718,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
-    my $version = "kdecvs-build 0.86\n";
+    my $version = "kdecvs-build 0.87\n";
     my @argv;
 
     while ($_ = shift @ARGV)
