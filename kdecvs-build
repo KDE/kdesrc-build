@@ -504,6 +504,7 @@ sub read_options
         # Get modulename
         ($modulename) = /^module\s+([-\.\w]+)\s*$/;
         $package_opts{$modulename} = { }; # Set up defaults
+        $package_opts{$modulename}{'set-env'} = { };
 
         while (<CONFIG>)
         {
@@ -517,7 +518,6 @@ sub read_options
             # Replace tildes with home directory.
             1 while ($flags =~ s/(^|:)~/$1$ENV{'HOME'}/);
             $flags = 0 if $flags =~ /^false$/;
-            $package_opts{$modulename}->{$option} = $flags;
             if ($option ne 'set-env')
             {
                 $package_opts{$modulename}{$option} = $flags;
@@ -543,6 +543,23 @@ sub read_options
     close CONFIG;
 }
 
+# This subroutine reads the set-env option for a given module and initializes
+# the environment based on that setting.
+sub setup_module_environment
+{
+    my $module = shift;
+    my ($key, $value);
+
+    # Let's see if the user has set env vars to be set.
+    my $env_hash_ref = get_option($module, 'set-env');
+    while (($key, $value) = each %{$env_hash_ref})
+    {
+        print "\tSetting $key to $value\n" if debugging;
+    }
+
+    $ENV{$key} = $value while (($key, $value) = each %{$env_hash_ref});
+}
+
 # Subroutine to initialize some environment variable for building
 # KDE from CVS.  Change this section if a dependency changes later.
 sub initialize_environment
@@ -553,6 +570,8 @@ sub initialize_environment
 
     my $cvsserver = get_option ('global', 'cvs-server');
     $ENV{'CVS_RSH'} = 'ssh' if $cvsserver =~ /^:ext:/;
+
+    setup_module_environment ('global');
 }
 
 # Subroutine to get a list of modules to install, either from the command line
@@ -1784,6 +1803,9 @@ sub update_module_environment
     # Qt has several defines of its own.  Special case qt-copy for this
     # reason.
     setenv ("YACC", 'byacc -d') if ($module eq "qt-copy");
+
+    # Read in user environment defines
+    setup_module_environment ($module);
 }
 
 # Subroutine to make sure the build directory for a module is setup.

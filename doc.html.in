@@ -66,6 +66,21 @@ those who either can't or don't feel like installing it.</p>
 (DOT) net), and is one of several build scripts for this purpose.</p>
 
 <p><b>2004-Jul-25:</b> v0.80<br/>
+New features:
+<ul>
+<li>Since I won't be able to predict what environment variables will need to
+be set in the future, I've added an option to allow you to set environment
+variables (either globally or per module).  This option is called <a
+href="#conf-set-env">set-env</a>, and it's a special option in that you can
+repeat the option without overwriting the previous value you gave it, as long
+as it is during the same section.  The format is (in the config file):<br/>
+<pre>set-env ENV-VAR value</pre><br/>
+Those who have had to run the cron job for this script from a wrapper shell
+script to read in /etc/profile should be able to use this option instead.  If
+not, I'm thinking of a way to source /etc/profile from a Perl script without
+having to write my own Bourne-shell, so let me know if you need it.</li>
+</ul>
+
 Bugfixes:
 <ul>
 <li>Fixed an output alignment error discovered by Michal Rokos.</li>
@@ -147,136 +162,6 @@ afflicted.  It has also been fixed.  As of this release, the file
 successfully-build is no longer created.</li>
 </ul>
 </p>
-
-<p><b>2004-Jun-17:</b> v0.73<br/>
-New features:
-<ul>
-<li>The script now will report how long each module spent building, both in
-the output and in the build-status log file.</li>
-<li>Someone had requested an option for having separate compilation and link
-cycles while building a program.  Unfortunately, that doesn't appear to be
-supported by unsermake, and I don't think it makes sense anyways, as some
-programs in a module depend on a shared or convienience lib that must be
-linked first.  So this option isn't coming. :-(</li>
-<li>Other than that, everything I wanted to accomplish for v0.73 should be
-in.</li>
-</ul>
-</p>
-
-<p><b>2004-Jun-15:</b> v0.73-pre1<br />
-Bugfixes:
-<ul>
-<li>The <a href="#conf-no-rebuild-on-fail">no-rebuild-on-fail</a>
-configuration file option didn't actually work in prior versions.</li>
-
-<li>Fix an infinite loop exposed when you disable auto-install.</li>
-
-<li>The log file for a build now has a number appended, since multiple build
-attempts can occur during a single script run.</li>
-
-<li>A few unlikely errors now have explicit checks in place.</li>
-
-<li>More debugging output when <a href="#cmdline-debug">--debug</a> is
-activated.</li>
-
-<li>Perl exception handling has been added to the main execution loop, so you
-should never again have one of my bugs crash the script and then force you to
-manually remove the lockfile.</li>
-
-<li>Fix a bug with <a
-href="#conf-use-qt-builddir-hack">use-qt-builddir-hack</a> where having the
-option set would cause the build system setup to fail on modules other than
-qt-copy.  At least <b>I've</b> been testing. :-D</li>
-
-<li>Don't add global to the log directory path if we're grabbing the global
-log directory.</li>
-</ul>
-
-Features:
-<ul>
-<li>Based on a suggestion by mornfall, the autorebuilding process doesn't
-clean out the build directory for a module when trying to rebuild.  In
-addition, on a failure, make will be run again since sometimes that's all it
-takes to make it work.  If the build process still fails, the build system
-will be recreated, but the build directory won't be cleaned.  This is a big
-time saver, and should give the same results.  Using the <a
-href="#cmdline-refresh-build">--refresh-build</a> option will still cause the
-build directory to be cleaned at this point.</li>
-
-<li>Added new option, <a
-href="#conf-make-install-prefix">make-install-prefix</a>, which is a
-space-separated command (and options) to prefix the make command with when
-installing modules.  This is useful for using sudo to automatically install
-packages with root privileges, but be careful!  If you don't run this script
-from a terminal and you have this option set, you will have no way to enter a
-password if you need to.</li>
-
-<li>Added new command line options, <a href="#cmdline-resume">--resume</a>,
-and <a href="#cmdline-resume-from">--resume-from</a>, which allows you to
-start the build process from a specific module.  This option implies <a
-href="#cmdline-no-cvs">--no-cvs</a>.</li>
-
-<li>The build process outputs to a file called build-status in the global log
-directory, which lets you tell at a glance what modules built during the run
-of the script.</li>
-
-<li>The script tells you the log directory to examine after running.</li>
-</ul>
-</p>
-
-<p><b>2004-Jun-13:</b> v0.72 -- <em>This Should Work Edition&trade;</em><br/>
-Bugfixes:
-<ul>
-<li>qt-copy bugfix #6564: There's no reason to try to download the admir dir
-for qt-copy, so let's not bother trying.</li>
-
-<li>The workaround in 0.70 and 0.71 for the autorebuilding bug caused a bug of
-its own (no, I don't work for Microsoft), for which I apologize.  Both bugs
-should now be fixed.</li>
-
-<li>kde-common is no longer required to support <a
-href="#conf-checkout-only">checkout-only</a>, and will therefore no longer be
-automatically downloaded.  It will still be downloaded if you place it in your
-.kdecvs-buildrc.</li>
-
-<li>qt-copy bugfix #2312: Although the last attempt to reconfigure qt-copy
-only when needed was inspired, it was ultimately flawed due to programmer
-incompetence. ;-)</li>
-
-<li>Rearrange command-line options a little bit so that you can pass the <a
-href="#cmdline-help">--help</a> and <a href="#cmdline-version">--version</a>
-options to the script without having to have a configuration file installed.
-</li>
-
-<li>Although not related to the end-user experience of the script per se, my
-packing script for kdecvs-build has been updated in the downtime while testing
-the script, and now keeps me from doing stupid stuff like forgetting to
-upgrade the version number in the script, forgetting to commit my changes to
-my CVS repository, and forgetting to actually install the script to test.</li>
-</ul>
-</p>
-
-<p>I recommend that you set up a separate user account if you decide to run KDE
-from CVS.  I didn't at first, and I won't repeat that mistake for KDE 3.3 ;-).
-I would also recommend that you add this script to your crontab so that you
-don't have to worry about manually running the build process.  The script
-employs locking to prevent parallel execution.  You also need to follow the
-instructions on <a
-href="http://developer.kde.org/source/anoncvs.html">http://developer.kde.org/source/anoncvs.html</a>
-to set up your .cvsrc and .cvspass.  You should also follow the instructions on
-that page regarding setting up your own repository, especially if you intend to
-use qt-copy.  Make sure that qt-copy, arts, kdelibs, and kdebase are listed in
-that order in your configuration file.  If you perform a single-user install of
-kdecvs-build, all you have to do to download, build, and install KDE from CVS
-(assuming no build errors) is to run the script.
-<pre>$ kdecvs-build
-</pre>
-</p>
-
-<p>If you perform a system-wide installation, you can run the entire script
-as root, although I would recommend using your distribution's packages or
-<a href="http://developer.kde.org/build/konstruct/">Konstruct</a> to install a
-stable KDE.</p>
 
 <hr>
 <a name="features"></a>
@@ -419,6 +304,7 @@ using the address you can find <a href="#emailaddy">above</a>.
 <li><a href="#conf-recreate-configure">recreate-configure</a></li>
 <li><a href="#conf-refresh-build">refresh-build</a></li>
 <li><a href="#conf-release-tag">release-tag</a></li>
+<li><a href="#conf-set-env">set-env</a></li>
 <li><a href="#conf-stop-on-failure">stop-on-failure</a></li>
 <li><a href="#conf-use-qt-builddir-hack">use-qt-builddir-hack</a></li>
 <li><a href="#conf-use-unsermake">use-unsermake</a></li>
@@ -789,6 +675,21 @@ line option.
 </td>
 </tr>
 
+<tr id="conf-set-env">
+<td valign="top">set-env</td>
+<td valign="top">Overrides global</td>
+<td><p>This option accepts a space-separated set of values, where the first value
+is the environment variable to set, and the rest of the values is what you
+want the variable set to.  For example, to set the variable RONALD to
+McDonald, you would put in the appropriate section this command:</p>
+<pre>set-env RONALD McDonald</pre>
+<p>This option is special in that it can be repeated without overriding
+earlier set-env settings in the same section of the configuration file.  This
+way you can set more than one environment variable per module (or
+globally).</p>
+</td>
+</tr>
+
 <tr id="conf-stop-on-failure">
 <td valign="top">stop-on-failure</td>
 <td valign="top">Overrides global</td>
@@ -921,7 +822,7 @@ href="#options">.kdecvs-buildrc options</a>.
 <div align="center" class="thankyou">
 <font size="-1"><a href="http://www.cvsup.org/">CVSup</a> is a registered trademark of John D. Polstra.
 <br/>
-Last modified: Sun Jul 25 17:19:56 2004</font>
+Last modified: Sun Jul 25 19:10:36 2004</font>
 </div>
 </body>
 </html>
