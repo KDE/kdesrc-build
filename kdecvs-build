@@ -529,7 +529,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <mpyne\@grammarian.homelinux.net>\n";
-    my $version = "kdecvs-build 0.73-pre1\n";
+    my $version = "kdecvs-build 0.73\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -1464,8 +1464,16 @@ sub clean_build_system
     my $moduledir = get_kdecvs_dir() . "/$module";
     my $builddir = get_build_dir ($module);
 
-    # Make sure the module's been checked out.
-    return 0 if (not -e $moduledir);
+    if (pretending) {
+        print "\tWould have cleaned build system for $module.\n";
+        return 1
+    };
+
+    if (not -e $moduledir)
+    {
+        print "\tUnable to clean build system for $module, it's not been checked out!\n";
+        return 0;
+    }
 
     # Clean qt-copy separately
     if ($module eq 'qt-copy')
@@ -1672,6 +1680,53 @@ sub setup_build_directory
     return 1;
 }
 
+# Subroutine to return a string suitable for displaying an elapsed time, (like
+# a stopwatch) would.  The first parameter is the number of seconds elapsed.
+sub prettify_seconds
+{
+    my $elapsed = $_[0];
+    my $str = "";
+    my ($days,$hours,$minutes,$seconds,$fraction);
+
+    $fraction = int (100 * ($elapsed - int $elapsed));
+    $elapsed = int $elapsed;
+
+    $seconds = $elapsed % 60;
+    $elapsed = int $elapsed / 60;
+
+    $minutes = $elapsed % 60;
+    $elapsed = int $elapsed / 60;
+
+    $hours = $elapsed % 24;
+    $elapsed = int $elapsed / 24;
+
+    $days = $elapsed;
+
+    $seconds = "$seconds.$fraction" if $fraction;
+
+    my @str_list;
+
+    for (qw(days hours minutes seconds))
+    {
+        # Use a symbolic reference without needing to disable strict refs.
+        # I couldn't disable it even if I wanted to because these variables
+        # aren't global or localized global variables.
+        my $value = eval "return \$$_;";
+        my $text = $_;
+        $text =~ s/s$// if $value == 1; # Make singular
+
+        push @str_list, "$value $text" if $value or $_ eq 'seconds';
+    }
+
+    # Add 'and ' in front of last element if there was more than one.
+    push @str_list, ("and " . pop @str_list) if (scalar @str_list > 1);
+
+    $str = join (", ", @str_list);
+    print "Time from $_[0] was $str.\n" if debugging;
+
+    return $str;
+}
+
 # Subroutine to build a given module.  The module to build is the first
 # parameter.
 #
@@ -1690,6 +1745,7 @@ sub build_module
     }
 
     update_module_environment($module);
+    my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
     {
         print "Building $module\n";
@@ -1706,12 +1762,15 @@ sub build_module
             # and etc and then try make again.  If that STILL doesn't work, we
             # can try rm -rf $builddir/$module and rebuild.
 
-            print "Build failed.\n";
+            my $elapsed = prettify_seconds (time - $start_time);
+            $start_time = time;
+
             ++$trynumber;
             if ($trynumber == 2)
             {
                 # Just try again
                 print "\n\tCouldn't build, going to try again just in case.\n";
+                print "\tTook $elapsed of time.\n";
                 next;
             }
 
@@ -1721,6 +1780,7 @@ sub build_module
             {
                 # Well we tried, but it isn't going to happen.
                 print "\n\tUnable to build $module!\n";
+                print "\tTook $elapsed of time.\n";
                 return 0;
             }
 
@@ -1729,20 +1789,24 @@ sub build_module
                 # Don't remove the old modules, but re-run make -f
                 # Makefile.cvs and configure.
                 print "\n\tStill couldn't build, recreating build system (builddir is safe).\n";
+                print "\tTook $elapsed of time.\n";
                 $package_opts{$module}->{'#cancel-clean'} = 1;
                 $package_opts{$module}->{'refresh-build'} = 1;
             }
 
             # Loop again
         }
-        elsif (get_option($module, "install-after-build"))
-        {
-            handle_install($module);
-            last; # Don't forget to exit the loop!
-        }
         else
         {
-            print "\tModule built successfully, install skipped.\n";
+            # Build succeeded
+
+            my $elapsed = prettify_seconds (time - $start_time);
+            my $do_install = get_option($module, 'install-after-build');
+
+            print "\tBuild done after $elapsed.\n";
+            $do_install ? handle_install($module)
+                        : print "\tSkipping install for $module\n";
+
             last; # Don't forget to exit the loop!
         }
     }
@@ -1801,21 +1865,28 @@ sub handle_build
 
     foreach $module (@{$build_ref})
     {
+        my $start_time = time;
         if (build_module ($module))
         {
-            print STATUS_FILE "$module: Succeeded.\n" if $outfile;
+            my $elapsed = prettify_seconds(time - $start_time);
+            print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
+
+            print "\tOverall time for $module was $elapsed.\n";
             push @build_done, $module;
-        }
-        elsif (get_option($module, 'stop-on-failure'))
-        {
-            print STATUS_FILE "$module: Failed.\n" if $outfile;
-            print "\n$module didn't build, stopping here.\n";
-            return 1; # Error
         }
         else
         {
-            print STATUS_FILE "$module: Failed.\n" if $outfile;
+            my $elapsed = prettify_seconds(time - $start_time);
+            print STATUS_FILE "$module: Failed after $elapsed.\n" if $outfile;
+
+            print "\tOverall time for $module was $elapsed.\n";
             push @fail_list, $module;
+
+            if (get_option($module, 'stop-on-failure'))
+            {
+                print "\n$module didn't build, stopping here.\n";
+                return 1; # Error
+            }
         }
 
         print "\n";
@@ -1940,7 +2011,7 @@ eval
     initialize_environment();
     setup_logging_subsystem();
 
-    dump_options() if get_option('global', 'debug');
+    dump_options() if debugging;
 };
 
 if ($@)
