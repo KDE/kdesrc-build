@@ -22,7 +22,7 @@ fi
 
 if [ $# -ne 1 ]; then
 	if [ $# -eq 2 -a $1 = --undo ]; then
-		$VERSION="$2"
+		VERSION="$2"
 
 		# Delete the file
 		rm -f "kdecvs-build-$VERSION.tar.gz"
