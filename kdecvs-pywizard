@@ -9,8 +9,8 @@ import sys;
 import os;
 
 modules = {
-	'arts':                { 'order': 0, 'conf': { } },
-	'qt-copy':             { 'order': 1, 'conf': { } },
+	'qt-copy':             { 'order': 0, 'conf': { } },
+	'arts':                { 'order': 1, 'conf': { } },
 	'kdesupport':          { 'order': 2, 'conf': { } },
 	'kdemultimedia':       { 'order': 4, 'conf': { } },
 	'kdelibs':             { 'order': 2, 'conf': { } },
@@ -92,10 +92,75 @@ class DistributedPage(QVBox):
 	def __init__(self, wizard):
 		QVBox.__init__(self, wizard)
 
-		self.label = BoldLabel("Distributed compilation options", self)
-		self.explanation = QLabel(text, self)
+		text = """<qt>On this page you can configure whether or not you want to
+		enable some options for distributed compilation.  You would want this
+		if you have a SMP computer, or if you are using distributed build
+		tools such as <b>distcc</b>, <b>TeamBuilder</b>, or <b>icecream</b>.</qt>
+		"""
+
+		label = BoldLabel("Distributed compilation options", self)
+
+		formBox = QVBox(self)
+		formBox.setSpacing(12)
+		self.explanation = QLabel(text, formBox)
+		self.usedcCheck = QCheckBox("Enable distributed compilation", formBox)
+		self.connect(self.usedcCheck, SIGNAL("toggled(bool)"),
+		             self.setDCEnabled)
+		self.usedcCheck.setChecked(False)
+		self.setStretchFactor(self.explanation, 1)
+
 		self.wizard = wizard
 		wizard.addPage(self, "Distributed compilation")
+
+		self.optionsPage = DistributedOptionsPage(wizard)
+		wizard.setAppropriate(self.optionsPage, False)
+
+	def setDCEnabled(self, enable):
+		if enable:
+			self.wizard.setAppropriate(self.optionsPage, True)
+		else:
+			self.wizard.setAppropriate(self.optionsPage, False)
+
+class DistributedOptionsPage(QVBox):
+	def __init__(self, wizard):
+		QVBox.__init__(self, wizard)
+		label = BoldLabel("Configure your distributed compilation options", self)
+
+		self.options = QGroupBox(2, Qt.Vertical, "Distributed compilation options", self)
+
+		box = QHBox(self.options)
+		label = QLabel("Number of simultaneous jobs", box)
+		edit = QSpinBox(1, 128, 1, box)
+		edit.setValue(4)
+		self.connect(edit, SIGNAL("valueChanged(int)"),
+		             self.jobsChanged)
+
+		check = QCheckBox("Use unsermake instead of automake", self.options)
+		self.connect(check, SIGNAL("toggled(bool)"),
+		             self.unsermakeChecked)
+
+		wizard.addPage(self, "Distributed compilation options")
+		self.connect(wizard, SIGNAL("selected(const QString&)"),
+		             self.init)
+		self.wizard = wizard
+
+	def init(self, name):
+		if name != "Distributed compilation options":
+			return
+
+		if not globals.has_key('use-unsermake'):
+			globals['use-unsermake'] = { 'value': 'false' }
+		if not globals.has_key('make-options'):
+			globals['make-options'] = { 'value': '-j4' }
+
+	def jobsChanged(self, number):
+		globals['make-options']['value'] = '-j' + str(number)
+
+	def unsermakeChecked(self, enabled):
+		if enabled:
+			globals['use-unsermake']['value'] = 'true'
+		else:
+			globals['use-unsermake']['value'] = 'false'
 
 # Reimplemented in order to shade the text background when an item is selected
 class CheckItem(QCheckListItem):
@@ -262,6 +327,9 @@ class OptionsConfBox(QGroupBox):
 		self.moduleName = title
 
 		for x in ['conf-flags', 'checkout-only']:
+			if title == 'qt-copy' and x == 'checkout-only':
+				continue
+
 			label = QLabel(x, self)
 			edit = QLineEdit(self)
 			proxy = self.TextChangeProxy(self, title, x)
@@ -311,6 +379,18 @@ class GeneratePage(QVBox):
 		self.textEdit = QTextEdit(self)
 		self.textEdit.setFont(QFont('monospace'))
 		self.textEdit.setReadOnly(True)
+		self.textEdit.setWordWrap(QTextEdit.NoWrap)
+
+		box = QHBox(self)
+		label = QLabel("&Filename", box)
+		self.browseLine = QLineEdit("~/.debug-kdecvs-buildrc", box)
+		label.setBuddy(self.browseLine)
+		browseButton = QPushButton("&Save As...", box)
+		self.connect (browseButton, SIGNAL("clicked()"),
+		              self.browseClicked)
+
+	def browseClicked(self):
+		return
 
 	def preparePage(self, text):
 		if text != self.name:
@@ -339,9 +419,41 @@ class GeneratePage(QVBox):
 			if x != last:
 				te("\n")
 
+		self.wizard.setFinishEnabled(self, True)
+		self.wizard.setFileName(self.browseLine.text())
+		self.wizard.setFileText(self.textEdit.text())
+
+class ConfigWizard(QWizard):
+	def __init__(self, parent=None):
+		QWizard.__init__(self, parent)
+
+	def setFileText(self, text):
+		self.text = str(text)
+	
+	def setFileName(self, name):
+		self.filename = str(name)
+
+	def accept(self):
+		print "Saving " + self.filename
+		name = QString(self.filename)
+		if name.startsWith("~"):
+			name.replace(0, 1, os.environ['HOME'])
+
+		try:
+			file = open(str(name), 'w')
+		except IOError:
+			QMessageBox.warning(self, "Unable to save", "Unable to save " + self.filename,
+			  QMessageBox.Ok | QMessageBox.Default, 0, 0)
+			return
+
+		file.write(self.text)
+		file.close()
+
+		QWizard.accept(self)
+
 def main(args):
 	a = QApplication(args)
-	wizard = QWizard()
+	wizard = ConfigWizard()
 
 # I like bold fonts better
 	font = wizard.titleFont()
@@ -351,11 +463,13 @@ def main(args):
 # Add all of the pages to the wizard
 	page1 = IntroPage(wizard)
 	page2 = GlobalSettingsPage(wizard)
-#	page25 = DistributedPage(wizard)
+	page25 = DistributedPage(wizard)
 	page3 = BaseModulesPage(wizard)
 	page4 = ExtraModulesPage(wizard)
 	page5 = OptionsPage(wizard)
 	page6 = GeneratePage(wizard)
+
+	wizard.resize(QSize(640, 480))
 
 	a.connect(wizard, SIGNAL("selected(const QString &)"),
 	          page6.preparePage);
