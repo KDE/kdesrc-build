@@ -1435,12 +1435,17 @@ sub handle_build
 
     print "\n<<<  BUILD PROCESS  >>>\n";
 
+    # Save the environment to keep module's env changes from affecting other
+    # modules.
+    my %env_backup = %ENV;
+
     foreach $module (@{$build_ref})
     {
         build_module ($module) ?
             push @build_done, $module :
             push @fail_list, $module;
         print "\n";
+        %ENV = %env_backup;
     }
 
     print "<<<  BUILD DONE  >>>\n";
