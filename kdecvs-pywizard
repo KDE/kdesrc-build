@@ -1,4 +1,8 @@
 #!/usr/bin/python
+# Copyright (c) 2004 Michael Pyne <michael.pyne@kdemail.net>
+# Distributed under the terms of the GNU GPL v2, or any later version.
+# Script to auto-generate the configuration for kdecvs-build to use.
+# See http://grammarian.homelinux.net/kdecvs-build/
 
 from qt import *;
 import sys;
@@ -81,7 +85,17 @@ class IntroPage(QVBox):
 		wizard.addPage(self, "Introduction")
 		self.body = QLabel("""<qt><center>This wizard will help you setup a
 basic configuration file for kdecvs-build.  To continue, please click the
-Next button.</center></qt>""", self)
+Next button.<br/><br/>NOTE: This isn't quite done yet, you'll have to copy
+and paste the file at the end to ~/.kdecvs-buildrc.</center></qt>""", self)
+
+class DistributedPage(QVBox):
+	def __init__(self, wizard):
+		QVBox.__init__(self, wizard)
+
+		self.label = BoldLabel("Distributed compilation options", self)
+		self.explanation = QLabel(text, self)
+		self.wizard = wizard
+		wizard.addPage(self, "Distributed compilation")
 
 # Reimplemented in order to shade the text background when an item is selected
 class CheckItem(QCheckListItem):
@@ -337,6 +351,7 @@ def main(args):
 # Add all of the pages to the wizard
 	page1 = IntroPage(wizard)
 	page2 = GlobalSettingsPage(wizard)
+#	page25 = DistributedPage(wizard)
 	page3 = BaseModulesPage(wizard)
 	page4 = ExtraModulesPage(wizard)
 	page5 = OptionsPage(wizard)
