@@ -1,0 +1,692 @@
+<html>
+<head>
+<!--
+Documentation written by Michael Pyne.
+-->
+<title>kdecvs-build Documentation</title>
+<style>
+<!--
+body {
+	background : #BCF;
+}
+
+a {
+	padding: 2px;
+}
+
+a:hover {
+	background : #FFFFC0;
+	margin: -1px;
+	border : solid black 1px;
+}
+
+-->
+</style>
+</head>
+<body>
+<div>
+<h3>kdecvs-build Reference</h3>
+
+You should always be able to find the latest version of this file at
+<a href="http://grammarian.homelinux.net/kdecvs-build/">http://grammarian.homelinux.net/kdecvs-build/</a>
+<ol>
+<!--REMOVE_FOR_INDEX
+<li><a href="#download">Download</a></li>
+REMOVE_FOR_INDEX-->
+<li><a href="#intro">Introduction</a></li>
+<li><a href="#features">Features</a></li>
+<li><a href="#.kdecvs-buildrc">Configuration File</a></li>
+<li><a href="#options">Configuration File Options</a></li>
+<li><a href="#cmdline">Command-line Options</a></li>
+<li><a href="#envvars">Environment Variables Used</a></li>
+</ol>
+
+<!--REMOVE_FOR_INDEX
+<a name="download"></a>
+<h3>Download</h3>
+<p>The current version is <b>$VERSION</b>.<br/><br/>
+Download <a href="kdecvs-build-$VERSION.tar.gz">kdecvs-build v$VERSION: ($SIZE)</a><br/>
+The file includes the script, documentation, and a sample configuration file.
+</p>
+<p>You can also download kdecvs-manager, a GUI configuration tool for the
+script.  <a href="kdecvsmanager-0.5.tar.bz2">kdecvs-manager-0.5.tar.bz2: (622.1K)</a><br/>
+It uses the standard configure/make/make install motif, and includes a help
+handbook.
+</p>
+REMOVE_FOR_INDEX-->
+<a name="intro"></a>
+<h3>Introduction</h3>
+<p>kdecvs-build is a Perl script to help users install <a href="http://www.kde.org/">KDE</a> from 
+<A href="http://www.cvshome.org/">CVS</A>.  Unlike the two scripts available at 
+<a href="http://developer.kde.org/build/compile_cvs.html">http://developer.kde.org/build/compile_cvs.html</a>,
+this script neither requires nor uses <a href="http://www.cvsup.org/">CVSup</a>, for
+those who either can't or don't feel like installing it.</p>
+
+<p>It is authored by Michael Pyne (mpyne (AT) grammarian (DOT) homelinux 
+(DOT) net), and is one of several build scripts for this purpose.</p>
+
+<p><b>2004-Jun-07:</b> v0.66, which is a bug-fix release.
+<ul>
+<li>Keep module changes in the build process for a module from affecting other
+modules.  This should fix a build error in kdepim due to qt-copy setting the
+environment variable YACC.
+</li>
+
+<li>If unsermake isn't supposed to be used for a module, forcibly remove it
+from the list of environment variables.  I'm not sure why this seemed to work
+for me in earlier versions, as the code was never correct. :-|
+</li>
+
+<li>Really fix the bug where "Script starts" would be displayed before
+command line options were processed, resulting in sub-optimal program output.
+</li>
+
+</ul>
+</p>
+
+<p><b>2004-Jun-03:</b> v0.65, which fixes a brown-paper-bag bug. :-(
+<ul>
+
+<li>Not all instances of the routine log_command() had been converted to the
+new format, leading the Perl interpreter to bail out.
+</li>
+
+</ul>
+
+<p><b>2004-Jun-03:</b> v0.64, with a few more changes, and quite a big of
+minor bugfixes.
+</p>
+Changes:
+<ul>
+<li>You may now use <b>false</b> in the configuration file to signify logical
+false.  (To Perl, the string false is really logically true).</li>
+
+<li>If a package fails when incrementally building, kdecvs-build will try to
+build it from scratch.  This behavior can be disabled using <a
+href="#conf-no-rebuild-on-fail">no-rebuild-on-fail</a> or <a
+href="#cmdline-no-rebuild-on-fail">--no-rebuild-on-fail</a> on the command
+line.</li>
+
+<li>The output should be much cleaner due to the use of a lot of
+indentation.</li>
+
+<li><a href="#conf-log-dir">log-dir</a> can now be changed per-module.</li>
+
+<li>Log directories are now dated using ISO 8601 style dates. (2004-06-30, for
+example).</li>
+
+<li>Enabling <a href="#cmdline-debug">--debug</a> now outputs what the script
+thinks your options are set to.</li>
+
+<li>Assorted code cleanups.</li>
+
+</ul>
+
+Bugfixes:
+<ul>
+<li>Thanks to a different way of handling command-line options, it is now
+possible to do some truly esoteric things.  For example, you could set the <a
+href="#conf-manual-build">manual-build</a> option to <b>true</b> in the global
+section of your <a href="#options">configuration file</a>, and set it to
+<b>false</b> for one module to make only that module build and install when
+you run kdecvs-build, unless to pass the name of the module you want to build
+on the command line.  Prior to v0.64, this would prevent any module from ever
+building, even if you explicitly specified it on the command line.</li>
+
+<li>kdecvs-build now accepts CVS module names that begin with a period
+(.).</li>
+
+<li>The output from the safe_make() subroutine was incorrect while in <a
+href="#conf-pretend">pretend</a> mode.</li>
+
+<li>Unsermake is now only automatically added to the download list if you are
+building a module that relies on it.  Prior to v0.64, unsermake would be
+updated even if you were only doing a CVS update for a module that uses
+it.</li>
+
+<li>Some documentation updates.</li>
+
+</ul>
+
+<p>I recommend that you set up a separate user account if you decide to run KDE
+from CVS.  I didn't at first, and I won't repeat that mistake for KDE 3.3 ;-).
+I would also recommend that you add this script to your crontab so that you
+don't have to worry about manually running the build process.  The script
+employs locking to prevent parallel execution.  You also need to follow the
+instructions on <a
+href="http://developer.kde.org/source/anoncvs.html">http://developer.kde.org/source/anoncvs.html</a>
+to set up your .cvsrc and .cvspass.  You should also follow the instructions on
+that page regarding setting up your own repository, especially if you intend to
+use qt-copy.  Make sure that qt-copy, arts, kdelibs, and kdebase are listed in
+that order in your configuration file.  If you perform a single-user install of
+kdecvs-build, all you have to do to download, build, and install KDE from CVS
+(assuming no build errors) is to run the script.
+<pre>$ kdecvs-build
+</pre>
+</p>
+
+<p>If you perform a system-wide installation, you can run the entire script
+as root, although I would recommend using your distribution's packages or
+<a href="http://developer.kde.org/build/konstruct/">Konstruct</a> to install a
+stable KDE.</p>
+
+<hr>
+<a name="features"></a>
+<h3>Features</h3>
+<p>Features that I can think of off the top of my head:
+<ul>
+
+<li>Automatically checks out modules from CVS or updates from CVS, as
+appropriate.</li>
+
+<li>Support for checking out specific branches of CVS modules.
+
+<li>Much better support for qt-copy than 0.4x.</li>
+
+<li>Can create a .cvsrc automatically if you forget to. .cvspass still isn't
+automatically created.</li>
+
+<li><A href="http://www.kde.me.uk/index.php?page=unsermake">Unsermake</A>
+support.</li>
+
+<li>Tilde-expansion for your configuration options.  For example, you can
+specify: <pre>qtdir ~/kdecvs/qt-copy</pre></li>
+
+<li>Configurable build and logging directories</li>
+
+<li>Automatically sets up a build system, with the source directory not the
+same as the build directory, in order to keep the CVS download directory
+pristine. The exception is qt-copy, which isn't designed to be built like
+that.</li>
+
+<li>You can specify global options to apply to every module to check out, and
+you can specify options to apply to individual modules as well.</li>
+
+<li>Since the autotools sometimes get out of sync with changes to the CVS
+source tree, you can force a rebuild of a module by creating a file called
+.refresh-me in the build directory of the module in question, or by running
+kdecvs-build with the --refresh-build option.</li>
+
+<li>You can specify various environment values to be used during the build,
+including KDEDIR, QTDIR, DO_NOT_COMPILE, and CXXFLAGS.</li>
+
+<li>Includes CVS over SSH support.  The script CANNOT access your private key
+if it is password protected, so using ssh-agent is recommended.</li>
+
+<li>Command logging.  Logs are not dated, so they are overwritten after
+consecutive runs of the program.</li>
+
+<li>If you're using a user build of KDE instead of a system build (for which
+you must be root to install), you can use the script to install for you.  I
+haven't audited this code, and it makes ample use of the <code>system()</code>
+call, so I would not recommend running it as root at this point.</li>
+
+<li>You can check out only a portion of a KDE CVS module.  For example, you
+could check out only taglib from kdesupport, or only K3B from kdeextragear-1.
+The script will automatically pull in kde-common if necessary to make the build
+work.</li>
+
+<li>You can "pretend" to do the operations.  If you pass --pretend or -p on the
+command line, the script will give a very verbose description of the commands
+it is about to execute, without actually executing it.</li>
+
+<li>Saves a list of the modules that successfully built as the file
+successfully-built in the build directory.</li>
+
+<li>Can log output of the make command to a file in $KDECVSDIR/log.</li>
+
+</ul></p>
+<p>Things that kdecvs-build does NOT do:
+<ul>
+<li>Find the fastest KDE CVS mirror.  There isn't even a list shipped
+with the script at this point.</li>
+<li>Brush your teeth.  You should remember to do that yourself.</li>
+<li>The script probably isn't bug-free.  Sorry.</li>
+</ul>
+</p>
+<hr>
+<a name=".kdecvs-buildrc"></a>
+<h3>Format of .kdecvs-buildrc</h3>
+<p>To use the script, you must have a file in your home directory called
+.kdecvs-buildrc, which describes the modules you'd like to download and
+build.</p>
+<p>It starts with the global options, specified like the following:</p>
+<code>global<br/>
+<i>option-name option-value</i><br/>
+<i>[...]</i><br/>
+end global
+</code>
+<p>It is then followed by one or more module sections, specified like the
+following:</p>
+<code>module <i>module-name</i><br/>
+<i>option-name option-value</i><br/>
+<i>[...]</i><br/>
+end module
+</code>
+<p><i>module-name</i> must be a module from the KDE CVS repository (for
+example, kdelibs or kdebase).  Some options override global options, some
+add to global options, and some global options simply can't be overridden.
+</p>
+<hr>
+<a name="options"></a>
+<h3>Configuration file Options</h3>
+
+<p>Here is a table of the various options, and some comments on them.  Any
+option which overrides the global option will override a command line setting
+as well.</p>
+
+<table border="1" cellspacing="0" cellpadding="2">
+<tr align="center" style="font-style: italic;">
+<td>Option-name</td>
+<td>Module -&gt; Global Behavior</td>
+<td>Notes</td>
+</tr>
+
+<tr id="conf-apply-qt-patches">
+<td>apply-qt-patches</td>
+<td>Overrides global</td>
+<td>This option is only useful for qt-copy.  If it is set to a non-zero value,
+then the apply-patches script in qt-copy will be run prior to building, in
+order to apply the non-official patches to the qt-copy.  Since these patches
+are normally the reason for using qt-copy instead of a stock Qt, it shouldn't
+do any harm to enable it.</td>
+</tr>
+
+<tr id="conf-binpath">
+<td>binpath</td>
+<td>Can't be overridden</td>
+<td><p>Set this option to set the environment variable PATH while building.
+You can't override this setting in a module option.  The default value is
+empty, which is likely not what you want.  This environment variable should
+include the colon-separated paths of your development toolchain.  The paths
+$KDEDIR/bin and $QTDIR/bin are automatically added.  You may use the tilde (~)
+for any paths you add using this option.</p>
+
+<p>On my system, the setting
+<pre>    binpath /bin:/usr/bin:/usr/X11R6/bin</pre>
+is the minimally sufficient setting.</p>
+</td>
+</tr>
+
+<tr id="conf-build-dir">
+<td>build-dir</td>
+<td>Overrides global</td>
+<td>Use this option to change the directory to contain the built sources. There
+are three different ways to use it:
+<ul>
+
+<li><p>Relative to the KDE CVS source directory ($KDECVS).  This is the
+default, and the way the script worked up to version v0.61.  This mode is
+selected if you type a directory name that doesn't start with a tilde (~) or a
+slash (/).</p> <p>The default value is <b>build</b>.</p></li>
+
+<li>Absolute path.  If you specify a path that begins with a /, then that path
+is used directory.  For example, <i>/tmp/kde-obj-dir/</i>.</li>
+
+<li>Relative to your home directory.  If you specify a path that begins with a
+~, then the path is used relative to your home directory, analogous to the
+shell's tilde-expansion.  For example, <i>~/builddir</i> would set the build
+directory to <i>/home/mpyne/builddir</i> on my system.</li>
+
+</ul>
+
+Perhaps surprisingly, this option can be changed per module.
+
+</td>
+</tr>
+
+<tr id="conf-build-system-only">
+<td>build-system-only</td>
+<td>Overrides global</td>
+<td>Set this option to only create the build system for this module.  What that
+means is that the <code>make -f Makefile.cvs</code> command will be run, and
+the configure script will be created (but not run), and make will not be run.
+This option is exactly equivalent to the <a
+href="#cmdline-build-system-only">--build-system-only</a> command line option.
+This command is useful for checking what configure-flags each module supports
+so you can change your ~/.kdecvs-buildrc.
+</td>
+</tr>
+
+<tr id="conf-checkout-only">
+<td>checkout-only</td>
+<td>Overrides global</td>
+<td>Set this option to checkout CVS sources piece by piece.  The
+value for this option should be a space separated list of directories
+to checkout.  If you don't include the admin directory, it will automatically
+be prepended, as it is required by the KDE build system.  When checking out
+piece by piece, the admin directory will be pulled in from kde-common, which
+is where it exists on the CVS server.  Although this option overrides the
+global option, be aware that setting this as a global option makes no sense.
+</td>
+</tr>
+
+<tr id="conf-configure-flags">
+<td>configure-flags</td>
+<td>Appends to global option<br/>(except for qt-copy)</td>
+<td>Use this option to specify what flags to pass to ./configure when creating
+the build system for the module.  When this is used as a global-option, it is
+applied to all modules that this script builds.  qt-copy uses a much different
+set of configure options than the rest of KDE, so this option
+<em>overrides</em> the global settings when applied to qt-copy.</td>
+</tr>
+
+<tr id="conf-cvs-root">
+<td>cvs-root</td>
+<td>Can't be overridden</td>
+<td>This option is used to set the directory on your computer to store the KDE
+CVS sources at.  If you don't specify this value, the default is ~/kdecvs.  If
+you do specify this value, use an absolute path name.  Note that this setting
+has nothing to do with the CVSROOT environment variable.  For that, see
+<a href="#conf-cvs-server">cvs-server</a>.
+</td>
+</tr>
+
+<tr id="conf-cvs-server">
+<td>cvs-server</td>
+<td>Can't be overridden</td>
+<td>This option is used to set the server used to check out from CVS.  As an
+example, you could try :pserver:anonymous@bluemchen.kde.org:/home/kde<br/>
+Please see <a
+href="http://developer.kde.org/source/anoncvs.html">http://developer.kde.org/source/anoncvs.html</a>
+for a list of CVS mirrors.  It also has links to other CVS build scripts that
+you can try.
+</td>
+</tr>
+
+<tr id="conf-cxxflags">
+<td>cxxflags</td>
+<td>Appends to global option</td>
+<td>Use this option to specify what flags to pass to ./configure as the
+CXXFLAGS when creating the build system for the module.  This option is
+specified here instead of with <a
+href="#conf-configure-flags">configure-flags</a> because this option will also
+set the environment variable CXXFLAGS during the build process.
+</td>
+</tr>
+
+<tr id="conf-debug">
+<td>debug</td>
+<td>Can't be overridden</td>
+<td>This option enables the script's debug mode.  At this point, all this
+switch does is disable logging to files, instead dumping all output to
+stdout.
+</td>
+</tr>
+
+<tr id="conf-disable-build-list">
+<td>disable-build-list</td>
+<td>Can't be overridden</td>
+<td>Normally kdecvs-build will write out the list of modules that were
+successfully built to a file under the KDE CVS source directory called
+'successfully-built'.  If you set this option to 0, kdecvs-build will skip
+writing out the file.
+</td>
+</tr>
+
+<tr id="conf-do-not-compile">
+<td>do-not-compile</td>
+<td>Overrides global</td>
+<td><p>Use this option to set the DO_NOT_COMPILE environment variable prior to
+running the configure script.  According to the <A
+href="http://developer.kde.org/documentation/other/developer-faq.html">KDE
+Developer FAQ</A>, this should cause any toplevel directory you pass to not be
+built.  The directories should be space-separated.</p>
+
+<p>Note that the sources to the programs will still be downloaded.  You can use
+the <a href="#conf-checkout-only" class="conf-option">checkout-only</a>
+directive to choose directories that you want to check out.</p>
+</td>
+</tr>
+
+<tr id="conf-install-after-build">
+<td>install-after-build</td>
+<td>Overrides global</td>
+<td>This option is used to install the package after it successfully builds.
+This option is enabled by default.  If you want to disable this, you need to
+set this option to 0 in the configuration file.  You can also use the
+<a href="#cmdline-no-install">--no-install</a> command line flag.
+</td>
+</tr>
+
+<tr id="conf-kdedir">
+<td>kdedir</td>
+<td>Can't be overridden</td>
+<td>Set this option to set the environment variable KDEDIR while building.
+This is useful for one-user installations of KDE.  See <a
+href="http://developer.kde.org/build/build2ver.html">http://developer.kde.org/build/build2ver.html</a>.
+You can't override this setting in a module option.  If you don't specify this
+option, it defaults to absolutely nothing, which will mess up the configure
+script.  You may use a tilde (~) to represent your home directory.
+</td>
+</tr>
+
+<tr id="conf-libpath">
+<td>libpath</td>
+<td>Can't be overridden</td>
+<td>Set this option to set the environment variable LD_LIBRARY_PATH while
+building.  You can't override this setting in a module option.  The default
+value is blank, but the paths $KDEDIR/lib and $QTDIR/lib are automatically
+added.  You may use the tilde (~) for any paths you add using this option.
+</td>
+</tr>
+
+<tr id="conf-lockfile">
+<td>lockfile</td>
+<td>Can't be overridden</td>
+<td>
+<p>The path of a file to use for script locking, to prevent parallel execution.
+If you don't specify this value, the default is ~/.kdecvs-lock</p>
+
+<p>If the script is unable to create this file, it will abort.</p>
+</td>
+</tr>
+
+<tr id="conf-log-dir">
+<td>log-dir</td>
+<td>Overrides global</td>
+<td>Use this option to change the directory used to hold the log files
+generated by the script.  This setting can be set on a per-module basis as of
+version 0.64.
+</td>
+</tr>
+
+<tr id="conf-make-options">
+<td>make-options</td>
+<td>Overrides global</td>
+<td>Set this variable in order to pass command line options to the make
+command.  This is useful for programs such as <a
+href="http://distcc.samba.org/">distcc</a>.  distcc allows you to share your
+compilation work among more than one computer.  To use it, you must use the -j
+option to make.  Now you can.  According to the docs, 2 *
+number_of_network_cpus is recommended.  I have 2 CPUs total, so it would be
+-j4 in my case.</td>
+</tr>
+
+<tr id="conf-make-output-file">
+<td>make-output-file</td>
+<td>Overrides global</td>
+<td><i>DEPRECATED</i>.  As of version 0.6, this option is no longer used.  Now
+all commands are logged, including the make process.  You can use the
+<a href="#conf-log-dir">log-dir</a> option to change the logging directory,
+however.
+</td>
+</tr>
+
+<tr id="conf-manual-build">
+<td>manual-build</td>
+<td>Overrides global</td>
+<td>Set the option value to 'true' to keep the build process from attempting to
+build this module.  It will still be kept up-to-date when updating from CVS.
+This option is exactly equivalent to the <a
+href="#cmdline-no-build">--no-build</a> command line option.
+</td>
+</tr>
+
+<tr id="conf-no-cvs">
+<td>no-cvs</td>
+<td>Overrides global</td>
+<td>Set this option value to 'true' to prevent CVS updates for the module.
+This option is exactly equivalent to the <a href="#cmdline-no-cvs">--no-cvs</a>
+command line option.
+</td>
+</tr>
+
+<tr id="conf-no-rebuild-on-fail">
+<td>no-rebuild-on-fail</td>
+<td>Overrides global</td>
+<td>Set this option value to 'true' to always prevent kdecvs-build from trying
+to rebuild this module if it should fail an incremental build.  Normally
+kdecvs-build will try to rebuild the module from scratch to counteract the
+effect of a stray CVS update messing up the build system.</td>
+</tr>
+
+<tr id="conf-pretend">
+<td>pretend</td>
+<td>Can't be overridden</td>
+<td>Set the option value to 'true' in order to "fake" the update/build or
+install process.  This setting results in verbose output, and is exactly
+equivalent to the <a href="#cmdline-pretend">--pretend</a> command line option.
+</td>
+</tr>
+
+<tr id="conf-qtdir">
+<td>qtdir</td>
+<td>Can't be overridden</td>
+<td>Set this option to set the environment variable QTDIR while building.
+You can't override this setting in a module option.  If you don't specify
+this option, it defaults to absolutely nothing, which will mess up the
+configure script.
+You may use a tilde (~) to represent your home directory.
+</td>
+</tr>
+
+<tr id="conf-recreate-configure">
+<td>recreate-configure</td>
+<td>Overrides global</td>
+<td>Use this option to re-run make -f Makefile.cvs and then reconfigure the
+module before building.  Note that setting this option in the configuration
+file isn't a great idea, use <a
+href="#cmdline-recreate-configure">--recreate-configure</a> on the command line
+instead.
+</td>
+</tr>
+
+<tr id="conf-release-tag">
+<td>release-tag</td>
+<td>Overrides global</td>
+<td>Use this option to force checkout from a specific KDE CVS branch.  For
+example, setting this to KDE_3_2_BRANCH allows you to keep up-to-date with
+the current stable KDE release, including bugfixes.  You can use
+<a href="http://webcvs.kde.org/">KDE's WebCVS page</a> to find out what
+branches exist for each CVS module.</td>
+</tr>
+
+<tr id="conf-reconfigure">
+<td>reconfigure</td>
+<td>Overrides global</td>
+<td>Use this option to reconfigure the module before building.  Note that
+setting this option in the configuration file isn't a great idea, use
+<a href="#cmdline-reconfigure">--reconfigure</a> on the command line instead.
+</td>
+</tr>
+
+<tr id="conf-refresh-build">
+<td>refresh-build</td>
+<td>Overrides global</td>
+<td>Set this option value to 'true' to cause the build system for this module
+to start from scratch every time the script is run.  This option is exactly
+equivalent to the <a href="#cmdline-refresh-build">--refresh-build</a> command
+line option.
+</td>
+</tr>
+
+<tr id="conf-use-unsermake">
+<td>use-unsermake</td>
+<td>Overrides global</td>
+<td>Set this option to a non-zero value in order to use the experimental
+unsermake program instead of automake when running the configure script.  This
+can lead to some serious decreases in build time, especially for <A
+href="http://www.csh.rit.edu/slashdot/distcc.html">distributed building
+systems</A>.</td>
+</tr>
+
+</table>
+
+<hr>
+
+<a name="cmdline"></a>
+<h3>Command-line options</h3>
+<p>The script accepts the following command-line options:
+<ul>
+
+<li id="cmdline-help">--help, which displays simple help on this script.</li>
+
+<li id="cmdline-version">--version, display the program version.</li>
+
+<li id="cmdline-author">--author, display contact information for the
+author.</li>
+
+<li id="cmdline-pretend">--pretend (or -p), don't actually DO anything, but
+act like you did.</li>
+
+<li id="cmdline-no-cvs">--no-cvs, Skip contacting the CVS server.</li>
+
+<li id="cmdline-no-build">--no-build, Skip the build process.</li>
+
+<li id="cmdline-no-install">--no-install, Don't automatically install packages
+after they're built.</li>
+
+<li id="cmdline-debug">--debug, Enables debug mode for the script.  Currently
+this means that all output will be dumped to STDOUT instead of logged in the
+log directory like normal.</li>
+
+<li id="cmdline-no-rebuild-on-fail">--no-rebuild-on-fail, Don't try and
+rebuild modules that have failed building from scratch.  kdecvs-build will
+never try to do this to a module that already was tried to be built from
+scratch.
+
+<li id="cmdline-refresh-build">--refresh-build, Recreate the build system and
+make from scratch.</li>
+
+<li id="cmdline-reconfigure">--reconfigure, Run the configure script again
+without cleaning the build directory.</li>
+
+<li id="cmdline-recreate-configure">--recreate-configure, Run <code>make -f
+Makefile.cvs</code> again to create the configure script, and continue
+building as normal.  This option implies --reconfigure.</li>
+
+<li id="cmdline-build-system-only">--build-system-only, Stop after runnning
+make -f Makefile.cvs.  The configure script will still need to be run, which
+kdecvs-build will do next time.  This lets you prepare all the configure
+scripts at once so you can view the ./configure --help for each module, and
+edit your configure-flags accordingly.</li>
+
+<li id="cmdline-install">--install, If this is the only command-line option,
+it tries to install all of the modules contained in successfully-built, except
+for qt-copy, which doesn't need installation.  If command-line options are
+specified after --install, they are all assumed to be modules to install.
+Note that after v0.60, modules are automatically installed if they build
+successfully.</li>
+
+Any other command-line options are assumed to be modules to update and build.
+Don't mix building with installing.</li>
+</ul>
+</p>
+
+<hr>
+<a name="envvars"></a>
+<h3>Environment Variables</h3>
+The script no longer uses any environment variables.  Please try to set
+at least <a href="#conf-binpath">binpath</a>, <a href="#conf-qtdir">qtdir</a>,
+and <a href="#conf-kdedir">kdedir</a> in your .kdecvs-buildrc.  See the <a
+href="#options">.kdecvs-buildrc options</a>.
+</div>
+
+<div align="center" class="thankyou">
+<font size="-1"><a href="http://www.cvsup.org/">CVSup</a> is a registered trademark of John D. Polstra.
+<br/>
+Last modified: Tue Jun  8 21:50:19 2004</font>
+</div>
+</body>
+</html>
