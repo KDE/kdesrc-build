@@ -50,6 +50,7 @@ my %global_opts = (
     "recreate-configure"  => "",
     "refresh-build"       => "",
     "release-tag"         => "",
+    "stop-on-failure"     => "",
 
 # Deprecated in v0.6.  Logging is important, but doesn't
 # make sense to all be dumped to stdout.  I may add a simple
@@ -1425,6 +1426,7 @@ sub handle_build
     my $kdecvs = get_kdecvs_dir();
     my $cvsroot = get_option ('global', 'cvs-server');
     my $module;
+    my $result;
 
     # No reason to print building messages if we're not building.
     return 0 if (scalar (@{$build_ref}) == 0);
@@ -1437,9 +1439,20 @@ sub handle_build
 
     foreach $module (@{$build_ref})
     {
-        build_module ($module) ?
-            push @build_done, $module :
+        if (build_module ($module))
+        {
+            push @build_done, $module;
+        }
+        elsif (get_option($module, 'stop-on-failure'))
+        {
+            print "\n$module didn't build, stopping here.\n";
+            return 1; # Error
+        }
+        else
+        {
             push @fail_list, $module;
+        }
+
         print "\n";
         %ENV = %env_backup;
     }
@@ -1530,6 +1543,12 @@ sub handle_install
         {
             print "\tUnable to install $module!\n";
             $result = 1;
+
+            if (get_option($module, 'stop-on-failure'))
+            {
+                print "Stopping here.\n";
+                return 1; # Error
+            }
         }
     }
 
