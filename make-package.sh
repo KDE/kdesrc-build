@@ -21,6 +21,20 @@ if [ $EUID -ne 0 ]; then
 fi
 
 if [ $# -ne 1 ]; then
+	if [ $# -eq 2 -a $1 -eq --undo]; then
+		$VERSION="$2"
+
+		# Delete the file
+		rm -f "kdecvs-build-$VERSION.tar.gz"
+
+		# Untag the repository
+		CVS_VERSION=$(echo VERSION.$VERSION | sed 's/\./_/g' | tr a-z A-Z);
+		su $MY_USER -c "cvs tag -d $CVS_VERSION > /dev/null"
+		echo "CVS repository tags for $VERSION deleted."
+
+		exit 0
+	fi
+
 	echo "You must pass the program version on the command line!"
 	exit 1
 fi
