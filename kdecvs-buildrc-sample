@@ -15,7 +15,7 @@ configure-flags --with-gnu-ld --enable-debug=full
 # compilation on modules it does work with.  Enabling this flag will
 # automatically install the appropriate software with no other options
 # necessary.
-use-unsermake 1
+use-unsermake true
 
 # If you want to install something from a particular release, you can use
 # this tag.  Note that using kdecvs-build to install KDE 3.2.x is probably
@@ -57,40 +57,25 @@ cvs-server :pserver:anonymous@anoncvs.kde.org:/home/kde
 # Use this file for locking
 lockfile ~/.kdecvs-build-lock
 
-# Output make results to nohup.out (it will be in the $(cvs-root)/logs
-# directory.
-make-output-file nohup.out
-
 # End of global options
 end global
-
-module kdenonbeta
-# unsermake would automatically be added as needed anyways.  You can also
-# specify subdirectories to pull, like the following line.
-# checkout-only applets/ksearchapplet
-
-checkout-only unsermake
-end module
 
 module qt-copy
 # We tend to want a stable Qt.  Note that if you are using qt-copy, you must
 # build it (you don't need to install it) before building the rest of KDE.
-manual-build
+# This is why qt-copy is the first module listed in the file.
 
 # This line is begging for a backslash-continuation operator, I know.
 # configure-flags overrides global configure-flags for qt-copy only.
 # These flags are recommended according to README.qt-copy in CVS.
 configure-flags -system-zlib -qt-gif -system-libpng -system-libjpeg -plugin-imgfmt-mng -thread -no-exceptions -debug -fast -dlopen-opengl
+
+use-unsermake false # We obviously can't use this
+
 end module
 
 module arts
 configure-flags --with-alsa
-end module
-
-module kdeaddons
-end module
-
-module kdegames
 end module
 
 module kdelibs
@@ -99,6 +84,12 @@ end module
 
 module kdebase
 configure-flags --with-pam --with-shadow
+end module
+
+module kdeaddons
+end module
+
+module kdegames
 end module
 
 module kdeartwork
@@ -117,8 +108,19 @@ end module
 module kdesdk
 end module
 
+module kdenonbeta
+# unsermake would automatically be added as needed anyways.  You can also
+# specify subdirectories to pull, like the following line.
+# checkout-only applets/ksearchapplet
+
+checkout-only unsermake kdmthemes
+end module
+
 module kdepim
 configure-flags --disable-exchange
+# As of when I wrote this comment, kdepim can't use unsermake
+
+use-unsermake false
 end module
 
 module kdesupport
@@ -126,9 +128,6 @@ checkout-only taglib
 end module
 
 module kdemultimedia
-# kdemultimedia seems to have bad mojo with use-unsermake for some reason.
-# I think it's because of the aRts testing.
-use-unsermake 0
 end module
 
 # End of file
