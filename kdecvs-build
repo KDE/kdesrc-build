@@ -346,7 +346,7 @@ sub log_command
         }
 
         # Redirect stdout and stderr to the given file.
-        if (not get_option('global', 'debug'))
+        if (not debugging)
         {
 # Comment this out because it conflicts with make-install-prefix
 #            open (STDIN, "</dev/null");
@@ -354,8 +354,17 @@ sub log_command
                 print "Error opening $logdir/$filename.log for logfile.\n";
                 print "\t$!\n";
             };
-            open (STDERR, ">&STDOUT");
         }
+        else
+        {
+            open (STDOUT, "|tee $logdir/$filename.log") or do {
+                print "Error opening pipe to tee command.\n";
+                print "\t$!\n";
+            };
+        }
+
+        # Make sure we log everything.
+        open (STDERR, ">&STDOUT");
 
         exec (@command) or do {
             print "Unable to exec ", join (' ', @command), "!\n";
