@@ -1,18 +1,21 @@
 #!/usr/bin/perl -w
-# Script to handle building KDE from CVS.  You need to set
-# some environment variables as appropriate.  Specifically,
-# QTDIR needs to be set, as well as a sane PATH.
+# Script to handle building KDE from CVS.  All of the configuration is stored
+# in the file ~/.kdecvs-buildrc.
+#
+# Please also see the documentation that should be included with this program,
+# in doc.html
 #
 # This script is designed to be run by cron, which will
 # collect the output and mail it to the user who requested
-# the job.  For that reason, all output is sent to STDOUT.
+# the job.  For that reason, all script output is sent to STDOUT.  The
+# commands are logged, however, for easy perusal later.
 #
-# Copyright (c) 2003, 2004 Michael Pyne.
+# Copyright (c) 2003, 2004 Michael Pyne. <pynm0001@comcast.net>
+# Home page: http://grammarian.homelinux.net/kdecvs-build/
 #
 # You may use, alter, and redistribute this software under the terms
 # of the GNU General Public License, v2 (or any later version).
 #
-# TODO:
 # XXX: It would be better to have lockfiles in each directory as it's
 #      being updated, instead of having one big lock for the script.
 
@@ -84,6 +87,13 @@ sub pretending()
     return get_option('global', 'pretend');
 }
 
+# Subroutine which returns true if debug mode is on.  Uses the prototype
+# feature so you don't need the parentheses to use it.
+sub debugging()
+{
+    return get_option('global', 'debug');
+}
+
 # Subroutine to retrieve a subdirecty path for the given module.
 # First parameter is the name of the module, and the second
 # parameter is the option key (e.g. build-dir or log-dir).
@@ -125,7 +135,7 @@ sub get_build_dir
     my $module = shift;
 
     # It is the responsibility of the caller to append $module!
-    return get_kdecvs_dir() if ($module eq 'qt-copy');
+    return get_kdecvs_dir() if ($module eq 'qt-copy') and not get_option('qt-copy', 'use-qt-builddir-hack');
     return get_subdir_path($module, 'build-dir');
 }
 
@@ -402,7 +412,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <mpyne\@grammarian.homelinux.net>\n";
-    my $version = "kdecvs-build 0.70\n";
+    my $version = "kdecvs-build 0.71\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -1014,7 +1024,7 @@ sub handle_updates
 # failure.
 sub safe_apply_patches
 {
-    my $kdecvs = get_kdecvs_dir();
+    my $builddir = get_build_dir('qt-copy');
 
     if (pretending)
     {
@@ -1023,8 +1033,8 @@ sub safe_apply_patches
     }
 
     print "Applying recommended Qt patches.\n";
-    chdir ("$kdecvs/qt-copy");
-    return (system("./apply_patches") >> 8);
+    chdir ("$builddir/qt-copy");
+    return (log_command('qt-copy', 'apply-patches', [ "./apply_patches" ]));
 }
 
 # Subroutine to run and log the configure command.  First parameter is the
@@ -1057,9 +1067,11 @@ sub safe_configure
     }
     else
     {
+        my $qtdir = get_build_dir('qt-copy') . '/qt-copy';
+
         # Copy the configure script to accept the GPL license.
         open CONFIG, "<$script";
-        open NEWCONFIG, ">$kdecvs/$module/configure.new";
+        open NEWCONFIG, ">$qtdir/configure.new";
         while(<CONFIG>)
         {
             s/read acceptance/acceptance=yes/;
@@ -1067,8 +1079,8 @@ sub safe_configure
         }
         close NEWCONFIG;
         close CONFIG;
-        chmod 0755, "$kdecvs/$module/configure.new";
-        $script = "$kdecvs/$module/configure.new";
+        chmod 0755, "$qtdir/configure.new";
+        $script = "$qtdir/configure.new";
 
         print "\tGPL license selected for Qt.  See $kdecvs/qt-copy/LICENSE.GPL\n";
     }
@@ -1085,6 +1097,7 @@ sub safe_configure
 sub safe_create_build_system
 {
     my $kdecvs = get_kdecvs_dir();
+    my $builddir = get_build_dir ('qt-copy'); # Only used for qt-copy
     my $module = shift;
 
     if (pretending)
@@ -1094,6 +1107,7 @@ sub safe_create_build_system
     }
 
     chdir ("$kdecvs/$module");
+    chdir ("$builddir/$module") if get_option('qt-copy', 'use-qt-builddir-hack');
     if (log_command ($module, "build-system", [ "make", "-f", "Makefile.cvs" ]))
     {
         print "\tUnable to create build system for $module\n";
@@ -1115,6 +1129,14 @@ sub needs_refreshed
 
     # Use a different file to indicate configure has been run for qt-copy
     $conf_file_key = "src/tools/qconfig.cpp" if $module eq 'qt-copy';
+
+    if (debugging)
+    {
+        print "Build directory not setup for $module.\n" if not -e "$builddir/$module";
+        print ".refresh-me exists.\n" if -e "$builddir/$module/.refresh-me";
+        print "refresh-build option set.\n" if get_option($module, 'refresh-build');
+        print "Can't find configure key file.\n" if not -e "$builddir/$module/$conf_file_key";
+    }
 
     return 1 if ((not -e "$builddir/$module") ||
         (-e "$builddir/$module/.refresh-me") ||
@@ -1198,12 +1220,24 @@ sub clean_build_system
     # Clean qt-copy separately
     if ($module eq 'qt-copy')
     {
-        chdir ("$builddir/qt-copy");
-        if (log_command ('qt-copy', 'clean', ['make', 'clean']))
+        if (get_option ('qt-copy', 'use-qt-builddir-hack'))
         {
-            print "WARNING: Error cleaning qt-copy.\n";
+            if (log_command ('qt-copy', 'clean-builddir', ['rm', '-rf', "$builddir/qt-copy"]))
+            {
+                print "Error refreshing qt-copy builddir!\n";
+                return 0;
+            }
         }
-        unlink ("$builddir/qt-copy/.qmake.cache");
+        else
+        {
+            chdir ("$builddir/qt-copy");
+            if (log_command ('qt-copy', 'clean', ['make', 'clean']))
+            {
+                print "WARNING: Error cleaning qt-copy.\n";
+            }
+            unlink ("$builddir/qt-copy/.qmake.cache");
+        }
+
         return 1;
     }
     elsif (-e "$builddir/$module" &&
@@ -1254,6 +1288,16 @@ sub setup_build_system
         $do_makeconf = 1;
     }
 
+    if ($module eq 'qt-copy' && get_option($module, 'use-qt-builddir-hack'))
+    {
+        if (log_command ('qt-copy', 'create-builddir', ['cp', '-a', 
+                         "$moduledir", "$builddir/qt-copy" ]))
+        {
+            print "Error creating qt-copy build system!\n";
+            return 0;
+        }
+    }
+
     if ($do_makeconf or not -e "$kdecvs/$module/configure")
     {
         print "\tRecreating configure script.\n";
@@ -1283,6 +1327,7 @@ sub setup_build_system
         return 1 if get_option ($module, 'build-system-only');
     }
 
+    $do_configure = 1 if $module eq 'qt-copy' and not -e "$builddir/src/tools/qconfig.cpp";
     if ($do_configure || not -e "$builddir/$module/Makefile")
     {
         # Now we're in the checkout directory
