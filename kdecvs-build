@@ -71,6 +71,8 @@ my %package_opts; # Holds module-specific options.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
 my @install_list; # List of modules to install.
+my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
+my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 
 # Subroutine definitions
 
@@ -93,6 +95,59 @@ sub pretending()
 sub debugging()
 {
     return get_option('global', 'debug');
+}
+
+# Subroutine that returns the path of a file used to output the results of the
+# build process.  It accepts one parameter, which changes the kind of file
+# returned.  If the parameter is set to 'existing', then the file returned is
+# the latest file that exists, or undef if no log has been created yet.  This
+# is useful for the --resume mode.  All other values will return the name if a
+# file that does not yet exist.
+#
+# All files will be stored in the log directory.
+sub get_output_file
+{
+    my $logdir = get_log_dir('global');
+    my $mode = shift;
+    my $fname;
+
+    # get_log_dir will return a directory ending in /global, which we don't
+    # want.
+    $logdir =~ s/\/global$//;
+
+    if ($mode eq 'existing')
+    {
+        # There's two ways of finding the old file.  Searching backwards with
+        # valid combinations of the date and build id, or just reading in the
+        # name from a known file.  Since the latter option is much easier,
+        # that's what I'm going with.
+        $logdir = get_subdir_path ('global', 'log-dir');
+
+        return undef if not -e "$logdir/.build-status-file-name";
+        return undef if not -r "$logdir/.build-status-file-name";
+
+        open BUILD_STATUS, "<$logdir/.build-status-file-name";
+        $fname = <BUILD_STATUS>;
+        close BUILD_STATUS;
+
+        chomp $fname;
+
+        print "Old build status file is $fname\n" if debugging;
+        return $fname;
+    }
+
+    $fname = "$logdir/build-status";
+    $logdir = get_subdir_path ('global', 'log-dir');
+    open BUILD_STATUS, ">$logdir/.build-status-file-name" or do {
+        print "Unable to record location of build status file, the --resume\n";
+        print "option won't work next time you use the script. :-(\n";
+        return $fname;
+    };
+
+    print BUILD_STATUS "$fname\n";
+    close BUILD_STATUS;
+
+    return $fname;
 }
 
 # Subroutine to retrieve a subdirecty path for the given module.
@@ -140,14 +195,73 @@ sub get_build_dir
     return get_subdir_path($module, 'build-dir');
 }
 
+# Subroutine to return a list of the different log directories that are used
+# by the different modules in the script.
+sub get_all_log_directories
+{
+    my @module_list = keys %package_opts;
+    my %log_dict;
+
+    unshift @module_list, "global";
+    $log_dict{get_subdir_path($_, 'log-dir')} = 1 foreach @module_list;
+
+    print "Log directories are ", join (", ", keys %log_dict), "\n" if debugging;
+    return keys %log_dict;
+}
+
+# Subroutine to determine the build id for this invocation of the script.  The
+# idea of a build id is that we want to be able to run the script more than
+# once in a day and still retain each set of logs.  So if we run the script
+# more than once in a day, we need to increment the build id so we have a
+# unique value.  This subroutine sets the global variable $BUILD_ID and
+# $LOG_DATE for use by the logging subroutines.
+sub setup_logging_subsystem
+{
+    my $min_build_id = "00";
+    my $date = strftime "%F", localtime; # ISO 8601 date
+    my @log_dirs = get_all_log_directories();
+
+    for (@log_dirs)
+    {
+        my $id = "01";
+        $id++ while -e "$_/$date-$id";
+
+        # We need to use a string comparison operator to keep 
+        # the magic in the ++ operator.
+        $min_build_id = $id if $id gt $min_build_id;
+    }
+
+    $LOG_DATE = $date;
+    $BUILD_ID = $min_build_id;
+
+    print "\$LOG_DATE = $LOG_DATE\n" if debugging;
+    print "\$BUILD_ID = $BUILD_ID\n" if debugging;
+}
+
 # Convienience subroutine to return the log directory for a module.
+# It also creates the directory and manages the 'latest' symlink.
+#
+# Returns undef on an error, or the name of the directory otherwise.
 sub get_log_dir
 {
     my $module = shift;
-    my $date = strftime "%F", localtime; # ISO 8601 date
     my $logbase = get_subdir_path($module, 'log-dir');
+    my $logpath = "$logbase/$LOG_DATE-$BUILD_ID/$module";
 
-    return "$logbase/$date";
+    print "Log dir for $module is $logpath\n" if debugging;
+
+    if (not -e $logpath and not super_mkdir($logpath))
+    {
+        print "Unable to create log directory $logpath!\n";
+        print "\t$!\n";
+        return undef;
+    }
+
+    # Add symlink to the directory.
+    unlink("$logbase/latest") if -l "$logbase/latest";
+    system('ln', '-s', "$logbase/$LOG_DATE-$BUILD_ID", "$logbase/latest");
+
+    return $logpath;
 }
 
 # This subroutine returns an option value for a given module.  Some
@@ -231,25 +345,30 @@ sub log_command
     else
     {
         # Child
-        if (not -e "$logdir")
+        if (not defined $logdir)
         {
-            return 1 if not super_mkdir ("$logdir");
+            # Error creating directory for some reason.
+            print "\tLogging to std out due to failure creating log dir.\n";
         }
-
-        # Add symlink to the directory. EVIL USE OF .. AHEAD!
-        unlink("$logdir/../latest") if -l "$logdir/../latest";
-        system('ln', '-s', "$logdir", "$logdir/../latest");
 
         # Redirect stdout and stderr to the given file.
         if (not get_option('global', 'debug'))
         {
 # Comment this out because it conflicts with make-install-prefix
 #            open (STDIN, "</dev/null");
-            open (STDOUT, ">$logdir/$module-$filename.log");
+            open (STDOUT, ">$logdir/$filename.log") or do {
+                print "Error opening $logdir/$filename.log for logfile.\n";
+                print "\t$!\n";
+            };
             open (STDERR, ">&STDOUT");
         }
 
-        exec (@command);
+        exec (@command) or do {
+            print "Unable to exec ", join (' ', @command), "!\n";
+            print "\t$!\n";
+            print "\tPlease check your binpath setting, PATH is currently $ENV{PATH}\n";
+            return $?;
+        };
     }
 }
 
@@ -270,7 +389,7 @@ sub safe_make (@)
     if (pretending)
     {
         $opts = join(' ', @_);
-        print "\tWould have run make $opts > $logdir/$module-build-$trynumber\n";
+        print "\tWould have run make $opts > $logdir/build-$trynumber\n";
         return 0;
     }
 
@@ -421,7 +540,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <mpyne\@grammarian.homelinux.net>\n";
-    my $version = "kdecvs-build 0.72\n";
+    my $version = "kdecvs-build 0.73\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -1190,7 +1309,7 @@ sub run_cvs
     # bother.
     return 0 if pretending;
 
-    $logfilename = "$logdir/$module-$logfilename.log";
+    $logfilename = "$logdir/$logfilename.log";
 
     # We need to open the file and try to determine what the CVS process
     # did.
@@ -1467,6 +1586,7 @@ sub build_module
         return 0;
     }
 
+    update_module_environment($module);
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
     {
         print "Building $module\n";
@@ -1474,7 +1594,6 @@ sub build_module
         return 0 if not setup_build_system($module);
         return 1 if (get_option ($module, 'build-system-only'));
 
-        update_module_environment($module);
         chdir ("$builddir/$module");
 
         if (safe_make ($module, $trynumber))
@@ -1486,6 +1605,14 @@ sub build_module
             # and etc and then try make again.  If that STILL doesn't work, we
             # can try rm -rf $builddir/$module and rebuild.
 
+            ++$trynumber;
+            if ($trynumber == 2)
+            {
+                # Just try again
+                print "\n\tCouldn't build, going to try again just in case.\n";
+                next;
+            }
+
             if ($trynumber > 3 or
                (not defined $package_opts{$module}->{'#was-rebuilt'} and
                 get_option ($module, 'no-rebuild-on-fail')))
@@ -1495,12 +1622,6 @@ sub build_module
                 return 0;
             }
 
-            if (++$trynumber == 2)
-            {
-                # Just try again
-                print "\n\tCouldn't build, going to try again just in case.\n";
-                next;
-            }
             elsif ($trynumber == 3)
             {
                 # Don't remove the old modules, but re-run make -f
@@ -1680,6 +1801,7 @@ sub handle_install
 process_arguments();
 read_options();
 initialize_environment();
+setup_logging_subsystem();
 
 dump_options() if get_option('global', 'debug');
 
