@@ -65,6 +65,32 @@ those who either can't or don't feel like installing it.</p>
 <p>It is authored by Michael Pyne (mpyne (AT) grammarian (DOT) homelinux 
 (DOT) net), and is one of several build scripts for this purpose.</p>
 
+<p><b>2004-Jun-12:</b> v0.70
+<ul>
+<li>The script now lets CVS handle the admin directory, fixing a problem where
+adding the checkout-only option to a module that had already been checked out
+would cause an error.
+</li>
+
+<li>The script now comes packages the way products in the rest of the FOSS
+world do, in its own directory.
+</li>
+
+<li>Workaround a bug in the auto-rebuilding for qt-copy until I figure out
+what's going on.
+</li>
+
+<li>The <a href="#cmdline-no-build">--no-build</a> command line option has
+been fixed.  It was broken in a recent release.
+</li>
+
+<li>A new configuration file option has been added, <a
+href="#conf-stop-on-failure">stop-on-failure</a>.  Setting this option to true
+causes the script to stop whenever an error is detected during the build or
+install processes.
+</li>
+</ul>
+
 <p><b>2004-Jun-08:</b> v0.66, which is a bug-fix release.
 <ul>
 <li>Keep module changes in the build process for a module from affecting other
@@ -90,61 +116,6 @@ command line options were processed, resulting in sub-optimal program output.
 <li>Not all instances of the routine log_command() had been converted to the
 new format, leading the Perl interpreter to bail out.
 </li>
-
-</ul>
-
-<p><b>2004-Jun-03:</b> v0.64, with a few more changes, and quite a big of
-minor bugfixes.
-</p>
-Changes:
-<ul>
-<li>You may now use <b>false</b> in the configuration file to signify logical
-false.  (To Perl, the string false is really logically true).</li>
-
-<li>If a package fails when incrementally building, kdecvs-build will try to
-build it from scratch.  This behavior can be disabled using <a
-href="#conf-no-rebuild-on-fail">no-rebuild-on-fail</a> or <a
-href="#cmdline-no-rebuild-on-fail">--no-rebuild-on-fail</a> on the command
-line.</li>
-
-<li>The output should be much cleaner due to the use of a lot of
-indentation.</li>
-
-<li><a href="#conf-log-dir">log-dir</a> can now be changed per-module.</li>
-
-<li>Log directories are now dated using ISO 8601 style dates. (2004-06-30, for
-example).</li>
-
-<li>Enabling <a href="#cmdline-debug">--debug</a> now outputs what the script
-thinks your options are set to.</li>
-
-<li>Assorted code cleanups.</li>
-
-</ul>
-
-Bugfixes:
-<ul>
-<li>Thanks to a different way of handling command-line options, it is now
-possible to do some truly esoteric things.  For example, you could set the <a
-href="#conf-manual-build">manual-build</a> option to <b>true</b> in the global
-section of your <a href="#options">configuration file</a>, and set it to
-<b>false</b> for one module to make only that module build and install when
-you run kdecvs-build, unless to pass the name of the module you want to build
-on the command line.  Prior to v0.64, this would prevent any module from ever
-building, even if you explicitly specified it on the command line.</li>
-
-<li>kdecvs-build now accepts CVS module names that begin with a period
-(.).</li>
-
-<li>The output from the safe_make() subroutine was incorrect while in <a
-href="#conf-pretend">pretend</a> mode.</li>
-
-<li>Unsermake is now only automatically added to the download list if you are
-building a module that relies on it.  Prior to v0.64, unsermake would be
-updated even if you were only doing a CVS update for a module that uses
-it.</li>
-
-<li>Some documentation updates.</li>
 
 </ul>
 
@@ -598,6 +569,15 @@ setting this option in the configuration file isn't a great idea, use
 to start from scratch every time the script is run.  This option is exactly
 equivalent to the <a href="#cmdline-refresh-build">--refresh-build</a> command
 line option.
+</td>
+</tr>
+
+<tr id="conf-stop-on-failure">
+<td>stop-on-failure</td>
+<td>Overrides global</td>
+<td>Set this option value to 'true' to cause the script to stop execution
+after an error occurs during the build or install process.  This option is off
+by default.
 </td>
 </tr>
 
