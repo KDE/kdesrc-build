@@ -400,20 +400,23 @@ sub safe_make (@)
     my $checkout_dirs = get_option($module, "checkout-only");
     my @dirs = split(' ', $checkout_dirs);
     my $installing = $trynumber eq 'install';
+    my $make = 'make';
 
     # Add make-options to the given options
     unshift (@_, split(' ', $opts));
+
+    $make = 'unsermake' if get_option($module, 'use-unsermake');
 
     # Check if we're installing
     if ($installing)
     {
         print "Prepending install options.\n" if debugging;
-        unshift @_, 'make', 'install';
+        unshift @_, $make, 'install';
         unshift @_, split(' ', get_option ($module, 'make-install-prefix'));
     }
     else
     {
-        unshift @_, 'make';
+        unshift @_, $make;
     }
 
     push (@dirs, "") if scalar @dirs == 0;
@@ -435,7 +438,7 @@ sub safe_make (@)
         {
             $opts = join(' ', @_);
             print "\tWould have switched directory to ", get_build_dir($module) . "/$module/$subdir\n";
-            print "\tWould have run make $opts > $logdir/$logname\n";
+            print "\tWould have run $make $opts > $logdir/$logname\n";
 
             next;
         }
