@@ -42,6 +42,7 @@ my %global_opts = (
     "debug"               => "",
     "do-not-compile"      => "",
     "install-after-build" => "1", # Default to true
+    "inst-apps"           => "",
     "kdedir"              => "",
     "libpath"             => "",
     "lockfile"            => "$ENV{HOME}/.kdecvs-lock",
@@ -1430,6 +1431,7 @@ sub safe_create_build_system
     my $kdecvs = get_kdecvs_dir();
     my $builddir = get_build_dir ('qt-copy'); # Only used for qt-copy
     my $module = shift;
+    my $instapps = get_option($module, 'inst-apps');
 
     if (pretending)
     {
@@ -1439,6 +1441,21 @@ sub safe_create_build_system
 
     chdir ("$kdecvs/$module");
     chdir ("$builddir/$module") if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
+    if ($instapps)
+    {
+        open (INSTAPPS, ">inst-apps") or do {
+            print "\tUnable to create inst-apps file!\n$!\n";
+            return 1;
+        };
+
+        print INSTAPPS "$instapps\n";
+        close INSTAPPS;
+    }
+    else
+    {
+        unlink ($instapps);
+    }
+
     if (log_command ($module, "build-system", [ "make", "-f", "Makefile.cvs" ]))
     {
         print "\tUnable to create build system for $module\n";
