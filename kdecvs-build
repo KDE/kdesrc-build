@@ -1732,17 +1732,19 @@ sub build_module
                 $package_opts{$module}->{'#cancel-clean'} = 1;
                 $package_opts{$module}->{'refresh-build'} = 1;
             }
+
+            # Loop again
         }
         elsif (get_option($module, "install-after-build"))
         {
             handle_install($module);
+            last; # Don't forget to exit the loop!
         }
         else
         {
             print "\tModule built successfully, install skipped.\n";
+            last; # Don't forget to exit the loop!
         }
-
-        last; # Don't forget to exit the loop!
     }
 
     return 1;
