@@ -932,7 +932,8 @@ sub setup_build_system
         return 0 if get_option ($dir, 'build-system-only');
         
         # Now we're in the build directory
-        chdir ("$kdecvs/build/$dir");
+        # qt-copy doesn't use this metaphor, however.
+        chdir ("$kdecvs/build/$dir") unless $dir eq 'qt-copy';
 
         my $conf_flags = get_option ($dir, 'configure-flags');
 
@@ -1048,7 +1049,8 @@ sub handle_build
 
         next if get_option ($dir, 'build-system-only');
         
-        chdir ("$kdecvs/build/$dir");
+        # qt-copy gets built in its source directory.
+        chdir ("$kdecvs/build/$dir") unless $dir eq 'qt-copy';
         print "---\nBuilding $dir\n---\n";
 
         $result = safe_make ($dir);
