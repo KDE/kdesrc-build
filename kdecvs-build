@@ -383,27 +383,48 @@ sub log_command
 # list.  The first argument of the list given must be the module that we're
 # making.  The second argument is the "try number", used in creating the log
 # file name.
+#
+# Returns 0 on success, non-zero on failure (shell script style)
 sub safe_make (@)
 {
     my $module = shift;
     my $trynumber = shift;
     my $opts = get_option($module, 'make-options');
     my $logdir = get_log_dir($module);
+    my $checkout_dirs = get_option($module, "checkout-only");
+    my @dirs = split(' ', $checkout_dirs);
 
     # Add make-options to the given options
-    unshift (@_, split(/\s/, $opts));
-
-    if (pretending)
-    {
-        $opts = join(' ', @_);
-        print "\tWould have run make $opts > $logdir/build-$trynumber\n";
-        return 0;
-    }
-
-    chdir (get_build_dir($module) . "/$module");
+    unshift (@_, split(' ', $opts));
+    push (@dirs, "") if scalar @dirs == 0;
 
     print "\tCompiling, attempt $trynumber...\n";
-    return log_command ($module, "build-$trynumber", ['make', @_] );
+
+    for my $subdir (@dirs)
+    {
+        next if $subdir eq 'admin';
+
+        my $logname = "build-$trynumber";
+        $logname = "build-$subdir-$trynumber" if $subdir ne "";
+
+        if (pretending)
+        {
+            $opts = join(' ', @_);
+            print "\tWould have switched directory to ", get_build_dir($module) . "/$module/$subdir\n";
+            print "\tWould have run make $opts > $logdir/$logname\n";
+
+            next;
+        }
+
+        print "\tBuilding subdirectory $subdir\n" if $subdir ne '';
+
+        chdir (get_build_dir($module) . "/$module/$subdir");
+
+        my $result = log_command ($module, $logname, ['make', @_] );
+        return $result if $result;
+    }
+
+    return 0;
 }
 
 # Subroutine to add a variable to the environment, but ONLY if it
@@ -1152,6 +1173,9 @@ sub checkout_cvs_partial_dir
     chdir ("$kdecvs");
 
     $update_dir = "$module/$dir";
+
+    # If the directory is admin we need to checkout instead of updating if
+    # the directory didn't already exist.
     if ($dir eq 'admin')
     {
         $update_dir = "$dir";
@@ -1186,7 +1210,11 @@ sub checkout_cvs_partial_dir
 sub checkout_cvs_partial
 {
     my $module = shift;
-    my @dirlist = split (/\s+/, get_option ($module, 'checkout-only'));
+
+    # This form of split splits on whitespace, but doesn't give empty leading or
+    # trailing fields.
+    my @dirlist = split (' ', get_option ($module, 'checkout-only'));
+
     my @args;
     my $kdecvs = get_kdecvs_dir();
     my $cvsroot = get_option ('global', 'cvs-server');
@@ -1195,9 +1223,13 @@ sub checkout_cvs_partial
 
     chdir ($kdecvs);
 
+    # Check if the user explicitly asked for the given subdir on the command line.
+    # If so, don't automatically add /admin, as that would simply be annoying.
+    my $suppress_auto_admin = get_option($module, '#suppress-auto-admin');
+
     # Check if the user specified the admin subdirectory.  If not,
     # add it.
-    push (@dirlist, 'admin') if scalar grep (/^admin$/, @dirlist) == 0;
+    push (@dirlist, 'admin') if not $suppress_auto_admin and scalar grep (/^admin$/, @dirlist) == 0;
 
     # Check out the module base.
     @args = ('cvs', "-d$cvsroot");
@@ -2234,6 +2266,58 @@ sub handle_install
     return $result;
 }
 
+# This subroutine goes and makes sure that any entries in the update and build
+# lists that have a directory separator are faked into using the checkout-only
+# feature.  This doesn't really work for install mode though.
+sub munge_lists
+{
+    print "Munging update and build list\n" if debugging;
+
+    for my $list_ref ( ( \@update_list, \@build_list) ) {
+        my @temp;
+        my %seen;
+
+        while ($_ = shift @$list_ref) {
+            # Split at directory separators.
+            my ($modulename, @dirs) = split(/\//);
+
+            if (scalar @dirs > 0)
+            {
+                # The user has included a directory separator in the module name, so
+                # let's fake the cvs partial checkout
+                $_ = $modulename;
+
+                # Don't automatically add the /admin dir for this module now.
+                $package_opts{$_}{'#suppress-auto-admin'} = 1;
+
+                my $checkout_str = join ("/", @dirs);
+
+                print "Adding $checkout_str to checkout-only for $_\n" if debugging;
+
+                if (get_option($_, 'checkout-only') !~ /$checkout_str/)
+                {
+                    $package_opts{$_}{'checkout-only'} .= " $checkout_str";
+                }
+                else
+                {
+                    print "\tOption was already present.\n" if debugging;
+                }
+            }
+            else
+            {
+                print "Skipping $_ in munge process.\n" if debugging;
+            }
+
+            # Don't add the modulename to the list twice.  Hashes are the easiest way in
+            # Perl to do this.  I'd love an "in" operator for lists.
+            unshift @temp, $_ if not $seen{$_};
+            $seen{$_} = 1;
+        }
+
+        @$list_ref = @temp;
+    }
+}
+
 # Script starts.
 
 # Use some exception handling to avoid ucky error messages
@@ -2276,7 +2360,14 @@ eval
     @update_list = get_update_list();
     @build_list = get_build_list();
 
+    print "Update list is ", join (', ', @update_list), "\n" if debugging;
     print "Build list is ", join (', ', @build_list), "\n" if debugging;
+
+    # Do some necessary adjusting. Right now this is used for supporting
+    # the command-line option shortcut to where you can enter e.g.
+    # kdelibs/khtml, and the script will only try to update that part of
+    # the module.
+    munge_lists();
 
     # Make sure unsermake is checked out automatically if needed
     adjust_update_list(\@update_list, \@build_list);
