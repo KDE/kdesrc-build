@@ -129,6 +129,12 @@ sub log_command ($@)
     my $filename = shift;
     my @command = @{(shift)};
 
+    if (get_option('global', 'pretend'))
+    {
+        print "Would have run ", join (' ', @command), "\n";
+        return 0;
+    }
+
     if ($pid = fork)
     {
         # Parent
@@ -306,6 +312,9 @@ sub initialize_environment
     $ENV{"WANT_AUTOMAKE"} = "1.7";
     $ENV{"WANT_AUTOCONF_2_5"} = "1";
     $ENV{"PATH"} = get_option ('global', 'binpath');
+
+    my $cvsserver = get_option ('global', 'cvs-server');
+    $ENV{'CVS_RSH'} = 'ssh' if $cvsserver =~ /^:ext:/;
 }
 
 # Subroutine to process the command line arguments.  Any arguments so
@@ -685,7 +694,9 @@ sub checkout_cvs_partial_dir
         push @args, "$module/$dir";
     }
 
-    return safe_system (@args);
+    my $fname = "$module/$dir"; # $dir may itself contain slashes
+    $fname =~ s/\//-/g;
+    return log_command ($fname, \@args);
 }
 
 # Subroutine to check out a specific set of directories from a module,
@@ -715,7 +726,7 @@ sub checkout_cvs_partial
     push @args, '-r', get_option($module, "release-tag") if get_option($module, 'release-tag');
     push @args, $module;
 
-    if (safe_system (@args))
+    if (log_command ("$module-base-cvs", \@args))
     {
         print "Error trying to partially checkout $module!\n$!\n";
         print "The module will be blocked from building.\n";
@@ -871,7 +882,7 @@ sub handle_updates
             next;
         }
 
-        if (safe_system(@args))
+        if (log_command("$module-cvs-$command", \@args))
         {
             print "Error $verb $module, removing from list of packages to build.\n";
             dont_build ($module);
@@ -889,6 +900,8 @@ sub handle_updates
 # already in the right directory.
 sub safe_apply_patches
 {
+    my $kdecvs = get_option('global', 'cvs-root');
+
     if (get_option('global', 'pretend'))
     {
         print "Would have run ./apply_patches\n";
@@ -896,7 +909,8 @@ sub safe_apply_patches
     }
 
     print "Applying recommended Qt patches.\n";
-    return (system("apply_patches") >> 8);
+    chdir ("$kdecvs/qt-copy");
+    return (system("./apply_patches") >> 8);
 }
 
 # Subroutine to run and log the configure command.  First parameter is the
@@ -949,7 +963,6 @@ sub safe_create_build_system
     }
 
     chdir ("$kdecvs/$module");
-    update_module_environment ($module);
     if (log_command ("$module-build-system", [ "make", "-f", "Makefile.cvs" ]))
     {
         print "Unable to create build system for $module\n";
@@ -965,7 +978,11 @@ sub needs_refreshed
     my $module = shift;
 
     # qt-copy doesn't use the build directory
-    return 1 if ($module eq 'qt-copy');
+    if ($module eq 'qt-copy')
+    {
+        # This file only exists after the configure script has been run.
+        return (not -e ("$kdecvs/qt-copy/src/tools/qconfig.cpp"));
+    }
 
     return 1 if ((not -e "$kdecvs/build/$module") ||
         (-e "$kdecvs/build/$module/.refresh-me") ||
@@ -1002,7 +1019,8 @@ sub setup_build_system
         if ($module eq 'qt-copy')
         {
             chdir ("$kdecvs/qt-copy");
-            safe_system ('make', 'clean');
+            unlink ("$kdecvs/qt-copy/.qmake.cache");
+            log_command ('qt-copy-clean', ['make', 'clean']);
         }
 
         # Now create the directory
@@ -1047,6 +1065,7 @@ sub setup_build_system
         # Now we're in the checkout directory
         # So, switch to the build dir.
         # qt-copy doesn't use this metaphor, however.
+        chdir ("$kdecvs/$module");
         chdir ("$kdecvs/build/$module") unless $module eq 'qt-copy';
 
         # configure the module
