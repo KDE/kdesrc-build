@@ -73,6 +73,7 @@ my %package_opts; # Holds module-specific options.
 my %ignore_list;  # List of packages to refuse to include in the build list.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
+my @failed_list;  # List of modules that failed to update.
 my $install_flag; # True if we're in install mode.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
@@ -1120,6 +1121,8 @@ sub dont_build
 
     # Weed out matches of the module name
     @build_list = grep (!/^$module$/, @build_list);
+
+    push @failed_list, $module;
 }
 
 # Subroutine to checkout a CVS module, but to do so non-recursively.
@@ -2283,6 +2286,24 @@ eval
         # No packages to install, we're in build mode
         $result = handle_updates (\@update_list);
         $result = handle_build (\@build_list) || $result;
+
+        if (scalar @failed_list > 0)
+        {
+            my $homedir = $ENV{'HOME'};
+            my $logfile;
+
+            print "\n<<<  PACKAGES FAILED TO UPDATE  >>>\n";
+
+            for (@failed_list)
+            {
+                $logfile = $package_opts{$_}{'#error-log-file'};
+                $logfile = "No log file" unless $logfile;
+                $logfile =~ s|$homedir|~|;
+
+                print "$_ - $logfile\n";
+            }
+        }
+
     }
     else
     {
