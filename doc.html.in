@@ -65,6 +65,27 @@ those who either can't or don't feel like installing it.</p>
 <p>It is authored by Michael Pyne (mpyne (AT) grammarian (DOT) homelinux 
 (DOT) net), and is one of several build scripts for this purpose.</p>
 
+<p><b>2004-Jun-14:</b> v0.73<br />
+Bugfixes:
+<ul>
+<li>The <a href="#conf-no-rebuild-on-fail">no-rebuild-on-fail</a>
+configuration file option didn't actually work in prior versions.</li>
+<li>The log file for a build now has a number appended, since multiple build
+attempts can occur during a single script run.</li>
+</ul>
+
+Features:
+<ul>
+<li>Based on a suggestion by mornfall, the autorebuilding process doesn't
+clean out the build directory for a module when trying to rebuild.  In
+addition, on a failure, make will be run again since sometimes that's all it
+takes to make it work.  If the build process still fails, the build system
+will be recreated, but the build directory won't be cleaned.  This is a big
+time saver, and should give the same results.  Using the <a
+href="#cmdline-refresh-build">--refresh-build</a> option will still cause the
+build directory to be cleaned at this point.</li>
+</ul>
+
 <p><b>2004-Jun-13:</b> v0.72 -- <em>This Should Work Edition&trade;</em><br/>
 Bugfixes:
 <ul>
@@ -130,51 +151,6 @@ href="#conf-use-qt-builddir-hack">use-qt-builddir-hack</a>.</li>
 ran in by browsing $(cvs-root)/log/latest.</li>
 
 </ul>
-
-<p><b>2004-Jun-12:</b> v0.70
-<ul>
-<li>The script now lets CVS handle the admin directory, fixing a problem where
-adding the checkout-only option to a module that had already been checked out
-would cause an error.
-</li>
-
-<li>The script now comes packages the way products in the rest of the FOSS
-world do, in its own directory.
-</li>
-
-<li>Workaround a bug in the auto-rebuilding for qt-copy until I figure out
-what's going on.
-</li>
-
-<li>The <a href="#cmdline-no-build">--no-build</a> command line option has
-been fixed.  It was broken in a recent release.
-</li>
-
-<li>A new configuration file option has been added, <a
-href="#conf-stop-on-failure">stop-on-failure</a>.  Setting this option to true
-causes the script to stop whenever an error is detected during the build or
-install processes.
-</li>
-</ul>
-
-<p><b>2004-Jun-08:</b> v0.66, which is a bug-fix release.
-<ul>
-<li>Keep module changes in the build process for a module from affecting other
-modules.  This should fix a build error in kdepim due to qt-copy setting the
-environment variable YACC.
-</li>
-
-<li>If unsermake isn't supposed to be used for a module, forcibly remove it
-from the list of environment variables.  I'm not sure why this seemed to work
-for me in earlier versions, as the code was never correct. :-|
-</li>
-
-<li>Really fix the bug where "Script starts" would be displayed before
-command line options were processed, resulting in sub-optimal program output.
-</li>
-
-</ul>
-</p>
 
 <p>I recommend that you set up a separate user account if you decide to run KDE
 from CVS.  I didn't at first, and I won't repeat that mistake for KDE 3.3 ;-).
@@ -740,7 +716,7 @@ href="#options">.kdecvs-buildrc options</a>.
 <div align="center" class="thankyou">
 <font size="-1"><a href="http://www.cvsup.org/">CVSup</a> is a registered trademark of John D. Polstra.
 <br/>
-Last modified: Sun Jun 13 03:12:10 2004</font>
+Last modified: Sun Jun 13 22:10:28 2004</font>
 </div>
 </body>
 </html>

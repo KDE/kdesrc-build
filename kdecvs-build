@@ -251,13 +251,14 @@ sub log_command
     }
 }
 
-# Subroutine to run the make command with the arguments given by the
-# passed list.  If make-output-file is set, the output of STDOUT and
-# STDERR will be redirected to that file.  The first argument of the
-# list given must be the module that we're making.
+# Subroutine to run the make command with the arguments given by the passed
+# list.  The first argument of the list given must be the module that we're
+# making.  The second argument is the "try number", used in creating the log
+# file name.
 sub safe_make (@)
 {
     my $module = shift;
+    my $trynumber = shift;
     my $opts = get_option($module, 'make-options');
     my $logdir = get_log_dir($module);
 
@@ -267,14 +268,14 @@ sub safe_make (@)
     if (pretending)
     {
         $opts = join(' ', @_);
-        print "\tWould have run make $opts > $logdir/$module-build\n";
+        print "\tWould have run make $opts > $logdir/$module-build-$trynumber\n";
         return 0;
     }
 
     chdir (get_build_dir($module) . "/$module");
 
-    print "\tCompiling...\n";
-    return log_command ($module, "build", ['make', @_] );
+    print "\tCompiling, attempt $trynumber...\n";
+    return log_command ($module, "build-$trynumber", ['make', @_] );
 }
 
 # Subroutine to add a variable to the environment, but ONLY if it
@@ -1304,7 +1305,10 @@ sub setup_build_system
         # this module.
         $package_opts{$module}->{'#was-rebuilt'} = 1;
 
-        if (not clean_build_system($module))
+        # Check to see if we're actually supposed to go through the cleaning
+        # process.
+        if (not $package_opts{$module}->{'#cancel-clean'} and
+            not clean_build_system($module))
         {
             print "\tUnable to clean $module!\n";
             return 0;
@@ -1452,6 +1456,7 @@ sub build_module
 {
     my $module = shift;
     my $builddir = get_build_dir ($module);
+    my $trynumber = 1;
 
     # Do some tests to make sure we're ready to build.
     if (not exists $package_opts{$module})
@@ -1470,20 +1475,37 @@ sub build_module
         update_module_environment($module);
         chdir ("$builddir/$module");
 
-        if (safe_make ($module))
+        if (safe_make ($module, $trynumber))
         {
             # Build failed
-            if (not defined $package_opts{$module}->{'#was-rebuilt'} and not
-                get_option ($module, 'no-rebuild-on-fail'))
-            {
-                # Force the module to rebuild and try again.
-                $package_opts{$module}->{'refresh-build'} = 1;
-            }
-            else
+            # There are several reasons why the build could fail.  If we're
+            # using unsermake for this module, then perhaps we just need to
+            # run make again.  After that, we can re-run make -f Makefile.cvs
+            # and etc and then try make again.  If that STILL doesn't work, we
+            # can try rm -rf $builddir/$module and rebuild.
+
+            if ($trynumber > 3 or
+               (not defined $package_opts{$module}->{'#was-rebuilt'} and
+                get_option ($module, 'no-rebuild-on-fail')))
             {
                 # Well we tried, but it isn't going to happen.
-                print "\tUnable to build $module!\n";
+                print "\n\tUnable to build $module!\n";
                 return 0;
+            }
+
+            if (++$trynumber == 2)
+            {
+                # Just try again
+                print "\n\tCouldn't build, going to try again just in case.\n";
+                next;
+            }
+            elsif ($trynumber == 3)
+            {
+                # Don't remove the old modules, but re-run make -f
+                # Makefile.cvs and configure.
+                print "\n\tStill couldn't build, recreating build system (builddir is safe).\n";
+                $package_opts{$module}->{'#cancel-clean'} = 1;
+                $package_opts{$module}->{'refresh-build'} = 1;
             }
         }
         elsif (get_option($module, "install-after-build"))
