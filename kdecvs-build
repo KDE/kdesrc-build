@@ -646,24 +646,6 @@ sub adjust_update_list
             $package_opts{'kdenonbeta'}->{'checkout-only'} .= " unsermake";
         }
     }
-
-    # Search each entry in the update list to see if someone has asked for
-    # a partial checkout.
-    if (scalar grep (get_option ($_, 'checkout-only'), @{$list_ref}))
-    {
-        # A module is specified for piecewise checkout.  Add kde-common
-        # if it's not already in the list.
-        if (scalar grep (/^kde-common$/, @{$list_ref}) == 0)
-        {
-            # kde-common isn't here, add it to beginning.
-            unshift (@{$list_ref}, "kde-common");
-
-            # Add entry for it to package_opts as well.
-            $package_opts{'kde-common'} = {
-                'manual-build'   => 'true',
-            };
-        }
-    }
 }
 
 # Subroutine to get the list of CVS modules to update.  Returned
