@@ -65,6 +65,41 @@ those who either can't or don't feel like installing it.</p>
 <p>It is authored by Michael Pyne (mpyne (AT) grammarian (DOT) homelinux 
 (DOT) net), and is one of several build scripts for this purpose.</p>
 
+<p><b>2004-Jun-12:</b> v0.71<br/>
+This release is dedicated to the heavy testing given the script by berkus and
+mornfall.  Thanks guys!
+</p>
+
+Bugfixes:
+<ul>
+<li>Make script header documentation better.</li>
+<li>Force configure to run if qt-copy hasn't been configured.  If you had
+interrupted the build process for qt-copy before the configure script had run,
+it wouldn't build right after that.</li>
+</ul>
+
+New features:
+<ul>
+<li>If the admin directory does not exist for some reason, kick CVS in the
+head repeatedly until it checks it out. (I'm not responsible if CVS ends up in
+a coma).</li>
+
+<li>Accept GPL license by default for qt-copy.  If you happen to have a
+commerical license or some such for qt-copy, patches are accepted. :-)</li>
+
+<li>Debug mode additions.</li>
+
+<li>Experimental mode to simulate builddir != srcdir mode for qt-copy, as
+requested by berkus.  This needs more testing, but it seems to Work For
+Me&trade;.  The appropriate configuration file option is <a
+href="#conf-use-qt-builddir-hack">use-qt-builddir-hack</a>.</li>
+
+<li>The script now creates a symlink to the latest log directory called
+<tt>latest</tt>.  So you can always review the log of the last day the script
+ran in by browsing $(cvs-root)/log/latest.</li>
+
+</ul>
+
 <p><b>2004-Jun-12:</b> v0.70
 <ul>
 <li>The script now lets CVS handle the admin directory, fixing a problem where
@@ -109,15 +144,6 @@ command line options were processed, resulting in sub-optimal program output.
 
 </ul>
 </p>
-
-<p><b>2004-Jun-03:</b> v0.65, which fixes a brown-paper-bag bug. :-(
-<ul>
-
-<li>Not all instances of the routine log_command() had been converted to the
-new format, leading the Perl interpreter to bail out.
-</li>
-
-</ul>
 
 <p>I recommend that you set up a separate user account if you decide to run KDE
 from CVS.  I didn't at first, and I won't repeat that mistake for KDE 3.3 ;-).
@@ -581,6 +607,23 @@ by default.
 </td>
 </tr>
 
+<tr id="conf-use-qt-builddir-hack">
+<td valign="top">use-qt-builddir-hack</td>
+<td valign="top">Overrides global</td>
+<td>Although this option overrides the global option, it only makes sense for
+qt-copy.  Set this option to 'true' to enable the script's <em>experimental</em>
+srcdir != builddir mode.  When enabled, kdecvs-build will copy the qt-copy CVS
+module to the build directory, and perform builds from there.  That means your
+QTDIR environment variable should be set to $(qt-copy-build-dir)/qt-copy/lib
+instead.  You should also change your <a href="#conf-qtdir">qtdir</a> option
+accordingly.<br/><br/>
+Incremental make should still work in this mode, as the timestamps will be
+preserved after the copy.  If you use the <a
+href="#conf-apply-qt-patches">apply-qt-patches</a> option, the patches will be
+applied in the build directory, not the source directory.
+</td>
+</tr>
+
 <tr id="conf-use-unsermake">
 <td valign="top">use-unsermake</td>
 <td valign="top">Overrides global</td>
@@ -666,7 +709,7 @@ href="#options">.kdecvs-buildrc options</a>.
 <div align="center" class="thankyou">
 <font size="-1"><a href="http://www.cvsup.org/">CVSup</a> is a registered trademark of John D. Polstra.
 <br/>
-Last modified: Sat Jun 12 18:18:11 2004</font>
+Last modified: Sat Jun 12 20:11:31 2004</font>
 </div>
 </body>
 </html>
