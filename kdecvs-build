@@ -503,8 +503,6 @@ sub get_update_list
                 'manual-build'   => 'true',
                 'checkout-only'  => 'unsermake',
             };
-
-            print "Adding kdenonbeta/unsermake to checkout-only list.\n";
         }
         elsif (get_option ('kdenonbeta', 'checkout-only') and
             get_option ('kdenonbeta', 'checkout-only') !~ /\bunsermake\b/)
@@ -512,7 +510,6 @@ sub get_update_list
             # kdenonbeta is being checked out, but the user has
             # exclused unsermake.
             $package_opts{'kdenonbeta'}->{'checkout-only'} .= " unsermake";
-            print "Adding unsermake to checkout-only list.\n";
         }
     }
 
@@ -703,6 +700,7 @@ sub checkout_cvs_partial
     my @args;
     my $kdecvs = get_option ('global', 'cvs-root');
     my $cvsroot = get_option ('global', 'cvs-server');
+    my $result = 0;
     my $item;
 
     chdir ($kdecvs);
@@ -723,7 +721,7 @@ sub checkout_cvs_partial
         print "The module will be blocked from building.\n";
         dont_build ($module);
 
-        return;
+        return 1;
     }
 
 ITEM_LOOP: for $item (@dirlist)
@@ -746,6 +744,7 @@ ITEM_LOOP: for $item (@dirlist)
                 print "Module $module will be blocked from building.\n";
 
                 dont_build ($module);
+                $result = 1;
                 next ITEM_LOOP;
             }
 
@@ -759,9 +758,12 @@ ITEM_LOOP: for $item (@dirlist)
             print "Module $module will be blocked from building.\n";
 
             dont_build ($module);
+            $result = 1;
             next;
         }
     }
+
+    return $result;
 }
 
 # Subroutine to ensure that the user has a cvs configuration.  If not, one
@@ -809,6 +811,7 @@ sub handle_updates
     my $update_ref = shift;
     my $kdecvs = get_option ('global', 'cvs-root');
     my $cvsroot = get_option ('global', 'cvs-server');
+    my $result = 0;
     my $module;
 
     # No reason to print out the text if we're not doing anything.
@@ -826,7 +829,7 @@ sub handle_updates
             print "Unable to make directory $kdecvs!\n$!\n";
             @build_list = (); # Clear out the build list, since we can't build.
             @install_list = (); # Can't install either.
-            return 0;
+            return 1;
         }
     }
 
@@ -864,7 +867,7 @@ sub handle_updates
         {
             # Don't check out the entire module, merely the
             # parts the user wants
-            checkout_cvs_partial ($module);
+            $result = 1 if checkout_cvs_partial ($module);
             next;
         }
 
@@ -872,12 +875,14 @@ sub handle_updates
         {
             print "Error $verb $module, removing from list of packages to build.\n";
             dont_build ($module);
+            $result = 1;
         }
 
         print "\n";
     }
 
     print "<<<  UPDATE COMPLETE  >>>\n";
+    return $result;
 }
 
 # Subroutine to run the qt-copy apply_patches script.  Assumes we're
@@ -1131,7 +1136,7 @@ sub handle_build
         if (not super_mkdir ("$kdecvs/build"))
         {
             print "Unable to create $kdecvs/build!\n$!\n";
-            return;
+            return 1;
         }
     }
 
@@ -1195,6 +1200,8 @@ sub handle_build
 
     print "\n<<<  PACKAGES FAILED BUILDING  >>>\n";
     print join ("\n", @fail_list), "\n";
+
+    return ((scalar @fail_list) > 0) ? 1 : 0;
 }
 
 # Subroutine to exit the script cleanly, including removing any
@@ -1215,6 +1222,7 @@ sub handle_install
 {
     my $kdecvs = get_option ('global', 'cvs-root');
     my $pretend = get_option ('global', 'pretend');
+    my $result = 0;
 
     for my $module (@install_list)
     {
@@ -1241,12 +1249,16 @@ sub handle_install
         }
 
         # Just in case, I guess.
+        print "Installing $module\n";
         update_module_environment ($module);
         if (log_command ("$module-install", [ 'make', 'install' ]))
         {
             print "Unable to install $module!\n";
+            $result = 1;
         }
     }
+
+    return $result;
 }
 
 # Script starts.
@@ -1265,14 +1277,15 @@ if (not get_lock())
 @build_list = get_build_list();
 
 my $time = localtime;
+my $result;
 print "Script started processing at $time\n";
 
 if ($#install_list == -1)
 {
     # No packages to install, we're in build mode
 
-    handle_updates (\@update_list);
-    handle_build (\@build_list);
+    $result = handle_updates (\@update_list);
+    $result = handle_build (\@build_list) unless $result;
 }
 else
 {
@@ -1286,12 +1299,12 @@ else
             join (', ', @ARGV), "\n";
     }
 
-    handle_install ();
+    $result = handle_install ();
 }
 
 $time = localtime;
 print "Script finished processing at $time\n";
 
-finish();
+finish($result);
 
 # vim: set et sw=4 ts=4:
