@@ -12,7 +12,7 @@ VERSION_SUBST="s/\\\$VERSION/$VERSION/g"
 # Other fun variables
 WEB_PAGE_DIR="/var/www/localhost/htdocs/kdecvs-build"
 FILE_LIST="HISTORY TODO AUTHORS COPYING doc.html \
-           kdecvs-build kdecvs-buildrc-sample"
+           kdecvs-build kdecvs-buildrc-sample option-list"
 FILE_NAME="kdecvs-build-$VERSION.tar.gz"
 
 if [ $EUID -ne 0 ]; then
