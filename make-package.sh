@@ -57,7 +57,7 @@ echo "Archive size around $SIZE"
 rm doc.html
 
 # First tag the CVS repository with the version name.
-CVS_VERSION=$(echo VERSION.$VERSION | sed 's/\./_/g');
+CVS_VERSION=$(echo VERSION.$VERSION | sed 's/\./_/g' | tr a-z A-Z);
 su $MY_USER -c "cvs tag $CVS_VERSION > /dev/null"
 echo "CVS repository tagged"
 
