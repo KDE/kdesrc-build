@@ -26,7 +26,7 @@ if [ $# -ne 1 ]; then
 fi
 
 # Check that I didn't forget to alter the version in the script.
-if [ "x`./kdecvs-build -v | grep $VERSION`" == "x" ]; then
+if [ "x`./kdecvs-build -v | grep \\b$VERSION\\b`" == "x" ]; then
 	echo "kdecvs-build reports the wrong version, you must fix that first!"
 	exit 1
 fi
