@@ -381,7 +381,6 @@ sub safe_make (@)
 
     if (pretending)
     {
-        return 1;
         $opts = join(' ', @_);
         print "\tWould have run make $opts > $logdir/build-$trynumber\n";
         return 0;
@@ -1001,6 +1000,8 @@ sub dont_build
 {
     my $module = shift;
 
+    print "Not building $module\n" if debugging;
+
     # Weed out matches of the module name
     @build_list = grep (!/^$module$/, @build_list);
 }
@@ -1266,6 +1267,7 @@ sub handle_updates
                 print "Removing from list of packages to build.\n";
 
                 dont_build($module);
+                $result = 1;
                 next;
             }
 
@@ -2099,7 +2101,7 @@ eval
     {
         # No packages to install, we're in build mode
         $result = handle_updates (\@update_list);
-        $result = handle_build (\@build_list) unless $result;
+        $result = handle_build (\@build_list) or $result;
     }
     else
     {
