@@ -74,6 +74,7 @@ my %ignore_list;  # List of packages to refuse to include in the build list.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
 my @failed_list;  # List of modules that failed to update.
+my @install_fail; # List of modules that failed to install.
 my $install_flag; # True if we're in install mode.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
@@ -653,6 +654,37 @@ sub get_install_list
     }
 
     return @install_list;
+}
+
+# Print out an error message, and a list of modules that match that error
+# message.  It will also display the log file name if one can be determined.
+# The message will be displayed all in uppercase, with PACKAGES prepended, so
+# all you have to do is give a descriptive message of what this list of
+# packages failed at doing.
+sub output_failed_module_list($@)
+{
+    my ($message, @fail_list) = @_;
+    $message = uc $message; # Be annoying
+
+    print "Message is $message\n" if debugging;
+    print "\tfor ", join(', ', @fail_list), "\n" if debugging;
+
+    if (scalar @fail_list > 0)
+    {
+        my $homedir = $ENV{'HOME'};
+        my $logfile;
+
+        print "\n<<<  PACKAGES $message  >>>\n";
+
+        for (@fail_list)
+        {
+            $logfile = $package_opts{$_}{'#error-log-file'};
+            $logfile = "No log file" unless $logfile;
+            $logfile =~ s|$homedir|~|;
+
+            print "$_ - $logfile\n";
+        }
+    }
 }
 
 # Subroutine to process the command line arguments.  Any arguments so
@@ -2170,7 +2202,7 @@ sub handle_build
     close STATUS_FILE;
 
     print "<<<  BUILD DONE  >>>\n";
-    print "\n<<<  PACKAGES SUCCESSFULLY BUILT  >>>\n";
+    print "\n<<<  PACKAGES SUCCESSFULLY BUILT  >>>\n" if scalar @build_done > 0;
 
     if (not get_option('global', 'disable-build-list') and not pretending)
     {
@@ -2189,22 +2221,7 @@ sub handle_build
         print (join ("\n", @build_done), "\n");
     }
 
-    if (scalar @fail_list > 0)
-    {
-        my $homedir = $ENV{'HOME'};
-        my $logfile;
-
-        print "\n<<<  PACKAGES FAILED BUILDING  >>>\n";
-        for (@fail_list)
-        {
-            $logfile = $package_opts{$_}{'#error-log-file'};
-            $logfile = "No log file" unless $logfile;
-            $logfile =~ s|$homedir|~|;
-
-            print "$_ - $logfile\n";
-        }
-    }
-
+    output_failed_module_list ('failed building', @fail_list);
     return ((scalar @fail_list) > 0) ? 1 : 0;
 }
 
@@ -2269,6 +2286,7 @@ sub handle_install
         {
             print "\tUnable to install $module!\n";
             $result = 1;
+            push @install_fail, $module;
 
             if (get_option($module, 'stop-on-failure'))
             {
@@ -2335,7 +2353,7 @@ sub munge_lists
 
             # Don't add the modulename to the list twice.  Hashes are the easiest way in
             # Perl to do this.  I'd love an "in" operator for lists.
-            unshift @temp, $_ if not $seen{$_};
+            push @temp, $_ if not $seen{$_};
             $seen{$_} = 1;
         }
 
@@ -2403,23 +2421,8 @@ eval
         $result = handle_updates (\@update_list);
         $result = handle_build (\@build_list) || $result;
 
-        if (scalar @failed_list > 0)
-        {
-            my $homedir = $ENV{'HOME'};
-            my $logfile;
-
-            print "\n<<<  PACKAGES FAILED TO UPDATE  >>>\n";
-
-            for (@failed_list)
-            {
-                $logfile = $package_opts{$_}{'#error-log-file'};
-                $logfile = "No log file" unless $logfile;
-                $logfile =~ s|$homedir|~|;
-
-                print "$_ - $logfile\n";
-            }
-        }
-
+        output_failed_module_list ("failed to update", @failed_list);
+        output_failed_module_list ("failed to install", @install_fail);
     }
     else
     {
@@ -2433,6 +2436,7 @@ eval
         }
 
         $result = handle_install (get_install_list());
+        output_failed_module_list ("failed to install", @install_fail);
     }
 
     $time = localtime;
