@@ -402,7 +402,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <mpyne\@grammarian.homelinux.net>\n";
-    my $version = "kdecvs-build 0.66\n";
+    my $version = "kdecvs-build 0.70\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -1055,6 +1055,23 @@ sub safe_configure
         push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
         push @commands, "--prefix=$kdedir";
     }
+    else
+    {
+        # Copy the configure script to accept the GPL license.
+        open CONFIG, "<$script";
+        open NEWCONFIG, ">$kdecvs/$module/configure.new";
+        while(<CONFIG>)
+        {
+            s/read acceptance/acceptance=yes/;
+            print NEWCONFIG $_;
+        }
+        close NEWCONFIG;
+        close CONFIG;
+        chmod 0755, "$kdecvs/$module/configure.new";
+        $script = "$kdecvs/$module/configure.new";
+
+        print "\tGPL license selected for Qt.  See $kdecvs/qt-copy/LICENSE.GPL\n";
+    }
 
     print "\tRunning configure...\n";
     unshift @commands, $script;
@@ -1086,23 +1103,23 @@ sub safe_create_build_system
     return 0;
 }
 
+# Subroutine to determine if a given module needs to have the build system
+# recreated from scratch.
+# If so, it returns boolean true.
 sub needs_refreshed
 {
     my $kdecvs = get_kdecvs_dir();
     my $module = shift;
     my $builddir = get_build_dir ($module);
+    my $conf_file_key = "Makefile"; # File that exists after configure is run
 
-    # qt-copy doesn't use the build directory
-    if ($module eq 'qt-copy')
-    {
-        # This file only exists after the configure script has been run.
-        return (not -e ("$builddir/$module/src/tools/qconfig.cpp"));
-    }
+    # Use a different file to indicate configure has been run for qt-copy
+    $conf_file_key = "src/tools/qconfig.cpp" if $module eq 'qt-copy';
 
     return 1 if ((not -e "$builddir/$module") ||
         (-e "$builddir/$module/.refresh-me") ||
         get_option($module, "refresh-build") ||
-        (not -e "$builddir/$module/Makefile"));
+        (not -e "$builddir/$module/$conf_file_key"));
 
     return 0;
 }
@@ -1182,8 +1199,12 @@ sub clean_build_system
     if ($module eq 'qt-copy')
     {
         chdir ("$builddir/qt-copy");
+        if (log_command ('qt-copy', 'clean', ['make', 'clean']))
+        {
+            print "WARNING: Error cleaning qt-copy.\n";
+        }
         unlink ("$builddir/qt-copy/.qmake.cache");
-        return not log_command ('qt-copy', 'clean', ['make', 'clean']);
+        return 1;
     }
     elsif (-e "$builddir/$module" &&
         safe_system ('rm', '-rf', "$builddir/$module"))
@@ -1222,7 +1243,7 @@ sub setup_build_system
 
         # Define this option to tell later functions that we tried to rebuild
         # this module.
-        $package_opts{$module}->{'#was-rebuilt'} = 0;
+        $package_opts{$module}->{'#was-rebuilt'} = 1;
 
         if (not clean_build_system($module))
         {
