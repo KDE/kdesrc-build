@@ -380,6 +380,9 @@ v2, and includes ABSOLUTELY NO WARRANTY!!!
 Options:
     --no-cvs             Skip contacting the CVS server.
     --no-build           Skip the build process.
+    --no-install         Don't automatically install after build.  Automatic
+                         install will still happen if install-after-build is
+                         set to true for the module in the config file.
     --debug              Activates debug mode.
     --pretend (or -p)    Don't actually contact the CVS server, run make,
                          or create/delete files and directories.  Instead,
@@ -427,6 +430,11 @@ DONE
 
             /^--no-cvs$/ && do {
                 $global_opts{'no-cvs'} = 1;
+                last SWITCH;
+            };
+
+            /^--no-install$/ && do {
+                $global_opts{'install-after-build'} = 0;
                 last SWITCH;
             };
 
