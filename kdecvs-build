@@ -905,7 +905,10 @@ sub setup_build_system
         chdir ("$kdecvs/$dir");
 
 		# Run KDE's build preparation script
-        $result = (not -e 'configure') ? safe_system ('make', '-f', 'Makefile.cvs') : 0;
+        $result = (not -e 'configure' || ($dir == 'qt-copy')) 
+            ? safe_system ('make', '-f', 'Makefile.cvs') 
+            : 0;
+
         if ($result)
         {
             print "Unable to create configure system from checkout.\n";
