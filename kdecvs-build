@@ -324,6 +324,11 @@ sub log_command
     my @command = @{(shift)};
     my $logdir = get_log_dir($module);
 
+    if (debugging)
+    {
+        print "log_command(): Module $module, Command: ", join(' ', @command), "\n";
+    }
+
     if (pretending)
     {
         print "\tWould have run ", join (' ', @command), "\n";
@@ -393,19 +398,33 @@ sub safe_make (@)
     my $logdir = get_log_dir($module);
     my $checkout_dirs = get_option($module, "checkout-only");
     my @dirs = split(' ', $checkout_dirs);
+    my $installing = $trynumber eq 'install';
 
     # Add make-options to the given options
     unshift (@_, split(' ', $opts));
+
+    # Check if we're installing
+    if ($installing)
+    {
+        print "Prepending install options.\n" if debugging;
+        unshift @_, 'install';
+        unshift @_, split(' ', get_option ($module, 'make-install-prefix'));
+    }
+
     push (@dirs, "") if scalar @dirs == 0;
 
-    print "\tCompiling, attempt $trynumber...\n";
+    print $installing ? "\tInstalling $module\n"
+                      : "\tCompiling, attempt $trynumber...\n";
 
     for my $subdir (@dirs)
     {
         next if $subdir eq 'admin';
 
-        my $logname = "build-$trynumber";
-        $logname = "build-$subdir-$trynumber" if $subdir ne "";
+        my $logname = $installing ? "install" : "build-$trynumber";
+        if ($subdir ne '')
+        {
+            $logname = $installing ? "install-$subdir" : "build-$subdir-$trynumber";
+        }
 
         if (pretending)
         {
@@ -416,7 +435,7 @@ sub safe_make (@)
             next;
         }
 
-        print "\tBuilding subdirectory $subdir\n" if $subdir ne '';
+        print $installing ? "\tInstalling " : "\tBuilding ", "subdirectory $subdir\n" if $subdir ne '';
 
         chdir (get_build_dir($module) . "/$module/$subdir");
 
@@ -646,7 +665,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
-    my $version = "kdecvs-build 0.83\n";
+    my $version = "kdecvs-build 0.84\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -2234,23 +2253,19 @@ sub handle_install
             next;
         }
 
-        chdir ("$builddir/$module");
-
         if (pretending)
         {
             print "\tWould have installed $module\n";
             next;
         }
 
-        # Add make-install-prefix options.
-        my @prefix = split(/\s/, get_option ($module, 'make-install-prefix'));
-        my @args = (@prefix, 'make', 'install');
-
         # Just in case, I guess.
-        print "Installing $module\n";
         update_module_environment ($module);
 
-        if (log_command ($module, "install", \@args))
+        # safe_make() evilly uses the "install" parameter to use installation
+        # mode instead of compile mode.  This is so we can get the subdirectory
+        # handling for free.
+        if (safe_make ($module, "install"))
         {
             print "\tUnable to install $module!\n";
             $result = 1;
@@ -2272,6 +2287,7 @@ sub handle_install
 sub munge_lists
 {
     print "Munging update and build list\n" if debugging;
+    my $cleared = 0;
 
     for my $list_ref ( ( \@update_list, \@build_list) ) {
         my @temp;
@@ -2283,6 +2299,15 @@ sub munge_lists
 
             if (scalar @dirs > 0)
             {
+                # Only build the specified subdirs
+                if (not $cleared)
+                {
+                    print "Clearing checkout-only option.\n" if debugging;
+
+                    $cleared = 1;
+                    $package_opts{$modulename}{'checkout-only'} = "";
+                }
+
                 # The user has included a directory separator in the module name, so
                 # let's fake the cvs partial checkout
                 $_ = $modulename;
