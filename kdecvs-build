@@ -414,6 +414,7 @@ DONE
 
             /^--no-build$/ && do {
                 $global_opts{'manual-build'} = 1;
+                @build_list = ();
                 last SWITCH;
             };
 
@@ -537,6 +538,8 @@ sub get_update_list
 # parsed first.
 sub get_build_list
 {
+    return () if get_option('global', 'manual-build');
+    
     if ($#ARGV == -1)
     {
         # No arguments specified on command line.  Use already
@@ -1108,6 +1111,9 @@ sub handle_build
     my $cvsroot = get_option ('global', 'cvs-server');
     my $dir;
     my $result;
+    
+    # No reason to print building messages if we're not building.
+    return 0 if (scalar (@{$build_ref}) == 0);
 
     print "\n<<<  BUILD PROCESS  >>>\n";
 
