@@ -1434,6 +1434,8 @@ sub safe_configure
         my $kdedir = get_option ('global', 'kdedir');
         push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
         push @commands, "--prefix=$kdedir";
+
+        $script = get_build_dir('kdebindings') . '/kdebindings/configure' if $module eq 'kdebindings';
     }
     else
     {
@@ -1479,6 +1481,20 @@ sub safe_create_build_system
 
     chdir ("$kdecvs/$module");
     chdir ("$builddir/$module") if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
+
+    if ($module eq 'kdebindings')
+    {
+        # Use a slightly less method of builddir != srcdir for kdebindings,
+        # as it fails otherwise.
+        chdir (get_build_dir($module) . "/$module");
+
+        if (log_command ($module, "lndir", [ "lndir", "$kdecvs/$module" ]))
+        {
+            print "\tUnable to setup special build system for kdebindings.\n";
+            return 1;
+        }
+    }
+
     if ($instapps)
     {
         open (INSTAPPS, ">inst-apps") or do {
@@ -1706,7 +1722,10 @@ sub setup_build_system
         }
     }
 
-    if ($do_makeconf or not -e "$kdecvs/$module/configure")
+    my $confpath = "$kdecvs/$module";
+    $confpath = get_build_dir($module) . "/$module" if $module eq 'kdebindings';
+
+    if ($do_makeconf or not -e "$confpath/configure")
     {
         print "\tRecreating configure script.\n";
 
