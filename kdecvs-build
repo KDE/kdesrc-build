@@ -408,8 +408,12 @@ sub safe_make (@)
     if ($installing)
     {
         print "Prepending install options.\n" if debugging;
-        unshift @_, 'install';
+        unshift @_, 'make', 'install';
         unshift @_, split(' ', get_option ($module, 'make-install-prefix'));
+    }
+    else
+    {
+        unshift @_, 'make';
     }
 
     push (@dirs, "") if scalar @dirs == 0;
@@ -440,7 +444,7 @@ sub safe_make (@)
 
         chdir (get_build_dir($module) . "/$module/$subdir");
 
-        my $result = log_command ($module, $logname, ['make', @_] );
+        my $result = log_command ($module, $logname, [@_] );
         return $result if $result;
     }
 
