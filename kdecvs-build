@@ -30,7 +30,7 @@ my %global_opts = (
     "kdedir"            => "",
     "cxxflags"          => "",
     "libpath"           => "",
-	"do-not-compile"    => "",
+    "do-not-compile"    => "",
     "binpath"           => "",
     "no-cvs"            => "",
     "refresh-build"     => "",
@@ -41,7 +41,7 @@ my %global_opts = (
     "make-output-file"  => "output",
     "manual-build"      => "",
     "pretend"           => "",
-	"use-unsermake"     => "",
+    "use-unsermake"     => "",
 );
 
 my %package_opts; # Holds module-specific options.
@@ -824,6 +824,7 @@ EOF
         {
             print "Unable to make directory $kdecvs!\n$!\n";
             @build_list = (); # Clear out the build list, since we can't build.
+			@install_list = (); # Can't install either.
             return 0;
         }
     }
@@ -970,6 +971,42 @@ sub setup_build_system
     return 1;
 }
 
+# Subroutine to setup the environment for a module.  First parameter is the name of
+# the module to set the environment for
+sub update_module_environment
+{
+    my $dir = shift;
+    my $kdecvs = get_option ('global', 'cvs-root');
+    my $kdedir = get_option ($dir, 'kdedir');
+    my $qtdir = get_option ($dir, 'qtdir');
+    my $path = join(':', get_option ($dir, 'binpath'), "$qtdir/bin", "$kdedir/bin");
+    my $libdir = join(':', get_option ($dir, 'libpath'), "$qtdir/lib", "$kdedir/lib");
+
+    # Set up the children's environment.  We use setenv since it
+    # won't set an environment variable to nothing.  (e.g, setting
+    # QTDIR to a blank string might confuse Qt or KDE.
+    
+    # Remove leading and trailing colons, just in case.
+    for ($path, $libdir)
+    {
+        s/^:*//;
+        s/:*$//;
+    }
+
+    setenv ('LD_LIBRARY_PATH', $libdir);
+    setenv ('PATH', $path);
+    setenv ('KDEDIR', $kdedir);
+    setenv ('QTDIR', $qtdir);
+
+    # Everyone loves unsermake.  It's a pity that not every module will compile with it.
+    # Benjamin Meyer has an excellent article about speeding up distributed builds using
+    # unsermake.  You should notice a much faster build even with only one CPU, however.
+    if (get_option ($dir, "use-unsermake"))
+    {
+        setenv ("UNSERMAKE", "$kdecvs/kdenonbeta/unsermake/unsermake");
+    }        
+}
+
 # Subroutine to handle the build process.
 # First parameter is a reference of a list containing the packages
 # we are to build.
@@ -1010,19 +1047,8 @@ sub handle_build
     {
         next if get_option ($dir, 'manual-build');
         
-        # Set up the children's environment.  We use setenv since it
-        # won't set an environment variable to nothing.  (e.g, setting
-        # QTDIR to a blank string might confuse Qt or KDE.
-        setenv ('LD_LIBRARY_PATH', get_option ($dir, "libpath"));
-        setenv ('PATH', get_option ($dir, "binpath"));
-        setenv ('KDEDIR', get_option ($dir, "kdedir"));
-        setenv ('QTDIR', get_option ($dir, "qtdir"));
+        update_module_environment ($dir);
 
-		if (get_option ($dir, "use-unsermake"))
-		{
-			setenv ("UNSERMAKE", "$kdecvs/kdenonbeta/unsermake/unsermake");
-		}
-        
         # Ensure that the build system is ready.
         if (not setup_build_system($dir))
         {
@@ -1163,3 +1189,5 @@ $time = localtime;
 print "Script finished processing at $time\n";
 
 finish();
+
+# vim: set et sw=4 ts=4:
