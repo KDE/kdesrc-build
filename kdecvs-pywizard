@@ -45,30 +45,56 @@ modules = {
 globals = {
 	'binpath':   {
 		'description': 'Binary path',
+		'whatsthis': """This is the path that you can find your development
+		toolchain in, including the <b>g++</b> and <b>make</b> programs.  This
+		is specified by using colon (:) separated directories.  Do not include
+		any KDE or Qt paths, as kdecvs-build will add those automatically as
+		appropriate.""",
 		'default':     '/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin'
 	},
 	'cvs-root':   {
 		'description': 'Directory to hold CVS sources',
+		'whatsthis': """This is the directory to download the KDE sources into.
+		You may use the tilde (<b>~</b>) to stand for your home directory.  No
+		other variables are recognized.""",
 		'default':     '~/kdecvs'
 	},
 	'kdedir':    {
 		'description': 'Directory to install KDE CVS into',
+		'whatsthis': """This is the directory that KDE will be installed to.
+		You may use the tilde (<b>~</b>) to stand for your home directory.  If
+		you choose to install into a system directory, then you will probably
+		need to adjust the <i>make-install-prefix</i> option using <b>sudo</b>.
+		""",
 		'default':     '~/kde' # We probably don't want to default to KDEDIR
 	},
 	'qtdir':     {
 		'description': 'Directory to Qt installation',
+		'whatsthis': """This is the directory of your Qt installation.  If you
+		would like to use qt-copy from KDE CVS, check the checkbox <b>Use
+		qt-copy from KDE CVS</b>.""",
 		'default':     os.environ.get('QTDIR', '~/kdecvs/qt-copy')
 	},
 	'cvs-server': {
 		'description': 'CVS Server to use',
+		'whatsthis': """This is the CVS Root setting to use with the <b>cvs</b>
+		program.  For more information, consult the manpage for the CVS program,
+		or consult the CVS compilation guide from developer.kde.org""",
 		'default':     ':pserver:anonymous@anoncvs.kde.org:/home/kde'
 	},
 	'conf-flags': {
 		'description': 'Default configure flags',
+		'whatsthis': """This is what configure flags you would like to pass to
+		every CVS module (except for qt-copy).  Use this to specify settings you
+		want every module to have, such as --enable-debug""",
 		'default':     '--enable-debug'
 	},
 	'cxxflags':  {
 		'description': 'Your CXXFLAGS',
+		'whatsthis': """These flags control various <b>gcc</b> options, such as
+		the amount of optimization to perform.  She the gcc manual for more
+		information.  Whatever you do, don't put excessive CXXFLAGS here, as
+		higher levels of optimization tend to introduce errors sometimes.""",
 		'default':     '-g -pipe -march=i686'
 	}
 }
@@ -77,29 +103,44 @@ class BoldLabel(QLabel):
 	def __init__(self, label, parent):
 		QLabel.__init__(self, "<center><h3><b>" + label + "</b></h3></center>", parent)
 
-class IntroPage(QVBox):
-	def __init__(self, wizard):
+class WizardPage(QVBox):
+	def __init__(self, wizard, title):
 		QVBox.__init__(self, wizard)
-		self.label = BoldLabel("Introduction to kdecvs-build-wizard", self)
+
 		self.wizard = wizard
+		self.title = title
+		self.label = BoldLabel(title, self)
 		self.setSpacing(10)
-		wizard.addPage(self, "Introduction")
+
+		wizard.addPage(self, title)
+
+		self.connect(wizard, SIGNAL("selected(const QString &)"), self.pageSelected)
+
+	def pageSelected(self, title):
+		if str(title) == self.title:
+			self.preparePage()
+
+	def preparePage(self):
+		pass
+
+class IntroPage(WizardPage):
+	def __init__(self, wizard):
+		WizardPage.__init__(self, wizard, "Introduction to kdecvs-build-wizard")
+
 		self.body = QLabel("""<qt><center>This wizard will help you setup a
 basic configuration file for kdecvs-build.  To continue, please click the
 Next button.<br/><br/>NOTE: This isn't quite done yet, you'll have to copy
 and paste the file at the end to ~/.kdecvs-buildrc.</center></qt>""", self)
 
-class DistributedPage(QVBox):
+class DistributedPage(WizardPage):
 	def __init__(self, wizard):
-		QVBox.__init__(self, wizard)
+		WizardPage.__init__(self, wizard, "Distributed compilation options")
 
 		text = """<qt>On this page you can configure whether or not you want to
 		enable some options for distributed compilation.  You would want this
 		if you have a SMP computer, or if you are using distributed build
 		tools such as <b>distcc</b>, <b>TeamBuilder</b>, or <b>icecream</b>.</qt>
 		"""
-
-		label = BoldLabel("Distributed compilation options", self)
 
 		formBox = QVBox(self)
 		formBox.setSpacing(12)
@@ -110,11 +151,8 @@ class DistributedPage(QVBox):
 		self.usedcCheck.setChecked(False)
 		self.setStretchFactor(self.explanation, 1)
 
-		self.wizard = wizard
-		wizard.addPage(self, "Distributed compilation")
-
-		self.optionsPage = DistributedOptionsPage(wizard)
-		wizard.setAppropriate(self.optionsPage, False)
+		self.optionsPage = DistributedOptionsPage(self.wizard)
+		self.wizard.setAppropriate(self.optionsPage, False)
 
 	def setDCEnabled(self, enable):
 		if enable:
@@ -122,10 +160,9 @@ class DistributedPage(QVBox):
 		else:
 			self.wizard.setAppropriate(self.optionsPage, False)
 
-class DistributedOptionsPage(QVBox):
+class DistributedOptionsPage(WizardPage):
 	def __init__(self, wizard):
-		QVBox.__init__(self, wizard)
-		label = BoldLabel("Configure your distributed compilation options", self)
+		WizardPage.__init__(self, wizard, "Distributed Compilation Options")
 
 		self.options = QGroupBox(2, Qt.Vertical, "Distributed compilation options", self)
 
@@ -140,15 +177,7 @@ class DistributedOptionsPage(QVBox):
 		self.connect(check, SIGNAL("toggled(bool)"),
 		             self.unsermakeChecked)
 
-		wizard.addPage(self, "Distributed compilation options")
-		self.connect(wizard, SIGNAL("selected(const QString&)"),
-		             self.init)
-		self.wizard = wizard
-
-	def init(self, name):
-		if name != "Distributed compilation options":
-			return
-
+	def preparePage(self):
 		if not globals.has_key('use-unsermake'):
 			globals['use-unsermake'] = { 'value': 'false' }
 		if not globals.has_key('make-options'):
@@ -175,6 +204,7 @@ class CheckItem(QCheckListItem):
 		modules[self.moduleName]['checked'] = self.state()
 		if not modules[self.moduleName].has_key('option-box'):
 			return
+
 		if self.state():
 			modules[self.moduleName]['option-box'].show()
 		else:
@@ -194,7 +224,7 @@ class CheckItem(QCheckListItem):
 
 		QCheckListItem.paintCell(self, painter, newCg, col, width, align)
 
-class GlobalSettingsPage(QVBox):
+class GlobalSettingsPage(WizardPage):
 	class TextChangeProxy(QObject):
 		def __init__(self, parent, name):
 			QObject.__init__(self, parent)
@@ -202,20 +232,51 @@ class GlobalSettingsPage(QVBox):
 		def textChanged(self, value):
 			globals[self.name]['value'] = value
 
+	def preparePage(self):
+		if modules['qt-copy']['checked'] == QCheckListItem.On:
+			self.toggleCheckBox.setChecked(True)
+		else:
+			self.toggleCheckBox.setChecked(False)
+
+	def qtCopyToggled(self, enable):
+		self.qtcopyLine.setEnabled(not enable)
+		modules['qt-copy']['checked'] = QCheckListItem.Off
+
+		if enable:
+			self.qtcopyLine.setText("~/kdecvs/qt-copy")
+			modules['qt-copy']['checked'] = QCheckListItem.On
+
 	def addGridLine(self, label):
 		templabel = QLabel(globals[label]['description'], self.layoutWidget)
 		editor = QLineEdit(globals[label]['default'], self.layoutWidget)
+
+		if label == 'qtdir':
+			self.qtcopyLine = editor
+			toggleQtCopy = QCheckBox("Use qt-copy from CVS instead of system Qt", self)
+			toggleQtCopy.setChecked(True)
+			self.qtCopyToggled(True)
+			self.connect(toggleQtCopy, SIGNAL("toggled(bool)"), self.qtCopyToggled)
+
+			self.toggleCheckBox = toggleQtCopy
+
+			QWhatsThis.add(toggleQtCopy, """<qt><p>Check this box if you'd like to
+			use the qt-copy module in KDE CVS instead of the system Qt.</p><p>qt-copy
+			is the latest version of Qt, optionally with some patches applied to
+			fix bugs and improve performance.</p></qt>""")
+
 		globals[label]['value'] = globals[label]['default']
+
+		if globals[label].has_key('whatsthis'):
+			QWhatsThis.add(templabel, "<qt>" + globals[label]['whatsthis'] + "</qt>")
+			QWhatsThis.add(editor, "<qt>" + globals[label]['whatsthis'] + "</qt>")
+
 		proxy = self.TextChangeProxy(self, label)
 		proxy.connect(editor, SIGNAL("textChanged(const QString&)"),
 		              proxy.textChanged)
 		return editor
 
 	def __init__(self, wizard):
-		QVBox.__init__(self, wizard)
-		self.label = BoldLabel("Global Settings", self)
-		self.wizard = wizard
-		self.setSpacing(10)
+		WizardPage.__init__(self, wizard, "Global Settings")
 
 		self.layoutWidget = QGrid(2, self)
 		self.layoutWidget.setSpacing(4)
@@ -224,12 +285,10 @@ class GlobalSettingsPage(QVBox):
 		for x in globals.keys():
 			temp = self.addGridLine(x)
 
-		wizard.addPage(self, "Global Settings")
-
 # Abstract class, please subclass this
-class ModulesPage(QVBox):
+class ModulesPage(WizardPage):
 	def __init__(self, wizard, moduleDict, label, banner):
-		QVBox.__init__(self, wizard)
+		WizardPage.__init__(self, wizard, label)
 
 		defaultModules = [ 'arts', 'kdelibs', 'kdebase', 'kdesupport', 'kdepim',
                            'kdegraphics', 'kdeextragear-2', 'kdeaddons',
@@ -239,28 +298,27 @@ class ModulesPage(QVBox):
                            'kdeextragear-libs-1']
 		requiredModules = [ 'arts', 'kdelibs' ]
 
-		self.label = BoldLabel(label, self)
-		self.wizard = wizard
-
 		self.listview = QListView(self)
 		listview = self.listview
 		listview.setResizeMode(QListView.LastColumn)
 		for x in ['Module', 'Description']:
 			listview.addColumn(x)
 
-		moduleItems = { }
+		self.moduleItems = { }
 		for x in moduleDict.keys():
-			moduleItems[x] = CheckItem(listview, x)
-			moduleItems[x].setText(1, moduleDict[x])
+			self.moduleItems[x] = CheckItem(listview, x)
+			self.moduleItems[x].setText(1, moduleDict[x])
 			modules[x]['checked'] = QCheckListItem.Off
 			if x in defaultModules:
-				moduleItems[x].setState(QCheckListItem.On)
+				self.moduleItems[x].setState(QCheckListItem.On)
 			if x in requiredModules:
-				moduleItems[x].setEnabled(False)
+				self.moduleItems[x].setEnabled(False)
 
 		listview.setColumnWidthMode(0, QListView.Manual)
 
-		wizard.addPage(self, banner)
+	def preparePage(self):
+		for x in self.moduleItems.keys():
+			self.moduleItems[x].setState(modules[x]['checked'])
 
 	def showEvent(self, event):
 		self.listview.adjustColumn(1)
@@ -373,13 +431,9 @@ def cmpModuleOrder(a,b):
 		return cmp(a, b)
 	return cmp(aa, bb)
 
-class GeneratePage(QVBox):
+class GeneratePage(WizardPage):
 	def __init__(self, wizard):
-		QVBox.__init__(self, wizard)
-		self.wizard = wizard
-		self.name = "Config file generation"
-		self.label = BoldLabel(self.name, self)
-		wizard.addPage(self, self.name)
+		WizardPage.__init__(self, wizard, "Config file generation")
 
 		self.textEdit = QTextEdit(self)
 		self.textEdit.setFont(QFont('monospace'))
@@ -387,6 +441,8 @@ class GeneratePage(QVBox):
 		self.textEdit.setWordWrap(QTextEdit.NoWrap)
 
 		box = QHBox(self)
+		box.setSpacing(6)
+
 		label = QLabel("&Filename", box)
 		self.browseLine = QLineEdit("~/.kdecvs-buildrc", box)
 		label.setBuddy(self.browseLine)
@@ -395,12 +451,13 @@ class GeneratePage(QVBox):
 		              self.browseClicked)
 
 	def browseClicked(self):
-		return
+		fileName = QFileDialog.getSaveFileName(os.environ['HOME'] + "/.kdecvs-buildrc",
+			QString.null, self, "kdecvs-pywizard-filesave-dialog")
+		if not fileName.isNull():
+			print "Setting filename to " + str(fileName)
+			self.browseLine.setText(str(fileName))
 
-	def preparePage(self, text):
-		if text != self.name:
-			return
-
+	def preparePage(self):
 		self.textEdit.clear()
 		te = self.textEdit.append
 		te("global\n")
@@ -483,9 +540,6 @@ def main(args):
 	page6 = GeneratePage(wizard)
 
 	wizard.resize(QSize(640, 480))
-
-	a.connect(wizard, SIGNAL("selected(const QString &)"),
-	          page6.preparePage);
 
 # Start the show
 	wizard.exec_loop()
