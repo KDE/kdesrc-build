@@ -53,6 +53,13 @@ my @install_list = (); # List of modules to install.
 
 # Subroutine definitions
 
+# Subroutine to handle removing the lock file upon receiving a signal
+sub quit_handler
+{
+    print "Signal received, terminating.\n";
+    finish(5);
+}
+
 # This subroutine returns an option value for a given module.  Some
 # globals can't be overridden by a module's choice.  If so, the
 # module's choice will be ignored, and a warning will be issued.
@@ -430,7 +437,19 @@ DONE
 sub get_lock
 {
     my $lockfile = get_option ("global", "lockfile");
-    return sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
+    my $result = sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
+
+    # Very wordy way of saying to return if result == 0
+    return $result unless $result;
+
+    # Install signal handlers to ensure that the lockfile gets closed.
+    # There is a race condition here, but at worst we have a stale lock
+    # file, so I'm not *too* concerned.
+    $SIG{'HUP'} = \&quit_handler;
+    $SIG{'INT'} = \&quit_handler;
+    $SIG{'QUIT'} = \&quit_handler;
+    $SIG{'ABRT'} = \&quit_handler;
+    $SIG{'TERM'} = \&quit_handler;
 }
 
 # Subroutine to free the lock allocated by get_lock()
