@@ -846,6 +846,12 @@ sub handle_updates
 
     foreach $module (@{$update_ref})
     {
+        if (not exists $package_opts{$module})
+        {
+            print "Unknown module $module, configure it in ~/.kdecvs-buildrc.\n";
+            next;
+        }
+
         next if get_option($module, 'no-cvs');
 
         my $command;
@@ -1219,6 +1225,12 @@ sub handle_build
 
     foreach $module (@{$build_ref})
     {
+        if (not exists $package_opts{$module})
+        {
+            print "Unknown module $module, configure it in ~/.kdecvs-buildrc.\n";
+            next;
+        }
+
         next if get_option ($module, 'manual-build');
 
         update_module_environment ($module);
@@ -1309,6 +1321,12 @@ sub handle_install
         if ($module eq "qt-copy")
         {
             print "qt-copy doesn't need installed.\n";
+            next;
+        }
+
+        if (not exists $package_opts{$module})
+        {
+            print "Unknown module $module, configure it in ~/.kdecvs-buildrc.\n";
             next;
         }
 
