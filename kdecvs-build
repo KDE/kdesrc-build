@@ -401,7 +401,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <mpyne\@grammarian.homelinux.net>\n";
-    my $version = "kdecvs-build 0.64\n";
+    my $version = "kdecvs-build 0.65\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -1186,7 +1186,7 @@ sub clean_build_system
     {
         chdir ("$builddir/qt-copy");
         unlink ("$builddir/qt-copy/.qmake.cache");
-        return not log_command ('qt-copy-clean', ['make', 'clean']);
+        return not log_command ('qt-copy', 'clean', ['make', 'clean']);
     }
     elsif (-e "$builddir/$module" &&
         safe_system ('rm', '-rf', "$builddir/$module"))
@@ -1521,7 +1521,7 @@ sub handle_install
         # Just in case, I guess.
         print "Installing $module\n";
         update_module_environment ($module);
-        if (log_command ("$module-install", [ 'make', 'install' ]))
+        if (log_command ($module, "install", [ 'make', 'install' ]))
         {
             print "\tUnable to install $module!\n";
             $result = 1;
