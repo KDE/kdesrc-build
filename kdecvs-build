@@ -107,47 +107,33 @@ sub debugging()
 # All files will be stored in the log directory.
 sub get_output_file
 {
-    my $logdir = get_log_dir('global');
+    my $logdir;
     my $mode;
     $mode = shift or $mode = '';
     my $fname;
 
-    # get_log_dir will return a directory ending in /global, which we don't
-    # want.
-    $logdir =~ s/\/global$//;
+    print "get_output_file in mode $mode\n" if debugging;
 
     if ($mode eq 'existing')
     {
         # There's two ways of finding the old file.  Searching backwards with
         # valid combinations of the date and build id, or just reading in the
-        # name from a known file.  Since the latter option is much easier,
-        # that's what I'm going with.
+        # name from a known file or location.  Since the latter option is much
+        # easier, that's what I'm going with.  Note that this depends on the
+        # latest symlink being in place.
         $logdir = get_subdir_path ('global', 'log-dir');
-
-        return undef if not -e "$logdir/.build-status-file-name";
-        return undef if not -r "$logdir/.build-status-file-name";
-
-        open BUILD_STATUS, "<$logdir/.build-status-file-name";
-        $fname = <BUILD_STATUS>;
-        close BUILD_STATUS;
-
-        chomp $fname;
-
+        $fname = "$logdir/latest/build-status";
         print "Old build status file is $fname\n" if debugging;
+
+        return "" if not -e $fname or not -r _;
+
         return $fname;
     }
 
+    # This call must follow the test above, because it changes the 'latest'
+    # symlink leading to failures later.
+    $logdir = get_log_dir('global');
     $fname = "$logdir/build-status";
-    $logdir = get_subdir_path ('global', 'log-dir');
-    open BUILD_STATUS, ">$logdir/.build-status-file-name" or do {
-        print "Unable to record location of build status file, the --resume\n";
-        print "option won't work next time you use the script. :-(\n";
-        return $fname;
-    };
-
-    print BUILD_STATUS "$fname\n";
-    close BUILD_STATUS;
-
     print "Build status file is $fname\n" if debugging;
     return $fname;
 }
@@ -549,8 +535,8 @@ sub process_arguments
     while ($_ = shift @ARGV)
     {
         SWITCH: {
-            /^(-v)|(--version)$/ && do { print $version; finish(); };
-            /^--author$/         && do { print $author; finish(); };
+            /^(-v)|(--version)$/ && do { print $version; exit; };
+            /^--author$/         && do { print $author; exit; };
             /^(-h)|(--help)$/    && do {
                 print <<DONE;
 kdecvs-build version $version
@@ -683,8 +669,38 @@ DONE
                 last SWITCH;
             };
 
-            /^-/ && print "WARNING: Unknown option $_\n";
-            # Fall through on purpose
+            /^--resume-from$/ && do {
+                $_ = shift @ARGV;
+                if (not $_)
+                {
+                    print "You must pass a module to resume from to the --resume-from option!\n";
+                    exit 7;
+                }
+
+                if (defined $global_opts{'#resume'})
+                {
+                    print "WARNING: Don't pass both --resume and --resume-from\n";
+                    delete $global_opts{'#resume'};
+                }
+
+                $global_opts{'#resume-from'} = $_;
+                $global_opts{'#no-cvs'} = 1;
+                last SWITCH;
+            };
+
+            /^--resume$/ && do {
+                if (defined $global_opts{'#resume'})
+                {
+                    print "WARNING: Don't pass both --resume and --resume-from\n";
+                    delete $global_opts{'#resume-from'};
+                }
+
+                $global_opts{'#resume'} = 1;
+                $global_opts{'#no-cvs'} = 1;
+                last SWITCH;
+            };
+
+            /^-/ && do { print "WARNING: Unknown option $_\n"; last SWITCH; };
 
             push @argv, $_; # Reconstruct correct @ARGV
         }
@@ -785,9 +801,85 @@ sub get_update_list
 # as a list.  A module will not be built if manual-build is set
 # in the module's options.  The command-line arguments should have been
 # parsed first.
+#
+# This subroutine will handle the --resume and --resume-from options.
 sub get_build_list
 {
-    return () if get_option('global', '#manual-build');
+    my $resume_point;
+    my $autoresuming;
+
+    if (get_option('global', '#manual-build'))
+    {
+        if (get_option('global', '#resume') || get_option('global',
+            '#resume-from'))
+        {
+            print "I'm confused, you enabled --no-build and --resume.\n";
+            print "Skipping the build process.\n";
+        }
+
+        return ();
+    }
+
+    if (get_option ('global', '#resume'))
+    {
+        if (scalar @ARGV > 0)
+        {
+            print "Ignoring modules specified on command line because --resume was set.\n";
+        }
+
+        # Try to determine location of last existing status file.
+        my $status_fname = get_output_file('existing');
+        if (not $status_fname)
+        {
+            print "Unable to open status file from last run, can't resume!\n";
+            return ();
+        }
+
+        my ($line, $oldline);
+        open STATUS_FILE, "<$status_fname" or do {
+            print "Can't open $status_fname, so I can't resume!\n";
+            print "\t$!\n";
+            return ();
+        };
+
+        while ($line = <STATUS_FILE>)
+        {
+            $oldline = $line;
+        }
+
+        close STATUS_FILE;
+
+        chomp $oldline;
+        print "The last success line is $oldline\n" if debugging;
+
+        ($resume_point = $oldline) =~ s/^([^:]+):.*/$1/;
+        print "Resuming at $resume_point\n" if debugging;
+    }
+    elsif (get_option ('global', '#resume-from'))
+    {
+        $resume_point = get_option ('global', '#resume-from');
+        $autoresuming = 1;
+    }
+
+    if ($resume_point)
+    {
+        my $resume_found = 0;
+
+        # Pop stuff off of the list until we hit the resume point.
+        while (scalar @build_list > 0 and not $resume_found)
+        {
+            $resume_found = 1 if $build_list[0] eq $resume_point;
+
+            # If we're doing an auto resume, pop off the last package read
+            # from the file.  If we're doing resume from on the other hand,
+            # I'm assuming the user intends to start with building that
+            # package.
+            shift @build_list unless $resume_found and $autoresuming;
+        }
+
+        return @build_list;
+    }
+
     return @build_list if $#ARGV == -1;
     return @ARGV;
 }
@@ -1637,6 +1729,10 @@ sub build_module
         {
             handle_install($module);
         }
+        else
+        {
+            print "\tModule built successfully, install skipped.\n";
+        }
 
         last; # Don't forget to exit the loop!
     }
@@ -1864,6 +1960,8 @@ eval
 
     @update_list = get_update_list();
     @build_list = get_build_list();
+
+    print "Build list is ", join (', ', @build_list), "\n" if debugging;
 
     # Make sure unsermake is checked out automatically if needed
     adjust_update_list(\@update_list, \@build_list);
