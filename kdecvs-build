@@ -1895,6 +1895,17 @@ sub build_module
     }
 
     update_module_environment($module);
+
+    if($module eq 'qt-copy' and "$builddir/$module" ne get_option('global',
+        'qtdir'))
+    {
+        print <<EOF;
+You're building qt-copy, but QTDIR isn't set to use qt-copy!
+Please set your qtdir variable in the global section of your
+~/.kdecvs-buildrc to $builddir/$module
+EOF
+    }
+
     my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
     {
