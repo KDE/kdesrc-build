@@ -8,6 +8,7 @@ from qt import *;
 import sys;
 import os;
 
+defaultQtCopyOpts = "-system-zlib -qt-gif -system-libjpeg -system-libpng -plugin-imgfmt-mng -thread -no-exceptions -debug -fast -dlopen-opengl"
 modules = {
 	'qt-copy':             { 'order': 0, 'conf': { } },
 	'arts':                { 'order': 1, 'conf': { } },
@@ -332,8 +333,12 @@ class OptionsConfBox(QGroupBox):
 
 			label = QLabel(x, self)
 			edit = QLineEdit(self)
+			if title == 'qt-copy' and x == 'conf-flags':
+				edit.setText(defaultQtCopyOpts)
+				modules['qt-copy']['conf']['conf-flags'] = defaultQtCopyOpts
+
 			proxy = self.TextChangeProxy(self, title, x)
-			proxy.textChanged("")
+			proxy.textChanged(edit.text())
 			self.connect (edit, SIGNAL("textChanged(const QString &)"),
 						  proxy.textChanged)
 
@@ -344,7 +349,7 @@ class OptionsPage(QScrollView):
 		self.container = QVBox(self.viewport())
 		self.container.setSpacing(7)
 		self.addChild(self.container)
-		label = BoldLabel("Welcome to page 5", self.container)
+		label = BoldLabel("Module Options", self.container)
 		self.wizard = wizard
 		self.name = "Module Options"
 
@@ -412,8 +417,16 @@ class GeneratePage(QVBox):
 			te("module " + x + "\n")
 			mod = modules[x]['conf']
 			for y in mod.keys():
-				if mod[y] != "":
+				if mod[y] != "" and not (y == 'use-unsermake' and x == 'kdebindings'):
 					te("\t" + y + " " + mod[y] + "\n")
+
+			if x == 'kdebindings':
+				te("\t# kdebindings hurts badly with unsermake\n")
+				te("\tuse-unsermake false\n")
+
+			if x == 'qt-copy':
+				te("\t# unsermake makes no sense with qt-copy\n")
+				te("\tuse-unsermake false\n")
 
 			te("end module\n")
 			if x != last:
