@@ -663,6 +663,7 @@ sub get_update_list
 # parsed first.
 sub get_build_list
 {
+    return () if get_option('global', '#manual-build');
     return @build_list if $#ARGV == -1;
     return @ARGV;
 }
@@ -773,36 +774,31 @@ sub checkout_cvs_partial_dir
     my @args;
     my $kdecvs = get_option ("global", "cvs-root");
     my $cvsroot = get_option ("global", "cvs-server");
+    my $update_dir;
 
-    print ("Checking out $module/$dir.\n");
     chdir ("$kdecvs");
 
-    if ($dir eq "admin")
+    $update_dir = "$module/$dir";
+    if ($dir eq 'admin')
     {
-        # In KDE CVS, the admin directory is a special sub-directory
-        # that doesn't exist in any module.  Instead, it is linked to
-        # kde-common/admin.  Normally KDE CVS updates that automatically,
-        # but when you update piecewise, you need to do it yourself.
-        if (not -e "kde-common/admin")
-        {
-            print "You haven't checked out kde-common!  It must be checked\n";
-            print "out prior to this module ($module) since you are\n";
-            print "performing a piecewise installation.\n";
+        $update_dir = "$dir";
+        chdir "$module";
+    }
 
-            return 1;
-        }
-
-        safe_unlink ("$kdecvs/$module/admin");
-        return safe_system('ln', '-s', "$kdecvs/kde-common/admin", "$module/$dir");
+    if (not -e $update_dir)
+    {
+        print ("Checking out $module/$dir.\n");
     }
     else
     {
-        @args = ('cvs', "-d$cvsroot");
-        push @args, (-e "$module/$dir") ? 'up' : 'co';
-        push @args, '-l' unless $recurse;
-        push @args, '-r', get_option($module, "release-tag") if (get_option($module, "release-tag"));
-        push @args, "$module/$dir";
+        print ("Updating $module/$dir.\n");
     }
+
+    @args = ('cvs', "-d$cvsroot");
+    push @args, (-e $update_dir) ? 'up' : 'co';
+    push @args, '-l' unless $recurse;
+    push @args, '-r', get_option($module, "release-tag") if (get_option($module, "release-tag"));
+    push @args, $update_dir;
 
     my $fname = $dir; # $dir may itself contain slashes
     $fname =~ s/\//-/g;
