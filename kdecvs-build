@@ -1903,12 +1903,16 @@ sub prettify_seconds
 }
 
 # Subroutine to build a given module.  The module to build is the first
-# parameter.
+# parameter.  The second and third paramaters is the ordinal number of the
+# module being built (1 == first module, 2 == second, etc.), and the total
+# number of modules being built respectively.
 #
 # Returns boolean false on failure, boolean true on success.
 sub build_module
 {
     my $module = shift;
+    my $cur_module_num = shift;
+    my $total_module_num = shift;
     my $builddir = get_build_dir ($module);
     my $trynumber = 1;
 
@@ -1934,7 +1938,7 @@ EOF
     my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
     {
-        print "Building $module\n";
+        print "Building $module ($cur_module_num/$total_module_num)\n";
         return 0 if not setup_build_directory($module);
         return 0 if not setup_build_system($module);
         return 1 if (get_option ($module, 'build-system-only'));
@@ -2018,6 +2022,7 @@ sub handle_build
     my $kdecvs = get_kdecvs_dir();
     my $cvsroot = get_option ('global', 'cvs-server');
     my $module;
+    my @modules = @{$build_ref};
     my $result;
     my $outfile = get_output_file ();
 
@@ -2046,10 +2051,14 @@ sub handle_build
         };
     }
 
-    foreach $module (@{$build_ref})
+    my $num_modules = scalar @modules;
+    my $i = 1;
+
+    while ($module = shift @modules)
     {
         my $start_time = time;
-        if (build_module ($module))
+
+        if (build_module ($module, $i, $num_modules))
         {
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
@@ -2074,6 +2083,7 @@ sub handle_build
 
         print "\n";
         %ENV = %env_backup;
+        $i++;
     }
 
     close STATUS_FILE;
