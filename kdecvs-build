@@ -988,10 +988,12 @@ sub update_module_environment
     # QTDIR to a blank string might confuse Qt or KDE.
     
     # Remove leading and trailing colons, just in case.
+    # Also remove more than one colon.
     for ($path, $libdir)
     {
         s/^:*//;
         s/:*$//;
+        s/:+/:/;
     }
 
     setenv ('LD_LIBRARY_PATH', $libdir);
