@@ -402,8 +402,10 @@ sub safe_make (@)
     my $installing = $trynumber eq 'install';
     my $make = 'make';
 
-    # Add make-options to the given options
-    unshift (@_, split(' ', $opts));
+    # Add make-options to the given options, as long as we're not installing
+    # If we are installing, unsermake seems to assume that the options are a
+    # make target, and parallel builds don't help with installing anyways.
+    unshift (@_, split(' ', $opts)) unless $installing;
 
     $make = 'unsermake' if get_option($module, 'use-unsermake');
 
