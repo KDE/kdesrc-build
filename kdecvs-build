@@ -73,6 +73,7 @@ my @build_list;   # List of modules to build.
 my $install_flag; # True if we're in install mode.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
+my $rcfile = "$ENV{HOME}/.kdecvs-buildrc";
 
 # Subroutine definitions
 
@@ -412,7 +413,7 @@ sub setenv
 sub dead_whine
 {
     print <<"HOME";
-Unable to open $ENV{HOME}/.kdecvs-buildrc!
+Unable to open $rcfile!
 $!
 
 This file is necessary as it contains defintions for \$CVSROOT, among
@@ -428,9 +429,8 @@ HOME
 # file.
 sub read_options
 {
-    # The options are stored in $ENV{HOME}/.kdecvs-buildrc
-    my $config_file = "$ENV{HOME}/.kdecvs-buildrc";
-    open CONFIG, "<$config_file" or dead_whine();
+    # The options are stored in the file $rcfile
+    open CONFIG, "<$rcfile" or dead_whine();
 
     my ($option, $flags, $modulename);
 
@@ -444,7 +444,7 @@ sub read_options
         # options declaration, even if none are defined.
         if (not /^global\s*$/)
         {
-            print "Invalid configuration file $config_file.\n";
+            print "Invalid configuration file $rcfile.\n";
             print "Expecting global settings section!\n";
             finish(1);
         }
@@ -476,7 +476,7 @@ sub read_options
 
         if (not /^module\s+[-\.\w]+\s*$/)
         {
-            print "Invalid configuration file $config_file!\n";
+            print "Invalid configuration file $rcfile!\n";
             print "Expecting a start of module section.\n";
             print "Global settings will be retained.\n";
         }
@@ -628,6 +628,7 @@ Options:
                          directory or re-run make -f Makefile.cvs.
     --recreate-configure Run make -f Makefile.cvs again to redo the configure
                          script.
+    --rc-file <filename> Read configuration from filename instead of default.
     --no-rebuild-on-fail Don't try to rebuild a module from scratch if it
                          failed building and we didn't already try to build it
                          from scratch.
@@ -683,6 +684,17 @@ DONE
 
             /^--build-system-only$/ && do {
                 $global_opts{'#build-system-only'} = 1;
+                last SWITCH;
+            };
+
+            /^--rc-file$/ && do {
+                $rcfile = shift @ARGV;
+                if (not $rcfile)
+                {
+                    print "You must specify a filename to use as the config file!\n";
+                    exit 8;
+                }
+
                 last SWITCH;
             };
 
