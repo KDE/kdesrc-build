@@ -25,6 +25,7 @@ use Fcntl;    # For sysopen constants
 # because I'm an adult and you're not! :-P
 my %global_opts = (
     "checkout-only"     => "",
+    "apply-qt-patches"  => "",
     "configure-flags"   => "",
     "qtdir"             => "",
     "kdedir"            => "",
@@ -839,6 +840,22 @@ EOF
     print "<<<  UPDATE COMPLETE  >>>\n";
 }
 
+# Subroutine to run the qt-copy apply_patches script.  Assumes we're
+# already in the right directory.
+sub safe_apply_patches
+{
+    my $module = 'qt-copy';
+
+    if (get_option($module, 'pretend'))
+    {
+        print "Would have run ./apply_patches\n";
+        return 0;
+    }
+
+    print "Applying recommended Qt patches.\n";
+    return (system("apply_patches") >> 8);
+}
+
 # Subroutine to setup the build system in a directory.  The first parameter
 # is the module name.  Returns boolean true on success, boolean false (0)
 # on failure.
@@ -895,6 +912,13 @@ sub setup_build_system
             return 0;
         }
 
+        if (($dir == "qt-copy") && get_option($dir, 'apply-qt-patches'))
+        {
+            # Run apply-patches script
+            $result = safe_apply_patches ();
+            return $result if ($result);
+        }
+        
         # Check to see if we're supposed to stop here
         return 0 if get_option ($dir, 'build-system-only');
         
@@ -957,7 +981,11 @@ sub update_module_environment
     if (get_option ($dir, "use-unsermake"))
     {
         setenv ("UNSERMAKE", "$kdecvs/kdenonbeta/unsermake/unsermake");
-    }        
+    }
+
+    # Qt has several defines of its own.  Special case qt-copy for this
+    # reason.
+    setenv ("YACC", 'byacc -d') if ($dir == "qt-copy");
 }
 
 # Subroutine to handle the build process.
