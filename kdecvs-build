@@ -905,7 +905,7 @@ sub setup_build_system
         chdir ("$kdecvs/$dir");
 
 		# Run KDE's build preparation script
-        $result = (not -e 'configure' || ($dir == 'qt-copy')) 
+        $result = (not -e 'configure' || ($dir eq 'qt-copy')) 
             ? safe_system ('make', '-f', 'Makefile.cvs') 
             : 0;
 
@@ -915,7 +915,7 @@ sub setup_build_system
             return 0;
         }
 
-        if (($dir == "qt-copy") && get_option($dir, 'apply-qt-patches'))
+        if (($dir eq "qt-copy") && get_option($dir, 'apply-qt-patches'))
         {
             # Run apply-patches script
             $result = safe_apply_patches ();
@@ -988,7 +988,7 @@ sub update_module_environment
 
     # Qt has several defines of its own.  Special case qt-copy for this
     # reason.
-    setenv ("YACC", 'byacc -d') if ($dir == "qt-copy");
+    setenv ("YACC", 'byacc -d') if ($dir eq "qt-copy");
 }
 
 # Subroutine to handle the build process.
