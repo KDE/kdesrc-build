@@ -932,6 +932,28 @@ EOF
     }
 }
 
+# Subroutine to download the admin directory of a CVS module which has already
+# been partially checked out for some reason, but checkout-only isn't set.
+# Returns boolean true on success, or boolean false on an error.
+sub download_admin_dir
+{
+    my $module = shift;
+    my $kdecvs = get_kdecvs_dir();
+    my $admindir = "$kdecvs/$module/admin";
+
+    if (pretending)
+    {
+        print "\tWould have forced checkout of $admindir\n" if not -e "$admindir";
+        return 1;
+    }
+
+    if (not -e "$admindir")
+    {
+        print "\tForcing update of admin directory for $module.\n";
+        return not checkout_cvs_partial_dir($module, 'admin', 1);
+    }
+}
+
 # Subroutine to update a list of CVS modules.  The first
 # parameter is a reference of a list of the modules to update.
 # If the module has not already been checkout out, this subroutine
@@ -980,11 +1002,30 @@ sub handle_updates
 
         chdir ("$kdecvs");
 
+        if (get_option($module, 'checkout-only'))
+        {
+            # Don't check out the entire module, merely the
+            # parts the user wants
+            $result = 1 if checkout_cvs_partial ($module);
+            next;
+        }
+
         if (-e "$kdecvs/$module/CVS")
         {
             # The CVS directory already exists, so it has probably already been
             # checked out.
             print "Updating $module\n";
+
+            # The admin directory SCREWS crap up though, make sure it's
+            # installed.
+            if (not download_admin_dir($module))
+            {
+                print "Can't download admin dir for $module!\n";
+                print "Removing from list of packages to build.\n";
+
+                dont_build($module);
+                next;
+            }
 
             $verb = 'updating';
             $command = 'up';
@@ -995,14 +1036,6 @@ sub handle_updates
 
             $verb = 'checking out';
             $command = 'co';
-        }
-
-        if (get_option($module, 'checkout-only'))
-        {
-            # Don't check out the entire module, merely the
-            # parts the user wants
-            $result = 1 if checkout_cvs_partial ($module);
-            next;
         }
 
         my @args = ('cvs', "-d$cvsroot", $command);
