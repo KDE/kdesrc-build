@@ -1,0 +1,354 @@
+#!/usr/bin/python
+
+from qt import *;
+import sys;
+import os;
+
+modules = {
+	'arts':                { 'order': 0, 'conf': { } },
+	'qt-copy':             { 'order': 1, 'conf': { } },
+	'kdesupport':          { 'order': 2, 'conf': { } },
+	'kdemultimedia':       { 'order': 4, 'conf': { } },
+	'kdelibs':             { 'order': 2, 'conf': { } },
+	'kdebase':             { 'order': 3, 'conf': { } },
+	'kdepim':              { 'order': 4, 'conf': { } },
+	'kdegraphics':         { 'order': 4, 'conf': { } },
+	'kdeaddons':           { 'order': 4, 'conf': { } },
+	'kdenetwork':          { 'order': 4, 'conf': { } },
+	'kdegames':            { 'order': 4, 'conf': { } },
+	'kdeadmin':            { 'order': 4, 'conf': { } },
+	'kdeartwork':          { 'order': 4, 'conf': { } },
+	'kdeutils':            { 'order': 4, 'conf': { } },
+	'kdetoys':             { 'order': 4, 'conf': { } },
+	'kdeedu':              { 'order': 4, 'conf': { } },
+	'kdeaccessibility':    { 'order': 4, 'conf': { } },
+	'valgrind':            { 'order': 3, 'conf': { } },
+	'kdeextragear-1':      { 'order': 5, 'conf': { } },
+	'kdeextragear-2':      { 'order': 5, 'conf': { } },
+	'kdeextragear-3':      { 'order': 5, 'conf': { } },
+	'kdevelop':            { 'order': 4, 'conf': { } },
+	'kde-common':          { 'order': 2, 'conf': { } },
+	'kde-i18n':            { 'order': 3, 'conf': { } },
+	'kdeextragear-libs-1': { 'order': 4, 'conf': { } },
+	'kdewebdev':           { 'order': 4, 'conf': { } },
+	'koffice':             { 'order': 4, 'conf': { } },
+	'kdebindings':         { 'order': 4, 'conf': { } },
+	'kdenonbeta':          { 'order': 4, 'conf': { } },
+	'kdesdk':              { 'order': 5, 'conf': { } }
+}
+
+globals = {
+	'binpath':   {
+		'description': 'Binary path',
+		'default':     '/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin'
+	},
+	'cvs-root':   {
+		'description': 'Directory to hold CVS sources',
+		'default':     '~/kdecvs'
+	},
+	'kdedir':    {
+		'description': 'Directory to install KDE CVS into',
+		'default':     '~/kde' # We probably don't want to default to KDEDIR
+	},
+	'qtdir':     {
+		'description': 'Directory to Qt installation',
+		'default':     os.environ.get('QTDIR', '~/kdecvs/qt-copy')
+	},
+	'cvs-server': {
+		'description': 'CVS Server to use',
+		'default':     ':pserver:anonymous@anoncvs.kde.org:/home/kde'
+	},
+	'conf-flags': {
+		'description': 'Default configure flags',
+		'default':     '--enable-debug'
+	},
+	'cxxflags':  {
+		'description': 'Your CXXFLAGS',
+		'default':     '-g -pipe -march=i686'
+	}
+}
+
+class BoldLabel(QLabel):
+	def __init__(self, label, parent):
+		QLabel.__init__(self, "<center><h3><b>" + label + "</b></h3></center>", parent)
+
+class IntroPage(QVBox):
+	def __init__(self, wizard):
+		QVBox.__init__(self, wizard)
+		self.label = BoldLabel("Introduction to kdecvs-build-wizard", self)
+		self.wizard = wizard
+		self.setSpacing(10)
+		wizard.addPage(self, "Introduction")
+		self.body = QLabel("""<qt><center>This wizard will help you setup a
+basic configuration file for kdecvs-build.  To continue, please click the
+Next button.</center></qt>""", self)
+
+# Reimplemented in order to shade the text background when an item is selected
+class CheckItem(QCheckListItem):
+	def __init__(self, parent, text):
+		QCheckListItem.__init__(self, parent, text, QCheckListItem.CheckBox)
+		self.moduleName = text
+		self.listView().palette().setColor(QPalette.Disabled, QColorGroup.Text, Qt.darkGray)
+
+	def stateChange(self, status):
+		self.repaint()
+		modules[self.moduleName]['checked'] = self.state()
+		if not modules[self.moduleName].has_key('option-box'):
+			return
+		if self.state():
+			modules[self.moduleName]['option-box'].show()
+		else:
+			modules[self.moduleName]['option-box'].hide()
+
+
+	def paintCell(self, painter, cg, col, width, align):
+		newCg = QColorGroup(cg)
+		color = QColor(196, 223, 255)
+
+		if self.state() == QCheckListItem.On:
+			if self.listView().viewport().backgroundMode() != Qt.FixedColor:
+				newCg.setColor(QColorGroup.Base, color)
+			else:
+				newCg.setColor(QColorGroup.Background, color)
+			newCg.setColor(QColorGroup.Text, Qt.black)
+
+		QCheckListItem.paintCell(self, painter, newCg, col, width, align)
+
+class GlobalSettingsPage(QVBox):
+	class TextChangeProxy(QObject):
+		def __init__(self, parent, name):
+			QObject.__init__(self, parent)
+			self.name = name
+		def textChanged(self, value):
+			globals[self.name]['value'] = value
+
+	def addGridLine(self, label):
+		templabel = QLabel(globals[label]['description'], self.layoutWidget)
+		editor = QLineEdit(globals[label]['default'], self.layoutWidget)
+		globals[label]['value'] = globals[label]['default']
+		proxy = self.TextChangeProxy(self, label)
+		proxy.connect(editor, SIGNAL("textChanged(const QString&)"),
+		              proxy.textChanged)
+		return editor
+
+	def __init__(self, wizard):
+		QVBox.__init__(self, wizard)
+		self.label = BoldLabel("Welcome to page 2", self)
+		self.wizard = wizard
+		self.setSpacing(10)
+
+		self.layoutWidget = QGrid(2, self)
+		self.layoutWidget.setSpacing(4)
+		self.setStretchFactor(self.layoutWidget, 1)
+
+		for x in globals.keys():
+			temp = self.addGridLine(x)
+
+		wizard.addPage(self, "Global Settings")
+
+# Abstract class, please subclass this
+class ModulesPage(QVBox):
+	def __init__(self, wizard, moduleDict, label, banner):
+		QVBox.__init__(self, wizard)
+
+		defaultModules = [ 'arts', 'kdelibs', 'kdebase', 'kdesupport', 'kdepim',
+                           'kdegraphics', 'kdeextragear-2', 'kdeaddons',
+                           'kdeextragear-3', 'kdenetwork', 'kdegames',
+                           'kdeartwork', 'kdeutils', 'kdemultimedia',
+                           'kdetoys', 'kdeedu', 'kdeextragear-1',
+                           'kdeextragear-libs-1']
+		requiredModules = [ 'arts', 'kdelibs' ]
+
+		self.label = BoldLabel(label, self)
+		self.wizard = wizard
+
+		self.listview = QListView(self)
+		listview = self.listview
+		listview.setResizeMode(QListView.LastColumn)
+		for x in ['Module', 'Description']:
+			listview.addColumn(x)
+
+		moduleItems = { }
+		for x in moduleDict.keys():
+			moduleItems[x] = CheckItem(listview, x)
+			moduleItems[x].setText(1, moduleDict[x])
+			modules[x]['checked'] = QCheckListItem.Off
+			if x in defaultModules:
+				moduleItems[x].setState(QCheckListItem.On)
+			if x in requiredModules:
+				moduleItems[x].setEnabled(False)
+
+		listview.setColumnWidthMode(0, QListView.Manual)
+
+		wizard.addPage(self, banner)
+
+	def showEvent(self, event):
+		self.listview.adjustColumn(1)
+		self.listview.adjustColumn(0)
+
+	def resizeEvent(self, event):
+		self.listview.adjustColumn(0)
+
+class BaseModulesPage(ModulesPage):
+	def __init__(self, wizard):
+		moduleDict = {
+			'arts': 'KDE Audio engine',
+			'qt-copy': 'Copy of the current Qt library, with bugfixes and optimizations',
+			'kdesupport': 'Support libraries for some KDE programs.  Currently required for juk and amarok',
+			'kdemultimedia': 'KDE\'s multimedia software collection',
+			'kdelibs': 'Core KDE libraries, needed for all KDE apps',
+			'kdebase': 'Base KDE application distribution, includes konqueror',
+			'kdepim': 'Personal information management applications (e-mail, organizer)',
+			'kdegraphics': 'Programs to manage your images',
+			'kdeaddons': 'Useful addons to various KDE programs including kicker and konqueror',
+			'kdenetwork': 'Network utilities for KDE',
+			'kdegames': 'Simple games to make your KDE installation more fun!',
+			'kdeadmin': 'System administration tools for KDE',
+			'kdeartwork': 'More artwork and styles for KDE.  Includes Plastik and dotNET',
+			'kdeutils': 'Useful utilities, including klipper and kgpg',
+			'kdetoys': 'Amusing doo-dads to ornament your desktop',
+			'kdeedu': 'Educational programs for KDE',
+			'kdeaccessibility': 'Accessibility-related programs for KDE'
+		}
+
+		ModulesPage.__init__(self, wizard, moduleDict, 'Base Modules', 'Base Module Selection')
+
+class ExtraModulesPage(ModulesPage):
+	def __init__(self, wizard):
+		moduleDict = {
+			'valgrind': 'Excellent program optimization/memory-leak-checker',
+			'kdeextragear-1': 'Important KDE apps not yet part of KDE.  Includes amarok, gwenview, and k3b',
+			'kdeextragear-2': 'Important KDE apps not yet part of KDE.  Includes kimdaba, kmldonkey, and konversation',
+			'kdeextragear-3': 'Important KDE apps not yet part of KDE.  Includes digikam, kconfigeditor, and kiosktool',
+			'kdevelop': 'Powerful Integrated Development Environment for developers',
+			'kde-common': 'Code and data common to all of KDE',
+			'kde-i18n': 'Language translations for KDE.  This module is VERY LARGE',
+			'kdeextragear-libs-1': 'Libraries required by some extragear programs',
+			'kdewebdev': 'Applications useful for web site developers.  Includes Quanta and Kommander',
+			'koffice': 'KDE Office Suite, includes word processor, spreadsheet, and more',
+			'kdebindings': 'Bindings to allow programming Qt and/or KDE in languages other than C++',
+			'kdenonbeta': 'Smorgasbord of KDE-related applications.  This module is VERY LARGE',
+			'kdesdk': 'Collection of applications to ease the job of KDE developers'
+		}
+
+		ModulesPage.__init__(self, wizard, moduleDict, 'Extra Modules', 'Extra Module Selection')
+
+class OptionsConfBox(QGroupBox):
+	class TextChangeProxy(QObject):
+		def __init__(self, parent, modName, key):
+			QObject.__init__(self, parent)
+			self.key = key
+			self.modName = modName
+
+		def textChanged(self, value):
+			modules[self.modName]['conf'][self.key] = str(value)
+
+	def __init__(self, title, parent):
+		QGroupBox.__init__(self, 2, Qt.Horizontal, title, parent)
+		self.moduleName = title
+
+		for x in ['conf-flags', 'checkout-only']:
+			label = QLabel(x, self)
+			edit = QLineEdit(self)
+			proxy = self.TextChangeProxy(self, title, x)
+			proxy.textChanged("")
+			self.connect (edit, SIGNAL("textChanged(const QString &)"),
+						  proxy.textChanged)
+
+class OptionsPage(QScrollView):
+	def __init__(self, wizard):
+		QScrollView.__init__(self, wizard)
+		self.setResizePolicy(self.AutoOneFit)
+		self.container = QVBox(self.viewport())
+		self.container.setSpacing(7)
+		self.addChild(self.container)
+		label = BoldLabel("Welcome to page 5", self.container)
+		self.wizard = wizard
+		self.name = "Module Options"
+
+		sortedModules = modules.keys()
+		sortedModules.sort(cmpModuleOrder)
+
+		for x in sortedModules:
+			box = OptionsConfBox(x, self.container)
+
+			if not modules[x]['checked']:
+				box.hide()
+
+			modules[x]['option-box'] = box
+
+		wizard.addPage(self, self.name)
+
+def cmpModuleOrder(a,b):
+	aa = modules[a]['order']
+	bb = modules[b]['order']
+	if aa == bb:
+		return cmp(a, b)
+	return cmp(aa, bb)
+
+class GeneratePage(QVBox):
+	def __init__(self, wizard):
+		QVBox.__init__(self, wizard)
+		self.label = BoldLabel("Welcome to page 6", self)
+		self.wizard = wizard
+		self.name = "Config file generation"
+		wizard.addPage(self, self.name)
+
+		self.textEdit = QTextEdit(self)
+		self.textEdit.setFont(QFont('monospace'))
+		self.textEdit.setReadOnly(True)
+
+	def preparePage(self, text):
+		if text != self.name:
+			return
+
+		self.textEdit.clear()
+		te = self.textEdit.append
+		te("global\n")
+		for x in globals.keys():
+			te("\t" + x + " " + globals[x]['value'] + "\n")
+		te("end global\n\n")
+
+		checkedFilter = lambda x: modules[x]['checked']
+		sortedCheckedModules = filter(checkedFilter, modules.keys())
+		sortedCheckedModules.sort(cmpModuleOrder)
+		last = sortedCheckedModules[-1]
+
+		for x in sortedCheckedModules:
+			te("module " + x + "\n")
+			mod = modules[x]['conf']
+			for y in mod.keys():
+				if mod[y] != "":
+					te("\t" + y + " " + mod[y] + "\n")
+
+			te("end module\n")
+			if x != last:
+				te("\n")
+
+def main(args):
+	a = QApplication(args)
+	wizard = QWizard()
+
+# I like bold fonts better
+	font = wizard.titleFont()
+	font.setBold(True)
+	wizard.setTitleFont(font)
+
+# Add all of the pages to the wizard
+	page1 = IntroPage(wizard)
+	page2 = GlobalSettingsPage(wizard)
+	page3 = BaseModulesPage(wizard)
+	page4 = ExtraModulesPage(wizard)
+	page5 = OptionsPage(wizard)
+	page6 = GeneratePage(wizard)
+
+	a.connect(wizard, SIGNAL("selected(const QString &)"),
+	          page6.preparePage);
+
+# Start the show
+	wizard.exec_loop()
+
+if __name__=="__main__":
+	main(sys.argv)
+
+# vim: set noet sw=4 ts=4 tw=0:
