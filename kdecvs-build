@@ -43,6 +43,7 @@ my %global_opts = (
     "manual-build"      => "",
     "pretend"           => "",
     "use-unsermake"     => "",
+    "make-options"      => "",
 );
 
 my %package_opts; # Holds module-specific options.
@@ -111,17 +112,23 @@ sub safe_make (@)
 {
     my $module = shift;
     my $kdecvs = get_option('global', 'cvs-root');
+    my $opts = get_option($module, 'make-options');
     my $output = get_option($module, 'make-output-file');
 
+    # Add make-options to the given options
+    unshift (@_, split(/\s/, $opts));
+    
     if (not $output)
     {
+        # safe_system will check for pretend.
         return safe_system ('make', @_);
     }
     else
     {
         if (get_option('global', 'pretend'))
         {
-            print "Would have run make > $kdecvs/log/$output\n";
+            $opts = join('.', @_);
+            print "Would have run make $opts > $kdecvs/log/$module-$output\n";
             return 0;
         }
         
@@ -141,6 +148,7 @@ sub safe_make (@)
                 return 1 if not super_mkdir ("$kdecvs/log");
             }
             
+            # Redirect stdout and stderr to the given file.
             open (STDOUT, ">$kdecvs/log/$module-$output");
             open (STDERR, ">&STDOUT");
             exec ('make', @_);
