@@ -41,6 +41,7 @@ my %global_opts = (
     "cxxflags"            => "",
     "debug"               => "",
     "do-not-compile"      => "",
+    "set-env"             => { }, # Hash of environment vars to set
     "install-after-build" => "1", # Default to true
     "inst-apps"           => "",
     "kdedir"              => "",
@@ -474,7 +475,16 @@ sub read_options
             # Replace tildes with home directory.
             1 while ($flags =~ s/(^|:)~/$1$ENV{'HOME'}/);
             $flags = 0 if $flags =~ /^false$/;
-            $global_opts{$option} = $flags;
+
+            if ($option ne 'set-env')
+            {
+                $global_opts{$option} = $flags;
+            }
+            else
+            {
+                my ($var, @values) = split(/\s/, $flags);
+                $global_opts{'set-env'}{$var} = join(' ', @values);
+            }
         }
     }
 
@@ -508,6 +518,15 @@ sub read_options
             1 while ($flags =~ s/(^|:)~/$1$ENV{'HOME'}/);
             $flags = 0 if $flags =~ /^false$/;
             $package_opts{$modulename}->{$option} = $flags;
+            if ($option ne 'set-env')
+            {
+                $package_opts{$modulename}{$option} = $flags;
+            }
+            else
+            {
+                my ($var, @values) = split(/\s/, $flags);
+                $package_opts{$modulename}{'set-env'}{$var} = join(' ', @values);
+            }
         }
 
         # Done reading options, add this module to the update list
