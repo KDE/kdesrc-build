@@ -49,6 +49,8 @@ my %global_opts = (
     "lockfile"            => "$ENV{HOME}/.kdecvs-lock",
     "log-dir"             => "log",
     "make-install-prefix" => "",
+    "manual-build"        => "",
+    "manual-update"       => "",
     "no-cvs"              => "",
     "no-rebuild-on-fail"  => "",
     "qtdir"               => "",
@@ -1019,8 +1021,15 @@ sub adjust_update_list
 # as a list.  Parse the command-line arguments first.
 sub get_update_list
 {
-    return @update_list if $#ARGV == -1;
-    return @ARGV;
+    return @ARGV unless $#ARGV == -1;
+
+    my @return_list;
+    for (@update_list)
+    {
+        push @return_list, $_ if not get_option($_, "manual-update");
+    }
+
+    return @return_list;
 }
 
 # Subroutine to get the list of CVS modules to build.  Returned
@@ -1114,8 +1123,15 @@ sub get_build_list
         return @build_list;
     }
 
-    return @build_list if $#ARGV == -1;
-    return @ARGV;
+    return @ARGV unless $#ARGV == -1;
+
+    my @list;
+    for (@build_list)
+    {
+        push @list, $_ unless get_option($_, 'manual-update');
+    }
+
+    return @list;
 }
 
 # Helper subroutine for debugging purposes.  Dumps all of the
@@ -2438,16 +2454,9 @@ eval
     }
     else
     {
-        # Installation mode.  Check to make sure nothing's
-        # being updated.
-        if ($#ARGV > 0)
-        {
-            # We have packages specified on the command line.
-            print "Parameters ignored because we are installing:\n\t",
-                join (', ', @ARGV), "\n";
-        }
-
+        # Installation mode.
         $result = handle_install (get_install_list());
+
         output_failed_module_list ("failed to install", @install_fail);
     }
 

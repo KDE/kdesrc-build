@@ -48,11 +48,14 @@ REMOVE_FOR_INDEX-->
 Download <a href="kdecvs-build-$VERSION.tar.gz">kdecvs-build v$VERSION: ($SIZE)</a><br/>
 The file includes the script, documentation, and a sample configuration file.
 </p>
-<p>You can also download kdecvs-manager, a GUI configuration tool for the
-script.  <a href="kdecvsmanager-0.5.tar.bz2">kdecvs-manager-0.5.tar.bz2: (622.1K)</a><br/>
-It uses the standard configure/make/make install motif, and includes a help
-handbook.
-</p>
+
+<p>Do you need help with the configuration file?  Then you may want to try the
+<b><a href="/cgi-bin/kdecvs-build-wizard">online build wizard</a></b> to help
+you generate a configuration that only needs slightly tweaked.</p>
+
+<p>Also, <b>kdecvs-pywizard</b> is included with the script, so if you have
+PyQt (included with recent kdebindings) installed, you can generate a new
+configuration file using that program.</p>
 REMOVE_FOR_INDEX-->
 <a name="intro"></a>
 <h3>Introduction</h3>
@@ -64,6 +67,20 @@ those who either can't or don't feel like installing it.</p>
 
 <p id="emailaddy">It is authored by Michael Pyne (mpyne (AT) grammarian (DOT) homelinux 
 (DOT) net), and is one of several build scripts for this purpose.</p>
+
+<p><b>?</b> v0.87<br/>
+New features:
+<ul>
+<li>Added option <a href="#conf-manual-update">manual-update</a>, which
+prevents a module from updating, building, and installing unless it is
+specified on the command line.</li>
+</ul>
+
+Bug fixes:
+<ul>
+<li>Don't warn when specifying modules on the command line along with the
+<a href="#cmdline-install">--install</a> option.</li>
+</ul>
 
 <p><b>2004-Oct-12:</b> v0.86<br/>
 New features:
@@ -130,68 +147,6 @@ New features:
 which allows you to specify modules to skip from the CVS and build process, by
 request of Matt Rogers.</li>
 <li>Also, kdecvs-build is now hosted in KDE's kdenonbeta CVS module.</li>
-</ul>
-
-<p><b>2004-Aug-12:</b> v0.82<br/>
-New features:
-<ul>
-<li>You should no longer get a build error with kdebindings due to the
-argument length being too long.  This is done by using an alternate method
-of implementing builddir != srcdir that isn't quite as nice, but seems to
-work well in practice.  Bug reports on this are appreciated.  Note that
-kdebindings (at least for me), still refuses to build, even without unsermake,
-but it does get a little farther along.</li>
-<li>kdecvs-pywizard improvements.  It's still nothing super-impressive yet,
-but it now can enable unsermake for you (with certain modules automatically
-having unsermake support disabled), and save the generated file to disk.
-Also, the qt-copy module has better default configure options.</li>
-<li>The valgrind module has the same hack applied to it as kdebindings, so now
-it builds successfully for me.</li>
-<li>Nothing super-impressive, but the building module line now lists what
-module number you're on so you have something to look forward to.  Based
-loosely on a suggestion by David Saxton.</li>
-</ul>
-
-<p><b>2004-Aug-03:</b> v0.81<br/>
-New features:
-<ul>
-<li>New quick-config-generators to help you quickly generate a bare, but
-working configuration.  There is an <a
-href="/cgi-bin/kdecvs-build-wizard">online wizard</a>, and the source tarball
-includes a <a
-href="http://www.riverbankcomputing.co.uk/pyqt/index.php">PyQt</a>-based
-program called <b>kdecvs-pywizard</b>.  PyQt will also be included in the
-kdebindings modules of the upcoming KDE 3.3.  Note that both programs, and in
-particular kdecvs-pywizard, still need work, but they should be useful for
-generating a shell configuration file for new users to tweak.</li>
-<li>Add a warning if you're using qt-copy but <a href="#conf-qtdir">qtdir</a>
-is set incorrectly.</li>
-</ul>
-Bugfixes:
-<ul>
-<li>Fixed <a href="#conf-use-qt-builddir-hack">use-qt-builddir-hack</a> to
-work on the second and subsequent runs of kdecvs-build.</li>
-</ul>
-
-<p><b>2004-Jul-25:</b> v0.80<br/>
-New features:
-<ul>
-<li>Since I won't be able to predict what environment variables will need to
-be set in the future, I've added an option to allow you to set environment
-variables (either globally or per module).  This option is called <a
-href="#conf-set-env">set-env</a>, and it's a special option in that you can
-repeat the option without overwriting the previous value you gave it, as long
-as it is during the same section.  The format is (in the config file):<br/>
-<pre>set-env ENV-VAR value</pre><br/>
-Those who have had to run the cron job for this script from a wrapper shell
-script to read in /etc/profile should be able to use this option instead.  If
-not, I'm thinking of a way to source /etc/profile from a Perl script without
-having to write my own Bourne-shell, so let me know if you need it.</li>
-</ul>
-
-Bugfixes:
-<ul>
-<li>Fixed an output alignment error discovered by Michal Rokos.</li>
 </ul>
 
 <hr>
@@ -327,6 +282,7 @@ using the address you can find <a href="#emailaddy">above</a>.
 <li><a href="#conf-make-install-prefix">make-install-prefix</a></li>
 <li><a href="#conf-make-options">make-options</a></li>
 <li><a href="#conf-manual-build">manual-build</a></li>
+<li><a href="#conf-manual-update">manual-update</a></li>
 <li><a href="#conf-no-cvs">no-cvs</a></li>
 <li><a href="#conf-no-rebuild-on-fail">no-rebuild-on-fail</a></li>
 <li><a href="#conf-pretend">pretend</a></li>
@@ -625,6 +581,15 @@ however.
 build this module.  It will still be kept up-to-date when updating from CVS.
 This option is exactly equivalent to the <a
 href="#cmdline-no-build">--no-build</a> command line option.
+</td>
+</tr>
+
+<tr id="conf-manual-update">
+<td valign="top">manual-update</td>
+<td valign="top">Overrides global</td>
+<td>Set the option value to 'true' to keep the build process from attempting to
+update (and by extension, build or install) this module.  If you set this
+option for a module, then you have pretty much commented it out.
 </td>
 </tr>
 
