@@ -122,7 +122,7 @@ sub get_option
 # is name of the log file (relative to the log directory), and the
 # second parameter is a reference to an array with the command and
 # its arguments
-sub log_command ($@)
+sub log_command
 {
     my $kdecvs = get_option('global', 'cvs-root');
     my $pid;
@@ -683,7 +683,7 @@ sub checkout_cvs_partial_dir
         }
 
         safe_unlink ("$kdecvs/$module/admin");
-        @args = ('ln', '-s', "$kdecvs/kde-common/admin", "$module/$dir");
+        return safe_system('ln', '-s', "$kdecvs/kde-common/admin", "$module/$dir");
     }
     else
     {
@@ -696,7 +696,7 @@ sub checkout_cvs_partial_dir
 
     my $fname = "$module/$dir"; # $dir may itself contain slashes
     $fname =~ s/\//-/g;
-    return log_command ($fname, \@args);
+    return run_cvs (\@args, $fname);
 }
 
 # Subroutine to check out a specific set of directories from a module,
@@ -726,7 +726,7 @@ sub checkout_cvs_partial
     push @args, '-r', get_option($module, "release-tag") if get_option($module, 'release-tag');
     push @args, $module;
 
-    if (log_command ("$module-base-cvs", \@args))
+    if (run_cvs (\@args, "$module-base-cvs"))
     {
         print "Error trying to partially checkout $module!\n$!\n";
         print "The module will be blocked from building.\n";
@@ -870,10 +870,6 @@ sub handle_updates
             $command = 'co';
         }
 
-        my @args = ('cvs', "-d$cvsroot", $command);
-        push @args, '-r', get_option($module, "release-tag") if get_option($module, "release-tag");
-        push @args, $module;
-
         if (get_option($module, 'checkout-only'))
         {
             # Don't check out the entire module, merely the
@@ -882,7 +878,11 @@ sub handle_updates
             next;
         }
 
-        if (log_command("$module-cvs-$command", \@args))
+        my @args = ('cvs', "-d$cvsroot", $command);
+        push @args, '-r', get_option($module, "release-tag") if get_option($module, "release-tag");
+        push @args, $module;
+
+        if (run_cvs(\@args, "$module-cvs-$command"))
         {
             print "Error $verb $module, removing from list of packages to build.\n";
             dont_build ($module);
@@ -990,6 +990,64 @@ sub needs_refreshed
         (not -e "$kdecvs/build/$module/Makefile"));
 
     return 0;
+}
+
+sub run_cvs
+{
+    my $arg_ref = shift;
+    my $logfilename = shift;
+    my %hash_count;
+    my $kdecvs = get_option ('global', 'cvs-root');
+    my $result;
+
+    # Do cvs update.
+    $result = log_command($logfilename, $arg_ref);
+
+    # There will be no result if we're pretending, so don't even
+    # bother.
+    return 0 if (get_option ('global', 'pretend'));
+
+    $logfilename = "$kdecvs/log/$logfilename";
+
+    # We need to open the file and try to determine what the CVS process
+    # did.
+    open CVS_LOG, "<$logfilename";
+    while (<CVS_LOG>)
+    {
+        # Count updates and patches together.
+        $hash_count{'updated'}++    if /^U/;
+        $hash_count{'updated'}++    if /^P/;
+        $hash_count{'added'}++      if /^A/;
+        $hash_count{'removed'}++    if /^R/;
+        $hash_count{'modified'}++   if /^M/;
+        $hash_count{'conflicted'}++ if /^C/;
+    }
+
+    close CVS_LOG;
+
+    my %endings = (
+        'updated'     => 'files were updated',
+        '1updated'    => 'file was updated',
+        'added'       => 'files were added',
+        '1added'      => 'file was added',
+        'removed'     => 'files were removed',
+        '1removed'    => 'file was removed',
+        'modified'    => 'files were modified',
+        '1modified'   => 'file was modified',
+        'conflicted'  => 'files had conflicts',
+        '1conflicted' => 'file had conflicts',
+    );
+
+    my ($key, $value);
+    while (($key, $value) = each %hash_count)
+    {
+        next unless $value > 0;
+        my $ending_key = $value > 1 ? $key : ('1' . $key);
+        my $ending = $endings{$ending_key};
+        print "$value $ending.\n";
+    }
+
+    return $result;
 }
 
 # Subroutine to setup the build system in a directory.  The first parameter
