@@ -46,6 +46,7 @@ my %global_opts = (
     "libpath"             => "",
     "lockfile"            => "$ENV{HOME}/.kdecvs-lock",
     "log-dir"             => "log",
+    "make-install-prefix" => "",
     "no-cvs"              => "",
     "no-rebuild-on-fail"  => "",
     "qtdir"               => "",
@@ -242,7 +243,8 @@ sub log_command
         # Redirect stdout and stderr to the given file.
         if (not get_option('global', 'debug'))
         {
-            open (STDIN, "</dev/null");
+# Comment this out because it conflicts with make-install-prefix
+#            open (STDIN, "</dev/null");
             open (STDOUT, ">$logdir/$module-$filename.log");
             open (STDERR, ">&STDOUT");
         }
@@ -1649,10 +1651,15 @@ sub handle_install
             next;
         }
 
+        # Add make-install-prefix options.
+        my @prefix = split(/\s/, get_option ($module, 'make-install-prefix'));
+        my @args = (@prefix, 'make', 'install');
+
         # Just in case, I guess.
         print "Installing $module\n";
         update_module_environment ($module);
-        if (log_command ($module, "install", [ 'make', 'install' ]))
+
+        if (log_command ($module, "install", \@args))
         {
             print "\tUnable to install $module!\n";
             $result = 1;
