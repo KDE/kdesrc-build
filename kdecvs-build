@@ -609,6 +609,7 @@ sub checkout_cvs_partial_dir
 {
     my $module = shift;
     my $dir = shift;
+    my $recurse = shift;
     my @args;
     my $kdecvs = get_option ("global", "cvs-root");
     my $cvsroot = get_option ("global", "cvs-server");
@@ -636,7 +637,9 @@ sub checkout_cvs_partial_dir
     }
     else
     {
-        @args = ('cvs', "-d$cvsroot", "co");
+        @args = ('cvs', "-d$cvsroot");
+        push @args, (-e "$module/$dir") ? 'up' : 'co';
+        push @args, '-l' unless $recurse;
         push @args, '-r', get_option($module, "release-tag") if (get_option($module, "release-tag"));
         push @args, "$module/$dir";
     }
@@ -664,15 +667,12 @@ sub checkout_cvs_partial
     # add it.
     push (@dirlist, 'admin') if scalar grep (/^admin$/, @dirlist) == 0;
     
-    $result = 0;
-    if (not -e "$kdecvs/$dir")
-    {
-        my @args = ('cvs', "-d$cvsroot", 'co', '-l');
-        push @args, '-r', get_option($dir, "release-tag") if get_option($dir, 'release-tag');
-        push @args, $dir;
+    @args = ('cvs', "-d$cvsroot");
+    push @args, (-e "$kdecvs/$dir") ? 'up' : 'co', '-l';
+    push @args, '-r', get_option($dir, "release-tag") if get_option($dir, 'release-tag');
+    push @args, $dir;
 
-        $result = safe_system (@args);
-    }
+    $result = safe_system (@args);
     
     if ($result)
     {
@@ -683,95 +683,45 @@ sub checkout_cvs_partial
         return;
     }
 
-    for $item (@dirlist)
+ITEM_LOOP: for $item (@dirlist)
     {
-        # Now check out each requested subdirectory
-        $result = checkout_cvs_partial_dir ($dir, $item);
+        # We need to split each item in this list into its respective directories.
+        # For example, we may be checking out kdenonbeta/applets/ksearchapplet.  We
+        # need to (non-recursively) download kdenonbeta/applets, and then
+        # (recursively) kdenonbeta/applets/ksearchapplet.  This is because of stuff
+        # like the Makefile.am files that are laying around.
+
+        my @dir_pieces = split('/', $item);
+        my $piece = shift @dir_pieces;
+
+        while (scalar (@dir_pieces))
+        {
+            # Don't recurse, we have more pieces.
+            $result = checkout_cvs_partial_dir ($dir, $piece, 0);
+
+            if ($result)
+            {
+                print "Unable to check out $dir/$piece!\n";
+                print "Module $dir will be blocked from building.\n";
+
+                dont_build ($dir);
+                next ITEM_LOOP;
+            } 
+            
+            $piece = join ('/', $piece, shift @dir_pieces);
+        }
+
+        # Recurse here, we're finished with prior dirs.
+        $result = checkout_cvs_partial_dir ($dir, $piece, 1);
+        
         if ($result)
         {
-            print "Unable to check out $dir/$item!\n";
+            print "Unable to check out $dir/$piece!\n";
             print "Module $dir will be blocked from building.\n";
 
             dont_build ($dir);
-            return;
-        }
-    }
-}
-
-# Subroutine to update and already-checked out CVS module, except that
-# it updates a specific set of directories instead of the entire module.
-# If it is asked to update a directory that hasn't been checked out, it
-# will automatically check it out for you.
-#
-# First parameter is the module to handle.  It will automatically select
-# the list of directories to update based on %package_opts.
-sub update_cvs_partial
-{
-    my $dir = shift;
-    my $kdecvs = get_option ('global', 'cvs-root');
-    my $cvsroot = get_option ('global', 'cvs-server');
-    my @dirlist = split (/\s+/, get_option($dir, 'checkout-only'));
-    my ($item, $result, $verb);
-
-    # We are being called because $kdecvs/$dir does exist.
-    # Beyond that, we don't know anything for certain.  For example,
-    # the user may have added a directory that should be checked out
-    # after already doing a checkout of other directories from this
-    # module.  We need to be careful.
-    
-    # We need to change directory first
-    chdir ($kdecvs);
-    
-    # Let's check to see if admin is included in this list.
-    # If not, add it.  But remember to ignore it later if we're only
-    # updating, as the symlink to ../kde-common/admin will take care of
-    # that.
-    push (@dirlist, "admin") if scalar grep (/^admin$/, @dirlist) == 0;
-    
-    # Now, let's update the CVS root. CVS requires CVSROOT be
-    # specified, either on the command line, or through the
-    # environment.
-    $result = safe_system ('cvs', "-d$cvsroot", 'up', '-l', $dir);
-    
-    if ($result)
-    {
-        print "Unable to partially update $dir!\n";
-        print "Building will be blocked.\n";
-        dont_build ($dir);
-    }
-
-    # Now, let's go and iterate over each subdirectory of the
-    # module.  If it's already there, update it.  Otherwise,
-    # we need to check it out of CVS.
-    for $item (@dirlist)
-    {
-        if (not -e "$dir/$item")
-        {
-            # Checkout
-            $result = checkout_cvs_partial_dir ($dir, $item);
-            $verb = "checkout";
-        }
-        else
-        {
-            # Update, set CVSROOT
-
-            # We want to ignore admin since it's a symlink EXCEPT for
-            # when the module is kde-common, since it isn't a symlink
-            # then.
-            next if ($item eq 'admin' && $dir ne 'kde-common');
-
-            $result = safe_system ('cvs', "-d$cvsroot", 'up', "$dir/$item");
-            $verb = "update";
-        }
-
-        if ($result)
-        {
-            print "Unable to $verb $dir/$item!!\n";
-            print "Building will be blocked for $dir.\n";
-            dont_build ($dir);
-
-            return;
-        }
+            next;
+        } 
     }
 }
 
@@ -846,7 +796,7 @@ EOF
             {
                 # Don't check out the entire module, merely the
                 # parts the user wants
-                update_cvs_partial ($dir);
+                checkout_cvs_partial ($dir);
                 next;
             }
             
