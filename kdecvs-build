@@ -235,6 +235,10 @@ sub log_command
             return 1 if not super_mkdir ("$logdir");
         }
 
+        # Add symlink to the directory. EVIL USE OF .. AHEAD!
+        unlink("$logdir/../latest") if -l "$logdir/../latest";
+        system('ln', '-s', "$logdir", "$logdir/../latest");
+
         # Redirect stdout and stderr to the given file.
         if (not get_option('global', 'debug'))
         {
@@ -1291,7 +1295,7 @@ sub setup_build_system
     if ($module eq 'qt-copy' && get_option($module, 'use-qt-builddir-hack'))
     {
         if (log_command ('qt-copy', 'create-builddir', ['cp', '-a', 
-                         "$moduledir", "$builddir/qt-copy" ]))
+                         "$kdecvs/$module", "$builddir/qt-copy" ]))
         {
             print "Error creating qt-copy build system!\n";
             return 0;
