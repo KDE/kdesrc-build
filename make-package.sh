@@ -85,3 +85,4 @@ echo "Home page index updated"
 
 # Install the script for this computer.
 install -m 0755 -g root -o root kdecvs-build /usr/bin
+echo "kdecvs-build version $VERSION installed to /usr/bin"
