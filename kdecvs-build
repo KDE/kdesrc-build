@@ -70,6 +70,7 @@ my %global_opts = (
 );
 
 my %package_opts; # Holds module-specific options.
+my %ignore_list;  # List of packages to refuse to include in the build list.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
 my $install_flag; # True if we're in install mode.
@@ -530,11 +531,11 @@ sub read_options
         }
 
         # Done reading options, add this module to the update list
-        push (@update_list, $modulename);
+        push (@update_list, $modulename) unless exists $ignore_list{$modulename};
 
         # Add it to the build list, unless the build is only
         # supposed to be done manually.
-        if (not get_option ($modulename, 'manual-build'))
+        if (not get_option ($modulename, 'manual-build') and not exists $ignore_list{$modulename})
         {
             push (@build_list, $modulename);
         }
@@ -623,7 +624,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
-    my $version = "kdecvs-build 0.82\n";
+    my $version = "kdecvs-build 0.83\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -771,6 +772,32 @@ DONE
                     print "You must specify a filename to use as the config file!\n";
                     exit 8;
                 }
+
+                last SWITCH;
+            };
+
+            /^--ignore-modules$/ && do {
+                # We need to keep read_options() from adding these modules to
+                # the build list, taken care of by ignore_list.  We then need
+                # to remove the modules from the command line, taken care of
+                # by the @ARGV = () statement;
+                my @options = ();
+                foreach (@ARGV)
+                {
+                    if (/^-/)
+                    {
+                        push @options, $_;
+                    }
+                    else
+                    {
+                        $ignore_list{$_} = 1;
+
+                        # the pattern match doesn't work with $_, alias it.
+                        my $module = $_;
+                        @argv = grep (!/^$module$/, @argv);
+                    }
+                }
+                @ARGV = @options;
 
                 last SWITCH;
             };
