@@ -111,6 +111,38 @@ sub get_option
     }
 }
 
+# Subroutine to run a command with redirected STDOUT and STDERR.  First parameter
+# is name of the log file (relative to the log directory), and the
+# second parameter is a reference to an array with the command and
+# its arguments
+sub log_command ($@)
+{
+    my $kdecvs = get_option('global', 'cvs-root');
+    my $pid;
+    my $filename = shift;
+    my @command = @{(shift)};
+    
+    if ($pid = fork)
+    {
+        # Parent
+        waitpid $pid, 0;
+        return $?;
+    }
+    else
+    {
+        # Child
+        if (not -e "$kdecvs/log")
+        {
+            return 1 if not super_mkdir ("$kdecvs/log");
+        }
+
+        # Redirect stdout and stderr to the given file.
+        open (STDOUT, ">$kdecvs/log/$filename");
+        open (STDERR, ">&STDOUT");
+        exec (@command);
+    }
+}
+
 # Subroutine to run the make command with the arguments given by the
 # passed list.  If make-output-file is set, the output of STDOUT and
 # STDERR will be redirected to that file.  The first argument of the
@@ -138,28 +170,8 @@ sub safe_make (@)
             print "Would have run make $opts > $kdecvs/log/$module-$output\n";
             return 0;
         }
-
-        my $pid;
-
-        if ($pid = fork)
-        {
-            # Parent
-            waitpid $pid, 0;
-            return $?;
-        }
-        else
-        {
-            # Child
-            if (not -e "$kdecvs/log")
-            {
-                return 1 if not super_mkdir ("$kdecvs/log");
-            }
-
-            # Redirect stdout and stderr to the given file.
-            open (STDOUT, ">$kdecvs/log/$module-$output");
-            open (STDERR, ">&STDOUT");
-            exec ('make', @_);
-        }
+        
+        return log_command ("$module-$output", ['make', @_] );
     }
 }
 
@@ -879,7 +891,7 @@ sub safe_apply_patches
 {
     my $module = 'qt-copy';
 
-    if (get_option($module, 'pretend'))
+    if (get_option('global', 'pretend'))
     {
         print "Would have run ./apply_patches\n";
         return 0;
@@ -887,6 +899,28 @@ sub safe_apply_patches
 
     print "Applying recommended Qt patches.\n";
     return (system("apply_patches") >> 8);
+}
+
+# Subroutine to run and log the configure command.  First parameter is the
+# path to the configure script to run, the second parameter is a scalar
+# containing all of the configure flags to apply
+sub safe_configure($$)
+{
+    my $kdecvs = get_option('global', 'cvs-root');
+    my $module = shift;
+    my $script = "$kdecvs/$module/configure";
+    my @commands = @{(shift)};
+
+    if (get_option('global', 'pretend'))
+    {
+        print "Would have configured the module.\n";
+        return 0;
+    }
+    
+    print "Running configure...\n";
+    unshift @commands, $script;
+    
+    return log_command("$module-configure.log", \@commands);
 }
 
 # Subroutine to setup the build system in a directory.  The first parameter
@@ -927,6 +961,14 @@ sub setup_build_system
             }
         }
 
+        # Clean qt-copy separately
+        if ($dir eq 'qt-copy')
+        {
+            chdir ("$kdecvs/qt-copy");
+            safe_system ('make', 'clean') if ($dir eq 'qt-copy');
+            chdir ("$kdecvs/build");
+        }
+
         # Now create the directory
         if (not super_mkdir ("$dir"))
         {
@@ -965,7 +1007,7 @@ sub setup_build_system
         # qt-copy doesn't use this metaphor, however.
         chdir ("$kdecvs/build/$dir") unless $dir eq 'qt-copy';
 
-        my $conf_flags = get_option ($dir, 'configure-flags');
+        my @conf_args = split (/\s+/, get_option($dir, 'configure-flags'));
 
         # Configure for srcdir != builddir build.
         # Also get the user's CXXFLAGS
@@ -976,11 +1018,11 @@ sub setup_build_system
         if ($dir ne 'qt-copy')
         {
             my $kdedir = get_option ('global', 'kdedir');
-            $conf_flags .= " 'CXXFLAGS=$cxxflags'" if $cxxflags;
-            $conf_flags .= " --prefix=$kdedir";
+            push @conf_args, "CXXFLAGS=$cxxflags" if $cxxflags;
+            push @conf_args, "--prefix=$kdedir";
         }
 
-        $result = safe_system ("$kdecvs/$dir/configure $conf_flags");
+        $result = safe_configure ($dir, \@conf_args);
         if ($result)
         {
             print "Unable to configure $dir!\n";
