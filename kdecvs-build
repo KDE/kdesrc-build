@@ -937,6 +937,9 @@ sub setup_build_system
         # Note this is the checkout directory, not the build directory
         chdir ("$kdecvs/$dir");
 
+        # Update the PATH and other important environment variables.
+        update_module_environment ($dir);
+
         # Run KDE's build preparation script
         $result = (not -e 'configure' || ($dir eq 'qt-copy')) 
             ? safe_system ('make', '-f', 'Makefile.cvs') 
