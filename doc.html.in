@@ -62,10 +62,25 @@ REMOVE_FOR_INDEX-->
 this script neither requires nor uses <a href="http://www.cvsup.org/">CVSup</a>, for
 those who either can't or don't feel like installing it.</p>
 
-<p>It is authored by Michael Pyne (mpyne (AT) grammarian (DOT) homelinux 
+<p id="emailaddy">It is authored by Michael Pyne (mpyne (AT) grammarian (DOT) homelinux 
 (DOT) net), and is one of several build scripts for this purpose.</p>
 
-<p><b>2004-Jun-15:</b> v$VERSION<br />
+<p><b>2004-Jun-17:</b> v$VERSION<br/>
+New features:
+<ul>
+<li>The script now will report how long each module spent building, both in
+the output and in the build-status log file.</li>
+<li>Someone had requested an option for having separate compilation and link
+cycles while building a program.  Unfortunately, that doesn't appear to be
+supported by unsermake, and I don't think it makes sense anyways, as some
+programs in a module be depend on a shared or convienience lib that must be
+linked first.  So this option isn't coming. :-(</li>
+<li>Other than that, everything I wanted to accomplish for v$VERSION should be
+in.</li>
+</ul>
+</p>
+
+<p><b>2004-Jun-15:</b> v0.73-pre1<br />
 Bugfixes:
 <ul>
 <li>The <a href="#conf-no-rebuild-on-fail">no-rebuild-on-fail</a>
@@ -224,6 +239,14 @@ appropriate.</li>
 
 <li>Support for checking out specific branches of CVS modules.
 
+<li>Times the build process for modules.</li>
+
+<li>Will automatically try to rebuild modules that were using incremental
+make, which is prone to failure after certain kinds of CVS commits.</li>
+
+<li>Can resume a previous script, or start the build process from a particular
+module.</li>
+
 <li>Much better support for qt-copy than 0.4x.</li>
 
 <li>Can create a .cvsrc automatically if you forget to. .cvspass still isn't
@@ -240,7 +263,8 @@ specify: <pre>qtdir ~/kdecvs/qt-copy</pre></li>
 <li>Automatically sets up a build system, with the source directory not the
 same as the build directory, in order to keep the CVS download directory
 pristine. The exception is qt-copy, which isn't designed to be built like
-that.</li>
+that (unless you'd like to test <a
+href="#conf-use-qt-builddir-hack">use-qt-builddir-hack</a>).</li>
 
 <li>You can specify global options to apply to every module to check out, and
 you can specify options to apply to individual modules as well.</li>
@@ -256,13 +280,18 @@ including KDEDIR, QTDIR, DO_NOT_COMPILE, and CXXFLAGS.</li>
 <li>Includes CVS over SSH support.  The script CANNOT access your private key
 if it is password protected, so using ssh-agent is recommended.</li>
 
-<li>Command logging.  Logs are not dated, so they are overwritten after
-consecutive runs of the program.</li>
+<li>Command logging.  Logs are dated and numbered so that you always have a
+log of a script run.  Also, a special symlink called latest is created to
+always point to the most recent log entry in the log directory.</li>
 
 <li>If you're using a user build of KDE instead of a system build (for which
 you must be root to install), you can use the script to install for you.  I
 haven't audited this code, and it makes ample use of the <code>system()</code>
 call, so I would not recommend running it as root at this point.</li>
+
+<li>You can use <a href="#conf-make-install-prefix">make-install-prefix</a> to
+prefix the make install command line with a separate command, which is useful
+for sudo.</li>
 
 <li>You can check out only a portion of a KDE CVS module.  For example, you
 could check out only taglib from kdesupport, or only K3B from kdeextragear-1.
@@ -273,10 +302,7 @@ work.</li>
 command line, the script will give a very verbose description of the commands
 it is about to execute, without actually executing it.</li>
 
-<li>Saves a list of the modules that successfully built as the file
-successfully-built in the build directory.</li>
-
-<li>Can log output of the make command to a file in $KDECVSDIR/log.</li>
+<li>Can log output of all commands to a file in $KDECVSDIR/log.</li>
 
 </ul></p>
 <p>Things that kdecvs-build does NOT do:
@@ -310,6 +336,45 @@ end module
 example, kdelibs or kdebase).  Some options override global options, some
 add to global options, and some global options simply can't be overridden.
 </p>
+
+<p>The following is an alphabetized list of options you can use.  Click on the
+option to find out more about it.  If one is not documented, please e-mail me
+using the address you can find <a href="#emailaddy">above</a>.
+
+<ul>
+<li><a href="#conf-apply-qt-patches">apply-qt-patches</a></li>
+<li><a href="#conf-binpath">binpath</a></li>
+<li><a href="#conf-build-system-only">build-system-only</a></li>
+<li><a href="#conf-checkout-only">checkout-only</a></li>
+<li><a href="#conf-configure-flags">configure-flags</a></li>
+<li><a href="#conf-cvs-root">cvs-root</a></li>
+<li><a href="#conf-cvs-server">cvs-server</a></li>
+<li><a href="#conf-cxxflags">cxxflags</a></li>
+<li><a href="#conf-debug">debug</a></li>
+<li><a href="#conf-disable-build-list">disable-build-list</a></li>
+<li><a href="#conf-do-not-compile">do-not-compile</a></li>
+<li><a href="#conf-install-after-build">install-after-build</a></li>
+<li><a href="#conf-kdedir">kdedir</a></li>
+<li><a href="#conf-libpath">libpath</a></li>
+<li><a href="#conf-lockfile">lockfile</a></li>
+<li><a href="#conf-make-install-prefix">make-install-prefix</a></li>
+<li><a href="#conf-make-options">make-options</a></li>
+<li><a href="#conf-manual-build">manual-build</a></li>
+<li><a href="#conf-no-cvs">no-cvs</a></li>
+<li><a href="#conf-no-rebuild-on-fail">no-rebuild-on-fail</a></li>
+<li><a href="#conf-pretend">pretend</a></li>
+<li><a href="#conf-qtdir">qtdir</a></li>
+<li><a href="#conf-reconfigure">reconfigure</a></li>
+<li><a href="#conf-recreate-configure">recreate-configure</a></li>
+<li><a href="#conf-refresh-build">refresh-build</a></li>
+<li><a href="#conf-release-tag">release-tag</a></li>
+<li><a href="#conf-stop-on-failure">stop-on-failure</a></li>
+<li><a href="#conf-use-qt-builddir-hack">use-qt-builddir-hack</a></li>
+<li><a href="#conf-use-unsermake">use-unsermake</a></li>
+</ul>
+
+</p>
+
 <hr>
 <a name="options"></a>
 <h3>Configuration file Options</h3>
@@ -776,7 +841,7 @@ href="#options">.kdecvs-buildrc options</a>.
 <div align="center" class="thankyou">
 <font size="-1"><a href="http://www.cvsup.org/">CVSup</a> is a registered trademark of John D. Polstra.
 <br/>
-Last modified: Tue Jun 15 02:27:06 2004</font>
+Last modified: Thu Jun 17 22:36:03 2004</font>
 </div>
 </body>
 </html>
