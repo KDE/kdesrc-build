@@ -271,6 +271,8 @@ sub safe_make (@)
         return 0;
     }
 
+    chdir (get_build_dir($module) . "/$module");
+
     print "\tCompiling...\n";
     return log_command ($module, "build", ['make', @_] );
 }
@@ -1494,7 +1496,6 @@ sub build_module
             {
                 # Force the module to rebuild and try again.
                 $package_opts{$module}->{'refresh-build'} = 1;
-                $package_opts{$module}->{'#was-rebuilt'} = 1;
             }
             else
             {
