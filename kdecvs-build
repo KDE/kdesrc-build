@@ -451,27 +451,27 @@ sub get_update_list
         @super_list = @ARGV;
     }
 
-	if (scalar grep (get_option ($_, 'use-unsermake'), @super_list))
-	{
-		if (scalar grep (/^kdenonbeta$/, @super_list) == 0)
-		{
-			unshift (@super_list, 'kdenonbeta');
+    if (scalar grep (get_option ($_, 'use-unsermake'), @super_list))
+    {
+        if (scalar grep (/^kdenonbeta$/, @super_list) == 0)
+        {
+            unshift (@super_list, 'kdenonbeta');
             $package_opts{'kdenonbeta'} = {
                 'manual-build'   => 'true',
-				'checkout-only'  => 'unsermake',
+                'checkout-only'  => 'unsermake',
             };
 
-			print "Adding kdenonbeta/unsermake to checkout-only list.\n";
-		}
-		elsif (get_option ('kdenonbeta', 'checkout-only') and 
-			get_option ('kdenonbeta', 'checkout-only') !~ /\bunsermake/)
-		{
-			$package_opts{'kdenonbeta'}->{'checkout-only'} .= " unsermake";
-			print "Adding unsermake to checkout-only list.\n";
-		}
-	}
-	
-	# Search each entry in the update list to see if someone has asked for
+            print "Adding kdenonbeta/unsermake to checkout-only list.\n";
+        }
+        elsif (get_option ('kdenonbeta', 'checkout-only') and 
+            get_option ('kdenonbeta', 'checkout-only') !~ /\bunsermake/)
+        {
+            $package_opts{'kdenonbeta'}->{'checkout-only'} .= " unsermake";
+            print "Adding unsermake to checkout-only list.\n";
+        }
+    }
+    
+    # Search each entry in the update list to see if someone has asked for
     # a partial checkout.
     if (scalar grep (get_option ($_, 'checkout-only'), @super_list))
     {
@@ -541,7 +541,7 @@ sub safe_unlink
         return 1; # Return true
     }
     
-	return unlink (shift);
+    return unlink (shift);
 }
 
 # Subroutine to execute the system call on the given list if the pretend
@@ -553,9 +553,9 @@ sub safe_system(@)
         print "Executing ", join(" ", @_), "\n";
         return system (@_) >> 8;
     }
-	
-	print "Would have run ", join(' ', @_), ".\n";
-	return 0; # Return true
+    
+    print "Would have run ", join(' ', @_), ".\n";
+    return 0; # Return true
 }
 
 # Helper subroutine to create a directory, including any parent
@@ -749,18 +749,18 @@ sub handle_updates
     print "<<<  UPDATING CVS DIRECTORIES  >>>\n\n";
 
     if (not -e "$ENV{HOME}/.cvsrc")
-	{
-		print "You do not seem to have a .cvsrc.  Now creating a default... ";
-		open CVSRC, "> $ENV{HOME}/.cvsrc";
-		print CVSRC "cvs -z4 -q\n";
-		print CVSRC "diff -u3 -p\n";
-		print CVSRC "update -dP\n";
-		print CVSRC "checkout -P\n";
-		close CVSRC;
-		print "Done\n";
-	}
-	
-	if (not -e "$ENV{HOME}/.cvspass")
+    {
+        print "You do not seem to have a .cvsrc.  Now creating a default... ";
+        open CVSRC, "> $ENV{HOME}/.cvsrc";
+        print CVSRC "cvs -z4 -q\n";
+        print CVSRC "diff -u3 -p\n";
+        print CVSRC "update -dP\n";
+        print CVSRC "checkout -P\n";
+        close CVSRC;
+        print "Done\n";
+    }
+    
+    if (not -e "$ENV{HOME}/.cvspass")
     {
         # We need to login.  We could use the Expect module to
         # simulate a user login, but that would add another
@@ -782,7 +782,7 @@ EOF
         {
             print "Unable to make directory $kdecvs!\n$!\n";
             @build_list = (); # Clear out the build list, since we can't build.
-			@install_list = (); # Can't install either.
+            @install_list = (); # Can't install either.
             return 0;
         }
     }
@@ -910,7 +910,7 @@ sub setup_build_system
         # Note this is the checkout directory, not the build directory
         chdir ("$kdecvs/$dir");
 
-		# Run KDE's build preparation script
+        # Run KDE's build preparation script
         $result = (not -e 'configure' || ($dir eq 'qt-copy')) 
             ? safe_system ('make', '-f', 'Makefile.cvs') 
             : 0;
@@ -942,7 +942,7 @@ sub setup_build_system
         my $cxxflags = get_option ($dir, 'cxxflags');
         $ENV{'CXXFLAGS'} = $cxxflags if $cxxflags;
 
-		setenv ('DO_NOT_COMPILE', get_option ($dir, 'do-not-compile'));
+        setenv ('DO_NOT_COMPILE', get_option ($dir, 'do-not-compile'));
         $conf_flags .= " 'CXXFLAGS=$cxxflags'" unless $dir eq 'qt-copy';
 
         $result = safe_system ("$kdecvs/$dir/configure $conf_flags");
