@@ -1803,9 +1803,19 @@ sub build_module
             # can try rm -rf $builddir/$module and rebuild.
 
             my $elapsed = prettify_seconds (time - $start_time);
+            my $was_rebuilt = defined $package_opts{$module}{'#was-rebuilt'};
             $start_time = time;
 
             ++$trynumber;
+
+            if ($trynumber > 3 or $was_rebuilt or get_option ($module, 'no-rebuild-on-fail'))
+            {
+                # Well we tried, but it isn't going to happen.
+                print "\n\tUnable to build $module!\n";
+                print "\tTook $elapsed of time.\n";
+                return 0;
+            }
+
             if ($trynumber == 2)
             {
                 # Just try again
@@ -1814,25 +1824,12 @@ sub build_module
                 next;
             }
 
-            if ($trynumber > 3 or
-               (not defined $package_opts{$module}->{'#was-rebuilt'} and
-                get_option ($module, 'no-rebuild-on-fail')))
-            {
-                # Well we tried, but it isn't going to happen.
-                print "\n\tUnable to build $module!\n";
-                print "\tTook $elapsed of time.\n";
-                return 0;
-            }
-
-            elsif ($trynumber == 3)
-            {
-                # Don't remove the old modules, but re-run make -f
-                # Makefile.cvs and configure.
-                print "\n\tStill couldn't build, recreating build system (builddir is safe).\n";
-                print "\tTook $elapsed of time.\n";
-                $package_opts{$module}->{'#cancel-clean'} = 1;
-                $package_opts{$module}->{'refresh-build'} = 1;
-            }
+            # Don't remove the old modules, but re-run make -f
+            # Makefile.cvs and configure.
+            print "\n\tStill couldn't build, recreating build system (builddir is safe).\n";
+            print "\tTook $elapsed of time.\n";
+            $package_opts{$module}->{'#cancel-clean'} = 1;
+            $package_opts{$module}->{'refresh-build'} = 1;
 
             # Loop again
         }
