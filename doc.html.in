@@ -65,11 +65,13 @@ those who either can't or don't feel like installing it.</p>
 <p>It is authored by Michael Pyne (mpyne (AT) grammarian (DOT) homelinux 
 (DOT) net), and is one of several build scripts for this purpose.</p>
 
-<p><b>2004-Jun-14:</b> v0.73<br />
+<p><b>2004-Jun-15:</b> v0.73<br />
 Bugfixes:
 <ul>
 <li>The <a href="#conf-no-rebuild-on-fail">no-rebuild-on-fail</a>
 configuration file option didn't actually work in prior versions.</li>
+
+<li>Fix an infinite loop exposed when you disable auto-install.</li>
 
 <li>The log file for a build now has a number appended, since multiple build
 attempts can occur during a single script run.</li>
@@ -78,6 +80,18 @@ attempts can occur during a single script run.</li>
 
 <li>More debugging output when <a href="#cmdline-debug">--debug</a> is
 activated.</li>
+
+<li>Perl exception handling has been added to the main execution loop, so you
+should never again have one of my bugs crash the script and then force you to
+manually remove the lockfile.</li>
+
+<li>Fix a bug with <a
+href="#conf-use-qt-builddir-hack">use-qt-builddir-hack</a> where having the
+option set would cause the build system setup to fail on modules other than
+qt-copy.  At least <b>I've</b> been testing. :-D</li>
+
+<li>Don't add global to the log directory path if we're grabbing the global
+log directory.</li>
 </ul>
 
 Features:
@@ -103,6 +117,12 @@ password if you need to.</li>
 and <a href="#cmdline-resume-from">--resume-from</a>, which allows you to
 start the build process from a specific module.  This option implies <a
 href="#cmdline-no-cvs">--no-cvs</a>.</li>
+
+<li>The build process outputs to a file called build-status in the global log
+directory, which lets you tell at a glance what modules built during the run
+of the script.</li>
+
+<li>The script tells you the log directory to examine after running.</li>
 </ul>
 
 <p><b>2004-Jun-13:</b> v0.72 -- <em>This Should Work Edition&trade;</em><br/>
@@ -744,7 +764,7 @@ href="#options">.kdecvs-buildrc options</a>.
 <div align="center" class="thankyou">
 <font size="-1"><a href="http://www.cvsup.org/">CVSup</a> is a registered trademark of John D. Polstra.
 <br/>
-Last modified: Mon Jun 14 20:33:06 2004</font>
+Last modified: Tue Jun 15 00:48:52 2004</font>
 </div>
 </body>
 </html>

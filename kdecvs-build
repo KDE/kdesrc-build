@@ -108,7 +108,8 @@ sub debugging()
 sub get_output_file
 {
     my $logdir = get_log_dir('global');
-    my $mode = shift;
+    my $mode;
+    $mode = shift or $mode = '';
     my $fname;
 
     # get_log_dir will return a directory ending in /global, which we don't
@@ -147,6 +148,7 @@ sub get_output_file
     print BUILD_STATUS "$fname\n";
     close BUILD_STATUS;
 
+    print "Build status file is $fname\n" if debugging;
     return $fname;
 }
 
@@ -248,6 +250,7 @@ sub get_log_dir
     my $logbase = get_subdir_path($module, 'log-dir');
     my $logpath = "$logbase/$LOG_DATE-$BUILD_ID/$module";
 
+    $logpath = "$logbase/$LOG_DATE-$BUILD_ID" if $module eq 'global';
     print "Log dir for $module is $logpath\n" if debugging;
 
     if (not -e $logpath and not super_mkdir($logpath))
@@ -1254,7 +1257,7 @@ sub safe_create_build_system
     }
 
     chdir ("$kdecvs/$module");
-    chdir ("$builddir/$module") if get_option('qt-copy', 'use-qt-builddir-hack');
+    chdir ("$builddir/$module") if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
     if (log_command ($module, "build-system", [ "make", "-f", "Makefile.cvs" ]))
     {
         print "\tUnable to create build system for $module\n";
@@ -1594,8 +1597,6 @@ sub build_module
         return 0 if not setup_build_system($module);
         return 1 if (get_option ($module, 'build-system-only'));
 
-        chdir ("$builddir/$module");
-
         if (safe_make ($module, $trynumber))
         {
             # Build failed
@@ -1605,6 +1606,7 @@ sub build_module
             # and etc and then try make again.  If that STILL doesn't work, we
             # can try rm -rf $builddir/$module and rebuild.
 
+            print "Build failed.\n";
             ++$trynumber;
             if ($trynumber == 2)
             {
@@ -1634,8 +1636,9 @@ sub build_module
         elsif (get_option($module, "install-after-build"))
         {
             handle_install($module);
-            last; # Don't forget to exit the loop!
         }
+
+        last; # Don't forget to exit the loop!
     }
 
     return 1;
@@ -1663,6 +1666,7 @@ sub handle_build
     my $cvsroot = get_option ('global', 'cvs-server');
     my $module;
     my $result;
+    my $outfile = get_output_file ();
 
     # No reason to print building messages if we're not building.
     return 0 if (scalar (@{$build_ref}) == 0);
@@ -1673,25 +1677,46 @@ sub handle_build
     # modules.
     my %env_backup = %ENV;
 
+    if (pretending)
+    {
+        print "\tWould have opened status file $outfile.\n";
+        $outfile = undef; # Don't actually try it though.
+    }
+
+    if ($outfile)
+    {
+        open STATUS_FILE, ">$outfile" or do {
+            print "\t!Unable to open output status file $outfile\n";
+            print "\t$!\n";
+            print "\tYou won't be able to use the --resume switch next run.\n";
+            $outfile = undef;
+        };
+    }
+
     foreach $module (@{$build_ref})
     {
         if (build_module ($module))
         {
+            print STATUS_FILE "$module: Succeeded.\n" if $outfile;
             push @build_done, $module;
         }
         elsif (get_option($module, 'stop-on-failure'))
         {
+            print STATUS_FILE "$module: Failed.\n" if $outfile;
             print "\n$module didn't build, stopping here.\n";
             return 1; # Error
         }
         else
         {
+            print STATUS_FILE "$module: Failed.\n" if $outfile;
             push @fail_list, $module;
         }
 
         print "\n";
         %ENV = %env_backup;
     }
+
+    close STATUS_FILE;
 
     print "<<<  BUILD DONE  >>>\n";
     print "\n<<<  PACKAGES SUCCESSFULLY BUILT  >>>\n";
@@ -1728,9 +1753,12 @@ sub handle_build
 sub finish
 {
     my $exitcode = shift;
+    my $logdir = get_log_dir('global');
     $exitcode = 0 unless $exitcode;
 
     close_lock();
+
+    print "\nYour logs are saved in $logdir\n";
     exit $exitcode;
 }
 
@@ -1798,12 +1826,28 @@ sub handle_install
 
 # Script starts.
 
-process_arguments();
-read_options();
-initialize_environment();
-setup_logging_subsystem();
+# Use some exception handling to avoid ucky error messages
+eval
+{
+    process_arguments();
+    read_options();
+    initialize_environment();
+    setup_logging_subsystem();
 
-dump_options() if get_option('global', 'debug');
+    dump_options() if get_option('global', 'debug');
+};
+
+if ($@)
+{
+    # We encountered an error.
+    print "Encountered an error in the execution of the script.\n";
+    print "The error reported was $@\n";
+    print "Please e-mail a bug report to mpyne\@grammarian.homelinux.net\n";
+    print "with this information.\n";
+
+    # Don't finish, because we haven't attained the lock yet.
+    exit 99;
+}
 
 if (not get_lock())
 {
@@ -1811,40 +1855,54 @@ if (not get_lock())
     exit 0; # Don't finish(), it's not our lockfile!!
 }
 
-my $time = localtime;
-print "Script started processing at $time\n";
-
-@update_list = get_update_list();
-@build_list = get_build_list();
-
-# Make sure unsermake is checked out automatically if needed
-adjust_update_list(\@update_list, \@build_list);
-
+# Now use an exception trapping loop that calls finish().
 my $result;
-if ($#install_list == -1)
+eval
 {
-    # No packages to install, we're in build mode
+    my $time = localtime;
+    print "Script started processing at $time\n";
 
-    $result = handle_updates (\@update_list);
-    $result = handle_build (\@build_list) unless $result;
-}
-else
-{
-    # Installation mode.  Check to make sure nothing's
-    # being updated.
+    @update_list = get_update_list();
+    @build_list = get_build_list();
 
-    if ($#ARGV > 0)
+    # Make sure unsermake is checked out automatically if needed
+    adjust_update_list(\@update_list, \@build_list);
+
+    if ($#install_list == -1)
     {
-        # We have packages specified on the command line.
-        print "Parameters ignored because we are installing:\n\t",
-            join (', ', @ARGV), "\n";
+        # No packages to install, we're in build mode
+        $result = handle_updates (\@update_list);
+        $result = handle_build (\@build_list) unless $result;
+    }
+    else
+    {
+        # Installation mode.  Check to make sure nothing's
+        # being updated.
+        if ($#ARGV > 0)
+        {
+            # We have packages specified on the command line.
+            print "Parameters ignored because we are installing:\n\t",
+                join (', ', @ARGV), "\n";
+        }
+
+        $result = handle_install (@install_list);
     }
 
-    $result = handle_install (@install_list);
-}
+    $time = localtime;
+    print "Script finished processing at $time\n";
+};
 
-$time = localtime;
-print "Script finished processing at $time\n";
+if ($@)
+{
+    # We encountered an error.
+    print "Encountered an error in the execution of the script.\n";
+    print "The error reported was $@\n";
+    print "Please e-mail a bug report to mpyne\@grammarian.homelinux.net\n";
+    print "with this information.\n";
+
+    # Don't finish, because we haven't attained the lock yet.
+    finish (99);
+}
 
 finish($result);
 
