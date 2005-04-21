@@ -171,6 +171,24 @@ sub get_kdesvn_dir
     return get_option ('global', 'source-dir');
 }
 
+# Subroutine to return the appropriate SVN URL for a given module, based on
+# the user settings.  For example, 'kdelibs' -> https://svn.kde.org/home/kde/trunk/KDE/kdelibs
+sub svn_module_url
+{
+    my $module = shift;
+    my $svn_server = get_option($module, 'svn-server');
+    my $branch = 'trunk/KDE';
+
+    # kdesupport is not actually part of KDE proper, so it is in a different
+    # directory of the Subversion server.
+    $branch = 'trunk' if $module eq 'kdesupport';
+
+    # Remove trailing slashes.
+    $svn_server =~ s/\/*$//;
+
+    return "$svn_server/$branch/$module";
+}
+
 # Convienience subroutine to return the build directory for a module. Use
 # this instead of get_subdir_path because this special-cases modules for you,
 # such as qt-copy.
@@ -240,7 +258,7 @@ sub get_log_dir
     $logpath = "$logbase/$LOG_DATE-$BUILD_ID" if $module eq 'global';
     print "Log dir for $module is $logpath\n" if debugging;
 
-    if (not -e $logpath and not super_mkdir($logpath))
+    if (not -e $logpath and not pretending and not super_mkdir($logpath))
     {
         print "Unable to create log directory $logpath!\n";
         print "\t$!\n";
@@ -248,8 +266,11 @@ sub get_log_dir
     }
 
     # Add symlink to the directory.
-    unlink("$logbase/latest") if -l "$logbase/latest";
-    system('ln', '-s', "$logbase/$LOG_DATE-$BUILD_ID", "$logbase/latest");
+    if (not pretending)
+    {
+        unlink("$logbase/latest") if -l "$logbase/latest";
+        system('ln', '-s', "$logbase/$LOG_DATE-$BUILD_ID", "$logbase/latest");
+    }
 
     return $logpath;
 }
@@ -1272,7 +1293,7 @@ sub checkout_svn_partial_dir
     @args = ('svn');
     push @args, (-e $update_dir) ? 'up' : 'co';
     push @args, '-N' unless $recurse;
-    push @args, "$svnroot/trunk/$update_dir";
+    push @args, svn_module_url($update_dir);
 
     my $fname = $dir; # $dir may itself contain slashes
     $fname =~ s/\//-/g;
@@ -1311,7 +1332,7 @@ sub checkout_svn_partial
     # Check out the module base.
     @args = ('svn');
     push @args, (-e "$kdesvn/$module") ? 'up' : 'co', '-l';
-    push @args, "$svnroot/trunk/$module";
+    push @args, svn_module_url($module);
 
     if (run_svn ($module, "base-svn", \@args))
     {
@@ -1483,7 +1504,7 @@ sub handle_updates
         }
 
         my @args = ('svn', $command);
-        push @args, "$svnroot/trunk/$module";
+        push @args, svn_module_url($module);
 
         if (run_svn($module, "svn-$command", \@args))
         {
