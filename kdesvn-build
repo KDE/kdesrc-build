@@ -178,10 +178,23 @@ sub svn_module_url
     my $module = shift;
     my $svn_server = get_option($module, 'svn-server');
     my $branch = 'trunk/KDE';
+    
+    # The following modules are in /trunk, not /trunk/KDE.  There are others,
+    # but there are the important ones.  The hash is associated with the value
+    # 1 so that we can do a boolean test by looking up the module name.
+    my %non_trunk_modules = (
+       'extragear' => 1,
+       'kdenonbeta' => 1,
+       'kdesupport' => 1,
+       'koffice' => 1,
+       'playground' => 1,
+       'qt-copy', => 1,
+       'valgrind' => 1,
+    );
 
     # kdesupport is not actually part of KDE proper, so it is in a different
     # directory of the Subversion server.
-    $branch = 'trunk' if $module eq 'kdesupport';
+    $branch = 'trunk' if $non_trunk_modules{$module};
 
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
