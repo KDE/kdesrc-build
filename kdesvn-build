@@ -14,7 +14,6 @@
 # TODO: It would be better to have lockfiles in each directory as it's
 #       being updated, instead of having one big lock for the script.
 # TODO: Port the release-tag option from kdecvs-build.
-# TODO: Investigate whether using the svn+ssh:// actually works.
 
 use strict;
 use warnings;
@@ -1334,25 +1333,18 @@ sub checkout_svn_partial_dir
     my $svnroot = get_option ("global", "svn-server");
     my $update_dir;
 
-    chdir ("$kdesvn");
+    chdir ("$kdesvn/$module");
 
-    $update_dir = "$module/$dir";
-
-    # If the directory is admin we need to checkout instead of updating if
-    # the directory didn't already exist.
-    if ($dir eq 'admin')
-    {
-        $update_dir = "$dir";
-        chdir "$module";
-    }
+    $update_dir = "$dir";
 
     my $verb = (not -e $update_dir) ? 'Checking out' : 'Updating' ;
     print ("$verb ${GREEN}$module/$dir${NORMAL}.\n");
 
     @args = ('svn');
-    push @args, (-e $update_dir) ? 'up' : 'co';
+    push @args, 'up'; # up should always work now as long as the actual module
+                      # dir is already checked out.
     push @args, '-N' unless $recurse;
-    push @args, svn_module_url($update_dir);
+    push @args, $update_dir;
 
     my $fname = $dir; # $dir may itself contain slashes
     $fname =~ s/\//-/g;
@@ -1391,7 +1383,7 @@ sub checkout_svn_partial
     # Check out the module base.
     @args = ('svn');
     push @args, (-e "$kdesvn/$module") ? 'up' : 'co', '-N';
-    push @args, svn_module_url($module);
+    push @args, (-e "$kdesvn/$module") ? $module : svn_module_url($module);
 
     if (run_svn ($module, "base-svn", \@args))
     {
