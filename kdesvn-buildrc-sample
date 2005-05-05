@@ -3,16 +3,88 @@
 global
 	binpath /usr/lib/ccache/bin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
 	configure-flags --enable-debug=full --disable-as-needed --cache-file=/home/kde-cvs/kdecvs/config.cache
-	source-dir ~/kdesvn
-	svn-server https://svn.kde.org/home/kde
-	cxxflags -Os -pipe -fvisibility-inlines-hidden -march=athlon-xp -fvisibility=default
-	kdedir ~/kde
-	make-options -j4
-	qtdir ~/kdecvs/build/qt-copy
-	use-unsermake false
+#	source-dir ~/kdesvn
+#	svn-server https://anonsvn.kde.org/home/kde
+	cxxflags -Os -pipe
+#	kdedir ~/kde
+#	make-options -j2
+#	qtdir ~/kdesvn/build/qt-copy
+#	use-unsermake true
 	set-env LDFLAGS -Wl,-O1
-	set-env PKG_CONFIG_PATH /home/kde-cvs/kde/lib/pkgconfig:/usr/X11R6/lib/pkgconfig
 end global
+
+module qt-copy
+	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng -plugin-imgfmt-mng -thread -no-exceptions -debug -fast -dlopen-opengl
+	apply-qt-patches true
+	use-qt-builddir-hack true
+end module
+
+module arts
+end module
 
 module kdesupport
 end module
+
+module kdelibs
+	configure-flags --enable-sendfile --enable-mitshm
+# You can enable this if you have GCC 4.0.0 (or a patched 3.4)
+#	cxxflags -fvisibility=hidden
+end module
+
+module kdebase
+	configure-flags --with-pam --with-shadow
+end module
+
+module kdemultimedia
+end module
+
+module kdesdk
+end module
+
+module kdenetwork
+end module
+
+module kdeadmin
+    configure-flags --with-shadow --with-pam=yes
+end module
+
+module kdebindings
+    checkout-only admin dcopc smoke qtruby korundum kjsembed dcoppython
+    use-unsermake false
+end module
+
+module kdepim
+    configure-flags --disable-exchange
+end module
+
+module kdeutils
+end module
+
+module kdegraphics
+end module
+
+module kdeaddons
+end module
+
+module kdegames
+#    use-unsermake false
+end module
+
+module kdetoys
+end module
+
+module kdeedu
+end module
+
+module koffice
+	use-unsermake false
+end module
+
+module kdevelop
+	use-unsermake false
+end module
+
+module kdewebdev
+end module
+
+# Add more modules as needed, they support the same options as before.
