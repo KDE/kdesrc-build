@@ -19,7 +19,7 @@
 use strict;
 use warnings;
 use Fcntl;    # For sysopen constants
-use POSIX qw(strftime);
+use POSIX 'strftime';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -28,39 +28,39 @@ use POSIX qw(strftime);
 # if the option is actually set.
 my %global_opts = (
     "apply-qt-patches"    => "",
-    "binpath"             => "",
+    "binpath"             => "/bin:/usr/bin:/usr/X11R6/bin:/usr/local/bin",
     "build-dir"           => "build",
     "build-system-only"   => "",
     "checkout-only"       => "",
-    "configure-flags"     => "",
-    "source-dir"          => "$ENV{HOME}/kdesvn",
-    "svn-server"          => "https://svn.kde.org/home/kde",
-    "cxxflags"            => "",
+    "configure-flags"     => "--enable-debug=full --cache-file=$ENV{HOME}/.kdesvn-conf-cache",
+    "colorful-output"     => 1, # Use color by default.
+    "cxxflags"            => "-g -pipe -march=i686",
     "debug"               => "",
+    "disable-build-list"  => "",
     "do-not-compile"      => "",
-    "set-env"             => { }, # Hash of environment vars to set
     "install-after-build" => "1", # Default to true
     "inst-apps"           => "",
     "kdedir"              => "$ENV{HOME}/kde",
     "libpath"             => "",
     "lockfile"            => "$ENV{HOME}/.kdesvn-lock",
     "log-dir"             => "log",
-    "make-install-prefix" => "",
+    "make-install-prefix" => "",  # Some people need sudo
+    "make-options"        => "-j2",
     "manual-build"        => "",
     "manual-update"       => "",
     "no-svn"              => "",
     "no-rebuild-on-fail"  => "",
-    "qtdir"               => "",
+    "pretend"             => "",
+    "qtdir"               => "$ENV{HOME}/kdesvn/build/qt-copy",
     "reconfigure"         => "",
     "recreate-configure"  => "",
     "refresh-build"       => "",
-    "release-tag"         => "",
+    "release-tag"         => "", # Doesn't work yet
+    "set-env"             => { }, # Hash of environment vars to set
+    "source-dir"          => "$ENV{HOME}/kdesvn",
     "stop-on-failure"     => "",
-    "disable-build-list"  => "",
-    "manual-build"        => "",
-    "pretend"             => "",
-    "use-unsermake"       => "",
-    "make-options"        => "",
+    "svn-server"          => "https://anonsvn.kde.org/home/kde",
+    "use-unsermake"       => "1", # Default to true now, we may need a blacklist
 );
 
 my %package_opts; # Holds module-specific options.
@@ -73,6 +73,9 @@ my $install_flag; # True if we're in install mode.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 my $rcfile = "$ENV{HOME}/.kdesvn-buildrc";
+
+# Colors
+my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
 
 # Subroutine definitions
 
@@ -194,7 +197,10 @@ sub svn_module_url
 
     # kdesupport is not actually part of KDE proper, so it is in a different
     # directory of the Subversion server.
-    $branch = 'trunk' if $non_trunk_modules{$module};
+    my $module_root = $module;
+    $module_root =~ s/\/.*//; # Remove everything after the first slash
+
+    $branch = 'trunk' if $non_trunk_modules{$module_root};
 
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
@@ -469,7 +475,7 @@ sub safe_make (@)
         {
             $opts = join(' ', @_);
             print "\tWould have switched directory to ", get_build_dir($module) . "/$module/$subdir\n";
-            print "\tWould have run $make $opts > $logdir/$logname\n";
+            print "\tWould have run $opts > $logdir/$logname\n";
 
             next;
         }
@@ -496,25 +502,54 @@ sub setenv
     return unless $val;
 
     pretending ?
-        (print "\tWould have set $var=$val.\n") :
+        (print "\tWould have set ${GREEN}$var${NORMAL}=${YELLOW}$val${NORMAL}.\n") :
         ($ENV{$var} = $val);
 }
 
-# Display an error message to the user regarding their relative lack of
-# ~/.kdesvn-buildrc, and point them to some help.
-sub dead_whine
+# Display a message to the user regarding their relative lack of
+# ~/.kdesvn-buildrc, and point them to some help.  We will continue using a
+# default set of options.
+sub no_config_whine
 {
     print <<"HOME";
-Unable to open $rcfile!
+Unable to open configuration file: $rcfile!
 $!
 
-This file is necessary as it contains connection information for the KDE
-Subversion repository, along with the list of the modules you'd like to build.
+kdesvn-build will continue using a default set of options.  These options may
+not apply to you, so feel free to visit the kdesvn-build homepage
 
-For information on the format of .kdesvn-buildrc or for a sample file,
-visit http://grammarian.homelinux.net/kdecvs-build/
+http://grammarian.homelinux.net/kdesvn-build/
+
+and use the configuration file generator to guide you through the process of
+creating a config file to customize your kdesvn-build process.
+
 HOME
-    exit (1);  # We can't go on!
+}
+
+# This subroutine assigns the appropriate options to %package_opts and the
+# update and build lists to build a default set of modules.
+sub setup_default_modules()
+{
+    @update_list = qw(qt-copy arts kdesupport kdelibs kdebase kdeartwork
+                      kdemultimedia kdepim kdeutils kdegraphics kdegames
+                      kdetoys kdeedu kdeaddons);
+    @build_list = @update_list;
+
+    %package_opts = ( );
+    for my $i (@update_list) {
+        $package_opts{$i} = { }; # Set up defaults
+        $package_opts{$i}{'set-env'} = { };
+    }
+
+    # Setup default options for qt-copy
+    $package_opts{'qt-copy'} = {
+        'conf-flags' => q(-system-zlib -qt-gif -system-libjpeg -system-libpng
+                          -plugin-imgfmt-mng -thread -no-exceptions -debug
+                          -dlopen-opengl),
+        'apply-qt-patches' => 'true',
+        'use-qt-builddir-hack' => 'true',
+        'use-unsermake' => 0,
+    };
 }
 
 # This subroutine reads in the settings from the user's configuration
@@ -522,7 +557,7 @@ HOME
 sub read_options
 {
     # The options are stored in the file $rcfile
-    open CONFIG, "<$rcfile" or dead_whine();
+    open CONFIG, "<$rcfile" or do { no_config_whine(); return; };
 
     my ($option, $flags, $modulename);
 
@@ -569,6 +604,10 @@ sub read_options
         }
     }
 
+    # If the user doesn't ask to build any modules, build a default set.
+    # The good question is what exactly should be built, but oh well.
+    setup_default_modules();
+
     # Now read in module settings
     while (<CONFIG>)
     {
@@ -582,7 +621,7 @@ sub read_options
             print "Global settings will be retained.\n";
         }
 
-        # Get modulename
+        # Get modulename (has dash, dots, or letters/numbers)
         ($modulename) = /^module\s+([-\.\w]+)\s*$/;
         $package_opts{$modulename} = { }; # Set up defaults
         $package_opts{$modulename}{'set-env'} = { };
@@ -661,6 +700,15 @@ sub initialize_environment
         $ENV{'PKG_CONFIG_PATH'} = get_option('global', 'kdedir') . "/lib/pkgconfig";
     }
 
+    if(-t STDOUT and get_option('global', 'colorful-output'))
+    {
+        $RED = "\e[1;31m";
+        $GREEN = "\e[1;32m";
+        $YELLOW = "\e[1;33m";
+        $NORMAL = "\e[0m";
+        $BOLD = "\e[1m";
+    }
+
     setup_module_environment ('global');
 }
 
@@ -729,7 +777,7 @@ sub output_failed_module_list($@)
             $logfile = "No log file" unless $logfile;
             $logfile =~ s|$homedir|~|;
 
-            print "$_ - $logfile\n";
+            print "${RED}$_${NORMAL} - $logfile\n";
         }
     }
 }
@@ -1036,11 +1084,14 @@ sub adjust_update_list
     {
         if (scalar grep (/^kdenonbeta$/, @{$list_ref}) == 0)
         {
+            print "Adding kdenonbeta/unsermake to build.\n" if pretending;
+
             # kdenonbeta isn't being downloaded by the user.
             unshift (@{$list_ref}, 'kdenonbeta');
             $package_opts{'kdenonbeta'} = {
                 'manual-build'   => 'true',
                 'checkout-only'  => 'unsermake',
+                '#suppress-auto-admin' => 1,
             };
         }
         elsif (get_option ('kdenonbeta', 'checkout-only') and
@@ -1049,6 +1100,7 @@ sub adjust_update_list
             # kdenonbeta is being checked out, but the user has
             # excluded unsermake.
             $package_opts{'kdenonbeta'}->{'checkout-only'} .= " unsermake";
+            $package_opts{'kdenonbeta'}->{'#suppress-auto-admin'} = 1;
         }
     }
 }
@@ -1294,14 +1346,8 @@ sub checkout_svn_partial_dir
         chdir "$module";
     }
 
-    if (not -e $update_dir)
-    {
-        print ("Checking out $module/$dir.\n");
-    }
-    else
-    {
-        print ("Updating $module/$dir.\n");
-    }
+    my $verb = (not -e $update_dir) ? 'Checking out' : 'Updating' ;
+    print ("$verb ${GREEN}$module/$dir${NORMAL}.\n");
 
     @args = ('svn');
     push @args, (-e $update_dir) ? 'up' : 'co';
@@ -1344,7 +1390,7 @@ sub checkout_svn_partial
 
     # Check out the module base.
     @args = ('svn');
-    push @args, (-e "$kdesvn/$module") ? 'up' : 'co', '-l';
+    push @args, (-e "$kdesvn/$module") ? 'up' : 'co', '-N';
     push @args, svn_module_url($module);
 
     if (run_svn ($module, "base-svn", \@args))
@@ -1491,7 +1537,7 @@ sub handle_updates
         {
             # The Subversion directory already exists, so it has probably already been
             # checked out.
-            print "Updating $module\n";
+            print "Updating ${GREEN}$module${NORMAL}\n";
 
             # The admin directory SCREWS crap up though, make sure it's
             # installed.
@@ -1510,7 +1556,7 @@ sub handle_updates
         }
         else
         {
-            print "Checking out $module\n";
+            print "Checking out ${GREEN}$module${NORMAL}\n";
 
             $verb = 'checking out';
             $command = 'co';
@@ -1963,9 +2009,6 @@ sub update_module_environment
     if (get_option ($module, "use-unsermake"))
     {
         setenv ("PATH", "$kdesvn/kdenonbeta/unsermake:$ENV{PATH}");
-
-        # Try to remain compatible with older unsermake and /admin
-        setenv ("UNSERMAKE", "$kdesvn/kdenonbeta/unsermake/unsermake");
     }
     else
     {
@@ -2244,7 +2287,7 @@ sub handle_build
         open BUILT_LIST, ">$kdesvn/successfully-built";
         foreach $module (@build_done)
         {
-            print "$module\n";
+            print "${GREEN}$module${NORMAL}\n";
             print BUILT_LIST "$module\n";
         }
         close BUILT_LIST;
@@ -2252,7 +2295,7 @@ sub handle_build
     else
     {
         # Just print out the results
-        print (join ("\n", @build_done), "\n");
+        print ($GREEN, join ("${NORMAL}\n${GREEN}", @build_done), "$NORMAL\n");
     }
 
     output_failed_module_list ('failed building', @fail_list);
@@ -2432,7 +2475,7 @@ my $result;
 eval
 {
     my $time = localtime;
-    print "Script started processing at $time\n";
+    print "${GREEN}Script started processing at $time${NORMAL}\n";
 
     @update_list = get_update_list();
     @build_list = get_build_list();
