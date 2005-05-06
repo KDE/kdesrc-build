@@ -1340,24 +1340,41 @@ sub checkout_svn_partial_dir
     my @args;
     my $kdesvn = get_option ("global", "source-dir");
     my $svnroot = get_option ("global", "svn-server");
-    my $update_dir;
 
     chdir ("$kdesvn/$module");
 
-    $update_dir = "$dir";
-
-    my $verb = (not -e $update_dir) ? 'Checking out' : 'Updating' ;
+    my $verb = (not -e $dir) ? 'Checking out' : 'Updating' ;
     print ("$verb ${GREEN}$module/$dir${NORMAL}.\n");
 
     @args = ('svn');
-    push @args, 'up';
+    push @args, 'up'; # The base dir is already checked out, so up should always
+                      # work.
     push @args, '-N' unless $recurse;
     push @args, $dir;
-#    push @args, svn_module_url($update_dir);
 
     my $fname = $dir; # $dir may itself contain slashes
     $fname =~ s/\//-/g;
     return run_svn ($module, $fname, \@args);
+}
+
+# Subroutine to check if we are building a module from extragear or playground,
+# if so, make sure the src directory exists, and cd into it that way the rest
+# of the extraction can happen as normal.
+# The first parameter is the module to check.
+sub check_for_extragear
+{
+    my $module = shift;
+
+    return if $module !~ /^(extragear|playground)\//;
+
+    my $base = $module;
+    $base =~ s/\/.*//; # Remove the slash and everything after
+
+    # Fully specify path
+    $base = get_kdesvn_dir() . "/$base";
+
+    super_mkdir($base);
+    chdir($base); # Go to src dir
 }
 
 # Subroutine to check out a specific set of directories from a module,
@@ -1381,20 +1398,19 @@ sub checkout_svn_partial
 
     chdir ($kdesvn);
 
-    # Check if the user explicitly asked for the given subdir on the command line.
-    # If so, don't automatically add /admin, as that would simply be annoying.
-    my $suppress_auto_admin = get_option($module, '#suppress-auto-admin');
-
-    # Check if the user specified the admin subdirectory.  If not,
-    # add it.
-    push (@dirlist, 'admin') if not $suppress_auto_admin and scalar grep (/^admin$/, @dirlist) == 0;
+    # Module names that begin with extragear/ and playground/ need some extra
+    # attention.
+    check_for_extragear($module);
 
     # Check out the module base.
     @args = ('svn');
     if(-e "$kdesvn/$module") {
         print "Updating ${GREEN}$module${NORMAL} base\n";
         push @args, 'up', '-N';
-        push @args, $module;
+
+        my $modulename = $module;
+        $modulename =~ s/^([^\/]*\/)//;
+        push @args, $modulename;
     }
     else
     {
@@ -1411,6 +1427,11 @@ sub checkout_svn_partial
 
         return 1;
     }
+
+    # If the admin dir exists and is a soft link, remove it so that svn can
+    # update it if need be.  The link will automatically be re-created later
+    # in the process if necessary by the build functions.
+    unlink ("$kdesvn/$module/admin") if -l "$kdesvn/$module/admin";
 
 ITEM_LOOP: for $item (@dirlist)
     {
@@ -1691,6 +1712,12 @@ sub safe_create_build_system
 
     chdir ("$kdesvn/$module");
     chdir ("$builddir/$module") if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
+
+    # Check for admin dir, if it doesn't exist, create a softlink
+    if ($module ne 'qt-copy' and not -e "$kdesvn/$module/admin")
+    {
+        system("ln -s $kdesvn/kde-common/admin");
+    }
 
     if ($module eq 'kdebindings' || $module eq 'valgrind')
     {
@@ -2151,7 +2178,7 @@ EOF
     my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
     {
-        print "Building $module ($cur_module_num/$total_module_num)\n";
+        print "Building $GREEN$module$NORMAL ($cur_module_num/$total_module_num)\n";
         return 0 if not setup_build_directory($module);
         return 0 if not setup_build_system($module);
         return 1 if (get_option ($module, 'build-system-only'));
@@ -2174,7 +2201,7 @@ EOF
             if ($trynumber > 3 or $was_rebuilt or get_option ($module, 'no-rebuild-on-fail'))
             {
                 # Well we tried, but it isn't going to happen.
-                print "\n\tUnable to build $module!\n";
+                print "\n\tUnable to build $YELLOW$module$NORMAL!\n";
                 print "\tTook $elapsed of time.\n";
                 return 0;
             }
@@ -2203,7 +2230,7 @@ EOF
             my $elapsed = prettify_seconds (time - $start_time);
             my $do_install = get_option($module, 'install-after-build');
 
-            print "\tBuild done after $elapsed.\n";
+            print "\tBuild done after $GREEN$elapsed$NORMAL.\n";
             $do_install ? handle_install($module)
                         : print "\tSkipping install for $module\n";
 

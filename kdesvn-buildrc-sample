@@ -1,16 +1,62 @@
 # Sample configuration file for kdesvn-build.
 
 global
-	binpath /usr/lib/ccache/bin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
-	configure-flags --enable-debug=full --disable-as-needed --cache-file=/home/kde-cvs/kdecvs/config.cache
-#	source-dir ~/kdesvn
-#	svn-server https://anonsvn.kde.org/home/kde
-	cxxflags -Os -pipe
-#	kdedir ~/kde
-#	make-options -j2
+# binpath controls the value of the PATH environment variable during
+# compilation.  If you have unusual tools that need to be in the path to build
+# KDE, add them here.  KDE's and Qt's programs are automatically added.
+	binpath /bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
+#	binpath /usr/lib/ccache/bin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
+
+# This is the Qt installation to use to build KDE.  The default is qt-copy
+# from Subversion.
 #	qtdir ~/kdesvn/build/qt-copy
+
+# You might want to use your system's built-in Qt already (3.3 or greater).  If
+# so, assign the qtdir option appropriately.
+#	qtdir /path/to/system/qt
+
+# This controls the configure flags passed to every module (except qt-copy) by
+# default.  If you have module-specific configure flags, they will be placed
+# after these flags to allow the module setting to override them.
+	configure-flags --enable-debug=full
+
+# These are the compilation flags to use by default when compiling KDE.
+	cxxflags -g -pipe -march=i686
+
+# These are the default options passed to the make command used (either make
+# or unsermake).  The default tries to build with 2 parallel compiles.  If you
+# are using distcc or have SMP, you should experiment with setting this value
+# higher for best performance.
+#	make-options -j2
+
+# This option is used to decide whether to use the unsermake build system, which
+# is usually faster and more efficient than the standard automake-based build
+# system.  It is generally stable enough to use, so it defaults to on.  You
+# can disable this on a module-by-module basis if it gives you problems.
 #	use-unsermake true
-	set-env LDFLAGS -Wl,-O1
+
+# This is the directory that your KDE sources are downloaded too.  This directory
+# also holds the build directory by default.
+#	source-dir ~/kdesvn
+
+# This directory is where everything gets built before it is installed.  By
+# default it is relative to the value for source-dir.  You can specify an
+# absolute path if you'd like.
+#	build-dir build
+
+# This is the Subversion server to download the KDE sources from.  Developers:
+# Don't forget to add your username to the URL if necessary!
+#	svn-server https://anonsvn.kde.org/home/kde
+
+# This is the directory that KDE will end up installed at.  The default is
+# appropriate for a single-user installation of KDE, which requires no root
+# permissions.  If you'd like, you can install and use the sudo program to
+# install KDE anywhere on your system, in conjunction with the
+# make-install-prefix option.
+#	kdedir ~/kde
+
+# You can also use the set-env option to add values to the build environment.
+	set-env LDFLAGS -Wl,-O1   # Optimize the linker
 end global
 
 module qt-copy
@@ -86,5 +132,14 @@ end module
 
 module kdewebdev
 end module
+
+# Modules in extragear and playground can also be added.
+# module extragear/network
+# 	# Options like checkout-only should work as before.
+# 	checkout-only konversation
+# end module
+
+# module playground/games
+# end module
 
 # Add more modules as needed, they support the same options as before.
