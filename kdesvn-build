@@ -351,6 +351,105 @@ sub get_option
     }
 }
 
+# Subroutine used to handle the checkout-only option.  It handles
+# updating subdirectories of an already-checked-out module.
+# First parameter is the module, all remaining parameters are subdirectories
+# to check out.
+#
+# Returns 0 on success, non-zero on failure.
+sub update_module_subdirectories
+{
+    my $module = shift;
+    my $result;
+
+    # If we have elements in @path, download them now
+    for my $dir (@_)
+    {
+        print "\tUpdating $GREEN$module/$dir$NORMAL\n";
+        $result = run_svn($module, 'svn-up-$dir', [ 'svn', 'up', $dir ]);
+        return $result if $result;
+    }
+
+    return 0;
+}
+
+# Checkout a module that has not been checked out before, along with any
+# subdirectories the user desires.
+# The first parameter is the module to checkout (including extragear and
+# playground modules), all remaining parameters are subdirectories of the
+# module to checkout.
+# Returns 0 on success, non-zero on failure.
+sub checkout_module_path
+{
+    my ($module, @path) = @_;
+    my $kdesvn = get_kdesvn_dir();
+    my $result;
+    my @args;
+    my $modulename = $module;
+
+    if ($module =~ /^(playground|extragear)\//)
+    {
+        my $base;
+        ($base, $modulename) = split(/\//, $module);
+        $kdesvn .= "/$base";
+    }
+
+    super_mkdir("$kdesvn") if not -e $kdesvn;
+    chdir($kdesvn);
+
+    push @args, ('svn', 'co');
+    push @args, '-N' if scalar @path;
+    push @args, svn_module_url($module);
+
+    print "Checking out ${GREEN}$module$NORMAL\n";
+    $result = run_svn($module, 'svn-co', \@args);
+    return $result if $result;
+
+    chdir("$modulename") if scalar @path;
+
+    return update_module_subdirectories($module, @path);
+}
+
+# Update a module that has already been checked out, along with any
+# subdirectories the user desires.
+# The first parameter is the module to checkout (including extragear and
+# playground modules), all remaining parameters are subdirectories of the
+# module to checkout.
+# Returns 0 on success, non-zero on failure.
+sub update_module_path
+{
+    my ($module, @path) = @_;
+    my $kdesvn = get_kdesvn_dir();
+    my $result;
+    my @args;
+    my $modulename = $module;
+
+    if ($module =~ /^(playground|extragear)\//)
+    {
+        my $base;
+        ($base, $modulename) = split(/\//, $module);
+        $kdesvn .= "/$base";
+    }
+
+    chdir("$kdesvn/$modulename");
+
+    switch_repo_url(svn_module_url($module));
+
+    push @args, ('svn', 'up');
+    push @args, '-N' if scalar @path;
+
+    print "Updating $GREEN$module$NORMAL\n";
+    $result = run_svn($module, 'svn-up', \@args);
+    return $result if $result;
+
+    # If the admin dir exists and is a soft link, remove it so that svn can
+    # update it if need be.  The link will automatically be re-created later
+    # in the process if necessary by the build functions.
+    unlink ("$kdesvn/$module/admin") if -l "$kdesvn/$module/admin";
+
+    return update_module_subdirectories($module, @path);
+}
+
 # Subroutine to run a command with redirected STDOUT and STDERR.  First parameter
 # is name of the log file (relative to the log directory), and the
 # second parameter is a reference to an array with the command and
@@ -1331,65 +1430,6 @@ sub dont_build
     push @failed_list, $module;
 }
 
-# Subroutine to checkout a Subversion module, but to do so non-recursively.
-# The first parameter should be the Subversion module to check out.
-# The second parameter should be the directory within the module to
-# checkout.
-#
-# This subroutine handles one directory within the module at a time.
-#
-# It is important to remember that the admin directory is special.  In
-# this program, admin is added automatically to the list of directories
-# to install when it is needed.
-#
-# Returns 0 on success, non-zero on failure.
-#
-# whenever a module is checked out piecewise.
-sub checkout_svn_partial_dir
-{
-    my $module = shift;
-    my $dir = shift;
-    my $recurse = shift;
-    my @args;
-    my $kdesvn = get_option ("global", "source-dir");
-    my $svnroot = get_option ("global", "svn-server");
-
-    chdir ("$kdesvn/$module");
-
-    my $verb = (not -e $dir) ? 'Checking out' : 'Updating' ;
-    print ("$verb ${GREEN}$module/$dir${NORMAL}.\n");
-
-    @args = ('svn');
-    push @args, 'up'; # The base dir is already checked out, so up should always
-                      # work.
-    push @args, '-N' unless $recurse;
-    push @args, $dir;
-
-    my $fname = $dir; # $dir may itself contain slashes
-    $fname =~ s/\//-/g;
-    return run_svn ($module, $fname, \@args);
-}
-
-# Subroutine to check if we are building a module from extragear or playground,
-# if so, make sure the src directory exists, and cd into it that way the rest
-# of the extraction can happen as normal.
-# The first parameter is the module to check.
-sub check_for_extragear
-{
-    my $module = shift;
-
-    return if $module !~ /^(extragear|playground)\//;
-
-    my $base = $module;
-    $base =~ s/\/.*//; # Remove the slash and everything after
-
-    # Fully specify path
-    $base = get_kdesvn_dir() . "/$base";
-
-    super_mkdir($base);
-    chdir($base); # Go to src dir
-}
-
 # Subroutine to split a url into a protocol and host
 sub split_url
 {
@@ -1403,153 +1443,16 @@ sub split_url
 # First and only parameter is the new repo url
 sub switch_repo_url
 {
-    my $svnroot = shift;
-    my ($rootproto, $roothost) = split_url($svnroot);
+    my $svnpath = shift;
+    my $oldurl = get_repo_url();
+    my ($rootproto, $roothost) = split_url($svnpath);
+    my ($repoproto, $repohost) = split_url(get_repo_url());
 
-    if (not pretending)
+    if($repoproto ne $rootproto or $repohost ne $roothost)
     {
-        my ($repoproto, $repohost) = split_url(get_repo_url());
-
-        if($repoproto ne $rootproto or $repohost ne $roothost)
-        {
-            print "${YELLOW}Repository URL has changed, updating${NORMAL}.\n";
-            system('svn', 'switch', '--relocate', "$repoproto://$repohost", "$rootproto://$roothost");
-        }
+        print "${YELLOW}Repository URL has changed, updating${NORMAL}.\n";
+        safe_system('svn', 'switch', '--relocate', "$oldurl", "$svnpath");
     }
-}
-
-# Subroutine to check out a specific set of directories from a module,
-# instead of recursively checking out the entire module.
-# The first parameter is the module to check out.  The subroutine will
-# automatically pull the list of directories to checkout from %package_opts.
-# Only call the subroutine if the module has set a value to checkout-only.
-sub checkout_svn_partial
-{
-    my $module = shift;
-
-    # This form of split splits on whitespace, but doesn't give empty leading or
-    # trailing fields.
-    my @dirlist = split (' ', get_option ($module, 'checkout-only'));
-
-    my @args;
-    my $kdesvn = get_kdesvn_dir();
-    my $svnroot = get_option ('global', 'svn-server');
-    my $result = 0;
-    my $item;
-
-    chdir ($kdesvn);
-
-    # Module names that begin with extragear/ and playground/ need some extra
-    # attention.
-    check_for_extragear($module);
-
-    # Check out the module base.
-    @args = ('svn');
-    if(-e "$kdesvn/$module") {
-        print "Updating ${GREEN}$module${NORMAL} base\n";
-        push @args, 'up', '-N';
-
-        my $dir = $module;
-        $dir =~ s/^.*\///; # Remove any playground or extragear
-
-        # switch repos if necessary
-        chdir ($dir);
-        switch_repo_url($svnroot);
-    }
-    else
-    {
-        print "Checking out ${GREEN}$module${NORMAL} base\n";
-        push @args, 'co', '-N';
-        push @args, svn_module_url($module);
-    }
-
-    if (run_svn ($module, "base-svn", \@args))
-    {
-        print "\tError trying to partially checkout $module!\n$!\n";
-        print "\tThe module will be blocked from building.\n";
-        dont_build ($module);
-
-        return 1;
-    }
-
-    # If the admin dir exists and is a soft link, remove it so that svn can
-    # update it if need be.  The link will automatically be re-created later
-    # in the process if necessary by the build functions.
-    unlink ("$kdesvn/$module/admin") if -l "$kdesvn/$module/admin";
-
-ITEM_LOOP: for $item (@dirlist)
-    {
-        # We need to split each item in this list into its respective directories.
-        # For example, we may be checking out kdenonbeta/applets/ksearchapplet.  We
-        # need to (non-recursively) download kdenonbeta/applets, and then
-        # (recursively) kdenonbeta/applets/ksearchapplet.  This is because of stuff
-        # like the Makefile.am files that are laying around.
-
-        my @dir_pieces = split('/', $item);
-        my $piece = shift @dir_pieces;
-
-        while (scalar (@dir_pieces))
-        {
-            # Don't recurse, we have more pieces.
-            if (checkout_svn_partial_dir ($module, $piece, 0))
-            {
-                print "Unable to check out $module/$piece!\n";
-                print "Module $module will be blocked from building.\n";
-
-                dont_build ($module);
-                $result = 1;
-                next ITEM_LOOP;
-            }
-
-            $piece = join ('/', $piece, shift @dir_pieces);
-        }
-
-        # Recurse here, we're finished with prior dirs.
-        if (checkout_svn_partial_dir ($module, $piece, 1))
-        {
-            print "Unable to check out $module/$piece!\n";
-            print "Module $module will be blocked from building.\n";
-
-            dont_build ($module);
-            $result = 1;
-            next;
-        }
-    }
-
-    return $result;
-}
-
-# Subroutine to ensure that the user has a svn configuration.  If not, one
-# similar to the recommended version on developer.kde.org will be installed.
-# TODO: Investigate whether this is still necessary.
-sub check_svn_config
-{
-}
-
-# Subroutine to download the admin directory of a Subversion module which has already
-# been partially checked out for some reason, but checkout-only isn't set.
-# Returns boolean true on success, or boolean false on an error.
-sub download_admin_dir
-{
-    my $module = shift;
-    my $kdesvn = get_kdesvn_dir();
-    my $admindir = "$kdesvn/$module/admin";
-
-    return 1 if $module eq 'qt-copy';
-
-    if (pretending)
-    {
-        print "\tWould have forced checkout of $admindir\n" if not -e "$admindir";
-        return 1;
-    }
-
-    if (not -e "$admindir")
-    {
-        print "\tForcing update of admin directory for $module.\n";
-        return not checkout_svn_partial_dir($module, 'admin', 1);
-    }
-
-    return 1;
 }
 
 # Subroutine to update a list of Subversion modules.  The first
@@ -1568,8 +1471,6 @@ sub handle_updates
 
     # No reason to print out the text if we're not doing anything.
     return 0 if get_option ('global', 'no-svn');
-
-    check_svn_config();
 
     print "<<<  UPDATING Subversion DIRECTORIES  >>>\n\n";
 
@@ -1595,55 +1496,20 @@ sub handle_updates
 
         next if get_option($module, 'no-svn');
 
-        my $command;
-        my $verb;
-
-        chdir ("$kdesvn");
-
-        if (get_option($module, 'checkout-only'))
-        {
-            # Don't check out the entire module, merely the
-            # parts the user wants
-            $result = 1 if checkout_svn_partial ($module);
-            next;
-        }
-
-        my @args = ('svn');
+        my @options = split(' ', get_option($module, 'checkout-only'));
         if (-e "$kdesvn/$module/.svn")
         {
-            # The Subversion directory already exists, so it has probably already been
-            # checked out.
-            print "Updating ${GREEN}$module${NORMAL}\n";
-
-            # If we have a slash it's probably because of playground or
-            # extragear, so let's split that out.  Otherwise we switch into
-            # the directory that already exists and just run svn up.
-            my ($base, $modulename) = split(/\//, $module);
-            ($base, $modulename) = ($module, '') if $module !~ /\//;
-
-            chdir($base);
-            switch_repo_url($svnroot);
-
-            $verb = 'updating';
-            $command = 'up';
-            push @args, $command;
-            push @args, $modulename if $modulename;
+            $result = update_module_path($module, @options);
         }
         else
         {
-            print "Checking out ${GREEN}$module${NORMAL}\n";
-
-            $verb = 'checking out';
-            $command = 'co';
-            push @args, $command;
-            push @args, svn_module_url($module);
+            $result = checkout_module_path($module, @options);
         }
 
-        if (run_svn($module, "svn-$command", \@args))
+        if ($result)
         {
-            print "Error $verb $module, removing from list of packages to build.\n";
+            print "Error updating $module, removing from list of packages to build.\n";
             dont_build ($module);
-            $result = 1;
         }
 
         print "\n";
