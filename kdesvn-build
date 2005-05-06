@@ -59,7 +59,7 @@ my %global_opts = (
     "set-env"             => { }, # Hash of environment vars to set
     "source-dir"          => "$ENV{HOME}/kdesvn",
     "stop-on-failure"     => "",
-    "svn-server"          => "https://anonsvn.kde.org/home/kde",
+    "svn-server"          => "svn://anonsvn.kde.org/home/kde",
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
 );
 
@@ -1390,6 +1390,24 @@ sub check_for_extragear
     chdir($base); # Go to src dir
 }
 
+# Subroutine to switch repos to a different one if necessary.
+# First and only parameter is the new repo url
+sub switch_repo_url
+{
+    my $svnroot = shift;
+
+    if (not pretending)
+    {
+        my $repo_url = get_repo_url();
+
+        if($repo_url ne $svnroot)
+        {
+            print "${YELLOW}Repository URL has changed, updating${NORMAL}.\n";
+            system('svn', 'switch', '--relocate', $repo_url, $svnroot);
+        }
+    }
+}
+
 # Subroutine to check out a specific set of directories from a module,
 # instead of recursively checking out the entire module.
 # The first parameter is the module to check out.  The subroutine will
@@ -1424,6 +1442,9 @@ sub checkout_svn_partial
         my $modulename = $module;
         $modulename =~ s/^([^\/]*\/)//;
         push @args, $modulename;
+
+        # switch repos if necessary
+        switch_repo_url($svnroot);
     }
     else
     {
@@ -1584,27 +1605,19 @@ sub handle_updates
             # checked out.
             print "Updating ${GREEN}$module${NORMAL}\n";
 
-            # The admin directory SCREWS crap up though, make sure it's
-            # installed.
+            # If we have a slash it's probably because of playground or
+            # extragear, so let's split that out.  Otherwise we switch into
+            # the directory that already exists and just run svn up.
+            my ($base, $modulename) = split(/\//, $module);
+            ($base, $modulename) = ($module, '') if $module !~ /\//;
 
-=pod
-
-            if (not download_admin_dir($module))
-            {
-                print "Can't download admin dir for $module!\n";
-                print "Removing from list of packages to build.\n";
-
-                dont_build($module);
-                $result = 1;
-                next;
-            }
-
-=cut
+            chdir($base);
+            switch_repo_url($svnroot);
 
             $verb = 'updating';
             $command = 'up';
             push @args, $command;
-            push @args, $module;
+            push @args, $modulename if $modulename;
         }
         else
         {
@@ -2378,6 +2391,17 @@ sub finish
 
     print "\nYour logs are saved in $logdir\n";
     exit $exitcode;
+}
+
+# Subroutine to determine the current repository URL for the current working
+# directory.
+sub get_repo_url
+{
+    my $output = `svn info | grep URL`;
+    $output =~ s/URL: (.*)$/$1/;
+    chomp $output;
+
+    return $output;
 }
 
 # Subroutine to handle the installation process.  Simply calls
