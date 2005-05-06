@@ -310,6 +310,9 @@ sub get_option
     # The #options override everything.
     return $global_opts{"#$option"} if defined $global_opts{"#$option"};
 
+    # Don't even try this
+    return 0 if $module eq 'qt-copy' and $option eq 'use-unsermake';
+
     # Configure flags and CXXFLAGS are appended to the global option
     if (($module ne 'qt-copy' && $option eq 'configure-flags')
         || $option eq 'cxxflags')
@@ -608,6 +611,7 @@ sub read_options
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
     setup_default_modules();
+    my $using_default = 1;
 
     # Now read in module settings
     while (<CONFIG>)
@@ -624,6 +628,15 @@ sub read_options
 
         # Get modulename (has dash, dots, slashes, or letters/numbers)
         ($modulename) = /^module\s+([-\/\.\w]+)\s*$/;
+
+        # Don't build default modules if user has their own wishes.
+        if ($using_default)
+        {
+            $using_default = 0;
+            %package_opts = ( );
+            @update_list = @build_list = ( );
+        }
+
         $package_opts{$modulename} = { }; # Set up defaults
         $package_opts{$modulename}{'set-env'} = { };
 
