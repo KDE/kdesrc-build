@@ -1449,11 +1449,11 @@ sub checkout_svn_partial
         print "Updating ${GREEN}$module${NORMAL} base\n";
         push @args, 'up', '-N';
 
-        my $modulename = $module;
-        $modulename =~ s/^([^\/]*\/)//;
-        push @args, $modulename;
+        my $dir = $module;
+        $dir =~ s/^.*\///; # Remove any playground or extragear
 
         # switch repos if necessary
+        chdir ($dir);
         switch_repo_url($svnroot);
     }
     else
