@@ -806,7 +806,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
-    my $version = "kdesvn-build 0.91\n";
+    my $version = "kdesvn-build 0.92\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -1390,20 +1390,30 @@ sub check_for_extragear
     chdir($base); # Go to src dir
 }
 
+# Subroutine to split a url into a protocol and host
+sub split_url
+{
+    my $url = shift;
+    my ($proto, $host) = ($url =~ m|([^:]*)://([^/]*)/|);
+
+    return ($proto, $host);
+}
+
 # Subroutine to switch repos to a different one if necessary.
 # First and only parameter is the new repo url
 sub switch_repo_url
 {
     my $svnroot = shift;
+    my ($rootproto, $roothost) = split_url($svnroot);
 
     if (not pretending)
     {
-        my $repo_url = get_repo_url();
+        my ($repoproto, $repohost) = split_url(get_repo_url());
 
-        if($repo_url ne $svnroot)
+        if($repoproto ne $rootproto or $repohost ne $roothost)
         {
             print "${YELLOW}Repository URL has changed, updating${NORMAL}.\n";
-            system('svn', 'switch', '--relocate', $repo_url, $svnroot);
+            system('svn', 'switch', '--relocate', "$repoproto://$repohost", "$rootproto://$roothost");
         }
     }
 }
