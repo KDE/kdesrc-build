@@ -14,6 +14,7 @@
 # TODO: It would be better to have lockfiles in each directory as it's
 #       being updated, instead of having one big lock for the script.
 # TODO: Port the release-tag option from kdecvs-build.
+# TODO: Investigate whether using the svn+ssh:// actually works.
 
 use strict;
 use warnings;
@@ -378,6 +379,7 @@ sub log_command
         # If the module fails building, set an internal flag in the module
         # options with the name of the log file containing the error message.
         $package_opts{$module}{'#error-log-file'} = "$logdir/$filename.log" if $?;
+
         return $?;
     }
     else
@@ -613,15 +615,15 @@ sub read_options
         s/#.*$//;       # Remove comments
         next if (/^\s*$/); # Skip blank lines
 
-        if (not /^module\s+[-\.\w]+\s*$/)
+        if (not /^module\s+[-\/\.\w]+\s*$/)
         {
             print "Invalid configuration file $rcfile!\n";
             print "Expecting a start of module section.\n";
             print "Global settings will be retained.\n";
         }
 
-        # Get modulename (has dash, dots, or letters/numbers)
-        ($modulename) = /^module\s+([-\.\w]+)\s*$/;
+        # Get modulename (has dash, dots, slashes, or letters/numbers)
+        ($modulename) = /^module\s+([-\/\.\w]+)\s*$/;
         $package_opts{$modulename} = { }; # Set up defaults
         $package_opts{$modulename}{'set-env'} = { };
 
@@ -635,8 +637,8 @@ sub read_options
             ($option, $flags) = /^\s*([-a-zA-Z0-9]+)\s+(.*?)\s*$/;
 
             # Replace tildes with home directory.
-            1 while ($flags =~ s/(^|:)~/$1$ENV{'HOME'}/);
-            $flags = 0 if $flags =~ /^false$/;
+            1 while ($flags =~ s/(^|:|=)~\//$1$ENV{'HOME'}\//);
+            $flags = 0 if $flags eq 'false';
             if ($option ne 'set-env')
             {
                 $package_opts{$modulename}{$option} = $flags;
@@ -1237,7 +1239,14 @@ sub dump_options
         print "\nOptions for module $item:\n";
         foreach $ref_item (keys %{$package_opts{$item}})
         {
-            print "\tOption $ref_item is \"$package_opts{$item}{$ref_item}\"\n";
+            if($ref_item ne 'set-env')
+            {
+                print "\tOption $ref_item is \"$package_opts{$item}{$ref_item}\"\n";
+            }
+            else
+            {
+                print "\tOption $ref_item is \"set-env\"\n";
+            }
         }
     }
 }
@@ -1341,10 +1350,10 @@ sub checkout_svn_partial_dir
     print ("$verb ${GREEN}$module/$dir${NORMAL}.\n");
 
     @args = ('svn');
-    push @args, 'up'; # up should always work now as long as the actual module
-                      # dir is already checked out.
+    push @args, 'up';
     push @args, '-N' unless $recurse;
-    push @args, $update_dir;
+    push @args, $dir;
+#    push @args, svn_module_url($update_dir);
 
     my $fname = $dir; # $dir may itself contain slashes
     $fname =~ s/\//-/g;
@@ -1382,8 +1391,17 @@ sub checkout_svn_partial
 
     # Check out the module base.
     @args = ('svn');
-    push @args, (-e "$kdesvn/$module") ? 'up' : 'co', '-N';
-    push @args, (-e "$kdesvn/$module") ? $module : svn_module_url($module);
+    if(-e "$kdesvn/$module") {
+        print "Updating ${GREEN}$module${NORMAL} base\n";
+        push @args, 'up', '-N';
+        push @args, $module;
+    }
+    else
+    {
+        print "Checking out ${GREEN}$module${NORMAL} base\n";
+        push @args, 'co', '-N';
+        push @args, svn_module_url($module);
+    }
 
     if (run_svn ($module, "base-svn", \@args))
     {
@@ -1525,6 +1543,7 @@ sub handle_updates
             next;
         }
 
+        my @args = ('svn');
         if (-e "$kdesvn/$module/.svn")
         {
             # The Subversion directory already exists, so it has probably already been
@@ -1533,6 +1552,9 @@ sub handle_updates
 
             # The admin directory SCREWS crap up though, make sure it's
             # installed.
+
+=pod
+
             if (not download_admin_dir($module))
             {
                 print "Can't download admin dir for $module!\n";
@@ -1543,8 +1565,12 @@ sub handle_updates
                 next;
             }
 
+=cut
+
             $verb = 'updating';
             $command = 'up';
+            push @args, $command;
+            push @args, $module;
         }
         else
         {
@@ -1552,10 +1578,9 @@ sub handle_updates
 
             $verb = 'checking out';
             $command = 'co';
+            push @args, $command;
+            push @args, svn_module_url($module);
         }
-
-        my @args = ('svn', $command);
-        push @args, svn_module_url($module);
 
         if (run_svn($module, "svn-$command", \@args))
         {
@@ -1945,6 +1970,12 @@ sub setup_build_system
     $do_configure = 1 if $module eq 'qt-copy' and not -e "$builddir/qt-copy/src/tools/qconfig.cpp";
     if ($do_configure || not -e "$builddir/$module/Makefile")
     {
+        if (not -e "$builddir/$module" and not super_mkdir("$builddir/$module"))
+        {
+            print "\tUnable to create build directory for $module!!\n";
+            return 0;
+        }
+
         # Now we're in the checkout directory
         # So, switch to the build dir.
         # builddir is automatically set to the right value for qt-copy
@@ -2384,6 +2415,11 @@ sub munge_lists
             # Split at directory separators.
             my ($modulename, @dirs) = split(/\//);
 
+            if ($modulename eq 'playground' or $modulename eq 'extragear')
+            {
+                $modulename .= "/" . shift @dirs;
+            }
+
             if (scalar @dirs > 0)
             {
                 # Only build the specified subdirs
@@ -2513,8 +2549,7 @@ if ($@)
     print "Please e-mail a bug report to michael.pyne\@kdemail.net\n";
     print "with this information.\n";
 
-    # Don't finish, because we haven't attained the lock yet.
-    finish (99);
+    $result = 99;
 }
 
 finish($result);
