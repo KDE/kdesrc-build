@@ -48,6 +48,7 @@ my %global_opts = (
     "make-options"        => "-j2",
     "manual-build"        => "",
     "manual-update"       => "",
+    "niceness"            => "10",
     "no-svn"              => "",
     "no-rebuild-on-fail"  => "",
     "pretend"             => "",
@@ -822,6 +823,9 @@ sub initialize_environment
         $BOLD = "\e[1m";
     }
 
+    # Set the process priority
+    setpriority 'PRIO_PROCESS', 0, get_option('global', 'niceness');
+
     setup_module_environment ('global');
 }
 
@@ -905,7 +909,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
-    my $version = "kdesvn-build 0.92\n";
+    my $version = "kdesvn-build 0.93\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -939,7 +943,7 @@ in .kdesvn-buildrc will be used.  If you DO specify a package name, then
 your settings will still be read, but the script will try to build/install
 the package regardless of .kdesvn-buildrc
 
-Copyright (c) 2003, 2004 $author
+Copyright (c) 2003, 2004, 2005 $author
 The script is distributed under the terms of the GNU General Public License
 v2, and includes ABSOLUTELY NO WARRANTY!!!
 
@@ -957,6 +961,8 @@ Options:
     --pretend (or -p)    Don't actually contact the Subversion server, run make,
                          or create/delete files and directories.  Instead,
                          output what the script would have done.
+    --nice <value>       Allows you to run the script with a lower priority
+                         The default value is 10 (lower priority by 10 steps).
 
     --resume             Tries to resume the make process from the last time
                          the script was run, without performing the Subversion
@@ -1054,6 +1060,11 @@ DONE
                     exit 8;
                 }
 
+                last SWITCH;
+            };
+
+            /^--nice$/ && do {
+                $global_opts{'niceness'} = shift @ARGV;
                 last SWITCH;
             };
 
