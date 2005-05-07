@@ -970,6 +970,9 @@ Options:
                          output what the script would have done.
     --nice <value>       Allows you to run the script with a lower priority
                          The default value is 10 (lower priority by 10 steps).
+    --prefix=/kde/path   This option is a shortcut to change the setting for
+                         kdedir from the command line.  It implies
+                         --reconfigure.
 
     --resume             Tries to resume the make process from the last time
                          the script was run, without performing the Subversion
@@ -1070,8 +1073,31 @@ DONE
                 last SWITCH;
             };
 
+            /^--prefix/ && do {
+                my $prefix;
+                if(/^--prefix=/)
+                {
+                    ($prefix) = /^--prefix=(.*)$/;
+                }
+                else
+                {
+                    $prefix = shift @ARGV;
+                }
+
+                if (not $prefix)
+                {
+                    print "No prefix selected with the --prefix option.\n";
+                    exit 8;
+                }
+
+                $global_opts{'#kdedir'} = $prefix;
+                $global_opts{'#reconfigure'} = 1;
+
+                last SWITCH;
+            };
+
             /^--nice$/ && do {
-                $global_opts{'niceness'} = shift @ARGV;
+                $global_opts{'#niceness'} = shift @ARGV;
                 last SWITCH;
             };
 
