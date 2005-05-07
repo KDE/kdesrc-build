@@ -80,6 +80,13 @@ my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
 
 # Subroutine definitions
 
+# I swear Perl must be the only language where the docs tell you to use a
+# constant that you'll never find exported without some module from CPAN.
+sub PRIO_PROCESS()
+{
+    return 0;
+}
+
 # Subroutine to handle removing the lock file upon receiving a signal
 sub quit_handler
 {
@@ -824,7 +831,7 @@ sub initialize_environment
     }
 
     # Set the process priority
-    setpriority 'PRIO_PROCESS', 0, get_option('global', 'niceness');
+    setpriority PRIO_PROCESS, 0, get_option('global', 'niceness');
 
     setup_module_environment ('global');
 }
