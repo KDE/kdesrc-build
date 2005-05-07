@@ -213,8 +213,9 @@ sub svn_module_url
        'kdesupport' => 1,
        'koffice' => 1,
        'playground' => 1,
-       'qt-copy', => 1,
+       'qt-copy' => 1,
        'valgrind' => 1,
+       'KDE' => 1,
     );
 
     # kdesupport is not actually part of KDE proper, so it is in a different
@@ -432,7 +433,7 @@ sub checkout_module_path
     my @args;
     my $modulename = $module;
 
-    if ($module =~ /^(playground|extragear)\//)
+    if ($module =~ /^(playground|extragear|KDE)\//)
     {
         my $base;
         ($base, $modulename) = split(/\//, $module);
@@ -469,7 +470,7 @@ sub update_module_path
     my @args;
     my $modulename = $module;
 
-    if ($module =~ /^(playground|extragear)\//)
+    if ($module =~ /^(playground|extragear|KDE)\//)
     {
         my $base;
         ($base, $modulename) = split(/\//, $module);
@@ -1044,7 +1045,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
-    my $version = "kdesvn-build 0.93\n";
+    my $version = "kdesvn-build 0.94\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -2627,7 +2628,7 @@ sub munge_lists
 
             # For these modules, the first part of the directory separator
             # actually belongs with the module name.
-            if ($modulename eq 'playground' or $modulename eq 'extragear')
+            if ($modulename =~ /^(playground|extragear|KDE)$/)
             {
                 $modulename .= "/" . shift @dirs;
             }
