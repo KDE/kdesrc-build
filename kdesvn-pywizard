@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # Copyright (c) 2004 Michael Pyne <michael.pyne@kdemail.net>
 # Distributed under the terms of the GNU GPL v2, or any later version.
-# Script to auto-generate the configuration for kdecvs-build to use.
-# See http://grammarian.homelinux.net/kdecvs-build/
+# Script to auto-generate the configuration for kdesvn-build to use.
+# See http://grammarian.homelinux.net/kdesvn-build/
 
 from qt import *;
 import sys;
@@ -28,17 +28,15 @@ modules = {
 	'kdeedu':              { 'order': 4, 'conf': { } },
 	'kdeaccessibility':    { 'order': 4, 'conf': { } },
 	'valgrind':            { 'order': 3, 'conf': { } },
-	'kdeextragear-1':      { 'order': 5, 'conf': { } },
-	'kdeextragear-2':      { 'order': 5, 'conf': { } },
-	'kdeextragear-3':      { 'order': 5, 'conf': { } },
+	'extragear/':          { 'order': 5, 'conf': { } },
+	'playground/':         { 'order': 5, 'conf': { } },
 	'kdevelop':            { 'order': 4, 'conf': { } },
 	'kde-common':          { 'order': 2, 'conf': { } },
 	'kde-i18n':            { 'order': 3, 'conf': { } },
-	'kdeextragear-libs-1': { 'order': 4, 'conf': { } },
 	'kdewebdev':           { 'order': 4, 'conf': { } },
 	'koffice':             { 'order': 4, 'conf': { } },
 	'kdebindings':         { 'order': 4, 'conf': { } },
-	'kdenonbeta':          { 'order': 4, 'conf': { } },
+#'kdenonbeta':          { 'order': 4, 'conf': { } },
 	'kdesdk':              { 'order': 5, 'conf': { } }
 }
 
@@ -48,19 +46,18 @@ globals = {
 		'whatsthis': """This is the path that you can find your development
 		toolchain in, including the <b>g++</b> and <b>make</b> programs.  This
 		is specified by using colon (:) separated directories.  Do not include
-		any KDE or Qt paths, as kdecvs-build will add those automatically as
+		any KDE or Qt paths, as kdesvn-build will add those automatically as
 		appropriate.""",
 		'default':     '/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin'
 	},
-	'cvs-root':   {
-		'description': 'Directory to hold CVS sources',
+	'source-dir':   {
+		'description': 'Directory to hold KDE sources',
 		'whatsthis': """This is the directory to download the KDE sources into.
-		You may use the tilde (<b>~</b>) to stand for your home directory.  No
-		other variables are recognized.""",
-		'default':     '~/kdecvs'
+		You may use the tilde (<b>~</b>) to stand for your home directory.""",
+		'default':     '~/kdesvn'
 	},
 	'kdedir':    {
-		'description': 'Directory to install KDE CVS into',
+		'description': 'Directory to install KDE into',
 		'whatsthis': """This is the directory that KDE will be installed to.
 		You may use the tilde (<b>~</b>) to stand for your home directory.  If
 		you choose to install into a system directory, then you will probably
@@ -71,22 +68,22 @@ globals = {
 	'qtdir':     {
 		'description': 'Directory to Qt installation',
 		'whatsthis': """This is the directory of your Qt installation.  If you
-		would like to use qt-copy from KDE CVS, check the checkbox <b>Use
-		qt-copy from KDE CVS</b>.""",
-		'default':     os.environ.get('QTDIR', '~/kdecvs/qt-copy')
+		would like to use qt-copy from KDE Subversion, check the checkbox <b>Use
+		qt-copy from KDE Subversion</b>.""",
+		'default':     os.environ.get('QTDIR', '~/kdesvn/build/qt-copy')
 	},
-	'cvs-server': {
-		'description': 'CVS Server to use',
+	'svn-server': {
+		'description': 'Subversion Server to use',
 		'whatsthis': """This is the CVS Root setting to use with the <b>cvs</b>
 		program.  For more information, consult the manpage for the CVS program,
 		or consult the CVS compilation guide from developer.kde.org""",
-		'default':     ':pserver:anonymous@anoncvs.kde.org:/home/kde'
+		'default':     'svn://svn.kde.org/home/kde'
 	},
 	'conf-flags': {
 		'description': 'Default configure flags',
 		'whatsthis': """This is what configure flags you would like to pass to
-		every CVS module (except for qt-copy).  Use this to specify settings you
-		want every module to have, such as --enable-debug""",
+		every Subversion module (except for qt-copy).  Use this to specify
+		settings you want every module to have, such as --enable-debug""",
 		'default':     '--enable-debug'
 	},
 	'cxxflags':  {
@@ -125,12 +122,12 @@ class WizardPage(QVBox):
 
 class IntroPage(WizardPage):
 	def __init__(self, wizard):
-		WizardPage.__init__(self, wizard, "Introduction to kdecvs-build-wizard")
+		WizardPage.__init__(self, wizard, "Introduction to kdesvn-build-wizard")
 
 		self.body = QLabel("""<qt><center>This wizard will help you setup a
-basic configuration file for kdecvs-build.  To continue, please click the
+basic configuration file for kdesvn-build.  To continue, please click the
 Next button.<br/><br/>NOTE: This isn't quite done yet, you'll have to copy
-and paste the file at the end to ~/.kdecvs-buildrc.</center></qt>""", self)
+and paste the file at the end to ~/.kdesvn-buildrc.</center></qt>""", self)
 
 class DistributedPage(WizardPage):
 	def __init__(self, wizard):
@@ -291,11 +288,9 @@ class ModulesPage(WizardPage):
 		WizardPage.__init__(self, wizard, label)
 
 		defaultModules = [ 'arts', 'kdelibs', 'kdebase', 'kdesupport', 'kdepim',
-                           'kdegraphics', 'kdeextragear-2', 'kdeaddons',
-                           'kdeextragear-3', 'kdenetwork', 'kdegames',
-                           'kdeartwork', 'kdeutils', 'kdemultimedia',
-                           'kdetoys', 'kdeedu', 'kdeextragear-1',
-                           'kdeextragear-libs-1']
+						   'kdegraphics', 'kdeaddons', 'kdenetwork',
+						   'kdegames', 'kdeartwork', 'kdeutils',
+						   'kdemultimedia', 'kdetoys', 'kdeedu' ]
 		requiredModules = [ 'arts', 'kdelibs' ]
 
 		self.listview = QListView(self)
@@ -355,17 +350,14 @@ class ExtraModulesPage(ModulesPage):
 	def __init__(self, wizard):
 		moduleDict = {
 			'valgrind': 'Excellent program optimization/memory-leak-checker',
-			'kdeextragear-1': 'Important KDE apps not yet part of KDE.  Includes amarok, gwenview, and k3b',
-			'kdeextragear-2': 'Important KDE apps not yet part of KDE.  Includes kimdaba, kmldonkey, and konversation',
-			'kdeextragear-3': 'Important KDE apps not yet part of KDE.  Includes digikam, kconfigeditor, and kiosktool',
 			'kdevelop': 'Powerful Integrated Development Environment for developers',
 			'kde-common': 'Code and data common to all of KDE',
+			'extragear/': 'A collection of useful KDE applications, not yet part of KDE',
+			'playground/': 'KDE software which is undergoing development, and is currently at alpha-quality',
 			'kde-i18n': 'Language translations for KDE.  This module is VERY LARGE',
-			'kdeextragear-libs-1': 'Libraries required by some extragear programs',
 			'kdewebdev': 'Applications useful for web site developers.  Includes Quanta and Kommander',
 			'koffice': 'KDE Office Suite, includes word processor, spreadsheet, and more',
 			'kdebindings': 'Bindings to allow programming Qt and/or KDE in languages other than C++',
-			'kdenonbeta': 'Smorgasbord of KDE-related applications.  This module is VERY LARGE',
 			'kdesdk': 'Collection of applications to ease the job of KDE developers'
 		}
 
@@ -444,15 +436,15 @@ class GeneratePage(WizardPage):
 		box.setSpacing(6)
 
 		label = QLabel("&Filename", box)
-		self.browseLine = QLineEdit("~/.kdecvs-buildrc", box)
+		self.browseLine = QLineEdit("~/.kdesvn-buildrc", box)
 		label.setBuddy(self.browseLine)
 		browseButton = QPushButton("&Save As...", box)
 		self.connect (browseButton, SIGNAL("clicked()"),
 		              self.browseClicked)
 
 	def browseClicked(self):
-		fileName = QFileDialog.getSaveFileName(os.environ['HOME'] + "/.kdecvs-buildrc",
-			QString.null, self, "kdecvs-pywizard-filesave-dialog")
+		fileName = QFileDialog.getSaveFileName(os.environ['HOME'] + "/.kdesvn-buildrc",
+			QString.null, self, "kdesvn-pywizard-filesave-dialog")
 		if not fileName.isNull():
 			print "Setting filename to " + str(fileName)
 			self.browseLine.setText(str(fileName))
