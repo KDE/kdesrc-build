@@ -56,10 +56,13 @@ my %global_opts = (
     "recreate-configure"  => "",
     "refresh-build"       => "",
     "release-tag"         => "", # Doesn't work yet
+    "revision"            => 0,
     "set-env"             => { }, # Hash of environment vars to set
     "source-dir"          => "$ENV{HOME}/kdesvn",
     "stop-on-failure"     => "",
     "svn-server"          => "svn://anonsvn.kde.org/home/kde",
+    "unsermake-options"   => "--compile-jobs=2",
+    "unsermake-path"      => "unsermake",
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
 );
 
@@ -216,10 +219,9 @@ sub svn_module_url
        'qt-copy' => 1,
        'valgrind' => 1,
        'KDE' => 1,
+       'kdereview' => 1,
     );
 
-    # kdesupport is not actually part of KDE proper, so it is in a different
-    # directory of the Subversion server.
     my $module_root = $module;
     $module_root =~ s/\/.*//; # Remove everything after the first slash
 
@@ -411,12 +413,22 @@ sub update_module_subdirectories
     # If we have elements in @path, download them now
     for my $dir (@_)
     {
-        print clr "\tUpdating g[$module/$dir]\n";
-        $result = run_svn($module, 'svn-up-$dir', [ 'svn', 'up', $dir ]);
+        print clr "\tUpdating g[$dir]\n";
+        $result = run_svn($module, "svn-up-$dir", [ 'svn', 'up', $dir ]);
         return $result if $result;
     }
 
     return 0;
+}
+
+# Returns true if a module has a base component to their name (e.g. KDE/,
+# extragear/, or playground).  Note that modules that aren't in trunk/KDE
+# don't necessary meet this criteria (e.g. kdereview is a module itself).
+sub has_base_module
+{
+    my $module = shift;
+
+    return $module =~ /^(extragear|playground|KDE)(\/[^\/]+)?$/;
 }
 
 # Checkout a module that has not been checked out before, along with any
@@ -433,7 +445,7 @@ sub checkout_module_path
     my @args;
     my $modulename = $module;
 
-    if ($module =~ /^(playground|extragear|KDE)\//)
+    if (has_base_module($module))
     {
         my $base;
         ($base, $modulename) = split(/\//, $module);
@@ -470,7 +482,7 @@ sub update_module_path
     my @args;
     my $modulename = $module;
 
-    if ($module =~ /^(playground|extragear|KDE)\//)
+    if (has_base_module($module))
     {
         my $base;
         ($base, $modulename) = split(/\//, $module);
@@ -579,19 +591,27 @@ sub safe_make (@)
 {
     my $module = shift;
     my $trynumber = shift;
-    my $opts = get_option($module, 'make-options');
+    my $opts;
     my $logdir = get_log_dir($module);
     my $checkout_dirs = get_option($module, "checkout-only");
     my @dirs = split(' ', $checkout_dirs);
     my $installing = $trynumber eq 'install';
     my $make = 'make';
 
+    if (get_option($module, 'use-unsermake'))
+    {
+        $make = get_option('global', 'unsermake-path');
+        $opts = get_option($module, 'unsermake-options');
+    }
+    else
+    {
+        $opts = get_option($module, 'make-options');
+    }
+
     # Add make-options to the given options, as long as we're not installing
     # If we are installing, unsermake seems to assume that the options are a
     # make target, and parallel builds don't help with installing anyways.
     unshift (@_, split(' ', $opts)) unless $installing;
-
-    $make = 'unsermake' if get_option($module, 'use-unsermake');
 
     # Check if we're installing
     if ($installing)
@@ -1112,6 +1132,7 @@ Options:
                          update.
     --resume-from=<pkg>  Starts building from the given package, without
                          performing the Subversion update.
+    --revision (or -r) <rev> Forces update to revision <rev> from Subversion.
 
     --refresh-build      Start the build from scratch.
     --reconfigure        Run configure again, but don't clean the build
@@ -1283,6 +1304,19 @@ DONE
 
             /^--refresh-build$/ && do {
                 $global_opts{'#refresh-build'} = 1;
+                last SWITCH;
+            };
+
+            /^(--revision|-r)(=.*)?$/ && do {
+                my $revision = extract_option_value($_, @ARGV);
+                if (not $revision)
+                {
+                    print "No revision selected with the --revision option.\n";
+                    exit 8;
+                }
+
+                $global_opts{'#revision'} = $revision;
+
                 last SWITCH;
             };
 
@@ -1963,6 +1997,17 @@ sub run_svn
     my $force_refresh = 0;
     my $logdir = get_log_dir($module);
 
+    my $revision = get_option('global', 'revision');
+    if ($revision ne '0')
+    {
+        my @tmp = @{$arg_ref};
+
+        # Insert after first two entries, deleting 0 entries from the
+        # list.
+        splice @tmp, 2, 0, '-r', $revision;
+        $arg_ref = \@tmp;
+    }
+
     # Do svn update.
     $result = log_command($module, $logfilename, $arg_ref);
 
@@ -2628,7 +2673,7 @@ sub munge_lists
 
             # For these modules, the first part of the directory separator
             # actually belongs with the module name.
-            if ($modulename =~ /^(playground|extragear|KDE)$/)
+            if (has_base_module($modulename))
             {
                 $modulename .= "/" . shift @dirs;
             }
