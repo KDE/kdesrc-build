@@ -325,7 +325,7 @@ sub get_log_dir
 sub blacklisted
 {
     my ($module, $option) = @_;
-    my @unsermake_ban_list = qw/qt-copy kdebindings/; # Known to not work.
+    my @unsermake_ban_list = qw/kde-common qt-copy kdebindings/; # Known to not work.
 
     if ($option eq 'use-unsermake')
     {
@@ -581,6 +581,18 @@ sub log_command
     }
 }
 
+# Subroutine to determine if the given subdirectory of a module can actually be
+# built or not.  For instance, /admin can never be built, and the /kalyptus subdir
+# of kdebindings can't either.
+sub is_subdir_buildable
+{
+    my ($module, $dir) = @_;
+
+    return 0 if $dir eq 'admin';
+    return 0 if $dir eq 'kalyptus' and $module eq 'kdebindings';
+    return 1;
+}
+
 # Subroutine to run the make command with the arguments given by the passed
 # list.  The first argument of the list given must be the module that we're
 # making.  The second argument is the "try number", used in creating the log
@@ -632,7 +644,8 @@ sub safe_make (@)
 
     for my $subdir (@dirs)
     {
-        next if $subdir eq 'admin';
+        # Some subdirectories shouldn't have make run within them.
+        next unless is_subdir_buildable($module, $subdir);
 
         my $logname = $installing ? "install" : "build-$trynumber";
         if ($subdir ne '')
@@ -2480,12 +2493,12 @@ sub handle_build
     my $kdesvn = get_kdesvn_dir();
     my $svnroot = get_option ('global', 'svn-server');
     my $module;
-    my @modules = @{$build_ref};
+    my @modules = grep (!/^kde-common$/, @{$build_ref});
     my $result;
     my $outfile = get_output_file ();
 
     # No reason to print building messages if we're not building.
-    return 0 if (scalar (@{$build_ref}) == 0);
+    return 0 if scalar @modules == 0;
 
     print "\n<<<  Build Process  >>>\n";
 
@@ -2604,13 +2617,13 @@ sub handle_install
 
     for my $module (@_)
     {
-        my $builddir = get_build_dir ($module);
-
-        if ($module eq "qt-copy")
+        if ($module =~ /^(qt-copy|kde-common)$/)
         {
-            print clr "\tg[qt-copy] doesn't need installed.\n";
+            print clr "\tg[$module] doesn't need installed.\n";
             next;
         }
+
+        my $builddir = get_build_dir ($module);
 
         if (not exists $package_opts{$module})
         {
