@@ -47,6 +47,7 @@ my %global_opts = (
     "make-options"        => "-j2",
     "manual-build"        => "",
     "manual-update"       => "",
+    "module-base-path"    => "",  # Used for tags and branches
     "niceness"            => "10",
     "no-svn"              => "",
     "no-rebuild-on-fail"  => "",
@@ -55,7 +56,6 @@ my %global_opts = (
     "reconfigure"         => "",
     "recreate-configure"  => "",
     "refresh-build"       => "",
-    "release-tag"         => "", # Doesn't work yet
     "revision"            => 0,
     "set-env"             => { }, # Hash of environment vars to set
     "source-dir"          => "$ENV{HOME}/kdesvn",
@@ -205,7 +205,11 @@ sub svn_module_url
 {
     my $module = shift;
     my $svn_server = get_option($module, 'svn-server');
-    my $branch = 'trunk/KDE';
+    my $branch = get_option($module, 'module-base-path');
+    
+    $branch = 'trunk/KDE' unless $branch;
+    $branch =~ s/^\/*//; # Eliminate / at beginning of string.
+    $branch =~ s/\/*$//; # Likewise at the end.
     
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
     # but there are the important ones.  The hash is associated with the value
@@ -639,7 +643,7 @@ sub safe_make (@)
 
     push (@dirs, "") if scalar @dirs == 0;
 
-    print $installing ? "\tInstalling $module\n"
+    print $installing ? clr "\tInstalling g[$module]\n"
                       : "\tCompiling, attempt $trynumber...\n";
 
     for my $subdir (@dirs)
@@ -1900,6 +1904,76 @@ sub safe_configure
     return log_command($module, "configure", \@commands);
 }
 
+# Subroutine to try and see if we've already tried to update kde-common
+sub has_updated_kdecommon
+{
+    # Test fast case first.
+    return 1 if get_option('global', '#has-checked-for-admin');
+
+    # Double check that it wasn't in the update list.
+    if (grep(/^(KDE\/)?kde-common$/, @update_list))
+    {
+        $global_opts{'#has-checked-for-admin'} = 1;
+        return 1;
+    }
+
+    return 0;
+}
+
+# Subroutine to automatically create an admir dir for a module if it doesn't
+# have one.  The first parameter is the module name.  It is assumed that we
+# are already in the source directory, the current directory will not be
+# changed.
+#
+# Returns boolean true on success, boolean false on failure.
+#
+# NOTE: This subroutine might try to call an svn update, as long as #no-svn
+# isn't set.
+sub create_admin_dir
+{
+    my $module = shift;
+    my $kdesvn = get_kdesvn_dir();
+
+    return 1 if $module eq 'qt-copy';
+
+    # Find kde-common
+    my $admindir = "$kdesvn/kde-common/admin";
+    $admindir = "$kdesvn/KDE/kde-common/admin" unless -e $admindir;
+
+    if (not -e $admindir)
+    {
+        # Can't find kde-common, it's apparently not installed.
+        if (not has_updated_kdecommon())
+        {
+            # We haven't tried downloading it, now would be a good time.
+            print clr "Can't find y[kde-common], going to try downloading it.\n";
+
+            if (get_option('global', 'no-svn'))
+            {
+                # Not allowed to update.
+                print clr "r[!!] Updating has been blocked, can't get y[kde-common].\n";
+                return 0;
+            }
+
+            $admindir = "$kdesvn/kde-common/admin";
+            if (pretending)
+            {
+                print clr "Would have checked out g[kde-common]\n";
+            }
+            elsif (checkout_module_path('kde-common', 'admin') == 0)
+            {
+                chdir ("$kdesvn/$module");
+            }
+            else
+            {
+                return 0;
+            }
+        }
+    }
+
+    return (safe_system("ln -s $admindir admin") == 0);
+}
+
 # Subroutine to create the build system for a module.  This involves making
 # sure the directory exists and then running make -f Makefile.cvs.  This
 # subroutine assumes that the module is already downloaded.
@@ -1920,9 +1994,12 @@ sub safe_create_build_system
     chdir ("$builddir/$module") if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
 
     # Check for admin dir, if it doesn't exist, create a softlink
-    if ($module ne 'qt-copy' and not -e "$kdesvn/$module/admin")
+    if (not create_admin_dir($module))
     {
-        safe_system("ln -s $kdesvn/kde-common/admin");
+        print clr "Unable to find /admin directory for y[$module], it probably\n";
+        print "won't build.\n";
+        # But continue anyways, because in this case I'm just not sure that it
+        # won't work in the future. ;)
     }
 
     if ($module eq 'kdebindings' || $module eq 'valgrind')
