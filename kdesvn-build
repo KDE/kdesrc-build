@@ -26,6 +26,7 @@ use POSIX 'strftime';
 # Options that start with a # will replace values with the same name,
 # if the option is actually set.
 my %global_opts = (
+    "apidox"              => "",
     "apply-qt-patches"    => "",
     "binpath"             => "/bin:/usr/bin:/usr/X11R6/bin:/usr/local/bin",
     "build-dir"           => "build",
@@ -606,8 +607,7 @@ sub is_subdir_buildable
 # Returns 0 on success, non-zero on failure (shell script style)
 sub safe_make (@)
 {
-    my $module = shift;
-    my $trynumber = shift;
+    my ($module, $trynumber, $apidox, @args) = @_;
     my $opts;
     my $logdir = get_log_dir($module);
     my $checkout_dirs = get_option($module, "checkout-only");
@@ -628,55 +628,69 @@ sub safe_make (@)
     # Add make-options to the given options, as long as we're not installing
     # If we are installing, unsermake seems to assume that the options are a
     # make target, and parallel builds don't help with installing anyways.
-    unshift (@_, split(' ', $opts)) unless $installing;
+    unshift (@args, split(' ', $opts)) unless $installing;
+
+    my $description;
 
     # Check if we're installing
-    if ($installing)
+    if($installing)
     {
-        print "Prepending install options.\n" if debugging;
-        unshift @_, $make, 'install';
-        unshift @_, split(' ', get_option ($module, 'make-install-prefix'));
+        print "Prepending install options, apidox: $apidox.\n" if debugging;
+
+        $description = $apidox ? "API Documentation" : clr "g[$module]";
+        unshift @args, $make, $apidox ? 'install-apidox' : 'install';
+        unshift @args, split(' ', get_option ($module, 'make-install-prefix'));
+
+        print "\tInstalling $description.\n";
     }
     else
     {
-        unshift @_, $make;
+        $description = "Building API Documentation";
+        $description = "Compiling, attempt $trynumber" unless $apidox;
+
+        push @args, 'apidox' if $apidox;
+        unshift @args, $make;
+
+        print "\t$description...\n";
     }
 
-    push (@dirs, "") if scalar @dirs == 0;
-
-    print $installing ? clr "\tInstalling g[$module]\n"
-                      : "\tCompiling, attempt $trynumber...\n";
-
-    for my $subdir (@dirs)
+    push @dirs, "" unless scalar @dirs;
+    while (my $subdir = shift @dirs)
     {
+        my $subdir = shift @dirs;
+        $subdir = '' unless $subdir;
+
         # Some subdirectories shouldn't have make run within them.
         next unless is_subdir_buildable($module, $subdir);
 
-        my $logname = $installing ? "install" : "build-$trynumber";
+        my $logname = "build-$trynumber";
+        if ($installing)
+        {
+            $logname = $apidox ? 'install-apidox' : 'install';
+        }
+
         if ($subdir ne '')
         {
             $logname = $installing ? "install-$subdir" : "build-$subdir-$trynumber";
+            next if $apidox; # Don't built apidox in a subdirectory
+
+            print $installing ? "\tInstalling " : "\tBuilding ", clr "subdirectory g[$subdir]\n";
         }
 
         if (pretending)
         {
-            $opts = join(' ', @_);
+            $opts = join(' ', @args);
             print clr "\tWould have switched directory to y[", get_build_dir($module) . clr "/$module/$subdir]\n";
             print clr "\tWould have run g[$opts > $logdir/$logname]\n";
 
             next;
         }
 
-        if($subdir ne '')
-        {
-            print $installing ? "\tInstalling " : "\tBuilding ", clr "subdirectory g[$subdir]\n";
-        }
-
         chdir (get_build_dir($module) . "/$module/$subdir");
 
-        my $result = log_command ($module, $logname, [@_] );
+        my $result = log_command ($module, $logname, \@args );
         return $result if $result;
-    }
+    };
 
     return 0;
 }
@@ -2451,6 +2465,15 @@ sub prettify_seconds
     return $str;
 }
 
+# Subroutine to determine if a given module can run make apidox.  Returns
+# boolean true if make apidox can be run.
+sub make_apidox_supported
+{
+    my $module = shift;
+
+    return $module =~ /^(KDE\/)?(kde(base|games|graphics|libs|pim|velop)|koffice)$/;
+}
+
 # Subroutine to build a given module.  The module to build is the first
 # parameter.  The second and third paramaters is the ordinal number of the
 # module being built (1 == first module, 2 == second, etc.), and the total
@@ -2462,6 +2485,7 @@ sub build_module
     my $module = shift;
     my $cur_module_num = shift;
     my $total_module_num = shift;
+    my $apidox = shift;
     my $builddir = get_build_dir ($module);
     my $trynumber = 1;
 
@@ -2538,14 +2562,28 @@ EOF
         }
         else
         {
-            # Build succeeded
+            # Build succeeded, build docs if necessary
+            my $apidox_result = 0;
+            my $build_apidox = make_apidox_supported($module) and get_option($module, 'apidox');
+            if ($build_apidox)
+            {
+                $apidox_result = safe_make ($module, $trynumber, 1);
+                print "\tCouldn't build API Documentation\n" if $apidox_result;
+            }
 
             my $elapsed = prettify_seconds (time - $start_time);
             my $do_install = get_option($module, 'install-after-build');
 
             print clr "\tBuild done after g[$elapsed].\n";
-            $do_install ? handle_install($module)
-                        : print clr "\tSkipping install for y[$module]\n";
+            if ($do_install)
+            {
+                handle_install($module, 0);
+                handle_install($module, 1) if $build_apidox and $apidox_result == 0;
+            }
+            else
+            {
+                print clr "\tSkipping install for y[$module]\n";
+            }
 
             last; # Don't forget to exit the loop!
         }
@@ -2575,7 +2613,7 @@ sub handle_build
     my $kdesvn = get_kdesvn_dir();
     my $svnroot = get_option ('global', 'svn-server');
     my $module;
-    my @modules = grep (!/^kde-common$/, @{$build_ref});
+    my @modules = grep (!/^(KDE\/)?kde-common$/, @{$build_ref});
     my $result;
     my $outfile = get_output_file ();
 
@@ -2695,6 +2733,7 @@ sub get_repo_url
 # 'make install' in the directory.
 sub handle_install
 {
+    my $apidox = pop; # Take parameter off end of list (@_).
     my $result = 0;
 
     for my $module (@_)
@@ -2733,7 +2772,7 @@ sub handle_install
         # safe_make() evilly uses the "install" parameter to use installation
         # mode instead of compile mode.  This is so we can get the subdirectory
         # handling for free.
-        if (safe_make ($module, "install"))
+        if (safe_make ($module, "install", $apidox))
         {
             print clr "\tUnable to install r[$module]!\n";
             $result = 1;
@@ -2885,8 +2924,8 @@ eval
     }
     else
     {
-        # Installation mode.
-        $result = handle_install (get_install_list());
+        # Installation mode (no apidox)
+        $result = handle_install (get_install_list(), 0);
 
         output_failed_module_list ("failed to install", @install_fail);
     }
