@@ -602,7 +602,9 @@ sub run_make_command
     my $logdir = get_log_dir($module);
     my $isunsermake = $command[0] =~ 'unsermake';
 
-    if (!$isunsermake)
+    # Don't print ANSI characters if we're not on a tty.  Also,  automake
+    # doesn't support printing output status.
+    if (!$isunsermake or not -t STDERR)
     {
         return log_command($module, $filename, \@command);
     }
