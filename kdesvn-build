@@ -62,7 +62,7 @@ my %global_opts = (
     "source-dir"          => "$ENV{HOME}/kdesvn",
     "stop-on-failure"     => "",
     "svn-server"          => "svn://anonsvn.kde.org/home/kde",
-    "unsermake-options"   => "--compile-jobs=2",
+    "unsermake-options"   => "--compile-jobs=2 -p",
     "unsermake-path"      => "unsermake",
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
 );
@@ -587,6 +587,88 @@ sub log_command
     }
 }
 
+# Subroutine to run make/unsermake with redirected STDOUT and STDERR,
+# and to process the percentage in unsermake (-p). First parameter
+# is name of the log file (relative to the log directory), and the
+# second parameter is a reference to an array with the command and
+# its arguments
+sub run_make_command
+{
+    my $pid;
+    my $module = shift;
+    my $filename = shift;
+    my @command = @{(shift)};
+    my $logdir = get_log_dir($module);
+    my $isunsermake = $command[0] =~ 'unsermake';
+
+    if (!$isunsermake)
+    {
+	return log_command($module, $filename, \@command);
+    }
+
+    if (debugging)
+    {
+        print "run_make_command(): Module $module, Command: ", join(' ', @command), "\n";
+    }
+
+    if (pretending)
+    {
+        print clr "\tWould have run g[", join (' ', @command), clr "]\n";
+        return 0;
+    }
+
+    $pid = open(CHILD, '-|');
+    if ($pid)
+    {
+	my $last = -1;
+	while (<CHILD>)
+	{
+	    chomp;
+	    if (debugging)
+	    {
+		print $_;
+	    }
+	    elsif (/([0-9]+)% (creating|compiling|linking)/)
+	    {
+		print STDERR "\r$1% \e[K" unless ($1 == $last);
+		$last = $1;
+	    }
+	}
+	close(CHILD);
+	print STDERR "\r\e[K\n";
+
+        # If the module fails building, set an internal flag in the module
+        # options with the name of the log file containing the error message.
+        $package_opts{$module}{'#error-log-file'} = "$logdir/$filename.log" if $?;
+
+        return $?;
+    }
+    else
+    {
+        # Child
+        if (not defined $logdir or not -e $logdir)
+        {
+            # Error creating directory for some reason.
+            print "\tLogging to std out due to failure creating log dir.\n";
+        }
+
+	open (STDOUT, "|tee $logdir/$filename.log") or do {
+	    print "Error opening pipe to tee command.\n";
+	    print "\t$!\n";
+	};
+
+        # Make sure we log everything.
+        open (STDERR, ">&STDOUT");
+
+        exec (@command) or do {
+            print "Unable to exec ", join (' ', @command), "!\n";
+            print "\t$!\n";
+            print "\tPlease check your binpath setting, PATH is currently $ENV{PATH}\n";
+            return $?;
+        };
+    }
+}
+
 # Subroutine to determine if the given subdirectory of a module can actually be
 # built or not.  For instance, /admin can never be built, and the /kalyptus subdir
 # of kdebindings can't either.
@@ -685,7 +767,7 @@ sub safe_make (@)
 
         chdir (get_build_dir($module) . "/$module/$subdir");
 
-        my $result = log_command ($module, $logname, \@args );
+        my $result = run_make_command ($module, $logname, \@args );
         return $result if $result;
     };
 
