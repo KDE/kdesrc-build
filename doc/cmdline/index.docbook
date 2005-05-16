@@ -1,0 +1,97 @@
+<chapter id="cmdline">
+<title>Command Line Options and Environment Variables</title>
+
+<para>This script doesn't use environment variables.  If you need to set environment
+variables for the build or install process, please see the <link
+linkend="conf-set-env">set-env</link> option.</para>
+
+<para>The script accepts the following command-line options:</para>
+
+<itemizedlist>
+
+<listitem id="cmdline-help"><para><option>--help</option>,= only display simple help on this script.</para></listitem>
+
+<listitem id="cmdline-version"><para><option>--version</option>, display the program version.</para></listitem>
+
+<listitem id="cmdline-author"><para><option>--author</option>, display contact information for the
+author.</para></listitem>
+
+<listitem id="cmdline-color"><para><option>--color</option>, enable colorful output.</para></listitem>
+
+<listitem id="cmdline-no-color"><para><option>--no-color</option>, disable colorful output.</para></listitem>
+
+<listitem id="cmdline-pretend"><para><option>--pretend</option> (or <option>-p</option>), don't actually DO anything, but
+act like you did.</para></listitem>
+
+<listitem id="cmdline-svn-only"><para><option>--svn-only</option>, Only perform the source update.</para></listitem>
+
+<listitem id="cmdline-build-only"><para><option>--build-only</option>, Only perform the build process.</para></listitem>
+
+<listitem id="cmdline-ignore-modules"><para><option>--ignore-modules</option>, Don't including the modules
+passed on the rest of the command line in the update/build process.</para></listitem>
+
+<listitem id="cmdline-no-svn"><para><option>--no-svn</option>, Skip contacting the &svn; server.</para></listitem>
+
+<listitem id="cmdline-no-build"><para><option>--no-build</option>, Skip the build process.</para></listitem>
+
+<listitem id="cmdline-no-install"><para><option>--no-install</option>, Don't automatically install packages
+after they're built.</para></listitem>
+
+<listitem id="cmdline-debug"><para><option>--debug</option>, Enables debug mode for the script.  Currently
+this means that all output will be dumped to STDOUT in addition to being
+logged in the log directory like normal.  Also, many functions are much more
+verbose about what they're doing in debugging mode.</para></listitem>
+
+<listitem id="cmdline-no-rebuild-on-fail"><para><option>--no-rebuild-on-fail</option>, Don't try and
+rebuild modules that have failed building from scratch.  &kdesvn-build; will
+never try to do this to a module that already was tried to be built from
+scratch.</para></listitem>
+
+<listitem id="cmdline-refresh-build"><para><option>--refresh-build</option>, Recreate the build system and
+make from scratch.</para></listitem>
+
+<listitem id="cmdline-reconfigure"><para><option>--reconfigure</option>, Run the configure script again
+without cleaning the build directory.</para></listitem>
+
+<listitem id="cmdline-recreate-configure"><para><option>--recreate-configure</option>, Run <command>make <option>-f</option>
+Makefile.cvs</command> again to create the configure script, and continue
+building as normal.  This option implies <option>--reconfigure</option>.</para></listitem>
+
+<listitem id="cmdline-resume"><para><option>--resume</option>, which tries to continue building from where
+the script stopped last time.  The script starts building the module after the
+last module to be compiled last time the script was run, whether or not it
+succeeded.  This option implies <link linkend="cmdline-no-svn"><option>--no-svn</option></link>.  You
+should not specify other module names on the command line.</para></listitem>
+
+<listitem id="cmdline-resume-from"><para><option>--resume-from</option>, which is like <link
+linkend="cmdline-resume"><option>--resume</option></link>, except that you supply the module to
+start building from as the next parameter on the command line.  This option
+implies <link linkend="cmdline-no-svn"><option>--no-svn</option></link>.  You should not specify
+other module names on the command line.</para></listitem>
+
+<listitem id="cmdline-rc-file"><para><option>--rc-file</option>, which interprets the next command line
+parameter as the file to read the configuration options from.  The default
+value for this parameter is ~/.kdesvn-buildrc.</para></listitem>
+
+<listitem id="cmdline-prefix"><para><option>--prefix=&lt;/path/to/kde&gt;</option>, which allows you to
+change the directory that &kde; will be installed to from the command line.
+This option implies <link linkend="cmdline-reconfigure"><option>--reconfigure</option></link>.</para></listitem>
+
+<listitem id="cmdline-build-system-only"><para><option>--build-system-only</option>, Stop after runnning
+<command>make <option>-f</option> Makefile.cvs</command>.  The configure script will still need to be run, which
+&kdesvn-build; will do next time.  This lets you prepare all the configure
+scripts at once so you can view the <command>./configure <option>--help</option></command> for each module, and
+edit your configure-flags accordingly.</para></listitem>
+
+<listitem id="cmdline-install"><para><option>--install</option>, If this is the only command-line option,
+it tries to install all of the modules contained in successfully-built, except
+for qt-copy, which doesn't need installation.  If command-line options are
+specified after <option>--install</option>, they are all assumed to be modules to install.
+</para></listitem>
+
+</itemizedlist>
+
+<para>Any other command-line options are assumed to be modules to update and build.
+Please, don't mix building with installing.</para>
+
+</chapter>

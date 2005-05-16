@@ -1,0 +1,528 @@
+<chapter id="kdesvn-buildrc">
+<title>The Format of .kdesvn-buildrc</title>
+
+<para>To use the script, you must have a file in your home directory called
+.kdesvn-buildrc, which describes the modules you'd like to download and
+build.</para>
+
+
+
+<para>It starts with the global options, specified like the following:</para>
+<programlisting>
+global
+<replaceable>option-name option-value</replaceable>
+<replaceable>[...]</replaceable>
+end global
+</programlisting>
+<para>It is then followed by one or more module sections, specified like the
+following:</para>
+<programlisting>module <replaceable>module-name</replaceable>
+<replaceable>option-name option-value</replaceable>
+<replaceable>[...]</replaceable>
+end module
+</programlisting>
+
+<para><replaceable>module-name</replaceable> must be a module from the &kde; &svn; repository (for
+example, kdelibs or kdebase).  Some options override global options, some
+add to global options, and some global options simply can't be overridden.
+</para>
+
+<para>The following is an alphabetized list of options you can use.  Click on the
+option to find out more about it.  If one is not documented, please e-mail the
+authors using the address you can find <link linkend="authors">above</link>.
+
+<itemizedlist>
+<listitem><para><link linkend="conf-apidox">apidox</link></para></listitem>
+<listitem><para><link linkend="conf-apply-qt-patches">apply-qt-patches</link></para></listitem>
+<listitem><para><link linkend="conf-binpath">binpath</link></para></listitem>
+<listitem><para><link linkend="conf-build-dir">build-dir</link></para></listitem>
+<listitem><para><link linkend="conf-build-system-only">build-system-only</link></para></listitem>
+<listitem><para><link linkend="conf-checkout-only">checkout-only</link></para></listitem>
+<listitem><para><link linkend="conf-colorful-output">colorful-output</link></para></listitem>
+<listitem><para><link linkend="conf-configure-flags">configure-flags</link></para></listitem>
+<listitem><para><link linkend="conf-cxxflags">cxxflags</link></para></listitem>
+<listitem><para><link linkend="conf-debug">debug</link></para></listitem>
+<listitem><para><link linkend="conf-disable-build-list">disable-build-list</link></para></listitem>
+<listitem><para><link linkend="conf-do-not-compile">do-not-compile</link></para></listitem>
+<listitem><para><link linkend="conf-inst-apps">inst-apps</link></para></listitem>
+<listitem><para><link linkend="conf-install-after-build">install-after-build</link></para></listitem>
+<listitem><para><link linkend="conf-kdedir">kdedir</link></para></listitem>
+<listitem><para><link linkend="conf-libpath">libpath</link></para></listitem>
+<listitem><para><link linkend="conf-lockfile">lockfile</link></para></listitem>
+<listitem><para><link linkend="conf-make-install-prefix">make-install-prefix</link></para></listitem>
+<listitem><para><link linkend="conf-make-options">make-options</link></para></listitem>
+<listitem><para><link linkend="conf-manual-build">manual-build</link></para></listitem>
+<listitem><para><link linkend="conf-manual-update">manual-update</link></para></listitem>
+<listitem><para><link linkend="conf-module-base-path">module-base-path</link></para></listitem>
+<listitem><para><link linkend="conf-niceness">niceness</link></para></listitem>
+<listitem><para><link linkend="conf-no-rebuild-on-fail">no-rebuild-on-fail</link></para></listitem>
+<listitem><para><link linkend="conf-no-svn">no-svn</link></para></listitem>
+<listitem><para><link linkend="conf-pretend">pretend</link></para></listitem>
+<listitem><para><link linkend="conf-qtdir">qtdir</link></para></listitem>
+<listitem><para><link linkend="conf-reconfigure">reconfigure</link></para></listitem>
+<listitem><para><link linkend="conf-recreate-configure">recreate-configure</link></para></listitem>
+<listitem><para><link linkend="conf-refresh-build">refresh-build</link></para></listitem>
+<listitem><para><link linkend="conf-set-env">set-env</link></para></listitem>
+<listitem><para><link linkend="conf-source-dir">source-dir</link></para></listitem>
+<listitem><para><link linkend="conf-stop-on-failure">stop-on-failure</link></para></listitem>
+<listitem><para><link linkend="conf-svn-server">svn-server</link></para></listitem>
+<listitem><para><link linkend="conf-use-qt-builddir-hack">use-qt-builddir-hack</link></para></listitem>
+<listitem><para><link linkend="conf-use-unsermake">use-unsermake</link></para></listitem>
+</itemizedlist>
+
+</para>
+
+<para>Here is a table of the various options, and some comments on them.  Any
+option which overrides the global option will override a command line setting
+as well.</para>
+
+<table id="option-table">
+<title>Table of Options</title>
+<tgroup cols="3">
+
+<thead>
+<row>
+<entry>Option-name</entry>
+<entry>Module -&gt; Global Behavior</entry>
+<entry>Notes</entry>
+</row>
+</thead>
+
+<tbody>
+
+<row id="conf-apidox">
+<entry>apidox</entry>
+<entry>Overrides global</entry>
+<entry>Set this option to <quote>true</quote> in order to have &kdesvn-build; automatically
+build and install the API documentation for the module after the normal build/install
+process.  This only works for modules where <command>make apidox</command> does something,
+including kdelibs, kdebase, and koffice, among others.
+</entry>
+</row>
+
+<row id="conf-apply-qt-patches">
+<entry>apply-qt-patches</entry>
+<entry>Overrides global</entry>
+<entry>This option is only useful for qt-copy.  If it is set to a non-zero value,
+then the apply-patches script in qt-copy will be run prior to building, in
+order to apply the non-official patches to the qt-copy.  Since these patches
+are normally the reason for using qt-copy instead of a stock Qt, it shouldn't
+do any harm to enable it.  The default is to enable the patches.</entry>
+</row>
+
+<row id="conf-binpath">
+<entry>binpath</entry>
+<entry>Can't be overridden</entry>
+<entry><para>Set this option to set the environment variable PATH while building.
+You can't override this setting in a module option.  The default value is
+<filename class="directory">/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin</filename>.  This environment
+variable should include the colon-separated paths of your development
+toolchain.  The paths <filename class="directory">$KDEDIR/bin</filename> and
+<filename class="directory">$QTDIR/bin</filename> are automatically added.  You
+may use the tilde (~) for any paths you add using this option.</para>
+</entry>
+</row>
+
+<row id="conf-build-dir">
+<entry>build-dir</entry>
+<entry>Overrides global</entry>
+<entry>Use this option to change the directory to contain the built sources. There
+are three different ways to use it:
+<itemizedlist>
+
+<listitem><para>Relative to the &kde; &svn; source directory (see <link
+linkend="conf-source-dir">the source-dir option</link>).  This is the default, and
+the way the script worked up to version v0.61.  This mode is selected if you
+type a directory name that doesn't start with a tilde (~) or a slash (/).</para>
+<para>The default value is <filename class="directory">build</filename>.</para></listitem>
+
+<listitem><para>Absolute path.  If you specify a path that begins with a /, then that path
+is used directly.  For example, <filename class="directory">/tmp/kde-obj-dir/</filename>.</para></listitem>
+
+<listitem><para>Relative to your home directory.  If you specify a path that begins with a
+~, then the path is used relative to your home directory, analogous to the
+shell's tilde-expansion.  For example, <filename class="directory">~/builddir</filename> would set the build
+directory to <filename class="directory">/home/user-name/builddir</filename>.</para></listitem>
+
+</itemizedlist>
+
+Perhaps surprisingly, this option can be changed per module.
+
+</entry>
+</row>
+
+<row id="conf-build-system-only">
+<entry>build-system-only</entry>
+<entry>Overrides global</entry>
+<entry>Set this option to only create the build system for this module.  What that
+means is that the <command>make <option>-f</option> Makefile.cvs</command> command will be run, and
+the configure script will be created and run, and make will not be run.
+This option is exactly equivalent to the <link
+linkend="cmdline-build-system-only"><option>--build-system-only</option></link> command line option.
+This command is useful for checking what configure-flags each module supports
+so you can change your ~/.kdesvn-buildrc.
+</entry>
+</row>
+
+<row id="conf-checkout-only">
+<entry>checkout-only</entry>
+<entry>Overrides global</entry>
+<entry>Set this option to checkout &svn; sources piece by piece.  The value
+for this option should be a space separated list of directories to checkout.
+If you don't include the admin directory, it will automatically be included (if
+necessary).  When checking out piece by piece, the admin directory will be
+pulled in from kde-common, which is where it exists on the &svn; server.
+Although this option overrides the global option, be aware that setting this as
+a global option makes no sense.
+</entry>
+</row>
+
+<row id="conf-configure-flags">
+<entry>configure-flags</entry>
+<entry>Appends to global option(except for qt-copy)</entry>
+<entry>Use this option to specify what flags to pass to ./configure when creating
+the build system for the module.  When this is used as a global-option, it is
+applied to all modules that this script builds.  qt-copy uses a much different
+set of configure options than the rest of &kde;, so this option
+<emphasis>overrides</emphasis> the global settings when applied to qt-copy.</entry>
+</row>
+
+<row id="conf-colorful-output">
+<entry>colorful-output</entry>
+<entry>Can't be overridden</entry>
+<entry>Set this option to false to disable the colorful output of &kdesvn-build;.
+This option defaults to <quote>true</quote>.  Note that &kdesvn-build; won't output the
+color codes to anything but a terminal (such as xterm, &konsole;, or the normal
+Linux console).
+</entry>
+</row>
+
+<row id="conf-cxxflags">
+<entry>cxxflags</entry>
+<entry>Appends to global option</entry>
+<entry>Use this option to specify what flags to pass to <command>./configure</command> as the
+<envar>CXXFLAGS</envar> when creating the build system for the module.  This option is
+specified here instead of with <link
+linkend="conf-configure-flags">configure-flags</link> because this option will also
+set the environment variable <envar>CXXFLAGS</envar> during the build process.
+</entry>
+</row>
+
+<row id="conf-debug">
+<entry>debug</entry>
+<entry>Can't be overridden</entry>
+<entry>This option enables the script's debug mode.  At this point, all this
+switch does is disable logging to files, instead dumping all output to
+stdout.  You should use the <link linkend="cmdline-debug"><option>--debug</option></link> command line
+option instead, this option only exists to implement it internally.
+</entry>
+</row>
+
+<row id="conf-disable-build-list">
+<entry>disable-build-list</entry>
+<entry>Can't be overridden</entry>
+<entry>Normally &kdesvn-build; will write out the list of modules that were
+successfully built to a file under the source directory called
+<filename class="directory">successfully-built</filename>.  If you set this option to 0,
+&kdesvn-build; will skip writing out the file.
+</entry>
+</row>
+
+<row id="conf-do-not-compile">
+<entry>do-not-compile</entry>
+<entry>Overrides global</entry>
+<entry><para>Use this option to set the <envar>DO_NOT_COMPILE</envar> environment variable prior to
+running the configure script.  According to the <ulink
+url="http://developer.kde.org/documentation/other/developer-faq.html">&kde;
+Developer FAQ</ulink>, this should cause any toplevel directory you pass to not be
+built.  The directories should be space-separated.</para>
+
+<para>Note that the sources to the programs will still be downloaded.  You can use
+the <link linkend="conf-checkout-only">checkout-only</link>
+directive to choose directories that you want to check out.</para>
+</entry>
+</row>
+
+<row id="conf-inst-apps">
+<entry>inst-apps</entry>
+<entry>Overrides global</entry>
+<entry><para>This is the opposite of the <link
+linkend="conf-do-not-compile">do-not-compile</link> option.  This option makes it
+so that only the given toplevel directories are built.  The directories should
+be space-separated.</para>
+
+<para>Any changes don't take effect until the next time
+<command>make <option>-f</option> Makefile.cvs</command> is
+run, either automatically by the script, or manually by the <link
+linkend="cmdline-refresh-build"><option>--refresh-build</option></link> or <link
+linkend="cmdline-recreate-configure"><option>--recreate-configure</option></link> options.
+</para>
+
+<para>Note that the sources to the programs will still be downloaded.  You can use
+the <link linkend="conf-checkout-only">checkout-only</link>
+directive to choose directories that you want to check out.</para>
+</entry>
+</row>
+
+<row id="conf-install-after-build">
+<entry>install-after-build</entry>
+<entry>Overrides global</entry>
+<entry>This option is used to install the package after it successfully builds.
+This option is enabled by default.  If you want to disable this, you need to
+set this option to 0 in the configuration file.  You can also use the
+<link linkend="cmdline-no-install"><option>--no-install</option></link> command line flag.
+</entry>
+</row>
+
+<row id="conf-kdedir">
+<entry>kdedir</entry>
+<entry>Can't be overridden</entry>
+<entry>This option sets the directory that &kde; will be installed to after it is
+built.  It defaults to <filename class="directory">~/kde</filename>.  If you change this to a directory
+needing root access, you may want to read about the <link
+linkend="conf-make-install-prefix">make-install-prefix</link> option as well.</entry>
+</row>
+
+<row id="conf-libpath">
+<entry>libpath</entry>
+<entry>Can't be overridden</entry>
+<entry>Set this option to set the environment variable LD_LIBRARY_PATH while
+building.  You can't override this setting in a module option.  The default
+value is blank, but the paths <filename class="directory">$KDEDIR/lib</filename> and
+<filename class="directory">$QTDIR/lib</filename> are automatically
+added.  You may use the tilde (~) for any paths you add using this option.
+</entry>
+</row>
+
+<row id="conf-lockfile">
+<entry>lockfile</entry>
+<entry>Can't be overridden</entry>
+<entry>
+<para>The path of a file to use for script locking, to prevent parallel execution.
+If you don't specify this value, the default is <filename class="directory">~/.kdesvn-lock</filename></para>
+
+<para>If the script is unable to create this file, it will abort.</para>
+</entry>
+</row>
+
+<row id="conf-log-dir">
+<entry>log-dir</entry>
+<entry>Overrides global</entry>
+<entry>Use this option to change the directory used to hold the log files
+generated by the script.  This setting can be set on a per-module basis as of
+version 0.64 or later.
+</entry>
+</row>
+
+<row id="conf-make-install-prefix">
+<entry>make-install-prefix</entry>
+<entry>Overrides global</entry>
+<entry>Set this variable to a space-separated list, which is interpreted as a
+command and its options to precede the make install command used to install
+modules.  This is useful for installing packages with sudo for example, but
+please be careful while dealing with root privileges.</entry>
+</row>
+
+<row id="conf-make-options">
+<entry>make-options</entry>
+<entry>Overrides global</entry>
+<entry>Set this variable in order to pass command line options to the make
+command.  This is useful for programs such as <ulink
+url="http://distcc.samba.org/"><application>distcc</application></ulink>.
+<application>distcc</application> allows you to share your
+compilation work among more than one computer.  To use it, you must use the
+<option>-j</option> option to make.  Now you can.  According to the docs, 2 *
+number_of_network_cpus is recommended.  I have 1 CPU total, so it would be
+<option>-j2</option> in my case.</entry>
+</row>
+
+<row id="conf-manual-build">
+<entry>manual-build</entry>
+<entry>Overrides global</entry>
+<entry>Set the option value to <quote>true</quote> to keep the build process from attempting to
+build this module.  It will still be kept up-to-date when updating from &svn;.
+This option is exactly equivalent to the <link
+linkend="cmdline-no-build"><option>--no-build</option></link> command line option.
+</entry>
+</row>
+
+<row id="conf-manual-update">
+<entry>manual-update</entry>
+<entry>Overrides global</entry>
+<entry>Set the option value to <quote>true</quote> to keep the build process from attempting to
+update (and by extension, build or install) this module.  If you set this
+option for a module, then you have pretty much commented it out.
+</entry>
+</row>
+
+<row id="conf-module-base-path">
+<entry>module-base-path</entry>
+<entry>Overrides global</entry>
+<entry><para>Set this option to override &kdesvn-build;'s default directory path to the
+module in question.  This can be used, for example, to pull specific branches
+or tagged versions of libraries.  <ulink url="http://websvn.kde.org/">The &kde;
+Source Viewer</ulink> is invaluable in helping to pick the right path.</para>
+<para>Note that &kdesvn-build; constructs the final path according to the
+following template:
+<varname>$svn-server</varname>/home/kde/<varname>$module-base-path</varname>/<varname>$module-name</varname>.
+</para>
+<para>The default value is either <quote>trunk</quote> or
+<quote>trunk/KDE</quote>, depending on the modulename.</para>
+</entry>
+</row>
+
+<row id="conf-niceness">
+<entry>niceness</entry>
+<entry>Can't be overridden</entry>
+<entry>Set this option to a number between 20 and 0.  The higher the number, the
+lower a priority &kdesvn-build; will set for itself.  The default is 10.
+</entry>
+</row>
+
+<row id="conf-no-rebuild-on-fail">
+<entry>no-rebuild-on-fail</entry>
+<entry>Overrides global</entry>
+<entry>Set this option value to <quote>true</quote> to always prevent &kdesvn-build; from trying
+to rebuild this module if it should fail an incremental build.  Normally
+&kdesvn-build; will try to rebuild the module from scratch to counteract the
+effect of a stray &svn; update messing up the build system.</entry>
+</row>
+
+<row id="conf-no-svn">
+<entry>no-svn</entry>
+<entry>Overrides global</entry>
+<entry>Set this option value to <quote>true</quote> to prevent &svn; updates for the module.
+This option is exactly equivalent to the <link linkend="cmdline-no-svn"><option>--no-svn</option></link>
+command line option.
+</entry>
+</row>
+
+<row id="conf-pretend">
+<entry>pretend</entry>
+<entry>Can't be overridden</entry>
+<entry>Set the option value to <quote>true</quote> in order to <quote>fake</quote> the update/build or
+install process.  This setting results in verbose output, and is exactly
+equivalent to the <link linkend="cmdline-pretend"><option>--pretend</option></link> command line option.
+</entry>
+</row>
+
+<row id="conf-qtdir">
+<entry>qtdir</entry>
+<entry>Can't be overridden</entry>
+<entry>Set this option to set the environment variable QTDIR while building.
+You can't override this setting in a module option.  If you don't specify
+this option, it defaults to
+<filename class="directory"><varname>$(source-dir)</varname>/build/qt-copy</filename>,
+which uses the qt-copy module included in the &kde; source repository.
+You may use a tilde (~) to represent your home directory.
+</entry>
+</row>
+
+<row id="conf-recreate-configure">
+<entry>recreate-configure</entry>
+<entry>Overrides global</entry>
+<entry>Use this option to re-run <command>make <option>-f</option> Makefile.cvs</command> and then reconfigure the
+module before building.  Note that setting this option in the configuration
+file isn't a great idea, use <link
+linkend="cmdline-recreate-configure"><option>--recreate-configure</option></link> on the command line
+instead.
+</entry>
+</row>
+
+<row id="conf-reconfigure">
+<entry>reconfigure</entry>
+<entry>Overrides global</entry>
+<entry>Use this option to reconfigure the module before building.  Note that
+setting this option in the configuration file isn't a great idea, use
+<link linkend="cmdline-reconfigure"><option>--reconfigure</option></link> on the command line instead.
+</entry>
+</row>
+
+<row id="conf-refresh-build">
+<entry>refresh-build</entry>
+<entry>Overrides global</entry>
+<entry>Set this option value to <quote>true</quote> to cause the build system for this module
+to start from scratch every time the script is run.  This option is exactly
+equivalent to the <link linkend="cmdline-refresh-build"><option>--refresh-build</option></link> command
+line option.
+</entry>
+</row>
+
+<row id="conf-set-env">
+<entry>set-env</entry>
+<entry>Overrides global</entry>
+<entry><para>This option accepts a space-separated set of values, where the first value
+is the environment variable to set, and the rest of the values is what you
+want the variable set to.  For example, to set the variable RONALD to
+McDonald, you would put in the appropriate section this command:</para>
+<screen><command>set-env</command> <envar>RONALD</envar> <userinput>McDonald</userinput></screen>
+<para>This option is special in that it can be repeated without overriding
+earlier set-env settings in the same section of the configuration file.  This
+way you can set more than one environment variable per module (or
+globally).</para>
+</entry>
+</row>
+
+<row id="conf-source-dir">
+<entry>source-dir</entry>
+<entry>Can't be overridden</entry>
+<entry>This option is used to set the directory on your computer to store the &kde;
+&svn; sources at.  If you don't specify this value, the default is
+<filename class="directory">~/kdesvn</filename>.  If
+you do specify this value, use an absolute path name.
+</entry>
+</row>
+
+<row id="conf-svn-server">
+<entry>svn-server</entry>
+<entry>Can't be overridden</entry>
+<entry>This option is used to set the server used to check out from &svn;.
+The default is the anonymous &svn; repository, <ulink
+url="svn://anonsvn.kde.org/">svn://anonsvn.kde.org/</ulink></entry>
+</row>
+
+<row id="conf-stop-on-failure">
+<entry>stop-on-failure</entry>
+<entry>Overrides global</entry>
+<entry>Set this option value to <quote>true</quote> to cause the script to stop execution
+after an error occurs during the build or install process.  This option is off
+by default.
+</entry>
+</row>
+
+<row id="conf-use-qt-builddir-hack">
+<entry>use-qt-builddir-hack</entry>
+<entry>Overrides global</entry>
+<entry>Although this option overrides the global option, it only makes sense for
+qt-copy.  Set this option to <quote>true</quote> to enable the script's
+<emphasis>experimental</emphasis> srcdir != builddir mode.  When enabled,
+&kdesvn-build; will copy the qt-copy source module to the build directory,
+and perform builds from there.  That means your QTDIR environment variable
+should be set to
+<filename class="directory">$(qt-copy-build-dir)/qt-copy/lib</filename>
+instead.  You should also change your <link linkend="conf-qtdir">qtdir</link>
+option accordingly. Incremental make should still work in this mode, as the
+timestamps will be preserved after the copy.  If you use the
+<link linkend="conf-apply-qt-patches">apply-qt-patches</link> option, the patches
+will be applied in the build directory, not the source directory.
+This option defaults to <quote>true</quote>.
+</entry>
+</row>
+
+<row id="conf-use-unsermake">
+<entry>use-unsermake</entry>
+<entry>Overrides global</entry>
+<entry>Set this option to a non-zero value in order to use the experimental
+unsermake program instead of automake when running the configure script.  This
+can lead to some serious decreases in build time, especially for
+<ulink url="http://www.csh.rit.edu/slashdot/distcc.html">distributed building
+systems</ulink>.  This option defaults to <quote>true</quote> (for most modules).
+</entry>
+</row>
+
+</tbody>
+
+</tgroup>
+</table>
+
+</chapter>
