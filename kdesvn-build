@@ -13,7 +13,6 @@
 #
 # TODO: It would be better to have lockfiles in each directory as it's
 #       being updated, instead of having one big lock for the script.
-# TODO: Port the release-tag option from kdecvs-build.
 
 use strict;
 use warnings;
@@ -36,6 +35,7 @@ my %global_opts = (
     "colorful-output"     => 1, # Use color by default.
     "cxxflags"            => "-g -pipe -march=i686",
     "debug"               => "",
+    "dest-dir"            => '${MODULE}', # single quotes used on purpose!
     "disable-build-list"  => "",
     "do-not-compile"      => "",
     "install-after-build" => "1", # Default to true
@@ -192,6 +192,22 @@ sub get_subdir_path
     }
 
     return $dir;
+}
+
+# Subroutine to return the name of the destination directory for the checkout
+# and build routines.  Based on the dest-dir option.  The return value will be
+# relative to the src/build dir.  The user may use the '$MODULE' or '${MODULE}'
+# sequences, which will be replaced by the name of the module in question.
+#
+# The first parameter should be the module name.
+sub get_dest_dir
+{
+    my $module = shift;
+    my $dest_dir = get_option($module, 'dest-dir');
+
+    $dest_dir =~ s/(\${MODULE})|(\$MODULE\b)/$module/g;
+
+    return $dest_dir;
 }
 
 # Convienience subroutine to get the source root dir.
@@ -437,6 +453,55 @@ sub has_base_module
     return $module =~ /^(extragear|playground|KDE)(\/[^\/]+)?$/;
 }
 
+# Subroutine to return the directory that a module will be stored in.
+# NOTE: The return value is a hash. The key 'module' will return the final
+# module name, the key 'path' will return the full path to the module. The
+# key 'fullpath' will return their concatenation.
+# For example, with $module == 'KDE/kdelibs', and no change in the dest-dir
+# option, you'd get something like:
+# {
+#   'path'     => '/home/user/kdesvn/KDE',
+#   'module'   => 'kdelibs',
+#   'fullpath' => '/home/user/kdesvn/KDE/kdelibs'
+# }
+# If dest-dir were changed to e.g. extragear-multimedia, you'd get:
+# {
+#   'path'     => '/home/user/kdesvn',
+#   'module'   => 'extragear-multimedia',
+#   'fullpath' => '/home/user/kdesvn/extragear-multimedia'
+# }
+# First parameter is the module.
+# Second parameter is either source or build.
+sub get_module_path_dir
+{
+    my $module = shift;
+    my $type = shift;
+    my $destdir = get_dest_dir($module);
+    my $srcbase = get_kdesvn_dir();
+    $srcbase = get_build_dir($module) if $type eq 'build';
+
+    my $combined = "$srcbase/$destdir";
+
+    # Remove dup //
+    $combined =~ s/\/+/\//;
+
+    my @parts = split(/\//, $combined);
+    my %result = ();
+    $result{'module'} = pop @parts;
+    $result{'path'} = join('/', @parts);
+    $result{'fullpath'} = "$result{path}/$result{module}";
+
+    return %result;
+}
+
+sub get_fullpath
+{
+    my ($module, $type) = @_;
+    my %pathinfo = get_module_path_dir($module, $type);
+
+    return $pathinfo{'fullpath'};
+}
+
 # Checkout a module that has not been checked out before, along with any
 # subdirectories the user desires.
 # The first parameter is the module to checkout (including extragear and
@@ -446,30 +511,28 @@ sub has_base_module
 sub checkout_module_path
 {
     my ($module, @path) = @_;
-    my $kdesvn = get_kdesvn_dir();
+    my %pathinfo = get_module_path_dir($module, 'source');
     my $result;
     my @args;
-    my $modulename = $module;
 
-    if (has_base_module($module))
+    if (not -e $pathinfo{'path'} and not super_mkdir($pathinfo{'path'}))
     {
-        my $base;
-        ($base, $modulename) = split(/\//, $module);
-        $kdesvn .= "/$base";
+        print clr "Unable to create path r[$pathinfo{path}]!\n";
+        return 1;
     }
 
-    super_mkdir("$kdesvn") if not -e $kdesvn;
-    chdir($kdesvn);
+    chdir($pathinfo{'path'});
 
     push @args, ('svn', 'co');
     push @args, '-N' if scalar @path;
     push @args, svn_module_url($module);
+    push @args, $pathinfo{'module'};
 
     print clr "Checking out g[$module]\n";
     $result = run_svn($module, 'svn-co', \@args);
     return $result if $result;
 
-    chdir("$modulename") if scalar @path;
+    chdir($pathinfo{'module'}) if scalar @path;
 
     return update_module_subdirectories($module, @path);
 }
@@ -483,19 +546,11 @@ sub checkout_module_path
 sub update_module_path
 {
     my ($module, @path) = @_;
-    my $kdesvn = get_kdesvn_dir();
+    my $fullpath = get_fullpath($module, 'source');
     my $result;
     my @args;
-    my $modulename = $module;
 
-    if (has_base_module($module))
-    {
-        my $base;
-        ($base, $modulename) = split(/\//, $module);
-        $kdesvn .= "/$base";
-    }
-
-    chdir("$kdesvn/$modulename");
+    chdir $fullpath;
 
     switch_repo_url(svn_module_url($module));
 
@@ -509,7 +564,7 @@ sub update_module_path
     # If the admin dir exists and is a soft link, remove it so that svn can
     # update it if need be.  The link will automatically be re-created later
     # in the process if necessary by the build functions.
-    unlink ("$kdesvn/$module/admin") if -l "$kdesvn/$module/admin";
+    unlink ("$fullpath/admin") if -l "$fullpath/admin";
 
     return update_module_subdirectories($module, @path);
 }
@@ -759,16 +814,20 @@ sub safe_make (@)
             print $installing ? "\tInstalling " : "\tBuilding ", clr "subdirectory g[$subdir]\n";
         }
 
+        my %pathinfo = get_module_path_dir($module, 'build');
+        my $builddir = "$pathinfo{fullpath}/$subdir";
+        $builddir =~ s/\/*$//;
+
         if (pretending)
         {
             $opts = join(' ', @args);
-            print clr "\tWould have switched directory to y[", get_build_dir($module) . clr "/$module/$subdir]\n";
+            print clr "\tWould have switched directory to y[$builddir]\n";
             print clr "\tWould have run g[$opts > $logdir/$logname]\n";
 
             next;
         }
 
-        chdir (get_build_dir($module) . "/$module/$subdir");
+        chdir ($builddir);
 
         my $result = run_make_command ($module, $logname, \@args );
         return $result if $result;
@@ -1179,7 +1238,7 @@ sub process_arguments
 {
     my $arg;
     my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
-    my $version = "kdesvn-build 0.94\n";
+    my $version = "kdesvn-build 0.96\n";
     my @argv;
 
     while ($_ = shift @ARGV)
@@ -1891,6 +1950,8 @@ sub handle_updates
 
     foreach $module (@{$update_ref})
     {
+        my $fullpath = get_fullpath($module, 'source');
+
         if (not exists $package_opts{$module})
         {
             print clr "Unknown module y[$module], configure it in ~/.kdesvn-buildrc.\n";
@@ -1900,7 +1961,7 @@ sub handle_updates
         next if get_option($module, 'no-svn');
 
         my @options = split(' ', get_option($module, 'checkout-only'));
-        if (-e "$kdesvn/$module/.svn")
+        if (-e "$fullpath/.svn")
         {
             $result = update_module_path($module, @options);
         }
@@ -1927,7 +1988,8 @@ sub handle_updates
 # failure.
 sub safe_apply_patches
 {
-    my $builddir = get_build_dir('qt-copy');
+    my %pathinfo = get_module_path_dir('qt-copy', 'build');
+    my $builddir = "$pathinfo{fullpath}";
 
     if (pretending)
     {
@@ -1936,7 +1998,7 @@ sub safe_apply_patches
     }
 
     print clr "\tg[Applying recommended Qt patches].\n";
-    chdir ("$builddir/qt-copy");
+    chdir ("$builddir");
     return (log_command('qt-copy', 'apply-patches', [ "./apply_patches" ]));
 }
 
@@ -1945,9 +2007,9 @@ sub safe_apply_patches
 # containing all of the configure flags to apply
 sub safe_configure
 {
-    my $kdesvn = get_kdesvn_dir();
     my $module = shift;
-    my $script = "$kdesvn/$module/configure";
+    my $fullpath = get_fullpath($module, 'source');
+    my $script = "$fullpath/configure";
 
     if (pretending)
     {
@@ -1972,12 +2034,13 @@ sub safe_configure
         # hack for them.
         if ($module eq 'kdebindings' or $module eq 'valgrind')
         {
-            $script = get_build_dir($module) . "/$module/configure";
+            my %pathinfo = get_module_path_dir($module, 'build');
+            $script = "$pathinfo{fullpath}/configure";
         }
     }
     else
     {
-        my $qtdir = get_build_dir('qt-copy') . '/qt-copy';
+        my $qtdir = get_fullpath('qt-copy', 'build');
 
         # Copy the configure script to accept the GPL license.
         open CONFIG, "<$script";
@@ -1992,7 +2055,7 @@ sub safe_configure
         chmod 0755, "$qtdir/configure.new";
         $script = "$qtdir/configure.new";
 
-        print clr "\tb[r[GPL license selected for Qt.  See] $kdesvn/qt-copy/LICENSE.GPL\n";
+        print clr "\tb[r[GPL license selected for Qt.  See] $fullpath/qt-copy/LICENSE.GPL\n";
     }
 
     print clr "\tRunning g[configure]...\n";
@@ -2029,13 +2092,16 @@ sub has_updated_kdecommon
 sub create_admin_dir
 {
     my $module = shift;
-    my $kdesvn = get_kdesvn_dir();
+    my $fullpath = get_fullpath($module, 'source');
 
     return 1 if $module eq 'qt-copy';
 
     # Find kde-common
-    my $admindir = "$kdesvn/kde-common/admin";
-    $admindir = "$kdesvn/KDE/kde-common/admin" unless -e $admindir;
+    my $admindir = get_fullpath('kde-common', 'source') . '/admin';
+    if (not -e $admindir)
+    {
+        $admindir = get_fullpath('KDE/kde-common', 'source') . '/admin';
+    }
 
     if (not -e $admindir)
     {
@@ -2052,14 +2118,14 @@ sub create_admin_dir
                 return 0;
             }
 
-            $admindir = "$kdesvn/kde-common/admin";
+            $admindir = get_fullpath('kde-common', 'source') . '/admin';
             if (pretending)
             {
                 print clr "Would have checked out g[kde-common]\n";
             }
             elsif (checkout_module_path('kde-common', 'admin') == 0)
             {
-                chdir ("$kdesvn/$module");
+                chdir ($fullpath);
             }
             else
             {
@@ -2080,9 +2146,9 @@ sub create_admin_dir
 # subroutine assumes that the module is already downloaded.
 sub safe_create_build_system
 {
-    my $kdesvn = get_kdesvn_dir();
-    my $builddir = get_build_dir ('qt-copy'); # Only used for qt-copy
     my $module = shift;
+    my $fullpath = get_fullpath($module, 'source');
+    my $builddir = get_fullpath($module, 'build');
     my $instapps = get_option($module, 'inst-apps');
 
     if (pretending)
@@ -2091,8 +2157,8 @@ sub safe_create_build_system
         return 0;
     }
 
-    chdir ("$kdesvn/$module");
-    chdir ("$builddir/$module") if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
+    chdir ($fullpath);
+    chdir ($builddir) if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
 
     # Check for admin dir, if it doesn't exist, create a softlink
     if (not create_admin_dir($module))
@@ -2107,10 +2173,10 @@ sub safe_create_build_system
     {
         # Use a slightly less effective method of builddir != srcdir for the
         # module, as it fails otherwise.
-        chdir (get_build_dir($module) . "/$module");
+        chdir($builddir);
 
         # lndir is included with XFree86 and X.org
-        if (log_command ($module, "lndir", [ "lndir", "$kdesvn/$module" ]))
+        if (log_command ($module, "lndir", [ "lndir", "$fullpath" ]))
         {
             print clr "\tUnable to setup special build system for r[$module].\n";
             return 1;
@@ -2129,7 +2195,7 @@ sub safe_create_build_system
     }
     else
     {
-        unlink ("$kdesvn/$module/inst-apps");
+        unlink ("$fullpath/inst-apps");
     }
 
     my $cmd_ref = [ 'make', '-f', 'Makefile.cvs' ];
@@ -2149,9 +2215,8 @@ sub safe_create_build_system
 # If so, it returns boolean true.
 sub needs_refreshed
 {
-    my $kdesvn = get_kdesvn_dir();
     my $module = shift;
-    my $builddir = get_build_dir ($module);
+    my $builddir = get_fullpath($module, 'build');
     my $conf_file_key = "Makefile"; # File that exists after configure is run
 
     # Use a different file to indicate configure has been run for qt-copy
@@ -2159,16 +2224,16 @@ sub needs_refreshed
 
     if (debugging)
     {
-        print "Build directory not setup for $module.\n" if not -e "$builddir/$module";
-        print ".refresh-me exists.\n" if -e "$builddir/$module/.refresh-me";
+        print "Build directory not setup for $module.\n" if not -e "$builddir";
+        print ".refresh-me exists.\n" if -e "$builddir/.refresh-me";
         print "refresh-build option set.\n" if get_option($module, 'refresh-build');
-        print "Can't find configure key file.\n" if not -e "$builddir/$module/$conf_file_key";
+        print "Can't find configure key file.\n" if not -e "$builddir/$conf_file_key";
     }
 
-    return 1 if ((not -e "$builddir/$module") ||
-        (-e "$builddir/$module/.refresh-me") ||
+    return 1 if ((not -e "$builddir") ||
+        (-e "$builddir/.refresh-me") ||
         get_option($module, "refresh-build") ||
-        (not -e "$builddir/$module/$conf_file_key"));
+        (not -e "$builddir/$conf_file_key"));
 
     return 0;
 }
@@ -2266,8 +2331,8 @@ sub run_svn
 sub clean_build_system
 {
     my $module = shift;
-    my $moduledir = get_kdesvn_dir() . "/$module";
-    my $builddir = get_build_dir ($module);
+    my $moduledir = get_fullpath($module, 'source');
+    my $builddir = get_fullpath($module, 'build');
 
     if (pretending) {
         print clr "\tWould have cleaned build system for g[$module].\n";
@@ -2285,7 +2350,7 @@ sub clean_build_system
     {
         if (get_option ('qt-copy', 'use-qt-builddir-hack'))
         {
-            if (log_command ('qt-copy', 'clean-builddir', ['rm', '-rf', "$builddir/qt-copy"]))
+            if (log_command ('qt-copy', 'clean-builddir', ['rm', '-rf', "$builddir"]))
             {
                 print clr "Error refreshing r[qt-copy] builddir!\n";
                 return 0;
@@ -2293,28 +2358,28 @@ sub clean_build_system
         }
         else
         {
-            chdir ("$builddir/qt-copy");
+            chdir ("$builddir");
             if (log_command ('qt-copy', 'clean', ['make', 'clean']))
             {
                 print clr "r[WARNING]: Error cleaning r[qt-copy].\n";
             }
-            unlink ("$builddir/qt-copy/.qmake.cache");
+            unlink ("$builddir/.qmake.cache");
         }
 
         return 1;
     }
-    elsif (-e "$builddir/$module" &&
-        safe_system ('rm', '-rf', "$builddir/$module"))
+    elsif (-e "$builddir" &&
+        safe_system ('rm', '-rf', "$builddir"))
     {
         # Remove build directory for normal module.
-        print clr "\tUnable to unlink r[$builddir/$module], skipping.\n";
+        print clr "\tUnable to unlink r[$builddir], skipping.\n";
         return 0; # False for this function.
     }
 
     # Now create the directory
-    if (not -e "$builddir/$module" and not super_mkdir ("$builddir/$module"))
+    if (not -e "$builddir" and not super_mkdir ("$builddir"))
     {
-        print clr "\tUnable to create directory r[$builddir/$module], skipping.\n";
+        print clr "\tUnable to create directory r[$builddir], skipping.\n";
         return 0;
     }
 
@@ -2327,10 +2392,10 @@ sub clean_build_system
 sub setup_build_system
 {
     my $module = shift;
-    my $kdesvn = get_kdesvn_dir();
+    my $fullpath = get_fullpath($module, 'source');
+    my $builddir = get_fullpath($module, 'build');
     my $do_configure = get_option ($module, 'reconfigure');
     my $do_makeconf = get_option ($module, 'recreate-configure');
-    my $builddir = get_build_dir ($module);
 
     if (needs_refreshed($module))
     {
@@ -2360,23 +2425,22 @@ sub setup_build_system
         # builddir.  This could probably be converted to the lndir method
         # used for kdebindings and valgrind.
         if (log_command ('qt-copy', 'create-builddir', ['cp', '-af',
-                         "$kdesvn/$module", "$builddir" ]))
+                         $fullpath, $builddir ]))
         {
             print clr "Error creating r[qt-copy] build system!\n";
             return 0;
         }
     }
 
-    my $confpath = "$kdesvn/$module";
-    $confpath = get_build_dir($module) . "/$module" if $module eq 'kdebindings';
+    my $confpath = $module =~ /(valgrind|kdebindings)$/ ? $builddir : $fullpath;
 
     if ($do_makeconf or not -e "$confpath/configure")
     {
         print clr "\ty[Recreating configure script].\n";
 
         # Note this is the checkout directory, not the build directory
-        # This will equal $builddir for qt-copy.
-        chdir ("$kdesvn/$module");
+        # This will equal $builddir for qt-copy without qt-builddir-hack
+        chdir ($fullpath);
 
         # Update the PATH and other important environment variables.
         update_module_environment ($module);
@@ -2399,10 +2463,10 @@ sub setup_build_system
         return 1 if get_option ($module, 'build-system-only');
     }
 
-    $do_configure = 1 if $module eq 'qt-copy' and not -e "$builddir/qt-copy/src/tools/qconfig.cpp";
-    if ($do_configure || not -e "$builddir/$module/Makefile")
+    $do_configure = 1 if $module eq 'qt-copy' and not -e "$builddir/src/tools/qconfig.cpp";
+    if ($do_configure || not -e "$builddir/Makefile")
     {
-        if (not -e "$builddir/$module" and not super_mkdir("$builddir/$module"))
+        if (not -e "$builddir" and not super_mkdir("$builddir"))
         {
             print clr "\tUnable to create build directory for r[$module]!!\n";
             return 0;
@@ -2411,9 +2475,9 @@ sub setup_build_system
         # Now we're in the checkout directory
         # So, switch to the build dir.
         # builddir is automatically set to the right value for qt-copy
-        if (not chdir ("$builddir/$module") and not pretending)
+        if (not chdir ("$builddir") and not pretending)
         {
-            print clr "\tUnable to change directory to r[$builddir/$module]!!\n";
+            print clr "\tUnable to change directory to r[$builddir]!!\n";
             return 0;
         }
 
@@ -2433,7 +2497,6 @@ sub setup_build_system
 sub update_module_environment
 {
     my $module = shift;
-    my $kdesvn = get_kdesvn_dir();
     my $kdedir = get_option ($module, 'kdedir');
     my $qtdir = get_option ($module, 'qtdir');
     my $path = join(':', "$qtdir/bin", "$kdedir/bin", get_option ($module, 'binpath'));
@@ -2458,7 +2521,8 @@ sub update_module_environment
     # a slightly faster build even with only one CPU.
     if (get_option ($module, "use-unsermake"))
     {
-        $path = "$kdesvn/kdenonbeta/unsermake:$path";
+        my $kdenonbeta = get_fullpath('kdenonbeta', 'source');
+        $path = "$kdenonbeta/unsermake:$path";
     }
     else
     {
@@ -2568,7 +2632,7 @@ sub build_module
     my $cur_module_num = shift;
     my $total_module_num = shift;
     my $apidox = shift;
-    my $builddir = get_build_dir ($module);
+    my $builddir = get_fullpath($module, 'build');
     my $trynumber = 1;
 
     # Do some tests to make sure we're ready to build.
@@ -2580,10 +2644,9 @@ sub build_module
 
     update_module_environment($module);
 
-    if($module eq 'qt-copy' and "$builddir/$module" ne get_option('global',
-        'qtdir'))
+    if($module eq 'qt-copy' and $builddir ne get_option('global', 'qtdir'))
     {
-        my $qtpath = "$builddir/$module";
+        my $qtpath = $builddir;
         $qtpath =~ s/$ENV{HOME}/~/;
         print clr <<EOF;
 
@@ -2826,7 +2889,7 @@ sub handle_install
             next;
         }
 
-        my $builddir = get_build_dir ($module);
+        my $builddir = get_fullpath($module, 'build');
 
         if (not exists $package_opts{$module})
         {
@@ -2834,8 +2897,8 @@ sub handle_install
             next;
         }
 
-        if (not -e "$builddir/$module" ||
-            not -e "$builddir/$module/Makefile")
+        if (not -e "$builddir" ||
+            not -e "$builddir/Makefile")
         {
             print clr "\tThe build system doesn't exist for r[$module].\n";
             print "\tTherefore, we can't install it. :-(.\n";
