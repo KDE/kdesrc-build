@@ -1777,11 +1777,12 @@ sub dump_options
     print "Global options:\n";
     foreach $item (keys %global_opts)
     {
-        $c = $item =~ /^#/ ? 'r' : 'g';
+        # Put the first bracket in $c, otherwise some Perl systems break.
+        $c = $item =~ /^#/ ? 'r[' : 'g[';
 
         if($item !~ /^#?set-env$/)
         {
-            print clr "  ${c}[$item] is \"y[$global_opts{$item}]\"\n";
+            print clr "  ${c}$item] is \"y[$global_opts{$item}]\"\n";
         }
         else
         {
@@ -1789,7 +1790,7 @@ sub dump_options
 
             foreach my $envitem (keys %{$setref})
             {
-                print clr "  Set ${c}[$envitem] to y[", $$setref{$envitem}, clr "]\n";
+                print clr "  Set ${c}$envitem] to y[", $$setref{$envitem}, clr "]\n";
             }
         }
     }
@@ -1802,11 +1803,13 @@ sub dump_options
 
         foreach $ref_item (keys %{$package_opts{$item}})
         {
-            $c = $ref_item =~ /^#/ ? 'r' : 'g';
+            # Put the first bracket in here, otherwise it breaks on some
+            # Perl systems.
+            $c = $ref_item =~ /^#/ ? 'r[' : 'g[';
 
             if($ref_item !~ /^#?set-env$/)
             {
-                print clr "  ${c}[$ref_item] is \"y[", $$ref{$ref_item}, clr "]\"\n";
+                print clr "  ${c}$ref_item] is \"y[", $$ref{$ref_item}, clr "]\"\n";
             }
             else
             {
@@ -1815,7 +1818,7 @@ sub dump_options
 
                 foreach my $envitem (keys %{$setref})
                 {
-                    print clr "  Set env variable ${c}[$envitem] to y[", $$setref{$envitem}, clr "]\n";
+                    print clr "  Set env variable ${c}$envitem] to y[", $$setref{$envitem}, clr "]\n";
                 }
             }
         }
