@@ -2095,7 +2095,10 @@ sub create_admin_dir
     my $module = shift;
     my $fullpath = get_fullpath($module, 'source');
 
+    # Don't bother if it's qt-copy, or if we've already got an admin
+    # directory.
     return 1 if $module eq 'qt-copy';
+    return 1 if -e "$fullpath/admin";
 
     # Find kde-common
     my $admindir = get_fullpath('kde-common', 'source') . '/admin';
@@ -2119,26 +2122,20 @@ sub create_admin_dir
                 return 0;
             }
 
+            # Checkout the directory.
             $admindir = get_fullpath('kde-common', 'source') . '/admin';
             if (pretending)
             {
                 print clr "Would have checked out g[kde-common]\n";
             }
-            elsif (checkout_module_path('kde-common', 'admin') == 0)
-            {
-                chdir ($fullpath);
-            }
-            else
+            elsif (checkout_module_path('kde-common', 'admin') != 0)
             {
                 return 0;
             }
         }
     }
-    else
-    {
-        return 1; # admin dir already there.
-    }
 
+    chdir ($fullpath);
     return (safe_system("ln -s $admindir admin") == 0);
 }
 
