@@ -36,13 +36,11 @@ my %global_opts = (
     "cxxflags"            => "-g -pipe -march=i686",
     "debug"               => "",
     "dest-dir"            => '${MODULE}', # single quotes used on purpose!
-    "disable-build-list"  => "",
     "do-not-compile"      => "",
     "install-after-build" => "1", # Default to true
     "inst-apps"           => "",
     "kdedir"              => "$ENV{HOME}/kde",
     "libpath"             => "",
-    "lockfile"            => "$ENV{HOME}/.kdesvn-lock",
     "log-dir"             => "log",
     "make-install-prefix" => "",  # Some people need sudo
     "make-options"        => "-j2",
@@ -381,7 +379,6 @@ sub get_option
         $option eq "binpath" ||
         $option eq "kdedir" ||
         $option eq "pretend" ||
-        $option eq "lockfile" ||
         $module eq 'global')
     {
         return $global_opts{"#$option"} if exists $global_opts{"#$option"};
@@ -1570,7 +1567,7 @@ DONE
 # handling separate tasks.
 sub get_lock
 {
-    my $lockfile = get_option ("global", "lockfile");
+    my $lockfile = "$ENV{HOME}/.kdesvn-lock";
     my $result = sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
 
     # Very wordy way of saying to return if result == 0
@@ -1590,7 +1587,7 @@ sub get_lock
 # Subroutine to free the lock allocated by get_lock()
 sub close_lock
 {
-    my $lockfile = get_option ('global', "lockfile");
+    my $lockfile = "$ENV{HOME}/.kdesvn-lock";
 
     close LOCKFILE;
     unlink $lockfile;
@@ -2827,7 +2824,7 @@ sub handle_build
     print "<<<  Build Done  >>>\n";
     print clr "\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>\n" if scalar @build_done > 0;
 
-    if (not get_option('global', 'disable-build-list') and not pretending)
+    if (not pretending)
     {
         # Print out results, and output to a file
         open BUILT_LIST, ">$kdesvn/successfully-built";
