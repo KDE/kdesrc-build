@@ -45,13 +45,14 @@
 <releaseinfo>0.94</releaseinfo>
 
 <abstract>
-<para>The &kdesvn-build; is a Perl script that provides automated &kde; building and installing, directly from the sources found in the &kde; &svn; repository.</para>
+<para>The &kdesvn-build; is a Perl script which builds and installs &kde; directly from the sources found in the &kde; &svn; repository.</para>
 </abstract>
 
 <keywordset>
 <keyword>KDE</keyword>
 <keyword>kdesdk</keyword>
 <keyword>SVN</keyword>
+<keyword>Subversion</keyword>
 <keyword>KDE development</keyword>
 </keywordset>
 
@@ -66,6 +67,14 @@
 url="http://www.kde.org/">&kde;</ulink> from <ulink
 url="http://subversion.tigris.org/">&svn;</ulink>.  You may also want to
 consider the kde-build script include with &kde;'s kdesdk module.
+</para>
+
+<para>
+Here we document the &kdesvn-build; configuration file syntax and options, its
+command line options, features, and an overview of all necessary steps required
+to build &kde; from source, including the steps which you should perform using
+other tools, or in other words, steps that are not automatically performed
+by the &kdesvn-build; script.
 </para>
 
 </chapter>
@@ -93,16 +102,19 @@ strategies and information about running your new &kde; installation.
 <sect1 id="before-building">
 <title>Preparing the System to Build &kde;</title>
 
-<para>It is recommended that you download and build &kde; using a user
+<para>
+It is recommended that you download and build &kde; using a user
 account. If you already have &kde; packages installed, the best choice
-would be to create a different user to build and run the new &kde;. The
-advantage of building &kde; as a user is you can not break the base
-system, and you will always have a way to comfortably work when
-things go wrong.</para>
+would be to create a different (dedicated) user to build and run the new &kde;.
+The advantage of building &kde; with a dedicated user is you can not break
+the base system, and you will always have a way to comfortably work when
+things go wrong.
+</para>
 
-<para>Later, you can install it system wide as root. This document
-does not cover a root installation, because if you are performing a system
-wide install, you probably already know what you are doing.
+<para>
+Later, you can do a root installation if you wish. This document
+does not cover a root installation. If you are performing a system
+wide install, you probably already know what you are doing anyway.
 </para>
 
 <para>Before using the &kdesvn-build; script (or any other building
@@ -151,7 +163,6 @@ the latest version of the script. Do the same for the
 Make the script executable, and be sure it is in your path.
 </para>
 
-
 </sect1>
 
 <sect1 id="configure-data">
@@ -166,6 +177,18 @@ you would like to download and build.
 <para>
 Use the <filename>kdesvn-buildrc-sample</filename> file as a
 template, setting global options, and the modules you want to build.
+</para>
+
+<para>
+Select the server used to check out from &svn;, by setting the svn-server
+global option. The default is the anonymous &svn; repository,
+<emphasis>svn://anonsvn.kde.org/</emphasis>, but change it
+if you have a <ulink url="http://developer.kde.org/documentation/misc/firststepsaccount">&kde;
+&svn; account</ulink>, or if there is <ulink url="http://developer.kde.org/source/anonsvn.html">
+a mirror close to you</ulink>.
+</para>
+
+<para>
 Pay close attention to the kdedir and qtdir global variables, as the first sets
 where your &kde; build is going to be installed, (by default to
 <filename>~/kde</filename>), and the second where (and if) your qt library is
@@ -181,7 +204,7 @@ folder.
 </para>
 
 <para>
-If you wish to fine tune your <filename>.kdesvn-buildrc-sample</filename>,
+If you wish to fine tune your <filename>.kdesvn-buildrc</filename>,
 consult <xref linkend="kdesvn-buildrc" /> for detailed information
 about all configuration options.
 </para>
@@ -191,12 +214,13 @@ about all configuration options.
 <sect1 id="building-and-troubleshooting">
 <title>Using the &kdesvn-build; script</title>
 
-<para>Now you are ready to run the script. From a terminal window,
+<para>
+Now you are ready to run the script. From a terminal window,
 log in to the user you are using to compile &kde; and execute
 the script:
 <screen>
-<prompt /><command>su</command> <option>-</option> <replaceable>devel-username</replaceable>
-<prompt /><command>kdesvn-build</command>
+<prompt>&percnt;</prompt><command>su</command> <option>-</option> <replaceable>devel-username</replaceable>
+<prompt>&percnt;</prompt><command>kdesvn-build</command>
 </screen>
 </para>
 
@@ -206,7 +230,7 @@ unlikely that you will succeed in the first time you compile &kde;. Do not despa
 Check the log files to see if you are missing some tools or development  packages
 (the location of the log files is set by the log-dir variable in the configuration
 file). Sometimes, the main development branch get very unstable and hard to build,
-especially whwn a development freeze is close. Be patient. You can find more common
+especially when a development freeze is close. Be patient. You can find more common
 examples of things that can go wrong and their solutions, as well as general tips and
 strategies to build &kde; in the
 <ulink url="http://quality.kde.org/develop/cvsguide/buildstep.php#step1">
@@ -250,7 +274,8 @@ export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
 </programlisting>
 </para>
 
-<para>If you are not using a dedicated user, set a different <envar>$KDEHOME</envar> for your
+<para>
+If you are not using a dedicated user, set a different <envar>$KDEHOME</envar> for your
 new environment in your <filename>.bash_profile</filename>:
 
 <programlisting>
@@ -267,7 +292,7 @@ If later your menu is empty or too crowded with applications from your distribut
 you may have to set the xdg environment variables in your <filename>.bash_profile</filename>:
 
 <programlisting>
-XDG_CONFIG_DIRS="${KDEDIR}/etc/xdg"
+XDG_CONFIG_DIRS="/etc/xdg"
 XDG_DATA_DIRS="${KDEDIR}/share:/usr/share"
 export XDG_CONFIG_DIRS XDG_DATA_DIRS
 </programlisting>
@@ -275,26 +300,33 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 </para>
 </note>
 
-<para>Now that we are done with the you have to make sure that the right <application>startkde</application>
-script is going to be used:</para>
+<para>
+Now that we are done with the you have to make sure that the right <application>startkde</application>
+script is going to be used:
+</para>
 
-<para>Open the <filename>.xinitrc</filename> text file (or <filename>.xsession</filename>,
+<para>
+Open the <filename>.xinitrc</filename> text file (or <filename>.xsession</filename>,
 depending on the distribution) from the home directory, or create it if necessary. Add the
 line:
 
 <programlisting>
-exec /home/kdedev/kde-unstable/bin/startkde
+exec ${KDEDIR}/bin/startkde
 </programlisting>
 </para>
 
-<para>Now start your fresh &kde;: in  BSD and Linux systems with virtual terminal support,
+<para>
+Now start your fresh &kde;: in  BSD and Linux systems with virtual terminal support,
 Ctrl+Alt+F1...F12 keystroke combinations are used to switch to Virtual Console 1 through 12.
 This allows you to run more than one desktop environment at the same time. The fist six are
-text terminals and the following six are graphical displays.</para>
+text terminals and the following six are graphical displays.
+</para>
 
-<para>If when you boot you are presented to the graphical display manager instead, you can
+<para>
+If when you boot you are presented to the graphical display manager instead, you can
 use the new KDE environment, even if it is not listed as an option. Press Crtl + Alt + F2,
-and you will be presented to a text terminal. Log in using the dedicated user and type:</para>
+and you will be presented to a text terminal. Log in using the dedicated user and type:
+</para>
 
 <screen>
 startx -- :1
@@ -320,93 +352,146 @@ the stable KDE desktop.
 <chapter id="features">
 <title>Script Features</title>
 
-<para>&kdesvn-build; features include:</para>
+<para>
+&kdesvn-build; features include:
+</para>
 
 
 <itemizedlist>
 
-<listitem><para>Automatically checks out or updates modules from &svn;, as
-appropriate.</para></listitem>
+<listitem><para>
+Automatically checks out or updates modules from &svn;, as
+appropriate.
+</para></listitem>
 
-<listitem><para>Times the build process for modules.</para></listitem>
+<listitem><para>
+Times the build process for modules.
+</para></listitem>
 
-<listitem><para>Automatically tries to rebuild modules that were using incremental
-make, which is prone to failure after certain kinds of commits.</para></listitem>
+<listitem><para>
+Automatically tries to rebuild modules that were using incremental
+make, which is prone to failure after certain kinds of commits.
+</para></listitem>
 
-<listitem><para>Can resume a previous script, or start the build process from a particular
-module.</para></listitem>
+<listitem><para>
+Can resume a previous script, or start the build process from a particular
+module.
+</para></listitem>
 
-<listitem><para>Comes built-in with a sane set of default options appropriate for building
+<listitem><para>
+Comes built-in with a sane set of default options appropriate for building
 a base &kde; single-user installation from the anonymous &svn; repository.
 </para></listitem>
 
-<listitem><para>Comes with <ulink url="http://www.kde.me.uk/index.php?page=unsermake">Unsermake</ulink>
-support.</para></listitem>
+<listitem><para>
+Comes with <ulink url="http://www.kde.me.uk/index.php?page=unsermake">Unsermake</ulink>
+support.
+</para></listitem>
 
-<listitem><para>Tilde-expansion for your configuration options.  For example, you can
-specify:</para>
-<para><screen>qtdir ~/kdesvn/build/qt-copy</screen></para></listitem>
+<listitem><para>
+Tilde-expansion for your configuration options.  For example, you can
+specify:
+<programlisting>qtdir ~/kdesvn/build/qt-copy</programlisting>
+</para></listitem>
 
-<listitem><para>Configurable build, source, and logging directories</para></listitem>
+<listitem><para>
+Configurable build, source, and logging directories
+</para></listitem>
 
-<listitem><para>Automatically sets up a build system, with the source directory not the
+<listitem><para>
+Automatically sets up a build system, with the source directory not the
 same as the build directory, in order to keep the source directory
-pristine. The exception is <application>qt-copy</application>, which isn not designed to be built like
+pristine. The exception is <application>qt-copy</application>, which is not designed to be built like
 that (unless you would like to test the
-<link linkend="conf-use-qt-builddir-hack"><quote>qt with a separate build directory hack</quote></link>).</para></listitem>
+<link linkend="conf-use-qt-builddir-hack"><quote>qt with a separate build directory hack</quote></link>).
+</para></listitem>
 
-<listitem><para>You can specify global options to apply to every module to check out, and
-you can specify options to apply to individual modules as well.</para></listitem>
+<listitem><para>
+You can specify global options to apply to every module to check out, and
+you can specify options to apply to individual modules as well.
+</para></listitem>
 
-<listitem><para>Since the autotools sometimes get out of sync with changes to the
+<listitem><para>
+Since the autotools sometimes get out of sync with changes to the
 source tree, you can force a rebuild of a module by creating a file called
 .refresh-me in the build directory of the module in question, or by running
-&kdesvn-build; with the <option>--refresh-build</option> option.</para></listitem>
+&kdesvn-build; with the <option>--refresh-build</option> option.
+</para></listitem>
 
-<listitem><para>You can specify various environment values to be used during the build,
+<listitem><para>
+You can specify various environment values to be used during the build,
 including <envar>KDEDIR</envar>, <envar>QTDIR</envar>, <envar>DO_NOT_COMPILE</envar>,
-and <envar>CXXFLAGS</envar>.</para></listitem>
+and <envar>CXXFLAGS</envar>.
+</para></listitem>
 
-<listitem><para>Command logging.  Logs are dated and numbered so that you always have a
+<listitem><para>
+Command logging.  Logs are dated and numbered so that you always have a
 log of a script run.  Also, a special symlink called latest is created to
-always point to the most recent log entry in the log directory.</para></listitem>
+always point to the most recent log entry in the log directory.
+</para></listitem>
 
-<listitem><para>If you are using a user build of &kde; instead of a system build (for which
+<listitem><para>
+If you are using a user build of &kde; instead of a system build (for which
 you must be root to install), you can use the script to install for you.  I
 haven not audited this code, and it makes ample use of the <function>system()</function>
-call, so I would not recommend running it as root at this point.</para></listitem>
+call, so I would not recommend running it as root at this point.
+</para></listitem>
 
-<listitem><para>You can use <link linkend="conf-make-install-prefix">make-install-prefix</link> to
+<listitem><para>
+You can use <link linkend="conf-make-install-prefix">make-install-prefix</link> to
 prefix the make install command line with a separate command, which is useful
-for sudo.</para></listitem>
+for sudo.
+</para></listitem>
 
-<listitem><para>You can use the <link linkend="conf-apidox">apidox</link> option to automatically
-build and install the API documentation for some modules.</para></listitem>
+<listitem><para>
+You can use the <link linkend="conf-apidox">apidox</link> option to automatically
+build and install the API documentation for some modules.
+</para></listitem>
 
-<listitem><para>You can check out only a portion of a &kde; &svn; module.  For example,
+<listitem><para>
+You can check out only a portion of a &kde; &svn; module.  For example,
 you could check out only the <application>taglib</application> from
 <application>kdesupport</application>, or only <application>K3B</application> from
 <application>extragear/multimedia</application>.  The script will automatically pull in
-<application>kde-common</application> if necessary to make the build work.</para></listitem>
+<application>kde-common</application> if necessary to make the build work.
+</para></listitem>
 
-<listitem><para>You can <quote>pretend</quote> to do the operations.  If you pass
+<listitem><para>
+You can <quote>pretend</quote> to do the operations.  If you pass
 <option>--pretend</option> or <option>-p</option> on the
 command line, the script will give a very verbose description of the commands
-it is about to execute, without actually executing it.</para></listitem>
+it is about to execute, without actually executing it.
+</para></listitem>
 
-<listitem><para>Support for checking out specific branches of &svn;
-modules. This work still needs to be completed.</para></listitem>
+<listitem><para>
+Support for checking out specific branches of &svn;
+modules. This work still needs to be completed, but you already select the branch you
+want to build using the <link linkend="conf-module-base-path">module-base-path
+configuration option</link>.
+</para></listitem>
 
 </itemizedlist>
 
-<para>Things that &kdesvn-build; does NOT do:</para>
+<para>
+Things that &kdesvn-build; does NOT do:
+</para>
 
 <itemizedlist>
-<listitem><para>Find the fastest &kde; &svn; mirror.  There isn not even a list shipped
+
+<listitem><para>
+Find the fastest &kde; &svn; mirror.  There is not even a list shipped
 with the script at this point, although the default server should work
-fine.</para></listitem>
-<listitem><para>Brush your teeth. You should remember to do that yourself.</para></listitem>
-<listitem><para>The script probably isn not bug-free. Sorry.</para></listitem>
+fine.
+</para></listitem>
+
+<listitem><para>
+Brush your teeth. You should remember to do that yourself.
+</para></listitem>
+
+<listitem><para>
+The script probably is not bug-free. Sorry.
+</para></listitem>
+
 </itemizedlist>
 
 </chapter>
@@ -414,35 +499,48 @@ fine.</para></listitem>
 <chapter id="kdesvn-buildrc">
 <title>The Format of .kdesvn-buildrc</title>
 
-<para>To use the script, you must have a file in your home directory called
+<para>
+To use the script, you must have a file in your home directory called
 <filename>.kdesvn-buildrc</filename>, which describes the modules you would
-like to download and build.</para>
+like to download and build.
+</para>
 
 
 
-<para>It starts with the global options, specified like the following:</para>
+<para>
+It starts with the global options, specified like the following:
+</para>
+
 <programlisting>
 global
 <replaceable>option-name option-value</replaceable>
 <replaceable>[...]</replaceable>
 end global
 </programlisting>
-<para>It is then followed by one or more module sections, specified like the
-following:</para>
-<programlisting>module <replaceable>module-name</replaceable>
+
+<para>
+It is then followed by one or more module sections, specified like the
+following:
+</para>
+
+<programlisting>
+module <replaceable>module-name</replaceable>
 <replaceable>option-name option-value</replaceable>
 <replaceable>[...]</replaceable>
 end module
 </programlisting>
 
-<para><replaceable>module-name</replaceable> must be a module from the &kde; &svn; repository (for
+<para>
+<replaceable>module-name</replaceable> must be a module from the &kde; &svn; repository (for
 example, kdelibs or kdebase).  Some options override global options, some
 add to global options, and some global options simply can't be overridden.
 </para>
 
-<para>The following is an alphabetized list of options you can use.  Click on the
+<para>
+The following is an alphabetized list of options you can use.  Click on the
 option to find out more about it.  If one is not documented, please e-mail the
 authors using the address you can find <link linkend="authors">above</link>.
+</para>
 
 <itemizedlist>
 <listitem><para><link linkend="conf-apidox">apidox</link>, to build API Documentation</para></listitem>
@@ -475,11 +573,12 @@ authors using the address you can find <link linkend="authors">above</link>.
 <listitem><para><link linkend="conf-use-unsermake">use-unsermake</link>, to use the advanced unsermake build system.</para></listitem>
 </itemizedlist>
 
-</para>
 
-<para>Here is a table of the various options, and some comments on them.  Any
+<para>
+Here is a table of the various options, and some comments on them.  Any
 option which overrides the global option will override a command line setting
-as well.</para>
+as well.
+</para>
 
 <table id="option-table">
 <title>Table of Options</title>
@@ -799,8 +898,7 @@ you do specify this value, use an absolute path name.
 <entry>svn-server</entry>
 <entry>Can't be overridden</entry>
 <entry>This option is used to set the server used to check out from &svn;.
-The default is the anonymous &svn; repository, <ulink
-url="svn://anonsvn.kde.org/">svn://anonsvn.kde.org/</ulink></entry>
+The default is the anonymous &svn; repository, <emphasis>svn://anonsvn.kde.org/</emphasis></entry>
 </row>
 
 <row id="conf-stop-on-failure">
@@ -852,98 +950,210 @@ systems</ulink>.  This option defaults to <quote>true</quote> (for most modules)
 <chapter id="cmdline">
 <title>Command Line Options and Environment Variables</title>
 
-<para>This script doesn't use environment variables.  If you need to set environment
+<para>
+This script doesn't use environment variables.  If you need to set environment
 variables for the build or install process, please see the <link
-linkend="conf-set-env">set-env</link> option.</para>
+linkend="conf-set-env">set-env</link> option.
+</para>
 
-<para>The script accepts the following command-line options:</para>
+<para>
+The script accepts the following command-line options:
+</para>
 
-<itemizedlist>
+<variablelist>
 
-<listitem id="cmdline-help"><para><option>--help</option>, only display simple help on this script.</para></listitem>
+<varlistentry id="cmdline-help">
+<term><option>--help</option></term>
+<listitem><para>
+only display simple help on this script.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-version"><para><option>--version</option>, display the program version.</para></listitem>
+<varlistentry id="cmdline-version">
+<term><option>--version</option></term>
+<listitem><para>
+display the program version.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-author"><para><option>--author</option>, display contact information for the
-author.</para></listitem>
+<varlistentry id="cmdline-author">
+<term><option>--author</option></term>
+<listitem><para>
+display contact information for the
+author.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-color"><para><option>--color</option>, enable colorful output.</para></listitem>
+<varlistentry id="cmdline-color">
+<term><option>--color</option></term>
+<listitem><para>
+enable colorful output.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-no-color"><para><option>--no-color</option>, disable colorful output.</para></listitem>
+<varlistentry id="cmdline-no-color">
+<term><option>--no-color</option></term>
+<listitem><para>
+disable colorful output.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-pretend"><para><option>--pretend</option> (or <option>-p</option>), don't actually DO anything, but
-act like you did.</para></listitem>
+<varlistentry id="cmdline-pretend">
+<term><option>--pretend</option> (or <option>-p</option>)</term>
+<listitem><para>
+don't actually DO anything, but act like you did.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-svn-only"><para><option>--svn-only</option>, Only perform the source update.</para></listitem>
+<varlistentry id="cmdline-svn-only">
+<term><option>--svn-only</option></term>
+<listitem><para>
+only perform the source update.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-build-only"><para><option>--build-only</option>, Only perform the build process.</para></listitem>
+<varlistentry id="cmdline-build-only">
+<term><option>--build-only</option></term>
+<listitem><para>
+only perform the build process.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-ignore-modules"><para><option>--ignore-modules</option>, Don't including the modules
-passed on the rest of the command line in the update/build process.</para></listitem>
+<varlistentry id="cmdline-ignore-modules">
+<term><option>--ignore-modules</option></term>
+<listitem><para>
+don't including the modules passed on the rest of the command line in the update/build
+process.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-no-svn"><para><option>--no-svn</option>, Skip contacting the &svn; server.</para></listitem>
+<varlistentry id="cmdline-no-svn">
+<term><option>--no-svn</option></term>
+<listitem><para>
+skip contacting the &svn; server.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-no-build"><para><option>--no-build</option>, Skip the build process.</para></listitem>
+<varlistentry id="cmdline-no-build">
+<term><option>--no-build</option></term>
+<listitem><para>
+skip the build process.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-no-install"><para><option>--no-install</option>, Don't automatically install packages
-after they're built.</para></listitem>
+<varlistentry id="cmdline-no-install">
+<term><option>--no-install</option></term>
+<listitem><para>
+don't automatically install packages after they're built.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-debug"><para><option>--debug</option>, Enables debug mode for the script.  Currently
+<varlistentry id="cmdline-debug">
+<term><option>--debug</option></term>
+<listitem><para>
+enables debug mode for the script.  Currently
 this means that all output will be dumped to STDOUT in addition to being
 logged in the log directory like normal.  Also, many functions are much more
-verbose about what they're doing in debugging mode.</para></listitem>
+verbose about what they're doing in debugging mode.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-no-rebuild-on-fail"><para><option>--no-rebuild-on-fail</option>, Don't try and
+<varlistentry id="cmdline-no-rebuild-on-fail">
+<term><option>--no-rebuild-on-fail</option></term>
+<listitem><para>
+don't try and
 rebuild modules that have failed building from scratch.  &kdesvn-build; will
 never try to do this to a module that already was tried to be built from
-scratch.</para></listitem>
+scratch.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-refresh-build"><para><option>--refresh-build</option>, Recreate the build system and
-make from scratch.</para></listitem>
+<varlistentry id="cmdline-refresh-build">
+<term><option>--refresh-build</option></term>
+<listitem><para>
+recreate the build system and make from scratch.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-reconfigure"><para><option>--reconfigure</option>, Run the configure script again
-without cleaning the build directory.</para></listitem>
+<varlistentry id="cmdline-reconfigure">
+<term><option>--reconfigure</option></term>
+<listitem><para>
+run the configure script again
+without cleaning the build directory.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-recreate-configure"><para><option>--recreate-configure</option>, Run <command>make <option>-f</option>
+<varlistentry id="cmdline-recreate-configure">
+<term><option>--recreate-configure</option></term>
+<listitem><para>
+run <command>make <option>-f</option>
 Makefile.cvs</command> again to create the configure script, and continue
-building as normal.  This option implies <option>--reconfigure</option>.</para></listitem>
+building as normal.  This option implies <option>--reconfigure</option>.
+</para></listitem>
+</varlistentry>
 
-<listitem id="cmdline-resume"><para><option>--resume</option>, which tries to continue building from where
+<varlistentry id="cmdline-resume">
+<term><option>--resume</option></term>
+<listitem><para>
+which tries to continue building from where
 the script stopped last time.  The script starts building the module after the
 last module to be compiled last time the script was run, whether or not it
 succeeded.  This option implies <link linkend="cmdline-no-svn"><option>--no-svn</option></link>.  You
-should not specify other module names on the command line.</para></listitem>
-
-<listitem id="cmdline-resume-from"><para><option>--resume-from</option>, which is like <link
-linkend="cmdline-resume"><option>--resume</option></link>, except that you supply the module to
-start building from as the next parameter on the command line.  This option
-implies <link linkend="cmdline-no-svn"><option>--no-svn</option></link>.  You should not specify
-other module names on the command line.</para></listitem>
-
-<listitem id="cmdline-rc-file"><para><option>--rc-file</option>, which interprets the next command line
-parameter as the file to read the configuration options from.  The default
-value for this parameter is ~/.kdesvn-buildrc.</para></listitem>
-
-<listitem id="cmdline-prefix"><para><option>--prefix=&lt;/path/to/kde&gt;</option>, which allows you to
-change the directory that &kde; will be installed to from the command line.
-This option implies <link linkend="cmdline-reconfigure"><option>--reconfigure</option></link>.</para></listitem>
-
-<listitem id="cmdline-build-system-only"><para><option>--build-system-only</option>, Stop after runnning
-<command>make <option>-f</option> Makefile.cvs</command>.  The configure script will still need to be run, which
-&kdesvn-build; will do next time.  This lets you prepare all the configure
-scripts at once so you can view the <command>./configure <option>--help</option></command> for each module, and
-edit your configure-flags accordingly.</para></listitem>
-
-<listitem id="cmdline-install"><para><option>--install</option>, If this is the only command-line option,
-it tries to install all of the modules contained in successfully-built, except
-for qt-copy, which doesn't need installation.  If command-line options are
-specified after <option>--install</option>, they are all assumed to be modules to install.
+should not specify other module names on the command line.
 </para></listitem>
+</varlistentry>
 
-</itemizedlist>
+<varlistentry id="cmdline-resume-from">
+<term><option>--resume-from</option></term>
+<listitem><para>
+which is like <link linkend="cmdline-resume"><option>--resume</option></link>, except that you supply
+the module to start building from as the next parameter on the command line.  This option
+implies <link linkend="cmdline-no-svn"><option>--no-svn</option></link>.  You should not specify
+other module names on the command line.
+</para></listitem>
+</varlistentry>
 
-<para>Any other command-line options are assumed to be modules to update and build.
-Please, don't mix building with installing.</para>
+<varlistentry id="cmdline-rc-file">
+<term><option>--rc-file</option></term>
+<listitem><para>
+which interprets the next command line
+parameter as the file to read the configuration options from.  The default
+value for this parameter is ~/.kdesvn-buildrc.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-prefix">
+<term><option>--prefix=&lt;/path/to/kde&gt;</option></term>
+<listitem><para>
+which allows you to change the directory that &kde; will be installed to from the command line.
+This option implies <link linkend="cmdline-reconfigure"><option>--reconfigure</option></link>.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-build-system-only">
+<term><option>--build-system-only</option></term>
+<listitem><para>
+stop after running <command>make <option>-f</option> Makefile.cvs</command>.  The configure
+script will still need to be run, which &kdesvn-build; will do next time.  This lets you
+prepare all the configure scripts at once so you can view the <command>./configure
+<option>--help</option></command> for each module, and edit your configure-flags accordingly.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install"><term><option>--install</option></term>
+<listitem><para>
+if this is the only command-line option, it tries to install all of the modules contained in
+successfully-built, except for qt-copy, which doesn't need installation.  If command-line
+options are specified after <option>--install</option>, they are all assumed to be modules to install.
+</para></listitem>
+</varlistentry>
+
+</variablelist>
+
+<para>
+Any other command-line options are assumed to be modules to update and build.
+Please, don't mix building with installing.
+</para>
 
 </chapter>
 
