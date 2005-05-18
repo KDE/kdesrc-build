@@ -61,20 +61,120 @@
 <chapter id="introduction">
 <title>Introduction</title>
 
-<para>&kdesvn-build; is a Perl script to help users install  <ulink
+<para>
+&kdesvn-build; is a Perl script to help users install  <ulink
 url="http://www.kde.org/">&kde;</ulink> from <ulink
 url="http://subversion.tigris.org/">&svn;</ulink>.  You may also want to
-consider the kde-build script include with &kde;'s kdesdk module.</para>
+consider the kde-build script include with &kde;'s kdesdk module.
+</para>
+
 </chapter>
 
 <chapter id="getting-started">
 <title>Getting Started</title>
 
 <para>
-The first thing to do is to copy the ... bla bla bla.
+In this chapter, we show how to use the &kdesvn-build; to checkout modules from the
+&kde; repository and build them. We also provide a basic explanation of the &kde;
+&svn; structure and the steps you have to perform before running the script.
 </para>
 
-<para>Then you bla, bla, bla.</para>
+<para>
+All topics present in this chapter are covered with even more detail in the
+<ulink url="http://quality.kde.org/develop/cvsguide/buildstep.php">
+Building &kde; from Source Step by Step Guide</ulink>, at the
+<ulink url="http://quality.kde.org">&kde; Quality Team Website</ulink>.
+If you are compiling KDE for the first time, it is a good idea to read
+it, or consult it as a reference source. You will find detailed information
+about packaging tools and requirements, common compilation pitfalls and
+strategies and information about running your new &kde; installation.
+</para>
+
+<sect1 id="before-building">
+<title>Preparing the System to Build &kde;</title>
+
+<para>It is recommended that you download and build &kde; using a user
+account. If you already have &kde; packages installed, the best choice
+would be to create a different user to build and run the new &kde;. The
+advantage of building &kde; as a user is you can not break the base
+system, and you will always have a way to comfortably work when
+things go wrong.</para>
+
+<para>Later, you can install it system wide as root. This document
+does not cover a root installation, because if you are performing a system
+wide install, you probably already know what you are doing.
+</para>
+
+<para>Before using the &kdesvn-build; script (or any other building
+strategy) you must install the development tools and libraries needed for &kde;.
+You need the Qt library, version 3.3.0 or greater, Automake 1.8,
+Autoconf 2.5X (better if >=2.57 as a bug was reported with lower versions),
+the subversion (svn) client, the gcc compiler with C++ support, libxml2,
+openssl, libbz2, and many more (for a complete list, visit the
+<ulink url="http://www.kde.org/info/requirements/3.4.php">KDE 3.4 Compilation
+Requirements</ulink>). You can usually get those tools packaged for your system
+from your distribution or vendor.
+</para>
+
+<para>
+Some of these packages are divided into libs, programs or utilities and
+development packages. You will need at least the program or library and
+its development package. If in doubt, install all. The libraries you need
+will change depending on the modules you intend to build, as each module
+has its own requirements. The
+<ulink url="http://quality.kde.org/develop/cvsguide/buildstep.php#step1">
+Building &kde; from Source Step by Step Guide</ulink> has more details
+about the specific tools and techniques used to install and find the
+required software.
+</para>
+
+<para>
+You probably already have a version of the &kdesvn-build; script installed
+in your system. &kdesvn-build;requires you to create a configuration file, named
+<filename>.kdesvn-build</filename>. This file should be installed on
+the home folder (~/), and contain all configuration data
+required for the script to run, like configuration options,
+compiling options, location of the sources, the destination of the installation
+(prefix), the modules that should be built, &etc;. The default configuration
+data is provided by the <filename>kdesvn-buildrc-sample</filename> file.
+You can find more information about the sintax of the configuration file
+in <xref linkend="configure-data" /> and in <xref linkend="kdesvn-buildrc" />.
+</para>
+
+<para>
+A good way to get the latest version is to browse the kdesdk/scripts page
+at the <ulink url="http://websvn.kde.org/trunk/KDE">websvn.kde.org</ulink> website.
+You will see a list of the files available in the kdesdk/scripts directory in
+the &kde; &svn; repository. Click the &kdesvn-build; link and download
+the latest version of the script. Do the same for the
+<filename>kdesvn-buildrc-sample</filename> file.
+
+</para>
+
+
+</sect1>
+
+<sect1 id="configure-data">
+<title>Setting the Configuration Data</title>
+
+<para>Bla Bla.</para>
+
+
+</sect1>
+
+<sect1 id="building-and-troubleshooting">
+<title>Using the &kdesvn-build; script</title>
+
+<para>Bla Bla.</para>
+
+</sect1>
+
+<sect1 id="environment">
+<title>Setting the Environment to Run Your Fresh &kde;</title>
+
+<para>Bla Bla.</para>
+
+</sect1>
 
 </chapter>
 
@@ -112,8 +212,8 @@ specify:</para>
 
 <listitem><para>Automatically sets up a build system, with the source directory not the
 same as the build directory, in order to keep the source directory
-pristine. The exception is <application>qt-copy</application>, which isn't designed to be built like
-that (unless you'd like to test the
+pristine. The exception is <application>qt-copy</application>, which isn not designed to be built like
+that (unless you would like to test the
 <link linkend="conf-use-qt-builddir-hack"><quote>qt with a separate build directory hack</quote></link>).</para></listitem>
 
 <listitem><para>You can specify global options to apply to every module to check out, and
@@ -132,9 +232,9 @@ and <envar>CXXFLAGS</envar>.</para></listitem>
 log of a script run.  Also, a special symlink called latest is created to
 always point to the most recent log entry in the log directory.</para></listitem>
 
-<listitem><para>If you're using a user build of &kde; instead of a system build (for which
+<listitem><para>If you are using a user build of &kde; instead of a system build (for which
 you must be root to install), you can use the script to install for you.  I
-haven't audited this code, and it makes ample use of the <function>system()</function>
+haven not audited this code, and it makes ample use of the <function>system()</function>
 call, so I would not recommend running it as root at this point.</para></listitem>
 
 <listitem><para>You can use <link linkend="conf-make-install-prefix">make-install-prefix</link> to
@@ -163,11 +263,11 @@ modules. This work still needs to be completed.</para></listitem>
 <para>Things that &kdesvn-build; does NOT do:</para>
 
 <itemizedlist>
-<listitem><para>Find the fastest &kde; &svn; mirror.  There isn't even a list shipped
+<listitem><para>Find the fastest &kde; &svn; mirror.  There isn not even a list shipped
 with the script at this point, although the default server should work
 fine.</para></listitem>
 <listitem><para>Brush your teeth. You should remember to do that yourself.</para></listitem>
-<listitem><para>The script probably isn't bug-free. Sorry.</para></listitem>
+<listitem><para>The script probably isn not bug-free. Sorry.</para></listitem>
 </itemizedlist>
 
 </chapter>
@@ -176,7 +276,7 @@ fine.</para></listitem>
 <title>The Format of .kdesvn-buildrc</title>
 
 <para>To use the script, you must have a file in your home directory called
-.kdesvn-buildrc, which describes the modules you'd like to download and
+.kdesvn-buildrc, which describes the modules you would like to download and
 build.</para>
 
 
