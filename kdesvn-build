@@ -371,6 +371,7 @@ sub get_option
 {
     my $module = shift;
     my $option = shift;
+    my $defaultQtCopyArgs = '-qt-gif -plugin-imgfmt-mng -thread -no-exception -debug -dlopen-opengl -plugin-sql-sqlite';
 
     # These options can't override globals
     if ($option eq "source-dir" ||
@@ -395,7 +396,11 @@ sub get_option
     return $$ref{"#$option"} if exists $$ref{"#$option"};
 
     # Next in order of precedence
-    return $global_opts{"#$option"} if defined $global_opts{"#$option"};
+    if (defined $global_opts{"#$option"} and not 
+        ($module eq 'qt-copy' and $option eq 'configure-flags'))
+    {
+        return $global_opts{"#$option"} if defined $global_opts{"#$option"};
+    }
 
     # No sticky options left.
     # Configure flags and CXXFLAGS are appended to the global option
@@ -411,6 +416,13 @@ sub get_option
         }
 
         return $value;
+    }
+
+    # As always qt-copy has to be difficult
+    if ($module eq 'qt-copy' and $option eq 'configure-flags')
+    {
+        return $defaultQtCopyArgs if not defined $$ref{$option};
+        return $$ref{$option};
     }
 
     # Everything else overrides the global, unless of course it's not set.
@@ -2012,12 +2024,6 @@ sub safe_configure
     my $fullpath = get_fullpath($module, 'source');
     my $script = "$fullpath/configure";
 
-    if (pretending)
-    {
-        print "\tWould have configured the module.\n";
-        return 0;
-    }
-
     my @commands = split (/\s+/, get_option($module, 'configure-flags'));
 
     # Get the user's CXXFLAGS
@@ -2043,17 +2049,21 @@ sub safe_configure
     {
         my $qtdir = get_fullpath('qt-copy', 'build');
 
-        # Copy the configure script to accept the GPL license.
-        open CONFIG, "<$script";
-        open NEWCONFIG, ">$qtdir/configure.new";
-        while(<CONFIG>)
+        if(not pretending)
         {
-            s/read acceptance/acceptance=yes/;
-            print NEWCONFIG $_;
+            # Copy the configure script to accept the GPL license.
+            open CONFIG, "<$script";
+            open NEWCONFIG, ">$qtdir/configure.new";
+            while(<CONFIG>)
+            {
+                s/read acceptance/acceptance=yes/;
+                print NEWCONFIG $_;
+            }
+            close NEWCONFIG;
+            close CONFIG;
+            chmod 0755, "$qtdir/configure.new";
         }
-        close NEWCONFIG;
-        close CONFIG;
-        chmod 0755, "$qtdir/configure.new";
+
         $script = "$qtdir/configure.new";
 
         print clr "\tb[r[GPL license selected for Qt.  See] $fullpath/qt-copy/LICENSE.GPL\n";
@@ -2061,6 +2071,12 @@ sub safe_configure
 
     print clr "\tRunning g[configure]...\n";
     unshift @commands, $script;
+
+    if(pretending)
+    {
+        print clr "\tWould have run g[", join("' '", @commands), clr "]\n";
+        return 0;
+    }
 
     return log_command($module, "configure", \@commands);
 }
