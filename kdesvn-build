@@ -74,7 +74,7 @@ my @install_fail; # List of modules that failed to install.
 my $install_flag; # True if we're in install mode.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
-my $rcfile = "$ENV{HOME}/.kdesvn-buildrc";
+my @rcfiles = ("./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc2");
 
 # Colors
 my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
@@ -870,14 +870,18 @@ sub setenv
 # default set of options.
 sub no_config_whine
 {
+    my $searched = join("\n    ", @rcfiles);
+    my $homepage = "http://grammarian.homelinux.net/kdesvn-build/";
+
     print <<"HOME";
-Unable to open configuration file: $rcfile!
-$!
+Unable to open configuration file!
+We looked for:
+    $searched
 
 kdesvn-build will continue using a default set of options.  These options may
 not apply to you, so feel free to visit the kdesvn-build homepage
 
-http://grammarian.homelinux.net/kdesvn-build/
+$homepage
 
 and use the configuration file generator to guide you through the process of
 creating a config file to customize your kdesvn-build process.
@@ -919,7 +923,37 @@ sub setup_default_modules()
 sub read_options
 {
     # The options are stored in the file $rcfile
-    open CONFIG, "<$rcfile" or do { no_config_whine(); return; };
+    my $success = 0;
+    my $rcfile;
+    for $rcfile (@rcfiles)
+    {
+        if (open CONFIG, "<$rcfile")
+        {
+            $success = 1;
+            last;
+        }
+    }
+
+    if (not $success)
+    {
+        if(scalar @rcfiles == 1)
+        {
+            # This can only happen if the user uses --rc-file, if we fail to
+            # load the file, we need to fail to load.
+            print <<EOM;
+Unable to open config file $rcfiles[0] ($!)
+
+Script stopping here since you specified --rc-file on the command line to
+load $rcfiles[0] manually.  If you wish to run the script with no configuration
+file, leave the --rc-file option out of the command line.
+EOM
+            exit 1;
+        }
+
+        no_config_whine();
+        setup_default_modules();
+        return;
+    }
 
     my ($option, $flags, $modulename);
 
@@ -1414,12 +1448,14 @@ DONE
             };
 
             /^--rc-file(=.*)?$/ && do {
-                $rcfile = extract_option_value($_, @ARGV);
+                my $rcfile = extract_option_value($_, @ARGV);
                 if (not $rcfile)
                 {
                     print "You must specify a filename to use as the config file!\n";
                     exit 8;
                 }
+
+                @rcfiles = ( $rcfile );
 
                 last SWITCH;
             };
