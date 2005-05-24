@@ -24,7 +24,8 @@ use POSIX 'strftime';
 # because I'm an adult and you're not! :-P
 # Options that start with a # will replace values with the same name,
 # if the option is actually set.
-my %global_opts = (
+my %package_opts = (
+  'global' => {
     "apidox"              => "",
     "apply-qt-patches"    => "",
     "binpath"             => "/bin:/usr/bin:/usr/X11R6/bin:/usr/local/bin",
@@ -63,12 +64,18 @@ my %global_opts = (
     "unsermake-options"   => "--compile-jobs=2 -p",
     "unsermake-path"      => "unsermake",
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
+  }
 );
 
-my %package_opts; # Holds module-specific options.
+# This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
+
+# update and build are lists since they support an ordering, which can't be
+# guaranteed using a hash unless I want a custom sort function (which isn't
+# necessarily a horrible way to go, I just chose to do it this way.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
+
 my @failed_list;  # List of modules that failed to update.
 my @install_fail; # List of modules that failed to install.
 my $install_flag; # True if we're in install mode.
@@ -371,6 +378,7 @@ sub get_option
 {
     my $module = shift;
     my $option = shift;
+    my $global_opts = $package_opts{'global'};
     my $defaultQtCopyArgs = '-qt-gif -plugin-imgfmt-mng -thread -no-exceptions -debug -dlopen-opengl -plugin-sql-sqlite';
 
     # These options can't override globals
@@ -383,8 +391,8 @@ sub get_option
         $option eq "pretend" ||
         $module eq 'global')
     {
-        return $global_opts{"#$option"} if exists $global_opts{"#$option"};
-        return $global_opts{$option};
+        return ${$global_opts}{"#$option"} if exists ${$global_opts}{"#$option"};
+        return ${$global_opts}{$option};
     }
 
     # Don't even try this
@@ -396,10 +404,10 @@ sub get_option
     return $$ref{"#$option"} if exists $$ref{"#$option"};
 
     # Next in order of precedence
-    if (defined $global_opts{"#$option"} and not 
+    if (defined ${$global_opts}{"#$option"} and not 
         ($module eq 'qt-copy' and $option eq 'configure-flags'))
     {
-        return $global_opts{"#$option"} if defined $global_opts{"#$option"};
+        return ${$global_opts}{"#$option"};
     }
 
     # No sticky options left.
@@ -407,7 +415,7 @@ sub get_option
     if (($module ne 'qt-copy' && $option eq 'configure-flags')
         || $option eq 'cxxflags')
     {
-        my $value = $global_opts{$option};
+        my $value = ${$global_opts}{$option};
 
         if(defined $$ref{$option})
         {
@@ -428,7 +436,7 @@ sub get_option
     # Everything else overrides the global, unless of course it's not set.
     # If we're reading for global options, we're pretty much done.
     return $$ref{$option} if defined $$ref{$option};
-    return $global_opts{$option};
+    return ${$global_opts}{$option};
 }
 
 # Subroutine used to handle the checkout-only option.  It handles
@@ -898,7 +906,6 @@ sub setup_default_modules()
                       kdetoys kdeedu kdeaddons);
     @build_list = @update_list;
 
-    %package_opts = ( ) unless %package_opts;
     for my $i (@update_list) {
         if (not exists $package_opts{$i})
         {
@@ -916,6 +923,9 @@ sub setup_default_modules()
         'use-qt-builddir-hack' => 'true',
         'use-unsermake' => 0,
     };
+
+    # That handy q() construct above kept the newlines, I don't want them.
+    $package_opts{'qt-copy'}{'conf-flags'} =~ s/\s+/ /gm;
 }
 
 # This subroutine reads in the settings from the user's configuration
@@ -924,6 +934,7 @@ sub read_options
 {
     # The options are stored in the file $rcfile
     my $success = 0;
+    my $global_opts = $package_opts{'global'};
     my $rcfile;
     for $rcfile (@rcfiles)
     {
@@ -990,18 +1001,17 @@ EOM
 
             if ($option ne 'set-env')
             {
-                $global_opts{$option} = $flags;
+                ${$global_opts}{$option} = $flags;
             }
             else
             {
                 my ($var, @values) = split(/\s/, $flags);
-                $global_opts{'set-env'}{$var} = join(' ', @values);
+                ${$global_opts}{'set-env'}{$var} = join(' ', @values);
             }
         }
     }
 
     my $using_default = 1;
-    %package_opts = ( ) unless %package_opts;
 
     # Now read in module settings
     while (<CONFIG>)
@@ -1043,7 +1053,8 @@ EOM
 
             # Replace tildes with home directory.
             1 while ($flags =~ s/(^|:|=)~\//$1$ENV{'HOME'}\//);
-            $flags = 0 if $flags eq 'false';
+            $flags = 0 if lc($flags) eq 'false';
+
             if ($option ne 'set-env')
             {
                 $package_opts{$modulename}{$option} = $flags;
@@ -1250,16 +1261,6 @@ sub set_option
 {
     my ($module, $option, $value) = @_;
 
-    # Set global options
-    if ($module eq 'global')
-    {
-        return if handle_set_env(\%global_opts, $option, $value); 
-
-        $global_opts{$option} = $value;
-
-        return;
-    }
-
     # Set module options
     if (not exists $package_opts{$module})
     {
@@ -1389,61 +1390,61 @@ DONE
             };
 
             /^--no-svn$/ && do {
-                $global_opts{'#no-svn'} = 1;
+                set_option('global', '#no-svn', 1);
                 last SWITCH;
             };
 
             /^--no-install$/ && do {
-                $global_opts{'#install-after-build'} = 0;
+                set_option('global', '#install-after-build', 0);
                 last SWITCH;
             };
 
             /^--debug$/ && do {
-                $global_opts{'#debug'} = 1;
+                set_option('global', 'debug', 1);
                 last SWITCH;
             };
 
             /^--reconfigure$/ && do {
-                $global_opts{'#reconfigure'} = 1;
+                set_option('global', '#reconfigure', 1);
                 last SWITCH;
             };
 
             /^--recreate-configure$/ && do {
-                $global_opts{'#recreate-configure'} = 1;
+                set_option('global', '#recreate-configure', 1);
                 last SWITCH;
             };
 
             /^--color$/ && do {
-                $global_opts{'#colorful-output'} = 1;
+                set_option('global', '#colorful-output', 1);
                 last SWITCH;
             };
 
             /^--no-color$/ && do {
-                $global_opts{'#colorful-output'} = 0;
+                set_option('global', '#colorful-output', 0);
                 last SWITCH;
             };
 
             /^--no-build$/ && do {
-                $global_opts{'#manual-build'} = 1;
+                set_option('global', '#manual-build', 1);
                 last SWITCH;
             };
 
             # Although equivalent to --no-build at this point, someday the
             # script may interpret the two differently, so get ready now.
             /^--svn-only$/ && do {      # Identically to --no-build
-                $global_opts{'#manual-build'} = 1;
+                set_option('global', '#manual-build', 1);
                 last SWITCH;
             };
 
             # Don't run Subversion or install
             /^--build-only$/ && do {
-                $global_opts{'#no-svn'} = 1;
-                $global_opts{'#install-after-build'} = 0;
+                set_option('global', '#no-svn', 1);
+                set_option('global', '#install-after-build', 0);
                 last SWITCH;
             };
 
             /^--build-system-only$/ && do {
-                $global_opts{'#build-system-only'} = 1;
+                set_option('global', '#build-system-only', 1);
                 last SWITCH;
             };
 
@@ -1468,8 +1469,8 @@ DONE
                     exit 8;
                 }
 
-                $global_opts{'#kdedir'} = $prefix;
-                $global_opts{'#reconfigure'} = 1;
+                set_option('global', '#kdedir', $prefix);
+                set_option('global', '#reconfigure', 1);
 
                 last SWITCH;
             };
@@ -1479,7 +1480,7 @@ DONE
 
                 if($niceness)
                 {
-                    $global_opts{'#niceness'} = $niceness;
+                    set_option('global', '#niceness', $niceness);
                 }
                 else
                 {
@@ -1517,12 +1518,12 @@ DONE
             };
 
             /^(--pretend)|(-p)$/ && do {
-                $global_opts{'#pretend'} = 1;
+                set_option('global', '#pretend', 1);
                 last SWITCH;
             };
 
             /^--refresh-build$/ && do {
-                $global_opts{'#refresh-build'} = 1;
+                set_option('global', '#refresh-build', 1);
                 last SWITCH;
             };
 
@@ -1534,7 +1535,7 @@ DONE
                     exit 8;
                 }
 
-                $global_opts{'#revision'} = $revision;
+                set_option('global', '#revision', $revision);
 
                 last SWITCH;
             };
@@ -1547,26 +1548,26 @@ DONE
                     exit 7;
                 }
 
-                if (defined $global_opts{'#resume'})
+                if (defined $package_opts{'global'}{'#resume'})
                 {
                     print "WARNING: Don't pass both --resume and --resume-from\n";
-                    delete $global_opts{'#resume'};
+                    delete $package_opts{'global'}{'#resume'};
                 }
 
-                $global_opts{'#resume-from'} = $_;
-                $global_opts{'#no-svn'} = 1;
+                set_option('global', '#resume-from', $_);
+                set_option('global', '#no-svn', 1);
                 last SWITCH;
             };
 
             /^--resume$/ && do {
-                if (defined $global_opts{'#resume'})
+                if (defined $package_opts{'global'}{'#resume'})
                 {
                     print "WARNING: Don't pass both --resume and --resume-from\n";
-                    delete $global_opts{'#resume-from'};
+                    delete $package_opts{'global'}{'#resume-from'};
                 }
 
-                $global_opts{'#resume'} = 1;
-                $global_opts{'#no-svn'} = 1;
+                set_option('global', '#resume', 1);
+                set_option('global', '#no-svn', 1);
                 last SWITCH;
             };
 
@@ -1575,7 +1576,7 @@ DONE
                 my ($option) = /^--([-\w\d\/]+)/;
                 my $value = extract_option_value($_, @ARGV);
 
-                if (exists $global_opts{$option})
+                if (exists $package_opts{'global'}{$option})
                 {
                     # Global option
                     set_option('global', "#$option", $value);
@@ -1817,42 +1818,43 @@ sub get_build_list
     return @list;
 }
 
+# Used to sort module names.  'global' always starts first, modules with /
+# sort last.
+sub module_sort
+{
+    # This is always true.
+    return 0 if $a eq $b;
+
+    # Look for global modules.
+    return -1 if $a eq 'global';
+    return 1 if $b eq 'global';
+
+    # If both have /, use a normal sort.
+    return $a cmp $b if $a =~ /\// and $b =~ /\//;
+
+    # If left has slash, it's < $b (and vice versa)
+    return 1 if $a =~ /\//;
+    return -1 if $b =~ /\//;
+
+    # Normal sort.
+    return $a cmp $b;
+}
+
 # Helper subroutine for debugging purposes.  Dumps all of the
 # options which have been read in to %global_opts and %package_opts.
 sub dump_options
 {
     my ($item, $ref_item, $ref);
+    my @keys = sort module_sort keys %package_opts;
     my $c; # $c is a color variable to be used with clr()
 
-    # Dump all of the global options
-    print "Global options:\n";
-    foreach $item (keys %global_opts)
-    {
-        # Put the first bracket in $c, otherwise some Perl systems break.
-        $c = $item =~ /^#/ ? 'r[' : 'g[';
-
-        if($item !~ /^#?set-env$/)
-        {
-            print clr "  ${c}$item] is \"y[$global_opts{$item}]\"\n";
-        }
-        else
-        {
-            my $setref = $global_opts{$item};
-
-            foreach my $envitem (keys %{$setref})
-            {
-                print clr "  Set ${c}$envitem] to y[", $$setref{$envitem}, clr "]\n";
-            }
-        }
-    }
-
     # Now dump the options for each module
-    foreach $item (keys %package_opts)
+    foreach $item (@keys)
     {
         print clr "\nOptions for module g[$item]:\n";
         my $ref = $package_opts{$item};
 
-        foreach $ref_item (keys %{$package_opts{$item}})
+        foreach $ref_item (sort keys %{$package_opts{$item}})
         {
             # Put the first bracket in here, otherwise it breaks on some
             # Perl systems.
@@ -2128,7 +2130,7 @@ sub has_updated_kdecommon
     # Double check that it wasn't in the update list.
     if (grep(/^(KDE\/)?kde-common$/, @update_list))
     {
-        $global_opts{'#has-checked-for-admin'} = 1;
+        set_option('global', '#has-checked-for-admin', 1);
         return 1;
     }
 
