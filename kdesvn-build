@@ -928,6 +928,59 @@ sub setup_default_modules()
     $package_opts{'qt-copy'}{'conf-flags'} =~ s/\s+/ /gm;
 }
 
+# Reads in the options from the config file and adds them to the option store.
+# The first parameter is a reference to the file handle to read from.
+# The second parameter is 'global' if we're reading the global section, or
+# 'module' if we should expect an end module statement.
+sub parse_module
+{
+    my ($fh, $module) = @_;
+    $module = 'global' unless $module;
+
+    # Make sure we acknowledge that we read the module name in from the
+    # file.
+    if (not defined $package_opts{$module})
+    {
+        $package_opts{$module} = {
+            'set-env' => { }
+        };
+    }
+
+    # Read in each option
+    while (<$fh>)
+    {
+        s/#.*$//;       # Remove comments
+        next if /^\s*$/;   # Skip blank lines
+
+        if($module eq 'global')
+        {
+            last if /^end\s+global/; # Stop
+        }
+        else
+        {
+            last if /^end\s+module/; # Stop
+        }
+
+        # The option is the first word, followed by the
+        # flags on the rest of the line.  The interpretation
+        # of the flags is dependant on the option.
+        my ($option, $value) = /^\s*([-\w]+)\s+(.*)$/;
+
+        # Simplify this.
+        $value =~ s/\s+$//;
+        $value =~ s/^\s+//;
+        $value =~ s/\s+/ /;
+
+        # Check for false keyword and convert it to Perl false.
+        $value = 0 if lc($value) =~ /^false$/;
+
+        # Replace tildes with home directory.
+        1 while ($value =~ s"(^|:|=)~/"$1$ENV{'HOME'}/");
+
+        set_option($module, $option, $value);
+    }
+}
+
 # This subroutine reads in the settings from the user's configuration
 # file.
 sub read_options
@@ -936,11 +989,12 @@ sub read_options
     my $success = 0;
     my $global_opts = $package_opts{'global'};
     my $rcfile;
-    for $rcfile (@rcfiles)
+    for my $file (@rcfiles)
     {
-        if (open CONFIG, "<$rcfile")
+        if (open CONFIG, "<$file")
         {
             $success = 1;
+            $rcfile = $file;
             last;
         }
     }
@@ -969,7 +1023,7 @@ EOM
     my ($option, $flags, $modulename);
 
     # Read in global settings
-    OUTER: while (<CONFIG>)
+    while (<CONFIG>)
     {
         s/#.*$//;       # Remove comments
         next if (/^\s*$/); # Skip blank lines
@@ -984,31 +1038,8 @@ EOM
         }
 
         # Now read in each global option
-        while (<CONFIG>)
-        {
-            s/#.*$//;       # Remove comments
-            next if /^\s*$/;   # Skip blank lines
-            last OUTER if /^end\s+global/; # Stop
-
-            # The option is the first word, followed by the
-            # flags on the rest of the line.  The interpretation
-            # of the flags is dependant on the option.
-            ($option, $flags) = /^\s*([-a-zA-Z0-9]+)\s+(.*)$/;
-
-            # Replace tildes with home directory.
-            1 while ($flags =~ s/(^|:)~/$1$ENV{'HOME'}/);
-            $flags = 0 if $flags =~ /^false$/;
-
-            if ($option ne 'set-env')
-            {
-                ${$global_opts}{$option} = $flags;
-            }
-            else
-            {
-                my ($var, @values) = split(/\s/, $flags);
-                ${$global_opts}{'set-env'}{$var} = join(' ', @values);
-            }
-        }
+        parse_module(\*CONFIG, 'global');
+        last;
     }
 
     my $using_default = 1;
@@ -1019,15 +1050,17 @@ EOM
         s/#.*$//;       # Remove comments
         next if (/^\s*$/); # Skip blank lines
 
-        if (not /^module\s+[-\/\.\w]+\s*$/)
+        # Get modulename (has dash, dots, slashes, or letters/numbers)
+        ($modulename) = /^module\s+([-\/\.\w]+)\s*$/;
+
+        if (not $modulename)
         {
             print "Invalid configuration file $rcfile!\n";
             print "Expecting a start of module section.\n";
             print "Global settings will be retained.\n";
-        }
 
-        # Get modulename (has dash, dots, slashes, or letters/numbers)
-        ($modulename) = /^module\s+([-\/\.\w]+)\s*$/;
+            $modulename = 'null'; # Keep reading the module section though.
+        }
 
         # Don't build default modules if user has their own wishes.
         if ($using_default)
@@ -1036,35 +1069,9 @@ EOM
             @update_list = @build_list = ( );
         }
 
-        if (not exists $package_opts{$modulename})
-        {
-            $package_opts{$modulename} = { }; # Set up defaults
-            $package_opts{$modulename}{'set-env'} = { };
-        }
+        parse_module(\*CONFIG, $modulename);
 
-        while (<CONFIG>)
-        {
-            s/#.*$//;       # Remove comments
-            next if (/^\s*$/); # Skip blank lines
-            last if (/^end\s+module/);
-
-            # Split into option and its flags.
-            ($option, $flags) = /^\s*([-a-zA-Z0-9]+)\s+(.*?)\s*$/;
-
-            # Replace tildes with home directory.
-            1 while ($flags =~ s/(^|:|=)~\//$1$ENV{'HOME'}\//);
-            $flags = 0 if lc($flags) eq 'false';
-
-            if ($option ne 'set-env')
-            {
-                $package_opts{$modulename}{$option} = $flags;
-            }
-            else
-            {
-                my ($var, @values) = split(/\s/, $flags);
-                $package_opts{$modulename}{'set-env'}{$var} = join(' ', @values);
-            }
-        }
+        next if ($modulename eq 'null');
 
         # Done reading options, add this module to the update list
         push (@update_list, $modulename) unless exists $ignore_list{$modulename};
@@ -1078,6 +1085,8 @@ EOM
     }
 
     close CONFIG;
+
+    delete $package_opts{'null'}; # Just in case.
 
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
@@ -1243,7 +1252,7 @@ sub handle_set_env
 
     return 0 if $option !~ /^#?set-env$/;
 
-    my ($var, @values) = split(/\s/, $value);
+    my ($var, @values) = split(' ', $value);
 
     $$href{$option} = ( ) unless exists $$href{$option};
     $$href{$option}{$var} = join(' ', @values);
