@@ -2223,6 +2223,15 @@ sub safe_create_build_system
     chdir ($fullpath);
     chdir ($builddir) if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
 
+    # Check for admin dir, if it doesn't exist, create a softlink
+    if (not create_admin_dir($module))
+    {
+        print clr "Unable to find /admin directory for y[$module], it probably\n";
+        print "won't build.\n";
+        # But continue anyways, because in this case I'm just not sure that it
+        # won't work in the future. ;)
+    }
+
     if ($module eq 'kdebindings' || $module eq 'valgrind')
     {
         # Use a slightly less effective method of builddir != srcdir for the
@@ -2235,15 +2244,6 @@ sub safe_create_build_system
             print clr "\tUnable to setup special build system for r[$module].\n";
             return 1;
         }
-    }
-
-    # Check for admin dir, if it doesn't exist, create a softlink
-    if (not create_admin_dir($module))
-    {
-        print clr "Unable to find /admin directory for y[$module], it probably\n";
-        print "won't build.\n";
-        # But continue anyways, because in this case I'm just not sure that it
-        # won't work in the future. ;)
     }
 
     if ($instapps)
