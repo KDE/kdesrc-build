@@ -221,6 +221,16 @@ sub get_kdesvn_dir
     return get_option ('global', 'source-dir');
 }
 
+# Function to work around a Perl language limitation.
+# First parameter is the list to search.
+# Second parameter is the value to search for.
+# Returns true if the value is in the list
+sub list_has(\@$)
+{
+    my ($list_ref, $value) = @_;
+    return scalar grep ($_ eq $value, @{$list_ref});
+}
+
 # Subroutine to return the appropriate SVN URL for a given module, based on
 # the user settings.  For example, 'kdelibs' -> https://svn.kde.org/home/kde/trunk/KDE/kdelibs
 sub svn_module_url
@@ -236,24 +246,13 @@ sub svn_module_url
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
     # but there are the important ones.  The hash is associated with the value
     # 1 so that we can do a boolean test by looking up the module name.
-    my %non_trunk_modules = (
-       'extragear' => 1,
-       'kdenonbeta' => 1,
-       'kdesupport' => 1,
-       'koffice' => 1,
-       'playground' => 1,
-       'qt-copy' => 1,
-       'valgrind' => 1,
-       'KDE' => 1,
-       'kdereview' => 1,
-       'www' => 1,
-       'l10n' => 1,
-    );
+    my @non_trunk_modules = qw(extragear kdenonbeta kdesupport koffice
+        playground qt-copy valgrind KDE kdereview www l10n);
 
     my $module_root = $module;
     $module_root =~ s/\/.*//; # Remove everything after the first slash
 
-    $branch = 'trunk' if $non_trunk_modules{$module_root};
+    $branch = 'trunk' if list_has(@non_trunk_modules, $module_root);
 
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
@@ -357,14 +356,7 @@ sub blacklisted
     # Known to not work.
     my @unsermake_ban_list = qw/valgrind kde-common qt-copy kdebindings/;
 
-    if ($option eq 'use-unsermake')
-    {
-        for my $i (@unsermake_ban_list)
-        {
-            return 1 if $i eq $module;
-        }
-    }
-
+    return list_has(@unsermake_ban_list, $module) if ($option eq 'use-unsermake');
     return 0;
 }
 
@@ -382,16 +374,11 @@ sub get_option
     my $option = shift;
     my $global_opts = $package_opts{'global'};
     my $defaultQtCopyArgs = '-qt-gif -plugin-imgfmt-mng -thread -no-exceptions -debug -dlopen-opengl -plugin-sql-sqlite';
+    my @lockedOpts = qw(source-dir svn-server qtdir libpath binpath kdedir
+                        pretend);
 
     # These options can't override globals
-    if ($option eq "source-dir" ||
-        $option eq "svn-server" ||
-        $option eq "qtdir" ||
-        $option eq "libpath" ||
-        $option eq "binpath" ||
-        $option eq "kdedir" ||
-        $option eq "pretend" ||
-        $module eq 'global')
+    if (list_has(@lockedOpts, $option) || $module eq 'global')
     {
         return ${$global_opts}{"#$option"} if exists ${$global_opts}{"#$option"};
         return ${$global_opts}{$option};
@@ -657,7 +644,9 @@ sub log_command
             print "Unable to exec ", join (' ', @command), "!\n";
             print "\t$!\n";
             print "\tPlease check your binpath setting, PATH is currently $ENV{PATH}\n";
-            return $?;
+
+            # Don't use return, this is the child still!
+            exit 1;
         };
     }
 }
@@ -675,7 +664,7 @@ sub run_make_command
     my $filename = shift;
     my @command = @{(shift)};
     my $logdir = get_log_dir($module);
-    my $isunsermake = $command[0] =~ 'unsermake';
+    my $isunsermake = $command[0] eq 'unsermake';
 
     # Don't print ANSI characters if we're not on a tty.  Also,  automake
     # doesn't support printing output status.
@@ -742,7 +731,9 @@ sub run_make_command
             print "Unable to exec ", join (' ', @command), "!\n";
             print "\t$!\n";
             print "\tPlease check your binpath setting, PATH is currently $ENV{PATH}\n";
-            return $?;
+
+            # Don't return, we're still in the child!
+            exit 1;
         };
     }
 }
@@ -924,6 +915,7 @@ sub setup_default_modules()
         'apply-qt-patches' => 'true',
         'use-qt-builddir-hack' => 'true',
         'use-unsermake' => 0,
+        'set-env' => { },
     };
 
     # That handy q() construct above kept the newlines, I don't want them.
@@ -1121,14 +1113,9 @@ sub initialize_environment
     my $svnserver = get_option ('global', 'svn-server');
 
     my $pc_path = $ENV{'PKG_CONFIG_PATH'};
-    if ($ENV{'PKG_CONFIG_PATH'})
-    {
-        $ENV{'PKG_CONFIG_PATH'} = get_option('global', 'kdedir') . "/lib/pkgconfig:$pc_path";
-    }
-    else
-    {
-        $ENV{'PKG_CONFIG_PATH'} = get_option('global', 'kdedir') . "/lib/pkgconfig";
-    }
+    my $delim = $ENV{'PKG_CONFIG_PATH'} ? ':' : '';
+
+    $ENV{'PKG_CONFIG_PATH'} = get_option('global', 'kdedir') . "/lib/pkgconfig$delim$pc_path";
 
     if(-t STDOUT and get_option('global', 'colorful-output'))
     {
@@ -1666,28 +1653,11 @@ sub adjust_update_list
     # already supposed to be checked out.  If so, we need to make sure that
     # unsermake is present in any checkout-only directives, and if not, we need
     # to add kdenonbeta/unsermake to the checkout list.
-    my @unsermake_list;
-    my %existance_hash;
-
-    @unsermake_list = grep (get_option ($_, 'use-unsermake'), @{$list_ref});
-
-    # Create a hash to lookup quickly whether a given module is being built.
-    # I must have looked this up somewhere, I have no idea how it works. :(
-    @existance_hash{@{$build_ref}} = 1 x @{$build_ref};
-
-    my $unsermake_needed = 0;
-    for (@unsermake_list)
-    {
-        if ($existance_hash{$_})
-        {
-            $unsermake_needed = 1;
-            last;
-        }
-    }
+    my $unsermake_needed = grep (get_option ($_, 'use-unsermake'), @{$build_ref});
 
     if ($unsermake_needed)
     {
-        if (scalar grep (/^kdenonbeta$/, @{$list_ref}) == 0)
+        if (not list_has(@{$list_ref}, 'kdenonbeta'))
         {
             print "Adding kdenonbeta/unsermake to build.\n" if pretending;
 
@@ -2962,8 +2932,7 @@ sub handle_install
             next;
         }
 
-        if (not -e "$builddir" ||
-            not -e "$builddir/Makefile")
+        if (not -e "$builddir/Makefile")
         {
             print clr "\tThe build system doesn't exist for r[$module].\n";
             print "\tTherefore, we can't install it. :-(.\n";
@@ -3009,7 +2978,6 @@ sub munge_lists
 
     for my $list_ref ( ( \@update_list, \@build_list) ) {
         my @temp;
-        my %seen;
 
         while ($_ = shift @$list_ref) {
             # Split at directory separators.
@@ -3058,10 +3026,8 @@ sub munge_lists
                 print "Skipping $_ in munge process.\n" if debugging;
             }
 
-            # Don't add the modulename to the list twice.  Hashes are the easiest way in
-            # Perl to do this.  I'd love an "in" operator for lists.
-            push @temp, $_ if not $seen{$_};
-            $seen{$_} = 1;
+            # Don't add the modulename to the list twice.
+            push @temp, $_ if not list_has(@temp, $_);
         }
 
         @$list_ref = @temp;
