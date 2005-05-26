@@ -1112,10 +1112,9 @@ sub initialize_environment
 
     my $svnserver = get_option ('global', 'svn-server');
 
-    my $pc_path = $ENV{'PKG_CONFIG_PATH'};
-    my $delim = $ENV{'PKG_CONFIG_PATH'} ? ':' : '';
-
-    $ENV{'PKG_CONFIG_PATH'} = get_option('global', 'kdedir') . "/lib/pkgconfig$delim$pc_path";
+    my $pc_path = get_option('global', 'kdedir') . "/lib/pkgconfig";
+    $pc_path .= ":" . $ENV{'PKG_CONFIG_PATH'} if ( exists $ENV{'PKG_CONFIG_PATH'} );
+    $ENV{'PKG_CONFIG_PATH'} = $pc_path;
 
     if(-t STDOUT and get_option('global', 'colorful-output'))
     {
