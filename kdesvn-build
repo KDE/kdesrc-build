@@ -1280,18 +1280,27 @@ sub set_option
 sub process_arguments
 {
     my $arg;
-    my $author = "Michael Pyne <michael.pyne\@kdemail.net>";
-    my $version = "kdesvn-build 0.96\n";
+    my $version = "kdesvn-build 0.96";
+    my $author = <<DONE;
+$version was written (mostly) by:
+  Michael Pyne <michael.pyne\@kdemail.net>
+
+Many people have contributed code, bugfixes, and documentation.
+
+Please report bugs using the KDE Bugzilla, at http://bugs.kde.org/
+DONE
+
     my @argv;
 
     while ($_ = shift @ARGV)
     {
         SWITCH: {
-            /^(-v)|(--version)$/ && do { print $version; exit; };
-            /^--author$/         && do { print "$author\n"; exit; };
+            /^(-v)|(--version)$/ && do { print "$version\n"; exit; };
+            /^--author$/         && do { print $author; exit; };
             /^(-h)|(--?help)$/   && do {
                 print <<DONE;
 $version
+
 This script automates the download, build, and install process for KDE (using
 Subversion).
 
@@ -3054,8 +3063,7 @@ if ($@)
     # We encountered an error.
     print "Encountered an error in the execution of the script.\n";
     print "The error reported was $@\n";
-    print "Please e-mail a bug report to michael.pyne\@kdemail.net\n";
-    print "with this information.\n";
+    print "Please submit a bug against kdesvn-build on http://bugs.kde.org/\n";
 
     # Don't finish, because we haven't attained the lock yet.
     exit 99;
@@ -3118,8 +3126,7 @@ if ($@)
     # We encountered an error.
     print "Encountered an error in the execution of the script.\n";
     print "The error reported was $@\n";
-    print "Please e-mail a bug report to michael.pyne\@kdemail.net\n";
-    print "with this information.\n";
+    print "Please submit a bug against kdesvn-build on http://bugs.kde.org/\n";
 
     $result = 99;
 }
