@@ -1,4 +1,197 @@
 #!/usr/bin/perl -w
+
+#Pod documentation:
+
+=head1 NAME
+
+=over
+
+=item B<kdesvn-build> - automate the kde svn build process
+
+=back
+
+=head1 SYNOPSIS
+
+=over
+
+=item B<kdesvn-build> I<[options]...> I<[modules]...>
+
+=back
+
+=head1 DESCRIPTION
+
+=over
+
+The B<kdesvn-build> script is used to automate the download, build,
+and install process for KDE (using Subversion).
+
+It is recommended that your first setup a F<.kdesvn-buildrc> file
+in your home directory. Please refer to B<kdesvn-build> help file
+in KDE help for information on how to write F<.kdesvn-buildrc>,
+or consult the sample file which should have been included
+with this program.  If you don't setup a F<.kdesvn-buildrc>, a
+default set of options will be used, and a few modules will be
+built by default.
+
+After setting up F<.kdesvn-buildrc>, you can run this program from
+either the command-line or from cron. It will automatically
+download the modules from Subversion, create the build
+system, and configure and make the modules you tell it to.
+You can use this program to install KDE as well,
+if you are building KDE for a single user. Note that B<kdesvn-build>
+will try to install the modules by default.
+
+If you DO specify a package name, then your settings will still be
+read, but the script will try to build / install the package
+regardless of F<.kdesvn-buildrc>
+
+This utility is part of the KDE Software Development Kit.
+
+=back
+
+=head1 OPTIONS
+
+=item B<--no-svn>
+
+Skip contacting the Subversion server.
+
+=item B<--no-build>
+
+Skip the build process.
+
+=item B<--no-install>
+
+Don't automatically install after build.
+
+=item B<--svn-only>
+
+Update from Subversion only (Identical to B<--no-build> at this point).
+
+=item B<--build-only>
+
+Build only, do not perform updates or install.
+
+=item B<--rc-file=E<lt>filenameE<gt>>
+
+Read configuration from filename instead of default.
+
+=item B<--debug>
+
+Activates debug mode.
+
+=item B<--pretend>,  B<-p>
+
+Do not contact the Subversion server, run make, or create / delete files
+and directories. Instead, output what the script would have done.
+
+=item B<--nice=E<lt>valueE<gt>>
+
+Allow you to run the script with a lower priority. The default value is
+10 (lower priority by 10 steps).
+
+=item B<--prefix=/kde/path>
+
+This option is a shortcut to change the setting for kdedir from the
+command line. It implies B<--reconfigure>.
+
+=item B<--color>
+
+Add color from the output.
+
+=item B<--no-color>
+
+Remove color from the output.
+
+=item B<--resume>
+
+Tries to resume the make process from the last time the script was run,
+without performing the Subversion update.
+
+=item B<--resume-from=E<lt>pkgE<gt>>
+
+Starts building from the given package, without performing the Subversion
+update.
+
+=item B<--revision=E<lt>revE<gt>>, B<-r=E<lt>revE<gt>>
+
+Forces update to revision <rev> from Subversion.
+
+=item B<--refresh-build>
+
+Start the build from scratch.
+
+=item B<--reconfigure>
+
+Run configure again, but don't clean the build directory or re-run
+make -f Makefile.cvs.
+
+=item B<--recreate-configure>
+
+Run make -f Makefile.cvs again to redo the configure script.
+
+=item B<--no-rebuild-on-fail>
+
+Don not try to rebuild a module from scratch if it failed building and we
+didn't already try to build it from scratch.
+
+=item B<--build-system-only>
+
+Create the build infrastructure, but don't actually perform the build.
+
+=item B<--install>
+
+Try to install the packages passed on the command line, or all packages in
+F<~/.kdesvn-buildrc> that don't have manual-build set. Building and
+Subversion updates are not performed.
+
+=item B<--E<lt>optionE<gt>=>
+
+Any unrecognized options are added to the global configuration, overriding
+any value that may exist.
+
+=item B<--E<lt>moduleE<gt>,E<lt>optionE<gt>=>
+
+Likewise, allow you to override any module specific option from the
+command line.
+
+=item B<--help>
+
+Display the help and exit.
+
+=item B<--author>
+
+Output the author(s)'s name.
+
+=item B<--version>
+
+Output the program version.
+
+=head1 EXAMPLES
+
+=item B<kdesvn-build>
+
+=item B<kdesvn-build> I<--no-svn kdelibs>
+
+=item B<kdesvn-bulid> I<--refresh-build> I<kdebase>
+
+=head1 BUGS
+
+Please use KDE bugzilla at http://bugs.kde.org for information and
+reporting bugs.
+
+=head1 SEE ALSO
+
+You can find additional information at B<kdesvn-build> home page,
+F<http://grammarian.homelinux.net/kdecvs-build>, or using kdesvn-build
+docbook documentation, using the help kioslave, F<help:/kdesvn-build>.
+
+=head1 AUTHOR
+
+Michael Pyne <michael.pyne@kdemail.net>
+
+=cut
+
+
 # Script to handle building KDE from Subversion.  All of the configuration is
 # stored in the file ~/.kdesvn-buildrc.
 #
