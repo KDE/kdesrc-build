@@ -833,8 +833,10 @@ sub log_command
             };
         }
 
-        # Make sure we log everything.
-        open (STDERR, ">&STDOUT");
+        # Make sure we log everything.  If the command is svn, it is possible
+        # that the client will produce output trying to get a password, so
+        # don't redirect stderr in that case.
+        open (STDERR, ">&STDOUT") unless $command[0] eq 'svn';
 
         exec (@command) or do {
             print "Unable to exec ", join (' ', @command), "!\n";
