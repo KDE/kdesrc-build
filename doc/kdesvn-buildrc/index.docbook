@@ -48,6 +48,7 @@ authors using the address you can find <link linkend="authors">above</link>.
 <listitem><para><link linkend="conf-apidox">apidox</link>, to build API Documentation</para></listitem>
 <listitem><para><link linkend="conf-apply-qt-patches">apply-qt-patches</link>, to enhance qt-copy</para></listitem>
 <listitem><para><link linkend="conf-binpath">binpath</link>, to set the <envar>PATH</envar> variable.</para></listitem>
+<listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of /trunk.</para></listitem>
 <listitem><para><link linkend="conf-build-dir">build-dir</link>, to set the directory to build in.</para></listitem>
 <listitem><para><link linkend="conf-checkout-only">checkout-only</link>, to checkout only parts of a module.</para></listitem>
 <listitem><para><link linkend="conf-colorful-output">colorful-output</link> to add color to the script output.</para></listitem>
@@ -126,6 +127,21 @@ variable should include the colon-separated paths of your development
 toolchain.  The paths <filename class="directory">$KDEDIR/bin</filename> and
 <filename class="directory">$QTDIR/bin</filename> are automatically added.  You
 may use the tilde (~) for any paths you add using this option.</para>
+</entry>
+</row>
+
+<row id="conf-branch">
+<entry>branch</entry>
+<entry>Overrides global</entry>
+<entry><para>Set this option to checkout from a branch of KDE instead of the
+default of "trunk", where KDE development occurs.  For instance, to checkout
+KDE 3.4 branch, you would set this option to "3.4".</para>
+<para>Note that some modules use a different branch name.  Notably, the
+required arts module doesn't go by KDE version numbers.  The arts that
+accompanied KDE 3.4 was version 1.4.</para>
+<para>If kdesvn-build fails to properly download a branch with this option, you
+may have to manually specify the URL to download from using the <link
+linkend="conf-override-url">override-url</link> option.</para>
 </entry>
 </row>
 
@@ -359,6 +375,16 @@ to rebuild this module if it should fail an incremental build.  Normally
 effect of a stray &svn; update messing up the build system.</entry>
 </row>
 
+<row id="conf-override-url">
+<entry>override-url</entry>
+<entry>Overrides global</entry>
+<entry>If you set this option, kdesvn-build will use its value as the URL
+to pass to Subversion <emphasis>completely unchanged</emphasis>.  You should
+generally use this if you want to download a specific release but kdesvn-build
+can't figure out what you mean using <link linkend="conf-branch">branch</link>.
+</entry>
+</row>
+
 <row id="conf-qtdir">
 <entry>qtdir</entry>
 <entry>Can't be overridden</entry>
@@ -409,6 +435,21 @@ The default is the anonymous &svn; repository, <emphasis>svn://anonsvn.kde.org/<
 <entry>Set this option value to <quote>true</quote> to cause the script to stop execution
 after an error occurs during the build or install process.  This option is off
 by default.
+</entry>
+</row>
+
+<row id="conf-tag">
+<entry>tag</entry>
+<entry>Overrides global</entry>
+<entry><para>Use this option to download a specific release of a module.</para>
+<para><emphasis>NOTE:</emphasis> The odds are very good that you DO NOT WANT
+to use this option. KDE releases are available in tarball form from <ulink
+url="ftp://ftp.kde.org/">The KDE FTP site</ulink> or one of <ulink
+url="http://download.kde.org/download.php">its mirrors</ulink>.</para>
+<para>If you are using kdesvn-build because you have having trouble getting
+a KDE release to build on your distribution, consider using the <ulink
+url="http://developer.kde.org/build/konstruct/">Konstruct build tool</ulink>
+instead, which works from the release tarballs.</para>
 </entry>
 </row>
 
