@@ -20,12 +20,10 @@
 
 =head1 DESCRIPTION
 
-=over
-
 The B<kdesvn-build> script is used to automate the download, build,
 and install process for KDE (using Subversion).
 
-It is recommended that your first setup a F<.kdesvn-buildrc> file
+It is recommended that you first setup a F<.kdesvn-buildrc> file
 in your home directory. Please refer to B<kdesvn-build> help file
 in KDE help for information on how to write F<.kdesvn-buildrc>,
 or consult the sample file which should have been included
@@ -45,11 +43,26 @@ If you DO specify a package name, then your settings will still be
 read, but the script will try to build / install the package
 regardless of F<.kdesvn-buildrc>
 
-This utility is part of the KDE Software Development Kit.
+kdesvn-build reads options in the following order:
+
+=over
+
+=item 1. From the command line.
+
+=item 2. From the file F<kdesvn-buildrc> in the current directory.  Note that
+         the file is not a hidden file.
+
+=item 3. From the file F<~/.kdesvn-buildrc>.
+
+=item 4. From a set of internal options.
 
 =back
 
+This utility is part of the KDE Software Development Kit.
+
 =head1 OPTIONS
+
+=over
 
 =item B<--no-svn>
 
@@ -96,7 +109,7 @@ command line. It implies B<--reconfigure>.
 
 =item B<--color>
 
-Add color from the output.
+Add color to the output.
 
 =item B<--no-color>
 
@@ -118,7 +131,10 @@ Forces update to revision <rev> from Subversion.
 
 =item B<--refresh-build>
 
-Start the build from scratch.
+Start the build from scratch.  This means that the build directory for the
+module B<will be deleted> before make -f Makefile.cvs is run again.  You can
+use B<--recreate-configure> to do the same thing without deleting the module
+build directory.
 
 =item B<--reconfigure>
 
@@ -127,12 +143,14 @@ make -f Makefile.cvs.
 
 =item B<--recreate-configure>
 
-Run make -f Makefile.cvs again to redo the configure script.
+Run make -f Makefile.cvs again to redo the configure script.  The build
+directory is not deleted.
 
 =item B<--no-rebuild-on-fail>
 
-Don not try to rebuild a module from scratch if it failed building and we
-didn't already try to build it from scratch.
+Do not try to rebuild a module from scratch if it failed building.  Normally
+kdesvn-build will try progressively harder to build the module before giving
+up.
 
 =item B<--build-system-only>
 
@@ -149,10 +167,16 @@ Subversion updates are not performed.
 Any unrecognized options are added to the global configuration, overriding
 any value that may exist.
 
+For example, B<--svn-server=http://path.to.svn.server/> would change the
+setting of the global B<svn-server> option for this instance of kdesvn-build.
+
 =item B<--E<lt>moduleE<gt>,E<lt>optionE<gt>=>
 
 Likewise, allow you to override any module specific option from the
 command line.
+
+Example: B<--kdelibs,use-unsermake=false> would disable unsermake for the
+kdelibs module.
 
 =item B<--help>
 
@@ -166,7 +190,11 @@ Output the author(s)'s name.
 
 Output the program version.
 
+=back
+
 =head1 EXAMPLES
+
+=over
 
 =item B<kdesvn-build>
 
@@ -174,7 +202,13 @@ Output the program version.
 
 =item B<kdesvn-bulid> I<--refresh-build> I<kdebase>
 
+=back
+
 =head1 BUGS
+
+Since kdesvn-build doesn't generally save information related to the build and
+prior settings, you may need to manually re-run kdesvn-build with a flag like
+B<--recreate-configure> if you change some options, including B<use-unsermake>.
 
 Please use KDE bugzilla at http://bugs.kde.org for information and
 reporting bugs.
@@ -193,7 +227,6 @@ Man page written by:
 Carlos Leonhard Woelz <carlos.woelz@kdemail.net>
 
 =cut
-
 
 # Script to handle building KDE from Subversion.  All of the configuration is
 # stored in the file ~/.kdesvn-buildrc.
@@ -225,6 +258,7 @@ my %package_opts = (
     "apidox"              => "",
     "apply-qt-patches"    => "",
     "binpath"             => "/bin:/usr/bin:/usr/X11R6/bin:/usr/local/bin",
+    "branch"              => "",
     "build-dir"           => "build",
     "build-system-only"   => "",
     "checkout-only"       => "",
@@ -247,6 +281,7 @@ my %package_opts = (
     "niceness"            => "10",
     "no-svn"              => "",
     "no-rebuild-on-fail"  => "",
+    "override-url"        => "",
     "pretend"             => "",
     "qtdir"               => "$ENV{HOME}/kdesvn/build/qt-copy",
     "reconfigure"         => "",
@@ -257,6 +292,7 @@ my %package_opts = (
     "source-dir"          => "$ENV{HOME}/kdesvn",
     "stop-on-failure"     => "",
     "svn-server"          => "svn://anonsvn.kde.org/home/kde",
+    "tag"                 => "",
     "unsermake-options"   => "--compile-jobs=2 -p",
     "unsermake-path"      => "unsermake",
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
@@ -427,6 +463,63 @@ sub list_has(\@$)
     return scalar grep ($_ eq $value, @{$list_ref});
 }
 
+# Subroutine to return the branch prefix. i.e. the part before the branch name
+# and module name.
+#
+# The first parameter is the module in question.
+# The second parameter should be 'branches' if we're dealing with a branch or
+#     'tags' if we're dealing with a tag.
+#
+# Ex: 'kdelibs'  => 'branches/KDE'
+#     'kdevelop' => 'branches/kdevelop'
+sub branch_prefix
+{
+    my $module = shift;
+    my $type = shift;
+
+    # These modules seem to have their own subdir in /tags.
+    my @tag_components = qw/arts koffice amarok kst qt taglib/;
+
+    # The map call adds the kde prefix to the module names because I don't feel
+    # like typing them all in. kdevelop and konstruct are special cases.
+    my @kde_module_list = ((map {'kde' . $_} qw/-i18n -common accessibility
+            addons admin artwork base bindings edu games graphics libs
+            multimedia network nonbeta pim sdk toys utils webdev/), 'kdevelop',
+            'konstruct');
+
+    # KDE proper modules seem to use this pattern.
+    return "$type/KDE" if list_has(@kde_module_list, $module);
+
+    # If we doing a tag just return 'tags' because the next part is the actual
+    # tag name, which is added by the caller, unless the module has its own
+    # subdirectory in /tags.
+    return "$type" if $type eq 'tags' and not list_has(@tag_components, $module);
+
+    # Everything else.
+    return "$type/$module";
+}
+
+# Subroutine to return a module URL for a module using the 'branch' option.
+# First parameter is the module in question.
+# Second parameter is the type ('tags' or 'branches')
+sub handle_branch_tag_option
+{
+    my ($module, $type) = @_;
+    my $svn_server = get_option($module, 'svn-server');
+    my $branch = branch_prefix($module, $type);
+    my $branchname = get_option($module, 'tag');
+
+    if($type eq 'branches')
+    {
+        $branchname = get_option($module, 'branch');
+    }
+
+    # Remove trailing slashes.
+    $svn_server =~ s/\/*$//;
+
+    return "$svn_server/$branch/$branchname/$module";
+}
+
 # Subroutine to return the appropriate SVN URL for a given module, based on
 # the user settings.  For example, 'kdelibs' -> https://svn.kde.org/home/kde/trunk/KDE/kdelibs
 sub svn_module_url
@@ -434,6 +527,24 @@ sub svn_module_url
     my $module = shift;
     my $svn_server = get_option($module, 'svn-server');
     my $branch = get_option($module, 'module-base-path');
+
+    # Allow user to override normal processing of the module in a few ways,
+    # to make it easier to still be able to use kdesvn-build even when I
+    # can't be there to manually update every little special case.
+    if(get_option($module, 'override-url'))
+    {
+        return get_option($module, 'override-url');
+    }
+
+    if(get_option($module, 'tag'))
+    {
+        return handle_branch_tag_option($module, 'tags');
+    }
+
+    if(get_option($module, 'branch'))
+    {
+        return handle_branch_tag_option($module, 'branches');
+    }
     
     $branch = 'trunk/KDE' unless $branch;
     $branch =~ s/^\/*//; # Eliminate / at beginning of string.
@@ -1477,7 +1588,7 @@ sub set_option
 sub process_arguments
 {
     my $arg;
-    my $version = "kdesvn-build 0.96";
+    my $version = "kdesvn-build 0.97";
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <michael.pyne\@kdemail.net>
