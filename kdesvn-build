@@ -973,7 +973,7 @@ sub run_make_command
     my $filename = shift;
     my @command = @{(shift)};
     my $logdir = get_log_dir($module);
-    my $isunsermake = $command[0] eq 'unsermake';
+    my $isunsermake = $command[0] =~ 'unsermake';
 
     # Don't print ANSI characters if we're not on a tty.  Also,  automake
     # doesn't support printing output status.
@@ -1011,7 +1011,7 @@ sub run_make_command
             }
         }
         close(CHILD);
-        print STDERR "\r\e[K\n";
+        print STDERR "\r\e[K";
 
         # If the module fails building, set an internal flag in the module
         # options with the name of the log file containing the error message.
