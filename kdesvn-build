@@ -1974,6 +1974,14 @@ sub adjust_update_list
 
     if ($unsermake_needed)
     {
+        # If we already have unsermake and the user has set manual-update,
+        # don't second-guess them.
+        my $source_dir = get_fullpath('kdenonbeta', 'source');
+        if (-e "$source_dir/unsermake" and get_option('kdenonbeta', 'manual-update'))
+        {
+            return;
+        }
+
         if (not list_has(@{$list_ref}, 'kdenonbeta'))
         {
             print "Adding kdenonbeta/unsermake to build.\n" if pretending;
