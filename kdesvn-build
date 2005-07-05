@@ -267,6 +267,7 @@ my %package_opts = (
     "cxxflags"            => "-g -pipe -march=i686",
     "debug"               => "",
     "dest-dir"            => '${MODULE}', # single quotes used on purpose!
+    "disable-agent-check" => 0,   # If true we don't check on ssh-agent
     "do-not-compile"      => "",
     "install-after-build" => "1", # Default to true
     "inst-apps"           => "",
@@ -682,7 +683,7 @@ sub get_option
     my $global_opts = $package_opts{'global'};
     my $defaultQtCopyArgs = '-qt-gif -plugin-imgfmt-mng -thread -no-exceptions -debug -dlopen-opengl -plugin-sql-sqlite';
     my @lockedOpts = qw(source-dir svn-server qtdir libpath binpath kdedir
-                        pretend);
+                        pretend disable-agent-check);
 
     # These options can't override globals
     if (list_has(@lockedOpts, $option) || $module eq 'global')
@@ -2277,6 +2278,61 @@ sub switch_repo_url
     }
 }
 
+# This subroutine checks if we are supposed to use ssh agent by examining the
+# environment, and if so checks if ssh-agent has a list of identities.  If it
+# doesn't, we run ssh-add (with no arguments) and inform the user.  This can
+# be controlled with the disable-agent-check parameter.
+sub check_for_ssh_agent
+{
+    my $agent_running = 0;
+    my $server = get_option('global', 'svn-server');
+    my ($proto, $host) = split_url($server);
+
+    # Don't bother with all this if the user isn't even using SSH.
+    return 1 if($proto !~ /ssh/) or get_option('global', 'disable-agent-check');
+
+    # We're using ssh to download, see if ssh-agent is running.
+    return 1 unless exists $ENV{'SSH_AGENT_PID'};
+
+    my $pid = $ENV{'SSH_AGENT_PID'};
+
+    # It's supposed to be running, let's see if there exists the program with
+    # that pid.
+    # PORTABILITY NOTE: I'm not sure if this works under *BSD or Solaris.
+    if (not -e "/proc/$pid")
+    {
+        print clr "r[ *] SSH Agent is enabled, but y[doesn't seem to be running].\n";
+        print "Since SSH is used to download from Subversion you may want to see why\n";
+        print "SSH Agent is not working, or correct the environment variable settings.\n";
+
+        return 0;
+    }
+
+    # The agent is running, but does it have any keys?  We can be more specific
+    # with this check because we don't know what key is required.
+    my $keys = `ssh-add -l 2>/dev/null`;
+    if ($keys =~ /no identities/)
+    {
+        print clr <<EOF;
+b[y[*] SSH Agent does not appear to be managing any keys.  This will lead to you
+  being prompted for every module update for your SSH passphrase.  So, we're
+  running g[ssh-add] for you.  Please type your passphrase at the prompt when
+  requested, (or simply Ctrl-C to abort the script).
+EOF
+        my $result = system('ssh-add');
+        if ($result) # Run this code for both death-by-signal and nonzero return
+        {
+            print "\nUnable to add SSH identity, aborting.\n";
+            print "If you don't want kdesvn-build to check in the future,\n";
+            print clr "Set the g[disable-agent-check] option to g[true] in your ~/.kdesvn-buildrc.\n\n";
+
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 # Subroutine to update a list of Subversion modules.  The first
 # parameter is a reference of a list of the modules to update.
 # If the module has not already been checkout out, this subroutine
@@ -2293,6 +2349,9 @@ sub handle_updates
 
     # No reason to print out the text if we're not doing anything.
     return 0 if get_option ('global', 'no-svn');
+    return 0 if scalar @$update_ref == 0;
+
+    return 1 if (not check_for_ssh_agent());
 
     print "<<<  Updating Subversion Directories  >>>\n\n";
 
