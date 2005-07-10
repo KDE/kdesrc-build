@@ -1061,6 +1061,28 @@ sub is_subdir_buildable
     return 1;
 }
 
+# Subroutine to return the path to the given executable based on the current
+# binpath settings.  e.g. if you pass make you could get '/usr/bin/make'.  If
+# the executable is not found undef is returned.
+#
+# This assumes that the module environment has already been updated since
+# binpath doesn't exactly correspond to $ENV{'PATH'}.
+sub path_to_prog
+{
+    my $prog = shift;
+    my @paths = split(/:/, $ENV{'PATH'});
+
+    # If it starts with a / the path is already absolute.
+    return $prog if $prog =~ /^\//;
+
+    for my $path (@paths)
+    {
+        return "$path/$prog" if (-x "$path/$prog");
+    }
+
+    return undef;
+}
+
 # Subroutine to run the make command with the arguments given by the passed
 # list.  The first argument of the list given must be the module that we're
 # making.  The second argument is the "try number", used in creating the log
@@ -1085,6 +1107,23 @@ sub safe_make (@)
     else
     {
         $opts = get_option($module, 'make-options');
+    }
+
+    # Convert the path to an absolute path since I've encountered a sudo that
+    # is apparently unable to guess.  Maybe it's better that it doesn't guess
+    # anyways from a security point-of-view.
+    $make = path_to_prog($make);
+
+    if(not defined $make)
+    {
+        # Weird, we can't find make, you'd think configure would have
+        # noticed...
+        print clr " r[b[*] Unable to find the g[$make] executable!\n";
+
+        # Make sure we don't bother trying again, this is a more serious
+        # error.
+        set_option($module, "#was-rebuilt", 1);
+        return 1;
     }
 
     # Add make-options to the given options, as long as we're not installing
@@ -1171,10 +1210,8 @@ sub setenv
     {
         print clr "\tWould have set g[$var]=y[$val].\n";
     }
-    else
-    {
-        $ENV{$var} = $val;
-    }
+
+    $ENV{$var} = $val;
 }
 
 # Display a message to the user regarding their relative lack of
