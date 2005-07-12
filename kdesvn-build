@@ -3279,7 +3279,17 @@ sub handle_build
         $i++;
     }
 
-    close STATUS_FILE;
+    # If we have packages that failed to update we should probably mention them
+    # in the build-status file as well.
+    if ($outfile)
+    {
+        for my $failure (@failed_list)
+        {
+            print STATUS_FILE "$failure: Failed on update.\n";
+        }
+
+        close STATUS_FILE;
+    }
 
     print "<<<  Build Done  >>>\n";
     print clr "\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>\n" if scalar @build_done > 0;
