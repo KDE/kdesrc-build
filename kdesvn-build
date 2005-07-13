@@ -2041,9 +2041,16 @@ sub get_lock
         # twice.
         print clr " y[WARNING]: stale kdesvn-build lockfile found, deleting.\n";
         unlink $lockfile;
-        sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
+        sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL and do
+        {
+            print LOCKFILE "$$\n";
+            close LOCKFILE;
+        };
         return 1; # Hope the sysopen worked.
     }
+
+    print LOCKFILE "$$\n";
+    close LOCKFILE;
 
     # Even if we fail it's generally better to allow the script to proceed
     # without being a jerk about things, especially as more non-CLI-skilled
