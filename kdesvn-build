@@ -2594,7 +2594,7 @@ sub safe_configure
 
         $script = "$qtdir/configure.new";
 
-        print clr "\tb[r[GPL license selected for Qt].  See $fullpath/qt-copy/LICENSE.GPL\n";
+        print clr "\tb[r[GPL license selected for Qt].  See $fullpath/LICENSE.GPL\n";
     }
 
     print clr "\tRunning g[configure]...\n";
@@ -2717,6 +2717,11 @@ sub prepare_fake_builddir
     {
         # Use old method of copying.
         $args = [ 'cp', '-af', $srcdir, $builddir ];
+    }
+
+    if (not -e $builddir)
+    {
+        super_mkdir($builddir);
     }
 
     # Use a slightly less effective method of builddir != srcdir for the
@@ -3010,6 +3015,7 @@ sub setup_build_system
     # takes care of that test.
     if (module_needs_builddir_help($module))
     {
+        print clr "\tFaking builddir for g[$module]\n";
         if (not prepare_fake_builddir($module))
         {
             print clr "Error creating r[$module] build system!\n";
