@@ -687,7 +687,7 @@ sub get_option
                         pretend disable-agent-check);
 
     # These options can't override globals
-    if (list_has(@lockedOpts, $option) || $module eq 'global')
+    if (list_has(@lockedOpts, $option) or $module eq 'global')
     {
         return ${$global_opts}{"#$option"} if exists ${$global_opts}{"#$option"};
         return ${$global_opts}{$option};
@@ -1434,6 +1434,24 @@ EOM
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
     setup_default_modules() if $using_default;
+}
+
+# Subroutine to check if the given module needs special treatment to support
+# srcdir != builddir.  If this function returns true kdesvn-build will use a
+# few hacks to simulate it, and will update e.g. configure paths appropriately
+# as well.
+sub module_needs_builddir_help
+{
+    my $module = shift;
+    my @module_help_list = qw/qt-copy kdebindings valgrind/;
+
+    # qt-copy special case to support use-qt-builddir-hack.
+    if ($module eq 'qt-copy' and not get_option('qt-copy', 'use-qt-builddir-hack'))
+    {
+        return 0;
+    }
+
+    return list_has(@module_help_list, $module);
 }
 
 # This subroutine reads the set-env option for a given module and initializes
@@ -2550,10 +2568,9 @@ sub safe_configure
 
         # We're special casing these modules because we're using the lndir
         # hack for them.
-        if ($module eq 'kdebindings' or $module eq 'valgrind')
+        if (module_needs_builddir_help($module))
         {
-            my %pathinfo = get_module_path_dir($module, 'build');
-            $script = "$pathinfo{fullpath}/configure";
+            $script = get_fullpath($module, 'build') . "/configure";
         }
     }
     else
@@ -2577,7 +2594,7 @@ sub safe_configure
 
         $script = "$qtdir/configure.new";
 
-        print clr "\tb[r[GPL license selected for Qt.  See] $fullpath/qt-copy/LICENSE.GPL\n";
+        print clr "\tb[r[GPL license selected for Qt].  See $fullpath/qt-copy/LICENSE.GPL\n";
     }
 
     print clr "\tRunning g[configure]...\n";
@@ -2666,6 +2683,57 @@ sub create_admin_dir
     return (safe_system("ln -s $admindir admin") == 0);
 }
 
+# Subroutine to link a source directory into an alternate directory in order
+# to fake srcdir != builddir for modules that don't natively support it.
+# The first parameter is the module to prepare.
+# 
+# The return value is true (non-zero) if it succeeded, and 0 (false) if it
+# failed.
+# 
+# On return from the subroutine the current directory will be in the build
+# directory, since that's the only directory you should touch from then on.
+#
+# You may safely call this subroutine for modules that don't need it, they
+# will automatically be ignored.
+sub prepare_fake_builddir
+{
+    my $module = shift;
+    my $builddir = get_fullpath($module, 'build');
+    my $srcdir = get_fullpath($module, 'source');
+    my $args = [ 'lndir', $srcdir ]; # List reference, not a real list.
+
+    # Skip modules that don't need special treatment.
+    return 1 unless module_needs_builddir_help($module);
+
+    # Backwards compatibility hack.
+    # kdesvn-build 0.97 and earlier would physically copy the Qt source
+    # directory to the build directory.  kdesvn-build versions after that use
+    # the lndir program that is used for kdebindings and valgrind for
+    # portability reasons.  This will break for users who have a real copy of
+    # Qt, so check here if the qt-copy configure script file is a real file
+    # (not a symlink), and if so, use the old method (since presumably it
+    # worked earlier).
+    if ($module eq 'qt-copy' and -e "$builddir/configure" and not -l "$builddir/configure")
+    {
+        # Use old method of copying.
+        $args = [ 'cp', '-af', $srcdir, $builddir ];
+    }
+
+    # Use a slightly less effective method of builddir != srcdir for the
+    # module, as it fails otherwise.
+    chdir($builddir);
+
+    # lndir is included with XFree86 and X.org.  I'm not sure about it's
+    # portability but it seems to be relatively common.
+    if (log_command ($module, 'create-builddir', $args))
+    {
+        print clr "\tUnable to setup special build system for r[$module].\n";
+        return 0;
+    }
+
+    return 1; # Success
+}
+
 # Subroutine to create the build system for a module.  This involves making
 # sure the directory exists and then running make -f Makefile.cvs.  This
 # subroutine assumes that the module is already downloaded.
@@ -2682,8 +2750,14 @@ sub safe_create_build_system
         return 0;
     }
 
-    chdir ($fullpath);
-    chdir ($builddir) if $module eq 'qt-copy' and get_option('qt-copy', 'use-qt-builddir-hack');
+    chdir ($fullpath); # Run make -f Makefile.cvs in srcdir.
+
+    # These modules will run make -f Makefile.cvs in (fake) builddir to keep
+    # srcdir clean. Except for qt-copy when not using qt-builddir-hack.
+    if(module_needs_builddir_help($module))
+    {
+        chdir ($builddir);
+    }
 
     # Check for admin dir, if it doesn't exist, create a softlink
     if (not create_admin_dir($module))
@@ -2692,20 +2766,6 @@ sub safe_create_build_system
         print "won't build.\n";
         # But continue anyways, because in this case I'm just not sure that it
         # won't work in the future. ;)
-    }
-
-    if ($module eq 'kdebindings' || $module eq 'valgrind')
-    {
-        # Use a slightly less effective method of builddir != srcdir for the
-        # module, as it fails otherwise.
-        chdir($builddir);
-
-        # lndir is included with XFree86 and X.org
-        if (log_command ($module, "lndir", [ "lndir", "$fullpath" ]))
-        {
-            print clr "\tUnable to setup special build system for r[$module].\n";
-            return 1;
-        }
     }
 
     if ($instapps)
@@ -2944,28 +3004,24 @@ sub setup_build_system
         $do_makeconf = 1;
     }
 
-    if ($module eq 'qt-copy' && get_option($module, 'use-qt-builddir-hack'))
+    # Symlink source directory to build directory if module doesn't support
+    # srcdir != builddir.  If it's qt-copy only do so if use-qt-builddir-hack
+    # is on (true by default).  Note that module_needs_builddir_help() already
+    # takes care of that test.
+    if (module_needs_builddir_help($module))
     {
-        # Copy qt-copy wholesale to the builddir, to simulate srcdir !=
-        # builddir.  This could probably be converted to the lndir method
-        # used for kdebindings and valgrind.
-        if (log_command ('qt-copy', 'create-builddir', ['cp', '-af',
-                         $fullpath, $builddir ]))
+        if (not prepare_fake_builddir($module))
         {
-            print clr "Error creating r[qt-copy] build system!\n";
+            print clr "Error creating r[$module] build system!\n";
             return 0;
         }
     }
 
-    my $confpath = $module =~ /(valgrind|kdebindings)$/ ? $builddir : $fullpath;
+    my $confpath = module_needs_builddir_help($module) ? $builddir : $fullpath;
 
     if ($do_makeconf or not -e "$confpath/configure")
     {
         print clr "\ty[Recreating configure script].\n";
-
-        # Note this is the checkout directory, not the build directory
-        # This will equal $builddir for qt-copy without qt-builddir-hack
-        chdir ($fullpath);
 
         # Update the PATH and other important environment variables.
         update_module_environment ($module);
@@ -2978,7 +3034,7 @@ sub setup_build_system
 
         $do_configure = 1;
 
-        if (($module eq "qt-copy") && get_option($module, 'apply-qt-patches'))
+        if ($module eq "qt-copy" and get_option($module, 'apply-qt-patches'))
         {
             # Run apply-patches script
             return 0 if safe_apply_patches ();
@@ -2988,8 +3044,11 @@ sub setup_build_system
         return 1 if get_option ($module, 'build-system-only');
     }
 
-    $do_configure = 1 if $module eq 'qt-copy' and not -e "$builddir/src/tools/qconfig.cpp";
-    if ($do_configure || not -e "$builddir/Makefile")
+    # File which exists after configure has been run.
+    my $conf_key_file = "$builddir/Makefile";
+    $conf_key_file = "$builddir/src/tools/qconfig.cpp" if $module eq 'qt-copy';
+
+    if ($do_configure or not -e $conf_key_file)
     {
         if (not -e "$builddir" and not super_mkdir("$builddir"))
         {
@@ -3414,11 +3473,12 @@ sub get_repo_url
 sub handle_install
 {
     my $apidox = pop; # Take parameter off end of list (@_).
+    my @no_install_modules = qw/qt-copy kde-common/;
     my $result = 0;
 
     for my $module (@_)
     {
-        if ($module =~ /^(qt-copy|kde-common)$/)
+        if (list_has(@no_install_modules, $module))
         {
             print clr "\tg[$module] doesn't need to be installed.\n";
             next;
