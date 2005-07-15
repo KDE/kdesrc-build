@@ -2563,9 +2563,11 @@ sub safe_configure
 
     if ($module ne 'qt-copy')
     {
-        my $kdedir = get_option ('global', 'kdedir');
         push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
-        push @commands, "--prefix=$kdedir";
+        my $kdedir = get_option ('global', 'kdedir');
+        my $prefix = get_option ($module, 'prefix');
+        $prefix = $kdedir unless defined($prefix);
+        push @commands, "--prefix=$prefix";
 
         # We're special casing these modules because we're using the lndir
         # hack for them.
