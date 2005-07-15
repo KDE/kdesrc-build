@@ -289,6 +289,7 @@ my %package_opts = (
     "reconfigure"         => "",
     "recreate-configure"  => "",
     "refresh-build"       => "",
+    "remove-after-install"=> "none", # { none, builddir, all }
     "revision"            => 0,
     "set-env"             => { }, # Hash of environment vars to set
     "source-dir"          => "$ENV{HOME}/kdesvn",
@@ -3528,6 +3529,27 @@ sub handle_install
                 print "Stopping here.\n";
                 return 1; # Error
             }
+        }
+
+        next if $result != 0; # Don't delete anything if the build failed.
+
+        my $remove_setting = get_option($module, 'remove-after-install');
+
+        # Possibly remove the srcdir and builddir after install for users with
+        # a little bit of HD space.
+        if($remove_setting eq 'all')
+        {
+            # Remove srcdir
+            my $srcdir = get_fullpath($module, 'source');
+            print clr "\tRemoving b[r[$module source].\n";
+            system ('rm', '-rf', $srcdir);
+        }
+
+        if($remove_setting eq 'builddir' or $remove_setting eq 'all')
+        {
+            # Remove builddir
+            print clr "\tRemoving b[r[$module build directory].\n";
+            system ('rm', '-rf', $builddir);
         }
     }
 
