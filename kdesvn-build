@@ -284,6 +284,7 @@ my %package_opts = (
     "no-svn"              => "",
     "no-rebuild-on-fail"  => "",
     "override-url"        => "",
+    "prefix"              => "", # Override installation prefix.
     "pretend"             => "",
     "qtdir"               => "$ENV{HOME}/kdesvn/build/qt-copy",
     "reconfigure"         => "",
@@ -2563,10 +2564,12 @@ sub safe_configure
 
     if ($module ne 'qt-copy')
     {
-        push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
         my $kdedir = get_option ('global', 'kdedir');
         my $prefix = get_option ($module, 'prefix');
-        $prefix = $kdedir unless defined($prefix);
+
+        $prefix = $kdedir unless $prefix;
+
+        push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
         push @commands, "--prefix=$prefix";
 
         # We're special casing these modules because we're using the lndir
