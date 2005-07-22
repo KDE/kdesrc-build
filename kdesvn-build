@@ -918,9 +918,10 @@ sub log_command
 
         # If the module fails building, set an internal flag in the module
         # options with the name of the log file containing the error message.
-        $package_opts{$module}{'#error-log-file'} = "$logdir/$filename.log" if $?;
+        my $result = $?;
+        set_error_logfile($module, "$filename.log") if $result;
 
-        return $?;
+        return $result;
     }
     else
     {
@@ -963,6 +964,31 @@ sub log_command
             exit 1;
         };
     }
+}
+
+# Subroutine to mark a file as being the error log for a module.  This also
+# creates a symlink in the module log directory for easy viewing.
+# First parameter is the module in question.
+# Second parameter is the filename in the log directory of the error log.
+sub set_error_logfile
+{
+    my ($module, $logfile) = @_;
+    my $logdir = get_log_dir($module);
+
+    set_option($module, '#error-log-file', "$logdir/$logfile");
+
+    # Setup symlink in the module log directory pointing to the appropriate
+    # file.  Make sure to remove it first if it already exists.
+    unlink("$logdir/error.log") if -l "$logdir/error.log";
+
+    if(-e "$logdir/error.log")
+    {
+        # Maybe it was a regular file?
+        print clr "rb[ * Unable to create symlink to error log file, error.log already exists].\n";
+        return 0;
+    }
+
+    system('ln', '-s', "$logdir/$logfile", "$logdir/error.log");
 }
 
 # Subroutine to run make/unsermake with redirected STDOUT and STDERR,
@@ -1020,9 +1046,10 @@ sub run_make_command
 
         # If the module fails building, set an internal flag in the module
         # options with the name of the log file containing the error message.
-        $package_opts{$module}{'#error-log-file'} = "$logdir/$filename.log" if $?;
+        my $result = $?;
+        set_error_logfile($module, "$filename.log") if $result;
 
-        return $?;
+        return $result;
     }
     else
     {
@@ -1847,6 +1874,11 @@ DONE
                 set_option('global', '#kdedir', $prefix);
                 set_option('global', '#reconfigure', 1);
 
+                last SWITCH;
+            };
+
+            /^--no-rebuild-on-fail$/ && do {
+                set_option('global', '#no-rebuild-on-fail', 1);
                 last SWITCH;
             };
 
@@ -3295,7 +3327,7 @@ EOF
             # Don't remove the old modules, but re-run make -f
             # Makefile.cvs and configure.
             print "\n\tStill couldn't build, recreating build system (builddir is safe).\n";
-            print "\tTook $elapsed of time.\n";
+            print clr "\tTook g[$elapsed] of time.\n";
             $package_opts{$module}->{'#cancel-clean'} = 1;
             $package_opts{$module}->{'refresh-build'} = 1;
 
