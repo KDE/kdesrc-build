@@ -312,8 +312,17 @@ my %ignore_list;  # List of packages to refuse to include in the build list.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
 
-my @failed_list;  # List of modules that failed to update.
-my @install_fail; # List of modules that failed to install.
+# Dictionary of lists of failed modules, keyed by the name of the operation
+# that caused the failure (e.g. build).  Note that output_failed_module_lists
+# uses the key name to display text to the user so it should describe the
+# actual category of failure.  You should also add the key name to
+# output_failed_module_lists since it uses its own sorted list.
+my %fail_lists = (
+    'build'   => [ ],
+    'install' => [ ],
+    'update'  => [ ],
+);
+
 my $install_flag; # True if we're in install mode.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
@@ -975,6 +984,8 @@ sub set_error_logfile
     my ($module, $logfile) = @_;
     my $logdir = get_log_dir($module);
 
+    return unless $logfile;
+
     set_option($module, '#error-log-file', "$logdir/$logfile");
 
     # Setup symlink in the module log directory pointing to the appropriate
@@ -1595,6 +1606,18 @@ sub output_failed_module_list($@)
 
             print clr "r[$_] - g[$logfile]\n";
         }
+    }
+}
+
+# This subroutine reads the fail_lists dictionary to automatically call
+# output_failed_module_list for all the module failures in one function
+# call.
+sub output_failed_module_lists()
+{
+    for my $type (qw/build update install/)
+    {
+        my @failures = @{$fail_lists{$type}};
+        output_failed_module_list("failed to $type", @failures);
     }
 }
 
@@ -2407,7 +2430,7 @@ sub dont_build
     # Weed out matches of the module name
     @build_list = grep (!/^$module$/, @build_list);
 
-    push @failed_list, $module;
+    push @{$fail_lists{'update'}}, $module;
 }
 
 # Subroutine to split a url into a protocol and host
@@ -3380,7 +3403,6 @@ EOF
 # Returns 0 for success, non-zero for failure.
 sub handle_build
 {
-    my @fail_list;
     my @build_done;
     my $build_ref = shift;
     my $kdesvn = get_kdesvn_dir();
@@ -3436,7 +3458,7 @@ sub handle_build
             print STATUS_FILE "$module: Failed after $elapsed.\n" if $outfile;
 
             print clr "\tOverall time for r[$module] was g[$elapsed].\n";
-            push @fail_list, $module;
+            push @{$fail_lists{'build'}}, $module;
 
             if (get_option($module, 'stop-on-failure'))
             {
@@ -3454,7 +3476,7 @@ sub handle_build
     # in the build-status file as well.
     if ($outfile)
     {
-        for my $failure (@failed_list)
+        for my $failure (@{$fail_lists{'build'}})
         {
             print STATUS_FILE "$failure: Failed on update.\n";
         }
@@ -3482,8 +3504,7 @@ sub handle_build
         print (clr 'g[', join (clr "]\ng[", @build_done), clr "]\n");
     }
 
-    output_failed_module_list ('failed building', @fail_list);
-    return ((scalar @fail_list) > 0) ? 1 : 0;
+    return scalar @{$fail_lists{'build'}};
 }
 
 # Subroutine to exit the script cleanly, including removing any
@@ -3559,7 +3580,7 @@ sub handle_install
         {
             print clr "\tUnable to install r[$module]!\n";
             $result = 1;
-            push @install_fail, $module;
+            push @{$fail_lists{'install'}}, $module;
 
             if (get_option($module, 'stop-on-failure'))
             {
@@ -3718,17 +3739,14 @@ eval
         # No packages to install, we're in build mode
         $result = handle_updates (\@update_list);
         $result = handle_build (\@build_list) || $result;
-
-        output_failed_module_list ("failed to update", @failed_list);
-        output_failed_module_list ("failed to install", @install_fail);
     }
     else
     {
         # Installation mode (no apidox)
         $result = handle_install (get_install_list(), 0);
-
-        output_failed_module_list ("failed to install", @install_fail);
     }
+
+    output_failed_module_lists();
 
     $time = localtime;
     my $color = '';
