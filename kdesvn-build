@@ -249,6 +249,16 @@ use Fcntl;    # For sysopen constants
 use POSIX 'strftime';
 use Errno qw(:POSIX);
 
+# Debugging level constants.
+use constant {
+    DEBUG   => 0,
+    WHISPER => 1,
+    INFO    => 2,
+    NOTE    => 3,
+    WARNING => 4,
+    ERROR   => 5,
+};
+
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
 # because I'm an adult and you're not! :-P
@@ -267,6 +277,7 @@ my %package_opts = (
     "colorful-output"     => 1, # Use color by default.
     "cxxflags"            => "-g -pipe -march=i686",
     "debug"               => "",
+    "debug-level"         => INFO,
     "dest-dir"            => '${MODULE}', # single quotes used on purpose!
     "disable-agent-check" => 0,   # If true we don't check on ssh-agent
     "do-not-compile"      => "",
@@ -338,31 +349,7 @@ my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
 
 # I swear Perl must be the only language where the docs tell you to use a
 # constant that you'll never find exported without some module from CPAN.
-sub PRIO_PROCESS()
-{
-    return 0;
-}
-
-# Subroutine to handle removing the lock file upon receiving a signal
-sub quit_handler
-{
-    print "Signal received, terminating.\n";
-    finish(5);
-}
-
-# Subroutine which returns true if pretend mode is on.  Uses the prototype
-# feature so you don't need the parentheses to use it.
-sub pretending()
-{
-    return get_option('global', 'pretend');
-}
-
-# Subroutine which returns true if debug mode is on.  Uses the prototype
-# feature so you don't need the parentheses to use it.
-sub debugging()
-{
-    return get_option('global', 'debug');
-}
+use constant PRIO_PROCESS => 0;
 
 # I'm lazy and would rather write in shorthand for the colors.  This sub
 # allows me to do so. Put it right up top to stifle Perl warnings.
@@ -377,6 +364,84 @@ sub clr($)
     $str =~ s/b\[/$BOLD/g;
 
     return $str;
+}
+
+# Subroutine which returns true if pretend mode is on.  Uses the prototype
+# feature so you don't need the parentheses to use it.
+sub pretending()
+{
+    return get_option('global', 'pretend');
+}
+
+# Subroutine which returns true if debug mode is on.  Uses the prototype
+# feature so you don't need the parentheses to use it.
+sub debugging()
+{
+    return get_option('global', 'debug-level') <= DEBUG;
+}
+
+# The next few subroutines are used to print output at different importance
+# levels to allow for e.g. quiet switches, or verbose switches.  The levels are,
+# from least to most important:
+# debug, whisper, info (default), note (quiet), warning (very-quiet), and error.
+# 
+# You can also use the pretend output subroutine, which is emitted if, and only
+# if pretend mode is enabled.
+#
+# clr is automatically run on the input for all of those functions.
+# Also, the terminal color is automatically reset to normal as well so you don't
+# need to manually add the ] to reset.
+
+# Subroutine used to actually display the data, calls clr on each entry first.
+sub print_clr(@)
+{
+    print clr $_ foreach (@_);
+    print clr "]\n";
+}
+
+sub debug(@)
+{
+    print_clr @_ if debugging;
+}
+
+sub whisper(@)
+{
+    print_clr @_ if get_option('global', 'debug-level') <= WHISPER;
+}
+
+sub info(@)
+{
+    print_clr @_ if get_option('global', 'debug-level') <= INFO;
+}
+
+sub note(@)
+{
+    print_clr @_ if get_option('global', 'debug-level') <= NOTE;
+}
+
+sub warning(@)
+{
+    print_clr @_ if get_option('global', 'debug-level') <= WARNING;
+}
+
+# This sub has the additional side effect of printing the errno value if it
+# is set.
+sub error(@)
+{
+    print STDERR (clr $_) foreach (@_);
+    print "  $!\n" if $!;
+}
+
+sub pretend(@)
+{
+    print_clr @_ if pretending;
+}
+
+# Subroutine to handle removing the lock file upon receiving a signal
+sub quit_handler
+{
+    note "Signal received, terminating.";
+    finish(5);
 }
 
 # Subroutine that returns the path of a file used to output the results of the
@@ -394,7 +459,7 @@ sub get_output_file
     $mode = shift or $mode = '';
     my $fname;
 
-    print "get_output_file in mode $mode\n" if debugging;
+    debug "get_output_file in mode $mode";
 
     if ($mode eq 'existing')
     {
@@ -405,8 +470,11 @@ sub get_output_file
         # latest symlink being in place.
         $logdir = get_subdir_path ('global', 'log-dir');
         $fname = "$logdir/latest/build-status";
-        print "Old build status file is $fname\n" if debugging;
 
+        debug "Old build status file is $fname";
+
+        # The _ at the end returns the cached file stats to avoid multiple
+        # stat() calls.
         return "" if not -e $fname or not -r _;
 
         return $fname;
@@ -415,8 +483,10 @@ sub get_output_file
     # This call must follow the test above, because it changes the 'latest'
     # symlink leading to failures later.
     $logdir = get_log_dir('global');
+
     $fname = "$logdir/build-status";
-    print "Build status file is $fname\n" if debugging;
+    debug "Build status file is $fname";
+
     return $fname;
 }
 
@@ -603,10 +673,11 @@ sub get_all_log_directories
     my @module_list = keys %package_opts;
     my %log_dict;
 
+    # A hash is used to track directories to avoid duplicate entries.
     unshift @module_list, "global";
     $log_dict{get_subdir_path($_, 'log-dir')} = 1 foreach @module_list;
 
-    print "Log directories are ", join (", ", keys %log_dict), "\n" if debugging;
+    debug "Log directories are ", join (", ", keys %log_dict);
     return keys %log_dict;
 }
 
@@ -634,9 +705,6 @@ sub setup_logging_subsystem
 
     $LOG_DATE = $date;
     $BUILD_ID = $min_build_id;
-
-    print "\$LOG_DATE = $LOG_DATE\n" if debugging;
-    print "\$BUILD_ID = $BUILD_ID\n" if debugging;
 }
 
 # Convienience subroutine to return the log directory for a module.
@@ -650,20 +718,22 @@ sub get_log_dir
     my $logpath = "$logbase/$LOG_DATE-$BUILD_ID/$module";
 
     $logpath = "$logbase/$LOG_DATE-$BUILD_ID" if $module eq 'global';
-    print "Log dir for $module is $logpath\n" if debugging;
+
+    debug "Log directory for $module is $logpath";
 
     if (not -e $logpath and not pretending and not super_mkdir($logpath))
     {
-        print "Unable to create log directory $logpath!\n";
-        print "\t$!\n";
+        error "Unable to create log directory r[$logpath]";
         return undef;
     }
 
     # Add symlink to the directory.
+    # TODO: This probably can result in a few dozen unnecessary calls to
+    # unlink and symlink, fix this.
     if (not pretending)
     {
         unlink("$logbase/latest") if -l "$logbase/latest";
-        system('ln', '-s', "$logbase/$LOG_DATE-$BUILD_ID", "$logbase/latest");
+        symlink("$logbase/$LOG_DATE-$BUILD_ID", "$logbase/latest");
     }
 
     return $logpath;
@@ -765,7 +835,7 @@ sub update_module_subdirectories
     # If we have elements in @path, download them now
     for my $dir (@_)
     {
-        print clr "\tUpdating g[$dir]\n";
+        info "\tUpdating g[$dir]";
         $result = run_svn($module, "svn-up-$dir", [ 'svn', 'up', $dir ]);
         return $result if $result;
     }
@@ -847,7 +917,7 @@ sub checkout_module_path
 
     if (not -e $pathinfo{'path'} and not super_mkdir($pathinfo{'path'}))
     {
-        print clr "Unable to create path r[$pathinfo{path}]!\n";
+        error "Unable to create path r[$pathinfo{path}]!";
         return 1;
     }
 
@@ -858,7 +928,7 @@ sub checkout_module_path
     push @args, svn_module_url($module);
     push @args, $pathinfo{'module'};
 
-    print clr "Checking out g[$module]\n";
+    note "Checking out g[$module]";
     $result = run_svn($module, 'svn-co', \@args);
     return $result if $result;
 
@@ -882,13 +952,10 @@ sub update_module_path
 
     chdir $fullpath;
 
-    # This seems to do more harm than good.
-    # switch_repo_url(svn_module_url($module));
-
     push @args, ('svn', 'up');
     push @args, '-N' if scalar @path;
 
-    print clr "Updating g[$module]\n";
+    note "Updating g[$module]";
     $result = run_svn($module, 'svn-up', \@args);
     return $result if $result;
 
@@ -912,14 +979,11 @@ sub log_command
     my @command = @{(shift)};
     my $logdir = get_log_dir($module);
 
-    if (debugging)
-    {
-        print "log_command(): Module $module, Command: ", join(' ', @command), "\n";
-    }
+    debug "log_command(): Module $module, Command: ", join(' ', @command);
 
     if (pretending)
     {
-        print clr "\tWould have run g[", join (' ', @command), clr "]\n";
+        pretend "\tWould have run g[", join (' ', @command);
         return 0;
     }
 
@@ -941,7 +1005,7 @@ sub log_command
         if (not defined $logdir or not -e $logdir)
         {
             # Error creating directory for some reason.
-            print "\tLogging to std out due to failure creating log dir.\n";
+            error "\tLogging to std out due to failure creating log dir.";
         }
 
         # Redirect stdout and stderr to the given file.
@@ -950,15 +1014,15 @@ sub log_command
 # Comment this out because it conflicts with make-install-prefix
 #            open (STDIN, "</dev/null");
             open (STDOUT, ">$logdir/$filename.log") or do {
-                print "Error opening $logdir/$filename.log for logfile.\n";
-                print "\t$!\n";
+                error "Error opening $logdir/$filename.log for logfile.";
+                # Don't abort, hopefully STDOUT still works.
             };
         }
         else
         {
             open (STDOUT, "|tee $logdir/$filename.log") or do {
-                print "Error opening pipe to tee command.\n";
-                print "\t$!\n";
+                error "Error opening pipe to tee command.";
+                # Don't abort, hopefully STDOUT still works.
             };
         }
 
@@ -968,10 +1032,14 @@ sub log_command
         open (STDERR, ">&STDOUT") unless $command[0] eq 'svn';
 
         exec (@command) or do {
-            print "Unable to exec ", join (' ', @command), "!\n";
-            print "\t$!\n";
-            print "\tPlease check your binpath setting, PATH is currently $ENV{PATH}\n";
+            my $cmd_string = join(' ', @command);
+            error <<EOF;
+r[b[Unable to execute "$cmd_string"]!
+	$!
 
+Please check your binpath setting (it controls the PATH used by kdesvn-build).
+Currently it is set to g[$ENV{PATH}].
+EOF
             # Don't use return, this is the child still!
             exit 1;
         };
@@ -998,11 +1066,11 @@ sub set_error_logfile
     if(-e "$logdir/error.log")
     {
         # Maybe it was a regular file?
-        print clr "rb[ * Unable to create symlink to error log file, error.log already exists].\n";
+        error "r[b[ * Unable to create symlink to error log file]";
         return 0;
     }
 
-    system('ln', '-s', "$logdir/$logfile", "$logdir/error.log");
+    symlink "$logdir/$logfile", "$logdir/error.log";
 }
 
 # Subroutine to run make/unsermake with redirected STDOUT and STDERR,
@@ -1010,6 +1078,8 @@ sub set_error_logfile
 # is name of the log file (relative to the log directory), and the
 # second parameter is a reference to an array with the command and
 # its arguments.
+#
+# TODO: This is a fork of log_command().  Find a way to re-merge them.
 # Returns 0 on success, non-zero on failure.
 sub run_make_command
 {
@@ -1020,21 +1090,17 @@ sub run_make_command
     my $logdir = get_log_dir($module);
     my $isunsermake = $command[0] =~ 'unsermake';
 
-    # Don't print ANSI characters if we're not on a tty.  Also,  automake
-    # doesn't support printing output status.
-    if (!$isunsermake or not -t STDERR)
+    # Don't print ANSI characters if we're not on a tty.  Also, automake
+    # doesn't support printing output status.  Finally, we output the whole
+    # log to screen when debugging which makes this useless.
+    if (!$isunsermake or not -t STDERR or debugging)
     {
         return log_command($module, $filename, \@command);
     }
 
-    if (debugging)
-    {
-        print "run_make_command(): Module $module, Command: ", join(' ', @command), "\n";
-    }
-
     if (pretending)
     {
-        print clr "\tWould have run g[", join (' ', @command), clr "]\n";
+        pretend "\tWould have run g[", join (' ', @command);
         return 0;
     }
 
@@ -1042,19 +1108,20 @@ sub run_make_command
     if ($pid)
     {
         my $last = -1;
+
         while (<CHILD>)
         {
             chomp;
-            if (debugging)
-            {
-                print $_;
-            }
-            elsif (/([0-9]+)% (creating|compiling|linking)/)
+
+            # Update terminal (\e[K clears the line) if the percentage
+            # changed.
+            if (/([0-9]+)% (creating|compiling|linking)/)
             {
                 print STDERR "\r$1% \e[K" unless ($1 == $last);
                 $last = $1;
             }
         }
+
         close(CHILD);
         print STDERR "\r\e[K";
 
@@ -1071,22 +1138,25 @@ sub run_make_command
         if (not defined $logdir or not -e $logdir)
         {
             # Error creating directory for some reason.
-            print "\tLogging to std out due to failure creating log dir.\n";
+            error "\tLogging to standard output due to failure creating log dir.";
         }
 
         open (STDOUT, "|tee $logdir/$filename.log") or do {
-            print "Error opening pipe to tee command.\n";
-            print "\t$!\n";
+            error "Error opening pipe to tee command."
         };
 
         # Make sure we log everything.
         open (STDERR, ">&STDOUT");
 
         exec (@command) or do {
-            print "Unable to exec ", join (' ', @command), "!\n";
-            print "\t$!\n";
-            print "\tPlease check your binpath setting, PATH is currently $ENV{PATH}\n";
+            my $cmd_string = join(' ', @command);
+            error <<EOF;
+r[b[Unable to execute "$cmd_string"]!
+	$!
 
+Please check your binpath setting (it controls the PATH used by kdesvn-build).
+Currently it is set to g[$ENV{PATH}].
+EOF
             # Don't return, we're still in the child!
             exit 1;
         };
@@ -1162,7 +1232,7 @@ sub safe_make (@)
     {
         # Weird, we can't find make, you'd think configure would have
         # noticed...
-        print clr " r[b[*] Unable to find the g[$make] executable!\n";
+        error " r[b[*] Unable to find the g[$make] executable!";
 
         # Make sure we don't bother trying again, this is a more serious
         # error.
@@ -1180,13 +1250,13 @@ sub safe_make (@)
     # Check if we're installing
     if($installing)
     {
-        print "Prepending install options, apidox: $apidox.\n" if debugging;
+        debug "Prepending install options, apidox: $apidox.";
 
         $description = $apidox ? "API Documentation" : clr "g[$module]";
         unshift @args, $make, $apidox ? 'install-apidox' : 'install';
         unshift @args, split(' ', get_option ($module, 'make-install-prefix'));
 
-        print "\tInstalling $description.\n";
+        info "\tInstalling $description.";
     }
     else
     {
@@ -1196,7 +1266,7 @@ sub safe_make (@)
         push @args, 'apidox' if $apidox;
         unshift @args, $make;
 
-        print "\t$description...\n";
+        info "\t$description...";
     }
 
     push (@dirs, "") if scalar @dirs == 0;
@@ -1216,7 +1286,7 @@ sub safe_make (@)
             $logname = $installing ? "install-$subdir" : "build-$subdir-$trynumber";
             next if $apidox; # Don't built apidox in a subdirectory
 
-            print $installing ? "\tInstalling " : "\tBuilding ", clr "subdirectory g[$subdir]\n";
+            info $installing ? "\tInstalling " : "\tBuilding ", "subdirectory g[$subdir]";
         }
 
         my %pathinfo = get_module_path_dir($module, 'build');
@@ -1226,8 +1296,8 @@ sub safe_make (@)
         if (pretending)
         {
             $opts = join(' ', @args);
-            print clr "\tWould have switched directory to y[$builddir]\n";
-            print clr "\tWould have run g[$opts > $logdir/$logname]\n";
+            pretend "\tWould have switched directory to y[$builddir]";
+            pretend "\tWould have run g[$opts > $logdir/$logname]";
 
             next;
         }
@@ -1250,10 +1320,7 @@ sub setenv
 
     return unless $val;
 
-    if(pretending)
-    {
-        print clr "\tWould have set g[$var]=y[$val].\n";
-    }
+    pretend "\tWould have set g[$var]=y[$val].";
 
     $ENV{$var} = $val;
 }
@@ -1266,7 +1333,7 @@ sub no_config_whine
     my $searched = join("\n    ", @rcfiles);
     my $homepage = "http://grammarian.homelinux.net/kdesvn-build/";
 
-    print <<"HOME";
+    note <<"HOME";
 Unable to open configuration file!
 We looked for:
     $searched
@@ -1274,7 +1341,7 @@ We looked for:
 kdesvn-build will continue using a default set of options.  These options may
 not apply to you, so feel free to visit the kdesvn-build homepage
 
-$homepage
+b[g[$homepage]
 
 and use the configuration file generator to guide you through the process of
 creating a config file to customize your kdesvn-build process.
@@ -1391,12 +1458,13 @@ sub read_options
         {
             # This can only happen if the user uses --rc-file, if we fail to
             # load the file, we need to fail to load.
-            print <<EOM;
-Unable to open config file $rcfiles[0] ($!)
+            error <<EOM;
+Unable to open config file $rcfiles[0]
 
 Script stopping here since you specified --rc-file on the command line to
 load $rcfiles[0] manually.  If you wish to run the script with no configuration
 file, leave the --rc-file option out of the command line.
+
 EOM
             exit 1;
         }
@@ -1408,6 +1476,9 @@ EOM
 
     my ($option, $flags, $modulename);
 
+    # FIXME: Make global settings optional if only tweaks needed are for
+    # modules.
+
     # Read in global settings
     while (<CONFIG>)
     {
@@ -1418,8 +1489,8 @@ EOM
         # options declaration, even if none are defined.
         if (not /^global\s*$/)
         {
-            print "Invalid configuration file: $rcfile.\n";
-            print "Expecting global settings section!\n";
+            error "Invalid configuration file: $rcfile.";
+            error "Expecting global settings section!";
             exit 1;
         }
 
@@ -1441,9 +1512,9 @@ EOM
 
         if (not $modulename)
         {
-            print "Invalid configuration file $rcfile!\n";
-            print "Expecting a start of module section.\n";
-            print "Global settings will be retained.\n";
+            warning "Invalid configuration file $rcfile!";
+            warning "Expecting a start of module section.";
+            warning "Global settings will be retained.";
 
             $modulename = 'null'; # Keep reading the module section though.
         }
@@ -1559,8 +1630,8 @@ sub get_install_list
 
         if (not open BUILTLIST, "<$logdir/latest/build-status")
         {
-            print "Can't determine what modules have built.  You must\n";
-            print "specify explicitly on the command line.\n";
+            error "Can't determine what modules have built.  You must";
+            error "specify explicitly on the command line what modules to build.";
             exit (1); # Don't finish, no lock has been taken.
         }
 
@@ -1570,8 +1641,8 @@ sub get_install_list
             if (/Succeeded/)
             {
                 # Clip to everything before the first colon.
-                s/^([^:]+):.*/$1/;
-                push @install_list, $_;
+                my $module = (split(/:/))[0];
+                push @install_list, $module;
             }
         }
 
@@ -1591,15 +1662,15 @@ sub output_failed_module_list($@)
     my ($message, @fail_list) = @_;
     $message = uc $message; # Be annoying
 
-    print "Message is $message\n" if debugging;
-    print "\tfor ", join(', ', @fail_list), "\n" if debugging;
+    debug "Message is $message";
+    debug "\tfor ", join(', ', @fail_list);
 
     if (scalar @fail_list > 0)
     {
         my $homedir = $ENV{'HOME'};
         my $logfile;
 
-        print clr "\nr[b[<<<  PACKAGES $message  >>>]\n";
+        warning "\nr[b[<<<  PACKAGES $message  >>>]";
 
         for (@fail_list)
         {
@@ -1607,7 +1678,7 @@ sub output_failed_module_list($@)
             $logfile = "No log file" unless $logfile;
             $logfile =~ s|$homedir|~|;
 
-            print clr "r[$_] - g[$logfile]\n";
+            warning "r[$_] - g[$logfile]";
         }
     }
 }
@@ -1716,7 +1787,7 @@ DONE
     while ($_ = shift @ARGV)
     {
         SWITCH: {
-            /^(-v)|(--version)$/ && do { print "$version\n"; exit; };
+            /^(--version)$/      && do { print "$version\n"; exit; };
             /^--author$/         && do { print $author; exit; };
             /^(-h)|(--?help)$/   && do {
                 print <<DONE;
@@ -1725,7 +1796,7 @@ $version
 This script automates the download, build, and install process for KDE (using
 Subversion).
 
-It is recommended that your first setup a .kdesvn-buildrc file in your home
+It is recommended that you first setup a .kdesvn-buildrc file in your home
 directory.  Please visit http://grammarian.homelinux.net/kdesvn-build/ for
 information on how to write the file, or consult the sample file which should
 have been included with this program.  If you don't setup a .kdesvn-buildrc,
@@ -1807,7 +1878,7 @@ You can get more help by reading the included HTML documentation, or going
 online to http://grammarian.homelinux.net/kdesvn-build/
 DONE
                 # We haven't done any locking... no need to finish()
-                #  Avoids log-dir errors due to having not
+                #  Avoids log-dir errors due to having not performed.
                 #  read_options() and setup_logging_subsystem().
                 exit 0;
             };
@@ -1827,8 +1898,23 @@ DONE
                 last SWITCH;
             };
 
+            /^(-v)|(--verbose)$/ && do {
+                set_option('global', '#debug-level', WHISPER);
+                last SWITCH;
+            };
+
+            /^(-q)|(--quiet)$/ && do {
+                set_option('global', '#debug-level', NOTE);
+                last SWITCH;
+            };
+
+            /^--really-quiet$/ && do {
+                set_option('global', '#debug-level', WARNING);
+                last SWITCH;
+            };
+
             /^--debug$/ && do {
-                set_option('global', 'debug', 1);
+                set_option('global', 'debug-level', DEBUG);
                 last SWITCH;
             };
 
@@ -1876,7 +1962,7 @@ DONE
                 last SWITCH;
             };
 
-            /^--rc-file(=.*)?$/ && do {
+            /^--rc-file=?$/ && do {
                 my $rcfile = extract_option_value($_, @ARGV);
                 if (not $rcfile)
                 {
@@ -1889,7 +1975,7 @@ DONE
                 last SWITCH;
             };
 
-            /^--prefix/ && do {
+            /^--prefix=?/ && do {
                 my $prefix = extract_option_value($_, @ARGV);
                 if (not $prefix)
                 {
@@ -1908,7 +1994,7 @@ DONE
                 last SWITCH;
             };
 
-            /^--nice(=.*)?$/ && do {
+            /^--nice=?/ && do {
                 my $niceness = extract_option_value($_, @ARGV);
 
                 if($niceness)
@@ -1960,7 +2046,7 @@ DONE
                 last SWITCH;
             };
 
-            /^(--revision|-r)(=.*)?$/ && do {
+            /^(--revision|-r)=?/ && do {
                 my $revision = extract_option_value($_, @ARGV);
                 if (not $revision)
                 {
@@ -1973,7 +2059,7 @@ DONE
                 last SWITCH;
             };
 
-            /^--resume-from(=.*)?$/ && do {
+            /^--resume-from=?/ && do {
                 $_ = extract_option_value($_, @ARGV);
                 if (not $_)
                 {
@@ -2076,7 +2162,7 @@ sub get_lock
         {
             # Lockfile is there but we can't open it?!?  Maybe a race
             # condition but I have to give up somewhere.
-            print clr " WARNING: Can't open or create lockfile r[$lockfile]\n";
+            warning " WARNING: Can't open or create lockfile r[$lockfile]";
             return 1;
         };
         
@@ -2091,7 +2177,8 @@ sub get_lock
             # See if something's running with this PID.
             if (kill(0, $pid) == 1)
             {
-                # Something *is* running, likely kdesvn-build.
+                # Something *is* running, likely kdesvn-build.  Don't use error,
+                # it'll scan for $!
                 print clr " r[*y[*r[*] kdesvn-build appears to be running.  Do you want to:\n";
                 print clr "  (b[Q])uit, (b[P])roceed anyways?: ";
 
@@ -2117,7 +2204,7 @@ sub get_lock
 
         # No pid found, optimistically assume the user isn't running
         # twice.
-        print clr " y[WARNING]: stale kdesvn-build lockfile found, deleting.\n";
+        warning " y[WARNING]: stale kdesvn-build lockfile found, deleting.";
         unlink $lockfile;
         sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL and do
         {
@@ -2169,7 +2256,7 @@ sub adjust_update_list
 
         if (not list_has(@{$list_ref}, 'kdenonbeta'))
         {
-            print "Adding kdenonbeta/unsermake to build.\n" if pretending;
+            whisper "Adding kdenonbeta/unsermake to build.";
 
             # kdenonbeta isn't being downloaded by the user.
             unshift (@{$list_ref}, 'kdenonbeta');
@@ -2179,13 +2266,17 @@ sub adjust_update_list
                 '#suppress-auto-admin' => 1,
             };
         }
-        elsif (get_option ('kdenonbeta', 'checkout-only') and
-            get_option ('kdenonbeta', 'checkout-only') !~ /\bunsermake\b/)
+        else
         {
-            # kdenonbeta is being checked out, but the user has
-            # excluded unsermake.
-            $package_opts{'kdenonbeta'}->{'checkout-only'} .= " unsermake";
-            $package_opts{'kdenonbeta'}->{'#suppress-auto-admin'} = 1;
+            my $checkouts = get_option('kdenonbeta', 'checkout-only');
+
+            if ($checkouts !~ /\bunsermake\b/)
+            {
+                # kdenonbeta is being checked out, but the user has
+                # excluded unsermake.
+                set_option('kdenonbeta', 'checkout-only', "$checkouts unsermake");
+                set_option('kdenonbeta', '#suppress-auto-admin', 1);
+            }
         }
     }
 }
@@ -2223,8 +2314,8 @@ sub get_build_list
         if (get_option('global', '#resume') || get_option('global',
             '#resume-from'))
         {
-            print "I'm confused, you enabled --no-build and --resume.\n";
-            print "Skipping the build process.\n";
+            warning "I'm confused, you enabled y[--no-build] and y[--resume].";
+            warning "Skipping the build process.";
         }
 
         return ();
@@ -2234,21 +2325,20 @@ sub get_build_list
     {
         if (scalar @ARGV > 0)
         {
-            print "Ignoring modules specified on command line because --resume was set.\n";
+            warning "Ignoring modules specified on command line because y[--resume] was set.";
         }
 
         # Try to determine location of last existing status file.
         my $status_fname = get_output_file('existing');
         if (not $status_fname)
         {
-            print "Unable to open status file from last run, can't resume!\n";
+            error "Unable to open status file from last run, can't resume!";
             return ();
         }
 
         my ($line, $oldline);
         open STATUS_FILE, "<$status_fname" or do {
-            print "Can't open $status_fname, so I can't resume!\n";
-            print "\t$!\n";
+            error "Can't open $status_fname, so I can't resume!";
             return ();
         };
 
@@ -2262,16 +2352,18 @@ sub get_build_list
         if (not defined $oldline)
         {
             # Hmm, empty file?
-            print "Unable to read information from resume status file.\n";
-            print "It's probably empty, but there's no way to resume!\n";
+            error <<"EOF";
+Unable to read information from resume status file.
+It's probably empty, but there's no way to resume!
+EOF
             return ();
         }
 
         chomp $oldline;
-        print "The last success line is $oldline\n" if debugging;
+        debug "The last success line is $oldline";
 
         ($resume_point = $oldline) =~ s/^([^:]+):.*/$1/;
-        print "Resuming at $resume_point\n" if debugging;
+        whisper "Resuming at $resume_point";
     }
     elsif (get_option ('global', '#resume-from'))
     {
@@ -2342,7 +2434,7 @@ sub dump_options
     # Now dump the options for each module
     foreach $item (@keys)
     {
-        print clr "\nOptions for module g[$item]:\n";
+        debug "\nOptions for module g[$item]:";
         my $ref = $package_opts{$item};
 
         foreach $ref_item (sort keys %{$package_opts{$item}})
@@ -2353,7 +2445,8 @@ sub dump_options
 
             if($ref_item !~ /^#?set-env$/)
             {
-                print clr "  ${c}$ref_item] is \"y[", $$ref{$ref_item}, clr "]\"\n";
+                next unless $$ref{$ref_item};
+                debug "  ${c}$ref_item] is \"y[", $$ref{$ref_item}, clr ']"';
             }
             else
             {
@@ -2362,7 +2455,7 @@ sub dump_options
 
                 foreach my $envitem (keys %{$setref})
                 {
-                    print clr "  Set env variable ${c}$envitem] to y[", $$setref{$envitem}, clr "]\n";
+                    debug "  Set env variable ${c}$envitem] to y[", $$setref{$envitem};
                 }
             }
         }
@@ -2374,7 +2467,7 @@ sub safe_unlink
 {
     if (pretending)
     {
-        print "\tWould have unlinked ", shift, ".\n";
+        pretend "\tWould have unlinked ", shift, ".";
         return 1; # Return true
     }
 
@@ -2387,11 +2480,11 @@ sub safe_system(@)
 {
     if (not pretending)
     {
-        print clr "\tExecuting g[", join(" ", @_), clr "]\n";
+        info "\tExecuting g[", join(" ", @_);
         return system (@_) >> 8;
     }
 
-    print clr "\tWould have run g[", join(' ', @_), clr "].\n";
+    pretend "\tWould have run g[", join(' ', @_);
     return 0; # Return true
 }
 
@@ -2406,7 +2499,7 @@ sub super_mkdir
 
     if (pretending)
     {
-        print clr "\tWould have created g[$pathname]\n";
+        pretend "\tWould have created g[$pathname]";
         return 1;
     }
 
@@ -2428,7 +2521,7 @@ sub dont_build
 {
     my $module = shift;
 
-    print "Not building $module\n" if debugging;
+    whisper "Not building $module";
 
     # Weed out matches of the module name
     @build_list = grep (!/^$module$/, @build_list);
@@ -2443,22 +2536,6 @@ sub split_url
     my ($proto, $host) = ($url =~ m|([^:]*)://([^/]*)/|);
 
     return ($proto, $host);
-}
-
-# Subroutine to switch repos to a different one if necessary.
-# First and only parameter is the new repo url
-sub switch_repo_url
-{
-    my $svnpath = shift;
-    my $oldurl = get_repo_url();
-    my ($rootproto, $roothost) = split_url($svnpath);
-    my ($repoproto, $repohost) = split_url(get_repo_url());
-
-    if($repoproto ne $rootproto or $repohost ne $roothost)
-    {
-        print clr "y[Repository URL has changed, updating].\n";
-        safe_system('svn', 'switch', '--relocate', "$oldurl", "$svnpath");
-    }
 }
 
 # This subroutine checks if we are supposed to use ssh agent by examining the
@@ -2484,18 +2561,19 @@ sub check_for_ssh_agent
     # PORTABILITY NOTE: I'm not sure if this works under *BSD or Solaris.
     if (not -e "/proc/$pid")
     {
-        print clr "r[ *] SSH Agent is enabled, but y[doesn't seem to be running].\n";
-        print "Since SSH is used to download from Subversion you may want to see why\n";
-        print "SSH Agent is not working, or correct the environment variable settings.\n";
+        warning "r[ *] SSH Agent is enabled, but y[doesn't seem to be running].";
+        warning "Since SSH is used to download from Subversion you may want to see why";
+        warning "SSH Agent is not working, or correct the environment variable settings.";
 
         return 0;
     }
 
-    # The agent is running, but does it have any keys?  We can be more specific
+    # The agent is running, but does it have any keys?  We can't be more specific
     # with this check because we don't know what key is required.
     my $keys = `ssh-add -l 2>/dev/null`;
     if ($keys =~ /no identities/)
     {
+        # Use print so user can't inadvertently keep us quiet about this.
         print clr <<EOF;
 b[y[*] SSH Agent does not appear to be managing any keys.  This will lead to you
   being prompted for every module update for your SSH passphrase.  So, we're
@@ -2536,14 +2614,15 @@ sub handle_updates
 
     return 1 if (not check_for_ssh_agent());
 
-    print "<<<  Updating Subversion Directories  >>>\n\n";
+    note "<<<  Updating Subversion Directories  >>>";
+    info " "; # Add newline for aesthetics unless in quiet mode.
 
     if (not -e $kdesvn)
     {
-        print "KDE Subversion download directory doesn't exist, creating.\n";
+        whisper "KDE Subversion download directory doesn't exist, creating.\n";
         if (not super_mkdir ($kdesvn))
         {
-            print clr "Unable to make directory r[$kdesvn]!\n$!\n";
+            error "Unable to make directory r[$kdesvn]!";
             @build_list = (); # Clear out the build list, since we can't build.
             $install_flag = 0; # Can't install either.
             return 1;
@@ -2556,8 +2635,11 @@ sub handle_updates
 
         if (not exists $package_opts{$module})
         {
-            print clr "Unknown module y[$module], configure it in ~/.kdesvn-buildrc.\n";
-            next;
+            warning "Unknown module y[$module], configure it in ~/.kdesvn-buildrc.";
+
+            # Continue in case the user just needs default options, hopefully
+            # it isn't a misspelling.
+            $package_opts{$module} = { 'set-env' => { } };
         }
 
         next if get_option($module, 'no-svn');
@@ -2574,20 +2656,19 @@ sub handle_updates
 
         if ($result)
         {
-            print clr "Error updating r[$module], removing from list of packages to build.\n";
+            error "Error updating r[$module], removing from list of packages to build.";
             dont_build ($module);
         }
 
         print "\n";
     }
 
-    print "<<<  Update Complete  >>>\n";
+    info "<<<  Update Complete  >>>\n";
     return $result;
 }
 
-# Subroutine to run the qt-copy apply_patches script.  Assumes we're
-# already in the right directory.  Returns 0 on success, non-zero on
-# failure.
+# Subroutine to run the qt-copy apply_patches script.
+# Returns 0 on success, non-zero on failure.
 sub safe_apply_patches
 {
     my %pathinfo = get_module_path_dir('qt-copy', 'build');
@@ -2595,11 +2676,11 @@ sub safe_apply_patches
 
     if (pretending)
     {
-        print clr "\tWould have run g[./apply_patches]\n";
+        pretend "\tWould have run g[./apply_patches]";
         return 0;
     }
 
-    print clr "\tg[Applying recommended Qt patches].\n";
+    info "\tg[Applying recommended Qt patches].";
     chdir ("$builddir");
     return (log_command('qt-copy', 'apply-patches', [ "./apply_patches" ]));
 }
@@ -2658,17 +2739,11 @@ sub safe_configure
 
         $script = "$qtdir/configure.new";
 
-        print clr "\tb[r[GPL license selected for Qt].  See $fullpath/LICENSE.GPL\n";
+        note "\tb[r[GPL license selected for Qt].  See $fullpath/LICENSE.GPL";
     }
 
-    print clr "\tRunning g[configure]...\n";
+    info "\tRunning g[configure]...";
     unshift @commands, $script;
-
-    if(pretending)
-    {
-        print clr "\tWould have run g['", join("' '", @commands), clr "']\n";
-        return 0;
-    }
 
     return log_command($module, "configure", \@commands);
 }
@@ -2721,12 +2796,12 @@ sub create_admin_dir
         if (not has_updated_kdecommon())
         {
             # We haven't tried downloading it, now would be a good time.
-            print clr "Can't find y[kde-common], going to try downloading it.\n";
+            note "Can't find y[kde-common], going to try downloading it.";
 
             if (get_option('global', 'no-svn'))
             {
                 # Not allowed to update.
-                print clr "r[!!] Updating has been blocked, can't get y[kde-common].\n";
+                error "r[!!] Updating has been blocked, can't get y[kde-common].";
                 return 0;
             }
 
@@ -2734,7 +2809,7 @@ sub create_admin_dir
             $admindir = get_fullpath('kde-common', 'source') . '/admin';
             if (pretending)
             {
-                print clr "Would have checked out g[kde-common]\n";
+                pretend "Would have checked out g[kde-common]\n";
             }
             elsif (checkout_module_path('kde-common', 'admin') != 0)
             {
@@ -2744,7 +2819,7 @@ sub create_admin_dir
     }
 
     chdir ($fullpath);
-    return (safe_system("ln -s $admindir admin") == 0);
+    return symlink $admindir, "$fullpath/admin";
 }
 
 # Subroutine to link a source directory into an alternate directory in order
@@ -2796,7 +2871,7 @@ sub prepare_fake_builddir
     # portability but it seems to be relatively common.
     if (log_command ($module, 'create-builddir', $args))
     {
-        print clr "\tUnable to setup special build system for r[$module].\n";
+        warning "\tUnable to setup special build system for r[$module].";
         return 0;
     }
 
@@ -2815,7 +2890,7 @@ sub safe_create_build_system
 
     if (pretending)
     {
-        print clr "\tWould have created g[$module]\'s build system.\n";
+        pretend "\tWould have created g[$module]\'s build system.";
         return 0;
     }
 
@@ -2831,8 +2906,8 @@ sub safe_create_build_system
     # Check for admin dir, if it doesn't exist, create a softlink
     if (not create_admin_dir($module))
     {
-        print clr "Unable to find /admin directory for y[$module], it probably\n";
-        print "won't build.\n";
+        warning "Unable to find /admin directory for y[$module], it probably";
+        warning "won't build.";
         # But continue anyways, because in this case I'm just not sure that it
         # won't work in the future. ;)
     }
@@ -2840,7 +2915,7 @@ sub safe_create_build_system
     if ($instapps)
     {
         open (INSTAPPS, ">inst-apps") or do {
-            print clr "\tUnable to create inst-apps file for r[$module]!\n$!\n";
+            error "\tUnable to create inst-apps file for r[$module]!";
             return 1;
         };
 
@@ -2857,7 +2932,7 @@ sub safe_create_build_system
 
     if (log_command ($module, "build-system", $cmd_ref))
     {
-        print clr "\tUnable to create build system for r[$module]\n";
+        error "\tUnable to create build system for r[$module]";
         return 1;
     }
 
@@ -2878,10 +2953,10 @@ sub needs_refreshed
 
     if (debugging)
     {
-        print "Build directory not setup for $module.\n" if not -e "$builddir";
-        print ".refresh-me exists.\n" if -e "$builddir/.refresh-me";
-        print "refresh-build option set.\n" if get_option($module, 'refresh-build');
-        print "Can't find configure key file.\n" if not -e "$builddir/$conf_file_key";
+        debug "Build directory not setup for $module." if not -e "$builddir";
+        debug ".refresh-me exists for $module." if -e "$builddir/.refresh-me";
+        debug "refresh-build option set for $module." if get_option($module, 'refresh-build');
+        debug "Can't find configure key file for $module." if not -e "$builddir/$conf_file_key";
     }
 
     return 1 if ((not -e "$builddir") ||
@@ -2905,6 +2980,7 @@ sub run_svn
     my %hash_count;
     my $result;
     my $force_refresh = 0;
+    my $conflict = 0;
     my $logdir = get_log_dir($module);
 
     my $revision = get_option('global', 'revision');
@@ -2932,17 +3008,26 @@ sub run_svn
     open SVN_LOG, "<$logfilename";
     while (<SVN_LOG>)
     {
+        # The check for capitalized letters in the second column is because
+        # svn can use the first six columns for updates (the characters will
+        # all be uppercase), which makes it hard to tell apart from normal
+        # sentences (like "At Revision foo"
+
         # Count updates and patches together.
-        $hash_count{'updated'}++    if /^U /;
-        $hash_count{'updated'}++    if /^P /;
-        $hash_count{'added'}++      if /^A /;
-        $hash_count{'removed'}++    if /^R /;
-        $hash_count{'modified'}++   if /^M /;
-        $hash_count{'conflicted'}++ if /^C /;
+        $hash_count{'updated'}++    if /^U[ A-Z]/;
+        $hash_count{'updated'}++    if /^P[ A-Z]/;
+        $hash_count{'deleted'}++    if /^D[ A-Z]/;
+        $hash_count{'added'}++      if /^A[ A-Z]/;
+        $hash_count{'removed'}++    if /^R[ A-Z]/;
+        $hash_count{'merged'}++     if /^G[ A-Z]/;
+        $hash_count{'modified'}++   if /^M[ A-Z]/;
+        $hash_count{'conflicted'}++ if /^C[ A-Z]/;
 
         # Check if we need to force a refresh.
-        $force_refresh = 1 if /^A / and /Makefile\.am/;
-        $force_refresh = 1 if /^[PAMU] / and /configure\.in\.in/;
+        $force_refresh = 1 if /^A[ A-Z]/ and /Makefile\.am/;
+        $force_refresh = 1 if /^[PAMGU][ A-Z]/ and /configure\.in\.in/;
+
+        $conflict = 1 if /^C[ A-Z]/;
     }
 
     close SVN_LOG;
@@ -2958,6 +3043,10 @@ sub run_svn
         '1modified'   => 'file was modified',
         'conflicted'  => 'files had conflicts',
         '1conflicted' => 'file had conflicts',
+        'deleted'     => 'file was deleted',
+        '1deleted'    => 'files were deleted',
+        'merged'      => 'file had changes merged',
+        '1merged'     => 'files had changed merged',
     );
 
     my ($key, $value);
@@ -2966,14 +3055,23 @@ sub run_svn
         next unless $value > 0;
         my $ending_key = $value > 1 ? $key : ('1' . $key);
         my $ending = $endings{$ending_key};
-        print "\t$value $ending.\n";
+        info "\t$value $ending.";
+    }
+
+    if ($conflict)
+    {
+        warning "Source code conflict exists in r[$module], this module will not";
+        warning "build until it is resolved.";
+        dont_build($module);
+
+        return $result;
     }
 
     if ($force_refresh and -e get_fullpath($module, 'build'))
     {
-        print "File(s) related to the build system were updated, forcing a refresh.\n";
-        $package_opts{$module}{'refresh-build'} = 1;
-        $package_opts{$module}{'#cancel-clean'} = 1;
+        info "File(s) related to the build system were updated, forcing a refresh.";
+        set_option($module, 'refresh-build', 1);
+        set_option($module, '#cancel-clean', 1);
     }
 
     return $result;
@@ -2988,14 +3086,15 @@ sub clean_build_system
     my $moduledir = get_fullpath($module, 'source');
     my $builddir = get_fullpath($module, 'build');
 
-    if (pretending) {
-        print clr "\tWould have cleaned build system for g[$module].\n";
-        return 1
-    };
+    if (pretending)
+    {
+        pretend "\tWould have cleaned build system for g[$module]";
+        return 1;
+    }
 
     if (not -e $moduledir)
     {
-        print clr "\tUnable to clean build system for r[$module], it's not been checked out!\n";
+        warning "\tUnable to clean build system for r[$module], it's not been checked out!";
         return 0;
     }
 
@@ -3006,7 +3105,7 @@ sub clean_build_system
         {
             if (log_command ('qt-copy', 'clean-builddir', ['rm', '-rf', "$builddir"]))
             {
-                print clr "Error refreshing r[qt-copy] builddir!\n";
+                error "\tError cleaning r[qt-copy] builddir!";
                 return 0;
             }
         }
@@ -3015,25 +3114,26 @@ sub clean_build_system
             chdir ("$builddir");
             if (log_command ('qt-copy', 'clean', ['make', 'clean']))
             {
-                print clr "r[WARNING]: Error cleaning r[qt-copy].\n";
+                warning "\tr[WARNING]: Error cleaning r[qt-copy].";
             }
             unlink ("$builddir/.qmake.cache");
         }
 
         return 1;
     }
-    elsif (-e "$builddir" &&
+
+    if (-e "$builddir" &&
         safe_system ('rm', '-rf', "$builddir"))
     {
         # Remove build directory for normal module.
-        print clr "\tUnable to unlink r[$builddir], skipping.\n";
+        error "\tUnable to clean r[$builddir].";
         return 0; # False for this function.
     }
 
     # Now create the directory
-    if (not -e "$builddir" and not super_mkdir ("$builddir"))
+    if (not super_mkdir ("$builddir"))
     {
-        print clr "\tUnable to create directory r[$builddir], skipping.\n";
+        error "\tUnable to create directory r[$builddir].";
         return 0;
     }
 
@@ -3055,18 +3155,18 @@ sub setup_build_system
     {
         # The build system needs created, either because it doesn't exist, or
         # because the user has asked that it be completely rebuilt.
-        print clr "\tPreparing build system for y[$module].\n";
+        info "\tPreparing build system for y[$module].";
 
         # Define this option to tell later functions that we tried to rebuild
         # this module.
-        $package_opts{$module}->{'#was-rebuilt'} = 1;
+        set_option($module, '#was-rebuilt', 1);
 
         # Check to see if we're actually supposed to go through the cleaning
         # process.
-        if (not $package_opts{$module}->{'#cancel-clean'} and
+        if (not get_option($module, '#cancel-clean') and
             not clean_build_system($module))
         {
-            print clr "\tUnable to clean r[$module]!\n";
+            warning "\tUnable to clean r[$module]!";
             return 0;
         }
 
@@ -3079,10 +3179,10 @@ sub setup_build_system
     # takes care of that test.
     if (module_needs_builddir_help($module))
     {
-        print clr "\tFaking builddir for g[$module]\n";
+        whisper "\tFaking builddir for g[$module]";
         if (not prepare_fake_builddir($module))
         {
-            print clr "Error creating r[$module] build system!\n";
+            error "Error creating r[$module] build system!";
             return 0;
         }
     }
@@ -3091,14 +3191,14 @@ sub setup_build_system
 
     if ($do_makeconf or not -e "$confpath/configure")
     {
-        print clr "\ty[Recreating configure script].\n";
+        whisper "\ty[Recreating configure script].";
 
         # Update the PATH and other important environment variables.
         update_module_environment ($module);
 
         if (safe_create_build_system ($module))
         {
-            print "\tUnable to create configure system from checkout.\n";
+            error "\tUnable to create configure system from checkout.";
             return 0;
         }
 
@@ -3122,23 +3222,19 @@ sub setup_build_system
     {
         if (not -e "$builddir" and not super_mkdir("$builddir"))
         {
-            print clr "\tUnable to create build directory for r[$module]!!\n";
+            error "\tUnable to create build directory for r[$module]!!";
             return 0;
         }
 
         # Now we're in the checkout directory
         # So, switch to the build dir.
         # builddir is automatically set to the right value for qt-copy
-        if (not chdir ("$builddir") and not pretending)
-        {
-            print clr "\tUnable to change directory to r[$builddir]!!\n";
-            return 0;
-        }
+        chdir ("$builddir");
 
         # configure the module (sh script return value semantics)
         if (safe_configure ($module))
         {
-            print clr "\tUnable to configure r[$module]!\n";
+            error "\tUnable to configure r[$module]!";
             return 0;
         }
     }
@@ -3207,10 +3303,10 @@ sub setup_build_directory
 
     if (not -e "$builddir")
     {
-        print clr "\ty[$builddir] doesn't exist, creating.\n";
+        whisper "\ty[$builddir] doesn't exist, creating.";
         if (not super_mkdir ("$builddir"))
         {
-            print clr "\tUnable to create r[$builddir]!\n$!\n";
+            error "\tUnable to create r[$builddir]!";
             return 0;
         }
     }
@@ -3260,7 +3356,6 @@ sub prettify_seconds
     push @str_list, ("and " . pop @str_list) if (scalar @str_list > 1);
 
     $str = join (", ", @str_list);
-    print "Time from $_[0] was $str.\n" if debugging;
 
     return $str;
 }
@@ -3292,8 +3387,8 @@ sub build_module
     # Do some tests to make sure we're ready to build.
     if (not exists $package_opts{$module})
     {
-        print clr "Unknown module y[$module], configure it in ~/.kdesvn-buildrc.\n";
-        return 0;
+        warning "Unknown module y[$module], configure it in ~/.kdesvn-buildrc.";
+        $package_opts{$module} = { 'set-env' => { } };
     }
 
     update_module_environment($module);
@@ -3302,7 +3397,7 @@ sub build_module
     {
         my $qtpath = $builddir;
         $qtpath =~ s/$ENV{HOME}/~/;
-        print clr <<EOF;
+        warning <<EOF;
 
 b[y[!!] You're building qt-copy, but QTDIR isn't set to use qt-copy!
 b[y[!!] Please set your qtdir variable in the global section of your
@@ -3314,7 +3409,7 @@ EOF
     my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
     {
-        print clr "Building g[$module] ($cur_module_num/$total_module_num)\n";
+        note "Building g[$module] ($cur_module_num/$total_module_num)";
         return 0 if not setup_build_directory($module);
         return 0 if not setup_build_system($module);
         return 1 if (get_option ($module, 'build-system-only'));
@@ -3337,25 +3432,26 @@ EOF
             if ($trynumber > 3 or $was_rebuilt or get_option ($module, 'no-rebuild-on-fail'))
             {
                 # Well we tried, but it isn't going to happen.
-                print clr "\n\tUnable to build y[$module]!\n";
-                print clr "\tTook g[$elapsed].\n";
+                note "\n\tUnable to build y[$module]!";
+                info "\tTook g[$elapsed].";
                 return 0;
             }
 
             if ($trynumber == 2)
             {
                 # Just try again
-                print clr "\n\ty[Couldn't build, going to try again just in case].\n";
-                print clr "\tTook g[$elapsed].\n";
+                info "\n\ty[Couldn't build, going to try again just in case].";
+                info "\tTook g[$elapsed].";
                 next;
             }
 
             # Don't remove the old modules, but re-run make -f
             # Makefile.cvs and configure.
-            print "\n\tStill couldn't build, recreating build system (builddir is safe).\n";
-            print clr "\tTook g[$elapsed] of time.\n";
-            $package_opts{$module}->{'#cancel-clean'} = 1;
-            $package_opts{$module}->{'refresh-build'} = 1;
+            info "\n\tStill couldn't build, recreating build system (builddir is safe).";
+            info "\tTook g[$elapsed] of time.";
+
+            set_option($module, '#cancel-clean', 1);
+            set_option($module, 'refresh-build', 1);
 
             # Loop again
         }
@@ -3367,13 +3463,13 @@ EOF
             if ($build_apidox)
             {
                 $apidox_result = safe_make ($module, $trynumber, 1);
-                print "\tCouldn't build API Documentation\n" if $apidox_result;
+                error "\tCouldn't build API Documentation" if $apidox_result;
             }
 
             my $elapsed = prettify_seconds (time - $start_time);
             my $do_install = get_option($module, 'install-after-build');
 
-            print clr "\tBuild done after g[$elapsed].\n";
+            info "\tBuild done after g[$elapsed].";
             if ($do_install)
             {
                 handle_install($module, 0);
@@ -3381,7 +3477,7 @@ EOF
             }
             else
             {
-                print clr "\tSkipping install for y[$module]\n";
+                info "\tSkipping install for y[$module]";
             }
 
             last; # Don't forget to exit the loop!
@@ -3418,7 +3514,7 @@ sub handle_build
     # No reason to print building messages if we're not building.
     return 0 if scalar @modules == 0;
 
-    print "\n<<<  Build Process  >>>\n";
+    note "<<<  Build Process  >>>";
 
     # Save the environment to keep module's env changes from affecting other
     # modules.
@@ -3426,16 +3522,17 @@ sub handle_build
 
     if (pretending)
     {
-        print clr "\tWould have opened status file g[$outfile].\n";
+        pretend "\tWould have opened status file g[$outfile].";
         $outfile = undef; # Don't actually try it though.
     }
 
     if ($outfile)
     {
         open STATUS_FILE, ">$outfile" or do {
-            print "\t!Unable to open output status file $outfile\n";
-            print "\t$!\n";
-            print "\tYou won't be able to use the --resume switch next run.\n";
+            error <<EOF;
+	Unable to open output status file r[b[$outfile]
+	You won't be able to use the g[--resume] switch next run.\n";
+EOF
             $outfile = undef;
         };
     }
@@ -3452,7 +3549,7 @@ sub handle_build
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
 
-            print clr "\tOverall time for g[$module] was g[$elapsed].\n";
+            info "\tOverall time for g[$module] was g[$elapsed].";
             push @build_done, $module;
         }
         else
@@ -3460,12 +3557,12 @@ sub handle_build
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Failed after $elapsed.\n" if $outfile;
 
-            print clr "\tOverall time for r[$module] was g[$elapsed].\n";
+            info "\tOverall time for r[$module] was g[$elapsed].";
             push @{$fail_lists{'build'}}, $module;
 
             if (get_option($module, 'stop-on-failure'))
             {
-                print "\n$module didn't build, stopping here.\n";
+                note "\n$module didn't build, stopping here.";
                 return 1; # Error
             }
         }
@@ -3487,8 +3584,8 @@ sub handle_build
         close STATUS_FILE;
     }
 
-    print "<<<  Build Done  >>>\n";
-    print clr "\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>\n" if scalar @build_done > 0;
+    info "<<<  Build Done  >>>\n";
+    info "\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>" if scalar @build_done > 0;
 
     if (not pretending)
     {
@@ -3496,7 +3593,7 @@ sub handle_build
         open BUILT_LIST, ">$kdesvn/successfully-built";
         foreach $module (@build_done)
         {
-            print "$module\n";
+            info "$module";
             print BUILT_LIST "$module\n";
         }
         close BUILT_LIST;
@@ -3504,9 +3601,10 @@ sub handle_build
     else
     {
         # Just print out the results
-        print (clr 'g[', join (clr "]\ng[", @build_done), clr "]\n");
+        info 'g[', join ("]\ng[", @build_done), ']';
     }
 
+    info " "; # Add newline for aesthetics if not in quiet mode.
     return scalar @{$fail_lists{'build'}};
 }
 
@@ -3521,7 +3619,7 @@ sub finish
 
     close_lock();
 
-    print clr "\nYour logs are saved in y[$logdir]\n";
+    note "Your logs are saved in y[$logdir]";
     exit $exitcode;
 }
 
@@ -3548,7 +3646,7 @@ sub handle_install
     {
         if (list_has(@no_install_modules, $module))
         {
-            print clr "\tg[$module] doesn't need to be installed.\n";
+            info "\tg[$module] doesn't need to be installed.";
             next;
         }
 
@@ -3556,20 +3654,21 @@ sub handle_install
 
         if (not exists $package_opts{$module})
         {
-            print clr "\tUnknown module y[$module], configure it in ~/.kdesvn-buildrc.\n";
+            warning "\tUnknown module y[$module], configure it in ~/.kdesvn-buildrc.";
+            $package_opts{$module} = { 'set-env' => { } };
             next;
         }
 
         if (not -e "$builddir/Makefile")
         {
-            print clr "\tThe build system doesn't exist for r[$module].\n";
-            print "\tTherefore, we can't install it. :-(.\n";
+            warning "\tThe build system doesn't exist for r[$module].";
+            warning "\tTherefore, we can't install it. y[:-(].";
             next;
         }
 
         if (pretending)
         {
-            print clr "\tWould have installed g[$module]\n";
+            pretend "\tWould have installed g[$module]";
             next;
         }
 
@@ -3581,13 +3680,13 @@ sub handle_install
         # handling for free.
         if (safe_make ($module, "install", $apidox))
         {
-            print clr "\tUnable to install r[$module]!\n";
+            error "\tUnable to install r[$module]!";
             $result = 1;
             push @{$fail_lists{'install'}}, $module;
 
             if (get_option($module, 'stop-on-failure'))
             {
-                print "Stopping here.\n";
+                note "y[Stopping here].";
                 return 1; # Error
             }
         }
@@ -3602,14 +3701,14 @@ sub handle_install
         {
             # Remove srcdir
             my $srcdir = get_fullpath($module, 'source');
-            print clr "\tRemoving b[r[$module source].\n";
+            note "\tRemoving b[r[$module source].";
             system ('rm', '-rf', $srcdir);
         }
 
         if($remove_setting eq 'builddir' or $remove_setting eq 'all')
         {
             # Remove builddir
-            print clr "\tRemoving b[r[$module build directory].\n";
+            note "\tRemoving b[r[$module build directory].";
             system ('rm', '-rf', $builddir);
         }
     }
@@ -3622,7 +3721,7 @@ sub handle_install
 # feature.  This doesn't really work for install mode though.
 sub munge_lists
 {
-    print "Munging update and build list\n" if debugging;
+    debug "Munging update and build list";
     my $cleared = 0;
 
     for my $list_ref ( ( \@update_list, \@build_list) ) {
@@ -3644,10 +3743,10 @@ sub munge_lists
                 # Only build the specified subdirs
                 if (not $cleared)
                 {
-                    print "Clearing checkout-only option.\n" if debugging;
+                    debug "Clearing checkout-only option.";
 
                     $cleared = 1;
-                    $package_opts{$modulename}{'checkout-only'} = "";
+                    set_option($modulename, 'checkout-only', '');
                 }
 
                 # The user has included a directory separator in the module name, so
@@ -3655,11 +3754,11 @@ sub munge_lists
                 $_ = $modulename;
 
                 # Don't automatically add the /admin dir for this module now.
-                $package_opts{$_}{'#suppress-auto-admin'} = 1;
+                set_option($_, '#suppress-auto-admin', 1);
 
                 my $checkout_str = join ("/", @dirs);
 
-                print "Adding $checkout_str to checkout-only for $_\n" if debugging;
+                debug "Adding $checkout_str to checkout-only for $_";
 
                 if (get_option($_, 'checkout-only') !~ /$checkout_str/)
                 {
@@ -3667,12 +3766,12 @@ sub munge_lists
                 }
                 else
                 {
-                    print "\tOption was already present.\n" if debugging;
+                    debug print "\tOption was already present.";
                 }
             }
             else
             {
-                print "Skipping $_ in munge process.\n" if debugging;
+                debug "Skipping $_ in munge process.";
             }
 
             # Don't add the modulename to the list twice.
@@ -3782,7 +3881,7 @@ sub get_email_address
     my $username = getpwuid($>);
     my $hostname = hostname; # From Sys::Hostname
 
-    print "User has no email address, using $username\@$hostname\n" if debugging;
+    debug "User has no email address, using $username\@$hostname";
 
     return "$username\@$hostname";
 }
@@ -3827,8 +3926,8 @@ EOF
 
         $mailer = new Mail::Mailer;
     } or do {
-        print clr " y[*] Can't open y[b[Mail::Mailer] module, so e-mailing is disabled.\n";
-        print clr " Why? $!\n" if debugging;
+        error " y[*] Can't open y[b[Mail::Mailer] module, so e-mailing is disabled.";
+        debug "Error was $@";
         return;
     };
 
@@ -3880,13 +3979,13 @@ my $result;
 eval
 {
     my $time = localtime;
-    print clr "Script started processing at g[$time]\n";
+    info "Script started processing at g[$time]";
 
     @update_list = get_update_list();
     @build_list = get_build_list();
 
-    print "Update list is ", join (', ', @update_list), "\n" if debugging;
-    print "Build list is ", join (', ', @build_list), "\n" if debugging;
+    debug "Update list is ", join (', ', @update_list);
+    debug "Build list is ", join (', ', @build_list);
 
     # Do some necessary adjusting. Right now this is used for supporting
     # the command-line option shortcut to where you can enter e.g.
@@ -3916,7 +4015,7 @@ eval
     my $color = '';
     $color = 'r[' if $result;
 
-    print clr "${color}Script finished processing at g[$time\n]";
+    info "${color}Script finished processing at g[$time]";
 };
 
 if ($@)
