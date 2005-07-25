@@ -1112,6 +1112,14 @@ sub run_make_command
         return log_command($module, $filename, \@command);
     }
 
+    # Make sure -p is in the unsermake flags, it's the whole reason for using
+    # this function.
+    if (!(grep /^(-p)|(--print-progress)$/, @command))
+    {
+        # Add in front of element 1, deleting 0 elements.
+        splice @command, 1, 0, '-p';
+    }
+
     if (pretending)
     {
         pretend "\tWould have run g[", join (' ', @command);
@@ -1306,15 +1314,6 @@ sub safe_make (@)
         my %pathinfo = get_module_path_dir($module, 'build');
         my $builddir = "$pathinfo{fullpath}/$subdir";
         $builddir =~ s/\/*$//;
-
-        if (pretending)
-        {
-            $opts = join(' ', @args);
-            pretend "\tWould have switched directory to y[$builddir]";
-            pretend "\tWould have run g[$opts > $logdir/$logname]";
-
-            next;
-        }
 
         chdir ($builddir);
 
