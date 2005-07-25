@@ -64,6 +64,20 @@ This utility is part of the KDE Software Development Kit.
 
 =over
 
+=item B<--quiet>,  B<-q>
+
+With this switch kdesvn-build will only output a general overview of the build
+process.  Progress output is still displayed if available.
+
+=item B<--really-quiet>
+
+With this switch only warnings and errors will be output.
+
+=item B<--verbose>,  B<-v>
+
+Be very detailed in what is going on, and what actions kdesvn-build is taking.
+Only B<--debug> is more detailed.
+
 =item B<--no-svn>
 
 Skip contacting the Subversion server.
@@ -1827,22 +1841,29 @@ Options:
     --no-build           Skip the build process.
     --no-install         Don't automatically install after build.
 
-    --svn-only           Update from Subversion only (Identical to --no-build at 
-                         this point).
+    --svn-only           Update from Subversion only (Identical to --no-build
+                         at this point).
     --build-only         Build only, don't perform updates or install.
 
-    --rc-file=<filename> Read configuration from filename instead of default.
-    --debug              Activates debug mode.
     --pretend (or -p)    Don't actually contact the Subversion server, run make,
                          or create/delete files and directories.  Instead,
                          output what the script would have done.
+    --quiet (or -q)      Be less descriptive of the build process, without
+                         printing each little substep kdesvn-build is
+                         performing.
+    --really-quiet       Only warnings and errors will be displayed.
+    --verbose (or -v)    Be *very* descriptive of the build process.  Only
+                         --debug outputs more.
+    --debug              Activates debug mode.
+    --color
+    --no-color           Add (or remove) color from the output.
+
+    --rc-file=<filename> Read configuration from filename instead of default.
     --nice=<value>       Allows you to run the script with a lower priority
                          The default value is 10 (lower priority by 10 steps).
     --prefix=/kde/path   This option is a shortcut to change the setting for
                          kdedir from the command line.  It implies
                          --reconfigure.
-    --color
-    --no-color           Add (or remove) color from the output.
 
     --resume             Tries to resume the make process from the last time
                          the script was run, without performing the Subversion
@@ -1863,8 +1884,9 @@ Options:
                          perform the build.
     --install            Try to install the packages passed on the command
                          line, or all packages in ~/.kdesvn-buildrc that don't
-                         have manual-build set.  Building and Subversion updates are
-                         not performed.
+                         have manual-build set.  Building and Subversion
+                         updates are not performed.
+
     --<option>=          Any unrecognized options are added to the global
                          configuration, overriding any value that may exist.
     --<module>,<option>= Likewise, this allows you to override any module
@@ -2036,7 +2058,7 @@ DONE
                 last SWITCH;
             };
 
-            /^(--pretend)|(-p)$/ && do {
+            /^(--dry-run)|(--pretend)|(-p)$/ && do {
                 set_option('global', '#pretend', 1);
                 last SWITCH;
             };
