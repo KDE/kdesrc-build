@@ -1248,13 +1248,13 @@ sub safe_make (@)
     # Convert the path to an absolute path since I've encountered a sudo that
     # is apparently unable to guess.  Maybe it's better that it doesn't guess
     # anyways from a security point-of-view.
-    $make = path_to_prog($make);
+    $make = path_to_prog($make) unless pretending;
 
     if(not defined $make)
     {
         # Weird, we can't find make, you'd think configure would have
         # noticed...
-        error " r[b[*] Unable to find the g[$make] executable!";
+        error " r[b[*] Unable to find the g[make] executable!";
 
         # Make sure we don't bother trying again, this is a more serious
         # error.
@@ -1983,7 +1983,7 @@ DONE
                 last SWITCH;
             };
 
-            /^--rc-file=?$/ && do {
+            /^--rc-file=?/ && do {
                 my $rcfile = extract_option_value($_, @ARGV);
                 if (not $rcfile)
                 {
@@ -3963,6 +3963,26 @@ EOF
     $mailer->close;
 }
 
+# This subroutine sets up or removes the default branch option for a few
+# modules in order to build KDE 3.5 by default.  branch options in the
+# configuration file will still override these settings.
+sub setup_kde35_hack
+{
+    my @branched_modules = qw/kde-common kdeaccessibility kdeaddons kdeadmin
+        kdeartwork kdebase kdebindings kdeedu kdegames kdegraphics kdelibs
+        kdemultimedia kdenetwork kdepim kdesdk kdetoys kdeutils kdevelop
+        kdewebdev/;
+
+    # arts uses a different versioning scheme.
+    set_option('arts', 'branch', '1.5');
+
+    for my $module (@branched_modules)
+    {
+        # Default to downloading from KDE 3.5 instead of KDE 4.
+        set_option($module, 'branch', '3.5');
+    }
+}
+
 # Script starts.
 
 # Use some exception handling to avoid ucky error messages
@@ -3970,6 +3990,7 @@ eval
 {
     # Note to self:  Quit changing the order around.
     process_arguments();       # Process --help, --install, etc. first.
+    setup_kde35_hack();        # Add 'branch' options as appropriate.
     read_options();            # If we're still here, read the options
     initialize_environment();  # Initialize global env vars.
 
