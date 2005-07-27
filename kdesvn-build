@@ -1248,13 +1248,13 @@ sub safe_make (@)
     # Convert the path to an absolute path since I've encountered a sudo that
     # is apparently unable to guess.  Maybe it's better that it doesn't guess
     # anyways from a security point-of-view.
-    $make = path_to_prog($make);
+    $make = path_to_prog($make) unless pretending;
 
     if(not defined $make)
     {
         # Weird, we can't find make, you'd think configure would have
         # noticed...
-        error " r[b[*] Unable to find the g[$make] executable!";
+        error " r[b[*] Unable to find the g[make] executable!";
 
         # Make sure we don't bother trying again, this is a more serious
         # error.
@@ -1785,7 +1785,7 @@ sub set_option
 sub process_arguments
 {
     my $arg;
-    my $version = "kdesvn-build 0.97";
+    my $version = "kdesvn-build 0.97.90 (KDE 4 Edition)";
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <michael.pyne\@kdemail.net>
