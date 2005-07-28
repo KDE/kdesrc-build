@@ -646,10 +646,6 @@ sub svn_module_url
         return handle_branch_tag_option($module, 'branches');
     }
     
-    $branch = 'trunk/KDE' unless $branch;
-    $branch =~ s/^\/*//; # Eliminate / at beginning of string.
-    $branch =~ s/\/*$//; # Likewise at the end.
-    
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
     # but there are the important ones.  The hash is associated with the value
     # 1 so that we can do a boolean test by looking up the module name.
@@ -659,8 +655,15 @@ sub svn_module_url
     my $module_root = $module;
     $module_root =~ s/\/.*//; # Remove everything after the first slash
 
-    $branch = 'trunk' if list_has(@non_trunk_modules, $module_root);
+    if (not $branch)
+    {
+        $branch = 'trunk/KDE';
+        $branch = 'trunk' if list_has(@non_trunk_modules, $module_root);
+    }
 
+    $branch =~ s/^\/*//; # Eliminate / at beginning of string.
+    $branch =~ s/\/*$//; # Likewise at the end.
+    
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
 
@@ -1385,6 +1388,10 @@ sub setup_default_modules()
                           -plugin-imgfmt-mng -thread -no-exceptions -debug
                           -dlopen-opengl),
         'apply-qt-patches' => 'true',
+
+# See setup_kde35_hack() for why this option is here.
+        'module-base-path' => 'branches/qt/3.3',
+
         'use-qt-builddir-hack' => 'true',
         'use-unsermake' => 0,
         'set-env' => { },
@@ -1785,7 +1792,7 @@ sub set_option
 sub process_arguments
 {
     my $arg;
-    my $version = "kdesvn-build 0.97.1 (KDE 3.5 Edition)";
+    my $version = "kdesvn-build 0.97.2 (KDE 3.5 Edition)";
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <michael.pyne\@kdemail.net>
@@ -3975,6 +3982,10 @@ sub setup_kde35_hack
 
     # arts uses a different versioning scheme.
     set_option('arts', 'branch', '1.5');
+
+    # qt-copy is in branches/qt/3.3.  Due to the default option handling the
+    # handling is done in setup_default_modules().
+    # set_option('qt-copy', 'module-base-path', 'branches/qt/3.3');
 
     for my $module (@branched_modules)
     {
