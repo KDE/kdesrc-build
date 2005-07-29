@@ -646,10 +646,6 @@ sub svn_module_url
         return handle_branch_tag_option($module, 'branches');
     }
     
-    $branch = 'trunk/KDE' unless $branch;
-    $branch =~ s/^\/*//; # Eliminate / at beginning of string.
-    $branch =~ s/\/*$//; # Likewise at the end.
-    
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
     # but there are the important ones.  The hash is associated with the value
     # 1 so that we can do a boolean test by looking up the module name.
@@ -659,8 +655,15 @@ sub svn_module_url
     my $module_root = $module;
     $module_root =~ s/\/.*//; # Remove everything after the first slash
 
-    $branch = 'trunk' if list_has(@non_trunk_modules, $module_root);
+    if (not $branch)
+    {
+        $branch = 'trunk/KDE';
+        $branch = 'trunk' if list_has(@non_trunk_modules, $module_root);
+    }
 
+    $branch =~ s/^\/*//; # Eliminate / at beginning of string.
+    $branch =~ s/\/*$//; # Likewise at the end.
+    
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
 
@@ -2947,6 +2950,9 @@ sub safe_create_build_system
     {
         unlink ("$fullpath/inst-apps");
     }
+
+    # qt-copy doesn't need any other help.
+    return 0 if $module eq 'qt-copy';
 
     my $cmd_ref = [ 'make', '-f', 'Makefile.cvs' ];
     $cmd_ref = [ './autogen.sh' ] if $module eq 'valgrind';
