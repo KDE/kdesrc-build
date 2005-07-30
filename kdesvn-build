@@ -2272,16 +2272,17 @@ sub adjust_update_list
     # to add kdenonbeta/unsermake to the checkout list.
     my $unsermake_needed = grep (get_option ($_, 'use-unsermake'), @{$build_ref});
 
+    # If the user has told us that they will manage unsermake then we don't
+    # need to do anything.
+    $unsermake_needed = 0 if get_option('global', 'use-unsermake') eq 'self';
+
+    # If the user has set manual-update, don't second-guess them.
+    $unsermake_needed = 0 if get_option('kdenonbeta', 'manual-update');
+
+    debug "Do we update unsermake? ", ($unsermake_needed ? 'yes' : 'no');
+
     if ($unsermake_needed)
     {
-        # If we already have unsermake and the user has set manual-update,
-        # don't second-guess them.
-        my $source_dir = get_fullpath('kdenonbeta', 'source');
-        if (-e "$source_dir/unsermake" and get_option('kdenonbeta', 'manual-update'))
-        {
-            return;
-        }
-
         if (not list_has(@{$list_ref}, 'kdenonbeta'))
         {
             whisper "Adding kdenonbeta/unsermake to build.";
