@@ -3147,17 +3147,19 @@ sub clean_build_system
         return 1;
     }
 
-    if (-e "$builddir" &&
-        safe_system ('rm', '-rf', "$builddir"))
+    if (-e "$builddir")
     {
-        # Remove build directory for normal module.
-        error "\tUnable to clean r[$builddir].";
-        return 0; # False for this function.
-    }
+        if(safe_system ('rm', '-rf', "$builddir"))
+        {
+            # Remove build directory for normal module.
+            error "\tUnable to clean r[$builddir].";
+            return 0; # False for this function.
+        }
 
-    # Let users know we're done so they don't wonder why rm -rf is taking so
-    # long and oh yeah, why'd my HD so active?...
-    info "\tOld build system cleaned, starting anew.";
+        # Let users know we're done so they don't wonder why rm -rf is taking so
+        # long and oh yeah, why'd my HD so active?...
+        info "\tOld build system cleaned, starting new build system.";
+    }
 
     # Now create the directory
     if (not super_mkdir ("$builddir"))
@@ -3694,12 +3696,6 @@ sub handle_install
             next;
         }
 
-        if (pretending)
-        {
-            pretend "\tWould have installed g[$module]";
-            next;
-        }
-
         # Just in case, I guess.
         update_module_environment ($module);
 
@@ -3717,6 +3713,12 @@ sub handle_install
                 note "y[Stopping here].";
                 return 1; # Error
             }
+        }
+
+        if (pretending)
+        {
+            pretend "\tWould have installed g[$module]";
+            next;
         }
 
         next if $result != 0; # Don't delete anything if the build failed.
