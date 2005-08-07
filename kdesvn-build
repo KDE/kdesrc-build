@@ -1565,6 +1565,13 @@ EOM
 
     delete $package_opts{'null'}; # Just in case.
 
+    # For the 3.5 edition we want to set the qt-copy option module-base-path
+    # to branches/qt/3.3 unless the user already has it set.
+    unless (exists $package_opts{'qt-copy'}{'module-base-path'})
+    {
+        set_option ('qt-copy', 'module-base-path', 'branches/qt/3.3');
+    }
+
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
     setup_default_modules() if $using_default;
@@ -1792,7 +1799,7 @@ sub set_option
 sub process_arguments
 {
     my $arg;
-    my $version = "kdesvn-build 0.97.2 (KDE 3.5 Edition)";
+    my $version = "kdesvn-build 0.97.3 (KDE 3.5 Edition)";
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <michael.pyne\@kdemail.net>
