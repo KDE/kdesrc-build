@@ -974,6 +974,20 @@ sub update_module_path
 
     note "Updating g[$module]";
     $result = run_svn($module, 'svn-up', \@args);
+
+    if($result) # Update failed, try svn cleanup.
+    {
+        info "\tUpdate failed, trying a cleanup.";
+        $result = safe_system('svn', 'cleanup');
+
+        return $result if $result;
+
+        info "\tCleanup complete.";
+        # Now try again.
+
+        $result = run_svn($module, 'svn-up-2', \@args);
+    }
+
     return $result if $result;
 
     # If the admin dir exists and is a soft link, remove it so that svn can
