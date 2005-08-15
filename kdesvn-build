@@ -3073,8 +3073,11 @@ sub safe_create_build_system
         unlink ("$fullpath/inst-apps");
     }
 
-    # qt-copy doesn't need any other help.
-    return 0 if $module eq 'qt-copy';
+    # qt-copy 4.x doesn't need any other help.
+    if ($module eq 'qt-copy' and not -e 'Makefile.cvs')
+    {
+        return 0;
+    }
 
     my $cmd_ref = [ 'make', '-f', 'Makefile.cvs' ];
     $cmd_ref = [ './autogen.sh' ] if $module eq 'valgrind';
