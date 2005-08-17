@@ -261,6 +261,7 @@ use strict;
 use warnings;
 use Fcntl;    # For sysopen constants
 use POSIX 'strftime';
+use File::Find; # For our lndir reimplementation.
 use Errno qw(:POSIX);
 
 # Debugging level constants.
@@ -1028,6 +1029,14 @@ sub log_command
         my $result = $?;
         set_error_logfile($module, "$filename.log") if $result;
 
+        # If we are using the alias to a kdesvn-build function, it should have
+        # already printed the error message, so clear out errno (but still
+        # return failure status).
+        if ($command[0] eq 'kdesvn-build')
+        {
+            $! = 0;
+        }
+
         return $result;
     }
     else
@@ -1062,6 +1071,24 @@ sub log_command
         # don't redirect stderr in that case.
         open (STDERR, ">&STDOUT") unless $command[0] eq 'svn';
 
+        # Call internal function, name given by $command[1]
+        if($command[0] eq 'kdesvn-build')
+        {
+            debug "Calling $command[1]";
+
+            my $cmd = $command[1];
+            splice (@command, 0, 2); # Remove first two elements.
+
+            no strict 'refs'; # Disable restriction on symbolic subroutines.
+            if (not &{$cmd}(@command)) # Call sub
+            {
+                exit EINVAL;
+            }
+
+            exit 0;
+        }
+
+        # External command.
         exec (@command) or do {
             my $cmd_string = join(' ', @command);
             error <<EOF;
@@ -2872,6 +2899,92 @@ sub create_admin_dir
     return symlink $admindir, "$fullpath/admin";
 }
 
+# Subroutine to recursively symlink a directory into another location, in a
+# similar fashion to how the XFree/X.org lndir() program does it.  This is
+# reimplemented here since some systems lndir doesn't seem to work right.
+#
+# As a special exception to the GNU GPL, you may use and redistribute this
+# function however you would like (i.e. consider it public domain).
+#
+# The first parameter is the directory to symlink from.
+# The second parameter is the destination directory name.
+#
+# e.g. if you have $from/foo and $from/bar, lndir would create $to/foo and
+# $to/bar.
+#
+# All intervening directories will be created as needed.  In addition, you
+# may safely run this function again if you only want to catch additional files
+# in the source directory.
+#
+# Note that this function will unconditionally output the files/directories
+# created, as it is meant to be a close match to lndir.
+#
+# RETURN VALUE: Boolean true (non-zero) if successful, Boolean false (0, "")
+#               if unsuccessful.
+sub safe_lndir
+{
+    my ($from, $to) = @_;
+
+    # Create destination directory.
+    if (not -e $to)
+    {
+        print "$to\n";
+        mkdir ($to) unless pretending;
+    }
+
+    # Create closure callback subroutine.
+    my $wanted = sub {
+        my $dir = $File::Find::dir;
+        my $file = $File::Find::fullname;
+        $dir =~ s/$from/$to/;
+
+        # Ignore the .svn directory and files.
+        return if $dir =~ m,/\.svn,;
+
+        # Create the directory.
+        if (not -e $dir)
+        {
+            print "$dir\n";
+
+            if (not pretending)
+            {
+                mkdir ($dir) or die "Couldn't create directory $dir: $!";
+            }
+        }
+
+        # Symlink the file.  Check if it's a regular file because File::Find
+        # has no qualms about telling you you have a file called "foo/bar"
+        # before pointing out that it was really a directory.
+        if (-f $file and not -e "$dir/$_")
+        {
+            print "$dir/$_\n";
+
+            if (not pretending)
+            {
+                symlink $File::Find::fullname, "$dir/$_" or
+                    die "Couldn't create file $dir/$_: $!";
+            }
+        }
+    };
+
+    # Recursively descend from source dir using File::Find
+    eval {
+        find ({ 'wanted' => $wanted,
+                'follow_fast' => 1,
+                'follow_skip' => 2},
+              $from);
+    };
+
+    if ($@)
+    {
+        $! = 0; # sub error will use $! to display error message.
+        error "Unable to symlink $from to $to: $@";
+        return 0;
+    }
+
+    return 1;
+}
+
 # Subroutine to link a source directory into an alternate directory in order
 # to fake srcdir != builddir for modules that don't natively support it.
 # The first parameter is the module to prepare.
@@ -2889,7 +3002,11 @@ sub prepare_fake_builddir
     my $module = shift;
     my $builddir = get_fullpath($module, 'build');
     my $srcdir = get_fullpath($module, 'source');
-    my $args = [ 'lndir', $srcdir ]; # List reference, not a real list.
+
+    # List reference, not a real list.  The initial kdesvn-build does *NOT*
+    # fork another kdesvn-build using exec, see sub log_command() for more
+    # info.
+    my $args = [ 'kdesvn-build', 'safe_lndir', $srcdir, $builddir ];
 
     # Skip modules that don't need special treatment.
     return 1 unless module_needs_builddir_help($module);
@@ -2904,21 +3021,14 @@ sub prepare_fake_builddir
     # worked earlier).
     if ($module eq 'qt-copy' and -e "$builddir/configure" and not -l "$builddir/configure")
     {
+        whisper "Using deprecated qt-copy builddir faking method.";
+
         # Use old method of copying.
         $args = [ 'cp', '-af', $srcdir, $builddir ];
     }
 
-    if (not -e $builddir)
-    {
-        super_mkdir($builddir);
-    }
-
-    # Use a slightly less effective method of builddir != srcdir for the
-    # module, as it fails otherwise.
-    chdir($builddir);
-
-    # lndir is included with XFree86 and X.org.  I'm not sure about it's
-    # portability but it seems to be relatively common.
+    # Use an internal routine to complete the directory symlinking (or the
+    # alternate routine in the case of old qt-copy).
     if (log_command ($module, 'create-builddir', $args))
     {
         warning "\tUnable to setup special build system for r[$module].";
@@ -3149,25 +3259,16 @@ sub clean_build_system
     }
 
     # Clean qt-copy separately
-    if ($module eq 'qt-copy')
+    if ($module eq 'qt-copy' and not get_option('qt-copy', 'use-qt-builddir-hack'))
     {
-        if (get_option ('qt-copy', 'use-qt-builddir-hack'))
+        chdir ("$builddir");
+
+        if (log_command ('qt-copy', 'clean', ['make', 'clean']))
         {
-            if (log_command ('qt-copy', 'clean-builddir', ['rm', '-rf', "$builddir"]))
-            {
-                error "\tError cleaning r[qt-copy] builddir!";
-                return 0;
-            }
+            warning "\tr[WARNING]: Error cleaning r[qt-copy].";
         }
-        else
-        {
-            chdir ("$builddir");
-            if (log_command ('qt-copy', 'clean', ['make', 'clean']))
-            {
-                warning "\tr[WARNING]: Error cleaning r[qt-copy].";
-            }
-            unlink ("$builddir/.qmake.cache");
-        }
+
+        unlink ("$builddir/.qmake.cache");
 
         return 1;
     }
