@@ -2958,13 +2958,16 @@ sub safe_lndir
 
     # Recursively descend from source dir using File::Find
     eval {
-        find ({ 'wanted' => $wanted, 'follow' => 1}, $from);
+        find ({ 'wanted' => $wanted,
+                'follow_fast' => 1,
+                'follow_skip' => 2},
+              $from);
     };
 
     if ($@)
     {
-        $! = $@; # sub error will use $! to display error message.
-        error "Unable to symlink $from to $to";
+        $! = 0; # sub error will use $! to display error message.
+        error "Unable to symlink $from to $to: $@";
         return 0;
     }
 
