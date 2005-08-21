@@ -1,4 +1,4 @@
-# Sample configuration file for kdesvn-build.
+# Sample configuration file for kdesvn-build. (Applies to KDE 3.5)
 #
 # To use this sample configuration file, copy it to ~/.kdesvn-buildrc, and then
 # edit it to suit your desires.
@@ -13,12 +13,16 @@ global
 	binpath /bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
 #	binpath /usr/lib/ccache/bin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
 
+# This is the directory that your KDE sources are downloaded to.  This
+# directory also holds the build and log directories by default.
+#	source-dir ~/kdesvn
+
 # This is the Qt installation to use to build KDE.  The default is qt-copy
 # from Subversion.
-#	qtdir ~/kdesvn/build/qt-copy
+	qtdir ~/kdesvn/build/qt-copy
 
-# You might want to use your system's built-in Qt already (3.3 or greater).  If
-# so, assign the qtdir option appropriately.
+# You might want to use your system's built-in Qt already (3.3 or greater, not
+# 4.x).  If so, assign the qtdir option appropriately.
 #	qtdir /path/to/system/qt
 
 # This is the Subversion server to download the KDE sources from.  Developers:
@@ -31,6 +35,8 @@ global
 	configure-flags --enable-debug=full
 
 # These are the compilation flags to use by default when compiling KDE.
+# The -march option also supports pentium4, athlon-xp, etc.  See the gcc man
+# page for more information.
 	cxxflags -g -pipe -march=i686
 
 # These are the default options passed to the make command.  The default tries
@@ -49,13 +55,9 @@ global
 # can disable this on a module-by-module basis if it gives you problems.
 #	use-unsermake true
 
-# This is the directory that your KDE sources are downloaded to.  This
-# directory also holds the build and log directories by default.
-#	source-dir ~/kdesvn
-
 # This directory is where everything gets built before it is installed.  By
 # default it is relative to the value for source-dir.  You can specify an
-# absolute path if you'd like.
+# absolute path if you'd like (begin the path with a slash).
 #	build-dir build
 
 # This is the directory that KDE will end up installed at.  The default is
@@ -88,7 +90,9 @@ end global
 # optimizations added.  It is the easiest way to get Qt if you don't already
 # have it (and you don't want to use your distro's tools to install it.)
 module qt-copy
-	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng -plugin-imgfmt-mng -thread -no-exceptions -debug -fast -dlopen-opengl
+	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng \
+	                -plugin-imgfmt-mng -thread -no-exceptions -debug \
+			-fast -dlopen-opengl
 	apply-qt-patches true
 	use-qt-builddir-hack true
 
@@ -108,9 +112,6 @@ end module
 # kdelibs are the base KDE libraries needed by all KDE applications.
 module kdelibs
 	configure-flags --enable-sendfile --enable-mitshm
-
-# You can enable this if you have GCC 4.0.1 (or a patched 3.4)
-#	cxxflags -fvisibility=hidden
 
 # If you're a programmer you may want to build the API docs.  Note that
 # it takes some time. :(
@@ -150,8 +151,9 @@ end module
 module kdebindings
     checkout-only admin dcopc kalyptus smoke qtruby korundum kjsembed dcoppython
 
-#   kdebindings will probably need to use the following option to install successfully.
-#   You must configure the sudo program first to allow for passwordless operation.
+#   kdebindings will probably need to use the following option to install
+#   successfully.  You must configure the sudo program first to allow for
+#   passwordless operation.
 #   make-install-prefix sudo
     use-unsermake false
 end module

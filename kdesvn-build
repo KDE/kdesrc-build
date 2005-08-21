@@ -1463,6 +1463,15 @@ sub parse_module
     # Read in each option
     while (<$fh>)
     {
+        # Handle line continuation
+        chomp;
+
+        if(s/\\\s*$//)  # Replace \ followed by optional space at EOL and try again.
+        {
+            $_ .= <$fh>;
+            redo unless eof($fh);
+        }
+
         s/#.*$//;       # Remove comments
         next if /^\s*$/;   # Skip blank lines
 
