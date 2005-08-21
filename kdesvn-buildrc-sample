@@ -13,12 +13,17 @@ global
 	binpath /bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
 #	binpath /usr/lib/ccache/bin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
 
-# This is the Qt installation to use to build KDE.  The default is qt-copy
-# from Subversion.
-#	qtdir ~/kdesvn/build/qt-copy
+# This is the directory that your KDE sources are downloaded to.  This
+# directory also holds the build and log directories by default.
+#	source-dir ~/kdesvn
 
-# You might want to use your system's built-in Qt already (3.3 or greater).  If
-# so, assign the qtdir option appropriately.
+# This is the Qt installation to use to build KDE.  The default is qt-copy
+# from Subversion.  The ${source-dir} option uses whatever you set for
+# source-dir to automatically fill in the value.
+	qtdir ${source-dir}/build/qt-copy
+
+# You might want to use your system's built-in Qt already (3.3 or greater, not
+# 4.x).  If so, assign the qtdir option appropriately.
 #	qtdir /path/to/system/qt
 
 # This is the Subversion server to download the KDE sources from.  Developers:
@@ -31,6 +36,8 @@ global
 	configure-flags --enable-debug=full
 
 # These are the compilation flags to use by default when compiling KDE.
+# The -march option also supports pentium4, athlon-xp, etc.  See the gcc man
+# page for more information.
 	cxxflags -g -pipe -march=i686
 
 # These are the default options passed to the make command.  The default tries
@@ -43,19 +50,18 @@ global
 # in parallel.  The -p option is used to display progress information.
 #	unsermake-options --compile-jobs=2 -p
 
-# This option is used to decide whether to use the unsermake build system, which
-# is usually faster and more efficient than the standard automake-based build
-# system.  It is generally stable enough to use, so it defaults to on.  You
-# can disable this on a module-by-module basis if it gives you problems.
-#	use-unsermake true
-
-# This is the directory that your KDE sources are downloaded to.  This
-# directory also holds the build and log directories by default.
-#	source-dir ~/kdesvn
+# Unsermake usage is required for KDE 4 (kdesvn-build knows what modules won't
+# work with it, so it is safe to leave on).  However, you may get tired of
+# kdesvn-build updating unsermake all the time.  In that case, uncomment
+# the following. NOTE: You are responsible for updating unsermake after that
+# by going to its directory and running svn up when needed.  If you have not
+# yet downloaded unsermake let kdesvn-build update it before uncommenting.
+#
+#use-unsermake self
 
 # This directory is where everything gets built before it is installed.  By
 # default it is relative to the value for source-dir.  You can specify an
-# absolute path if you'd like.
+# absolute path if you'd like (begin the path with a slash).
 #	build-dir build
 
 # This is the directory that KDE will end up installed at.  The default is
@@ -88,26 +94,28 @@ end global
 # optimizations added.  It is the easiest way to get Qt if you don't already
 # have it (and you don't want to use your distro's tools to install it.)
 module qt-copy
-	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng -plugin-imgfmt-mng -thread -no-exceptions -debug -fast -dlopen-opengl
-	apply-qt-patches true
+	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng \
+	                -no-exceptions -fast
+
+	apply-qt-patches false         # These don't work for Qt 4.
 	use-qt-builddir-hack true
+	make-options sub-src sub-tools # Build faster, no examples built.
 end module
 
-# arts is the KDE sound library.
+# arts is the KDE sound library.  It is not expected to be used by the time
+# KDE 4 is released.
 module arts
 end module
 
 # kdesupport contains taglib and QCA.  taglib is required for JuK, amarok, and
-# the meta info reader for music files in Konqueror.
-module kdesupport
-end module
+# the meta info reader for music files in Konqueror. KDE 4 compatibility is
+# still uncertain.
+#module kdesupport
+#end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
 module kdelibs
 	configure-flags --enable-sendfile --enable-mitshm
-
-# You can enable this if you have GCC 4.0.1 (or a patched 3.4)
-#	cxxflags -fvisibility=hidden
 
 # If you're a programmer you may want to build the API docs.  Note that
 # it takes some time. :(
@@ -120,114 +128,124 @@ module kdebase
 	configure-flags --with-pam --with-shadow
 end module
 
+## Note: The following modules may not have been ported to KDE 4 yet, and may
+#  have changed significantly from their KDE 3 counterparts as well.  Because
+#  of this, they are commented out, uncomment it if you want to build it.
+
 # kdemultimedia contains JuK, noatun, Kaboodle, and other KDE multimedia
 # applications.  It does not include amarok, which is in extragear/multimedia
-module kdemultimedia
-end module
+#module kdemultimedia
+#end module
 
 # kdesdk is a useful module for software developers.  It is where kdesvn-build
 # is developed.
-module kdesdk
-end module
+#module kdesdk
+#end module
 
 # kdenetwork has Kopete and other useful applications for the Internet and
 # other networks.
-module kdenetwork
-end module
+#module kdenetwork
+#end module
 
 # kdeadmin has system administration tools for your computer.
-module kdeadmin
-    configure-flags --with-shadow --with-pam=yes
-end module
+#module kdeadmin
+#    configure-flags --with-shadow --with-pam=yes
+#end module
 
 # kdebindings is useful for software developers, and for those who wish to run
 # some KDE programs that don't use C++.  The python bindings are not included
 # by default as they never build for me.  If you'd like to build all the
 # bindings, comment out the checkout-only option below.
-module kdebindings
-    checkout-only admin dcopc kalyptus smoke qtruby korundum kjsembed dcoppython
+#
+# This module appears to be on its way to being ported to Qt 4, stay tuned.
+#module kdebindings
+#    checkout-only admin dcopc kalyptus smoke qtruby korundum kjsembed dcoppython
 
 #   kdebindings will probably need to use the following option to install successfully.
 #   You must configure the sudo program first to allow for passwordless operation.
 #   make-install-prefix sudo
-    use-unsermake false
-end module
+#end module
 
 # kdepim contains KMail, Kontact, KOrganizer, and other insanely useful
 # programs that help you keep track of things.
-module kdepim
-    configure-flags --disable-exchange
-end module
+#module kdepim
+#    configure-flags --disable-exchange
+#end module
 
 # kdeutils has miscellaneous programs which can be useful.  You probably won't
 # die if you remove this from the config file though.
-module kdeutils
-end module
+#module kdeutils
+#end module
 
 # kdegraphics contains various programs useful for graphics editing.  It
 # doesn't include Krita, which is part of KOffice, but it is worth it just for
 # KolourPaint.
-module kdegraphics
-end module
+#module kdegraphics
+#end module
 
 # kdeaddons are nifty additions to some programs in other KDE modules.  For
 # example, there are addons for Konqueror, extra Kicker applets, and Noatun
 # plugins.
-module kdeaddons
-end module
+#module kdeaddons
+#end module
 
 # ... Well, they're games. ;)
-module kdegames
-#    use-unsermake false
-end module
+#module kdegames
+#end module
 
 # Contains nifty diversions of time, which generally aren't games.
-module kdetoys
-end module
+#module kdetoys
+#end module
 
 # Educational programs.  Some are actually quite fun even if you're not trying
 # to learn anything.
-module kdeedu
-end module
+#module kdeedu
+#end module
 
 # The KDE Office Suite.  Includes a pretty expansive collection of programs.
 # It is rather large, so you can cut download and build times by removing it
 # from this file.
-module koffice
-end module
+#module koffice
+#end module
 
 # The KDevelop IDE, useful for developing all kinds of programs.  If you don't
 # plan on being a software developer you can save time by removing this from
 # your configuration.
-module kdevelop
-	use-unsermake false
-end module
+#
+# Note: KDevelop appears to have a port started towards KDE 4.  It may be
+# usable by now.
+#module kdevelop
+#	use-unsermake false
+#end module
 
 # Includes Quanta Plus and other web design tools.
-module kdewebdev
-end module
+#module kdewebdev
+#end module
 
 # Modules in extragear and playground can also be added.
+# Note: As of this writing, extragear and playground are for KDE 3.x only,
+# so it is commented out.
+#
 # To see what you can find in the various modules, browse
 # http://websvn.kde.org/trunk/extragear and
 # http://websvn.kde.org/trunk/playground
 
 # Includes various libraries needed by other applications in extragear.
-module extragear/libs
+#module extragear/libs
 
 # If you don't like the default name that kdesvn-build gives modules on-disk,
 # you can use dest-dir to change it.
 #	dest-dir extragear-libs
-end module
+#end module
 
 # Includes the popular K3B and Amarok programs.
-module extragear/multimedia
-end module
+#module extragear/multimedia
+#end module
 
 # Includes various photo management applications.
-module extragear/graphics
-	checkout-only digikamimageplugins digikam gwenview kimdaba
-end module
+#module extragear/graphics
+#	checkout-only digikamimageplugins digikam gwenview kimdaba
+#end module
 
 # module extragear/network
 # 	# Options like checkout-only should work as before.
@@ -237,4 +255,4 @@ end module
 # module playground/games
 # end module
 
-# Add more modules as needed, they support the same options as before.
+# Add more modules as needed.

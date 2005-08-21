@@ -1459,6 +1459,15 @@ sub parse_module
     # Read in each option
     while (<$fh>)
     {
+        # Handle line continuation
+        chomp;
+
+        if(s/\\\s*$//)  # Replace \ followed by optional space at EOL and try again.
+        {
+            $_ .= <$fh>;
+            redo unless eof($fh);
+        }
+
         s/#.*$//;       # Remove comments
         next if /^\s*$/;   # Skip blank lines
 
@@ -1482,7 +1491,33 @@ sub parse_module
         $value =~ s/\s+/ /;
 
         # Check for false keyword and convert it to Perl false.
-        $value = 0 if lc($value) =~ /^false$/;
+        $value = 0 if lc($value) eq 'false';
+
+        # Replace reference to global option with their value.
+        # The regex means essential to match ${option-name}.  Keep the RE up
+        # to date with the same one below.
+
+        my ($sub_var_name) = ($value =~ m/\$\{([a-zA-Z0-9-]+)\}/);
+        while ($sub_var_name)
+        {
+            my $sub_var_value = get_option('global', $sub_var_name);
+
+            if(not $sub_var_value)
+            {
+                my $line_no = $.;
+                warning " *\n * WARNING: $sub_var_name is not set at line y[$line_no]\n *";
+
+                $sub_var_value = '';
+            }
+
+            debug "Substituting \${$sub_var_name} with $sub_var_value";
+
+            $value =~ s/\${$sub_var_name}/$sub_var_value/g;
+
+            # Replace other references as well.  Keep this RE up to date with
+            # the other one.
+            ($sub_var_name) = $value =~ m/\$\{([a-zA-Z0-9-]+)\}/;
+        }
 
         # Replace tildes with home directory.
         1 while ($value =~ s"(^|:|=)~/"$1$ENV{'HOME'}/");
