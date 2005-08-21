@@ -974,6 +974,7 @@ sub update_module_path
     push @args, '-N' if scalar @path;
 
     note "Updating g[$module]";
+
     $result = run_svn($module, 'svn-up', \@args);
 
     if($result) # Update failed, try svn cleanup.
@@ -2748,6 +2749,8 @@ sub handle_updates
         my @options = split(' ', get_option($module, 'checkout-only'));
         if (-e "$fullpath/.svn")
         {
+            # Warn user if the current repo URL is different than expected.
+            check_module_validity($module);
             $result = update_module_path($module, @options);
         }
         else
@@ -3815,6 +3818,41 @@ sub get_repo_url
     chomp $output;
 
     return $output;
+}
+
+# Subroutine to determine whether or not the given module has the correct
+# URL.  If not, a warning is printed out.
+# First parameter: module to check.
+# Return: Nothing.
+sub check_module_validity
+{
+    # This test reads the HD so don't bother during pretend.
+#    return if pretending;
+
+    my $module = shift;
+    my $source_dir = get_fullpath($module, 'source');
+    my $module_expected_url = svn_module_url($module);
+
+    chdir($source_dir); # Required for get_repo_url
+    my $module_actual_url = get_repo_url();
+
+    if($module_actual_url ne $module_expected_url)
+    {
+        warning <<EOF;
+ y[!!]
+ y[!!] g[$module] seems to be checked out from somewhere other than expected.
+ y[!!]
+
+kdesvn-build expects:        y[$module_expected_url]
+The module is actually from: y[$module_actual_url]
+
+If the module location is incorrect, you can fix it by either deleting the
+g[b[source] directory, or by changing to the source directory and running
+  svn switch $module_expected_url
+
+If the module is fine, please update your configuration file.
+EOF
+    }
 }
 
 # Subroutine to handle the installation process.  Simply calls
