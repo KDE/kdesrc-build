@@ -2923,6 +2923,9 @@ sub create_admin_dir
     }
 
     chdir ($fullpath);
+
+    whisper "\tCreating symbolic link to g[/admin directory].";
+
     return symlink $admindir, "$fullpath/admin";
 }
 
@@ -3088,15 +3091,6 @@ sub safe_create_build_system
     if(module_needs_builddir_help($module))
     {
         chdir ($builddir);
-    }
-
-    # Check for admin dir, if it doesn't exist, create a softlink
-    if (not create_admin_dir($module))
-    {
-        warning "Unable to find /admin directory for y[$module], it probably";
-        warning "won't build.";
-        # But continue anyways, because in this case I'm just not sure that it
-        # won't work in the future. ;)
     }
 
     if ($instapps)
@@ -3372,6 +3366,15 @@ sub setup_build_system
             error "Error creating r[$module] build system!";
             return 0;
         }
+    }
+
+    # Check for admin dir, if it doesn't exist, create a softlink
+    if (not create_admin_dir($module))
+    {
+        warning "Unable to find /admin directory for y[$module], it probably";
+        warning "won't build.";
+        # But continue anyways, because in this case I'm just not sure that it
+        # won't work in the future. ;)
     }
 
     my $confpath = module_needs_builddir_help($module) ? $builddir : $fullpath;
