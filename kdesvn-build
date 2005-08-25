@@ -290,7 +290,7 @@ my %package_opts = (
     "checkout-only"       => "",
     "configure-flags"     => "--enable-debug=full",
     "colorful-output"     => 1, # Use color by default.
-    "cxxflags"            => "-g -pipe -march=i686",
+    "cxxflags"            => "-g -pipe",
     "debug"               => "",
     "debug-level"         => INFO,
     "dest-dir"            => '${MODULE}', # single quotes used on purpose!
@@ -1488,7 +1488,13 @@ sub parse_module
         # The option is the first word, followed by the
         # flags on the rest of the line.  The interpretation
         # of the flags is dependant on the option.
-        my ($option, $value) = /^\s*([-\w]+)\s+(.*)$/;
+        my ($option, $value) = /^\s*     # Find all spaces
+                                ([-\w]+) # First match, alphanumeric, -, and _
+                                # (?: ) means non-capturing group, so (.*) is $value
+                                # So, skip spaces and pick up the rest of the line.
+                                (?:\s+(.*))?$/x;
+
+        $value = "" unless defined $value;
 
         # Simplify this.
         $value =~ s/\s+$//;
@@ -2532,7 +2538,7 @@ sub dump_options
 
             if($ref_item !~ /^#?set-env$/)
             {
-                next unless $$ref{$ref_item};
+                next unless defined $$ref{$ref_item};
                 debug "  ${c}$ref_item] is \"y[", $$ref{$ref_item}, clr ']"';
             }
             else
