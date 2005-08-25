@@ -3876,6 +3876,16 @@ sub handle_install
         # Just in case, I guess.
         update_module_environment ($module);
 
+        # The /admin directory is needed for install as well, make sure it's
+        # there.
+        if (not create_admin_dir($module))
+        {
+            warning "Unable to find /admin directory for y[$module], it probably";
+            warning "won't install.";
+            # But continue anyways, because in this case I'm just not sure that it
+            # won't work in the future. ;)
+        }
+
         # safe_make() evilly uses the "install" parameter to use installation
         # mode instead of compile mode.  This is so we can get the subdirectory
         # handling for free.
