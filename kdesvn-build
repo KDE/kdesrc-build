@@ -356,6 +356,7 @@ my $install_flag; # True if we're in install mode.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 my @rcfiles = ("./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
+my $rcfile; # the file that was used; set by read_options
 
 # Colors
 my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
@@ -1518,7 +1519,6 @@ sub read_options
     # The options are stored in the file $rcfile
     my $success = 0;
     my $global_opts = $package_opts{'global'};
-    my $rcfile;
     for my $file (@rcfiles)
     {
         if (open CONFIG, "<$file")
@@ -2678,7 +2678,7 @@ EOF
         {
             print "\nUnable to add SSH identity, aborting.\n";
             print "If you don't want kdesvn-build to check in the future,\n";
-            print clr "Set the g[disable-agent-check] option to g[true] in your ~/.kdesvn-buildrc.\n\n";
+            print clr "Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n";
 
             return 0;
         }
@@ -2728,7 +2728,7 @@ sub handle_updates
 
         if (not exists $package_opts{$module})
         {
-            warning "Unknown module y[$module], configure it in ~/.kdesvn-buildrc.";
+            warning "Unknown module y[$module], configure it in $rcfile.";
 
             # Continue in case the user just needs default options, hopefully
             # it isn't a misspelling.
@@ -3565,7 +3565,7 @@ sub build_module
     # Do some tests to make sure we're ready to build.
     if (not exists $package_opts{$module})
     {
-        warning "Unknown module y[$module], configure it in ~/.kdesvn-buildrc.";
+        warning "Unknown module y[$module], configure it in $rcfile.";
         $package_opts{$module} = { 'set-env' => { } };
     }
 
@@ -3579,7 +3579,7 @@ sub build_module
 
 b[y[!!] You're building qt-copy, but QTDIR isn't set to use qt-copy!
 b[y[!!] Please set your qtdir variable in the global section of your
-b[y[!!] ~/.kdesvn-buildrc to g[$qtpath]
+b[y[!!] $rcfile to g[$qtpath]
 
 EOF
     }
@@ -3867,7 +3867,7 @@ sub handle_install
 
         if (not exists $package_opts{$module})
         {
-            warning "\tUnknown module y[$module], configure it in ~/.kdesvn-buildrc.";
+            warning "\tUnknown module y[$module], configure it in $rcfile.";
             $package_opts{$module} = { 'set-env' => { } };
             next;
         }
