@@ -552,7 +552,10 @@ sub get_dest_dir
 # Convienience subroutine to get the source root dir.
 sub get_kdesvn_dir
 {
-    return get_option ('global', 'source-dir');
+    my $module = shift;
+    $module = 'global' unless defined $module;
+
+    return get_option ($module, 'source-dir');
 }
 
 # Function to work around a Perl language limitation.
@@ -786,8 +789,7 @@ sub get_option
     my $option = shift;
     my $global_opts = $package_opts{'global'};
     my $defaultQtCopyArgs = '-qt-gif -plugin-imgfmt-mng -thread -no-exceptions -debug -dlopen-opengl -plugin-sql-sqlite';
-    my @lockedOpts = qw(source-dir svn-server qtdir libpath binpath kdedir
-                        pretend disable-agent-check);
+    my @lockedOpts = qw(pretend disable-agent-check);
 
     # These options can't override globals
     if (list_has(@lockedOpts, $option) or $module eq 'global')
@@ -1283,7 +1285,7 @@ sub safe_make (@)
 
     if (get_option($module, 'use-unsermake'))
     {
-        $make = get_option('global', 'unsermake-path');
+        $make = get_option($module, 'unsermake-path');
         $opts = get_option($module, 'unsermake-options');
     }
     else
@@ -1688,13 +1690,6 @@ sub initialize_environment
 {
     $ENV{"WANT_AUTOMAKE"} = "1.7";
     $ENV{"WANT_AUTOCONF_2_5"} = "1";
-    $ENV{"PATH"} = get_option ('global', 'binpath');
-
-    my $svnserver = get_option ('global', 'svn-server');
-
-    my $pc_path = get_option('global', 'kdedir') . "/lib/pkgconfig";
-    $pc_path .= ":" . $ENV{'PKG_CONFIG_PATH'} if ( exists $ENV{'PKG_CONFIG_PATH'} );
-    $ENV{'PKG_CONFIG_PATH'} = $pc_path;
 
     if(-t STDOUT and get_option('global', 'colorful-output'))
     {
@@ -2712,7 +2707,6 @@ sub handle_updates
 {
     my $update_ref = shift;
     my $kdesvn = get_kdesvn_dir();
-    my $svnroot = get_option ('global', 'svn-server');
     my $result = 0;
     my $module;
 
@@ -2813,7 +2807,7 @@ sub safe_configure
 
     if ($module ne 'qt-copy')
     {
-        my $kdedir = get_option ('global', 'kdedir');
+        my $kdedir = get_option ($module, 'kdedir');
         my $prefix = get_option ($module, 'prefix');
 
         $prefix = $kdedir unless $prefix;
@@ -2908,7 +2902,7 @@ sub create_admin_dir
             # We haven't tried downloading it, now would be a good time.
             note "Can't find y[kde-common], going to try downloading it.";
 
-            if (get_option('global', 'no-svn'))
+            if (get_option('kde-common', 'no-svn'))
             {
                 # Not allowed to update.
                 error "r[!!] Updating has been blocked, can't get y[kde-common].";
@@ -3173,7 +3167,7 @@ sub run_svn
     my $conflict = 0;
     my $logdir = get_log_dir($module);
 
-    my $revision = get_option('global', 'revision');
+    my $revision = get_option($module, 'revision');
     if ($revision ne '0')
     {
         my @tmp = @{$arg_ref};
@@ -3446,6 +3440,7 @@ sub update_module_environment
     my $qtdir = get_option ($module, 'qtdir');
     my $path = join(':', "$qtdir/bin", "$kdedir/bin", get_option ($module, 'binpath'));
     my $libdir = join(':', "$qtdir/lib", "$kdedir/lib", get_option ($module, 'libpath'));
+    my $pc_path = join(':', get_option($module, 'kdedir') . '/lib/pkgconfig', $ENV{'PKG_CONFIG_PATH'});
 
     # Set up the children's environment.  We use setenv since it
     # won't set an environment variable to nothing.  (e.g, setting
@@ -3453,7 +3448,7 @@ sub update_module_environment
 
     # Remove leading and trailing colons, just in case.
     # Also remove more than one colon.
-    for ($path, $libdir)
+    for ($path, $libdir, $pc_path)
     {
         s/^:*//;
         s/:*$//;
@@ -3478,6 +3473,7 @@ sub update_module_environment
     setenv ('PATH', $path);
     setenv ('KDEDIR', $kdedir);
     setenv ('QTDIR', $qtdir);
+    setenv ('PKG_CONFIG_PATH', $pc_path);
 
     # Qt has several defines of its own.  Special case qt-copy for this
     # reason.
@@ -3700,7 +3696,6 @@ sub handle_build
     my @build_done;
     my $build_ref = shift;
     my $kdesvn = get_kdesvn_dir();
-    my $svnroot = get_option ('global', 'svn-server');
     my $module;
     my @modules = grep (!/^(KDE\/)?kde-common$/, @{$build_ref});
     my $result;
@@ -3812,7 +3807,7 @@ sub finish
     my $logdir = get_log_dir('global');
     $exitcode = 0 unless $exitcode;
 
-    close_lock();
+    close_lock() unless pretending;
 
     note "Your logs are saved in y[$logdir]";
     exit $exitcode;
@@ -4208,7 +4203,7 @@ if ($@)
     exit 99;
 }
 
-if (not get_lock())
+if (not pretending and not get_lock())
 {
     print "$0 is already running!\n";
     exit 0; # Don't finish(), it's not our lockfile!!
