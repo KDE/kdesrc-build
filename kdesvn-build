@@ -3795,7 +3795,7 @@ sub finish
     my $logdir = get_log_dir('global');
     $exitcode = 0 unless $exitcode;
 
-    close_lock();
+    close_lock() unless pretending;
 
     note "Your logs are saved in y[$logdir]";
     exit $exitcode;
@@ -4216,7 +4216,7 @@ if ($@)
     exit 99;
 }
 
-if (not get_lock())
+if (not pretending and not get_lock())
 {
     print "$0 is already running!\n";
     exit 0; # Don't finish(), it's not our lockfile!!
