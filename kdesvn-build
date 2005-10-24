@@ -3440,7 +3440,9 @@ sub update_module_environment
     my $qtdir = get_option ($module, 'qtdir');
     my $path = join(':', "$qtdir/bin", "$kdedir/bin", get_option ($module, 'binpath'));
     my $libdir = join(':', "$qtdir/lib", "$kdedir/lib", get_option ($module, 'libpath'));
-    my $pc_path = join(':', get_option($module, 'kdedir') . '/lib/pkgconfig', $ENV{'PKG_CONFIG_PATH'});
+    my $pc_path = "";
+    $pc_path = $ENV{'PKG_CONFIG_PATH'} if ( exists $ENV{'PKG_CONFIG_PATH'} );
+    $pc_path = join(':', get_option($module, 'kdedir') . '/lib/pkgconfig', $pc_path);
 
     # Set up the children's environment.  We use setenv since it
     # won't set an environment variable to nothing.  (e.g, setting
