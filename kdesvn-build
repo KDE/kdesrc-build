@@ -440,12 +440,9 @@ sub warning(@)
     print_clr @_ if get_option('global', 'debug-level') <= WARNING;
 }
 
-# This sub has the additional side effect of printing the errno value if it
-# is set.
 sub error(@)
 {
     print STDERR (clr $_) foreach (@_);
-    print "  $!\n" if $!;
 }
 
 sub pretend(@)
@@ -1032,14 +1029,6 @@ sub log_command
         # options with the name of the log file containing the error message.
         my $result = $?;
         set_error_logfile($module, "$filename.log") if $result;
-
-        # If we are using the alias to a kdesvn-build function, it should have
-        # already printed the error message, so clear out errno (but still
-        # return failure status).
-        if ($command[0] eq 'kdesvn-build')
-        {
-            $! = 0;
-        }
 
         return $result;
     }
