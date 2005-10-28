@@ -740,7 +740,9 @@ sub get_log_dir
 
     debug "Log directory for $module is $logpath";
 
-    if (not -e $logpath and not pretending and not super_mkdir($logpath))
+    return $logpath if pretending;
+
+    if (not -e $logpath and not super_mkdir($logpath))
     {
         error "Unable to create log directory r[$logpath]";
         return undef;
@@ -749,11 +751,8 @@ sub get_log_dir
     # Add symlink to the directory.
     # TODO: This probably can result in a few dozen unnecessary calls to
     # unlink and symlink, fix this.
-    if (not pretending)
-    {
-        unlink("$logbase/latest") if -l "$logbase/latest";
-        symlink("$logbase/$LOG_DATE-$BUILD_ID", "$logbase/latest");
-    }
+    unlink("$logbase/latest") if -l "$logbase/latest";
+    symlink("$logbase/$LOG_DATE-$BUILD_ID", "$logbase/latest");
 
     return $logpath;
 }
@@ -785,7 +784,6 @@ sub get_option
     my $module = shift;
     my $option = shift;
     my $global_opts = $package_opts{'global'};
-    my $defaultQtCopyArgs = '-qt-gif -plugin-imgfmt-mng -thread -no-exceptions -debug -dlopen-opengl -plugin-sql-sqlite';
     my @lockedOpts = qw(pretend disable-agent-check);
 
     # These options can't override globals
@@ -826,12 +824,8 @@ sub get_option
         return $value;
     }
 
-    # As always qt-copy has to be difficult
-    if ($module eq 'qt-copy' and $option eq 'configure-flags')
-    {
-        return $defaultQtCopyArgs if not defined $$ref{$option};
-        return $$ref{$option};
-    }
+    # qt-copy should already have default options set, no need to check
+    # specifically for it.
 
     # Everything else overrides the global, unless of course it's not set.
     # If we're reading for global options, we're pretty much done.
@@ -1418,17 +1412,12 @@ sub setup_default_modules()
 
     # Setup default options for qt-copy
     $package_opts{'qt-copy'} = {
-        'conf-flags' => q(-system-zlib -qt-gif -system-libjpeg -system-libpng
-                          -plugin-imgfmt-mng -thread -no-exceptions -debug
-                          -dlopen-opengl),
+        'conf-flags' => '-qt-gif -no-exceptions -fast',
         'apply-qt-patches' => 'true',
         'use-qt-builddir-hack' => 'true',
         'use-unsermake' => 0,
         'set-env' => { },
     };
-
-    # That handy q() construct above kept the newlines, I don't want them.
-    $package_opts{'qt-copy'}{'conf-flags'} =~ s/\s+/ /gm;
 }
 
 # Reads in the options from the config file and adds them to the option store.
@@ -1566,9 +1555,6 @@ EOM
 
     my ($option, $flags, $modulename);
 
-    # FIXME: Make global settings optional if only tweaks needed are for
-    # modules.
-
     # Read in global settings
     while (<CONFIG>)
     {
@@ -1677,8 +1663,10 @@ sub setup_module_environment
 # KDE from Subversion.  Change this section if a dependency changes later.
 sub initialize_environment
 {
-    $ENV{"WANT_AUTOMAKE"} = "1.7";
-    $ENV{"WANT_AUTOCONF_2_5"} = "1";
+# With latest detect-autoconf.pl in /admin I don't *think* it's necessary
+# to specify a specific automake any longer.
+#    $ENV{"WANT_AUTOMAKE"} = "1.7";
+#    $ENV{"WANT_AUTOCONF_2_5"} = "1";
 
     if(-t STDOUT and get_option('global', 'colorful-output'))
     {
@@ -3992,7 +3980,7 @@ sub munge_lists
                 }
                 else
                 {
-                    debug print "\tOption was already present.";
+                    debug "\tOption was already present.";
                 }
             }
             else
