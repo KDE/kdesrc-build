@@ -301,6 +301,7 @@ my %package_opts = (
     "install-after-build" => "1", # Default to true
     "inst-apps"           => "",
     "kdedir"              => "$ENV{HOME}/kde",
+    "kde-languages"       => "",
     "libpath"             => "",
     "log-dir"             => "log",
     "make-install-prefix" => "",  # Some people need sudo
@@ -2615,7 +2616,7 @@ sub module_sort
 }
 
 # Helper subroutine for debugging purposes.  Dumps all of the
-# options which have been read in to %global_opts and %package_opts.
+# options which have been read in to %package_opts.
 sub dump_options
 {
     my ($item, $ref_item, $ref);
@@ -4051,7 +4052,7 @@ sub handle_install
 sub munge_lists
 {
     debug "Munging update and build list";
-    my $cleared = 0;
+    my %module_cleared = ();
 
     for my $list_ref ( ( \@update_list, \@build_list) ) {
         my @temp;
@@ -4070,11 +4071,11 @@ sub munge_lists
             if (scalar @dirs > 0)
             {
                 # Only build the specified subdirs
-                if (not $cleared)
+                if (not exists $module_cleared{$modulename})
                 {
-                    debug "Clearing checkout-only option.";
+                    debug "Clearing checkout-only option for $modulename.";
 
-                    $cleared = 1;
+                    $module_cleared{$modulename} = 1;
                     set_option($modulename, 'checkout-only', '');
                 }
 
@@ -4316,10 +4317,10 @@ eval
     # Do some necessary adjusting. Right now this is used for supporting
     # the command-line option shortcut to where you can enter e.g.
     # kdelibs/khtml, and the script will only try to update that part of
-    # the module.
+    # the module.  This also updates for the l10n module (kde-languages option)
     munge_lists();
 
-    # Make sure unsermake is checked out automatically if needed
+    # Make sure unsermake is checked out automatically if needed.
     adjust_update_list(\@update_list, \@build_list);
 
     if (not $install_flag)
