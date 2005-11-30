@@ -934,7 +934,7 @@ sub checkout_module_path
         return 1;
     }
 
-    chdir($pathinfo{'path'});
+    p_chdir ($pathinfo{'path'});
 
     push @args, ('svn', 'co', '--non-interactive');
     push @args, '-N' if scalar @path;
@@ -945,7 +945,7 @@ sub checkout_module_path
     $result = run_svn($module, 'svn-co', \@args);
     return $result if $result;
 
-    chdir($pathinfo{'module'}) if scalar @path;
+    p_chdir ($pathinfo{'module'}) if scalar @path;
 
     return update_module_subdirectories($module, @path);
 }
@@ -963,7 +963,7 @@ sub update_module_path
     my $result;
     my @args;
 
-    chdir $fullpath;
+    p_chdir ($fullpath);
 
     push @args, ('svn', 'up', '--non-interactive');
     push @args, '-N' if scalar @path;
@@ -1204,6 +1204,7 @@ sub set_error_logfile
     return unless $logfile;
 
     set_option($module, '#error-log-file', "$logdir/$logfile");
+    debug "Logfile for $module is $logfile";
 
     # Setup symlink in the module log directory pointing to the appropriate
     # file.  Make sure to remove it first if it already exists.
@@ -1326,6 +1327,7 @@ sub is_subdir_buildable
 
     return 0 if $dir eq 'admin';
     return 0 if $dir eq 'kalyptus' and $module eq 'kdebindings';
+    return 0 if $dir eq 'scripts' and $module eq 'l10n';
     return 1;
 }
 
@@ -1456,11 +1458,10 @@ sub safe_make (@)
             info $installing ? "\tInstalling " : "\tBuilding ", "subdirectory g[$subdir]";
         }
 
-        my %pathinfo = get_module_path_dir($module, 'build');
-        my $builddir = "$pathinfo{fullpath}/$subdir";
-        $builddir =~ s/\/*$//;
+        my $builddir = get_fullpath($module, 'build') . "/$subdir";
+        $builddir =~ s/\/*$//; # Remove trailing /
 
-        chdir ($builddir);
+        p_chdir ($builddir);
 
         my $result = run_make_command ($module, $logname, \@args );
         return $result if $result;
@@ -1755,6 +1756,9 @@ sub module_needs_builddir_help
         return 0;
     }
 
+    # l10n/lang needs help.
+    return 1 if ($module =~ /^l10n\/?/);
+
     return list_has(@module_help_list, $module);
 }
 
@@ -1946,6 +1950,37 @@ sub set_option
 
     return if handle_set_env($package_opts{$module}, $option, $value);
     $package_opts{$module}{$option} = $value;
+}
+
+# Subroutine to recursively deep copy (form a completely independent clone)
+# of the modules given for module A (first parameter) to module B (second
+# parameter).
+#
+# If options are already set for B, the function returns immediately to
+# avoid overwriting already set options.
+#
+# No return value.
+sub clone_options
+{
+    my ($a, $b) = @_;
+
+    return if exists $package_opts{$b};
+
+    $package_opts{$b} = { 'set-env' => { } };
+
+    # set-env is special because it itself holds another reference.  All the
+    # others can be copies.
+    for my $key (keys %{$package_opts{$a}})
+    {
+        next if $key eq 'set-env';
+        $package_opts{$b}{$key} = $package_opts{$a}{$key};
+    }
+
+    # Handle set-env options.
+    for my $key (keys %{$package_opts{$a}{'set-env'}})
+    {
+        $package_opts{$b}{'set-env'}{$key} = $package_opts{$a}{'set-env'}{$key};
+    }
 }
 
 # Subroutine to process the command line arguments.  Any arguments so
@@ -2479,6 +2514,11 @@ sub get_update_list
 {
     return @ARGV unless $#ARGV == -1;
 
+    if (get_option('global', 'kde-languages') and not get_option('l10n', 'manual-update'))
+    {
+        push @update_list, 'l10n'; # Add l10n to potential update list.
+    }
+
     my @return_list;
     for (@update_list)
     {
@@ -2498,6 +2538,12 @@ sub get_build_list
 {
     my $resume_point;
     my $autoresuming;
+
+    # Add l10n to build list if needed.
+    if (get_option('global', 'kde-languages') and not get_option('l10n', 'manual-build'))
+    {
+        push @build_list, 'l10n';
+    }
 
     # We check explicity for sticky options here since they can only be
     # set from the command line.
@@ -2680,6 +2726,15 @@ sub safe_system(@)
     return 0; # Return true
 }
 
+# Is exactly like "chdir", but it will also print out a message saying that
+# we're switching to the directory when debugging.
+sub p_chdir($)
+{
+    my $dir = shift;
+    debug "\tcd g[$dir]\n";
+    chdir $dir;
+}
+
 # Helper subroutine to create a directory, including any parent
 # directories that may also need created.
 # Returns 0 on failure, non-zero on success
@@ -2826,20 +2881,29 @@ sub handle_updates
 
     foreach $module (@{$update_ref})
     {
-        my $fullpath = get_fullpath($module, 'source');
-
-        if (not exists $package_opts{$module})
-        {
-            warning "Unknown module y[$module], configure it in $rcfile.";
-
-            # Continue in case the user just needs default options, hopefully
-            # it isn't a misspelling.
-            $package_opts{$module} = { 'set-env' => { } };
-        }
+        check_for_module_config ($module);
 
         next if get_option($module, 'no-svn');
 
         my @options = split(' ', get_option($module, 'checkout-only'));
+
+        # If checkout-only not set for l10n, use kde-languages.
+        if ($module eq 'l10n' and not scalar @options)
+        {
+            push @options, split(' ', get_option('global', 'kde-languages'));
+            push @options, 'scripts';
+        }
+
+        # Make sure each submodule of l10n has their own options hash.
+        if ($module eq 'l10n')
+        {
+            for my $lang (@options)
+            {
+                clone_options('l10n', "l10n/$lang");
+            }
+        }
+
+        my $fullpath = get_fullpath($module, 'source');
         if (-e "$fullpath/.svn")
         {
             # Warn user if the current repo URL is different than expected.
@@ -2878,7 +2942,7 @@ sub safe_apply_patches
     }
 
     info "\tg[Applying recommended Qt patches].";
-    chdir ("$builddir");
+    p_chdir ($builddir);
     return (log_command('qt-copy', 'apply-patches', [ "./apply_patches" ]));
 }
 
@@ -2906,6 +2970,13 @@ sub safe_configure
         $prefix = $kdedir unless $prefix;
 
         push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
+
+        if ($module =~ /^l10n\//)
+        {
+            whisper "\tg[$module] ignores configure flags...";
+            @commands = ();
+        }
+
         push @commands, "--prefix=$prefix";
 
         # We're special casing these modules because we're using the lndir
@@ -2937,6 +3008,12 @@ sub safe_configure
         $script = "$qtdir/configure.new";
 
         note "\tb[r[GPL license selected for Qt].  See $fullpath/LICENSE.GPL";
+    }
+
+    if ($module =~ /^l10n\//)
+    {
+        whisper "\tg[$module] ignores configure flags...";
+        @commands = ();
     }
 
     info "\tRunning g[configure]...";
@@ -3015,9 +3092,10 @@ sub create_admin_dir
         }
     }
 
-    chdir ($fullpath);
+    p_chdir ($fullpath);
 
     whisper "\tCreating symbolic link to g[/admin directory].";
+    return 1 if pretending;
 
     return symlink $admindir, "$fullpath/admin";
 }
@@ -3052,7 +3130,11 @@ sub safe_lndir
     if (not -e $to)
     {
         print "$to\n";
-        mkdir ($to) unless pretending;
+        if (not pretending and not super_mkdir($to))
+        {
+            error "Couldn't create directory r[$to]: b[r[$!]";
+            return 0;
+        }
     }
 
     # Create closure callback subroutine.
@@ -3071,7 +3153,7 @@ sub safe_lndir
 
             if (not pretending)
             {
-                mkdir ($dir) or die "Couldn't create directory $dir: $!";
+                super_mkdir ($dir) or die "Couldn't create directory $dir: $!";
             }
         }
 
@@ -3177,13 +3259,15 @@ sub safe_create_build_system
         return 0;
     }
 
-    chdir ($fullpath); # Run make -f Makefile.cvs in srcdir.
-
     # These modules will run make -f Makefile.cvs in (fake) builddir to keep
     # srcdir clean. Except for qt-copy when not using qt-builddir-hack.
     if(module_needs_builddir_help($module))
     {
-        chdir ($builddir);
+        p_chdir ($builddir);
+    }
+    else
+    {
+        p_chdir ($fullpath); # Run make -f Makefile.cvs in srcdir.
     }
 
     if ($instapps)
@@ -3209,6 +3293,16 @@ sub safe_create_build_system
 
     my $cmd_ref = [ 'make', '-f', 'Makefile.cvs' ];
     $cmd_ref = [ './autogen.sh' ] if $module eq 'valgrind';
+
+    if ($module =~ /^l10n\//)
+    {
+        my ($lang) = ($module =~ /^l10n\/(.*)$/);
+
+        # autogen.sh must be run from one level below for some reason.
+        p_chdir ("../");
+
+        $cmd_ref = [ './scripts/autogen.sh', $lang ];
+    }
 
     if (log_command ($module, "build-system", $cmd_ref))
     {
@@ -3378,7 +3472,7 @@ sub clean_build_system
     # Clean qt-copy separately
     if ($module eq 'qt-copy' and not get_option('qt-copy', 'use-qt-builddir-hack'))
     {
-        chdir ("$builddir");
+        p_chdir ($builddir);
 
         if (log_command ('qt-copy', 'clean', ['make', 'clean']))
         {
@@ -3476,9 +3570,6 @@ sub setup_build_system
     {
         whisper "\ty[Recreating configure script].";
 
-        # Update the PATH and other important environment variables.
-        update_module_environment ($module);
-
         if (safe_create_build_system ($module))
         {
             error "\tUnable to create configure system from checkout.";
@@ -3511,7 +3602,7 @@ sub setup_build_system
         # Now we're in the checkout directory
         # So, switch to the build dir.
         # builddir is automatically set to the right value for qt-copy
-        chdir ("$builddir");
+        p_chdir ($builddir);
 
         # configure the module (sh script return value semantics)
         if (safe_configure ($module))
@@ -3540,6 +3631,8 @@ sub update_module_environment
     # Set up the children's environment.  We use setenv since it
     # won't set an environment variable to nothing.  (e.g, setting
     # QTDIR to a blank string might confuse Qt or KDE.
+
+    pretend "Initializing g[$module]'s environment.";
 
     # Remove leading and trailing colons, just in case.
     # Also remove more than one colon.
@@ -3576,6 +3669,8 @@ sub update_module_environment
 
     # Read in user environment defines
     setup_module_environment ($module);
+
+    pretend "Done initializing g[$module]'s environment.\n"; # \n on purpose
 }
 
 # Subroutine to make sure the build directory for a module is setup.
@@ -3671,11 +3766,7 @@ sub build_module
     my $trynumber = 1;
 
     # Do some tests to make sure we're ready to build.
-    if (not exists $package_opts{$module})
-    {
-        warning "Unknown module y[$module], configure it in $rcfile.";
-        $package_opts{$module} = { 'set-env' => { } };
-    }
+    check_for_module_config($module);
 
     update_module_environment($module);
 
@@ -3773,6 +3864,44 @@ EOF
     return 1;
 }
 
+# kdesvn-build supports putting the l10n module on the command line, but it is
+# rather weird in that l10n isn't used as a module internally, instead the
+# l10n/$lang are treated for the most part as modules.
+#
+# This function filters out any plain 'l10n' entries in the given module list,
+# and adds the appropriate l10n/$lang modules to the end of the returned list.
+#
+# The languages are selected using l10n/checkout-only (preferred since it will
+# be set from the command line), or using global/kde-languages (which should be
+# used exclusively from the configuration file).
+sub filter_l10n_module_list
+{
+    my @modules = @_;
+
+    # Only filter if 'l10n' is actually present in list.
+    if (grep ($_ eq 'l10n', @modules))
+    {
+        @modules = grep($_ ne 'l10n', @modules); # Remove all instances of l10n
+
+        # Prefer checkout-only (will be set from command line).
+        my $subdirs = get_option('l10n', 'checkout-only');
+        $subdirs = get_option('global', 'kde-languages') if not $subdirs;
+
+        for my $dir (split (' ', $subdirs))
+        {
+            push @modules, "l10n/$dir";
+
+            # Give language its own options in %package_opts.
+            clone_options("l10n", "l10n/$dir");
+        }
+
+        # Make sure the /scripts directory is available in the build dir.
+        prepare_fake_builddir('l10n/scripts');
+    }
+
+    return @modules;
+}
+
 # Subroutine to handle the build process.
 # First parameter is a reference of a list containing the packages
 # we are to build.
@@ -3795,6 +3924,9 @@ sub handle_build
     my @modules = grep (!/^(KDE\/)?kde-common$/, @{$build_ref});
     my $result;
     my $outfile = get_output_file ();
+
+    # Handle l10n module, which is speshul.
+    @modules = filter_l10n_module_list(@modules);
 
     # No reason to print building messages if we're not building.
     return 0 if scalar @modules == 0;
@@ -3893,6 +4025,25 @@ EOF
     return scalar @{$fail_lists{'build'}};
 }
 
+# Subroutine checks to see if a module is present in the config file, and
+# warns if it is not.  It does this by checking whether it has any options set,
+# and if not, will set a default value for the options.
+# First parameter: name of module to check.
+sub check_for_module_config
+{
+    my $module = shift;
+
+    if (not exists $package_opts{$module})
+    {
+        warning <<EOF;
+ b[y[*]
+ b[y[*] Unknown module y[$module], configure it in $rcfile.
+ b[y[*]
+EOF
+        $package_opts{$module} = { 'set-env' => { } };
+    }
+}
+
 # Subroutine to exit the script cleanly, including removing any
 # lock files created.  If a parameter is passed, it is interpreted
 # as an exit code to use
@@ -3932,7 +4083,7 @@ sub check_module_validity
     my $source_dir = get_fullpath($module, 'source');
     my $module_expected_url = svn_module_url($module);
 
-    chdir($source_dir); # Required for get_repo_url
+    p_chdir ($source_dir); # Required for get_repo_url
     my $module_actual_url = get_repo_url();
 
     if($module_actual_url ne $module_expected_url)
@@ -3960,26 +4111,22 @@ sub handle_install
 {
     my $apidox = pop; # Take parameter off end of list (@_).
     my @no_install_modules = qw/qt-copy kde-common/;
+    my @modules = filter_l10n_module_list(@_);
     my $result = 0;
 
-    for my $module (@_)
+    for my $module (@modules)
     {
+        check_for_module_config ($module);
+
         if (list_has(@no_install_modules, $module))
         {
             info "\tg[$module] doesn't need to be installed.";
             next;
         }
 
-        my $builddir = get_fullpath($module, 'build');
+        my $builddir = get_fullpath ($module, 'build');
 
-        if (not exists $package_opts{$module})
-        {
-            warning "\tUnknown module y[$module], configure it in $rcfile.";
-            $package_opts{$module} = { 'set-env' => { } };
-            next;
-        }
-
-        if (not -e "$builddir/Makefile")
+        if (not pretending and not -e "$builddir/Makefile")
         {
             warning "\tThe build system doesn't exist for r[$module].";
             warning "\tTherefore, we can't install it. y[:-(].";
@@ -4281,6 +4428,11 @@ eval
 
     setup_logging_subsystem(); # Setup logging directories.
 
+    if (get_option('global', 'kde-languages'))
+    {
+        set_option('l10n', 'apidox', 0); # Just set some option to init defaults.
+    }
+
     dump_options() if debugging;
 };
 
@@ -4306,7 +4458,7 @@ my $result;
 eval
 {
     my $time = localtime;
-    info "Script started processing at g[$time]";
+    info "Script started processing at g[$time]" unless pretending;
 
     @update_list = get_update_list();
     @build_list = get_build_list();
@@ -4342,7 +4494,7 @@ eval
     my $color = '';
     $color = 'r[' if $result;
 
-    info "${color}Script finished processing at g[$time]";
+    info "${color}Script finished processing at g[$time]" unless pretending;
 };
 
 if ($@)
