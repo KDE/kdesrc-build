@@ -3390,9 +3390,10 @@ sub clean_build_system
         return 1;
     }
 
+    # Use an existing directory
     if (-e "$builddir")
     {
-        if(safe_system ('rm', '-rf', "$builddir"))
+        if(safe_system ('rm', '-rf', "$builddir/*", "$builddir/.*"))
         {
             # Remove build directory for normal module.
             error "\tUnable to clean r[$builddir].";
@@ -3403,9 +3404,8 @@ sub clean_build_system
         # long and oh yeah, why'd my HD so active?...
         info "\tOld build system cleaned, starting new build system.";
     }
-
-    # Now create the directory
-    if (not super_mkdir ("$builddir"))
+    # or create the directory
+    elsif (not super_mkdir ("$builddir"))
     {
         error "\tUnable to create directory r[$builddir].";
         return 0;
