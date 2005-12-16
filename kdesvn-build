@@ -1371,6 +1371,17 @@ sub safe_make (@)
 
     if (get_option($module, 'use-unsermake'))
     {
+        # Unsermake can't build apidox.
+        if ($apidox)
+        {
+            warning " y[*] This module (g[$module]) uses unsermake, but unsermake doesn't";
+            warning " y[*] support building the API documentation.  The most-often updated";
+            warning " y[*] documentation is at http://www.englishbreakfastnetwork.org/";
+            warning " y[*] r[Aborting APIDOX build]";
+
+            return 0;
+        }
+
         $make = get_option($module, 'unsermake-path');
         $opts = get_option($module, 'unsermake-options');
     }
