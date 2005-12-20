@@ -444,6 +444,7 @@ sub warning(@)
 sub error(@)
 {
     print STDERR (clr $_) foreach (@_);
+    print STDERR (clr "]\n");
 }
 
 sub pretend(@)
@@ -3193,7 +3194,6 @@ sub safe_lndir
 
     if ($@)
     {
-        $! = 0; # sub error will use $! to display error message.
         error "Unable to symlink $from to $to: $@";
         return 0;
     }
@@ -3459,6 +3459,65 @@ sub run_svn
     return $result;
 }
 
+# Subroutine to delete recursively, everything under the given directory,
+# unless we're in pretend mode.
+#
+# i.e. the effect is similar to "rm -r $arg/* $arg/.*".
+#
+# The first parameter should be the absolute path to the directory to delete.
+#
+# Returns boolean true on success, boolean false on failure.
+sub prune_under_directory
+{
+    my $dir = shift;
+
+    debug "Deleting under r[$dir]";
+
+    # This closure subroutine will be called for every file/directory.
+    # It will be called in a postorder traversal (i.e. parent processed after
+    # all the children).
+    my $wanted = sub {
+        my $name = $File::Find::name;
+
+        # Don't delete the parent directory, just everything under.
+        return if ($name eq $dir);
+
+        lstat ($name); # stats the actual symlink.  Called now for caching.
+
+        if (not -l _ and -d _)
+        {
+            # Remove directory.
+            debug "Removing directory y[$name]";
+            if (not pretending)
+            {
+                rmdir ($name) or die "Couldn't delete $name!: $!";
+            }
+        }
+        else
+        {
+            # Remove file/symlink/etc.
+            debug "Removing file y[$name]";
+            if (not pretending)
+            {
+                unlink ($name) or die "Couldn't delete $name!: $!";
+            }
+        }
+    };
+
+    # Call recursive find.
+    eval {
+        finddepth ($wanted, $dir);
+    };
+
+    if ($@)
+    {
+        error "\tUnable to clean r[$dir]:\n\ty[b[$@]";
+        return 0;
+    }
+
+    return 1;
+}
+
 # Subroutine to clean the build system for the given module.  Works by
 # recursively deleting the directory and then recreating it.  Returns
 # 0 for failure, non-zero for success.
@@ -3498,10 +3557,10 @@ sub clean_build_system
     # Use an existing directory
     if (-e "$builddir")
     {
-        if(safe_system ('rm', '-rf', "$builddir/*", "$builddir/.*"))
+        info "\tRemoving files in build directory for g[$module]";
+
+        if (not prune_under_directory($builddir))
         {
-            # Remove build directory for normal module.
-            error "\tUnable to clean r[$builddir].";
             return 0; # False for this function.
         }
 
@@ -4275,6 +4334,11 @@ sub whats_the_module_error
 {
     my $module = shift;
     my $file = get_option($module, '#error-log-file');
+
+    if (not defined $file or not $file)
+    {
+        return "No logfile for module $module.\n";
+    }
 
     open ERRORFILE, "<$file" or return "Can't open logfile $file.\n";
 
