@@ -328,6 +328,7 @@ my %package_opts = (
     "tag"                 => "",
     "unsermake-options"   => "--compile-jobs=2 -p",
     "unsermake-path"      => "unsermake",
+    "use-stable-kde"      => 0,   # Controls whether to default to 3.5 or 4.
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
   }
 );
@@ -617,6 +618,9 @@ sub handle_branch_tag_option
     {
         $branchname = get_option($module, 'branch');
     }
+
+    # qt-copy is referred to as qt in svn when dealing with branches and tags.
+    $branch = branch_prefix('qt', $type) if $module eq 'qt-copy';
 
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
@@ -1482,6 +1486,27 @@ sub safe_make (@)
     return 0;
 }
 
+# Subroutine to test if the given module has been given a custom branch by the
+# user.  This function is needed since there are at least four options that can
+# control this: branch, tag, override-url, and module-base-path.
+#
+# NOTE: This test is performed merely by checking if any of the appropriate
+# options are already set.  So if kdesvn-build sets an option internally, this
+# function will still return true.
+#
+# First parameter is the module in question.
+# Returns boolean true if the module has a custom branch, false otherwise.
+sub module_has_custom_branch
+{
+    my $module = shift;
+
+    return (get_option($module, 'branch') or
+            get_option($module, 'override-url') or
+            get_option($module, 'tag') or
+            get_option($module, 'module-base-path')
+            );
+}
+
 # Subroutine to add a variable to the environment, but ONLY if it
 # is set. First parameter is the variable to set, the second is the
 # value to give it.
@@ -1540,11 +1565,48 @@ sub setup_default_modules()
     # Setup default options for qt-copy
     $package_opts{'qt-copy'} = {
         'conf-flags' => '-qt-gif -no-exceptions -fast',
-        'apply-qt-patches' => 'true',
+        'apply-qt-patches' => 0,
         'use-qt-builddir-hack' => 'true',
         'use-unsermake' => 0,
         'set-env' => { },
     };
+}
+
+# Subroutine sets up the default branch option for several modules when the
+# use-stable-kde option is enabled, in order to build KDE 3.5 by default.
+# branch options specified in the config file should still be chosen over these
+# defaults.
+sub setup_stable_kde_options
+{
+    my @branched_modules = qw/kde-common kdeaccessibility kdeaddons kdeadmin
+        kdeartwork kdebase kdebindings kdeedu kdegames kdegraphics kdelibs
+        kdemultimedia kdenetwork kdepim kdesdk kdetoys kdeutils kdevelop
+        kdewebdev/;
+
+    return unless get_option('global', 'use-stable-kde');
+
+    # Handle arts here.
+    unless (module_has_custom_branch('arts'))
+    {
+        debug "Setting arts to version 1.5";
+        set_option ('arts', 'branch', '1.5');
+    }
+
+    unless (module_has_custom_branch('qt-copy'))
+    {
+        debug "Setting qt-copy to version 3.3";
+        set_option ('qt-copy', 'branch', '3.3');
+        set_option ('qt-copy', 'apply-patches', 'true');
+    }
+
+    for my $module (@branched_modules)
+    {
+        unless (module_has_custom_branch($module))
+        {
+            debug "Setting $module to version 3.5";
+            set_option($module, 'branch', '3.5');
+        }
+    }
 }
 
 # Reads in the options from the config file and adds them to the option store.
@@ -4496,10 +4558,12 @@ EOF
 # Use some exception handling to avoid ucky error messages
 eval
 {
-    # Note to self:  Quit changing the order around.
-    process_arguments();       # Process --help, --install, etc. first.
-    read_options();            # If we're still here, read the options
-    initialize_environment();  # Initialize global env vars.
+    # Note: Don't change the order around unless you're sure of what you're
+    # doing.
+    process_arguments();        # Process --help, --install, etc. first.
+    read_options();             # If we're still here, read the options
+    setup_stable_kde_options(); # Default to KDE 3.5 if that option is set.
+    initialize_environment();   # Initialize global env vars.
 
     setup_logging_subsystem(); # Setup logging directories.
 
