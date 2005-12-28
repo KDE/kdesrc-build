@@ -1,5 +1,17 @@
 #!/usr/bin/perl -w
 
+# Script to handle building KDE from Subversion.  All of the configuration is
+# stored in the file ~/.kdesvn-buildrc.
+#
+# Please also see the documentation that should be included with this program,
+# from the kdesdk/doc/scripts/kdesvn-build directory.
+#
+# Copyright (c) 2003, 2004, 2005 Michael Pyne. <michael.pyne@kdemail.net>
+# Home page: http://kdesvn-build.kde.org/
+#
+# You may use, alter, and redistribute this software under the terms
+# of the GNU General Public License, v2 (or any later version).
+
 #Pod documentation:
 
 =head1 NAME
@@ -129,11 +141,6 @@ Add color to the output.
 
 Remove color from the output.
 
-=item B<--resume>
-
-Tries to resume the make process from the last time the script was run,
-without performing the Subversion update.
-
 =item B<--resume-from=E<lt>pkgE<gt>>
 
 Starts building from the given package, without performing the Subversion
@@ -241,21 +248,6 @@ Man page written by:
 Carlos Leonhard Woelz <carlos.woelz@kdemail.net>
 
 =cut
-
-# Script to handle building KDE from Subversion.  All of the configuration is
-# stored in the file ~/.kdesvn-buildrc.
-#
-# Please also see the documentation that should be included with this program,
-# in doc.html
-#
-# Copyright (c) 2003, 2004, 2005 Michael Pyne. <michael.pyne@kdemail.net>
-# Home page: http://kdesvn-build.kde.org/
-#
-# You may use, alter, and redistribute this software under the terms
-# of the GNU General Public License, v2 (or any later version).
-#
-# TODO: It would be better to have lockfiles in each directory as it's
-#       being updated, instead of having one big lock for the script.
 
 use strict;
 use warnings;
@@ -463,9 +455,8 @@ sub quit_handler
 # Subroutine that returns the path of a file used to output the results of the
 # build process.  It accepts one parameter, which changes the kind of file
 # returned.  If the parameter is set to 'existing', then the file returned is
-# the latest file that exists, or undef if no log has been created yet.  This
-# is useful for the --resume mode.  All other values will return the name if a
-# file that does not yet exist.
+# the latest file that exists, or undef if no log has been created yet.    All
+# other values will return the name if a file that does not yet exist.
 #
 # All files will be stored in the log directory.
 sub get_output_file
@@ -2066,7 +2057,7 @@ sub clone_options
 sub process_arguments
 {
     my $arg;
-    my $version = "kdesvn-build 0.98.2 (KDE 4 Edition)";
+    my $version = "kdesvn-build 0.98.3 (Development Edition)";
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <michael.pyne\@kdemail.net>
@@ -2145,9 +2136,6 @@ Options:
                          kdedir from the command line.  It implies
                          --reconfigure.
 
-    --resume             Tries to resume the make process from the last time
-                         the script was run, without performing the Subversion
-                         update.
     --resume-from=<pkg>  Starts building from the given package, without
                          performing the Subversion update.
     --revision (or -r)=<rev> Forces update to revision <rev> from Subversion.
@@ -2369,25 +2357,7 @@ DONE
                     exit 7;
                 }
 
-                if (defined $package_opts{'global'}{'#resume'})
-                {
-                    print "WARNING: Don't pass both --resume and --resume-from\n";
-                    delete $package_opts{'global'}{'#resume'};
-                }
-
                 set_option('global', '#resume-from', $_);
-                set_option('global', '#no-svn', 1);
-                last SWITCH;
-            };
-
-            /^--resume$/ && do {
-                if (defined $package_opts{'global'}{'#resume'})
-                {
-                    print "WARNING: Don't pass both --resume and --resume-from\n";
-                    delete $package_opts{'global'}{'#resume-from'};
-                }
-
-                set_option('global', '#resume', 1);
                 set_option('global', '#no-svn', 1);
                 last SWITCH;
             };
@@ -2607,11 +2577,10 @@ sub get_update_list
 # in the module's options.  The command-line arguments should have been
 # parsed first.
 #
-# This subroutine will handle the --resume and --resume-from options.
+# This subroutine will handle the --resume-from options.
 sub get_build_list
 {
-    my $resume_point;
-    my $autoresuming;
+    my $resume_point = get_option('global', '#resume-from');
 
     # Add l10n to build list if needed.
     if (get_option('global', 'kde-languages') and not get_option('l10n', 'manual-build'))
@@ -2623,80 +2592,27 @@ sub get_build_list
     # set from the command line.
     if (get_option('global', '#manual-build'))
     {
-        if (get_option('global', '#resume') || get_option('global',
-            '#resume-from'))
+        if ($resume_point)
         {
-            warning "I'm confused, you enabled y[--no-build] and y[--resume].";
+            warning "I'm confused, you enabled y[--no-build] and y[--resume-from].";
             warning "Skipping the build process.";
         }
 
         return ();
     }
 
-    if (get_option ('global', '#resume'))
-    {
-        if (scalar @ARGV > 0)
-        {
-            warning "Ignoring modules specified on command line because y[--resume] was set.";
-        }
-
-        # Try to determine location of last existing status file.
-        my $status_fname = get_output_file('existing');
-        if (not $status_fname)
-        {
-            error "Unable to open status file from last run, can't resume!";
-            return ();
-        }
-
-        my ($line, $oldline);
-        open STATUS_FILE, "<$status_fname" or do {
-            error "Can't open $status_fname, so I can't resume!";
-            return ();
-        };
-
-        while ($line = <STATUS_FILE>)
-        {
-            $oldline = $line;
-        }
-
-        close STATUS_FILE;
-
-        if (not defined $oldline)
-        {
-            # Hmm, empty file?
-            error <<"EOF";
-Unable to read information from resume status file.
-It's probably empty, but there's no way to resume!
-EOF
-            return ();
-        }
-
-        chomp $oldline;
-        debug "The last success line is $oldline";
-
-        ($resume_point = $oldline) =~ s/^([^:]+):.*/$1/;
-        whisper "Resuming at $resume_point";
-    }
-    elsif (get_option ('global', '#resume-from'))
-    {
-        $resume_point = get_option ('global', '#resume-from');
-        $autoresuming = 1;
-    }
-
     if ($resume_point)
     {
-        my $resume_found = 0;
-
         # Pop stuff off of the list until we hit the resume point.
-        while (scalar @build_list > 0 and not $resume_found)
+        while (scalar @build_list > 0)
         {
-            $resume_found = 1 if $build_list[0] eq $resume_point;
+            last if $build_list[0] eq $resume_point;
+            shift @build_list;
+        }
 
-            # If we're doing an auto resume, pop off the last package read
-            # from the file.  If we're doing resume from on the other hand,
-            # I'm assuming the user intends to start with building that
-            # package.
-            shift @build_list unless $resume_found and $autoresuming;
+        if (not @build_list)
+        {
+            warning "Can't resume from y[$resume_point], it wasn't going to be built!";
         }
 
         return @build_list;
