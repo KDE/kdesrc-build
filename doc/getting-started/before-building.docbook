@@ -1,8 +1,11 @@
 <sect1 id="before-building">
 <title>Preparing the System to Build &kde;</title>
 
+<sect2 id="before-building-users">
+<title>Setup a new user account</title>
+
 <para>
-It is recommended that you download and build &kde; using a user
+It is recommended that you download and build &kde; using a separate user
 account. If you already have &kde; packages installed, the best choice
 would be to create a different (dedicated) user to build and run the new &kde;.
 The advantage of building &kde; with a dedicated user is you can not break
@@ -11,24 +14,67 @@ things go wrong.
 </para>
 
 <para>
-Later, you can do a root installation if you wish. This document
-does not cover a root installation. If you are performing a system
-wide install, you probably already know what you are doing anyway.
+Later, you can do a system installation if you wish. This document
+does not cover a system installation. If you are performing a system
+wide install, you should already know what you are doing.  If not, then you
+may want to consult the documentation, or help sites, for your distribution
+in order to prepare and use the system installation correctly.
 </para>
+
+</sect2>
+<sect2 id="before-building-preparation">
+<title>Ensure your system is ready to build &kde; source</title>
 
 <para>Before using the &kdesvn-build; script (or any other building
 strategy) you must install the development tools and libraries needed for &kde;.
-You need the Qt library, version 3.3.0 or greater, Automake 1.8,
-Autoconf 2.5X (better if >=2.57 as a bug was reported with lower versions),
-the subversion (svn) client, the gcc compiler with C++ support, libxml2,
-openssl, libbz2, and many more (for a complete list, visit the
-<ulink url="http://www.kde.org/info/requirements/3.4.php">KDE Compilation
-Requirements</ulink>). You can usually get those tools packaged for your system
-from your distribution or vendor.
+The complete list of required tools can be found from the
+<ulink url="http://www.kde.org/info/requirements/3.5.php">&kde; Compilation
+Requirements</ulink> page.
 </para>
 
+<para>Here is a list of some of the things you'll need:</para>
+<itemizedlist>
+<listitem><para>Automake version 1.7, or higher.</para></listitem>
+<listitem><para>Autoconf version 2.57, or higher.</para></listitem>
+<listitem><para>The &svn; client program, including support for Secure
+HTTP (https).  To ensure needed support, you can run
+<userinput><command>svn <option>--version</option></command></userinput>.
+If the ra_dav module says that it handles the https scheme then you should be
+set to go.</para></listitem>
+<listitem><para>The gcc compiler, with support for C++.  Version 3.3 or 3.4 works
+the best at this point.</para></listitem>
+<listitem><para>Be sure to check the <ulink
+url="http://www.kde.org/info/requirements/3.5.php">&kde; Compilation
+Requirements</ulink> page to make sure that any other needed libraries are
+included.</para></listitem>
+</itemizedlist>
+
+<para>One exception is the &Qt; library. &kdesvn-build; will normally install a
+copy of &Qt; whether you have it installed or not, so it's not necessary for you
+to have it.  If you don't want to use the &Qt; copy, you need to do these things:
+</para>
+
+<itemizedlist>
+<listitem>
+  <para>Make sure to remove the qt-copy module from your &rcfile;, as you
+  won't need it, and having it would add extra time to your build.</para>
+</listitem>
+
+<listitem>
+  <para>Change the setting of the <link linkend="conf-qtdir">qtdir</link>
+  option in your &rcfile; to point to your system &Qt;.  This is normally
+  equal to the setting of $<envar>QTDIR</envar> for your system.</para>
+</listitem>
+
+<listitem>
+  <para>If you don't already have &Qt; installed, install it, including any
+  relevant -dev or -devel packages.  You'll need at least &Qt; 3.3 if you're
+  building &kde; 3.5, or &Qt; 4.0 if you're building &kde; 4.</para>
+</listitem>
+</itemizedlist>
+
 <para>
-Some of these packages are divided into libs, programs or utilities and
+Some of these packages are divided into libraries (or programs or utilities), and
 development packages. You will need at least the program or library and
 its development package. If in doubt, install all. The libraries you need
 will change depending on the modules you intend to build, as each module
@@ -39,27 +85,67 @@ about the specific tools and techniques used to install and find the
 required software.
 </para>
 
+</sect2>
+
+<sect2 id="before-building-prepare-script">
+<title>Setup kdesvn-build</title>
+
+<sect3 id="get-kdesvn-build">
+<title>Install kdesvn-build</title>
 <para>
 You probably already have a version of the &kdesvn-build; script installed
-in your system. &kdesvn-build;requires you to create a configuration file, named
-<filename>.kdesvn-buildrc</filename>. This file should be installed on
-the home folder (~/), and contain all configuration data
+in your system.  However, if you don't, you can download it from
+&homepage;, or you can find it from its home in the &kde; source
+repository.</para>
+
+<orderedlist>
+<listitem><para>To download &kdesvn-build; from its &homepage;, simply go to the
+&homepage; and download the latest appropriate release.  The release is
+packaged as a compressed tarball archive, which you can extract using &ark; or
+<command>tar</command>.  The contents of the archive include the actual
+&kdesvn-build; script, and a sample configuration file
+(<filename>kdesvn-buildrc-sample</filename>).</para></listitem>
+
+<listitem><para>Or, you can obtain &kdesvn-build; from its source repository,
+located at: <ulink url="http://websvn.kde.org/trunk/KDE/kdesdk/scripts/">http://websvn.kde.org/trunk/KDE/kdesdk/scripts/</ulink>.
+This is the &kde; Software Development Kit scripting directory, which is the
+home of &kdesvn-build;.  You can click on the <filename>kdesvn-build</filename> entry which will
+bring you to a page where you can download the latest revision.  Do so, and
+save it to a convenient spot on your hard disk.  Do the same for <filename>kdesvn-buildrc-sample</filename>
+if you need to.</para></listitem>
+</orderedlist>
+
+<para>No matter which technique you use, you need to make sure that the
+<filename>kdesvn-build</filename> file is executable.  For convenience you
+should make sure it is in a directory contained in the <envar>PATH</envar>
+environment variable, otherwise you may get messages saying that the command
+was not found.</para>
+</sect3>
+
+<sect3 id="setup-rcfile">
+<title>Prepare the configuration file</title>
+
+<para>Although &kdesvn-build; doesn't require you to create a &rcfile;, it
+makes the work flow much easier.  Using a &rcfile;, you can control which
+modules are installed, or remove modules you don't want to install.  &kdesvn-build;
+by default installs a useful &kde; installation using very generic installation
+flags, which may be different from your needs.  So it is best to use a
+&rcfile;</para>
+
+<para>The &rcfile; should be called <filename>.kdesvn-buildrc</filename>. 
+This file should be installed on
+the home folder (<filename>~/</filename>), and contain all configuration data
 required for the script to run, like configuration options,
 compiling options, location of the sources, the destination of the installation
 (prefix), the modules that should be built, &etc;. The default configuration
-data is provided by the <filename>kdesvn-buildrc-sample</filename> file.
-You can find more information about the syntax of the configuration file
+data is provided by the <filename>kdesvn-buildrc-sample</filename> file, which
+you can copy over as <filename>~/.kdesvn-buildrc</filename> and then edit.
+</para>
+
+<para>You can find more information about the syntax of the &rcfile;
 in <xref linkend="configure-data" /> and in <xref linkend="kdesvn-buildrc" />.
 </para>
 
-<para>
-A good way to get the latest version is to browse the kdesdk/scripts page
-at the <ulink url="http://websvn.kde.org/trunk/KDE">websvn.kde.org</ulink> website.
-You will see a list of the files available in the kdesdk/scripts directory in
-the &kde; &svn; repository. Click the &kdesvn-build; link and download
-the latest version of the script. Do the same for the
-<filename>kdesvn-buildrc-sample</filename> file.
-Make the script executable, and be sure it is in your path.
-</para>
-
+</sect3>
+</sect2>
 </sect1>

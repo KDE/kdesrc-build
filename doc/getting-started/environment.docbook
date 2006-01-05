@@ -8,34 +8,59 @@ has to take precedence over the old. Change the environment variables to
 make sure it does.
 </para>
 
+<sect2 id="changing-profile">
+<title>Changing your startup profile settings</title>
+
+<important><para>The <filename>.bash_profile</filename> is the login settings
+file for the popular <application>bash</application> shell used by many &Linux;
+distributions.  If you use a different shell, then you may need to adjust the
+samples given in this section for your particular shell.</para></important>
+
 <para>
 Open or create the <filename>.bash_profile</filename> file in the home directory with your favorite editor,
 and add to the end of the file:
 
-<programlisting>
-KDEDIR=(path to kdedir)
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
-LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
-export KDEDIRS PATH LD_LIBRARY_PATH
-</programlisting>
-
-If you are building the qt-copy module, add instead:
+If you are building the qt-copy module (you are by default), add instead:
 
 <programlisting>
-QTDIR=(path to qtdir)
-KDEDIR=(path to kdedir)
+QTDIR=(path to qtdir)   # Such as ~/kdesvn/build/qt-copy by default.
+KDEDIR=(path to kdedir) # Such as ~/kde by default.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
-LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+
+# Act appropriately if LD_LIBRARY_PATH is not already set.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib
+else
+  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+fi
+
 export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
+</programlisting>
+
+or, if you are not building qt-copy (and are using your system &Qt; instead), add
+this instead:
+
+<programlisting>
+KDEDIR=(path to kdedir)  # Such as ~/kde by default.
+KDEDIRS=$KDEDIR
+PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+
+# Act appropriately if LD_LIBRARY_PATH is not already set.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=$KDEDIR/lib
+else
+  LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
+fi
+
+export KDEDIRS PATH LD_LIBRARY_PATH
 </programlisting>
 </para>
 
 <para>
-If you are not using a dedicated user, set a different <envar>$KDEHOME</envar> for your
-new environment in your <filename>.bash_profile</filename>:
+If you are not using a dedicated user, set a different $<envar>KDEHOME</envar>
+for your new environment in your <filename>.bash_profile</filename>:
 
 <programlisting>
 export KDEHOME="${HOME}/.kde-svn"
@@ -47,8 +72,9 @@ export KDEHOME="${HOME}/.kde-svn"
 
 <note>
 <para>
-If later your menu is empty or too crowded with applications from your distribution,
-you may have to set the xdg environment variables in your <filename>.bash_profile</filename>:
+If later your K Menu is empty or too crowded with applications from your
+distribution, you may have to set the <acronym>XDG</acronym> environment
+variables in your <filename>.bash_profile</filename>:
 
 <programlisting>
 XDG_CONFIG_DIRS="/etc/xdg"
@@ -59,49 +85,81 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 </para>
 </note>
 
+</sect2>
+<sect2 id="starting-kde">
+<title>Starting &kde;</title>
+
 <para>
-Now that we are done with the you have to make sure that the right <application>startkde</application>
-script is going to be used:
+Now that you have adjusted your environment settings to use the correct &kde;,
+it is important to ensure that the correct <command>startkde</command> script
+is used as well.
 </para>
 
 <para>
-Open the <filename>.xinitrc</filename> text file (or <filename>.xsession</filename>,
-depending on the distribution) from the home directory, or create it if necessary. Add the
-line:
+Open the <filename>.xinitrc</filename> text file from the home directory, or
+create it if necessary.  Add the line:
 
 <programlisting>
-exec ${KDEDIR}/bin/startkde
+<command>exec</command> <option>${KDEDIR}/bin/startkde</option>
 </programlisting>
 </para>
 
+<important><para>On some distributions, it may be necessary to perform the same
+steps with the <filename>.xsession</filename> file, also in the home directory.
+This is especially true when using graphical login managers such as
+&kdm;, <application>gdm</application>, or <application>xdm</application>.</para>
+</important>
+
 <para>
-Now start your fresh &kde;: in  BSD and Linux systems with virtual terminal support,
-Ctrl+Alt+F1...F12 keystroke combinations are used to switch to Virtual Console 1 through 12.
+Now start your fresh &kde;: in &BSD; and &Linux; systems with virtual terminal support,
+<keycombo action="simul">&Ctrl;&Alt;<keycap>F1</keycap></keycombo> ... <keycombo action="simul">&Ctrl;&Alt;<keycap>F12</keycap></keycombo> keystroke combinations are used to switch to Virtual Console 1 through 12.
 This allows you to run more than one desktop environment at the same time. The fist six are
 text terminals and the following six are graphical displays.
 </para>
 
 <para>
-If when you boot you are presented to the graphical display manager instead, you can
-use the new KDE environment, even if it is not listed as an option. Press Crtl + Alt + F2,
-and you will be presented to a text terminal. Log in using the dedicated user and type:
+If when you start your computer you are presented to the graphical display
+manager instead, you can use the new &kde; environment, even if it is not listed
+as an option.  Most display managers, including &kdm;, have an option to use
+a "Custom Session" when you login.  With this option, your session settings are
+loaded from the <filename>.xsession</filename> file in your home directory.  If
+you have already modified this file as described above, this option should load
+you into your new &kde; installation.
+</para>
+
+<para>If it doesn't, there's something else you can try that should normally
+work: Press <keycombo action="simul">&Ctrl;&Alt;<keycap>F2</keycap></keycombo>,
+and you will be presented to a text terminal. Log in using the dedicated user
+and type:
 </para>
 
 <screen>
-startx -- :1
+<command>startx</command> <option>--</option> <option>:1</option>
 </screen>
 
 <tip>
 <para>
-You can run the KDE from sources and the old KDE at the same time! Log in using your regular user,
-start the stable KDE desktop. Press Crtl + Alt + F2 (or F1, F3, etc..), and you will be presented
-to a text terminal. Log in using the dedicated user and type "startx -- :1". You can go back to the
-regular user by pressing Crtl + Alt + F6 (Or F7, F8, etc... Try them out! One of them is the right
-one.) To return to KDE from sources, press Crtl + Alt + F7 (or F6, F8,etc..). Now you can switch
-between your KDE versions, and test the new one knowing you can quickly return to the safety of
-the stable KDE desktop.
-</para>
+You can run the &kde; from sources and the old &kde; at the same time! Log in
+using your regular user, start the stable &kde; desktop. Press <keycombo
+action="simul">&Ctrl;&Alt;<keycap>F2</keycap></keycombo> (or
+<keycap>F1</keycap>, <keycap>F3</keycap>, etc..), and you will be presented
+with a text terminal. Log in using the dedicated &kde; &svn; user and
+type:</para>
+
+<screen>
+<command>startx</command> <option>--</option> <option>:1</option>
+</screen>
+
+<para>You can go back to the &kde; desktop of your regular user by pressing the
+shortcut key for the already running desktop.  This is normally
+<keycombo action="simul">&Ctrl;&Alt;<keycap>F7</keycap></keycombo>, you may need
+to use <keycap>F6</keycap> or <keycap>F8</keycap> instead.  To return to your
+&kdesvn-build;-compiled &kde;, you would use the same sequence, except with the
+next function key.  For example, if you needed to enter <keycombo action="simul">&Ctrl;&Alt;<keycap>F7</keycap></keycombo>
+to switch to your regular &kde;, you would need to enter
+<keycombo action="simul">&Ctrl;&Alt;<keycap>F8</keycap></keycombo> to go back
+to your &kdesvn-build; &kde;.</para>
 </tip>
 
-
+</sect2>
 </sect1>
