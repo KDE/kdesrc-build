@@ -266,6 +266,8 @@ use constant {
     ERROR   => 5,
 };
 
+my $versionNum = '1.0';
+
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
 # because I'm an adult and you're not! :-P
@@ -318,6 +320,9 @@ my %package_opts = (
     "stop-on-failure"     => "",
     "svn-server"          => "svn://anonsvn.kde.org/home/kde",
     "tag"                 => "",
+    "tarball-host"        => "kdesvn-build.kde.org",            # Undocumented
+    "tarball-path"        => "/other",                          # Undocumented
+    "tarball-revision-script" => "/other/module-revision.php",  # Undocumented
     "unsermake-options"   => "--compile-jobs=2 -p",
     "unsermake-path"      => "unsermake",
     "use-stable-kde"      => 0,   # Controls whether to default to 3.5 or 4.
@@ -911,6 +916,283 @@ sub get_fullpath
     return $pathinfo{'fullpath'};
 }
 
+# This subroutine tries to download a Subversion checkout snapshot of a given
+# module, at a given revision.  If the download succeeds, this module will
+# automatically arrange the extracted module to fit the normal kdesvn-build
+# source layout, and take the necessary steps to restore the snapshot to a state
+# as if it had just been checked out from Subversion.
+#
+# The finalized Subversion checked will then have svn up run in order to
+# complete the checkout.
+#
+# If a failure occurs, the function will try to clean up after itself.  So,
+# no snapshot tarball or module directory should be present if 0 is returned.
+#
+# This function assumes that Net::HTTP has already been use'd or require'd.
+#
+# The first parameter is the module to download.
+# The second parameter is the revision to download.
+#
+# Return value is boolean true if successful, false otherwise.
+sub download_module_snapshot
+{
+    my $module = shift;
+    my $revision = shift;
+    my $tarballHost = get_option($module, 'tarball-host');
+    my $snapshotPath = get_option($module, 'tarball-path');
+    my $branch = get_option($module, 'branch');
+
+    $branch = 'trunk' if not $branch; # Use default.
+
+    # File name of this format.  Extracted directory will have a similar
+    # name.
+    my $filename = "$module-$branch-svn-r$revision.tar.bz2";
+
+    if (pretending)
+    {
+        pretend "Would have downloaded snapshot for g[$module], from";
+        pretend "\tb[g[http://$tarballHost$snapshotPath/$filename]";
+        return 1;
+    }
+
+    info "Downloading snapshot for g[$module] (revision $revision)";
+    whisper "Downloading g[$filename] from g[$tarballHost$snapshotPath/]";
+
+    my $conn = Net::HTTP->new (Host => $tarballHost);
+    
+    if (not defined $conn)
+    {
+        error "Unable to connect to snapshot host: r[$@]";
+        
+        return 0;
+    }
+
+    # Send connection request
+    $conn->write_request('GET' => "$snapshotPath/$filename",
+                         'User-Agent' => "Mozilla/5.0 (compatible; kdesvn-build $versionNum)",
+                         );
+
+    my ($code, $msg, %h) = $conn->read_response_headers();
+
+    if (200 != $code)
+    {
+        error "Unable to download module r[$module]: r[b[$msg]";
+        return 0;
+    }
+
+    open OUTPUT, ">$filename" or do {
+        error "Unable to open output file for r[$module download]!";
+        error "\tMessage: b[r[$@]";
+
+        $conn->close();
+        return 0;
+    };
+
+    my ($buf, $result);
+    while (1)
+    {
+        $result = $conn->read_entity_body($buf, 2048);
+        if (not defined $result)
+        {
+            error "Error downloading from host: r[$!]";
+
+            $conn->close();
+            close OUTPUT;
+            safe_unlink($filename);
+
+            return 0;
+        }
+
+        last unless $result; # Break loop if end-of-data
+        print OUTPUT $buf;   # Print downloaded data to file.
+    }
+
+    close OUTPUT;
+    $conn->close();
+
+    info "\tDownload complete for g[$module], completing snapshot.";
+
+    # Now extract the newly downloaded file.
+    $result = safe_system("bzcat $filename | tar x");
+
+    # Snapshot file is no longer necessary.
+    safe_unlink($filename);
+    
+    if($result) { # failure
+        error "Unable to extract snapshot for r[$module]: $@";
+
+        # Remove any created portions of the module tree.
+        safe_system("rm -rf $module-$branch-svn-r$revision");
+
+        return 0;
+    }
+
+    whisper "\tExtracted directory for g[$module]";
+
+    # The extracted directory is of the form $module-$branch-svn-r$revision,
+    # move it to the correct name (just $module);
+    $result = safe_system("mv $module-$branch-svn-r$revision $module");
+    if($result) { # Failure.
+        error "Unable to move directory for r[$module] into place: r[$!]";
+
+        # Remove any created portions of the module tree.
+        safe_system("rm -rf $module-$branch-svn-r$revision");
+        safe_system("rm -rf $module");
+
+        return 0;
+    }
+
+    whisper "\tg[$module] snapshot is in place.";
+
+    # Module in place, now prepare it for checkout.
+    p_chdir($module);
+
+    # Switch svn host to proper host.
+    my $svnHost = get_option($module, 'svn-server');
+
+    info "\tFinalizing Subversion information for g[$module]";
+
+    # Set svn snapshot to update from the correct svn host instead of the default
+    # anonsvn (if different).
+    if($svnHost ne 'svn://anonsvn.kde.org/home/kde')
+    {
+        $result = log_command($module, 'svn-snapshot-switch',
+            ['svn', 'switch', '--relocate', 'svn://anonsvn.kde.org/home/kde', $svnHost]);
+
+        if($result)
+        {
+            error "Unable to switch snapshot Subversion source to the KDE Subversion server!";
+            error "\tr[$!]";
+
+            # Remove any created portions of the module tree.
+            safe_system("rm -rf $module");
+
+            return 0;
+        }
+    }
+    else
+    {
+        debug "Skipping svn switch step, it is unnecessary.";
+    }
+
+    whisper "\tRestoring module file layout to normal.";
+
+    # Finally, restore the file structure.
+    $result = log_command($module, 'svn-restore-checkout',
+        [ 'svn', 'revert', '-R', '.' ]);
+
+    if($result)
+    {
+        error "Unable to restore standard Subversion layout!";
+
+        # Remove any created portions of the module tree.
+        safe_system("rm -rf $module");
+
+        return 0;
+    }
+
+    info "Snapshot checkout complete, g[$module] at revision g[$revision]";
+    info "\nCompleting checkout by updating g[$module]";
+
+    $result = log_command($module, 'svn-first-up', ['svn', 'up']);
+    if($result)
+    {
+        error "Unable to update module r[$module] to latest code.  The module";
+        error "is correctly checked-out however, so it may be possible to try";
+        error "again later.";
+
+        # Don't delete anything here, we're close enough to being good that
+        # kdesvn-build should be able to fix this later.
+        return 0;
+    }
+
+    info "Checkout complete for g[$module]!";
+
+    return 1;
+}
+
+# This subroutine contacts a remote web server (defined by the tarball-host
+# option) and calls a php script to determine if there is a tarball snapshot
+# available for the given module and branch.  The revision number of the
+# snapshot is returned.  0 is returned if there is no revision available or
+# some other error occurred.
+#
+# First parameter: Module to query for.
+sub tarball_snapshot_revision
+{
+    my $module = shift;
+    my $tarballHost = get_option($module, "tarball-host");
+    my $revisionScript = get_option($module, "tarball-revision-script");
+    my $branch = get_option($module, 'branch');
+
+    whisper "Checking if snapshot available for g[$module]";
+
+    $branch = 'trunk' if not $branch; # Use default value.
+    debug "Looking up revision number for g[$module-$branch] from g[$tarballHost$revisionScript]";
+
+    my $conn = undef;
+    eval {
+        require Net::HTTP;
+        $conn = Net::HTTP->new ('Host' => $tarballHost);
+    };
+
+    if (not defined $conn)
+    {
+        whisper "Unable to load Net::HTTP, snapshot check aborted.";
+        debug "Net::HTTP failure reason: $@";
+        return 0;
+    }
+
+    # Send connection request
+    $conn->write_request('GET' => "$revisionScript?module=$module&branch=$branch",
+                         'User-Agent' => "Mozilla/5.0 (compatible; kdesvn-build $versionNum)",
+                         );
+
+    my ($code, $msg, %h) = $conn->read_response_headers();
+
+    # Require HTTP success code.
+    if (200 != $code)
+    {
+        debug "Server returned $code $msg";
+        whisper "Error received from server: r[$code $msg]";
+        return 0;
+    }
+
+    my ($buf, $result, $revision);
+    $revision = '';
+
+    while (1)
+    {
+        $result = $conn->read_entity_body($buf, 2048);
+        if (not defined $result)
+        {
+            whisper "Error reading revision number from server: r[$!]";
+            return 0;
+        }
+
+        last unless $result;
+        $revision .= $buf;
+    }
+
+    # Response received should be in the form "Revision: <number>".  Strip down
+    # to the number part.
+    chomp $revision;
+    ($result) = ($revision =~ /^Revision:\s*(\d+)/);
+
+    $conn->close;
+
+    if ($result and $result > 0)
+    {
+        whisper "g[$module] is g[available] for rapid download.";
+        return $result;
+    }
+    else
+    {
+        whisper "g[$module] is y[not available] for rapid download.";
+        return 0;
+    }
+}
+
 # Checkout a module that has not been checked out before, along with any
 # subdirectories the user desires.
 # The first parameter is the module to checkout (including extragear and
@@ -931,6 +1213,21 @@ sub checkout_module_path
     }
 
     p_chdir ($pathinfo{'path'});
+
+    # First let's see if we have a snapshot checkout available.  If so, it
+    # would probably be quicker to use it.
+    # TODO: Make this work when using the checkout-only option.
+    if (not scalar @path)
+    {
+        my $revision = tarball_snapshot_revision($module);
+
+        if($revision > 0 && download_module_snapshot($module, $revision))
+        {
+            whisper "Snapshot checkout successful!";
+            # Success, no need to continue on this route.
+            return 0;
+        }
+    }
 
     push @args, ('svn', 'co', '--non-interactive');
     push @args, '-N' if scalar @path;
@@ -1083,10 +1380,12 @@ END
     close SIG;
 }
 
-# Subroutine to run a command with redirected STDOUT and STDERR.  First parameter
-# is name of the log file (relative to the log directory), and the
-# second parameter is a reference to an array with the command and
-# its arguments
+# Subroutine to run a command with redirected STDOUT and STDERR.
+#
+# First parameter is name of the log file (relative to the log directory).
+# Second parameter is a reference to an array with the command and its
+# arguments
+# Return value is the shell return code, so 0 is success, non-zero is failure.
 sub log_command
 {
     my $pid;
@@ -2057,7 +2356,7 @@ sub clone_options
 sub process_arguments
 {
     my $arg;
-    my $version = "kdesvn-build 0.98.3 (Development Edition)";
+    my $version = "kdesvn-build $versionNum (Development Edition)";
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <michael.pyne\@kdemail.net>
@@ -2704,6 +3003,8 @@ sub safe_unlink
 
 # Subroutine to execute the system call on the given list if the pretend
 # global option is not set.
+#
+# Returns the shell error code, so 0 means success, non-zero means failure.
 sub safe_system(@)
 {
     if (not pretending)
