@@ -1217,7 +1217,7 @@ sub checkout_module_path
     # First let's see if we have a snapshot checkout available.  If so, it
     # would probably be quicker to use it.
     # TODO: Make this work when using the checkout-only option.
-    if (not scalar @path)
+    if (not scalar @path and not get_option($module, 'disable-snapshot'))
     {
         my $revision = tarball_snapshot_revision($module);
 
@@ -1871,7 +1871,7 @@ sub setup_stable_kde_options
     my @branched_modules = qw/kde-common kdeaccessibility kdeaddons kdeadmin
         kdeartwork kdebase kdebindings kdeedu kdegames kdegraphics kdelibs
         kdemultimedia kdenetwork kdepim kdesdk kdetoys kdeutils kdevelop
-        kdewebdev/;
+        kdewebdev kdesupport/;
 
     return unless get_option('global', 'use-stable-kde');
 
@@ -2474,6 +2474,14 @@ DONE
 
             /^--install$/ && do {
                 $install_flag = 1;
+                last SWITCH;
+            };
+
+            # Option exists for debugging.  This disables downloading of
+            # snapshots from kdesvn-build.kde.org (kdesvn-build won't even
+            # check if it's possible).
+            /^--no-snapshots$/ && do {
+                set_option('global', '#disable-snapshot', 1);
                 last SWITCH;
             };
 
