@@ -7,6 +7,19 @@
 # overridden later.
 global
 
+# This option controls whether KDE 3.5 or KDE 4.0 is compiled.  If you set this
+# option to true, kdesvn-build will automatically select the correct branch of
+# a module needed to build KDE 3.5 in most cases.  Most modules will come from
+# the 3.5 branch, arts will come from 1.5, and qt-copy will come from 3.3.
+#
+# It is always possible to override the default by using the branch, tag, or
+# override-url option yourself.
+#
+# If you set this option to false, or leave it unset, kdesvn-build will build
+# /trunk, which corresponds right now with KDE 4.0.
+#
+#	use-stable-kde false
+
 # binpath controls the value of the PATH environment variable during
 # compilation.  If you have unusual tools that need to be in the path to build
 # KDE, add them here.  KDE's and Qt's programs are automatically added.
@@ -20,10 +33,14 @@ global
 # This is the Qt installation to use to build KDE.  The default is qt-copy
 # from Subversion.  The ${source-dir} option uses whatever you set for
 # source-dir to automatically fill in the value.
+#
+# KDE 4.0 may require qt-copy (this is true as of 2006-02-02) instead of a
+# released Qt.
 	qtdir ${source-dir}/build/qt-copy
 
 # You might want to use your system's built-in Qt already (4.1 or greater for
 # KDE 4, 3.3.x for KDE 3.5.)  If so, assign the qtdir option appropriately.
+# See note above, KDE 4 may require qt-copy at times.
 #	qtdir /path/to/system/qt
 
 # This is the Subversion server to download the KDE sources from.  Developers:
@@ -38,6 +55,7 @@ global
 # These are the compilation flags to use by default when compiling KDE.
 # gcc supports a -march option in order to generate specific code for pentium4, athlon-xp,
 # etc.  See the gcc man page for more information.
+#	cxxflags -pipe -march=i686 # For standard 32-bit systems.
 	cxxflags -pipe
 
 # KDE has one of the most extensive translation packages in the world.  They
@@ -64,10 +82,9 @@ global
 # work with it, so it is safe to leave on).  However, you may get tired of
 # kdesvn-build updating unsermake all the time.  In that case, uncomment
 # the following. NOTE: You are responsible for updating unsermake after that
-# by going to its directory and running svn up when needed.  If you have not
+# by going to its directory and running 'svn up' when needed.  If you have not
 # yet downloaded unsermake let kdesvn-build update it before uncommenting.
-#
-#use-unsermake self
+#	use-unsermake self
 
 # This directory is where everything gets built before it is installed.  By
 # default it is relative to the value for source-dir.  You can specify an
@@ -97,7 +114,7 @@ global
 # 	make-install-prefix sudo -S
 
 # You can use the set-env option to add values to the build environment.
-	set-env LDFLAGS -Wl,-O1   # Optimize the linker, takes longer.
+#	set-env LDFLAGS -Wl,-O1   # Optimize the linker, takes longer.
 
 # If you use software which requires pkg-config, and you need to add entries
 # to your pkg-config path, you can also use set-env for that.  Some broken
@@ -125,15 +142,26 @@ end module
 # kdesupport contains taglib and QCA.  taglib is required for JuK, amarok, and
 # the meta info reader for music files in Konqueror. KDE 4 compatibility is
 # still uncertain.
-#module kdesupport
-#end module
+#
+# taglib: Does not depend on Qt, so it is compatible with KDE 4.
+# qca:    ?
+# libqgs: ?
+# akode:  Does not depend on Qt, so it is compatible with KDE 4.
+module kdesupport
+end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
 module kdelibs
 	configure-flags --enable-sendfile --enable-mitshm
 
+	# kdelibs compiled from a snapshot for now, remove this after kdelibs
+	# trunk works again, and then remove the ${source-dir}/kdelibs and
+	# ${build-dir}/kdelibs directories, and then you'll have to rebuild
+	# kdelibs.
+	override-url ${svn-server}/branches/work/kdelibs4_snapshot
+
 # If you're a programmer you may want to build the API docs.  Note that
-# it takes some time. :(
+# it takes some time, and DOES NOT WORK with unsermake. :(
 #	apidox true
 end module
 
