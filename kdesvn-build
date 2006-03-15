@@ -674,16 +674,23 @@ sub svn_module_url
     return "$svn_server/$branch/$module";
 }
 
-# Convienience subroutine to return the build directory for a module. Use
+# Convenience subroutine to return the build directory for a module. Use
 # this instead of get_subdir_path because this special-cases modules for you,
 # such as qt-copy.
-# TODO: From what I hear this hack is no longer necessary.  Investigate this.
+#
+# In previous versions of kdesvn-build, qt-copy may have been built in the
+# source directory.  Even for Qt 3, kdesvn-build could build in the build
+# directory by using the use-qt-builddir-hack option.  But as of now, the
+# option is always true, so even Qt 3 is built in the build directory, using
+# the hack automatically if necessary.
+#
+# The returned value does not include the module name at the end (as the build
+# path on disk doesn't always use the module name given in the .kdesvn-buildrc),
+# so be sure to add on the module name if needed.
 sub get_build_dir
 {
     my $module = shift;
 
-    # It is the responsibility of the caller to append $module!
-    return get_kdesvn_dir() if ($module eq 'qt-copy') and not get_option('qt-copy', 'use-qt-builddir-hack');
     return get_subdir_path($module, 'build-dir');
 }
 
@@ -1626,6 +1633,31 @@ sub is_subdir_buildable
     return 1;
 }
 
+# Subroutine that checks whether qt-copy is Qt 3 or below.  If true, then you
+# can assume that the qt-copy module is from Qt 3.  If false, Qt 4 or better.
+#
+# This works by checking if some Qt 3-specific files exist.  If they don't, we
+# assume Qt 4+.
+#
+# Naturally this requires that the source is already downloaded for this
+# function to work.  However, if pretend mode is set we'll check if the branch
+# or tag option is set to 3.foo, if so we assume the user will be downloading
+# qt 3.
+sub is_qt_copy_qt3
+{
+    my $source_dir = get_fullpath('qt-copy', 'source');
+
+    if (pretending)
+    {
+        return 1 if get_option('qt-copy', 'branch') =~ /^3\./;
+        return 1 if get_option('qt-copy', 'tag') =~ /^3\./;
+        return 0;
+    }
+
+    # This file seems to be part of (only) Qt 3's documentation.
+    return -e "$source_dir/doc/html/y2k.html";
+}
+
 # Subroutine to return the path to the given executable based on the current
 # binpath settings.  e.g. if you pass make you could get '/usr/bin/make'.  If
 # the executable is not found undef is returned.
@@ -1856,7 +1888,6 @@ sub setup_default_modules()
     $package_opts{'qt-copy'} = {
         'conf-flags' => '-qt-gif -no-exceptions -fast',
         'apply-qt-patches' => 0,
-        'use-qt-builddir-hack' => 'true',
         'use-unsermake' => 0,
         'set-env' => { },
     };
@@ -2112,12 +2143,12 @@ EOM
 sub module_needs_builddir_help
 {
     my $module = shift;
-    my @module_help_list = qw/qt-copy kdebindings valgrind/;
+    my @module_help_list = qw/kdebindings valgrind/;
 
-    # qt-copy special case to support use-qt-builddir-hack.
-    if ($module eq 'qt-copy' and not get_option('qt-copy', 'use-qt-builddir-hack'))
+    # qt-copy special case to support the lndir() hack for Qt 3.
+    if ($module eq 'qt-copy' and is_qt_copy_qt3())
     {
-        return 0;
+        return 1;
     }
 
     # l10n/lang needs help.
@@ -3261,22 +3292,41 @@ sub safe_configure
     setenv ('CXXFLAGS', $cxxflags);
     setenv ('DO_NOT_COMPILE', get_option ($module, 'do-not-compile'));
 
-    if ($module ne 'qt-copy')
+    if ($module ne 'qt-copy' or not is_qt_copy_qt3())
     {
-        my $kdedir = get_option ($module, 'kdedir');
+        # If we're in this path and module is qt-copy, it is at least qt-copy 4.
+
         my $prefix = get_option ($module, 'prefix');
 
-        $prefix = $kdedir unless $prefix;
+        # Don't allow prefix option to override qtdir setting for safety.
+        $prefix = get_option($module, 'qtdir') if $module eq 'qt-copy';
 
-        push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
+        # If still no prefix, use KDEDIR
+        $prefix = get_option($module, 'kdedir') unless $prefix;
 
-        if ($module =~ /^l10n\//)
+        if ($module ne 'qt-copy')
         {
-            whisper "\tg[$module] ignores configure flags...";
-            @commands = ();
+            push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
+            push @commands, "--prefix=$prefix";
         }
+        else # Qt 4.
+        {
+            # Some users have added -prefix manually to their flags, they
+            # probably shouldn't anymore. :)
 
-        push @commands, "--prefix=$prefix";
+            if (scalar grep /^-prefix(=.*)?$/, @commands)
+            {
+                warning <<EOF;
+ b[y[*]
+ b[y[*] You have the y[-prefix] option selected in your qt-copy configure flags.
+ b[y[*] kdesvn-build will correctly add the -prefix option to match your Qt
+ b[y[*] directory setting, so you do not need to use -prefix yourself.
+ b[y[*]
+EOF
+            }
+
+            push @commands, "-prefix", $prefix;
+        }
 
         # We're special casing these modules because we're using the lndir
         # hack for them.
@@ -3285,34 +3335,43 @@ sub safe_configure
             $script = get_fullpath($module, 'build') . "/configure";
         }
     }
-    else
+
+    # Create specialized configure script for qt-copy.
+    if ($module eq 'qt-copy')
     {
+        # Qt 3.
         my $qtdir = get_fullpath('qt-copy', 'build');
+
+        # Qt 4+.
+        $qtdir = get_fullpath('qt-copy', 'source') unless is_qt_copy_qt3();
+
+        debug "Creating g[$qtdir/configure.new] from g[$script]";
 
         if(not pretending)
         {
             # Copy the configure script to accept the GPL license.
+
+            # $script should point to $srcdir/qt-copy/configure for both Qt
+            # 3 and 4.
+
             open CONFIG, "<$script";
             open NEWCONFIG, ">$qtdir/configure.new";
+
             while(<CONFIG>)
             {
                 s/read acceptance/acceptance=yes/;
                 print NEWCONFIG $_;
             }
+
             close NEWCONFIG;
             close CONFIG;
+
             chmod 0755, "$qtdir/configure.new";
         }
 
         $script = "$qtdir/configure.new";
 
         note "\tb[r[GPL license selected for Qt].  See $fullpath/LICENSE.GPL";
-    }
-
-    if ($module =~ /^l10n\//)
-    {
-        whisper "\tg[$module] ignores configure flags...";
-        @commands = ();
     }
 
     info "\tRunning g[configure]...";
@@ -3826,21 +3885,6 @@ sub clean_build_system
         return 0;
     }
 
-    # Clean qt-copy separately
-    if ($module eq 'qt-copy' and not get_option('qt-copy', 'use-qt-builddir-hack'))
-    {
-        p_chdir ($builddir);
-
-        if (log_command ('qt-copy', 'clean', ['make', 'clean']))
-        {
-            warning "\tr[WARNING]: Error cleaning r[qt-copy].";
-        }
-
-        unlink ("$builddir/.qmake.cache");
-
-        return 1;
-    }
-
     # Use an existing directory
     if (-e "$builddir")
     {
@@ -3899,9 +3943,8 @@ sub setup_build_system
     }
 
     # Symlink source directory to build directory if module doesn't support
-    # srcdir != builddir.  If it's qt-copy only do so if use-qt-builddir-hack
-    # is on (true by default).  Note that module_needs_builddir_help() already
-    # takes care of that test.
+    # srcdir != builddir.  If it's qt-copy only do so if it is Qt 3.
+    # Note that module_needs_builddir_help() already takes care of that test.
     if (module_needs_builddir_help($module))
     {
         whisper "\tFaking builddir for g[$module]";
@@ -4127,7 +4170,9 @@ sub build_module
 
     update_module_environment($module);
 
-    if($module eq 'qt-copy' and $builddir ne get_option('global', 'qtdir'))
+    # This warning doesn't apply to Qt 4.
+    if($module eq 'qt-copy' and $builddir ne get_option('global', 'qtdir')
+        and is_qt_copy_qt3())
     {
         my $qtpath = $builddir;
         $qtpath =~ s/$ENV{HOME}/~/;
@@ -4467,7 +4512,7 @@ EOF
 sub handle_install
 {
     my $apidox = pop; # Take parameter off end of list (@_).
-    my @no_install_modules = qw/qt-copy kde-common/;
+    my @no_install_modules = qw/kde-common/;
     my @modules = filter_l10n_module_list(@_);
     my $result = 0;
 
@@ -4475,7 +4520,8 @@ sub handle_install
     {
         check_for_module_config ($module);
 
-        if (list_has(@no_install_modules, $module))
+        if (list_has(@no_install_modules, $module) or
+            ($module eq 'qt-copy' and is_qt_copy_qt3()))
         {
             info "\tg[$module] doesn't need to be installed.";
             next;
