@@ -3262,8 +3262,7 @@ sub handle_updates
 # Returns 0 on success, non-zero on failure.
 sub safe_apply_patches
 {
-    my %pathinfo = get_module_path_dir('qt-copy', 'build');
-    my $builddir = "$pathinfo{fullpath}";
+    my $srcdir = get_fullpath('qt-copy', 'source');
 
     if (pretending)
     {
@@ -3272,7 +3271,7 @@ sub safe_apply_patches
     }
 
     info "\tg[Applying recommended Qt patches].";
-    p_chdir ($builddir);
+    p_chdir ($srcdir);
     return (log_command('qt-copy', 'apply-patches', [ "./apply_patches" ]));
 }
 
