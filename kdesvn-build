@@ -6,7 +6,7 @@
 # Please also see the documentation that should be included with this program,
 # from the kdesdk/doc/scripts/kdesvn-build directory.
 #
-# Copyright (c) 2003, 2004, 2005 Michael Pyne. <michael.pyne@kdemail.net>
+# Copyright © 2003 - 2006 Michael Pyne. <michael.pyne@kdemail.net>
 # Home page: http://kdesvn-build.kde.org/
 #
 # You may use, alter, and redistribute this software under the terms
@@ -266,7 +266,7 @@ use constant {
     ERROR   => 5,
 };
 
-my $versionNum = '1.0';
+my $versionNum = '1.1a';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -282,6 +282,7 @@ my %package_opts = (
     "build-dir"           => "build",
     "build-system-only"   => "",
     "checkout-only"       => "",
+    "cmake-options"       => "",
     "configure-flags"     => "--enable-debug",
     "colorful-output"     => 1, # Use color by default.
     "cxxflags"            => "-pipe",
@@ -325,6 +326,7 @@ my %package_opts = (
     "tarball-revision-script" => "/other/module-revision.php",  # Undocumented
     "unsermake-options"   => "--compile-jobs=2 -p",
     "unsermake-path"      => "unsermake",
+    "use-cmake"           => "",  # Must be empty by default.
     "use-stable-kde"      => 0,   # Controls whether to default to 3.5 or 4.
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
   }
@@ -545,7 +547,25 @@ sub get_dest_dir
     return $dest_dir;
 }
 
-# Convienience subroutine to get the source root dir.
+# This function returns true if the give module uses CMake.  If the user has
+# specified a choice, we use the user's choice regardless for now.  If no user
+# choice is given, auto-detect based on searching for filenames.
+#
+# First parameter: Module to check.
+# Return: True (non-zero) if user has chosen cmake or CMake support is detected,
+#         False (0, undef) if user does not want cmake or no CMake support is detected.
+sub module_uses_cmake
+{
+    my $module = shift;
+    my $user_choice = get_option($module, 'use-cmake');
+    
+    return $user_choice if defined $user_choice and $user_choice ne "";
+
+    my $srcdir = get_fullpath($module, 'source');
+    return -e "$srcdir/CMakeLists.txt";
+}
+
+# Convenience subroutine to get the source root dir.
 sub get_kdesvn_dir
 {
     my $module = shift;
@@ -818,9 +838,10 @@ sub get_option
     }
 
     # No sticky options left.
-    # Configure flags and CXXFLAGS are appended to the global option
+    # Configure flags, cmake options, and CXXFLAGS are appended to the global
+    # option
     if (($module ne 'qt-copy' && $option eq 'configure-flags')
-        || $option eq 'cxxflags')
+        || $option eq 'cxxflags' || $option eq 'cmake-options')
     {
         my $value = ${$global_opts}{$option};
 
@@ -1696,12 +1717,16 @@ sub safe_make (@)
     my $installing = $trynumber eq 'install';
     my $make = 'make';
 
-    if (get_option($module, 'use-unsermake'))
+    if (module_uses_cmake($module) or get_option($module, 'use-unsermake'))
     {
         # Unsermake can't build apidox.
+        # CMake will have a different way of doing so.
+
+        my $tool = module_uses_cmake($module) ? 'cmake' : 'unsermake';
+
         if ($apidox)
         {
-            warning " y[*] This module (g[$module]) uses unsermake, but unsermake doesn't";
+            warning " y[*] This module (g[$module]) uses $tool, but $tool doesn't";
             warning " y[*] support building the API documentation.  The most-often updated";
             warning " y[*] documentation is at http://www.englishbreakfastnetwork.org/";
             warning " y[*] r[Aborting APIDOX build]";
@@ -1709,8 +1734,15 @@ sub safe_make (@)
             return 0;
         }
 
-        $make = get_option($module, 'unsermake-path');
-        $opts = get_option($module, 'unsermake-options');
+        if (module_uses_cmake($module))
+        {
+            $opts = get_option($module, 'make-options');
+        }
+        else
+        {
+            $make = get_option($module, 'unsermake-path');
+            $opts = get_option($module, 'unsermake-options');
+        }
     }
     else
     {
@@ -2193,7 +2225,7 @@ sub initialize_environment
     # Set the process priority
     setpriority PRIO_PROCESS, 0, get_option('global', 'niceness');
 
-    setup_module_environment ('global');
+    update_module_environment ('global');
 }
 
 # Subroutine to get a list of modules to install, either from the command line
@@ -2433,7 +2465,7 @@ in .kdesvn-buildrc will be used.  If you DO specify a package name, then
 your settings will still be read, but the script will try to build/install
 the package regardless of .kdesvn-buildrc
 
-Copyright (c) 2003, 2004, 2005 $author
+Copyright (c) 2003 - 2006 $author
 The script is distributed under the terms of the GNU General Public License
 v2, and includes ABSOLUTELY NO WARRANTY!!!
 
@@ -2480,6 +2512,8 @@ Options:
                          from scratch.
     --build-system-only  Create the build infrastructure, but don't actually
                          perform the build.
+    --run=<program>      Runs the given program in the same environment
+                         kdesvn-build runs in.
     --install            Try to install the packages passed on the command
                          line, or all packages in ~/.kdesvn-buildrc that don't
                          have manual-build set.  Building and Subversion
@@ -2582,6 +2616,20 @@ DONE
             /^--build-only$/ && do {
                 set_option('global', '#no-svn', 1);
                 set_option('global', '#install-after-build', 0);
+                last SWITCH;
+            };
+
+            # Start up a program with the environment variables as
+            # read from the config file.
+            /^--run=?/ && do {
+                my $program = extract_option_value($_, @ARGV);
+                if (not $program)
+                {
+                    print "You must specify a program to run with the --run option.\n";
+                    exit 32;
+                }
+
+                set_option('global', '#start-program', $program);
                 last SWITCH;
             };
 
@@ -2852,7 +2900,19 @@ sub adjust_update_list
     # already supposed to be checked out.  If so, we need to make sure that
     # unsermake is present in any checkout-only directives, and if not, we need
     # to add kdenonbeta/unsermake to the checkout list.
-    my $unsermake_needed = grep (get_option ($_, 'use-unsermake'), @{$build_ref});
+    my $unsermake_needed = 0;
+
+    for my $module (@{$build_ref})
+    {
+        if(get_option($module, 'use-unsermake')
+            and not module_uses_cmake($module)
+            and not blacklisted($module, 'use-unsermake'))
+        {
+            debug "Unsermake is needed.";
+            $unsermake_needed = 1;
+            last;
+        }
+    }
 
     # If the user has told us that they will manage unsermake then we don't
     # need to do anything.
@@ -3281,8 +3341,8 @@ sub safe_apply_patches
 sub safe_configure
 {
     my $module = shift;
-    my $fullpath = get_fullpath($module, 'source');
-    my $script = "$fullpath/configure";
+    my $srcdir = get_fullpath($module, 'source');
+    my $script = "$srcdir/configure";
 
     my @commands = split (/\s+/, get_option($module, 'configure-flags'));
 
@@ -3370,13 +3430,51 @@ EOF
 
         $script = "$qtdir/configure.new";
 
-        note "\tb[r[GPL license selected for Qt].  See $fullpath/LICENSE.GPL";
+        note "\tb[r[GPL license selected for Qt].  See $srcdir/LICENSE.GPL";
     }
 
     info "\tRunning g[configure]...";
     unshift @commands, $script;
 
     return log_command($module, "configure", \@commands);
+}
+
+# Subroutine to run CMake to create the build directory for a module.
+# CMake is not actually run if pretend mode is enabled.
+#
+# First parameter is the module to run cmake on.
+# Return value is the shell return value as returned by log_command().  i.e.
+# 0 for success, non-zero for failure.
+sub safe_run_cmake
+{
+    my $module = shift;
+    my $srcdir = get_fullpath($module, 'source');
+    my @commands = split (/\s+/, get_option($module, 'cmake-options'));
+
+    if (get_option ($module, 'do-not-compile'))
+    {
+        warning " y[*] kdesvn-build does not support y[do-not-compile] with CMake.";
+    }
+
+    # Get the user's CXXFLAGS, use them if specified and not already given
+    # on the command line.
+    my $cxxflags = get_option ($module, 'cxxflags');
+    if ($cxxflags and not grep { /^-DCMAKE_CXX_FLAGS=/ } @commands)
+    {
+        push @commands, "-DCMAKE_CXX_FLAGS=$cxxflags";
+    }
+
+    my $prefix = get_option ($module, 'prefix');
+
+    # If still no prefix, use KDEDIR
+    $prefix = get_option($module, 'kdedir') unless $prefix;
+
+    push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
+
+    info "\tRunning g[cmake]...";
+    unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
+
+    return log_command($module, "cmake", \@commands);
 }
 
 # Subroutine to try and see if we've already tried to update kde-common
@@ -3605,14 +3703,27 @@ sub prepare_fake_builddir
 sub safe_create_build_system
 {
     my $module = shift;
-    my $fullpath = get_fullpath($module, 'source');
+    my $srcdir = get_fullpath($module, 'source');
     my $builddir = get_fullpath($module, 'build');
+    my $uses_cmake = module_uses_cmake($module); 
     my $instapps = get_option($module, 'inst-apps');
+
+    whisper "\tCMake support for $module: ", $uses_cmake ? "Yes" : "No";
 
     if (pretending)
     {
         pretend "\tWould have created g[$module]\'s build system.";
         return 0;
+    }
+
+    # If we're using CMake, stick around long enough to check for inst-apps,
+    # and eventually other valid options we don't support yet, and warn if
+    # they are in use.  We do nothing further in this function because we
+    # skip this step when using CMake.
+    if ($uses_cmake)
+    {
+        warning " b[y[*] CMake does not support the inst-apps option!" if $instapps;
+        return 0; # Done.
     }
 
     # These modules will run make -f Makefile.cvs in (fake) builddir to keep
@@ -3623,7 +3734,7 @@ sub safe_create_build_system
     }
     else
     {
-        p_chdir ($fullpath); # Run make -f Makefile.cvs in srcdir.
+        p_chdir ($srcdir); # Run make -f Makefile.cvs in srcdir.
     }
 
     if ($instapps)
@@ -3638,7 +3749,7 @@ sub safe_create_build_system
     }
     else
     {
-        unlink ("$fullpath/inst-apps");
+        unlink ("$srcdir/inst-apps");
     }
 
     # qt-copy 4.x doesn't need any other help.
@@ -3914,10 +4025,15 @@ sub clean_build_system
 sub setup_build_system
 {
     my $module = shift;
-    my $fullpath = get_fullpath($module, 'source');
+    my $srcdir = get_fullpath($module, 'source');
     my $builddir = get_fullpath($module, 'build');
+    my $uses_cmake = module_uses_cmake($module);
     my $do_configure = get_option ($module, 'reconfigure');
-    my $do_makeconf = get_option ($module, 'recreate-configure');
+
+    # We don't need to do this with CMake.  Parentheses required because otherwise
+    # Perl parses as ($a = get_option()) and not foo.  This could also be fixed
+    # by using && instead of and.
+    my $do_makeconf = (get_option ($module, 'recreate-configure') and not $uses_cmake);
 
     if (needs_refreshed($module))
     {
@@ -3944,7 +4060,8 @@ sub setup_build_system
     # Symlink source directory to build directory if module doesn't support
     # srcdir != builddir.  If it's qt-copy only do so if it is Qt 3.
     # Note that module_needs_builddir_help() already takes care of that test.
-    if (module_needs_builddir_help($module))
+    # Also, CMake requires srcdir != builddir so don't do this for CMake.
+    if (not $uses_cmake and module_needs_builddir_help($module))
     {
         whisper "\tFaking builddir for g[$module]";
         if (not prepare_fake_builddir($module))
@@ -3954,8 +4071,9 @@ sub setup_build_system
         }
     }
 
-    # Check for admin dir, if it doesn't exist, create a softlink
-    if (not create_admin_dir($module))
+    # Check for admin dir, if it doesn't exist, create a softlink.  This doesn't
+    # seem to be necessary for CMake however.
+    if (not $uses_cmake and not create_admin_dir($module))
     {
         warning "Unable to find /admin directory for y[$module], it probably";
         warning "won't build.";
@@ -3963,9 +4081,9 @@ sub setup_build_system
         # won't work in the future. ;)
     }
 
-    my $confpath = module_needs_builddir_help($module) ? $builddir : $fullpath;
+    my $confpath = module_needs_builddir_help($module) ? $builddir : $srcdir;
 
-    if ($do_makeconf or not -e "$confpath/configure")
+    if (not $uses_cmake and ($do_makeconf or not -e "$confpath/configure"))
     {
         whisper "\ty[Recreating configure script].";
 
@@ -3990,6 +4108,9 @@ sub setup_build_system
     # File which exists after configure has been run.
     my $conf_key_file = "$builddir/Makefile";
 
+    # This depends on CMake not writing out CMakeCache.txt if it fails.
+    $conf_key_file = "$builddir/CMakeCache.txt" if $uses_cmake;
+
     if ($do_configure or not -e $conf_key_file)
     {
         if (not -e "$builddir" and not super_mkdir("$builddir"))
@@ -4003,11 +4124,24 @@ sub setup_build_system
         # builddir is automatically set to the right value for qt-copy
         p_chdir ($builddir);
 
-        # configure the module (sh script return value semantics)
-        if (safe_configure ($module))
+        if (not $uses_cmake)
         {
-            error "\tUnable to configure r[$module]!";
-            return 0;
+            # configure the module (sh script return value semantics)
+            if (safe_configure ($module))
+            {
+                error "\tUnable to configure r[$module]!";
+                return 0;
+            }
+        }
+        else
+        {
+            # Use cmake to create the build directory (sh script return value
+            # semantics).
+            if (safe_run_cmake ($module))
+            {
+                error "\tUnable to configure r[$module] with CMake!";
+                return 0;
+            }
         }
     }
 
@@ -4046,7 +4180,7 @@ sub update_module_environment
     # Benjamin Meyer has an excellent article about speeding up distributed builds using
     # unsermake.  You should notice a much faster build using distcc, and
     # a slightly faster build even with only one CPU.
-    if (get_option ($module, "use-unsermake"))
+    if (not module_uses_cmake($module) and get_option ($module, "use-unsermake"))
     {
         my $kdenonbeta = get_fullpath('kdenonbeta', 'source');
         $path = "$kdenonbeta/unsermake:$path";
@@ -4058,7 +4192,7 @@ sub update_module_environment
 
     setenv ('LD_LIBRARY_PATH', $libdir);
     setenv ('PATH', $path);
-    setenv ('KDEDIR', $kdedir);
+    setenv ('KDEDIRS', $kdedir);
     setenv ('QTDIR', $qtdir);
     setenv ('PKG_CONFIG_PATH', $pc_path);
 
@@ -4823,6 +4957,30 @@ EOF
     $mailer->close;
 }
 
+# Exits out of kdesvn-build, executing the user's preferred shell instead.  The
+# different is that the environment variables should be as set in kdesvn-build
+# instead of as read from .bashrc and friends.
+#
+# Meant to implement the --shell command line option.
+sub execute_command_line_program()
+{
+    my $program = get_option('global', '#start-program');
+
+    if (not $program)
+    {
+        error "You need to specify a program with the --run option.";
+        exit 0; # Can't use finish here.
+    }
+
+    debug "Executing b[r[$program]";
+
+    exec $program or do {
+        # If we get to here, that sucks, but don't continue.
+        error "Error executing $program: $!";
+        exit 1;
+    };
+}
+
 # Script starts.
 
 # Use some exception handling to avoid ucky error messages
@@ -4833,7 +4991,16 @@ eval
     process_arguments();        # Process --help, --install, etc. first.
     read_options();             # If we're still here, read the options
     setup_stable_kde_options(); # Default to KDE 3.5 if that option is set.
+
     initialize_environment();   # Initialize global env vars.
+
+    # Check if we're supposed to drop into an interactive shell instead.  If so,
+    # here's the stop off point.
+
+    if (get_option('global', '#start-program'))
+    {
+        execute_command_line_program();
+    }
 
     setup_logging_subsystem(); # Setup logging directories.
 

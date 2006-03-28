@@ -52,6 +52,11 @@ global
 # after these flags to allow the module setting to override the global setting.
 	configure-flags --enable-debug
 
+# KDE 4 uses CMake.  The equivalent to configure-flags is cmake-options.  BUT the same
+# options will not work, CMake expects them in a different format.  You should probably
+# not need to use cmake-options however.  RPATH_STYLE is provided as an example.
+#	cmake-options -DRPATH_STYLE=default
+
 # These are the compilation flags to use by default when compiling KDE.
 # gcc supports a -march option in order to generate specific code for pentium4, athlon-xp,
 # etc.  See the gcc man page for more information.
@@ -157,11 +162,15 @@ module kdelibs
 	# kdelibs compiled from a snapshot for now, remove this after kdelibs
 	# trunk works again, and then remove the ${source-dir}/kdelibs and
 	# ${build-dir}/kdelibs directories, and then you'll have to rebuild
-	# kdelibs.
+	# kdelibs.  Also remove this if you're building KDE 3.
 	override-url ${svn-server}/branches/work/kdelibs4_snapshot
 
+	# KDE 4 uses CMake, if you need to pass options to the cmake command, use this
+	# option:
+	# cmake-options -DRPATH_STYLE=default
+
 # If you're a programmer you may want to build the API docs.  Note that
-# it takes some time, and DOES NOT WORK with unsermake. :(
+# it takes some time, and DOES NOT WORK with unsermake (or CMake, yet). :(
 #	apidox true
 end module
 
