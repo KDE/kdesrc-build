@@ -4969,10 +4969,18 @@ sub execute_command_line_program()
     if (not $program)
     {
         error "You need to specify a program with the --run option.";
-        exit 0; # Can't use finish here.
+        exit 1; # Can't use finish here.
+    }
+
+    if (($< != $>) and ($> == 0))
+    {
+        error "kdesvn-build will not run a program as root unless you really are root.";
+        exit 1;
     }
 
     debug "Executing b[r[$program]";
+
+    exit 0 if pretending;
 
     exec $program or do {
         # If we get to here, that sucks, but don't continue.
