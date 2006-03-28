@@ -49,6 +49,7 @@ authors using the address you can find <link linkend="authors">above</link>.
 <listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of /trunk.</para></listitem>
 <listitem><para><link linkend="conf-build-dir">build-dir</link>, to set the directory to build in.</para></listitem>
 <listitem><para><link linkend="conf-checkout-only">checkout-only</link>, to checkout only parts of a module.</para></listitem>
+<listitem><para><link linkend="conf-cmake-options">cmake-options</link> to define what flags to configure a module with using cmake.</para></listitem>
 <listitem><para><link linkend="conf-colorful-output">colorful-output</link> to add color to the script output.</para></listitem>
 <listitem><para><link linkend="conf-configure-flags">configure-flags</link> to define what flags to configure a module with.</para></listitem>
 <listitem><para><link linkend="conf-cxxflags">cxxflags</link> to define the <envar>CXXFLAGS</envar> variable.</para></listitem>
@@ -123,7 +124,7 @@ do any harm to enable it.  The default is to enable the patches.</entry>
 
 <row id="conf-binpath">
 <entry>binpath</entry>
-<entry>Can't be overridden</entry>
+<entry>Overrides global</entry>
 <entry><para>Set this option to set the environment variable PATH while building.
 You can't override this setting in a module option.  The default value is
 <filename class="directory">/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin</filename>.  This environment
@@ -190,14 +191,43 @@ a global option makes no sense.
 </entry>
 </row>
 
+<row id="conf-cmake-options">
+<entry>cmake-options</entry>
+<entry>Appends to global options (not applicable to qt-copy)</entry>
+<entry><para>Use this option to specify what flags to pass to &cmake; when creating
+the build system for the module.  When this is used as a global option, it is
+applied to all modules that this script builds.  When used as a module option,
+it is added to the end of the global options.  This allows you to specify
+common CMake options in the global section.</para>
+
+<para>This option replaces <link linkend="conf-configure-flags">configure-flags</link>
+for all KDE 4 modules, since they use CMake to build.</para>
+
+<para>Since these options are passed directly to the CMake command line, they
+should be given as they would be typed into CMake.  For example:</para>
+
+<screen>  cmake-options -DRPATH_STYLE=default
+</screen>
+
+<para>Since this is a hassle, &kdesvn-build; takes pains to ensure that as long
+as the rest of the options are set correctly, you should be able to leave this
+option blank.</para></entry>
+</row>
+
 <row id="conf-configure-flags">
 <entry>configure-flags</entry>
-<entry>Appends to global option(except for qt-copy)</entry>
-<entry>Use this option to specify what flags to pass to ./configure when creating
+<entry>Appends to global options (except for qt-copy)</entry>
+<entry><para>Use this option to specify what flags to pass to ./configure when creating
 the build system for the module.  When this is used as a global-option, it is
 applied to all modules that this script builds.  qt-copy uses a much different
 set of configure options than the rest of &kde;, so this option
-<emphasis>overrides</emphasis> the global settings when applied to qt-copy.</entry>
+<emphasis>overrides</emphasis> the global settings when applied to qt-copy.
+</para>
+
+<para>This option applies to qt-copy and all KDE 3 modules.  KDE 4 modules use
+&cmake;, which is controlled using the <link linkend="conf-cmake-options">cmake-options</link>
+option.</para>
+</entry>
 </row>
 
 <row id="conf-colorful-output">
@@ -216,7 +246,8 @@ color codes to anything but a terminal (such as xterm, &konsole;, or the normal
 <entry>Use this option to specify what flags to pass to <command>./configure</command> as the
 <envar>CXXFLAGS</envar> when creating the build system for the module.  This option is
 specified here instead of with <link
-linkend="conf-configure-flags">configure-flags</link> because this option will also
+linkend="conf-configure-flags">configure-flags</link> or <link
+linkend="conf-cmake-options">cmake-options</link> because this option will also
 set the environment variable <envar>CXXFLAGS</envar> during the build process.
 </entry>
 </row>
@@ -253,6 +284,9 @@ built.  The directories should be space-separated.</para>
 <para>Note that the sources to the programs will still be downloaded.  You can use
 the <link linkend="conf-checkout-only">checkout-only</link>
 directive to choose directories that you want to check out.</para>
+
+<important><para>This option does not yet work with modules built using
+&cmake;</para></important>
 </entry>
 </row>
 
@@ -303,6 +337,9 @@ linkend="cmdline-refresh-build"><option>--refresh-build</option></link> or <link
 linkend="cmdline-recreate-configure"><option>--recreate-configure</option></link> options.
 </para>
 
+<important><para>This option does not yet work with modules built using
+the &cmake; build system.</para></important>
+
 <para>Note that the sources to the programs will still be downloaded.  You can use
 the <link linkend="conf-checkout-only">checkout-only</link>
 directive to choose directories that you want to check out.</para>
@@ -321,7 +358,7 @@ set this option to 0 in the &rcfile;.  You can also use the
 
 <row id="conf-kdedir">
 <entry>kdedir</entry>
-<entry>Can't be overridden</entry>
+<entry>Overrides global</entry>
 <entry>This option sets the directory that &kde; will be installed to after it is
 built.  It defaults to <filename class="directory">~/kde</filename>.  If you change this to a directory
 needing root access, you may want to read about the <link
@@ -353,7 +390,7 @@ French language, however.</para>
 
 <row id="conf-libpath">
 <entry>libpath</entry>
-<entry>Can't be overridden</entry>
+<entry>Overrides global</entry>
 <entry>Set this option to set the environment variable LD_LIBRARY_PATH while
 building.  You can't override this setting in a module option.  The default
 value is blank, but the paths <filename class="directory">$KDEDIR/lib</filename> and
@@ -457,7 +494,7 @@ can't figure out what you mean using <link linkend="conf-branch">branch</link>.
 
 <row id="conf-qtdir">
 <entry>qtdir</entry>
-<entry>Can't be overridden</entry>
+<entry>Overrides global</entry>
 <entry>Set this option to set the environment variable QTDIR while building.
 You can't override this setting in a module option.  If you don't specify
 this option, it defaults to
@@ -506,7 +543,7 @@ globally).</para>
 
 <row id="conf-source-dir">
 <entry>source-dir</entry>
-<entry>Can't be overridden</entry>
+<entry>Overrides global</entry>
 <entry>This option is used to set the directory on your computer to store the &kde;
 &svn; sources at.  If you don't specify this value, the default is
 <filename class="directory">~/kdesvn</filename>.  If
@@ -516,7 +553,7 @@ you do specify this value, use an absolute path name.
 
 <row id="conf-svn-server">
 <entry>svn-server</entry>
-<entry>Can't be overridden</entry>
+<entry>Overrides global</entry>
 <entry>This option is used to set the server used to check out from &svn;.
 The default is the anonymous &svn; repository, <emphasis>svn://anonsvn.kde.org/</emphasis></entry>
 </row>
@@ -542,6 +579,19 @@ url="http://download.kde.org/download.php">its mirrors</ulink>.</para>
 a &kde; release to build on your distribution, consider using the <ulink
 url="http://developer.kde.org/build/konstruct/">Konstruct build tool</ulink>
 instead, which works from the release tarballs.</para>
+</entry>
+</row>
+
+<row id="conf-use-cmake">
+<entry>use-cmake</entry>
+<entry>Overrides global</entry>
+<entry>
+<para>This option allows you to force &kdesvn-build; to try (or not try) to use
+CMake with a given module.  Normally &kdesvn-build; will always try to use CMake
+if it is present in the module, as this will be required to build KDE 4.  This
+option is available to ease the transition from unsermake to CMake.  This option
+will be removed once all KDE 4 modules require CMake.
+</para>
 </entry>
 </row>
 
