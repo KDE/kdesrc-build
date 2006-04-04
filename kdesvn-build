@@ -4035,11 +4035,20 @@ sub setup_build_system
     # by using && instead of and.
     my $do_makeconf = (get_option ($module, 'recreate-configure') and not $uses_cmake);
 
-    if (needs_refreshed($module))
+    # As a special case to the normal instances where we will rebuild a module,
+    # also force a rebuild if we're using CMake but the current build directory
+    # is unsermake-based.  libtool is only used by autotools/unsermake.
+    if (needs_refreshed($module) or
+        ($uses_cmake and -e "$builddir/libtool"))
     {
         # The build system needs created, either because it doesn't exist, or
         # because the user has asked that it be completely rebuilt.
         info "\tPreparing build system for y[$module].";
+
+        if ($uses_cmake and -e "$builddir/libtool")
+        {
+            info "\t\ty[Rebuild forced] due to switch of build system to CMake.";
+        }
 
         # Define this option to tell later functions that we tried to rebuild
         # this module.
