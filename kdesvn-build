@@ -3481,6 +3481,11 @@ sub safe_run_cmake
 
     info "\tRunning g[cmake]...";
     unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
+    
+    # Remove any stray CMakeCache.txt
+    my $builddir = get_fullpath($module, 'build');
+    safe_unlink "$srcdir/CMakeCache.txt"   if -e "$srcdir/CMakeCache.txt";
+    safe_unlink "$builddir/CMakeCache.txt" if -e "$builddir/CMakeCache.txt";
 
     return log_command($module, "cmake", \@commands);
 }
@@ -4209,9 +4214,17 @@ sub update_module_environment
 
     setenv ('LD_LIBRARY_PATH', $libdir);
     setenv ('PATH', $path);
-    setenv ('KDEDIRS', $kdedir);
     setenv ('QTDIR', $qtdir);
     setenv ('PKG_CONFIG_PATH', $pc_path);
+
+    # If the module isn't kdelibs, also append kdelibs's KDEDIR setting.
+    if ($module ne 'kdelibs')
+    {
+        my $kdelibsDir = get_option('kdelibs', 'kdedir');
+        $kdedir .= ":$kdelibsDir" if $kdelibsDir and $kdelibsDir ne $kdedir;
+    }
+
+    setenv ('KDEDIRS', $kdedir);
 
     # Qt has several defines of its own.  Special case qt-copy for this
     # reason.
