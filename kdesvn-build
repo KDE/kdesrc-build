@@ -3205,9 +3205,8 @@ sub check_for_ssh_agent
     my $pid = $ENV{'SSH_AGENT_PID'};
 
     # It's supposed to be running, let's see if there exists the program with
-    # that pid.
-    # PORTABILITY NOTE: I'm not sure if this works under *BSD or Solaris.
-    if (not -e "/proc/$pid")
+    # that pid (this check is linux-specific at the moment).
+    if (-d "/proc" and not -e "/proc/$pid")
     {
         warning "r[ *] SSH Agent is enabled, but y[doesn't seem to be running].";
         warning "Since SSH is used to download from Subversion you may want to see why";
