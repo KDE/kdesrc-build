@@ -641,6 +641,14 @@ sub handle_branch_tag_option
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
 
+    # Special-case this for ease of user configuration.
+    if ($module eq 'kdelibs' and $branch = 'kde4-snapshot')
+    {
+        $branch = 'branches';
+        $branchname = 'work';
+        $module = 'kdelibs4_snapshot';
+    }
+
     return "$svn_server/$branch/$branchname/$module";
 }
 
@@ -1154,6 +1162,12 @@ sub tarball_snapshot_revision
     my $branch = get_option($module, 'branch');
 
     whisper "Checking if snapshot available for g[$module]";
+
+    if (get_option($module, 'override-url'))
+    {
+        whisper "\tb[override-url] in effect for g[$module], snapshot not available.";
+        return 0;
+    }
 
     $branch = 'trunk' if not $branch; # Use default value.
     debug "Looking up revision number for g[$module-$branch] from g[$tarballHost$revisionScript]";
@@ -1870,7 +1884,7 @@ sub setenv
 
     return unless $val;
 
-    pretend "\tWould have set g[$var]=y[$val].";
+    whisper "\tWould have set g[$var]=y[$val]." if pretending;
 
     $ENV{$var} = $val;
 }
@@ -1915,6 +1929,14 @@ sub setup_default_modules()
         {
             $package_opts{$i} = { }; # Set up defaults
             $package_opts{$i}{'set-env'} = { };
+
+            # Setup kdelibs to default to downloading and building the snapshot
+            # since that is what the rest of KDE trunk is being ported against
+            # right now.
+            if ($i eq 'kdelibs')
+            {
+                $package_opts{$i}{'branch'} = 'kde4-snapshot';
+            }
         }
     }
 
@@ -4622,7 +4644,7 @@ sub finish
 
     close_lock() unless pretending;
 
-    note "Your logs are saved in y[$logdir]";
+    note "Your logs are saved in y[$logdir]" unless pretending;
     exit $exitcode;
 }
 

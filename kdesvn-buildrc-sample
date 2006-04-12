@@ -16,7 +16,9 @@ global
 # override-url option yourself.
 #
 # If you set this option to false, or leave it unset, kdesvn-build will build
-# /trunk, which corresponds right now with KDE 4.0.
+# /trunk, which corresponds right now with KDE 4.0.  If you set this option to
+# true, you should also comment out or remove the branch option which is set
+# in the "module kdelibs" section below.
 #
 #	use-stable-kde false
 
@@ -159,11 +161,10 @@ end module
 module kdelibs
 	configure-flags --enable-sendfile --enable-mitshm
 
-	# kdelibs compiled from a snapshot for now, remove this after kdelibs
-	# trunk works again, and then remove the ${source-dir}/kdelibs and
-	# ${build-dir}/kdelibs directories, and then you'll have to rebuild
-	# kdelibs.  Also remove this if you're building KDE 3.
-	override-url ${svn-server}/branches/work/kdelibs4_snapshot
+	# kdelibs compiles from a snapshot for now so that other modules can have something
+	# stable to port against.  Use the kde4-snapshot branch in order to use this
+	# snapshot.  If you'd rather use /trunk, just comment this out.
+	branch kde4-snapshot
 
 	# KDE 4 uses CMake, if you need to pass options to the cmake command, use this
 	# option:
