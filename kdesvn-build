@@ -608,6 +608,10 @@ sub branch_prefix
             multimedia network nonbeta pim sdk toys utils webdev/), 'kdevelop',
             'konstruct');
 
+    # If the user already has the module in the form KDE/foo, it's already
+    # done.
+    return "$type/KDE" if $module =~ /^KDE\//;
+
     # KDE proper modules seem to use this pattern.
     return "$type/KDE" if list_has(@kde_module_list, $module);
 
@@ -642,12 +646,15 @@ sub handle_branch_tag_option
     $svn_server =~ s/\/*$//;
 
     # Special-case this for ease of user configuration.
-    if ($module eq 'kdelibs' and $branch = 'kde4-snapshot')
+    if ($module =~ /^(KDE\/)?kdelibs$/ and $branchname eq 'kde4-snapshot')
     {
         $branch = 'branches';
         $branchname = 'work';
         $module = 'kdelibs4_snapshot';
     }
+
+    # Remove KDE/ prefix for module name.
+    $module = moduleBaseName($module);
 
     return "$svn_server/$branch/$branchname/$module";
 }
@@ -677,6 +684,10 @@ sub svn_module_url
     {
         return handle_branch_tag_option($module, 'branches');
     }
+
+    # We can't use get_option($module) after this if we have to trim the module
+    # name.
+    $module = moduleBaseName($module);
     
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
     # but there are the important ones.  The hash is associated with the value
@@ -977,12 +988,13 @@ sub download_module_snapshot
     my $tarballHost = get_option($module, 'tarball-host');
     my $snapshotPath = get_option($module, 'tarball-path');
     my $branch = get_option($module, 'branch');
+    my $moduleName = moduleBaseName($module);
 
     $branch = 'trunk' if not $branch; # Use default.
 
     # File name of this format.  Extracted directory will have a similar
     # name.
-    my $filename = "$module-$branch-svn-r$revision.tar.bz2";
+    my $filename = "$moduleName-$branch-svn-r$revision.tar.bz2";
 
     if (pretending)
     {
@@ -1002,6 +1014,8 @@ sub download_module_snapshot
         
         return 0;
     }
+
+    debug "Checking for $snapshotPath/$filename";
 
     # Send connection request
     $conn->write_request('GET' => "$snapshotPath/$filename",
@@ -1058,7 +1072,7 @@ sub download_module_snapshot
         error "Unable to extract snapshot for r[$module]: $@";
 
         # Remove any created portions of the module tree.
-        safe_system("rm -rf $module-$branch-svn-r$revision");
+        safe_system("rm -rf $moduleName-$branch-svn-r$revision");
 
         return 0;
     }
@@ -1067,13 +1081,13 @@ sub download_module_snapshot
 
     # The extracted directory is of the form $module-$branch-svn-r$revision,
     # move it to the correct name (just $module);
-    $result = safe_system("mv $module-$branch-svn-r$revision $module");
+    $result = safe_system("mv $moduleName-$branch-svn-r$revision $moduleName");
     if($result) { # Failure.
         error "Unable to move directory for r[$module] into place: r[$!]";
 
         # Remove any created portions of the module tree.
-        safe_system("rm -rf $module-$branch-svn-r$revision");
-        safe_system("rm -rf $module");
+        safe_system("rm -rf $moduleName-$branch-svn-r$revision");
+        safe_system("rm -rf $moduleName");
 
         return 0;
     }
@@ -1081,7 +1095,7 @@ sub download_module_snapshot
     whisper "\tg[$module] snapshot is in place.";
 
     # Module in place, now prepare it for checkout.
-    p_chdir($module);
+    p_chdir($moduleName);
 
     # Switch svn host to proper host.
     my $svnHost = get_option($module, 'svn-server');
@@ -1101,7 +1115,8 @@ sub download_module_snapshot
             error "\tr[$!]";
 
             # Remove any created portions of the module tree.
-            safe_system("rm -rf $module");
+            p_chdir("..");
+            safe_system("rm -rf $moduleName");
 
             return 0;
         }
@@ -1122,7 +1137,8 @@ sub download_module_snapshot
         error "Unable to restore standard Subversion layout!";
 
         # Remove any created portions of the module tree.
-        safe_system("rm -rf $module");
+        p_chdir("..");
+        safe_system("rm -rf $moduleName");
 
         return 0;
     }
@@ -1147,6 +1163,18 @@ sub download_module_snapshot
     return 1;
 }
 
+# This subroutine is responsible for stripping the KDE/ part from the beginning
+# of modules that were entered by the user like "KDE/kdelibs" instead of the
+# normal "kdelibs".  That way you can search for kdelibs without having to
+# strip KDE/ everywhere.
+sub moduleBaseName
+{
+    my $module = shift;
+    $module =~ s/^KDE\///;
+
+    return $module;
+}
+
 # This subroutine contacts a remote web server (defined by the tarball-host
 # option) and calls a php script to determine if there is a tarball snapshot
 # available for the given module and branch.  The revision number of the
@@ -1160,6 +1188,7 @@ sub tarball_snapshot_revision
     my $tarballHost = get_option($module, "tarball-host");
     my $revisionScript = get_option($module, "tarball-revision-script");
     my $branch = get_option($module, 'branch');
+    my $moduleName = moduleBaseName($module);
 
     whisper "Checking if snapshot available for g[$module]";
 
@@ -1186,7 +1215,7 @@ sub tarball_snapshot_revision
     }
 
     # Send connection request
-    $conn->write_request('GET' => "$revisionScript?module=$module&branch=$branch",
+    $conn->write_request('GET' => "$revisionScript?module=$moduleName&branch=$branch",
                          'User-Agent' => "Mozilla/5.0 (compatible; kdesvn-build $versionNum)",
                          );
 
@@ -2409,6 +2438,8 @@ sub set_option
     }
 
     return if handle_set_env($package_opts{$module}, $option, $value);
+
+    debug "  Setting $module,$option = $value";
     $package_opts{$module}{$option} = $value;
 }
 
