@@ -1958,15 +1958,15 @@ sub setup_default_modules()
         {
             $package_opts{$i} = { }; # Set up defaults
             $package_opts{$i}{'set-env'} = { };
-
-            # Setup kdelibs to default to downloading and building the snapshot
-            # since that is what the rest of KDE trunk is being ported against
-            # right now.
-            if ($i eq 'kdelibs')
-            {
-                $package_opts{$i}{'branch'} = 'kde4-snapshot';
-            }
         }
+
+        # Setup kdelibs to default to downloading and building the snapshot
+        # since that is what the rest of KDE trunk is being ported against
+        # right now.
+        if ($i eq 'kdelibs' and not exists $package_opts{$i}{'branch'})
+        {
+            $package_opts{$i}{'branch'} = 'kde4-snapshot';
+        } 
     }
 
     # Setup default options for qt-copy
