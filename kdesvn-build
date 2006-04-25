@@ -1063,7 +1063,7 @@ sub download_module_snapshot
     info "\tDownload complete for g[$module], completing snapshot.";
 
     # Now extract the newly downloaded file.
-    $result = safe_system("bzcat $filename | tar x");
+    $result = safe_system("tar", "xf", $filename);
 
     # Snapshot file is no longer necessary.
     safe_unlink($filename);
@@ -1072,7 +1072,7 @@ sub download_module_snapshot
         error "Unable to extract snapshot for r[$module]: $@";
 
         # Remove any created portions of the module tree.
-        safe_system("rm -rf $moduleName-$branch-svn-r$revision");
+        safe_system("rm", "-rf", "$moduleName-$branch-svn-r$revision");
 
         return 0;
     }
@@ -1081,13 +1081,12 @@ sub download_module_snapshot
 
     # The extracted directory is of the form $module-$branch-svn-r$revision,
     # move it to the correct name (just $module);
-    $result = safe_system("mv $moduleName-$branch-svn-r$revision $moduleName");
-    if($result) { # Failure.
+    if(not safe_rename("$moduleName-$branch-svn-r$revision", $moduleName)) { 
         error "Unable to move directory for r[$module] into place: r[$!]";
 
         # Remove any created portions of the module tree.
-        safe_system("rm -rf $moduleName-$branch-svn-r$revision");
-        safe_system("rm -rf $moduleName");
+        safe_system("rm", "-rf", "$moduleName-$branch-svn-r$revision");
+        safe_system("rm", "-rf", $moduleName);
 
         return 0;
     }
@@ -1116,7 +1115,7 @@ sub download_module_snapshot
 
             # Remove any created portions of the module tree.
             p_chdir("..");
-            safe_system("rm -rf $moduleName");
+            safe_system("rm", "-rf", $moduleName);
 
             return 0;
         }
@@ -1138,7 +1137,7 @@ sub download_module_snapshot
 
         # Remove any created portions of the module tree.
         p_chdir("..");
-        safe_system("rm -rf $moduleName");
+        safe_system("rm", "-rf", $moduleName);
 
         return 0;
     }
@@ -3150,6 +3149,20 @@ sub dump_options
             }
         }
     }
+}
+
+# Subroutine to rename the given file if global-pretend isn't set.
+sub safe_rename($$)
+{
+    my ($from, $to) = @_;
+
+    if (pretending)
+    {
+        pretend "\tWould have renamed '$from' to '$to'.";
+        return 1; # Return true
+    }
+
+    return rename($from, $to);
 }
 
 # Subroutine to unlink the given symlink if global-pretend isn't set.
