@@ -3571,6 +3571,9 @@ sub safe_run_cmake
     my $module = shift;
     my $srcdir = get_fullpath($module, 'source');
     my @commands = split (/\s+/, get_option($module, 'cmake-options'));
+   
+    # grep out empty fields
+    @commands = grep {!/^$/} @commands;
 
     if (get_option ($module, 'do-not-compile'))
     {
