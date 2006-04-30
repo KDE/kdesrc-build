@@ -5131,6 +5131,23 @@ sub execute_command_line_program()
     };
 }
 
+# This subroutine sets up the default $package_opts{'global'} options.  They
+# are normally hardcoded, this function is a way to change the default based
+# on user input.  For example, we can change the value of options based on
+# the use-stable-kde option.
+sub setup_option_defaults()
+{
+    if(not get_option('global', 'use-stable-kde'))
+    {
+        # Should be empty if user hasn't reset the option.
+        if(get_option('global', 'no-rebuild-on-fail') eq '')
+        {
+            debug "Building modules only once by default (cmake).";
+            set_option('global', 'no-rebuild-on-fail', 1);
+        }
+    }
+}
+
 # Script starts.
 
 # Use some exception handling to avoid ucky error messages
@@ -5140,6 +5157,7 @@ eval
     # doing.
     process_arguments();        # Process --help, --install, etc. first.
     read_options();             # If we're still here, read the options
+    setup_option_defaults();    # Setup default options, based on user input
 
     initialize_environment();   # Initialize global env vars.
 
