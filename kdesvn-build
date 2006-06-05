@@ -4298,6 +4298,8 @@ sub update_module_environment
     my $pc_path = "";
     $pc_path = $ENV{'PKG_CONFIG_PATH'} if ( exists $ENV{'PKG_CONFIG_PATH'} );
     $pc_path = join(':', get_option($module, 'kdedir') . '/lib/pkgconfig', $pc_path);
+    my $libpath = "";
+    $libpath = $ENV{'LD_LIBRARY_PATH'} if ( exists $ENV{'LD_LIBRARY_PATH'} );
 
     # Set up the children's environment.  We use setenv since it
     # won't set an environment variable to nothing.  (e.g, setting
@@ -4305,7 +4307,7 @@ sub update_module_environment
 
     # Remove leading and trailing colons, just in case.
     # Also remove more than one colon.
-    for ($path, $libdir, $pc_path)
+    for ($path, $libdir, $pc_path, $libpath)
     {
         s/:+/:/;
         s/^:*//;
@@ -4326,7 +4328,7 @@ sub update_module_environment
         setenv ("UNSERMAKE", "no");
     }
 
-    setenv ('LD_LIBRARY_PATH', $libdir);
+    setenv ('LD_LIBRARY_PATH', "$libdir:$libpath" );
     setenv ('PATH', $path);
     setenv ('QTDIR', $qtdir);
     setenv ('PKG_CONFIG_PATH', $pc_path);
