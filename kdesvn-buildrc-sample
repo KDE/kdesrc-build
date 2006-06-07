@@ -58,8 +58,8 @@ global
 
 # KDE 4 uses CMake.  The equivalent to configure-flags is cmake-options.  BUT the same
 # options will not work, CMake expects them in a different format.  You should probably
-# not need to use cmake-options however.  RPATH_STYLE is provided as an example.
-#	cmake-options -DRPATH_STYLE=default
+# not need to use cmake-options however. KDE4_BUILD_TESTS  is provided as an example.
+#	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
 
 # These are the compilation flags to use by default when compiling KDE.
 # gcc supports a -march option in order to generate specific code for pentium4, athlon-xp,
@@ -135,9 +135,12 @@ end global
 # optimizations added.  It is the easiest way to get Qt if you don't already
 # have it (and you don't want to use your distro's tools to install it.)
 module qt-copy
-#	Qt 3 / 4 configure flags
+#	Qt 3 / 4 configure flags.  If you use Qt 3, then uncomment the line below that
+#	says Qt 3 options (by removing the # at the beginning) and comment the Qt 4
+#	line.  This is needed by some people for the -thread option.
 	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng \
-	                -no-exceptions -fast
+			-no-exceptions -fast         # Qt 4 options
+#			-no-exceptions -fast -thread # Qt 3 options.
 
 	apply-qt-patches true          # Works with Qt 3 and 4, recommended as well.
 	make-options sub-src sub-tools # Build faster, no examples built.
@@ -145,17 +148,13 @@ end module
 
 # arts is the KDE sound library.  It is not expected to be used by the time
 # KDE 4 is released.
-module arts
-end module
+#module arts
+#end module
 
-# kdesupport contains taglib and QCA.  taglib is required for JuK, amarok, and
-# the meta info reader for music files in Konqueror. KDE 4 compatibility is
-# still uncertain.
-#
-# taglib: Does not depend on Qt, so it is compatible with KDE 4.
-# qca:    ?
-# libqgs: ?
-# akode:  Does not depend on Qt, so it is compatible with KDE 4.
+# kdesupport contains taglib and QCA, and the Qt DBUS bindings.  taglib is
+# required for JuK, amarok, and the meta info reader for music files in
+# Konqueror. Qt DBUS is required for kdelibs in KDE 4.  Unfortunately the build system
+# is kind of... odd. :)
 module kdesupport
 end module
 

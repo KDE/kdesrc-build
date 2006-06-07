@@ -2738,7 +2738,9 @@ DONE
                 }
 
                 set_option('global', '#start-program', $program);
-                last SWITCH;
+
+                # Save remaining command line options to pass to the program.
+                return;
             };
 
             /^--build-system-only$/ && do {
@@ -4294,12 +4296,20 @@ sub update_module_environment
     my $kdedir = get_option ($module, 'kdedir');
     my $qtdir = get_option ($module, 'qtdir');
     my $path = join(':', "$qtdir/bin", "$kdedir/bin", get_option ($module, 'binpath'));
-    my $libdir = join(':', "$qtdir/lib", "$kdedir/lib", get_option ($module, 'libpath'));
     my $pc_path = "";
-    $pc_path = $ENV{'PKG_CONFIG_PATH'} if ( exists $ENV{'PKG_CONFIG_PATH'} );
-    $pc_path = join(':', get_option($module, 'kdedir') . '/lib/pkgconfig', $pc_path);
     my $libpath = "";
-    $libpath = $ENV{'LD_LIBRARY_PATH'} if ( exists $ENV{'LD_LIBRARY_PATH'} );
+
+    # Add some standard directories for pkg-config support.  Include env settings.
+    $pc_path = $ENV{'PKG_CONFIG_PATH'} if exists $ENV{'PKG_CONFIG_PATH'};
+    my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib");
+
+    $pc_path = join(':', @pkg_config_dirs, $pc_path);
+
+    # Likewise, add standard directories that should be in LD_LIBRARY_PATH.
+    $libpath = $ENV{'LD_LIBRARY_PATH'} if exists $ENV{'LD_LIBRARY_PATH'};
+    my @ld_dirs = ("$qtdir/lib", "$kdedir/lib", $libpath, get_option($module, 'libpath'));
+
+    my $libdir = join(':', @ld_dirs);
 
     # Set up the children's environment.  We use setenv since it
     # won't set an environment variable to nothing.  (e.g, setting
@@ -4307,7 +4317,7 @@ sub update_module_environment
 
     # Remove leading and trailing colons, just in case.
     # Also remove more than one colon.
-    for ($path, $libdir, $pc_path, $libpath)
+    for ($path, $libdir, $pc_path)
     {
         s/:+/:/;
         s/^:*//;
@@ -4328,7 +4338,7 @@ sub update_module_environment
         setenv ("UNSERMAKE", "no");
     }
 
-    setenv ('LD_LIBRARY_PATH', "$libdir:$libpath" );
+    setenv ('LD_LIBRARY_PATH', $libdir );
     setenv ('PATH', $path);
     setenv ('QTDIR', $qtdir);
     setenv ('PKG_CONFIG_PATH', $pc_path);
@@ -5122,11 +5132,11 @@ sub execute_command_line_program()
         exit 1;
     }
 
-    debug "Executing b[r[$program]";
+    debug "Executing b[r[$program] ", join(' ', @ARGV);
 
     exit 0 if pretending;
 
-    exec $program or do {
+    exec $program, @ARGV or do {
         # If we get to here, that sucks, but don't continue.
         error "Error executing $program: $!";
         exit 1;
