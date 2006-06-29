@@ -254,6 +254,7 @@ use warnings;
 use Fcntl;    # For sysopen constants
 use POSIX 'strftime';
 use File::Find; # For our lndir reimplementation.
+use Net::HTTP;  # For downloading files.
 use Errno qw(:POSIX);
 
 # Debugging level constants.
@@ -970,6 +971,100 @@ sub get_fullpath
     return $pathinfo{'fullpath'};
 }
 
+# This subroutine downloads the file pointed to by the URL given in the first
+# parameter, saving to the given filename.  (FILENAME, not directory).
+#
+# First parameter: URL of link to download (i.e. http://kdesvn-build.kde.org/foo.tbz2)
+# Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
+# Return value is 0 for failure, non-zero for success.
+sub download_file
+{
+    my $url = shift;
+    my $filename = shift;
+
+    if (pretending)
+    {
+        pretend "Would have downloaded g[$url]\n\tto g[$filename]";
+        return 1;
+    }
+
+    my ($protocol, $host, $path) = ($url =~ m{^([^:]+)://([^/]+)(/.*)$});
+
+    if (not defined $url or not defined $host or not defined $path)
+    {
+        error "Trying to download file from invalid URL: r[$url]";
+        return 0;
+    }
+
+    # Not sure if https works but no harm in letting it try.
+    if ($protocol !~ /^https?$/)
+    {
+        error "Trying to download file ($url), but";
+        error "\tthe r[$protocol] protocol is unsupported.";
+        return 0;
+    }
+
+    whisper "Downloading g[$path] from g[$url]";
+
+    my $conn = Net::HTTP->new (Host => $host);
+    
+    if (not defined $conn)
+    {
+        error "Unable to connect to snapshot host: r[$@]";
+        
+        return 0;
+    }
+
+    debug "Checking for $path";
+
+    # Send connection request
+    $conn->write_request('GET' => "$path",
+                         'User-Agent' => "Mozilla/5.0 (compatible; kdesvn-build $versionNum)",
+                         );
+
+    my ($code, $msg, %h) = $conn->read_response_headers();
+
+    if (200 != $code)
+    {
+        error "Unable to download file r[$url]:\n\tr[b[$msg]";
+
+        $conn->close();
+        return 0;
+    }
+
+    open OUTPUT, ">$filename" or do {
+        error "Unable to open output file for r[$url] download.";
+        error "\tMessage: b[r[$@]";
+
+        $conn->close();
+        return 0;
+    };
+
+    my ($buf, $result);
+    while (1)
+    {
+        $result = $conn->read_entity_body($buf, 2048);
+        if (not defined $result)
+        {
+            error "Error downloading from host: r[$!]";
+
+            $conn->close();
+            close OUTPUT;
+            safe_unlink($filename);
+
+            return 0;
+        }
+
+        last unless $result; # Break loop if end-of-data
+        print OUTPUT $buf;   # Print downloaded data to file.
+    }
+
+    close OUTPUT;
+    $conn->close();
+
+    return 1;
+}
+
 # This subroutine tries to download a Subversion checkout snapshot of a given
 # module, at a given revision.  If the download succeeds, this module will
 # automatically arrange the extracted module to fit the normal kdesvn-build
@@ -1011,67 +1106,18 @@ sub download_module_snapshot
     }
 
     info "Downloading snapshot for g[$module] (revision $revision)";
-    whisper "Downloading g[$filename] from g[$tarballHost$snapshotPath/]";
 
-    my $conn = Net::HTTP->new (Host => $tarballHost);
-    
-    if (not defined $conn)
+    if (not download_file("http://$tarballHost$snapshotPath/$filename", $filename))
     {
-        error "Unable to connect to snapshot host: r[$@]";
-        
+        error "Unable to download snapshot for module r[$module]";
         return 0;
     }
-
-    debug "Checking for $snapshotPath/$filename";
-
-    # Send connection request
-    $conn->write_request('GET' => "$snapshotPath/$filename",
-                         'User-Agent' => "Mozilla/5.0 (compatible; kdesvn-build $versionNum)",
-                         );
-
-    my ($code, $msg, %h) = $conn->read_response_headers();
-
-    if (200 != $code)
-    {
-        error "Unable to download module r[$module]: r[b[$msg]";
-        return 0;
-    }
-
-    open OUTPUT, ">$filename" or do {
-        error "Unable to open output file for r[$module download]!";
-        error "\tMessage: b[r[$@]";
-
-        $conn->close();
-        return 0;
-    };
-
-    my ($buf, $result);
-    while (1)
-    {
-        $result = $conn->read_entity_body($buf, 2048);
-        if (not defined $result)
-        {
-            error "Error downloading from host: r[$!]";
-
-            $conn->close();
-            close OUTPUT;
-            safe_unlink($filename);
-
-            return 0;
-        }
-
-        last unless $result; # Break loop if end-of-data
-        print OUTPUT $buf;   # Print downloaded data to file.
-    }
-
-    close OUTPUT;
-    $conn->close();
 
     info "\tDownload complete for g[$module], completing snapshot.";
 
     # Now extract the newly downloaded file. First decompress it. (Don't
     # use the j flag as it doesn't appear to be portable.
-    $result = safe_system('bunzip2', $filename);
+    my $result = safe_system('bunzip2', $filename);
     if($result) { # failure
         error "Unable to decompress snapshot for r[$module]: $@";
 
@@ -1223,16 +1269,11 @@ sub tarball_snapshot_revision
     $branch = default_module_branch($module) if not $branch; # Use default value.
     debug "Looking up revision number for g[$module-$branch] from g[$tarballHost$revisionScript]";
 
-    my $conn = undef;
-    eval {
-        require Net::HTTP;
-        $conn = Net::HTTP->new ('Host' => $tarballHost);
-    };
-
+    my $conn = Net::HTTP->new ('Host' => $tarballHost);
     if (not defined $conn)
     {
-        whisper "Unable to load Net::HTTP, snapshot check aborted.";
-        debug "Net::HTTP failure reason: $@";
+        error "Unable to connect to $tarballHost, snapshot check aborted.";
+        error "\tError message: r[$@]";
         return 0;
     }
 
@@ -5160,6 +5201,131 @@ sub setup_option_defaults()
     }
 }
 
+# This subroutine checks if an appropriate dbus software is already installed.
+# Currently this means DBUS 0.62.  Note that we do not check for qt-dbus, which
+# is installed by kdesupport.
+#
+# Return value is true if DBUS is installed, 0 otherwise.
+sub check_dbus_installed()
+{
+    my $minVersion = '0.62';
+
+    my $result = system('pkg-config', '--exists', 'dbus-1', '>=', $minVersion);
+
+    return ($result >> 8) == 0;
+}
+
+# This subroutine downloads DBUS if necessary, and builds and installs it (all
+# in one step: there is no separate update then install).
+#
+# It installs to the prefix given by the kdedir setting by default.
+#
+# This is normally only used for Coverity, as people should be installing
+# dependency libraries using their distribution's package manager software, not
+# kdesvn-build.
+#
+# Nothing happens in pretend mode however.
+#
+# Return value: 0 if the download/build/install failed, non-zero otherwise.
+sub download_install_dbus()
+{
+    return 1 if pretending;
+
+    note "\n<<<  Updating D-BUS  >>>\n";
+
+    my $dbus_version = '0.62';
+    my $filename = "dbus-$dbus_version.tar.gz";
+    my $dbus_url = "http://dbus.freedesktop.org/releases/$filename";
+
+    # Get temporary directory to use.
+    # Equivalent to "use File::Temp qw/tempdir/;", but at runtime.
+    require File::Temp;
+    import File::Temp qw/tempdir/; 
+
+    # Temp dir name starts with kdesvn-buildtmp, in standard tmp dir location.
+    my $tempdir = tempdir('kdesvn-buildtmpXXXX', TMPDIR => 1, CLEANUP => 0);
+
+    p_chdir($tempdir);
+    pretend "Downloading DBUS to $tempdir/$filename";
+
+    # Download snapshot.
+    info "\tDownloading DBUS tarball.";
+
+    if (not download_file($dbus_url, $filename))
+    {
+        error "Unable to download D-BUS from r[$dbus_url]";
+        return 0;
+    }
+
+    # Decompress.
+    my $result = log_command('dbus', 'untar', ['tar', 'xzf', $filename]);
+    if ($result != 0)
+    {
+        error "Unable to decompress D-BUS tarball.";
+        return 0;
+    }
+
+    my $prefix = get_option('global', 'kdedir');
+
+    p_chdir("dbus-$dbus_version");
+    info "\tBuilding DBUS";
+    $result = log_command('dbus', 'configure', ['./configure',
+                             "--prefix=$prefix", '--disable-qt',
+                             '--disable-qt3', '--disable-dependency-tracking']
+                             );
+
+    if ($result != 0)
+    {
+        error "Unable to configure D-BUS.";
+        return 0;
+    }
+
+    $result = log_command('dbus', 'make', ['make']); 
+    if ($result != 0)
+    {
+        error "Unable to build D-BUS.";
+        return 0;
+    }
+
+    info "\tInstalling DBUS (installing to $prefix)";
+    $result = log_command('dbus', 'make-install', ['make', 'install']);
+    if ($result != 0)
+    {
+        error "Unable to install D-BUS.  (make-install-prefix is ignored).";
+        return 0;
+    }
+
+    # File::Temp will clean up the temporary directory.
+
+    return 1;
+}
+
+# This subroutine is run after the lock has been obtained, but before performing
+# any updates or builds.  Do any steps that need to be done only in the case of
+# being run by Coverity.  This subroutine is only called if the COVERITY_RUN
+# environment variable is set.
+#
+# No return value.
+sub perform_coverity_checks()
+{
+    info "We are being run by g[Coverity].  Hi guys!";
+
+    unless (check_dbus_installed())
+    {
+        info "DBUS does not appear to be installed.  At least, pkg-config can't find it.";
+        info "So just for you guys, I'll go ahead and install it for you.";
+
+        if (not download_install_dbus())
+        {
+            error "\nWell, we were b[r[unable to install] DBUS for some reason.";
+            error "Check your logs afterwards.";
+        }
+    }
+
+    # Print blank line.
+    info "";
+}
+
 # Script starts.
 
 # Use some exception handling to avoid ucky error messages
@@ -5214,6 +5380,10 @@ eval
 {
     my $time = localtime;
     info "Script started processing at g[$time]" unless pretending;
+
+    # Coverity doesn't respond to email as often as we'd like, but we can
+    # usually work around that here.
+    perform_coverity_checks() if exists $ENV{'COVERITY_RUN'};
 
     @update_list = get_update_list();
     @build_list = get_build_list();
