@@ -5202,8 +5202,7 @@ sub setup_option_defaults()
 }
 
 # This subroutine checks if an appropriate dbus software is already installed.
-# Currently this means DBUS 0.62.  Note that we do not check for qt-dbus, which
-# is installed by kdesupport.
+# Currently this means DBUS 0.62. 
 #
 # Return value is true if DBUS is installed, 0 otherwise.
 sub check_dbus_installed()
@@ -5244,6 +5243,11 @@ sub download_install_dbus()
 
     # Temp dir name starts with kdesvn-buildtmp, in standard tmp dir location.
     my $tempdir = tempdir('kdesvn-buildtmpXXXX', TMPDIR => 1, CLEANUP => 0);
+
+    if ( exists $ENV{'COVERITY_RUN'} )
+    {
+	$tempdir = get_build_dir('global') + '/temp-dbus';
+    }
 
     p_chdir($tempdir);
     pretend "Downloading DBUS to $tempdir/$filename";
