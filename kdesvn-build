@@ -255,6 +255,8 @@ use Fcntl;    # For sysopen constants
 use POSIX 'strftime';
 use File::Find; # For our lndir reimplementation.
 use Net::HTTP;  # For downloading files.
+use File::Basename;
+use Sys::Hostname;
 use Errno qw(:POSIX);
 
 # Debugging level constants.
@@ -2254,6 +2256,16 @@ EOM
     }
 
     my $using_default = 1;
+
+    if (exists $ENV{"COVERITY_RUN"}) {
+
+        info "We're being run by coverity. ignoring non global options in the";
+        info "config file";
+
+        close CONFIG;
+        setup_default_modules();
+        return;
+    }
 
     # Now read in module settings
     while (<CONFIG>)
@@ -4765,6 +4777,19 @@ EOF
     }
 }
 
+sub upload_logfiles($)
+{
+    my ($logdir) = @_;
+    my $today = basename($logdir);
+    my $hostname = hostname();
+
+    if ( exists $ENV{'COVERITY_RUN'} ) 
+    {
+        system("svn", "import", "-m", $today, 
+               $logdir, "svn://anonsvn.kde.org/home/coverity_kde/$hostname/$today");
+    }
+}
+
 # Subroutine to exit the script cleanly, including removing any
 # lock files created.  If a parameter is passed, it is interpreted
 # as an exit code to use
@@ -4775,6 +4800,8 @@ sub finish
     $exitcode = 0 unless $exitcode;
 
     close_lock() unless pretending;
+
+    upload_logfiles($logdir) unless pretending;
 
     note "Your logs are saved in y[$logdir]" unless pretending;
     exit $exitcode;
@@ -4806,6 +4833,17 @@ sub check_module_validity
 
     p_chdir ($source_dir); # Required for get_repo_url
     my $module_actual_url = get_repo_url();
+
+    if (exists $ENV{'COVERITY_RUN'} and $module_actual_url ne $module_expected_url) 
+    {
+        warning "Something is wrong with your $module. Let's see if we can correct it. ";
+        warning "kdesvn-build expects:        y[$module_expected_url]";
+        warning "The module is actually from: y[$module_actual_url]";
+        
+        system("svn status --no-ignore | grep '^[I?]' | cut -b8- | xargs rm -rf");
+        system("svn", "switch", $module_expected_url);
+        return;
+    }
 
     if($module_actual_url ne $module_expected_url)
     {
@@ -5308,7 +5346,7 @@ sub perform_coverity_checks()
 
     unless (check_dbus_installed())
     {
-        info "DBUS does not appear to be installed.  At least, pkg-config can't find it.";
+        info "D-BUS does not appear to be installed.  At least, pkg-config can't find it.";
         info "So just for you guys, I'll go ahead and install it for you.";
 
         if (not download_install_dbus())
@@ -5316,6 +5354,11 @@ sub perform_coverity_checks()
             error "\nWell, we were b[r[unable to install] DBUS for some reason.";
             error "Check your logs afterwards.";
         }
+    }
+    else 
+    {
+        info "D-BUS appears to be installed in the following path: ";
+        system("pkg-config", "--variable=prefix", "dbus-1");
     }
 
     # Print blank line.
