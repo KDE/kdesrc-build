@@ -1393,6 +1393,10 @@ sub update_module_path
 
     $result = run_svn($module, 'svn-up', \@args);
 
+    if (exists $ENV{"COVERITY_RUN"}) {
+        run_svn($module, 'svn revert', 'svn', 'revert', '-R', '--non-interactive');
+    }
+
     if($result) # Update failed, try svn cleanup.
     {
         info "\tUpdate failed, trying a cleanup.";
