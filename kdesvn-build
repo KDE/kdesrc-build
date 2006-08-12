@@ -1394,7 +1394,8 @@ sub update_module_path
     $result = run_svn($module, 'svn-up', \@args);
 
     if (exists $ENV{"COVERITY_RUN"}) {
-        run_svn($module, 'svn revert', 'svn', 'revert', '-R', '--non-interactive');
+        my @revert_args = ('svn', 'revert', '-R', '.');
+        run_svn($module, 'svn revert', \@revert_args);
     }
 
     if($result) # Update failed, try svn cleanup.
@@ -4787,7 +4788,7 @@ sub upload_logfiles($)
     my $today = basename($logdir);
     my $hostname = hostname();
 
-    if ( exists $ENV{'COVERITY_RUN'} ) 
+    if ( exists $ENV{'COVERITY_RUN'} and $hostname =~ /coverity/i )
     {
         system("svn", "import", "-m", $today, 
                $logdir, "svn://anonsvn.kde.org/home/coverity_kde/$today/$hostname");
@@ -5279,7 +5280,7 @@ sub download_install_dbus()
 
     if ( exists $ENV{'COVERITY_RUN'} )
     {
-	$tempdir = get_build_dir('global') . '/temp-dbus';
+        $tempdir = get_build_dir('global') . '/temp-dbus';
         super_mkdir($tempdir) || die "could no create $tempdir";
     }
 
