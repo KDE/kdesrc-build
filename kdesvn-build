@@ -1395,7 +1395,7 @@ sub update_module_path
 
     if (exists $ENV{"COVERITY_RUN"}) {
         my @revert_args = ('svn', 'revert', '-R', '.');
-        run_svn($module, 'svn revert', \@revert_args);
+        run_svn($module, 'svn-revert', \@revert_args);
     }
 
     if($result) # Update failed, try svn cleanup.
@@ -5311,7 +5311,8 @@ sub download_install_dbus()
     $result = log_command('dbus', 'configure', ['./configure',
                              "--prefix=$prefix", '--disable-qt',
                              '--disable-qt3', '--disable-dependency-tracking',
-                             '--disable-xml-docs', '--disable-doxygen-docs']
+                             '--disable-xml-docs', '--disable-doxygen-docs',
+                             '--disable-glib', '--disable-mono' ]
                              );
 
     if ($result != 0)
