@@ -1386,17 +1386,17 @@ sub update_module_path
 
     p_chdir ($fullpath);
 
+    if (exists $ENV{"COVERITY_RUN"}) {
+        my @revert_args = ('svn', 'revert', '-R', '.');
+        run_svn($module, 'svn-revert', \@revert_args);
+    }
+
     push @args, ('svn', 'up', '--non-interactive');
     push @args, '-N' if scalar @path;
 
     note "Updating g[$module]";
 
     $result = run_svn($module, 'svn-up', \@args);
-
-    if (exists $ENV{"COVERITY_RUN"}) {
-        my @revert_args = ('svn', 'revert', '-R', '.');
-        run_svn($module, 'svn-revert', \@revert_args);
-    }
 
     if($result) # Update failed, try svn cleanup.
     {
@@ -5233,6 +5233,13 @@ sub setup_option_defaults()
             debug "Building modules only once by default (cmake).";
             set_option('global', 'no-rebuild-on-fail', 1);
         }
+    }
+
+    if (defined $ENV{"COVERITY_RUN"}) 
+    {
+        info "Coverity run. We'll just override some options you.";
+
+        set_option('qt-copy', "#install-after-build", 0);
     }
 }
 
