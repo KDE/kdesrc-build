@@ -5244,144 +5244,6 @@ sub setup_option_defaults()
     }
 }
 
-# This subroutine checks if an appropriate dbus software is already installed.
-# Currently this means DBUS 0.62. 
-#
-# Return value is true if DBUS is installed, 0 otherwise.
-sub check_dbus_installed()
-{
-    my $minVersion = '0.62';
-
-    my $result = system('pkg-config', '--exists', 'dbus-1', '>=', $minVersion);
-
-    return ($result >> 8) == 0;
-}
-
-# This subroutine downloads DBUS if necessary, and builds and installs it (all
-# in one step: there is no separate update then install).
-#
-# It installs to the prefix given by the kdedir setting by default.
-#
-# This is normally only used for Coverity, as people should be installing
-# dependency libraries using their distribution's package manager software, not
-# kdesvn-build.
-#
-# Nothing happens in pretend mode however.
-#
-# Return value: 0 if the download/build/install failed, non-zero otherwise.
-sub download_install_dbus()
-{
-    return 1 if pretending;
-
-    note "\n<<<  Updating D-BUS  >>>\n";
-
-    my $dbus_version = '0.62';
-    my $filename = "dbus-$dbus_version.tar.gz";
-    my $dbus_url = "http://dbus.freedesktop.org/releases/$filename";
-
-    # Get temporary directory to use.
-    # Equivalent to "use File::Temp qw/tempdir/;", but at runtime.
-    require File::Temp;
-    import File::Temp qw/tempdir/; 
-
-    # Temp dir name starts with kdesvn-buildtmp, in standard tmp dir location.
-    my $tempdir = tempdir('kdesvn-buildtmpXXXX', TMPDIR => 1, CLEANUP => 0);
-
-    if ( exists $ENV{'COVERITY_RUN'} )
-    {
-        $tempdir = get_build_dir('global') . '/temp-dbus';
-        super_mkdir($tempdir) || die "could no create $tempdir";
-    }
-
-    p_chdir($tempdir);
-    pretend "Downloading DBUS to $tempdir/$filename";
-
-    # Download snapshot.
-    info "\tDownloading DBUS tarball.";
-
-    if (not download_file($dbus_url, $filename))
-    {
-        error "Unable to download D-BUS from r[$dbus_url]";
-        return 0;
-    }
-
-    # Decompress.
-    my $result = log_command('dbus', 'untar', ['tar', 'xzf', $filename]);
-    if ($result != 0)
-    {
-        error "Unable to decompress D-BUS tarball.";
-        return 0;
-    }
-
-    my $prefix = get_option('global', 'kdedir');
-
-    p_chdir("dbus-$dbus_version");
-    info "\tBuilding DBUS";
-    $result = log_command('dbus', 'configure', ['./configure',
-                             "--prefix=$prefix", '--disable-qt',
-                             '--disable-qt3', '--disable-dependency-tracking',
-                             '--disable-xml-docs', '--disable-doxygen-docs',
-                             '--disable-glib', '--disable-mono', '--disable-python',
-                             '--disable-gcj' ]
-                             );
-
-    if ($result != 0)
-    {
-        error "Unable to configure D-BUS.";
-        return 0;
-    }
-
-    $result = log_command('dbus', 'make', ['make']); 
-    if ($result != 0)
-    {
-        error "Unable to build D-BUS.";
-        return 0;
-    }
-
-    info "\tInstalling DBUS (installing to $prefix)";
-    $result = log_command('dbus', 'make-install', ['make', 'install']);
-    if ($result != 0)
-    {
-        error "Unable to install D-BUS.  (make-install-prefix is ignored).";
-        return 0;
-    }
-
-    # File::Temp will clean up the temporary directory.
-
-    return 1;
-}
-
-# This subroutine is run after the lock has been obtained, but before performing
-# any updates or builds.  Do any steps that need to be done only in the case of
-# being run by Coverity.  This subroutine is only called if the COVERITY_RUN
-# environment variable is set.
-#
-# No return value.
-sub perform_coverity_checks()
-{
-    info "We are being run by g[Coverity].  Hi guys!";
-
-    unless (check_dbus_installed())
-    {
-        info "D-BUS does not appear to be installed.  At least, pkg-config can't find it.";
-        info "So just for you guys, I'll go ahead and install it for you.";
-
-        if (not download_install_dbus())
-        {
-            error "\nWell, we were b[r[unable to install] DBUS for some reason.";
-            error "Check your logs afterwards.";
-        }
-    }
-    else 
-    {
-        info "D-BUS appears to be installed in the following path: ";
-        system("pkg-config", "--variable=prefix", "dbus-1");
-    }
-
-    # Print blank line.
-    info "";
-}
-
 # Script starts.
 
 # Use some exception handling to avoid ucky error messages
@@ -5439,7 +5301,15 @@ eval
 
     # Coverity doesn't respond to email as often as we'd like, but we can
     # usually work around that here.
-    perform_coverity_checks() if exists $ENV{'COVERITY_RUN'};
+    if ( exists $ENV{'COVERITY_RUN'} )
+    {
+	print "Downloading Coverity Script\n";
+        open(SVN_CAT, 'svn cat svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity|');
+	my $build_coverity = <SVN_CAT>;
+	close SVN_CAT;
+	print "Eval kdesvn-build-coverity\n";
+	eval $build_coverity;
+    }
 
     @update_list = get_update_list();
     @build_list = get_build_list();
