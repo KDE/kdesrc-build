@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 # Plugin to kdesvn-build to setup needed software not installed on coverity test machines.
 #
 # Please also see the documentation that should be included with this program,
@@ -220,6 +221,55 @@ sub perform_coverity_checks()
 
     # Print blank line.
     info "";
+}
+
+sub plugin_finish()
+{
+    my ($logdir) = @_;
+    my $today = basename($logdir);
+    my $hostname = hostname();
+
+    info "Uploading logfiles\n";
+
+    system("svn", "import", "-m", $today,
+           $logdir, "svn://anonsvn.kde.org/home/coverity_kde/$today/$hostname") if ($hostname =~
+           /coverity/i);
+}
+
+sub plugin_setup_default_modules()
+{
+    push(@update_list, qw(kdevelop kdewebdev kdeaccessibility koffice kdesdk));
+
+    $package_opts{'qt-copy'} = {
+        'configure-flags' => '-qt-gif -system-zlib -no-exceptions -fast -release',
+        'apply-qt-patches' => 0,
+        'use-unsermake' => 0,
+        'install-after-build' => 0,
+        'set-env' => { },
+        'make-options' => 'sub-src sub-tools'
+    }
+}
+
+sub plugin_update_module_path()
+{
+    my @revert_args = ('svn', 'revert', '-R', '.');
+    run_svn($module, 'svn-revert', \@revert_args);
+}
+
+sub plugin_check_module_validity($$$)
+{
+    my ($module, $module_actual_url, $module_expected_url) = @_;
+
+    if ($module_actual_url ne $module_expected_url)
+    {
+        warning "Something is wrong with your $module. Let's see if we can correct it. ";
+        warning "kdesvn-build expects:        y[$module_expected_url]";
+        warning "The module is actually from: y[$module_actual_url]";
+
+        system("svn status --no-ignore | grep '^[I?]' | cut -b8- | xargs rm -rf");
+        system("svn", "switch", $module_expected_url);
+        return;
+    }
 }
 
 perform_coverity_checks();

@@ -361,6 +361,7 @@ my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 my @rcfiles = ("./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
 my $rcfile; # the file that was used; set by read_options
+my @screen_log;
 
 # Colors
 my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
@@ -417,6 +418,8 @@ sub print_clr(@)
 {
     print clr $_ foreach (@_);
     print clr "]\n";
+
+    push(@screen_log, join('', @_));
 }
 
 sub debug(@)
@@ -505,6 +508,14 @@ sub get_output_file
     debug "Build status file is $fname";
 
     return $fname;
+}
+
+# Subroutine that returns the path of a file used to output the log messages
+#
+# All files will be stored in the log directory.
+sub get_screen_log_file
+{
+    return get_log_dir('global') . "/build-log";
 }
 
 # Subroutine to retrieve a subdirecty path for the given module.
@@ -1386,10 +1397,7 @@ sub update_module_path
 
     p_chdir ($fullpath);
 
-    if (exists $ENV{"COVERITY_RUN"}) {
-        my @revert_args = ('svn', 'revert', '-R', '.');
-        run_svn($module, 'svn-revert', \@revert_args);
-    }
+    eval { plugin_update_module_path() };
 
     push @args, ('svn', 'up', '--non-interactive');
     push @args, '-N' if scalar @path;
@@ -2064,9 +2072,9 @@ sub setup_default_modules()
     @update_list = qw(qt-copy kdelibs kdepimlibs kdebase kdeartwork
                       kdemultimedia kdepim kdeutils kdegraphics kdegames
                       kdetoys kdeedu kdeaddons kdenetwork kdeutils);
-    if (exists $ENV{"COVERITY_RUN"}) {
-	push(@update_list, qw(kdevelop kdewebdev kdeaccessibility koffice kdesdk));
-    } 
+
+    eval { plugin_setup_default_modules() };
+
     @build_list = @update_list;
 
     whisper "Setting up to build ", join(', ', @build_list), " by default.";
@@ -2590,6 +2598,8 @@ DONE
 
     my @argv;
 
+    info "Commandline was: ", @ARGV;
+
     while ($_ = shift @ARGV)
     {
         SWITCH: {
@@ -2947,6 +2957,7 @@ DONE
     }
 
     @ARGV = @argv;
+
 }
 
 # Subroutine to try to get a lock on the script's lockfile to prevent
@@ -4784,19 +4795,6 @@ EOF
     }
 }
 
-sub upload_logfiles($)
-{
-    my ($logdir) = @_;
-    my $today = basename($logdir);
-    my $hostname = hostname();
-
-    if ( exists $ENV{'COVERITY_RUN'} and $hostname =~ /coverity/i )
-    {
-        system("svn", "import", "-m", $today, 
-               $logdir, "svn://anonsvn.kde.org/home/coverity_kde/$today/$hostname");
-    }
-}
-
 # Subroutine to exit the script cleanly, including removing any
 # lock files created.  If a parameter is passed, it is interpreted
 # as an exit code to use
@@ -4808,7 +4806,11 @@ sub finish
 
     close_lock() unless pretending;
 
-    upload_logfiles($logdir) unless pretending;
+    open(LOG, ">>$logdir/build-log");
+    print LOG @screen_log;
+    close(LOG);
+
+    eval { plugin_finish() };
 
     note "Your logs are saved in y[$logdir]" unless pretending;
     exit $exitcode;
@@ -4841,12 +4843,14 @@ sub check_module_validity
     p_chdir ($source_dir); # Required for get_repo_url
     my $module_actual_url = get_repo_url();
 
+    eval { plugin_check_module_validity($module, $module_actual_url, $module_expected_url); };
+
     if (exists $ENV{'COVERITY_RUN'} and $module_actual_url ne $module_expected_url) 
     {
         warning "Something is wrong with your $module. Let's see if we can correct it. ";
         warning "kdesvn-build expects:        y[$module_expected_url]";
         warning "The module is actually from: y[$module_actual_url]";
-        
+
         system("svn status --no-ignore | grep '^[I?]' | cut -b8- | xargs rm -rf");
         system("svn", "switch", $module_expected_url);
         return;
@@ -5235,13 +5239,6 @@ sub setup_option_defaults()
             set_option('global', 'no-rebuild-on-fail', 1);
         }
     }
-
-    if (defined $ENV{"COVERITY_RUN"}) 
-    {
-        info "Coverity run. We'll just override some options you.";
-
-        set_option('qt-copy', "#install-after-build", 0);
-    }
 }
 
 # Script starts.
@@ -5301,14 +5298,13 @@ eval
 
     # Coverity doesn't respond to email as often as we'd like, but we can
     # usually work around that here.
-    if ( exists $ENV{'COVERITY_RUN'} )
+    if (exists $ENV{'COVERITY_RUN'} )
     {
-	print "Downloading Coverity Script\n";
+        info "Fixing the Build by downloading the Coverity Patch Script.";
         my $coverity_filename = get_build_dir('global') . "/kdesvn-build-coverity";
         super_mkdir(get_build_dir('global'));
         system("svn cat svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity > $coverity_filename");
-	print "Eval kdesvn-build-coverity\n";
-	do "$coverity_filename";
+        do "$coverity_filename";
     }
 
     @update_list = get_update_list();
