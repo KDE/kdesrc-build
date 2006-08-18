@@ -2063,7 +2063,10 @@ sub setup_default_modules()
 {
     @update_list = qw(qt-copy kdelibs kdepimlibs kdebase kdeartwork
                       kdemultimedia kdepim kdeutils kdegraphics kdegames
-                      kdetoys kdeedu kdeaddons);
+                      kdetoys kdeedu kdeaddons kdenetwork kdeutils);
+    if (exists $ENV{"COVERITY_RUN"}) {
+	push(@update_list, qw(kdevelop kdewebdev kdeaccessibility koffice kdesdk));
+    } 
     @build_list = @update_list;
 
     whisper "Setting up to build ", join(', ', @build_list), " by default.";
