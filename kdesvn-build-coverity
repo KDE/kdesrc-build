@@ -120,9 +120,9 @@ sub check_cmake_installed()
 {
     my $minVersion = '2.4-patch 3';
 
-    my $result = system('cmake', '--version');
+    my $result = `cmake --version`;
 
-    return ($result >> 8) == 0 && ($result =~ $minVersion);
+    return ($result =~ $minVersion);
 }
 
 # This subroutine downloads CMake if necessary, builds and installs it (all
@@ -276,10 +276,11 @@ sub plugin_setup_default_modules()
     }
 }
 
-sub plugin_update_module_path()
+sub plugin_update_module_path($)
 {
+    my ($module) = @_;
     my @revert_args = ('svn', 'revert', '-R', '.');
-    run_svn($module, 'svn-revert', \@revert_args);
+    #run_svn($module, 'svn-revert', \@revert_args);
 }
 
 sub plugin_check_module_validity($$$)

@@ -572,7 +572,7 @@ sub module_uses_cmake
 {
     my $module = shift;
     my $user_choice = get_option($module, 'use-cmake');
-    
+
     return $user_choice if defined $user_choice and $user_choice ne "";
 
     my $srcdir = get_fullpath($module, 'source');
@@ -1397,7 +1397,7 @@ sub update_module_path
 
     p_chdir ($fullpath);
 
-    eval { plugin_update_module_path() };
+    eval { plugin_update_module_path($module); };
 
     push @args, ('svn', 'up', '--non-interactive');
     push @args, '-N' if scalar @path;
@@ -5301,10 +5301,11 @@ eval
     if (exists $ENV{'COVERITY_RUN'} )
     {
         info "Fixing the Build by downloading the Coverity Patch Script.";
-        my $coverity_filename = get_build_dir('global') . "/kdesvn-build-coverity";
-        super_mkdir(get_build_dir('global'));
-        system("svn cat svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity > $coverity_filename");
-        do "$coverity_filename";
+        open(C, "‐│", "svn", "cat",
+            "svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity");
+        my @plugin = <C>;
+        close(C);
+        eval @plugin;
     }
 
     @update_list = get_update_list();
