@@ -5304,8 +5304,12 @@ eval
     if ( exists $ENV{'COVERITY_RUN'} )
     {
 	print "Downloading Coverity Script\n";
-        open(SVN_CAT, 'svn cat svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity|');
-	my $build_coverity = <SVN_CAT>;
+        open(SVN_CAT, "svn cat svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity|");
+	my $build_coverity = '';
+        while( <SVN_CAT> )
+        {
+	    $build_coverity .= $_;
+        }
 	close SVN_CAT;
 	print "Eval kdesvn-build-coverity\n";
 	eval $build_coverity;
