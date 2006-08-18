@@ -48,20 +48,9 @@ sub download_install_dbus()
     my $filename = "dbus-$dbus_version.tar.gz";
     my $dbus_url = "http://dbus.freedesktop.org/releases/$filename";
 
-    # Get temporary directory to use.
-    # Equivalent to "use File::Temp qw/tempdir/;", but at runtime.
-    require File::Temp;
-    import File::Temp qw/tempdir/; 
-
-    # Temp dir name starts with kdesvn-buildtmp, in standard tmp dir location.
-    my $tempdir = tempdir('kdesvn-buildtmpXXXX', TMPDIR => 1, CLEANUP => 0);
-
-    if ( exists $ENV{'COVERITY_RUN'} )
-    {
-        $tempdir = get_build_dir('global') . '/temp-dbus';
-        super_mkdir($tempdir) || die "could no create $tempdir";
-    }
-
+    $tempdir = get_build_dir('global') . '/temp-dbus';
+    super_mkdir($tempdir) || die "could no create $tempdir";
+    
     p_chdir($tempdir);
     pretend "Downloading DBUS to $tempdir/$filename";
 
@@ -115,7 +104,85 @@ sub download_install_dbus()
         return 0;
     }
 
-    # File::Temp will clean up the temporary directory.
+    prune_under_directory($tempdir);
+
+    return 1;
+}
+
+# This subroutine downloads CMake if necessary, builds and installs it (all
+# in one step: there is no separate update then install).
+#
+# It installs to the prefix given by the kdedir setting by default.
+#
+# This is normally only used for Coverity, as people should be installing
+# dependency libraries using their distribution's package manager software, not
+# kdesvn-build.
+#
+# Nothing happens in pretend mode however.
+#
+# Return value: 0 if the download/build/install failed, non-zero otherwise.
+sub download_install_cmake()
+{
+    return 1 if pretending;
+
+    note "\n<<<  Downloading CMake  >>>\n";
+
+    my $cmake_version = '2.4.3';
+    my $filename = "cmake-$cmake_version.tar.gz";
+    my $cmake_url = "http://www.cmake.org/files/v2.4/$filename";
+
+    my $tempdir = get_build_dir('global') . '/temp-cmake';
+    super_mkdir($tempdir) || die "could no create $tempdir";
+
+    p_chdir($tempdir);
+    pretend "Downloading CMAKE to $tempdir/$filename";
+
+    # Download snapshot.
+    info "\tDownloading CMAKE tarball.";
+
+    if (not download_file($cmake_url, $filename))
+    {
+        error "Unable to download D-BUS from r[$cmake_url]";
+        return 0;
+    }
+
+    # Decompress.
+    my $result = log_command('cmake', 'untar', ['tar', 'xzf', $filename]);
+    if ($result != 0)
+    {
+        error "Unable to decompress D-BUS tarball.";
+        return 0;
+    }
+
+    my $prefix = get_option('global', 'kdedir');
+
+    p_chdir("cmake-$cmake_version");
+    info "\tBuilding CMAKE";
+    $result = log_command('cmake', 'configure', ['./configure',
+						 "--prefix=$prefix" ] );
+
+    if ($result != 0)
+    {
+        error "Unable to configure CMAKE.";
+        return 0;
+    }
+
+    $result = log_command('cmake', 'make', ['make']); 
+    if ($result != 0)
+    {
+        error "Unable to build D-BUS.";
+        return 0;
+    }
+
+    info "\tInstalling CMAKE (installing to $prefix)";
+    $result = log_command('cmake', 'make-install', ['make', 'install']);
+    if ($result != 0)
+    {
+        error "Unable to install D-BUS.  (make-install-prefix is ignored).";
+        return 0;
+    }
+
+    prune_under_directory($tempdir);
 
     return 1;
 }
@@ -146,6 +213,8 @@ sub perform_coverity_checks()
         info "D-BUS appears to be installed in the following path: ";
         system("pkg-config", "--variable=prefix", "dbus-1");
     }
+
+    download_install_cmake();
 
     # Print blank line.
     info "";
