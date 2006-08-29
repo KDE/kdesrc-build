@@ -262,10 +262,19 @@ sub plugin_finish($)
        if($hostname =~ /coverity/i);
 }
 
-sub plugin_setup_default_modules($)
+sub plugin_setup_default_modules()
 {
-    my ($list) = @_;
-    push(@$list, qw(kdevelop kdewebdev kdeaccessibility koffice kdesdk));
+    foreach $pack qw(kdevelop kdewebdev kdeaccessibility koffice kdesdk) 
+    {
+	push(@update_list, $pack);
+	push(@build_list, $pack);
+        if (not exists $package_opts{$i})
+        {
+            $package_opts{$i} = { }; # Set up defaults
+            $package_opts{$i}{'set-env'} = { };
+        }
+
+    }
 
     $package_opts{'qt-copy'} = {
         'configure-flags' => '-qt-gif -system-zlib -no-exceptions -fast -release',
