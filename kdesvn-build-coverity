@@ -27,6 +27,77 @@ sub check_dbus_installed()
     return ($result >> 8) == 0;
 }
 
+sub download_install_tar($$$$)
+{
+    return 1 if pretending;
+
+    my ($module, $version, $baseurl, $module_command) = (@_);
+
+    note "\n<<<  Updating $module  >>>\n";
+
+    my $filename = "$module-$version.tar.gz";
+    my $url = "$baseurl/$filename";
+
+    my $tempdir = get_build_dir($module);
+    super_mkdir($tempdir) || die "could no create $tempdir";
+
+    p_chdir($tempdir);
+    pretend "Downloading $module to $tempdir/$filename";
+
+    # Download snapshot.
+    info "\tDownloading $module tarball.";
+
+    if (not download_file($url, $filename))
+    {
+        error "Unable to download $module from r[$url]";
+        return 0;
+    }
+
+    # Decompress.
+    my $result = log_command($module, 'untar', ['tar', 'xzf', $filename]);
+    if ($result != 0)
+    {
+        error "Unable to decompress $module tarball.";
+        return 0;
+    }
+
+    my $prefix = get_option('global', 'kdedir');
+
+    p_chdir("$module-$version");
+    info "\tBuilding $module";
+    my @command = ('./configure');
+    push(@command, "--prefix=$prefix");
+    push(@command, @{$module_command});
+
+    $result = log_command('dbus', 'configure', @command);
+
+    if ($result != 0)
+    {
+        error "Unable to configure $module.";
+        return 0;
+    }
+
+    $result = log_command($module, 'make', ['make']); 
+    if ($result != 0)
+    {
+        error "Unable to build $module.";
+        return 0;
+    }
+
+    info "\tInstalling $module (installing to $prefix)";
+    $result = log_command($module, 'make-install', ['make', 'install']);
+    if ($result != 0)
+    {
+        error "Unable to install $module.  (make-install-prefix is ignored).";
+        return 0;
+    }
+
+    p_chdir (get_kdesvn_dir());
+    prune_under_directory($tempdir);
+
+    return 1;
+}
+
 # This subroutine downloads DBUS if necessary, and builds and installs it (all
 # in one step: there is no separate update then install).
 #
@@ -41,74 +112,14 @@ sub check_dbus_installed()
 # Return value: 0 if the download/build/install failed, non-zero otherwise.
 sub download_install_dbus()
 {
-    return 1 if pretending;
 
-    note "\n<<<  Updating D-BUS  >>>\n";
-
-    my $dbus_version = '0.62';
-    my $filename = "dbus-$dbus_version.tar.gz";
-    my $dbus_url = "http://dbus.freedesktop.org/releases/$filename";
-
-    my $tempdir = get_build_dir('dbus');
-    super_mkdir($tempdir) || die "could no create $tempdir";
-    
-    p_chdir($tempdir);
-    pretend "Downloading DBUS to $tempdir/$filename";
-
-    # Download snapshot.
-    info "\tDownloading DBUS tarball.";
-
-    if (not download_file($dbus_url, $filename))
-    {
-        error "Unable to download D-BUS from r[$dbus_url]";
-        return 0;
-    }
-
-    # Decompress.
-    my $result = log_command('dbus', 'untar', ['tar', 'xzf', $filename]);
-    if ($result != 0)
-    {
-        error "Unable to decompress D-BUS tarball.";
-        return 0;
-    }
-
-    my $prefix = get_option('global', 'kdedir');
-
-    p_chdir("dbus-$dbus_version");
-    info "\tBuilding DBUS";
-    $result = log_command('dbus', 'configure', ['./configure',
-                             "--prefix=$prefix", '--disable-qt',
-                             '--disable-qt3', '--disable-dependency-tracking',
-                             '--disable-xml-docs', '--disable-doxygen-docs',
-                             '--disable-glib', '--disable-mono', '--disable-python',
-                             '--disable-gcj' ]
+    return download_install_tar('dbus', '0.62', "http://dbus.freedesktop.org/releases",
+                             ['--disable-qt', '--disable-qt3', '--disable-dependency-tracking', 
+			      '--disable-xml-docs', '--disable-doxygen-docs',
+			      '--disable-glib', '--disable-mono', '--disable-python',
+			      '--disable-gcj' ]
                              );
-
-    if ($result != 0)
-    {
-        error "Unable to configure D-BUS.";
-        return 0;
-    }
-
-    $result = log_command('dbus', 'make', ['make']); 
-    if ($result != 0)
-    {
-        error "Unable to build D-BUS.";
-        return 0;
-    }
-
-    info "\tInstalling DBUS (installing to $prefix)";
-    $result = log_command('dbus', 'make-install', ['make', 'install']);
-    if ($result != 0)
-    {
-        error "Unable to install D-BUS.  (make-install-prefix is ignored).";
-        return 0;
-    }
-
-    p_chdir (get_kdesvn_dir());
-    prune_under_directory($tempdir);
-
-    return 1;
+;
 }
 
 # This subroutine checks if an appropriate dbus software is already installed.
@@ -139,71 +150,23 @@ sub check_cmake_installed()
 # Return value: 0 if the download/build/install failed, non-zero otherwise.
 sub download_install_cmake()
 {
-    return 1 if pretending;
-
-    note "\n<<<  Downloading CMake  >>>\n";
-
-    my $cmake_version = '2.4.3';
-    my $filename = "cmake-$cmake_version.tar.gz";
-    my $cmake_url = "http://www.cmake.org/files/v2.4/$filename";
-
-    my $tempdir = get_build_dir('cmake');
-    super_mkdir($tempdir) || die "could no create $tempdir";
-
-    p_chdir($tempdir);
-    pretend "Downloading CMAKE to $tempdir/$filename";
-
-    # Download snapshot.
-    info "\tDownloading CMAKE tarball.";
-
-    if (not download_file($cmake_url, $filename))
-    {
-        error "Unable to download D-BUS from r[$cmake_url]";
-        return 0;
-    }
-
-    # Decompress.
-    my $result = log_command('cmake', 'untar', ['tar', 'xzf', $filename]);
-    if ($result != 0)
-    {
-        error "Unable to decompress D-BUS tarball.";
-        return 0;
-    }
-
-    my $prefix = get_option('global', 'kdedir');
-
-    p_chdir("cmake-$cmake_version");
-    info "\tBuilding CMAKE";
-    $result = log_command('cmake', 'configure', ['./configure',
-						 "--prefix=$prefix" ] );
-
-    if ($result != 0)
-    {
-        error "Unable to configure CMAKE.";
-        return 0;
-    }
-
-    $result = log_command('cmake', 'make', ['make']); 
-    if ($result != 0)
-    {
-        error "Unable to build D-BUS.";
-        return 0;
-    }
-
-    info "\tInstalling CMAKE (installing to $prefix)";
-    $result = log_command('cmake', 'make-install', ['make', 'install']);
-    if ($result != 0)
-    {
-        error "Unable to install D-BUS.  (make-install-prefix is ignored).";
-        return 0;
-    }
-
-    p_chdir (get_kdesvn_dir());
-    prune_under_directory($tempdir);
-
-    return 1;
+    return download_install_tar('cmake', '2.4.3', "http://www.cmake.org/files/v2.4", []);
 }
 
+
+sub check_lcms_installed()
+{
+    my $minVersion = '1.12';
+
+    my $result = system('pkg-config', '--exists', "lcms >= $minVersion");
+
+    return ($result >> 8) == 0;
+}
+
+sub download_install_cmake()
+{
+    return download_install_tar('lcms', '1.15', "http://www.littlecms.com/", []);
+}
 
 
 # This subroutine is run after the lock has been obtained, but before performing
@@ -241,6 +204,18 @@ sub perform_coverity_checks()
         if (not download_install_cmake())
         {
             error "\nWell, we were b[r[unable to install] CMake for some reason.";
+            error "Check your logs afterwards.";
+        }
+    }
+
+    unless (check_lcms_installed())
+    {
+        info "lcms 1.12 does not appear to be installed.  At least its not in pkg-config";
+        info "So just for you guys, I'll go ahead and install it for you.";
+
+        if (not download_install_cmake())
+        {
+            error "\nWell, we were b[r[unable to install] lcms for some reason.";
             error "Check your logs afterwards.";
         }
     }
