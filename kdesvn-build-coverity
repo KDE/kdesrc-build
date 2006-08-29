@@ -262,21 +262,29 @@ sub plugin_finish($)
        if($hostname =~ /coverity/i);
 }
 
-sub plugin_setup_default_modules()
+sub plugin_setup_default_modules($$$)
 {
-    foreach my $pack qw(kdevelop kdewebdev kdeaccessibility koffice kdesdk) 
+    my ($update_list_ref, $build_list_ref, $package_opts_ref) = @_;
+
+    foreach my $pack qw(kdevelop kdewebdev kdeaccessibility koffice kdesdk playground/accessibility 
+                        playground/artwork playground/base playground/bindings playground/devtools 
+                        playground/edu playground/games playground/graphics playground/ioslaves 
+                        playground/multimedia playground/network playground/office playground/pim 
+                        playground/sysadmin playground/utils ) 
     {
-	push(@update_list, $pack);
-	push(@build_list, $pack);
-        if (not exists $package_opts{$i})
+	push(@$update_list_ref, $pack);
+	push(@$build_list_ref, $pack);
+        if (not exists $package_opts_ref->{$pack})
         {
-            $package_opts{$i} = { }; # Set up defaults
-            $package_opts{$i}{'set-env'} = { };
+            $package_opts_ref->{$pack} = { }; # Set up defaults
+            $package_opts_ref->{$pack}{'set-env'} = { };
         }
-
     }
+   
+    # kdewebdev needs kdevelop
+    $package_opts_ref->{'kdevelop'}{'install-after-build'} = 1;
 
-    $package_opts{'qt-copy'} = {
+    $package_opts_ref->{'qt-copy'} = {
         'configure-flags' => '-qt-gif -system-zlib -no-exceptions -fast -release',
         'apply-qt-patches' => 1,
         'use-unsermake' => 0,
@@ -284,6 +292,9 @@ sub plugin_setup_default_modules()
         'set-env' => { },
         'make-options' => 'sub-src sub-tools'
     }
+
+    $package_opts_ref->{'global'}{'use-cmake'} = 1;
+    $package_opts_ref->{'global'}{'use-unsermake'} = 0;
 }
 
 sub plugin_update_module_path($)
