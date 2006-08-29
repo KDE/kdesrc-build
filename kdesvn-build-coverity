@@ -54,7 +54,7 @@ sub download_install_tar($$$$)
     }
 
     # Decompress.
-    my $result = log_command($module, 'untar', ['tar', 'xzf', $filename]);
+    my $result = log_command($module, 'untar', ['tar', 'xvf', $filename]);
     if ($result != 0)
     {
         error "Unable to decompress $module tarball.";
@@ -69,7 +69,7 @@ sub download_install_tar($$$$)
     push(@command, "--prefix=$prefix");
     push(@command, @{$module_command});
 
-    $result = log_command('dbus', 'configure', @command);
+    $result = log_command($module, 'configure', \@command);
 
     if ($result != 0)
     {
