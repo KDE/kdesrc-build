@@ -112,14 +112,12 @@ sub download_install_tar($$$$)
 # Return value: 0 if the download/build/install failed, non-zero otherwise.
 sub download_install_dbus()
 {
-
     return download_install_tar('dbus', '0.62', "http://dbus.freedesktop.org/releases",
                              ['--disable-qt', '--disable-qt3', '--disable-dependency-tracking', 
 			      '--disable-xml-docs', '--disable-doxygen-docs',
 			      '--disable-glib', '--disable-mono', '--disable-python',
 			      '--disable-gcj' ]
                              );
-;
 }
 
 # This subroutine checks if an appropriate dbus software is already installed.
@@ -163,7 +161,7 @@ sub check_lcms_installed()
     return ($result >> 8) == 0;
 }
 
-sub download_install_cmake()
+sub download_install_lcms()
 {
     return download_install_tar('lcms', '1.15', "http://www.littlecms.com/", []);
 }
@@ -213,7 +211,7 @@ sub perform_coverity_checks()
         info "lcms 1.12 does not appear to be installed.  At least its not in pkg-config";
         info "So just for you guys, I'll go ahead and install it for you.";
 
-        if (not download_install_cmake())
+        if (not download_install_lcms())
         {
             error "\nWell, we were b[r[unable to install] lcms for some reason.";
             error "Check your logs afterwards.";
