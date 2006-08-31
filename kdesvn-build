@@ -4856,6 +4856,11 @@ sub check_module_validity
 
     if($module_actual_url ne $module_expected_url)
     {
+	if ( get_option('global', '#manual-build') ) 
+        {
+		system("svn", "switch", $module_expected_url);
+		return;
+	}
         warning <<EOF;
  y[!!]
  y[!!] g[$module] seems to be checked out from somewhere other than expected.
@@ -4869,6 +4874,9 @@ g[b[source] directory, or by changing to the source directory and running
   svn switch $module_expected_url
 
 If the module is fine, please update your configuration file.
+
+If you use kdesvn-build with --svn-only it will try switching for you (might not work
+correctly).
 EOF
     }
 }
