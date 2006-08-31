@@ -18,6 +18,8 @@
 #
 # Return value is true if DBUS is installed, 0 otherwise.
 
+use strict;
+
 sub check_dbus_installed()
 {
     my $minVersion = '0.62';
@@ -31,15 +33,18 @@ sub download_install_tar($$$$)
 {
     return 1 if pretending;
 
-    my ($module, $version, $baseurl, $module_command) = (@_);
+    my ($module, $version, $baseurl, $module_command) = @_;
 
-    note "\n<<<  Updating $module  >>>\n";
+    note "\n<<<  Installing tarball $module  >>>\n";
 
     my $filename = "$module-$version.tar.gz";
     my $url = "$baseurl/$filename";
 
     my $tempdir = get_build_dir($module);
-    super_mkdir($tempdir) || die "could no create $tempdir";
+    if (! super_mkdir($tempdir)) {
+        error "Unable to create temporary directory $tempdir.\n";
+        return 0;
+    }
 
     p_chdir($tempdir);
     pretend "Downloading $module to $tempdir/$filename";
