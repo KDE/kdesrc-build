@@ -4881,6 +4881,15 @@ EOF
     }
 }
 
+# Does qt-copy (for qt4) need "make install"? Yes, unless configured with prefix=srcdir.
+sub qt_copy_qt4_needs_make_install
+{
+    my $qtsource = get_fullpath('qt-copy', 'source');
+    my $prefix = get_option('qt-copy', 'qtdir');
+    return 0 if $qtsource eq $prefix;
+    return 1;
+}
+
 # Subroutine to handle the installation process.  Simply calls
 # 'make install' in the directory.
 sub handle_install
@@ -4895,7 +4904,9 @@ sub handle_install
         check_for_module_config ($module);
 
         if (list_has(@no_install_modules, $module) or
-            ($module eq 'qt-copy' and is_qt_copy_qt3()))
+            ($module eq 'qt-copy' and is_qt_copy_qt3()) or
+            ($module eq 'qt-copy' and !qt_copy_qt4_needs_make_install())
+           )
         {
             info "\tg[$module] doesn't need to be installed.";
             next;
