@@ -50,7 +50,7 @@ sub download_install_tar($$$$)
     pretend "Downloading $module to $tempdir/$filename";
 
     # Download snapshot.
-    info "\tDownloading $module tarball.";
+    note "\tDownloading $module tarball.";
 
     if (not download_file($url, $filename))
     {
@@ -69,7 +69,7 @@ sub download_install_tar($$$$)
     my $prefix = get_option('global', 'kdedir');
 
     p_chdir("$module-$version");
-    info "\tBuilding $module";
+    note "\tBuilding $module";
     my @command = ('./configure');
     push(@command, "--prefix=$prefix");
     push(@command, @{$module_command});
@@ -89,7 +89,7 @@ sub download_install_tar($$$$)
         return 0;
     }
 
-    info "\tInstalling $module (installing to $prefix)";
+    note "\tInstalling $module (installing to $prefix)";
     $result = log_command($module, 'make-install', ['make', 'install']);
     if ($result != 0)
     {
@@ -180,12 +180,12 @@ sub download_install_lcms()
 # No return value.
 sub perform_coverity_checks()
 {
-    info "We are being run by g[Coverity].  Hi guys!";
+    note "We are being run by g[Coverity].  Hi guys!";
 
     unless (check_dbus_installed())
     {
-        info "D-BUS does not appear to be installed.  At least, pkg-config can't find it.";
-        info "So just for you guys, I'll go ahead and install it for you.";
+        note "D-BUS does not appear to be installed.  At least, pkg-config can't find it.";
+        note "So just for you guys, I'll go ahead and install it for you.";
 
         if (not download_install_dbus())
         {
@@ -195,13 +195,13 @@ sub perform_coverity_checks()
     }
     else
     {
-        info "D-BUS appears to be installed. Continuing. ";
+        note "D-BUS appears to be installed. Continuing. ";
     }
 
     unless (check_cmake_installed())
     {
-        info "CMake 2.4.3 does not appear to be installed.  At least its not in \$PATH";
-        info "So just for you guys, I'll go ahead and install it for you.";
+        note "CMake 2.4.3 does not appear to be installed.  At least its not in \$PATH";
+        note "So just for you guys, I'll go ahead and install it for you.";
 
         if (not download_install_cmake())
         {
@@ -211,14 +211,14 @@ sub perform_coverity_checks()
     }
     else
     {
-        info "cmake appears to be installed. Continuing. ";
+        note "cmake appears to be installed. Continuing. ";
     }
 
 
     unless (check_lcms_installed())
     {
-        info "lcms 1.12 does not appear to be installed.  At least its not in pkg-config";
-        info "So just for you guys, I'll go ahead and install it for you.";
+        note "lcms 1.12 does not appear to be installed.  At least its not in pkg-config";
+        note "So just for you guys, I'll go ahead and install it for you.";
 
         if (not download_install_lcms())
         {
@@ -228,12 +228,12 @@ sub perform_coverity_checks()
     }
     else
     {
-        info "lcms appears to be installed. Continuing. ";
+        note "lcms appears to be installed. Continuing. ";
     }
 
 
     # Print blank line.
-    info "";
+    note "";
 }
 
 sub plugin_finish($)
@@ -242,7 +242,7 @@ sub plugin_finish($)
     my $today = basename($logdir);
     my $hostname = hostname();
 
-    info "Uploading logfiles\n";
+    note "Uploading logfiles\n";
 
     system("svn", "import", "-m", $today,
            $logdir, "svn://anonsvn.kde.org/home/coverity_kde/$today/$hostname") 
