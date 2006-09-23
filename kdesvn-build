@@ -2595,8 +2595,7 @@ Please report bugs using the KDE Bugzilla, at http://bugs.kde.org/
 DONE
 
     my @argv;
-
-    info "Commandline was: ", @ARGV;
+    my @saved_opts = @ARGV; # Save options for debugging purposes.
 
     while ($_ = shift @ARGV)
     {
@@ -2743,7 +2742,8 @@ DONE
             };
 
             /^--debug$/ && do {
-                set_option('global', 'debug-level', DEBUG);
+                set_option('global', '#debug-level', DEBUG);
+                debug "Commandline was: ", join(', ', @saved_opts);
                 last SWITCH;
             };
 
@@ -4688,11 +4688,9 @@ sub handle_build
 
     if (pretending)
     {
-        pretend "\tWould have opened status file g[$outfile].";
-        $outfile = undef; # Don't actually try it though.
+        $outfile = undef;
     }
-
-    if ($outfile)
+    else
     {
         open STATUS_FILE, ">$outfile" or do {
             error <<EOF;
@@ -4802,7 +4800,9 @@ sub finish
     my $logdir = get_log_dir('global');
     $exitcode = 0 unless $exitcode;
 
-    close_lock() unless pretending;
+    exit $exitcode if pretending; # Abort early when pretending.
+
+    close_lock();
 
     open(LOG, ">>$logdir/build-log");
     print LOG @screen_log;
@@ -4810,7 +4810,7 @@ sub finish
 
     eval { plugin_finish($logdir); };
 
-    note "Your logs are saved in y[$logdir]" unless pretending;
+    note "Your logs are saved in y[$logdir]";
     exit $exitcode;
 }
 
