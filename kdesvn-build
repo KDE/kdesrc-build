@@ -1521,18 +1521,28 @@ END
     close SIG;
 }
 
-# Subroutine to run a command with redirected STDOUT and STDERR.
+# Subroutine to run a command, optionally filtering on the output of the child
+# command.
 #
-# First parameter is name of the log file (relative to the log directory).
-# Second parameter is a reference to an array with the command and its
-# arguments
-# Return value is the shell return code, so 0 is success, non-zero is failure.
+# First parameter is the name of the module being built (for logging purposes
+#   and such).
+# Second parameter is the name of the log file to use (relative to the log
+#   directory).
+# Third parameter is a reference to an array with the command and its
+#   arguments.  i.e. ['command', 'arg1', 'arg2']
+# Fourth parameter (optional) is a reference to a subroutine to have each line
+#   of child output passed to.  This output is not supposed to be printed to
+#   the screen by the subroutine, normally the output is only logged.  However
+#   this is useful for e.g. munging out the progress of the build.
+#   USEFUL: When there is no more output from the child, the callback will be
+#     called with an undef string.  (Not just empty, it is also undefined).
+# The return value is the shell return code, so 0 is success, and non-zero is
+#   failure.
 sub log_command
 {
+    my ($module, $filename, $argRef, $callbackRef) = @_;
     my $pid;
-    my $module = shift;
-    my $filename = shift;
-    my @command = @{(shift)};
+    my @command = @{$argRef};
     my $logdir = get_log_dir($module);
 
     debug "log_command(): Module $module, Command: ", join(' ', @command);
@@ -1543,10 +1553,28 @@ sub log_command
         return 0;
     }
 
-    if ($pid = fork)
+    # Fork a child, with its stdout connected to CHILD.
+    $pid = open(CHILD, '-|');
+    if ($pid)
     {
         # Parent
-        waitpid $pid, 0;
+        while (<CHILD>)
+        {
+            if (defined $callbackRef)
+            {
+                # Call callback with current output.
+                &{$callbackRef}($_);
+            }
+            else
+            {
+                debug $_;
+            }
+        }
+
+        close CHILD;
+
+        # Let callback know there is no more output.
+        &{$callbackRef}(undef) if defined $callbackRef;
 
         # If the module fails building, set an internal flag in the module
         # options with the name of the log file containing the error message.
@@ -1564,10 +1592,6 @@ sub log_command
             error "\tLogging to std out due to failure creating log dir.";
         }
 
-        # Redirect stdout and stderr to the given file.
-        if (not debugging)
-        {
-
 # The stdin redirection used to be commented out because it will cause
 # problems for users using make-install-prefix when a password is desired, or
 # when svn complains about the SSL signature.  I think I've fixed the latter,
@@ -1576,19 +1600,11 @@ sub log_command
 # other commands will fail instead of hanging at the terminal.  As it stands, it can still
 # be canceled using an exported env var just in case.
 
-            open (STDIN, "</dev/null") unless exists $ENV{'KDESVN_BUILD_USE_TTY'};
-            open (STDOUT, ">$logdir/$filename.log") or do {
-                error "Error opening $logdir/$filename.log for logfile.";
-                # Don't abort, hopefully STDOUT still works.
-            };
-        }
-        else
-        {
-            open (STDOUT, "|tee $logdir/$filename.log") or do {
-                error "Error opening pipe to tee command.";
-                # Don't abort, hopefully STDOUT still works.
-            };
-        }
+        open (STDIN, "</dev/null") unless exists $ENV{'KDESVN_BUILD_USE_TTY'};
+        open (STDOUT, "|tee $logdir/$filename.log") or do {
+            error "Error opening pipe to tee command.";
+            # Don't abort, hopefully STDOUT still works.
+        };
 
         # Make sure we log everything.  If the command is svn, it is possible
         # that the client will produce output trying to get a password, so
@@ -1609,7 +1625,7 @@ sub log_command
                 exit EINVAL;
             }
 
-            exit 0;
+            exit 0; # Exit child process successfully.
         }
 
         # External command.
@@ -1656,102 +1672,92 @@ sub set_error_logfile
     symlink "$logfile", "$logdir/error.log";
 }
 
-# Subroutine to run make/unsermake with redirected STDOUT and STDERR,
-# and to process the percentage in unsermake (-p). First parameter
-# is name of the log file (relative to the log directory), and the
-# second parameter is a reference to an array with the command and
-# its arguments.
+# Subroutine to run make (unsermake with KDE 3) and process the build process
+# output in order to provide completion updates.  If using CMake, CMake 2.4.3
+# or later is required.  This procedure takes the same arguments as
+# log_command() (described here as well), except that the callback argument
+# is not used.
 #
-# TODO: This is a fork of log_command().  Find a way to re-merge them.
-# Returns 0 on success, non-zero on failure.
+# First parameter is the name of the module being built (for logging purposes
+#   and such).
+# Second parameter is the name of the log file to use (relative to the log
+#   directory).
+# Third parameter is a reference to an array with the command and its
+#   arguments.  i.e. ['command', 'arg1', 'arg2']
+# The return value is the shell return code, so 0 is success, and non-zero is
+#   failure.
 sub run_make_command
 {
-    my $pid;
-    my $module = shift;
-    my $filename = shift;
-    my @command = @{(shift)};
-    my $logdir = get_log_dir($module);
-    my $isunsermake = $command[0] =~ 'unsermake';
+    my ($module, $filename, $argRef) = @_;
 
-    # Don't print ANSI characters if we're not on a tty.  Also, automake
-    # doesn't support printing output status.  Finally, we output the whole
-    # log to screen when debugging which makes this useless.
-    if (!$isunsermake or not -t STDERR or debugging)
+    my $isunsermake = ${$argRef}[0] =~ 'unsermake';
+
+    debug "run_make_command: $module, ", join(', ', @{$argRef});
+
+    # There are situations when we don't want (or can't get) progress output:
+    # 1. Automake (i.e. not cmake, not unsermake)
+    # 2. If we're not printing to a terminal.
+    # 3. When we're debugging (we'd interfere with debugging output).
+    if ((!module_uses_cmake($module) and !$isunsermake) or
+        not -t STDERR or 
+        debugging)
     {
-        return log_command($module, $filename, \@command);
+        return log_command($module, $filename, $argRef);
     }
 
     # Make sure -p is in the unsermake flags, it's the whole reason for using
     # this function.
-    if (!(grep /^(-p)|(--print-progress)$/, @command))
+    if ($isunsermake and !(grep /^(-p)|(--print-progress)$/, @{$argRef}))
     {
         # Add in front of element 1, deleting 0 elements.
-        splice @command, 1, 0, '-p';
+        splice @{$argRef}, 1, 0, '-p';
     }
 
-    if (pretending)
-    {
-        pretend "\tWould have run g[", join (' ', @command);
-        return 0;
-    }
+    # Setup callback function for use by log_command.
+    my $last = -1;
 
-    $pid = open(CHILD, '-|');
-    if ($pid)
-    {
-        my $last = -1;
+    # w00t.  Check out the closure!  Maks would be so proud.
+    my $log_command_callback = sub {
+        my ($input) = shift;
 
-        while (<CHILD>)
+        if (not defined $input)
         {
-            chomp;
+            # End of input, cleanup.
+            print STDERR "\r\e[K";
+        }
+        else
+        {
+            chomp($input);
 
-            # Update terminal (\e[K clears the line) if the percentage
-            # changed.
-            if (/([0-9]+)% (creating|compiling|linking)/)
+            my $percentage = '';
+
+            if ($isunsermake)
             {
-                print STDERR "\r$1% \e[K" unless ($1 == $last);
-                $last = $1;
+                if ($input =~ /([0-9]+)% (creating|compiling|linking)/)
+                {
+                    $percentage = $1;
+                }
             }
+            else # CMake.
+            {
+                if ($input =~ /^\[\s*([0-9]+)%]/)
+                {
+                    $percentage = $1;
+                }
+            }
+
+            # Update terminal (\e[K clears to the end of line) if the
+            # percentage changed.
+            if ($percentage and $percentage ne $last)
+            {
+                print STDERR "\r$percentage% \e[K";
+            }
+
+            $last = $percentage;
         }
+    };
 
-        close(CHILD);
-        print STDERR "\r\e[K";
-
-        # If the module fails building, set an internal flag in the module
-        # options with the name of the log file containing the error message.
-        my $result = $?;
-        set_error_logfile($module, "$filename.log") if $result;
-
-        return $result;
-    }
-    else
-    {
-        # Child
-        if (not defined $logdir or not -e $logdir)
-        {
-            # Error creating directory for some reason.
-            error "\tLogging to standard output due to failure creating log dir.";
-        }
-
-        open (STDOUT, "|tee $logdir/$filename.log") or do {
-            error "Error opening pipe to tee command."
-        };
-
-        # Make sure we log everything.
-        open (STDERR, ">&STDOUT");
-
-        exec (@command) or do {
-            my $cmd_string = join(' ', @command);
-            error <<EOF;
-r[b[Unable to execute "$cmd_string"]!
-	$!
-
-Please check your binpath setting (it controls the PATH used by kdesvn-build).
-Currently it is set to g[$ENV{PATH}].
-EOF
-            # Don't return, we're still in the child!
-            exit 1;
-        };
-    }
+    return log_command($module, $filename, $argRef, $log_command_callback);
 }
 
 # Subroutine to determine if the given subdirectory of a module can actually be
