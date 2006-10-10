@@ -1538,6 +1538,12 @@ END
 #     called with an undef string.  (Not just empty, it is also undefined).
 # The return value is the shell return code, so 0 is success, and non-zero is
 #   failure.
+#
+# NOTE: This function has a special feature.  If the command passed into the
+#   argument reference is 'kdesvn-build', then log_command will, when it forks,
+#   execute the subroutine named by the second parameter rather than executing
+#   a child process.  The remaining arguments in the list are passed to the
+#   subroutine that is called.
 sub log_command
 {
     my ($module, $filename, $argRef, $callbackRef) = @_;
@@ -1885,10 +1891,36 @@ sub safe_make (@)
         return 1;
     }
 
-    # Add make-options to the given options, as long as we're not installing
-    # If we are installing, unsermake seems to assume that the options are a
-    # make target, and parallel builds don't help with installing anyways.
-    unshift (@args, split(' ', $opts)) unless ($installing && !module_uses_cmake($module));
+    # Add make-options to the given options.
+    # If we're installing, we need to strip out parallel build options.  If any
+    # other options would break installation I will probably need to add a
+    # separate make-install-options option. :-(
+    unshift (@args, split(' ', $opts));
+
+    if ($installing and grep(/^-j/, @args))
+    {
+        whisper "\tStripping parallel install instructions for g[$module]";
+
+        # Find -j option
+        for (my $i = 0; $i < scalar @args; ++$i)
+        {
+            if ($args[$i] =~ /^-j/)
+            {
+                # Found it, now decide whether to remove -jfoo option or -j
+                # and the next argument.
+                if ($args[$i] eq '-j')
+                {
+                    splice(@args, $i, 2); # Remove 2 elements at $i
+                }
+                else
+                {
+                    splice(@args, $i, 1); # Remove 1 element at $i
+                }
+
+                $i = -1; # Restart search ($i will increment to 0)
+            }
+        }
+    }
 
     my $description;
 
@@ -4856,17 +4888,22 @@ sub check_module_validity
         warning "The module is actually from: y[$module_actual_url]";
 
         system("svn status --no-ignore | grep '^[I?]' | cut -b8- | xargs rm -rf");
-        system("svn", "switch", $module_expected_url);
+        log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
         return;
     }
 
-    if($module_actual_url ne $module_expected_url)
+    if ($module_actual_url ne $module_expected_url)
     {
-	if ( get_option('global', '#manual-build') ) 
+        # Check if the --svn-only flag was passed.
+        if (get_option('global', '#manual-build')) 
         {
-		system("svn", "switch", $module_expected_url);
-		return;
-	}
+            note "g[$module] is checked out from a different location than expected.";
+            note "Attempting to correct";
+
+            log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
+            return;
+        }
+
         warning <<EOF;
  y[!!]
  y[!!] g[$module] seems to be checked out from somewhere other than expected.
@@ -4887,11 +4924,13 @@ EOF
     }
 }
 
-# Does qt-copy (for qt4) need "make install"? Yes, unless configured with prefix=srcdir.
+# Check if qt-copy 4 requires make install.
+#
+# This returns true unless the QTDIR is the same as the Qt 4 srcdir.
 sub qt_copy_qt4_needs_make_install
 {
     my $qtsource = get_fullpath('qt-copy', 'source');
-    my $prefix = get_option('qt-copy', 'qtdir');
+    my $prefix = get_option('global', 'qtdir');
     return 0 if $qtsource eq $prefix;
     return 1;
 }
