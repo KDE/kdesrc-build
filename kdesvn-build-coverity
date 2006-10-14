@@ -29,6 +29,22 @@ sub check_dbus_installed()
     return ($result >> 8) == 0;
 }
 
+# Check that CLucene is installed.
+# CLucene is required by Strigi in playground/base
+sub check_clucene_installed()
+{
+    # this efficient check algorithm was copied from the cmake check
+    return 0;
+}
+
+# Install CLucene
+# CLucene is required by Strigi in playground/base
+sub download_install_clucene()
+{
+    return download_install_tar('clucene-core', '0.9.16',
+        "http://surfnet.dl.sourceforge.net/sourceforge/clucene", [ ] );
+}
+
 sub download_install_tar($$$$)
 {
     return 1 if pretending;
@@ -233,6 +249,15 @@ sub perform_coverity_checks()
         note "lcms appears to be installed. Continuing. ";
     }
 
+    unless (check_clucene_installed())
+    {
+        note "CLucene does not appear to be installed.";
+        if (not download_install_clucene())
+        {
+            error "\nCLucene can not be installed.";
+            error "Check your logs afterwards.";
+        }
+    }
 
     # Print blank line.
     note "";

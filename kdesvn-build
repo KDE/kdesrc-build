@@ -5363,11 +5363,15 @@ eval
     if (exists $ENV{'COVERITY_RUN'} )
     {
         info "Fixing the Build by downloading the Coverity Patch Script.";
-        open(C, "-|", "svn", "cat",
-            "svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity");
+        if (-e "$0-coverity") {
+            open(C, "< $0-coverity") or die;
+        } else {
+            open(C, "-|", "svn", "cat",
+                "svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity");
+        }
         my @plugin = <C>;
         close(C);
-        eval "@plugin";
+        eval "@plugin" or die;
     }
 
     eval { plugin_setup_default_modules(\@update_list, \@build_list, \%package_opts); };
