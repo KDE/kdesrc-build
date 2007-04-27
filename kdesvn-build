@@ -254,7 +254,6 @@ use warnings;
 use Fcntl;    # For sysopen constants
 use POSIX 'strftime';
 use File::Find; # For our lndir reimplementation.
-use Net::HTTP;  # For downloading files.
 use File::Basename;
 use Sys::Hostname;
 use Errno qw(:POSIX);
@@ -572,12 +571,16 @@ sub get_dest_dir
 sub module_uses_cmake
 {
     my $module = shift;
-    my $user_choice = get_option($module, 'use-cmake');
-
-    return $user_choice if defined $user_choice and $user_choice ne "";
 
     my $srcdir = get_fullpath($module, 'source');
-    return -e "$srcdir/CMakeLists.txt";
+    return 1 if -e "$srcdir/CMakeLists.txt";
+
+    # No CMakeLists.txt found, if the directory existed don't use CMake,
+    # otherwise use the stable-kde option to determine.
+
+    return 0 if -e $srcdir;
+
+    return not get_option($module, 'use-stable-kde');
 }
 
 # Convenience subroutine to get the source root dir.
@@ -727,6 +730,27 @@ sub svn_module_url
     return "$svn_server/$branch/$module";
 }
 
+# Returns true if the Net::HTTP module is available.
+BEGIN {
+    my $Net_HTTP_available = undef;
+
+    sub has_Net_HTTP
+    {
+        return $Net_HTTP_available if defined $Net_HTTP_available;
+
+        eval {
+            require Net::HTTP;
+            $Net_HTTP_available = 1;
+        } or do {
+            error " y[*] Can't open y[b[Net::HTTP] module, skipping check for module snapshot.";
+            debug "Error was $@";
+            $Net_HTTP_available = 0;
+        };
+
+        return $Net_HTTP_available;
+    }
+}
+
 # Convenience subroutine to return the build directory for a module. Use
 # this instead of get_subdir_path because this special-cases modules for you,
 # such as qt-copy.
@@ -848,6 +872,11 @@ sub get_option
     my $global_opts = $package_opts{'global'};
     my @lockedOpts = qw(pretend disable-agent-check);
 
+    # These options should not apply to qt-copy when specified as part of
+    # globals by default.  Only options which might reasonably be used in the
+    # global section have been included here.
+    my @qtCopyOverrides = qw(branch configure-flags tag);
+
     # These options can't override globals
     if (list_has(@lockedOpts, $option) or $module eq 'global')
     {
@@ -865,7 +894,7 @@ sub get_option
 
     # Next in order of precedence
     if (defined ${$global_opts}{"#$option"} and not 
-        ($module eq 'qt-copy' and $option eq 'configure-flags'))
+        ($module eq 'qt-copy' and list_has(@qtCopyOverrides, $option)))
     {
         return ${$global_opts}{"#$option"};
     }
@@ -888,11 +917,16 @@ sub get_option
     }
 
     # qt-copy should already have default options set, no need to check
-    # specifically for it.
+    # specifically for it.  We still may need to prevent returning a set global
+    # option when the default is unset.
 
     # Everything else overrides the global, unless of course it's not set.
     # If we're reading for global options, we're pretty much done.
     return $$ref{$option} if defined $$ref{$option};
+
+    # Some global options would probably make no sense applied to qt-copy.
+    return 0 if $module eq 'qt-copy' and list_has(@qtCopyOverrides, $option);
+
     return ${$global_opts}{$option};
 }
 
@@ -977,41 +1011,18 @@ sub get_fullpath
     return $pathinfo{'fullpath'};
 }
 
-# This subroutine downloads the file pointed to by the URL given in the first
-# parameter, saving to the given filename.  (FILENAME, not directory).
+# This subroutine downloads the specified file from a host, and saves it to the
+# given filename.
 #
-# First parameter: URL of link to download (i.e. http://kdesvn-build.kde.org/foo.tbz2)
-# Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
+# First parameter: Hostname of the server (i.e. kdesvn-build.kde.org)
+# Second parameter: Path of the file on the host (i.e. /files/blah.tbz2)
+# Third parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
 # Return value is 0 for failure, non-zero for success.
-sub download_file
+sub download_http_file
 {
-    my $url = shift;
-    my $filename = shift;
+    my ($host, $path, $filename) = @_;
 
-    if (pretending)
-    {
-        pretend "Would have downloaded g[$url]\n\tto g[$filename]";
-        return 1;
-    }
-
-    my ($protocol, $host, $path) = ($url =~ m{^([^:]+)://([^/]+)(/.*)$});
-
-    if (not defined $url or not defined $host or not defined $path)
-    {
-        error "Trying to download file from invalid URL: r[$url]";
-        return 0;
-    }
-
-    # Not sure if https works but no harm in letting it try.
-    if ($protocol !~ /^https?$/)
-    {
-        error "Trying to download file ($url), but";
-        error "\tthe r[$protocol] protocol is unsupported.";
-        return 0;
-    }
-
-    whisper "Downloading g[$path] from g[$url]";
-
+    return 0 unless has_Net_HTTP();
     my $conn = Net::HTTP->new (Host => $host);
     
     if (not defined $conn)
@@ -1032,14 +1043,14 @@ sub download_file
 
     if (200 != $code)
     {
-        error "Unable to download file r[$url]:\n\tr[b[$msg]";
+        error "Unable to download file r[$path]:\n\tr[b[$msg]";
 
         $conn->close();
         return 0;
     }
 
     open OUTPUT, ">$filename" or do {
-        error "Unable to open output file for r[$url] download.";
+        error "Unable to open output file for r[$path] download.";
         error "\tMessage: b[r[$@]";
 
         $conn->close();
@@ -1071,11 +1082,162 @@ sub download_file
     return 1;
 }
 
+# This subroutine downloads the file pointed to by the URL given in the first
+# parameter, saving to the given filename.  (FILENAME, not directory).
+#
+# First parameter: FTP Host. (i.e. ftp.kde.org)
+# Second parameter: Path to file, including file name (i.e. /pub/unstable/foo.tbz2)
+# Third parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
+# Return value is 0 for failure, non-zero for success.
+sub download_ftp_file
+{
+    my ($host, $path, $filename) = @_;
+
+    # Detect Net::FTP.
+    my $ftp;
+    eval {
+        require Net::FTP;
+    } or do {
+        error " y[*] Can't open y[b[Net::FTP] module, skipping check of g[ftp.kde.org].";
+        debug "Error was $@";
+        return 0;
+    };
+
+    $ftp = new Net::FTP($host, Timeout => 30);
+
+    if (not $ftp)
+    {
+        error "Unable to connect to snapshot host $host: r[$@]";
+        return 0;
+    }
+
+    if (not $ftp->login())
+    {
+        error "Connection refused to FTP host r[$host], skipping snapshot.";
+        error "FTP response: $ftp->message";
+        return 0;
+    }
+
+    $ftp->binary(); # Switch to binary mode.
+
+    # Check if file exists.
+    if ($ftp->size($path) <= 0)
+    {
+        $ftp->quit();
+        return 0;
+    }
+
+    if (not defined $ftp->get($path, $filename))
+    {
+        # Download failed.
+        error "Unable to download snapshot from r[$host].";
+        return 0;
+    }
+
+    $ftp->quit();
+    return 1;
+}
+
+# This subroutine downloads the file pointed to by the URL given in the first
+# parameter, saving to the given filename.  (FILENAME, not directory). HTTP
+# and FTP are supported, depending on if the required Net::HTTP and Net::FTP
+# modules are available.
+#
+# First parameter: URL of link to download (i.e. http://kdesvn-build.kde.org/foo.tbz2)
+# Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
+# Return value is 0 for failure, non-zero for success.
+sub download_file
+{
+    my $url = shift;
+    my $filename = shift;
+
+    if (pretending)
+    {
+        pretend "Would have downloaded g[$url]\n\tto g[$filename]";
+        return 1;
+    }
+
+    my ($protocol, $host, $path) = ($url =~ m{^([^:]+)://([^/]+)(/.*)$});
+
+    if (not defined $url or not defined $host or not defined $path)
+    {
+        error "Trying to download file from invalid URL: r[$url]";
+        return 0;
+    }
+
+    # Not sure if https works but no harm in letting it try.
+    if ($protocol =~ /^https?$/)
+    {
+        whisper "Downloading g[$path] from g[$url]";
+        return download_http_file($host, $path, $filename);
+    }
+    elsif ($protocol eq 'ftp')
+    {
+        whisper "Downloading g[$path] from g[$url]";
+        return download_ftp_file($host, $path, $filename);
+    }
+
+    error "Trying to download file ($url), but";
+    error "\tthe r[$protocol] protocol is unsupported.";
+    return 0;
+}
+
+# This subroutine is used to try and download a Subversion checkout snapshot
+# for a given module.  For trunk modules, the KDE FTP repository is checked
+# first.  For other modules or if not available from KDE FTP, the host
+# set by the tarball-host option (default kdesvn-build.kde.org) is checked.
+#
+# If available the snapshot is downloaded and installed into the normal
+# location for a kdesvn-build source checkout and already switched into the
+# correct svn-server setting.
+#
+# The first parameter is the module to download.
+# Return value is boolean true if successful, false otherwise.
+sub install_module_snapshot
+{
+    my $module = shift;
+    my $branch = get_option($module, 'branch');
+    my $moduleName = moduleBaseName($module); # KDE/kdeaddons -> kdeaddons
+
+    $branch = default_module_branch($module) if not $branch; # Use default.
+
+    my ($filename, $url, $dirName);
+
+    # If a trunk module, try to obtain from KDE FTP first.
+    if ($branch eq 'trunk')
+    {
+        $filename = "$moduleName-svn.tar.bz2";
+        $url = "ftp://ftp.kde.org/pub/kde/unstable/snapshots/$filename";
+        $dirName = "$moduleName";
+
+        if (download_module_snapshot($module, $filename, $url, $dirName))
+        {
+            return 1; # We're done.
+        }
+    }
+
+    # No snapshot from KDE FTP, try the normal source.
+    my $revision = tarball_snapshot_revision($module);
+    my $tarballHost = get_option($module, 'tarball-host');
+    my $snapshotPath = get_option($module, 'tarball-path');
+
+    if ($revision <= 0)
+    {
+        return 0; # No snapshot is available.
+    }
+
+    $filename = "$moduleName-$branch-svn-r$revision.tar.bz2";
+    $url = "http://$tarballHost$snapshotPath/$filename";
+    $dirName = "$moduleName-$branch-svn-r$revision";
+
+    return download_module_snapshot($module, $filename, $url, $dirName);
+}
+
 # This subroutine tries to download a Subversion checkout snapshot of a given
-# module, at a given revision.  If the download succeeds, this module will
-# automatically arrange the extracted module to fit the normal kdesvn-build
-# source layout, and take the necessary steps to restore the snapshot to a state
-# as if it had just been checked out from Subversion.
+# module (and it actually handles the downloading).  If the download succeeds,
+# this function will automatically arrange the extracted module to fit the
+# normal kdesvn-build source layout, and take the necessary steps to restore
+# the snapshot to a state as if it had just been checked out from Subversion.
 #
 # The finalized Subversion checked will then have svn up run in order to
 # complete the checkout.
@@ -1083,37 +1245,26 @@ sub download_file
 # If a failure occurs, the function will try to clean up after itself.  So,
 # no snapshot tarball or module directory should be present if 0 is returned.
 #
-# This function assumes that Net::HTTP has already been use'd or require'd.
-#
 # The first parameter is the module to download.
-# The second parameter is the revision to download.
+# The second parameter is the filename to use.
+# The third parameter is the URL to download.
+# The fourth parameter is the final directory name from the extracted tarball.
 #
 # Return value is boolean true if successful, false otherwise.
 sub download_module_snapshot
 {
-    my $module = shift;
-    my $revision = shift;
-    my $tarballHost = get_option($module, 'tarball-host');
-    my $snapshotPath = get_option($module, 'tarball-path');
-    my $branch = get_option($module, 'branch');
-    my $moduleName = moduleBaseName($module);
-
-    $branch = default_module_branch($module) if not $branch; # Use default.
-
-    # File name of this format.  Extracted directory will have a similar
-    # name.
-    my $filename = "$moduleName-$branch-svn-r$revision.tar.bz2";
+    my ($module, $filename, $url, $dirName) = @_;
 
     if (pretending)
     {
         pretend "Would have downloaded snapshot for g[$module], from";
-        pretend "\tb[g[http://$tarballHost$snapshotPath/$filename]";
+        pretend "\tb[g[$url]";
         return 1;
     }
 
-    info "Downloading snapshot for g[$module] (revision $revision)";
+    info "Downloading snapshot for g[$module]";
 
-    if (not download_file("http://$tarballHost$snapshotPath/$filename", $filename))
+    if (not download_file($url, $filename))
     {
         error "Unable to download snapshot for module r[$module]";
         return 0;
@@ -1147,21 +1298,21 @@ sub download_module_snapshot
         error "Unable to extract snapshot for r[$module]: $savedError";
 
         # Remove any created portions of the module tree.
-        safe_system("rm", "-rf", "$moduleName-$branch-svn-r$revision");
+        safe_system("rm", "-rf", "$dirName");
 
         return 0;
     }
 
     whisper "\tExtracted directory for g[$module]";
 
-    # The extracted directory is of the form $module-$branch-svn-r$revision,
-    # move it to the correct name (just $module);
-    if(not safe_rename("$moduleName-$branch-svn-r$revision", $moduleName)) { 
+    # The extracted directory is possibly of a weird form, move it to the
+    # correct name (just $module);
+    if($dirName ne $module and not safe_rename($dirName, $module)) { 
         error "Unable to move directory for r[$module] into place: r[$!]";
 
         # Remove any created portions of the module tree.
-        safe_system("rm", "-rf", "$moduleName-$branch-svn-r$revision");
-        safe_system("rm", "-rf", $moduleName);
+        safe_system("rm", "-rf", $dirName);
+        safe_system("rm", "-rf", $module);
 
         return 0;
     }
@@ -1169,7 +1320,7 @@ sub download_module_snapshot
     whisper "\tg[$module] snapshot is in place.";
 
     # Module in place, now prepare it for checkout.
-    p_chdir($moduleName);
+    p_chdir($module);
 
     # Switch svn host to proper host.
     my $svnHost = get_option($module, 'svn-server');
@@ -1190,7 +1341,7 @@ sub download_module_snapshot
 
             # Remove any created portions of the module tree.
             p_chdir("..");
-            safe_system("rm", "-rf", $moduleName);
+            safe_system("rm", "-rf", $module);
 
             return 0;
         }
@@ -1212,12 +1363,12 @@ sub download_module_snapshot
 
         # Remove any created portions of the module tree.
         p_chdir("..");
-        safe_system("rm", "-rf", $moduleName);
+        safe_system("rm", "-rf", $module);
 
         return 0;
     }
 
-    info "Snapshot checkout complete, g[$module] at revision g[$revision]";
+    info "Snapshot checkout complete, g[$module] at snapshot's revision.";
     info "\nCompleting checkout by updating g[$module]";
 
     $result = log_command($module, 'svn-first-up', ['svn', 'up']);
@@ -1265,6 +1416,8 @@ sub tarball_snapshot_revision
     my $moduleName = moduleBaseName($module);
 
     whisper "Checking if snapshot available for g[$module]";
+
+    return 0 unless has_Net_HTTP();
 
     if (get_option($module, 'override-url'))
     {
@@ -1359,9 +1512,7 @@ sub checkout_module_path
     # TODO: Make this work when using the checkout-only option.
     if (not scalar @path and not get_option($module, 'disable-snapshot'))
     {
-        my $revision = tarball_snapshot_revision($module);
-
-        if($revision > 0 && download_module_snapshot($module, $revision))
+        if(install_module_snapshot($module))
         {
             whisper "Snapshot checkout successful!";
             # Success, no need to continue on this route.
@@ -3410,6 +3561,7 @@ sub check_for_ssh_agent
 
     # Don't bother with all this if the user isn't even using SSH.
     return 1 if($proto !~ /ssh/) or get_option('global', 'disable-agent-check');
+    return 1 if pretending;
 
     # We're using ssh to download, see if ssh-agent is running.
     return 1 unless exists $ENV{'SSH_AGENT_PID'};
@@ -5190,7 +5342,6 @@ sub get_email_address
     return $default if $default;
 
     # Let's make a default of our own.  It's likely to suck, so oh well.
-    use Sys::Hostname;
     my $username = getpwuid($>);
     my $hostname = hostname; # From Sys::Hostname
 
