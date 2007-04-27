@@ -329,7 +329,6 @@ my %package_opts = (
     "tarball-revision-script" => "/other/module-revision.php",  # Undocumented
     "unsermake-options"   => "--compile-jobs=2 -p",
     "unsermake-path"      => "unsermake",
-    "use-cmake"           => "",  # Must be empty by default.
     "use-stable-kde"      => 0,   # Controls whether to default to 3.5 or 4.
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
   }
@@ -1254,6 +1253,10 @@ sub install_module_snapshot
 sub download_module_snapshot
 {
     my ($module, $filename, $url, $dirName) = @_;
+    my $moduleName = moduleBaseName($module);
+
+    # We are in either the source directory or $srcdir/KDE so moduleBaseName
+    # is always the right directory name.
 
     if (pretending)
     {
@@ -1306,13 +1309,13 @@ sub download_module_snapshot
     whisper "\tExtracted directory for g[$module]";
 
     # The extracted directory is possibly of a weird form, move it to the
-    # correct name (just $module);
-    if($dirName ne $module and not safe_rename($dirName, $module)) { 
+    # correct name (just $moduleName);
+    if($dirName ne $moduleName and not safe_rename($dirName, $moduleName)) { 
         error "Unable to move directory for r[$module] into place: r[$!]";
 
         # Remove any created portions of the module tree.
         safe_system("rm", "-rf", $dirName);
-        safe_system("rm", "-rf", $module);
+        safe_system("rm", "-rf", $moduleName);
 
         return 0;
     }
@@ -1320,19 +1323,22 @@ sub download_module_snapshot
     whisper "\tg[$module] snapshot is in place.";
 
     # Module in place, now prepare it for checkout.
-    p_chdir($module);
+    p_chdir($moduleName);
 
     # Switch svn host to proper host.
     my $svnHost = get_option($module, 'svn-server');
+    my $curSvnHost = `svn info | grep ^URL`;
+    $curSvnHost =~ s/^URL:\s*//;
+    $curSvnHost =~ s/\/home\/kde.*$/\/home\/kde/; # Remove stuff after /home/kde
 
     info "\tFinalizing Subversion information for g[$module]";
 
     # Set svn snapshot to update from the correct svn host instead of the default
     # anonsvn (if different).
-    if($svnHost ne 'svn://anonsvn.kde.org/home/kde')
+    if($svnHost ne $curSvnHost)
     {
         $result = log_command($module, 'svn-snapshot-switch',
-            ['svn', 'switch', '--relocate', 'svn://anonsvn.kde.org/home/kde', $svnHost]);
+            ['svn', 'switch', '--relocate', $curSvnHost, $svnHost]);
 
         if($result)
         {
@@ -1341,7 +1347,7 @@ sub download_module_snapshot
 
             # Remove any created portions of the module tree.
             p_chdir("..");
-            safe_system("rm", "-rf", $module);
+            safe_system("rm", "-rf", $moduleName);
 
             return 0;
         }
@@ -1363,7 +1369,7 @@ sub download_module_snapshot
 
         # Remove any created portions of the module tree.
         p_chdir("..");
-        safe_system("rm", "-rf", $module);
+        safe_system("rm", "-rf", $moduleName);
 
         return 0;
     }
@@ -1380,7 +1386,7 @@ sub download_module_snapshot
 
         # Don't delete anything here, we're close enough to being good that
         # kdesvn-build should be able to fix this later.
-        return 0;
+        return 1;
     }
 
     info "Checkout complete for g[$module]!";
@@ -2277,12 +2283,10 @@ sub setup_default_modules()
 
     # Setup default options for qt-copy
     $package_opts{'qt-copy'} = {
-        'configure-flags' => '-qt-gif -system-zlib -no-exceptions -fast -release',
-        'apply-qt-patches' => 0,
-        'use-unsermake' => 0,
-        'install-after-build' => 0,
+        'configure-flags' => '-qt-gif -qdbus -nomake demos -nomake examples -no-exceptions -fast',
+        'apply-qt-patches' => 1,
         'set-env' => { },
-        'make-options' => 'sub-src sub-tools'
+        'make-options' => get_option('global', 'make-options'),
     }
 }
 
@@ -2365,7 +2369,7 @@ sub parse_module
         $value = 0 if lc($value) eq 'false';
 
         # Replace reference to global option with their value.
-        # The regex means essential to match ${option-name}.  Keep the RE up
+        # The regex basically just matches ${option-name}.  Keep the RE up
         # to date with the same one below.
 
         my ($sub_var_name) = ($value =~ m/\$\{([a-zA-Z0-9-]+)\}/);

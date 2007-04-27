@@ -34,13 +34,41 @@ global
 # directory also holds the build and log directories by default.
 #	source-dir ~/kdesvn
 
-# This is the Qt installation to use to build KDE.  The default is qt-copy
-# from Subversion.  The ${source-dir} option uses whatever you set for
-# source-dir to automatically fill in the value.
+# This directory is where everything gets built before it is installed.  By
+# default it is relative to the value for source-dir.  You can specify an
+# absolute path if you'd like (begin the path with a slash).
+#	build-dir build
+
+# This is the directory that KDE will end up installed at.  The default is
+# appropriate for a single-user installation of KDE, which requires no root
+# permissions.  If you'd like, you can install and use the sudo program to
+# install KDE anywhere on your system, in conjunction with the
+# make-install-prefix option.
+#	kdedir ~/kde
 #
-# KDE 4.0 may require qt-copy (this is true as of 2006-02-02) instead of a
-# released Qt.
-	qtdir ${source-dir}/build/qt-copy
+# You can overwrite the installation directory for a given module using
+# the per-module "prefix" option. Note that when doing this you need to
+# set KDEDIRS, PATH and LD_LIBRARY_PATH to point to both directories,
+# and that you should use separate test users or KDEHOME values to separate
+# the ksycoca databases. Only set prefix if you know what you're doing.
+
+# If you would like install KDE to the system (DO NOT INSTALL *over* a prior
+# installation!), then you'll probably need to use sudo to install everything.
+#
+# The -S parameter causes sudo to read from standard input (which is redirected
+# by kdesvn-build).  This means that if sudo has to ask for your password, it
+# will fail, you need to configure sudo to be able to run "make install" and
+# "unsermake install" without requesting a password.
+# 	make-install-prefix sudo -S
+
+# This is the Qt installation to use to build KDE.  The default is qt-copy
+# from Subversion.  The ${build-dir} option uses whatever you set for
+# build-dir to automatically fill in the value.
+# For qt-copy users, this is also the directory to install qt-copy to.
+# KDE 4.0 may require qt-copy at times instead of a released Qt so it is
+# better to use qt-copy for /trunk users.
+	qtdir ~/qt4  # Default to installing Qt (Qt 4).
+#	qtdir ${build-dir}/build/qt-copy # Use built Qt (Qt 3).
 
 # You might want to use your system's built-in Qt already (4.1 or greater for
 # KDE 4, 3.3.x for KDE 3.5.)  If so, assign the qtdir option appropriately.
@@ -54,11 +82,13 @@ global
 # This controls the configure flags passed to every module (except qt-copy) by
 # default.  If you have module-specific configure flags, they will be placed
 # after these flags to allow the module setting to override the global setting.
+# This setting only applies to KDE 3 modules.
 	configure-flags --enable-debug
 
-# KDE 4 uses CMake.  The equivalent to configure-flags is cmake-options.  BUT the same
-# options will not work, CMake expects them in a different format.  You should probably
-# not need to use cmake-options however. KDE4_BUILD_TESTS  is provided as an example.
+# KDE 4 uses CMake.  The equivalent to configure-flags is cmake-options.  BUT
+# the same options will not work, CMake expects them in a different format.
+# You should probably not need to use cmake-options however. KDE4_BUILD_TESTS
+# is provided as an example.
 #	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
 
 # These are the compilation flags to use by default when compiling KDE.
@@ -85,42 +115,15 @@ global
 # These are the default options passed to unsermake, which supports some
 # options not present with make.  The default tries to run 2 compile jobs
 # in parallel.  The -p option is used to display progress information.
+# unsermake can only be used with KDE 3.
 #	unsermake-options --compile-jobs=2 -p
 
-# Unsermake usage is required for KDE 4 (kdesvn-build knows what modules won't
-# work with it, so it is safe to leave on).  However, you may get tired of
-# kdesvn-build updating unsermake all the time.  In that case, uncomment
-# the following. NOTE: You are responsible for updating unsermake after that
-# by going to its directory and running 'svn up' when needed.  If you have not
-# yet downloaded unsermake let kdesvn-build update it before uncommenting.
+# unsermake is used by default for KDE 3 modules.  However, you may get tired
+# of kdesvn-build updating unsermake all the time.  In that case, uncomment the
+# following. NOTE: You are responsible for updating unsermake after that by
+# going to its directory and running 'svn up' when needed.  If you have not yet
+# downloaded unsermake let kdesvn-build update it before uncommenting.
 #	use-unsermake self
-
-# This directory is where everything gets built before it is installed.  By
-# default it is relative to the value for source-dir.  You can specify an
-# absolute path if you'd like (begin the path with a slash).
-#	build-dir build
-
-# This is the directory that KDE will end up installed at.  The default is
-# appropriate for a single-user installation of KDE, which requires no root
-# permissions.  If you'd like, you can install and use the sudo program to
-# install KDE anywhere on your system, in conjunction with the
-# make-install-prefix option.
-#	kdedir ~/kde
-#
-# You can overwrite the installation directory for a given module using
-# the per-module "prefix" option. Note that when doing this you need to
-# set KDEDIRS, PATH and LD_LIBRARY_PATH to point to both directories,
-# and that you should use separate test users or KDEHOME values to separate
-# the ksycoca databases. Only set prefix if you know what you're doing.
-
-# If you would like install KDE to the system (DO NOT INSTALL *over* a prior
-# installation!), then you'll probably need to use sudo to install everything.
-#
-# The -S parameter causes sudo to read from standard input (which is redirected by
-# kdesvn-build).  This means that if sudo has to ask for your password, it will fail,
-# you need to configure sudo to be able to run "make install" and "unsermake install"
-# without requesting a password.
-# 	make-install-prefix sudo -S
 
 # You can use the set-env option to add values to the build environment.
 #	set-env LDFLAGS -Wl,-O1   # Optimize the linker, takes longer.
@@ -135,17 +138,19 @@ end global
 # optimizations added.  It is the easiest way to get Qt if you don't already
 # have it (and you don't want to use your distro's tools to install it.)
 module qt-copy
-#	Qt 3 / 4 configure flags.  If you use Qt 3, then uncomment the line below that
-#	says Qt 3 options (by removing the # at the beginning) and comment the Qt 4
-#	line.  This is needed by some people for the -thread option.
-	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng \
-			-no-exceptions -fast -qdbus  # Qt 4 options
-#			-no-exceptions -fast -thread # Qt 3 options.
+#	Configure flags.  If you use Qt 3, then uncomment the lines
+#	below the Qt 3 option line (by removing the # at the beginning) and
+#	comment the Qt 4 lines which follow.
+	configure-flags -qt-gif -no-exceptions -fast -qdbus \
+	                -nomake examples -nomake demos
+
+#	QT 3 OPTIONS
+#	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng \
+#			-no-exceptions -fast -thread -debug 
+#	make-options -j2 sub-src sub-tools # Build faster, no examples built
 
 	apply-qt-patches true          # Works with Qt 3 and 4, recommended as well.
-	make-options sub-src sub-tools # Build faster, no examples built.
- # This make-options will override the global make-options.  For example, if
- # you added -j6 to the global make-options, you'll need to add it here also.
+#	make-options -j2
 end module
 
 # arts is the KDE sound library.  It is not expected to be used by the time
@@ -153,20 +158,15 @@ end module
 #module arts
 #end module
 
-# kdesupport contains taglib and QCA, and the Qt DBUS bindings.  taglib is
-# required for JuK, amarok, and the meta info reader for music files in
-# Konqueror.
+# kdesupport contains taglib and QCA, and the Strigi library required for
+# kdelibs in KDE 4.  taglib is required for JuK, amarok, and the meta info
+# reader for music files in Konqueror.
 module kdesupport
 end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
 module kdelibs
 	configure-flags --enable-sendfile --enable-mitshm
-
-	# kdelibs compiles from a snapshot for now so that other modules can have something
-	# stable to port against.  Use the kde4-snapshot branch in order to use this
-	# snapshot.  If you'd rather use /trunk, just comment this out.
-	branch kde4-snapshot
 
 	# KDE 4 uses CMake, if you need to pass options to the cmake command, use this
 	# option:
@@ -177,27 +177,24 @@ module kdelibs
 #	apidox true
 end module
 
-# Another solution for kdelibs snapshot, to remember that it's the snapshot, is to use
-# module kdelibs4_snapshot
-#     cmake-options -DKDE4_BUILD_TESTS=TRUE -DCMAKE_BUILD_TYPE:STRING=debugfull
-#     module-base-path branches/work
-# end module
-
-
 # kdebase contains useful general-purpose programs, normally people would
 # expect a usable desktop to have these.
 module kdebase
 	configure-flags --with-pam --with-shadow
 end module
 
+# kdemultimedia contains JuK, noatun, Kaboodle, and other KDE multimedia
+# applications.  It does not include amarok, which is in extragear/multimedia
+module kdemultimedia
+end module
+
+# ... Well, they're games. ;)
+module kdegames
+end module
+
 ## Note: The following modules may not have been ported to KDE 4 yet, and may
 #  have changed significantly from their KDE 3 counterparts as well.  Because
 #  of this, they are commented out, uncomment it if you want to build it.
-
-# kdemultimedia contains JuK, noatun, Kaboodle, and other KDE multimedia
-# applications.  It does not include amarok, which is in extragear/multimedia
-#module kdemultimedia
-#end module
 
 # kdesdk is a useful module for software developers.  It is where kdesvn-build
 # is developed.
@@ -223,13 +220,13 @@ end module
 #module kdebindings
 #    checkout-only admin dcopc kalyptus smoke qtruby korundum kjsembed dcoppython
 
+# kdepimlibs contains a number of libraries needed by kdepim
+#module kdepimlibs
+#end module
+
 #   kdebindings will probably need to use the following option to install successfully.
 #   You must configure the sudo program first to allow for passwordless operation.
 #   make-install-prefix sudo
-#end module
-
-# kdepimlibs contains a number of libraries needed by kdepim
-#module kdepimlibs
 #end module
 
 # kdepim contains KMail, Kontact, KOrganizer, and other insanely useful
@@ -247,10 +244,6 @@ end module
 # doesn't include Krita, which is part of KOffice, but it is worth it just for
 # KolourPaint.
 #module kdegraphics
-#end module
-
-# ... Well, they're games. ;)
-#module kdegames
 #end module
 
 # kdeaddons are nifty additions to some programs in other KDE modules.  For
@@ -272,6 +265,7 @@ end module
 # It is rather large, so you can cut download and build times by removing it
 # from this file.
 #module koffice
+#	branch 1.6 # The last released version for KDE 3.
 #end module
 
 # The KDevelop IDE, useful for developing all kinds of programs.  If you don't
