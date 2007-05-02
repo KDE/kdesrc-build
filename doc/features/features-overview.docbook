@@ -9,7 +9,8 @@
 
 <listitem><para>
 For developers: Supports <link linkend="building-apidox">building the API
-documentation</link> for a module.
+documentation</link> for a module.  Note that this only works for KDE 3
+modules when not using the unsermake script.
 </para></listitem>
 
 <listitem><para>
@@ -18,10 +19,12 @@ ranging from being very quiet to a full debug level.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; can, with the assistance of the <ulink url="http://kdesvn-build.kde.org/">kdesvn-build website</ulink>,
-allow for speedy checkouts of some modules.  If the module you are checking out
-has already been packaged at the website, then kdesvn-build will download the
-snapshot and prepare it for use on your computer.
+&kdesvn-build; can, with the assistance of the <ulink
+url="http://kdesvn-build.kde.org/">kdesvn-build website</ulink> and the
+KDE FTP server (FTP since &kdesvn-build; 1.4), allow for speedy checkouts of
+some modules.  If the module you are checking out has already been packaged at
+the website, then kdesvn-build will download the snapshot and prepare it for
+use on your computer.
 </para>
 
 <para>This is faster for you, and helps to ease the load on the kde.org
@@ -54,15 +57,29 @@ errors from typing them yourself.
 </para></listitem>
 
 <listitem><para>
+&kdesvn-build; can checkout a specific <link linkend="using-branches">branch
+or tag</link> of a module.  You can also ensure that a specific <link
+linkend="conf-revision">revision</link> is checked out of a module.
+</para></listitem>
+
+<listitem><para>
+&kdesvn-build; can automatically switch a source directory to checkout from
+a different repository, branch, or tag.  This happens automatically when you
+change an option that changes what the repository URL should be, but you must
+use the <link linkend="cmdline-svn-only">--svn-only</link> option to let
+&kdesvn-build; know that it is acceptable to perform the switch.
+</para></listitem>
+
+<listitem><para>
 &kdesvn-build; can <link linkend="partial-builds">checkout only portions of a
 module</link>, for those situations where you only need one program from a
 large module.
 </para></listitem>
 
 <listitem><para>
-For developers: Will <link linkend="ssh-agent-reminder">remind you</link> if
-you use svn+ssh:// but <application>ssh-agent</application> is not running, as
-this will lead to repeated password requests from
+For developers: &kdesvn-build; will <link linkend="ssh-agent-reminder">remind
+you</link> if you use svn+ssh:// but <application>ssh-agent</application> is
+not running, as this will lead to repeated password requests from
 <application>ssh</application>.
 </para></listitem>
 
@@ -110,16 +127,6 @@ modules</link> temporarily for a given build.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; also supports using the ~/ sequence to stand for your home
-directory in the &rcfile;.
-</para></listitem>
-
-<listitem><para>
-Automatically checks out or updates modules from &svn;, as
-appropriate.
-</para></listitem>
-
-<listitem><para>
 &kdesvn-build; can quickly perform a <link linkend="partial-builds">partial
 build</link> of a module directly from the command line, when you only need
 to update part of a module.
@@ -128,22 +135,19 @@ to update part of a module.
 <listitem><para>
 &kdesvn-build; will automatically download and create the required <filename>/admin</filename>
 directory for a module if it isn't downloaded from &svn; the first time for
-some reason.
+some reason.  This only applies to KDE 3 modules, as /admin is not required
+for qt-copy or KDE 4 modules.
 </para></listitem>
 
 <listitem><para>
 &kdesvn-build; will show the <link linkend="build-progress">progress of your
-build</link> when using &unsermake;, and will always time the build process so
-you know after the fact how long it took.
+build</link> when using &unsermake; and CMake, and will always time the build
+process so you know after the fact how long it took.
 </para></listitem>
 
 <listitem><para>
 Automatically tries to rebuild modules that were using incremental
 make, which is prone to failure after certain kinds of commits.
-</para></listitem>
-
-<listitem><para>
-Can resume a build from a particular module.
 </para></listitem>
 
 <listitem><para>
@@ -162,15 +166,9 @@ specify:
 </para></listitem>
 
 <listitem><para>
-Configurable build, source, and logging directories
-</para></listitem>
-
-<listitem><para>
 Automatically sets up a build system, with the source directory not the
 same as the build directory, in order to keep the source directory
-pristine. The exception is <application>qt-copy</application>, which is not designed to be built like
-that (unless you would like to test the
-<link linkend="conf-use-qt-builddir-hack"><quote>qt with a separate build directory hack</quote></link>).
+pristine.
 </para></listitem>
 
 <listitem><para>
@@ -211,11 +209,6 @@ for sudo.
 </para></listitem>
 
 <listitem><para>
-You can use the <link linkend="conf-apidox">apidox</link> option to automatically
-build and install the API documentation for some modules.
-</para></listitem>
-
-<listitem><para>
 You can check out only a portion of a &kde; &svn; module.  For example,
 you could check out only the <application>taglib</application> from
 <application>kdesupport</application>, or only <application>K3B</application> from
@@ -228,13 +221,6 @@ You can <quote>pretend</quote> to do the operations.  If you pass
 <option>--pretend</option> or <option>-p</option> on the
 command line, the script will give a very verbose description of the commands
 it is about to execute, without actually executing it.
-</para></listitem>
-
-<listitem><para>
-Support for checking out specific branches of &svn;
-modules. This work still needs to be completed, but you already select the branch you
-want to build using the <link linkend="conf-module-base-path">module-base-path
-configuration option</link>.
 </para></listitem>
 
 </itemizedlist>
