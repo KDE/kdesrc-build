@@ -78,6 +78,7 @@
 
 <copyright>
 <year>2006</year>
+<year>2007</year>
 <holder>Michael Pyne</holder>
 </copyright>
 
@@ -89,8 +90,8 @@
 
 <legalnotice>&FDLNotice;</legalnotice>
 
-<date>2006-03-28</date>
-<releaseinfo>1.1</releaseinfo>
+<date>2007-05-01</date>
+<releaseinfo>1.4</releaseinfo>
 
 <abstract>
 <para>&kdesvn-build; is a script which builds and installs &kde; directly from the sources found in the &kde; &svn; repository.</para>
@@ -189,10 +190,8 @@ Requirements</ulink> page.
 <listitem><para>Autoconf version 2.57, or higher. (KDE 3 only)</para></listitem>
 
 <listitem><para><ulink
-url="http://www.cmake.org/"><application>CMake</application></ulink> 2.4.0, or
-higher.  Some version 2.3 snapshots may compile KDE 4 as well, please see the
-<ulink url="http://wiki.kde.org/tiki-index.php?page=KDECMakeIntro">CMake Introduction Wiki</ulink> page. (KDE 4
-only)</para></listitem>
+url="http://www.cmake.org/"><application>CMake</application></ulink> 2.4.5, or
+higher.</para></listitem>
 
 <listitem><para>The &svn; client program, including support for Secure
 HTTP (https).  To ensure needed support, you can run
@@ -200,8 +199,8 @@ HTTP (https).  To ensure needed support, you can run
 If the ra_dav module says that it handles the https scheme then you should be
 set to go.</para></listitem>
 
-<listitem><para>The gcc compiler, with support for C++.  Version 3.3 or 3.4 works
-the best at this point.</para></listitem>
+<listitem><para>The gcc compiler, with support for C++.  Versions 3.3 or higher
+are the best supported.</para></listitem>
 
 <listitem><para>Be sure to check the <ulink
 url="http://www.kde.org/info/requirements/3.5.php">&kde; Compilation
@@ -230,7 +229,13 @@ to have it.  If you don't want to use the &Qt; copy, you need to do these things
 <listitem>
   <para>If you don't already have &Qt; installed, install it, including any
   relevant -dev or -devel packages.  You'll need at least &Qt; 3.3 if you're
-  building &kde; 3.5, or &Qt; 4.0 if you're building &kde; 4.</para>
+  building &kde; 3.5, or &Qt; 4.3 if you're building &kde; 4.</para>
+
+  <note><para>If you are building &kde; 4 it is highly recommended to use the
+  qt-copy version of &Qt;, making sure to apply recommended patches (this is
+  the default setting, controlled by the <link
+  linkend="conf-apply-qt-patches">apply-qt-patches
+  option</link>).</para></note>
 </listitem>
 </itemizedlist>
 
@@ -259,6 +264,12 @@ in your system.  However, if you don't, you can download it from
 &homepage;, or you can find it from its home in the &kde; source
 repository.</para>
 
+<note><para>&kdesvn-build; is included with the kdesdk module, and the module
+is often installed by distributions already.  If you have downloaded
+&kdesvn-build; ensure that you are using the version you downloaded.  You can
+use the --version option to be sure you are running the version you think
+you are.</para></note>
+
 <orderedlist>
 <listitem><para>To download &kdesvn-build; from its &homepage;, simply go to the
 &homepage; and download the latest appropriate release.  The release is
@@ -280,7 +291,7 @@ if you need to.</para></listitem>
 <filename>kdesvn-build</filename> file is executable.  For convenience you
 should make sure it is in a directory contained in the <envar>PATH</envar>
 environment variable, otherwise you may get messages saying that the command
-was not found.</para>
+was not found, or you may run a previously-installed version by mistake.</para>
 </sect3>
 
 <sect3 id="setup-rcfile">
@@ -340,12 +351,25 @@ The default settings should actually already be appropriate to perform a
 <listitem><para><link linkend="conf-binpath">binpath</link>, to change the list of
 directories that will be searched for commands.  This is exactly the same as
 the <envar>PATH</envar> variable in the shell.</para></listitem>
+
+<listitem><para><link linkend="conf-use-stable-kde">use-stable-kde</link> to
+change the default version to build of KDE modules.  By default &kdesvn-build;
+will build the trunk version of KDE (currently KDE 4).  If you want to build
+the latest stable release of KDE instead of using your distribution packages
+(right now the KDE 3.5 branch is stable) you would set this option to true.
+</para></listitem>
+
 <listitem><para><link linkend="conf-kdedir">kdedir</link>, which changes the
 destination directory that &kde; is installed to.  This defaults to
 <filename>~/kde</filename>, which is a single-user installation.</para></listitem>
+
 <listitem><para><link linkend="conf-qtdir">qtdir</link>, which controls the
 path to the installation of &Qt; to use.  The defaults to using the qt-copy
-module from the &kde; &svn; repository. (<filename>~/kdesvn/build/qt-copy</filename>)</para></listitem>
+module from the &kde; &svn; repository. (<filename>~/kdesvn/build/qt-copy</filename>)</para>
+
+<para>For Qt versions that support installation, this also controls where to
+install qt-copy.</para></listitem>
+
 <listitem><para><link linkend="conf-svn-server">svn-server</link>, which
 selects what URL to download the sources from.  This is useful if you are a
 developer with a <ulink url="http://developer.kde.org/documentation/misc/firststepsaccount.php">&kde;
@@ -395,9 +419,13 @@ the caused an error for a module in the last &kdesvn-build; command, usually
 it is sufficient to look at <filename>~/kdesvn/log/latest/<replaceable>module-name</replaceable>/error.log</filename>.</para>
 
 <para>In that file, you will see the error that caused the build to fail for
-that module.  If the file says (at the bottom) that you're missing some packages,
-try installing the package (including any appropriate -dev packages) before
-trying to build that module.  Or, if the error appears to be a build error
+that module.  If the file says (at the bottom) that you're missing some
+packages, try installing the package (including any appropriate -dev packages)
+before trying to build that module, and pass the <link
+linkend="cmdline-reconfigure">--reconfigure</link> option after install the
+missing packages.</para>
+
+<para>Or, if the error appears to be a build error
 then it is probably an error with the &kde; source, which will hopefully be
 resolved within a few days.  If it isn't resolved within that time, feel free
 to mail the <email>kde-devel@kde.org</email> (subscription may be required first)
@@ -596,7 +624,8 @@ to your &kdesvn-build; &kde;.</para>
 
 <listitem><para>
 For developers: Supports <link linkend="building-apidox">building the API
-documentation</link> for a module.
+documentation</link> for a module.  Note that this only works for KDE 3
+modules when not using the unsermake script.
 </para></listitem>
 
 <listitem><para>
@@ -605,10 +634,12 @@ ranging from being very quiet to a full debug level.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; can, with the assistance of the <ulink url="http://kdesvn-build.kde.org/">kdesvn-build website</ulink>,
-allow for speedy checkouts of some modules.  If the module you are checking out
-has already been packaged at the website, then kdesvn-build will download the
-snapshot and prepare it for use on your computer.
+&kdesvn-build; can, with the assistance of the <ulink
+url="http://kdesvn-build.kde.org/">kdesvn-build website</ulink> and the
+KDE FTP server (FTP since &kdesvn-build; 1.4), allow for speedy checkouts of
+some modules.  If the module you are checking out has already been packaged at
+the website, then kdesvn-build will download the snapshot and prepare it for
+use on your computer.
 </para>
 
 <para>This is faster for you, and helps to ease the load on the kde.org
@@ -641,15 +672,29 @@ errors from typing them yourself.
 </para></listitem>
 
 <listitem><para>
+&kdesvn-build; can checkout a specific <link linkend="using-branches">branch
+or tag</link> of a module.  You can also ensure that a specific <link
+linkend="conf-revision">revision</link> is checked out of a module.
+</para></listitem>
+
+<listitem><para>
+&kdesvn-build; can automatically switch a source directory to checkout from
+a different repository, branch, or tag.  This happens automatically when you
+change an option that changes what the repository URL should be, but you must
+use the <link linkend="cmdline-svn-only">--svn-only</link> option to let
+&kdesvn-build; know that it is acceptable to perform the switch.
+</para></listitem>
+
+<listitem><para>
 &kdesvn-build; can <link linkend="partial-builds">checkout only portions of a
 module</link>, for those situations where you only need one program from a
 large module.
 </para></listitem>
 
 <listitem><para>
-For developers: Will <link linkend="ssh-agent-reminder">remind you</link> if
-you use svn+ssh:// but <application>ssh-agent</application> is not running, as
-this will lead to repeated password requests from
+For developers: &kdesvn-build; will <link linkend="ssh-agent-reminder">remind
+you</link> if you use svn+ssh:// but <application>ssh-agent</application> is
+not running, as this will lead to repeated password requests from
 <application>ssh</application>.
 </para></listitem>
 
@@ -697,16 +742,6 @@ modules</link> temporarily for a given build.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; also supports using the ~/ sequence to stand for your home
-directory in the &rcfile;.
-</para></listitem>
-
-<listitem><para>
-Automatically checks out or updates modules from &svn;, as
-appropriate.
-</para></listitem>
-
-<listitem><para>
 &kdesvn-build; can quickly perform a <link linkend="partial-builds">partial
 build</link> of a module directly from the command line, when you only need
 to update part of a module.
@@ -715,22 +750,19 @@ to update part of a module.
 <listitem><para>
 &kdesvn-build; will automatically download and create the required <filename>/admin</filename>
 directory for a module if it isn't downloaded from &svn; the first time for
-some reason.
+some reason.  This only applies to KDE 3 modules, as /admin is not required
+for qt-copy or KDE 4 modules.
 </para></listitem>
 
 <listitem><para>
 &kdesvn-build; will show the <link linkend="build-progress">progress of your
-build</link> when using &unsermake;, and will always time the build process so
-you know after the fact how long it took.
+build</link> when using &unsermake; and CMake, and will always time the build
+process so you know after the fact how long it took.
 </para></listitem>
 
 <listitem><para>
 Automatically tries to rebuild modules that were using incremental
 make, which is prone to failure after certain kinds of commits.
-</para></listitem>
-
-<listitem><para>
-Can resume a build from a particular module.
 </para></listitem>
 
 <listitem><para>
@@ -749,15 +781,9 @@ specify:
 </para></listitem>
 
 <listitem><para>
-Configurable build, source, and logging directories
-</para></listitem>
-
-<listitem><para>
 Automatically sets up a build system, with the source directory not the
 same as the build directory, in order to keep the source directory
-pristine. The exception is <application>qt-copy</application>, which is not designed to be built like
-that (unless you would like to test the
-<link linkend="conf-use-qt-builddir-hack"><quote>qt with a separate build directory hack</quote></link>).
+pristine.
 </para></listitem>
 
 <listitem><para>
@@ -798,11 +824,6 @@ for sudo.
 </para></listitem>
 
 <listitem><para>
-You can use the <link linkend="conf-apidox">apidox</link> option to automatically
-build and install the API documentation for some modules.
-</para></listitem>
-
-<listitem><para>
 You can check out only a portion of a &kde; &svn; module.  For example,
 you could check out only the <application>taglib</application> from
 <application>kdesupport</application>, or only <application>K3B</application> from
@@ -815,13 +836,6 @@ You can <quote>pretend</quote> to do the operations.  If you pass
 <option>--pretend</option> or <option>-p</option> on the
 command line, the script will give a very verbose description of the commands
 it is about to execute, without actually executing it.
-</para></listitem>
-
-<listitem><para>
-Support for checking out specific branches of &svn;
-modules. This work still needs to be completed, but you already select the branch you
-want to build using the <link linkend="conf-module-base-path">module-base-path
-configuration option</link>.
 </para></listitem>
 
 </itemizedlist>
@@ -1018,7 +1032,9 @@ process.  This only works for modules where <command>make apidox</command> does 
 including kdelibs, kdebase, and koffice, among others.
 </para>
 <para>This option does not work for modules using &unsermake; support, due to
-deficiencies in the unsermake build system.
+deficiencies in the &unsermake; build system.  This option does not work for
+KDE 4 modules because the required build system support has been migrated to
+a different program which &kdesvn-build; has not been corrected to use yet.
 </para>
 </entry>
 </row>
@@ -1055,7 +1071,7 @@ default of "trunk", where &kde; development occurs.  For instance, to checkout
 <para>Note that some modules use a different branch name.  Notably, the
 required arts module doesn't go by &kde; version numbers.  The arts that
 accompanied &kde; 3.4 was version 1.4.</para>
-<para>If kdesvn-build fails to properly download a branch with this option, you
+<para>If &kdesvn-build; fails to properly download a branch with this option, you
 may have to manually specify the URL to download from using the <link
 linkend="conf-override-url">override-url</link> option.</para>
 </entry>
@@ -1176,7 +1192,7 @@ extragear-network using this option.
 <entry>disable-agent-check</entry>
 <entry>Can't be overridden</entry>
 <entry>Normally if you're using SSH to download the Subversion sources (such as
-if you're using the svn+ssh protocol), kdesvn-build will try and make sure that
+if you're using the svn+ssh protocol), &kdesvn-build; will try and make sure that
 if you're using ssh-agent, it is actually managing some SSH identities.  This is
 to try and prevent SSH from asking for your pass phrase for every module.  You can
 disable this check by setting disable-agent-check to true.
@@ -1197,7 +1213,7 @@ the <link linkend="conf-checkout-only">checkout-only</link>
 directive to choose directories that you want to check out.</para>
 
 <important><para>This option does not yet work with modules built using
-&cmake;</para></important>
+&cmake;.</para></important>
 </entry>
 </row>
 
@@ -1205,7 +1221,7 @@ directive to choose directories that you want to check out.</para>
 <entry>email-address</entry>
 <entry>Can't be overridden</entry>
 <entry>
-<para>Set this option to the e-mail address kdesvn-build should send from should
+<para>Set this option to the e-mail address &kdesvn-build; should send from should
 it ever need to send e-mail.  You do not need to worry about this if you don't
 use any feature which send e-mail.  (They are all disabled by default).
 </para>
@@ -1221,13 +1237,13 @@ needs this option.
 <entry>Can't be overridden</entry>
 <entry>
 <para>You can set this option to the email address to send a report to when a
-module fails to build.  kdesvn-build will wait until all the modules are done
+module fails to build.  &kdesvn-build; will wait until all the modules are done
 and collate all of the results in the report.  The report is only sent if a
 module fails to build.
 </para>
 
 <para>Please see the <link linkend="conf-email-address">email-address</link>
-option to set the address kdesvn-build should send from, since the default
+option to set the address &kdesvn-build; should send from, since the default
 is usually not what you want.
 </para>
 </entry>
@@ -1333,12 +1349,9 @@ please be careful while dealing with root privileges.</entry>
 <entry>Overrides global</entry>
 <entry>Set this variable in order to pass command line options to the make
 command.  This is useful for programs such as <ulink
-url="http://distcc.samba.org/"><application>distcc</application></ulink>.
-<application>distcc</application> allows you to share your
-compilation work among more than one computer.  To use it, you must use the
-<option>-j</option> option to make.  Now you can.  According to the docs, 2 *
-number_of_network_cpus is recommended.  I have 1 CPU total, so it would be
-<option>-j2</option> in my case.</entry>
+url="http://distcc.samba.org/"><application>distcc</application></ulink> or
+systems with more than one processor core.
+</entry>
 </row>
 
 <row id="conf-manual-build">
@@ -1373,6 +1386,9 @@ following template:
 </para>
 <para>The default value is either <quote>trunk</quote> or
 <quote>trunk/KDE</quote>, depending on the module name.</para>
+<tip><para>Use the <link linkend="conf-branch">branch</link> or <link
+linkend="conf-tag">tag</link> options instead whenever they are applicable.
+</para></tip>
 </entry>
 </row>
 
@@ -1396,9 +1412,9 @@ effect of a stray &svn; update messing up the build system.</entry>
 <row id="conf-override-url">
 <entry>override-url</entry>
 <entry>Overrides global</entry>
-<entry>If you set this option, kdesvn-build will use its value as the URL
+<entry>If you set this option, &kdesvn-build; will use its value as the URL
 to pass to &svn; <emphasis>completely unchanged</emphasis>.  You should
-generally use this if you want to download a specific release but kdesvn-build
+generally use this if you want to download a specific release but &kdesvn-build;
 can't figure out what you mean using <link linkend="conf-branch">branch</link>.
 </entry>
 </row>
@@ -1433,8 +1449,19 @@ installed.
 
 <para>Note that using this option can have a significant detrimental impact on
 both your bandwidth usage (if you use 'all') and the time taken to compile &kde;,
-since kdesvn-build will be unable to perform incremental builds.</para>
+since &kdesvn-build; will be unable to perform incremental builds.</para>
 </entry>
+</row>
+
+<row id="conf-revision">
+<entry>revision</entry>
+<entry>Overrides global</entry>
+<entry>If this option is set to a value other than 0 (zero), &kdesvn-build;
+will force the Subversion update to bring the module to the exact revision
+given, even if options like <link linkend="conf-branch">branch</link> are in
+effect.  If the module is already at the given revision then it will not be
+updated further unless this option is changed or removed from the
+configuration.</entry>
 </row>
 
 <row id="conf-set-env">
@@ -1462,13 +1489,6 @@ you do specify this value, use an absolute path name.
 </entry>
 </row>
 
-<row id="conf-svn-server">
-<entry>svn-server</entry>
-<entry>Overrides global</entry>
-<entry>This option is used to set the server used to check out from &svn;.
-The default is the anonymous &svn; repository, <emphasis>svn://anonsvn.kde.org/</emphasis></entry>
-</row>
-
 <row id="conf-stop-on-failure">
 <entry>stop-on-failure</entry>
 <entry>Overrides global</entry>
@@ -1476,6 +1496,13 @@ The default is the anonymous &svn; repository, <emphasis>svn://anonsvn.kde.org/<
 after an error occurs during the build or install process.  This option is off
 by default.
 </entry>
+</row>
+
+<row id="conf-svn-server">
+<entry>svn-server</entry>
+<entry>Overrides global</entry>
+<entry>This option is used to set the server used to check out from &svn;.
+The default is the anonymous &svn; repository, <emphasis>svn://anonsvn.kde.org/</emphasis></entry>
 </row>
 
 <row id="conf-tag">
@@ -1486,23 +1513,27 @@ by default.
 to use this option. &kde; releases are available in tarball form from <ulink
 url="ftp://ftp.kde.org/">The &kde; FTP site</ulink> or one of <ulink
 url="http://download.kde.org/download.php">its mirrors</ulink>.</para>
-<para>If you are using kdesvn-build because you have having trouble getting
+<para>If you are using &kdesvn-build; because you have having trouble getting
 a &kde; release to build on your distribution, consider using the <ulink
 url="http://developer.kde.org/build/konstruct/">Konstruct build tool</ulink>
 instead, which works from the release tarballs.</para>
 </entry>
 </row>
 
+<row id="conf-unsermake-options">
+<entry>unsermake-options</entry>
+<entry>Overrides global</entry>
+<entry>This option is just like <link linkend="conf-make-options">make-options</link>
+but for &unsermake;, which accepts some options that <command>make</command>
+cannot understand.
+</entry>
+</row>
+
 <row id="conf-use-cmake">
 <entry>use-cmake</entry>
 <entry>Overrides global</entry>
-<entry>
-<para>This option allows you to force &kdesvn-build; to try (or not try) to use
-CMake with a given module.  Normally &kdesvn-build; will always try to use CMake
-if it is present in the module, as this will be required to build KDE 4.  This
-option is available to ease the transition from unsermake to CMake.  This option
-will be removed once all KDE 4 modules require CMake.
-</para>
+<entry>This option was removed in &kdesvn-build; 1.4 as all KDE 4 modules
+require CMake, and CMake use is not permitted on any other modules.
 </entry>
 </row>
 
@@ -1511,7 +1542,7 @@ will be removed once all KDE 4 modules require CMake.
 <entry>Overrides global</entry>
 <entry>Although this option overrides the global option, it only makes sense for
 qt-copy.  Set this option to <quote>true</quote> to enable the script's
-<emphasis>experimental</emphasis> srcdir != builddir mode.  When enabled,
+srcdir != builddir mode.  When enabled,
 &kdesvn-build; will copy the qt-copy source module to the build directory,
 and perform builds from there.  That means your QTDIR environment variable
 should be set to
@@ -1552,16 +1583,16 @@ instead of the pre-release &kde; 4.</para>
 <entry>use-unsermake</entry>
 <entry>Overrides global</entry>
 <entry><para>Set this option to <quote>true</quote> in order to use the
-experimental unsermake program instead of automake when running the configure
+experimental &unsermake; program instead of automake when running the configure
 script.  This can lead to some serious decreases in build time, especially for
 <ulink url="http://www.csh.rit.edu/slashdot/distcc.html">distributed building
 systems</ulink>.  This option defaults to <quote>true</quote> (for most modules).
 </para>
 
-<para>Normally if you use this option kdesvn-build will automatically keep
+<para>Normally if you use this option &kdesvn-build; will automatically keep
 unsermake up-to-date.  This may start to get annoying, especially if you are
-managing unsermake yourself.  If this is the case, you can set this option to
-<quote>self</quote>, and kdesvn-build will still use unsermake, but will not
+managing &unsermake; yourself.  If this is the case, you can set this option to
+<quote>self</quote>, and &kdesvn-build; will still use &unsermake;, but will not
 do anything special to keep it updated.
 </para>
 </entry>
