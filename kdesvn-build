@@ -272,7 +272,7 @@ use constant {
     ERROR   => 5,
 };
 
-my $versionNum = '1.4';
+my $versionNum = '1.4.1';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -1245,10 +1245,18 @@ sub download_file
 sub install_module_snapshot
 {
     my $module = shift;
-    my $branch = get_option($module, 'branch');
+
+    # Don't bother with snapshot if the user has their own URL picked out.
+    return 0 if (get_option($module, 'override-url'));
+
     my $moduleName = moduleBaseName($module); # KDE/kdeaddons -> kdeaddons
 
-    $branch = default_module_branch($module) if not $branch; # Use default.
+    # The branch for the module is the tag option if specified, otherwise the
+    # branch option if specified.  Otherwise the default branch for the
+    # module is selected (usually trunk, perhaps 3.5)
+    my $branch = get_option($module, 'tag');
+    $branch = get_option($module, 'branch') if not $branch;
+    $branch = default_module_branch($module) if not $branch;
 
     my ($filename, $url, $dirName);
 
