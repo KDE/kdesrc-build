@@ -2560,6 +2560,7 @@ EOM
     while (<CONFIG>)
     {
         s/#.*$//;       # Remove comments
+        s/^\s*//;       # Remove leading whitespace
         next if (/^\s*$/); # Skip blank lines
 
         # First command in .kdesvn-buildrc should be a global
@@ -2567,7 +2568,7 @@ EOM
         if (not /^global\s*$/)
         {
             error "Invalid configuration file: $rcfile.";
-            error "Expecting global settings section!";
+            error "Expecting global settings section at line $.!";
             exit 1;
         }
 
@@ -2592,6 +2593,7 @@ EOM
     while (<CONFIG>)
     {
         s/#.*$//;       # Remove comments
+        s/^\s*//;       # Remove leading whitespace
         next if (/^\s*$/); # Skip blank lines
 
         # Get modulename (has dash, dots, slashes, or letters/numbers)
@@ -2600,7 +2602,7 @@ EOM
         if (not $modulename)
         {
             warning "Invalid configuration file $rcfile!";
-            warning "Expecting a start of module section.";
+            warning "Expecting a start of module section at line $..";
             warning "Global settings will be retained.";
 
             $modulename = 'null'; # Keep reading the module section though.
