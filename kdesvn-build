@@ -578,6 +578,12 @@ sub module_uses_cmake
     my $srcdir = get_fullpath($module, 'source');
     return 1 if -e "$srcdir/CMakeLists.txt";
 
+    # Kind of a hack but it beats inventing a sequence of checks that happens
+    # to get it right: just hardcode in the module that is the exception to the
+    # rule.
+
+    return 1 if $module =~ /^l10n-kde4\/?/;
+
     # No CMakeLists.txt found, if the directory existed don't use CMake,
     # otherwise use the stable-kde option to determine.
 
@@ -713,7 +719,7 @@ sub svn_module_url
     # but there are the important ones.  The hash is associated with the value
     # 1 so that we can do a boolean test by looking up the module name.
     my @non_trunk_modules = qw(extragear kdenonbeta kdesupport koffice
-        playground qt-copy valgrind KDE kdereview www l10n);
+        playground qt-copy valgrind KDE kdereview www l10n-kde3 l10n-kde4);
 
     my $module_root = $module;
     $module_root =~ s/\/.*//; # Remove everything after the first slash
@@ -1993,7 +1999,7 @@ sub is_subdir_buildable
 
     return 0 if $dir eq 'admin';
     return 0 if $dir eq 'kalyptus' and $module eq 'kdebindings';
-    return 0 if $dir eq 'scripts' and $module eq 'l10n';
+    return 0 if $dir eq 'scripts' and ($module eq 'l10n-kde3' or $module eq 'l10n-kde4');
     return 1;
 }
 
@@ -2655,7 +2661,7 @@ sub module_needs_builddir_help
     }
 
     # l10n/lang needs help.
-    return 1 if ($module =~ /^l10n\/?/);
+    return 1 if ($module =~ /^l10n-kde[34]\/?/);
 
     return list_has(@module_help_list, $module);
 }
@@ -3433,9 +3439,13 @@ sub get_update_list
 {
     return @ARGV unless $#ARGV == -1;
 
-    if (get_option('global', 'kde-languages') and not get_option('l10n', 'manual-update'))
+    # l10n module has different names for KDE 3 and KDE 4.
+    my $l10n = 'l10n-kde4';
+    $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
+
+    if (get_option('global', 'kde-languages') and not get_option($l10n, 'manual-update'))
     {
-        push @update_list, 'l10n'; # Add l10n to potential update list.
+        push @update_list, $l10n; # Add l10n module to potential update list.
     }
 
     my @return_list;
@@ -3457,10 +3467,14 @@ sub get_build_list
 {
     my $resume_point = get_option('global', '#resume-from');
 
+    # l10n module has different names for KDE 3 and KDE 4.
+    my $l10n = 'l10n-kde4';
+    $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
+
     # Add l10n to build list if needed.
-    if (get_option('global', 'kde-languages') and not get_option('l10n', 'manual-build'))
+    if (get_option('global', 'kde-languages') and not get_option($l10n, 'manual-build'))
     {
-        push @build_list, 'l10n';
+        push @build_list, $l10n;
     }
 
     # We check explicity for sticky options here since they can only be
@@ -3760,6 +3774,10 @@ sub handle_updates
     # passed to svn.
     install_missing_ssl_signature();
 
+    # Calculate l10n module name.
+    my $l10n = 'l10n-kde4';
+    $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
+
     foreach $module (@{$update_ref})
     {
         check_for_module_config ($module);
@@ -3767,20 +3785,24 @@ sub handle_updates
         next if get_option($module, 'no-svn');
 
         my @options = split(' ', get_option($module, 'checkout-only'));
+        $module = $l10n if $module eq 'l10n'; # Correct internal name.
 
-        # If checkout-only not set for l10n, use kde-languages.
-        if ($module eq 'l10n' and not scalar @options)
+        # Use kde-langauges option if this isn't set on command line.
+        if ($module eq $l10n and not scalar @options)
         {
             push @options, split(' ', get_option('global', 'kde-languages'));
-            push @options, 'scripts';
         }
 
         # Make sure each submodule of l10n has their own options hash.
-        if ($module eq 'l10n')
+        if ($module eq $l10n)
         {
+            # Ensure that scripts is pulled in for the update process (not req'd
+            # for build or install)
+            push @options, 'scripts';
+
             for my $lang (@options)
             {
-                clone_options('l10n', "l10n/$lang");
+                clone_options($l10n, "$l10n/$lang");
             }
         }
 
@@ -3941,7 +3963,7 @@ sub safe_run_cmake
     my $module = shift;
     my $srcdir = get_fullpath($module, 'source');
     my @commands = split (/\s+/, get_option($module, 'cmake-options'));
-   
+
     # grep out empty fields
     @commands = grep {!/^$/} @commands;
 
@@ -3965,9 +3987,16 @@ sub safe_run_cmake
 
     push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
 
+    # For l10n-kde4, we must run cmake to search in the (fake) build dir.  There
+    # is no srcdir != builddir (but we do simulate it).
+    if ($module =~ /^l10n-kde4\/?/)
+    {
+        $srcdir = ".";
+    }
+
     info "\tRunning g[cmake]...";
     unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
-    
+
     # Remove any stray CMakeCache.txt
     my $builddir = get_fullpath($module, 'build');
     safe_unlink "$srcdir/CMakeCache.txt"   if -e "$srcdir/CMakeCache.txt";
@@ -4219,10 +4248,12 @@ sub safe_create_build_system
     # and eventually other valid options we don't support yet, and warn if
     # they are in use.  We do nothing further in this function because we
     # skip this step when using CMake.
+    # Exception: KDE 4 l10n modules use CMake but require extra preparation
+    # before they can be built, so don't abort out for that module.
     if ($uses_cmake)
     {
         warning " b[y[*] CMake does not support the inst-apps option!" if $instapps;
-        return 0; # Done.
+        return 0 unless $module =~ /^l10n-kde4\/?/; # Done.
     }
 
     # These modules will run make -f Makefile.cvs in (fake) builddir to keep
@@ -4260,9 +4291,9 @@ sub safe_create_build_system
     my $cmd_ref = [ 'make', '-f', 'Makefile.cvs' ];
     $cmd_ref = [ './autogen.sh' ] if $module eq 'valgrind';
 
-    if ($module =~ /^l10n\//)
+    if ($module =~ /^l10n-kde[34]\//)
     {
-        my ($lang) = ($module =~ /^l10n\/(.*)$/);
+        my ($lang) = ($module =~ /^l10n-kde[34]\/(.*)$/);
 
         # autogen.sh must be run from one level below for some reason.
         p_chdir ("../");
@@ -4568,8 +4599,12 @@ sub setup_build_system
     # Symlink source directory to build directory if module doesn't support
     # srcdir != builddir.  If it's qt-copy only do so if it is Qt 3.
     # Note that module_needs_builddir_help() already takes care of that test.
-    # Also, CMake requires srcdir != builddir so don't do this for CMake.
-    if (not $uses_cmake and module_needs_builddir_help($module))
+    #
+    # Also, CMake requires srcdir != builddir so we could avoid making a fake
+    # builddir that CMake would just refuse to use anyways but the CMake-using
+    # modules (except for l10n-kde4) pretty much never need help anyways so
+    # that check is also already taken care of.
+    if (module_needs_builddir_help($module))
     {
         whisper "\tFaking builddir for g[$module]";
         if (not prepare_fake_builddir($module))
@@ -4591,7 +4626,15 @@ sub setup_build_system
 
     my $confpath = module_needs_builddir_help($module) ? $builddir : $srcdir;
 
-    if (not $uses_cmake and ($do_makeconf or not -e "$confpath/configure"))
+    # The l10n-kde4 module requires some initial build system setup unlike
+    # every other CMake module.  We can tell if it has been setup because then
+    # its builddir will have a CMakeLists.txt
+    if ($module =~ /^l10n-kde4\/?/ and not -e "$builddir/CMakeLists.txt")
+    {
+        $do_makeconf = 1;
+    }
+
+    if ($do_makeconf or (not $uses_cmake and not -e "$confpath/configure"))
     {
         whisper "\ty[Recreating configure script].";
 
@@ -4937,27 +4980,38 @@ EOF
 sub filter_l10n_module_list
 {
     my @modules = @_;
+    my $l10n = 'l10n-kde4';
+
+    $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
 
     # Only filter if 'l10n' is actually present in list.
-    if (grep ($_ eq 'l10n', @modules))
+    my @matches = grep {$_ eq $l10n or $_ eq 'l10n'} @modules;
+    my $subdirs;
+
+    return @modules if not scalar @matches;
+
+    for my $match (@matches)
     {
-        @modules = grep($_ ne 'l10n', @modules); # Remove all instances of l10n
+        @modules = grep {$_ ne $match} @modules; # Remove all instances of l10n
 
-        # Prefer checkout-only (will be set from command line).
-        my $subdirs = get_option('l10n', 'checkout-only');
-        $subdirs = get_option('global', 'kde-languages') if not $subdirs;
-
-        for my $dir (split (' ', $subdirs))
-        {
-            push @modules, "l10n/$dir";
-
-            # Give language its own options in %package_opts.
-            clone_options("l10n", "l10n/$dir");
-        }
-
-        # Make sure the /scripts directory is available in the build dir.
-        prepare_fake_builddir('l10n/scripts');
+        # Grab first matching sub directory options, depending on if the user
+        # used l10n or the full l10n-kde{3,4} module name on the command line.
+        $subdirs = get_option($match, 'checkout-only') if not $subdirs;
     }
+
+    # Still no subdirs?  Use kde-langauges.
+    $subdirs = get_option('global', 'kde-languages') if not $subdirs;
+
+    for my $dir (split (' ', $subdirs))
+    {
+        push @modules, "$l10n/$dir";
+
+        # Give language its own options in %package_opts.
+        clone_options($l10n, "$l10n/$dir");
+    }
+
+    # Make sure the /scripts directory is available in the build dir.
+    prepare_fake_builddir("$l10n/scripts");
 
     return @modules;
 }
@@ -5600,7 +5654,8 @@ eval
 
     if (get_option('global', 'kde-languages'))
     {
-        set_option('l10n', 'apidox', 0); # Just set some option to init defaults.
+        set_option('l10n-kde3', 'apidox', 0); # Just set some option to init defaults.
+        set_option('l10n-kde4', 'apidox', 0); # Just set some option to init defaults.
     }
 
     dump_options() if debugging;
