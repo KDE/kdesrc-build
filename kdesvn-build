@@ -5378,7 +5378,12 @@ sub munge_lists
             # actually belongs with the module name.
             if (has_base_module($modulename))
             {
-                $modulename .= "/" . shift @dirs;
+                $modulename .= "/" . shift @dirs unless scalar @dirs == 0;
+
+                if (scalar @dirs == 0)
+                {
+                    warning "Building all of y[$modulename] may work but is unsupported.";
+                }
             }
 
             if (scalar @dirs > 0)
