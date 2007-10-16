@@ -714,11 +714,11 @@ sub svn_module_url
     # We can't use get_option($module) after this if we have to trim the module
     # name.
     $module = moduleBaseName($module);
-    
+
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
     # but there are the important ones.  The hash is associated with the value
     # 1 so that we can do a boolean test by looking up the module name.
-    my @non_trunk_modules = qw(extragear kdenonbeta kdesupport koffice
+    my @non_trunk_modules = qw(extragear kdesupport koffice
         playground qt-copy valgrind KDE kdereview www l10n-kde3 l10n-kde4);
 
     my $module_root = $module;
@@ -732,7 +732,7 @@ sub svn_module_url
 
     $branch =~ s/^\/*//; # Eliminate / at beginning of string.
     $branch =~ s/\/*$//; # Likewise at the end.
-    
+
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
 
@@ -3385,10 +3385,10 @@ sub adjust_update_list
     my $build_ref = shift;
 
     # Check to see if the user has requested for one of the modules to be
-    # built is using unsermake.  If so, we need to check if kdenonbeta is
+    # built is using unsermake.  If so, we need to check if unsermake is
     # already supposed to be checked out.  If so, we need to make sure that
     # unsermake is present in any checkout-only directives, and if not, we need
-    # to add kdenonbeta/unsermake to the checkout list.
+    # to add unsermake to the checkout list.
     my $unsermake_needed = 0;
 
     for my $module (@{$build_ref})
@@ -3408,33 +3408,22 @@ sub adjust_update_list
     $unsermake_needed = 0 if get_option('global', 'use-unsermake') eq 'self';
 
     # If the user has set manual-update, don't second-guess them.
-    $unsermake_needed = 0 if get_option('kdenonbeta', 'manual-update');
+    $unsermake_needed = 0 if get_option('unsermake', 'manual-update');
 
     debug "Do we update unsermake? ", ($unsermake_needed ? 'yes' : 'no');
 
     if ($unsermake_needed)
     {
-        if (not list_has(@{$list_ref}, 'kdenonbeta'))
+        if (not list_has(@{$list_ref}, 'unsermake'))
         {
-            whisper "Adding kdenonbeta/unsermake to build.";
+            whisper "Adding unsermake to build.";
 
-            # kdenonbeta isn't being downloaded by the user.
-            unshift (@{$list_ref}, 'kdenonbeta');
-            $package_opts{'kdenonbeta'} = {
-                'manual-build'   => 'true',
-                'checkout-only'  => 'unsermake',
+            # unsermake isn't being downloaded by the user.
+            unshift (@{$list_ref}, 'unsermake');
+            $package_opts{'unsermake'} = {
+                'manual-build' => 'true',
+                'tag'          => 'unmaintained/3',
             };
-        }
-        else
-        {
-            my $checkouts = get_option('kdenonbeta', 'checkout-only');
-
-            if ($checkouts !~ /\bunsermake\b/)
-            {
-                # kdenonbeta is being checked out, but the user has
-                # excluded unsermake.
-                set_option('kdenonbeta', 'checkout-only', "$checkouts unsermake");
-            }
         }
     }
 }
@@ -4747,8 +4736,8 @@ sub update_module_environment
     # a slightly faster build even with only one CPU.
     if (not module_uses_cmake($module) and get_option ($module, "use-unsermake"))
     {
-        my $kdenonbeta = get_fullpath('kdenonbeta', 'source');
-        $path = "$kdenonbeta/unsermake:$path";
+        my $unsermake = get_fullpath('unsermake', 'source');
+        $path = "$unsermake:$path";
     }
     else
     {
