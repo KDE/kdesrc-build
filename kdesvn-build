@@ -2660,12 +2660,6 @@ sub module_needs_builddir_help
     my $module = shift;
     my @module_help_list = qw/kdebindings valgrind/;
 
-    # qt-copy special case to support the lndir() hack for Qt 3.
-    if ($module eq 'qt-copy' and is_qt_copy_qt3())
-    {
-        return 1;
-    }
-
     # l10n/lang needs help.
     return 1 if ($module =~ /^l10n-kde[34]\/?/);
 
@@ -3859,58 +3853,48 @@ sub safe_configure
     setenv ('CXXFLAGS', $cxxflags);
     setenv ('DO_NOT_COMPILE', get_option ($module, 'do-not-compile'));
 
-    if ($module ne 'qt-copy' or not is_qt_copy_qt3())
+    if ($module ne 'qt-copy')
     {
-        # If we're in this path and module is qt-copy, it is at least qt-copy 4.
-
         my $prefix = get_option ($module, 'prefix');
-
-        # Don't allow prefix option to override qtdir setting for safety.
-        $prefix = get_option($module, 'qtdir') if $module eq 'qt-copy';
 
         # If still no prefix, use KDEDIR
         $prefix = get_option($module, 'kdedir') unless $prefix;
 
-        if ($module ne 'qt-copy')
-        {
-            push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
-            push @commands, "--prefix=$prefix";
-        }
-        else # Qt 4.
-        {
-            # Some users have added -prefix manually to their flags, they
-            # probably shouldn't anymore. :)
+        push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
+        push @commands, "--prefix=$prefix";
+    }
+    else # qt-copy
+    {
+        my $prefix = get_option($module, 'qtdir');
 
-            if (scalar grep /^-prefix(=.*)?$/, @commands)
-            {
-                warning <<EOF;
+        # Some users have added -prefix manually to their flags, they
+        # probably shouldn't anymore. :)
+
+        if (scalar grep /^-prefix(=.*)?$/, @commands)
+        {
+            warning <<EOF;
  b[y[*]
  b[y[*] You have the y[-prefix] option selected in your qt-copy configure flags.
  b[y[*] kdesvn-build will correctly add the -prefix option to match your Qt
  b[y[*] directory setting, so you do not need to use -prefix yourself.
  b[y[*]
 EOF
-            }
-
-            push @commands, "-prefix", $prefix;
         }
 
-        # We're special casing these modules because we're using the lndir
-        # hack for them.
-        if (module_needs_builddir_help($module))
-        {
-            $script = get_fullpath($module, 'build') . "/configure";
-        }
+        push @commands, "-prefix", $prefix;
+    }
+
+    # We're special casing these modules because we're using the lndir
+    # hack for them.
+    if (module_needs_builddir_help($module))
+    {
+        $script = get_fullpath($module, 'build') . "/configure";
     }
 
     # Create specialized configure script for qt-copy.
     if ($module eq 'qt-copy')
     {
-        # Qt 3.
-        my $qtdir = get_fullpath('qt-copy', 'build');
-
-        # Qt 4+.
-        $qtdir = get_fullpath('qt-copy', 'source') unless is_qt_copy_qt3();
+        my $qtdir = get_fullpath('qt-copy', 'source');
 
         debug "Creating g[$qtdir/configure.new] from g[$script]";
 
@@ -4866,21 +4850,6 @@ sub build_module
 
     update_module_environment($module);
 
-    # This warning doesn't apply to Qt 4.
-    if($module eq 'qt-copy' and $builddir ne get_option('global', 'qtdir')
-        and is_qt_copy_qt3())
-    {
-        my $qtpath = $builddir;
-        $qtpath =~ s/$ENV{HOME}/~/;
-        warning <<EOF;
-
-b[y[!!] You're building qt-copy, but QTDIR isn't set to use qt-copy!
-b[y[!!] Please set your qtdir variable in the global section of your
-b[y[!!] $rcfile to g[$qtpath]
-
-EOF
-    }
-
     my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
     {
@@ -5249,11 +5218,11 @@ EOF
 # Check if qt-copy 4 requires make install.
 #
 # This returns true unless the QTDIR is the same as the Qt 4 srcdir.
-sub qt_copy_qt4_needs_make_install
+sub qt_copy_needs_installed
 {
-    my $qtsource = get_fullpath('qt-copy', 'source');
+    my $builddir = get_fullpath('qt-copy', 'build');
     my $prefix = get_option('global', 'qtdir');
-    return 0 if $qtsource eq $prefix;
+    return 0 if $builddir eq $prefix;
     return 1;
 }
 
@@ -5271,8 +5240,7 @@ sub handle_install
         check_for_module_config ($module);
 
         if (list_has(@no_install_modules, $module) or
-            ($module eq 'qt-copy' and is_qt_copy_qt3()) or
-            ($module eq 'qt-copy' and !qt_copy_qt4_needs_make_install())
+            ($module eq 'qt-copy' and !qt_copy_needs_installed())
            )
         {
             info "\tg[$module] doesn't need to be installed.";
