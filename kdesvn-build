@@ -256,7 +256,7 @@ Carlos Leonhard Woelz <carlos.woelz@kdemail.net>
 use strict;
 use warnings;
 use Fcntl;    # For sysopen constants
-use POSIX 'strftime';
+use POSIX qw(strftime :sys_wait_h);
 use File::Find; # For our lndir reimplementation.
 use File::Basename;
 use Sys::Hostname;
@@ -272,7 +272,19 @@ use constant {
     ERROR   => 5,
 };
 
-my $versionNum = '1.5';
+# IPC message types
+use constant {
+    IPC_MODULE_SUCCESS => 1, # Used for a successful svn checkout
+    IPC_MODULE_FAILURE => 2, # Used for a failed svn checkout
+    IPC_MODULE_SKIPPED => 3, # Used for a skipped svn checkout (i.e. build anyways)
+
+    # One of these messages should be the first message placed on the queue.
+    IPC_ALL_SKIPPED    => 4, # Used to indicate a skipped update process (i.e. build anyways)
+    IPC_ALL_FAILURE    => 5, # Used to indicate a major update failure (don't build)
+    IPC_ALL_UPDATING   => 6, # Informational message, feel free to start the build.
+};
+
+my $versionNum = '1.6-pre1';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -337,6 +349,124 @@ my %package_opts = (
     "use-unsermake"       => "1", # Default to true now, we may need a blacklist
   }
 );
+
+# Define class for IPC object so that we can also make a simulated IPC object
+# and fallback to queued update and building.
+{
+    # Use SysV IPC protocols as it is built in to Perl.
+    package SysVIPC;
+
+    # Once again Perl's non-declaration of required constants proves awesome.
+    # NOTE: This is hopefully the same across all UNIXy libc's but I can make
+    # no guarantees.  Unfortunately the required Perl module (IPC::SysV) was
+    # not installed by default until apparently very recently so instead these
+    # are hardcoded.
+    use constant IPC_PRIVATE => 0;
+    use constant IPC_RMID => 0;
+
+    sub new
+    {
+        my ($class, $key) = @_;
+
+        my $id = msgget(IPC_PRIVATE, 0644); # Permissions...
+
+        my $data = { 'id' => $id, 'rmMsgQueue' => 0 };
+
+        return bless $data, $class; # OOP in Perl is so completely retarded
+                                    # (although I suppose better than OOP in C)
+    }
+
+    # dtor
+    sub DESTROY
+    {
+        my $self = shift;
+
+        if($self->{'rmMsgQueue'})
+        {
+            msgctl($self->{'id'}, IPC_RMID, 0);
+        }
+    }
+
+    # Pass true if this object should deallocate the shared memory.  False
+    # by default.
+    sub releaseOnExit
+    {
+        my $self = shift;
+        my $rmMem = shift;
+
+        $self->{'rmMsgQueue'} = $rmMem;
+    }
+
+    sub sendMessage
+    {
+        my $self = shift;
+        my ($ipcType, $msg, $flags) = @_;
+
+        $flags = 0 unless defined $flags;
+
+        return msgsnd($self->{'id'}, pack("l! a*", $ipcType, $msg), $flags);
+    }
+
+    sub receiveMessage
+    {
+        my $self = shift;
+        my ($outBuffer, $length, $flags) = @_;
+
+        $flags = 0 unless defined $flags;
+        my $buffer = ""; # Define this to something to force allocation.
+
+        my $result = msgrcv($self->{'id'}, $buffer, $length, 0, $flags);
+
+        return $result if not $result;
+
+        my $returnType;
+        ($returnType, $$outBuffer) = unpack("l! a*", $buffer);
+
+        return $returnType;
+    }
+}
+
+# Dummy IPC module in case SysVIPC doesn't work.
+{
+    package NullIPC;
+
+    sub new
+    {
+        my $class = shift;
+        my @msgQueue;
+
+        return bless \@msgQueue, $class; # OOP in Perl is so completely retarded
+    }
+
+    # Defined for compatibility
+    sub releaseOnExit
+    {
+    }
+
+    sub sendMessage
+    {
+        my $self = shift;
+        my ($ipcType, $msg) = @_;
+
+        push @{$self}, pack("l! a*", $ipcType, $msg);
+        return 1;
+    }
+
+    sub receiveMessage
+    {
+        my $self = shift;
+        my ($outBuffer, $length) = @_;
+
+        return undef unless scalar @{$self} > 0;
+
+        my $msg = shift @{$self};
+        my $returnType;
+
+        ($returnType, $$outBuffer) = unpack("l! a*", $msg);
+
+        return $returnType;
+    }
+}
 
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
@@ -2766,7 +2896,8 @@ sub output_failed_module_list($@)
             $logfile = "No log file" unless $logfile;
             $logfile =~ s|$homedir|~|;
 
-            warning "r[$_] - g[$logfile]";
+            warning "r[$_]" if pretending;
+            warning "r[$_] - g[$logfile]" if not pretending;
         }
     }
 }
@@ -2776,8 +2907,6 @@ sub output_failed_module_list($@)
 # call.
 sub output_failed_module_lists()
 {
-    return if pretending;
-
     for my $type (@fail_display_order)
     {
         my @failures = @{$fail_lists{$type}};
@@ -3306,7 +3435,7 @@ sub get_lock
             warning " WARNING: Can't open or create lockfile r[$lockfile]";
             return 1;
         };
-        
+
         my $pid = <PIDFILE>;
         close PIDFILE;
 
@@ -3651,11 +3780,19 @@ sub super_mkdir
 sub dont_build
 {
     my $module = shift;
+    my $ipc = shift;
 
     whisper "Not building $module";
 
-    # Weed out matches of the module name
-    @build_list = grep (!/^$module$/, @build_list);
+    if ($ipc)
+    {
+        $ipc->sendMessage(IPC_MODULE_FAILURE, $module);
+    }
+    else
+    {
+        # Weed out matches of the module name
+        @build_list = grep (!/^$module$/, @build_list);
+    }
 
     push @{$fail_lists{'update'}}, $module;
 }
@@ -3730,19 +3867,36 @@ EOF
 # If the module has not already been checkout out, this subroutine
 # will do so for you.
 #
+# The $ipc variable contains an object that is responsible for communicating
+# the status of building the modules.  This function must account for every
+# module in @{$update_ref} to $ipc before returning.
+#
 # Returns 0 on success, non-zero on error.
 sub handle_updates
 {
     my $update_ref = shift;
+    my $ipc = shift;
     my $kdesvn = get_kdesvn_dir();
-    my $result = 0;
-    my $module;
+    my $hadError = 0;
 
     # No reason to print out the text if we're not doing anything.
-    return 0 if get_option ('global', 'no-svn');
-    return 0 if scalar @$update_ref == 0;
+    if (scalar @$update_ref == 0)
+    {
+        $ipc->sendMessage(IPC_ALL_UPDATING, "update-list-empty");
+        return 0;
+    }
 
-    return 1 if (not check_for_ssh_agent());
+    if (get_option ('global', 'no-svn'))
+    {
+        $ipc->sendMessage(IPC_ALL_SKIPPED, "no-svn");
+        return 0;
+    }
+
+    if (not check_for_ssh_agent())
+    {
+        $ipc->sendMessage(IPC_ALL_FAILURE, "ssh-failure");
+        return 1;
+    }
 
     note "<<<  Updating Subversion Directories  >>>";
     info " "; # Add newline for aesthetics unless in quiet mode.
@@ -3753,11 +3907,15 @@ sub handle_updates
         if (not super_mkdir ($kdesvn))
         {
             error "Unable to make directory r[$kdesvn]!";
-            @build_list = (); # Clear out the build list, since we can't build.
-            $install_flag = 0; # Can't install either.
+            $ipc->sendMessage(IPC_ALL_FAILURE, "no-source-dir");
+
             return 1;
         }
     }
+
+    # Once at this point, any errors we get should be limited to a module,
+    # which means we can tell the build thread to start.
+    $ipc->sendMessage(IPC_ALL_UPDATING, "starting-updates");
 
     # Make sure KDE's SSL signature is present since --non-interactive is
     # passed to svn.
@@ -3767,11 +3925,15 @@ sub handle_updates
     my $l10n = 'l10n-kde4';
     $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
 
-    foreach $module (@{$update_ref})
+    foreach my $module (@{$update_ref})
     {
         check_for_module_config ($module);
 
-        next if get_option($module, 'no-svn');
+        if(get_option($module, 'no-svn'))
+        {
+            $ipc->sendMessage(IPC_MODULE_SKIPPED, $module);
+            next;
+        }
 
         my @options = split(' ', get_option($module, 'checkout-only'));
         $module = $l10n if $module eq 'l10n'; # Correct internal name.
@@ -3796,6 +3958,8 @@ sub handle_updates
         }
 
         my $fullpath = get_fullpath($module, 'source');
+        my $result;
+
         if (-e "$fullpath/.svn")
         {
             # Warn user if the current repo URL is different than expected.
@@ -3810,14 +3974,19 @@ sub handle_updates
         if ($result)
         {
             error "Error updating r[$module], removing from list of packages to build.";
-            dont_build ($module);
+            dont_build ($module); # Sends IPC message.
+            $hadError = 1;
+        }
+        else
+        {
+            $ipc->sendMessage(IPC_MODULE_SUCCESS, $module);
         }
 
         print "\n";
     }
 
     info "<<<  Update Complete  >>>\n";
-    return $result;
+    return $hadError;
 }
 
 # Subroutine to run the qt-copy apply_patches script.
@@ -4997,6 +5166,7 @@ sub handle_build
 {
     my @build_done;
     my $build_ref = shift;
+    my $ipc = shift;
     my $kdesvn = get_kdesvn_dir();
     my $module;
     my @modules = grep (!/^(KDE\/)?kde-common$/, @{$build_ref});
@@ -5010,6 +5180,32 @@ sub handle_build
     return 0 if scalar @modules == 0;
 
     note "<<<  Build Process  >>>";
+
+    # Keeps track of svn status of the modules.
+    my %svn_status = ();
+
+    # IPC queue should have a message saying whether or not to bother with the
+    # build.
+    {
+        my $buffer = "";
+        my $ipcType = $ipc->receiveMessage(\$buffer, 256);
+
+        if ($ipcType == IPC_ALL_FAILURE)
+        {
+            error " b[r[*] Unable to perform the source update (y[$buffer]), therefore";
+            error " b[r[*] unable to build.";
+            return 1;
+        }
+        elsif ($ipcType == IPC_ALL_SKIPPED)
+        {
+            $svn_status{$_} = 'skipped' foreach @update_list;
+        }
+        elsif ($ipcType != IPC_ALL_UPDATING)
+        {
+            error " b[r[***] IPC failure while expecting svn update status, wrong type: r[$ipcType]";
+            return 1;
+        }
+    }
 
     # Save the environment to keep module's env changes from affecting other
     # modules.
@@ -5036,6 +5232,41 @@ EOF
     while ($module = shift @modules)
     {
         my $start_time = time;
+
+        # If using IPC, read in the contents of the message buffer, and wait
+        # for completion of the svn update if necessary.
+
+        if (not defined $svn_status{$module})
+        {
+            $svn_status{$module} = 0;
+        }
+
+        while(list_has(@update_list, $module) and not $svn_status{$module})
+        {
+            my $buffer;
+            my $ipcType = $ipc->receiveMessage(\$buffer, 512);
+
+            if (not defined $ipcType or not $ipcType)
+            {
+                error " b[r[***] $module: IPC failure during Subversion update: r[b[$!]";
+                return 1;
+            }
+
+            whisper "\tReceived IPC status message for $buffer: $ipcType";
+
+            if($ipcType == IPC_MODULE_SUCCESS or $ipcType == IPC_MODULE_SKIPPED)
+            {
+                $svn_status{$buffer} = 'success';
+            }
+            elsif($ipcType == IPC_MODULE_FAILURE)
+            {
+                $svn_status{$buffer} = 'failed';
+                push @{$fail_lists{'update'}}, $buffer;
+            }
+        }
+
+        next if $svn_status{$module} eq 'failed';
+        whisper "\tBuilding g[$module]";
 
         if (build_module ($module, $i, $num_modules))
         {
@@ -5098,7 +5329,7 @@ EOF
     }
 
     info " "; # Add newline for aesthetics if not in quiet mode.
-    return scalar @{$fail_lists{'build'}};
+    return scalar @{$fail_lists{'build'}} or grep (/failed/, values %svn_status);
 }
 
 # Subroutine checks to see if a module is present in the config file, and
@@ -5335,14 +5566,14 @@ sub munge_lists
             # actually belongs with the module name.
             if (has_base_module($modulename))
             {
-                $modulename .= "/" . shift @dirs unless scalar @dirs == 0;
-
                 # extragear and playground both have support now for building
                 # the entire cluster of modules with one make command.
                 if (scalar @dirs == 0)
                 {
                     whisper "Building all of g[$modulename]."
                 }
+
+                $modulename .= "/" . shift @dirs unless scalar @dirs == 0;
             }
 
             if (scalar @dirs > 0)
@@ -5696,8 +5927,50 @@ eval
     if (not $install_flag)
     {
         # No packages to install, we're in build mode
-        $result = handle_updates (\@update_list);
-        $result = handle_build (\@build_list) || $result;
+
+        # What we're going to do is fork another child to perform the svn
+        # updates while we build.  Setup for this first by initializing some
+        # shared memory.
+        #
+        my $ipc = exists $ENV{'COVERITY_RUN'} ? 0 : new SysVIPC;
+
+        if (not $ipc)
+        {
+            $ipc = new NullIPC;
+            whisper "Using no IPC mechanism\n";
+
+            $result = handle_updates (\@update_list, $ipc);
+            $result = handle_build (\@build_list, $ipc) || $result;
+        }
+        else
+        {
+            my $childPid = fork();
+            if ($childPid == 0)
+            {
+                # Child, do svn after reseting signal handlers;
+                $SIG{'HUP'} = sub { exit 6; };
+                $SIG{'INT'} = sub { exit 6; };
+                $SIG{'QUIT'} = sub { exit 6; };
+                $SIG{'ABRT'} = sub { exit 6; };
+                $SIG{'TERM'} = sub { exit 6; };
+                $SIG{'PIPE'} = sub { exit 6; };
+
+                exit handle_updates (\@update_list, $ipc);
+            }
+            else
+            {
+                # We should release shm resources.
+                $ipc->releaseOnExit(1);
+
+                # Parent, do build
+                $result = handle_build (\@build_list, $ipc);
+
+                waitpid ($childPid, 0);
+
+                # Exit code is in $?.
+                $result = 1 if $? != 0;
+            }
+        }
     }
     else
     {
