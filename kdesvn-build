@@ -3400,6 +3400,18 @@ DONE
 
 }
 
+# Installs the given subroutine as a signal handler for a set of signals which
+# could kill the program.
+#
+# First parameter is a reference to the sub to act as the handler.
+sub install_signal_handler
+{
+    my $handler = shift;
+    my @signals = qw/HUP INT QUIT ABRT TERM PIPE/;
+
+    @SIG{@signals} = ($handler) x scalar @signals;
+}
+
 # Subroutine to try to get a lock on the script's lockfile to prevent
 # more than one script from updating KDE Subversion at once.
 # The value returned depends on the system's open() call.  Normally 0
@@ -3415,12 +3427,7 @@ sub get_lock
     # Install signal handlers to ensure that the lockfile gets closed.
     # There is a race condition here, but at worst we have a stale lock
     # file, so I'm not *too* concerned.
-    $SIG{'HUP'} = \&quit_handler;
-    $SIG{'INT'} = \&quit_handler;
-    $SIG{'QUIT'} = \&quit_handler;
-    $SIG{'ABRT'} = \&quit_handler;
-    $SIG{'TERM'} = \&quit_handler;
-    $SIG{'PIPE'} = \&quit_handler;
+    install_signal_handler(\&quit_handler);
 
     # Note that we can use color codes at this point since get_lock is called
     # after read_options (which sets up the color).
@@ -5947,13 +5954,13 @@ eval
             my $childPid = fork();
             if ($childPid == 0)
             {
+                my $childQuitHandler = sub {
+                    $ipc->releaseOnExit(1); # OK if we try to delete twice now
+                    exit 6;
+                };
+
                 # Child, do svn after reseting signal handlers;
-                $SIG{'HUP'} = sub { exit 6; };
-                $SIG{'INT'} = sub { exit 6; };
-                $SIG{'QUIT'} = sub { exit 6; };
-                $SIG{'ABRT'} = sub { exit 6; };
-                $SIG{'TERM'} = sub { exit 6; };
-                $SIG{'PIPE'} = sub { exit 6; };
+                install_signal_handler($childQuitHandler);
 
                 exit handle_updates (\@update_list, $ipc);
             }
