@@ -2475,8 +2475,8 @@ not apply to you, so feel free to visit the kdesvn-build homepage
 
 b[g[$homepage]
 
-and use the configuration file generator to guide you through the process of
-creating a config file to customize your kdesvn-build process.
+and access the kdesvn-build documentation.  Also the latest release package
+will have a sample configuration file that you can edit to your liking.
 
 HOME
 }
@@ -3477,7 +3477,7 @@ sub adjust_update_list
     my $build_ref = shift;
 
     # Check to see if the user has requested for one of the modules to be
-    # built is using unsermake.  If so, we need to check if unsermake is
+    # built using unsermake.  If so, we need to check if unsermake is
     # already supposed to be checked out.  If so, we need to make sure that
     # unsermake is present in any checkout-only directives, and if not, we need
     # to add unsermake to the checkout list.
@@ -3562,7 +3562,7 @@ sub get_build_list
         push @build_list, $l10n;
     }
 
-    # We check explicity for sticky options here since they can only be
+    # We check explicitly for sticky options here since they can only be
     # set from the command line.
     if (get_option('global', '#manual-build'))
     {
@@ -5798,6 +5798,15 @@ sub setup_option_defaults()
 }
 
 # Script starts.
+
+# Adding in a way to load all the functions without running the program to
+# enable some kind of automated QA testing.
+if (__PACKAGE__ eq 'test')
+{
+    print "kdesvn-build being run from testing framework, BRING IT.\n";
+    print "kdesvn-build is version $versionNum\n";
+    return 1;
+}
 
 # Use some exception handling to avoid ucky error messages
 eval
