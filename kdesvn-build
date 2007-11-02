@@ -538,7 +538,7 @@ sub debugging()
 # levels to allow for e.g. quiet switches, or verbose switches.  The levels are,
 # from least to most important:
 # debug, whisper, info (default), note (quiet), warning (very-quiet), and error.
-# 
+#
 # You can also use the pretend output subroutine, which is emitted if, and only
 # if pretend mode is enabled.
 #
@@ -942,7 +942,7 @@ sub setup_logging_subsystem
         my $id = "01";
         $id++ while -e "$_/$date-$id";
 
-        # We need to use a string comparison operator to keep 
+        # We need to use a string comparison operator to keep
         # the magic in the ++ operator.
         $min_build_id = $id if $id gt $min_build_id;
     }
@@ -1032,7 +1032,7 @@ sub get_option
     return $$ref{"#$option"} if exists $$ref{"#$option"};
 
     # Next in order of precedence
-    if (defined ${$global_opts}{"#$option"} and not 
+    if (defined ${$global_opts}{"#$option"} and not
         ($module eq 'qt-copy' and list_has(@qtCopyOverrides, $option)))
     {
         return ${$global_opts}{"#$option"};
@@ -1166,11 +1166,11 @@ sub download_http_file
 
     return 0 unless has_Net_HTTP();
     my $conn = Net::HTTP->new (Host => $host);
-    
+
     if (not defined $conn)
     {
         error "Unable to connect to snapshot host: r[$@]";
-        
+
         return 0;
     }
 
@@ -1478,7 +1478,7 @@ sub download_module_snapshot
 
         # Clean up the probably defective snapshot.
         safe_unlink($filename);
-        
+
         return 0;
     }
 
@@ -1505,7 +1505,7 @@ sub download_module_snapshot
 
     # The extracted directory is possibly of a weird form, move it to the
     # correct name (just $moduleName);
-    if($dirName ne $moduleName and not safe_rename($dirName, $moduleName)) { 
+    if($dirName ne $moduleName and not safe_rename($dirName, $moduleName)) {
         error "Unable to move directory for r[$module] into place: r[$!]";
 
         # Remove any created portions of the module tree.
@@ -1790,7 +1790,7 @@ sub update_module_path
 # specific to the various signature algorithms used by svn, so it could break
 # in the future.  But there's not a better way to skip warnings about svn.kde.org
 # until the site has a valid ssl certificate.
-# 
+#
 # Accepts no arguments, has no return value.
 sub install_missing_ssl_signature
 {
@@ -2059,7 +2059,7 @@ sub run_make_command
     # 2. If we're not printing to a terminal.
     # 3. When we're debugging (we'd interfere with debugging output).
     if ((!module_uses_cmake($module) and !$isunsermake) or
-        not -t STDERR or 
+        not -t STDERR or
         debugging)
     {
         return log_command($module, $filename, $argRef);
@@ -3522,9 +3522,7 @@ sub adjust_update_list
 
     for my $module (@{$build_ref})
     {
-        if(get_option($module, 'use-unsermake')
-            and not module_uses_cmake($module)
-            and not blacklisted($module, 'use-unsermake'))
+        if(get_option($module, 'use-unsermake') and not module_uses_cmake($module))
         {
             debug "Unsermake is needed.";
             $unsermake_needed = 1;
@@ -4329,10 +4327,10 @@ sub safe_lndir
 # Subroutine to link a source directory into an alternate directory in order
 # to fake srcdir != builddir for modules that don't natively support it.
 # The first parameter is the module to prepare.
-# 
+#
 # The return value is true (non-zero) if it succeeded, and 0 (false) if it
 # failed.
-# 
+#
 # On return from the subroutine the current directory will be in the build
 # directory, since that's the only directory you should touch from then on.
 #
@@ -4387,7 +4385,7 @@ sub safe_create_build_system
     my $module = shift;
     my $srcdir = get_fullpath($module, 'source');
     my $builddir = get_fullpath($module, 'build');
-    my $uses_cmake = module_uses_cmake($module); 
+    my $uses_cmake = module_uses_cmake($module);
     my $instapps = get_option($module, 'inst-apps');
 
     whisper "\tCMake support for $module: ", $uses_cmake ? "Yes" : "No";
@@ -5409,7 +5407,7 @@ sub check_module_validity
 
     eval { plugin_check_module_validity($module, $module_actual_url, $module_expected_url); };
 
-    if (exists $ENV{'COVERITY_RUN'} and $module_actual_url ne $module_expected_url) 
+    if (exists $ENV{'COVERITY_RUN'} and $module_actual_url ne $module_expected_url)
     {
         warning "Something is wrong with your $module. Let's see if we can correct it. ";
         warning "kdesvn-build expects:        y[$module_expected_url]";
@@ -5423,7 +5421,7 @@ sub check_module_validity
     if ($module_actual_url ne $module_expected_url)
     {
         # Check if the --svn-only flag was passed.
-        if (get_option('global', '#manual-build')) 
+        if (get_option('global', '#manual-build'))
         {
             note "g[$module] is checked out from a different location than expected.";
             note "Attempting to correct";
