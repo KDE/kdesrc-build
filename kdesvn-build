@@ -1712,7 +1712,7 @@ sub checkout_module_path
     # First let's see if we have a snapshot checkout available.  If so, it
     # would probably be quicker to use it.
     # TODO: Make this work when using the checkout-only option.
-    if (not scalar @path and not get_option($module, 'disable-snapshot'))
+    if (not pretending and not scalar @path and not get_option($module, 'disable-snapshot'))
     {
         if(install_module_snapshot($module))
         {
@@ -2133,31 +2133,6 @@ sub is_subdir_buildable
     return 1;
 }
 
-# Subroutine that checks whether qt-copy is Qt 3 or below.  If true, then you
-# can assume that the qt-copy module is from Qt 3.  If false, Qt 4 or better.
-#
-# This works by checking if some Qt 3-specific files exist.  If they don't, we
-# assume Qt 4+.
-#
-# Naturally this requires that the source is already downloaded for this
-# function to work.  However, if pretend mode is set we'll check if the branch
-# or tag option is set to 3.foo, if so we assume the user will be downloading
-# qt 3.
-sub is_qt_copy_qt3
-{
-    my $source_dir = get_fullpath('qt-copy', 'source');
-
-    if (pretending)
-    {
-        return 1 if get_option('qt-copy', 'branch') =~ /^3\./;
-        return 1 if get_option('qt-copy', 'tag') =~ /^3\./;
-        return 0;
-    }
-
-    # This file seems to be part of (only) Qt 3's documentation.
-    return -e "$source_dir/doc/html/y2k.html";
-}
-
 # Subroutine to return the path to the given executable based on the current
 # binpath settings.  e.g. if you pass make you could get '/usr/bin/make'.  If
 # the executable is not found undef is returned.
@@ -2402,7 +2377,9 @@ sub safe_make (@)
 # This function returns the default branch for a given module.  Use this function whenever
 # you have to deal with checking whether the user is using the default branch.
 #
-# This function handles the use-stable-kde option correctly as well.
+# This function handles the use-stable-kde option correctly as well.  This
+# function may be called while parsing options for non-global modules, so it
+# can only call get_option() for 'global' entries.
 #
 # First parameter: module to get default branch of.
 # Returns: branch name. e.g. 'trunk', '3.5', 'work/make-it-cool'
@@ -2438,7 +2415,7 @@ sub default_module_branch
     my $module = shift;
 
     # Handle stable branch options.
-    if (get_option($module, 'use-stable-kde') and exists $branched_modules{$module})
+    if (get_option('global', 'use-stable-kde') and exists $branched_modules{$module})
     {
         return $branched_modules{$module};
     }
@@ -2447,29 +2424,23 @@ sub default_module_branch
     return 'trunk';
 }
 
-# Subroutine to test if the given module has been given a custom branch by the
-# user.  This function is needed since there are at least four options that can
-# control this: branch, tag, override-url, and module-base-path.
+# Given a module name, this subroutine returns a hash with the default module
+# options for the module.
 #
-# NOTE: This test is performed merely by checking if any of the appropriate
-# options are already set.  So if kdesvn-build sets an option internally, this
-# function will still return true.
+# The global options must already be setup but there is no requirement for any
+# module options to be available.
 #
-# First parameter is the module in question.
-# Returns boolean true if the module has a custom branch, false otherwise.
-sub module_has_custom_branch
+# First parameter is the module to get options for.
+# Return is a hash containing the default module options, suitable for assignment
+# to %package_opts.
+sub default_module_options
 {
     my $module = shift;
-    my $branch = get_option($module, 'branch');
 
-    # branch is kind of special.  It's a custom branch if the value is set, but is not
-    # set to the default branch value.
-
-    return (($branch and $branch ne default_module_branch($module)) or
-            get_option($module, 'override-url') or
-            get_option($module, 'tag') or
-            get_option($module, 'module-base-path')
-            );
+    return {
+        'set-env' => { },
+        'branch'  => default_module_branch($module),
+    };
 }
 
 # Subroutine to add a variable to the environment, but ONLY if it
@@ -2525,8 +2496,8 @@ sub setup_default_modules()
     for my $i (@update_list) {
         if (not exists $package_opts{$i})
         {
-            $package_opts{$i} = { }; # Set up defaults
-            $package_opts{$i}{'set-env'} = { };
+            # Set up defaults
+            $package_opts{$i} = default_module_options($i);
         }
     }
 
@@ -2534,25 +2505,9 @@ sub setup_default_modules()
     $package_opts{'qt-copy'} = {
         'configure-flags' => '-qt-gif -qdbus -nomake demos -nomake examples -no-exceptions -fast',
         'apply-qt-patches' => 1,
+        'branch'  => default_module_branch('qt-copy'),
         'set-env' => { },
         'make-options' => get_option('global', 'make-options'),
-    }
-}
-
-# Subroutine sets up the default branch option for several modules when the
-# use-stable-kde option is enabled, in order to build KDE 3.5 by default.
-# branch options specified in the config file should still be chosen over these
-# defaults.
-sub setup_module_branches
-{
-    for my $module (@update_list)
-    {
-        unless (module_has_custom_branch($module))
-        {
-            my $default_branch = default_module_branch($module);
-            debug "Setting $module to branch '$default_branch'";
-            set_option ($module, 'branch', $default_branch);
-        }
     }
 }
 
@@ -2569,9 +2524,7 @@ sub parse_module
     # file.
     if (not defined $package_opts{$module})
     {
-        $package_opts{$module} = {
-            'set-env' => { }
-        };
+        $package_opts{$module} = default_module_options($module);
     }
     elsif ($module ne 'global')
     {
@@ -2685,6 +2638,8 @@ Unable to open config file $rcfiles[0]
 Script stopping here since you specified --rc-file on the command line to
 load $rcfiles[0] manually.  If you wish to run the script with no configuration
 file, leave the --rc-file option out of the command line.
+
+If you want to force an empty rc file, use --rc-file /dev/null
 
 EOM
             exit 1;
@@ -2969,12 +2924,15 @@ sub set_option
 {
     my ($module, $option, $value) = @_;
 
-    # Set module options
+    # Set module options.  To see where the warning is not a bug, go to
+    # read_options() where the module-specific options are set.
     if (not exists $package_opts{$module})
     {
-        $package_opts{$module} = {
-            'set-env' => { }
-        };
+        warning " y[*] set_option() called for undefined module y[$module]";
+        warning " y[*] This is probably a y[bug in kdesvn-build], please report";
+        warning " y[*] At bugs.kde.org.";
+
+        $package_opts{$module} = default_module_options($module);
     }
 
     return if handle_set_env($package_opts{$module}, $option, $value);
@@ -3381,6 +3339,11 @@ DONE
                         exit 8;
                     }
 
+                    # TODO: In pathological situations this may cause an
+                    # inaccurate collection of options for this module due to
+                    # the default options not being set correctly.  (i.e.
+                    # use-stable-kde is false now, if set to true on command
+                    # line the module options will be wrong).
                     set_option($module, "#$option", $value);
                 }
 
@@ -5351,7 +5314,7 @@ sub check_for_module_config
  b[y[*] Unknown module y[$module], configure it in $rcfile.
  b[y[*]
 EOF
-        $package_opts{$module} = { 'set-env' => { } };
+        $package_opts{$module} = default_module_options($module);
     }
 }
 
@@ -5914,10 +5877,6 @@ eval
 
     debug "Update list is ", join (', ', @update_list);
     debug "Build list is ", join (', ', @build_list);
-
-    # This handles use-stable-kde, and kde4-snapshot.  Basically we setup default
-    # module branches for any branches not already set by the user.
-    setup_module_branches(); # Default to KDE 3.5, snapshot, etc.
 
     # Do some necessary adjusting. Right now this is used for supporting
     # the command-line option shortcut to where you can enter e.g.
