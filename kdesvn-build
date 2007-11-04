@@ -387,6 +387,11 @@ my %package_opts = (
         }
     }
 
+    sub supportsConcurrency
+    {
+        return 1;
+    }
+
     # Pass true if this object should deallocate the shared memory.  False
     # by default.
     sub releaseOnExit
@@ -405,6 +410,14 @@ my %package_opts = (
         $flags = 0 unless defined $flags;
 
         return msgsnd($self->{'id'}, pack("l! a*", $ipcType, $msg), $flags);
+    }
+
+    sub notifyUpdateSuccess
+    {
+        my $self = shift;
+        my ($module, $msg) = @_;
+
+        $self->sendMessage(main::IPC_MODULE_SUCCESS, "$module,$msg");
     }
 
     sub receiveMessage
@@ -443,6 +456,11 @@ my %package_opts = (
     {
     }
 
+    sub supportsConcurrency
+    {
+        return 0;
+    }
+
     sub sendMessage
     {
         my $self = shift;
@@ -450,6 +468,15 @@ my %package_opts = (
 
         push @{$self}, pack("l! a*", $ipcType, $msg);
         return 1;
+    }
+
+    sub notifyUpdateSuccess
+    {
+        my $self = shift;
+        my ($module, $msg) = shift;
+
+        no strict "subs";
+        sendMessage(IPC_MODULE_SUCCESS, "$module,$msg");
     }
 
     sub receiveMessage
@@ -1071,24 +1098,30 @@ sub get_option
 
 # Subroutine used to handle the checkout-only option.  It handles
 # updating subdirectories of an already-checked-out module.
-# First parameter is the module, all remaining parameters are subdirectories
-# to check out.
 #
-# Returns 0 on success, non-zero on failure.
+# This function can throw an exception in the event of a update failure.
+#
+# First parameter is the module.
+# All remaining parameters are subdirectories to check out.
+#
+# Returns the number of files changed by the update, or undef if unable to
+# be determined.
 sub update_module_subdirectories
 {
     my $module = shift;
-    my $result;
+    my $numChanged = 0;
 
     # If we have elements in @path, download them now
     for my $dir (@_)
     {
         info "\tUpdating g[$dir]";
-        $result = run_svn($module, "svn-up-$dir", [ 'svn', 'up', $dir ]);
-        return $result if $result;
+
+        my $count = run_svn($module, "svn-up-$dir", [ 'svn', 'up', $dir ]);
+        $numChanged = undef unless defined $count;
+        $numChanged += $count if defined $numChanged;
     }
 
-    return 0;
+    return $numChanged;
 }
 
 # Returns true if a module has a base component to their name (e.g. KDE/,
@@ -1690,21 +1723,23 @@ sub tarball_snapshot_revision
 
 # Checkout a module that has not been checked out before, along with any
 # subdirectories the user desires.
+#
+# This function will throw an exception in the event of a failure to update.
+#
 # The first parameter is the module to checkout (including extragear and
-# playground modules), all remaining parameters are subdirectories of the
-# module to checkout.
-# Returns 0 on success, non-zero on failure.
+# playground modules).
+# All remaining parameters are subdirectories of the module to checkout.
+#
+# Returns number of files affected, or undef.
 sub checkout_module_path
 {
     my ($module, @path) = @_;
     my %pathinfo = get_module_path_dir($module, 'source');
-    my $result;
     my @args;
 
     if (not -e $pathinfo{'path'} and not super_mkdir($pathinfo{'path'}))
     {
-        error "Unable to create path r[$pathinfo{path}]!";
-        return 1;
+        die clr "Unable to create path r[$pathinfo{path}]!";
     }
 
     p_chdir ($pathinfo{'path'});
@@ -1718,35 +1753,38 @@ sub checkout_module_path
         {
             whisper "Snapshot checkout successful!";
             # Success, no need to continue on this route.
-            return 0;
+            return undef;
         }
     }
 
     push @args, ('svn', 'co', '--non-interactive');
-    push @args, '-N' if scalar @path;
+    push @args, '-N' if scalar @path; # Tells svn to only update the base dir
     push @args, svn_module_url($module);
     push @args, $pathinfo{'module'};
 
     note "Checking out g[$module]";
-    $result = run_svn($module, 'svn-co', \@args);
-    return $result if $result;
+    my $count = run_svn($module, 'svn-co', \@args);
 
     p_chdir ($pathinfo{'module'}) if scalar @path;
 
-    return update_module_subdirectories($module, @path);
+    my $count2 = update_module_subdirectories($module, @path);
+
+    return $count + $count2 if defined $count and defined $count2;
+    return undef;
 }
 
 # Update a module that has already been checked out, along with any
 # subdirectories the user desires.
+#
+# This function will throw an exception in the event of an update failure.
+#
 # The first parameter is the module to checkout (including extragear and
-# playground modules), all remaining parameters are subdirectories of the
-# module to checkout.
-# Returns 0 on success, non-zero on failure.
+# playground modules).
+# All remaining parameters are subdirectories of the module to checkout.
 sub update_module_path
 {
     my ($module, @path) = @_;
     my $fullpath = get_fullpath($module, 'source');
-    my $result;
     my @args;
 
     p_chdir ($fullpath);
@@ -1758,29 +1796,30 @@ sub update_module_path
 
     note "Updating g[$module]";
 
-    $result = run_svn($module, 'svn-up', \@args);
+    my $count = eval { run_svn($module, 'svn-up', \@args); };
 
-    if($result) # Update failed, try svn cleanup.
+    if($@) # Update failed, try svn cleanup.
     {
         info "\tUpdate failed, trying a cleanup.";
-        $result = safe_system('svn', 'cleanup');
+        my $result = safe_system('svn', 'cleanup');
 
-        return $result if $result;
+        die clr "Unable to update r[$module]" if $result;
 
         info "\tCleanup complete.";
+
         # Now try again.
-
-        $result = run_svn($module, 'svn-up-2', \@args);
+        $count = run_svn($module, 'svn-up-2', \@args);
     }
-
-    return $result if $result;
 
     # If the admin dir exists and is a soft link, remove it so that svn can
     # update it if need be.  The link will automatically be re-created later
     # in the process if necessary by the build functions.
     unlink ("$fullpath/admin") if -l "$fullpath/admin";
 
-    return update_module_subdirectories($module, @path);
+    my $count2 = update_module_subdirectories($module, @path);
+
+    return $count + $count2 if defined $count and defined $count2;
+    return undef;
 }
 
 # The function checks whether subversion already has an ssl acceptance
@@ -3836,18 +3875,17 @@ EOF
 #
 # The $ipc variable contains an object that is responsible for communicating
 # the status of building the modules.  This function must account for every
-# module in @{$update_ref} to $ipc before returning.
+# module in @update_list to $ipc before returning.
 #
 # Returns 0 on success, non-zero on error.
 sub handle_updates
 {
-    my $update_ref = shift;
     my $ipc = shift;
     my $kdesvn = get_kdesvn_dir();
     my $hadError = 0;
 
     # No reason to print out the text if we're not doing anything.
-    if (scalar @$update_ref == 0)
+    if (scalar @update_list == 0)
     {
         $ipc->sendMessage(IPC_ALL_UPDATING, "update-list-empty");
         return 0;
@@ -3864,6 +3902,9 @@ sub handle_updates
         $ipc->sendMessage(IPC_ALL_FAILURE, "ssh-failure");
         return 1;
     }
+
+    # Be much quieter if operating multiprocess.
+    set_option('global', '#debug-level', WARNING) if $ipc->supportsConcurrency();
 
     note "<<<  Updating Subversion Directories  >>>";
     info " "; # Add newline for aesthetics unless in quiet mode.
@@ -3892,7 +3933,7 @@ sub handle_updates
     my $l10n = 'l10n-kde4';
     $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
 
-    foreach my $module (@{$update_ref})
+    foreach my $module (@update_list)
     {
         check_for_module_config ($module);
 
@@ -3925,31 +3966,44 @@ sub handle_updates
         }
 
         my $fullpath = get_fullpath($module, 'source');
-        my $result;
+        my $count;
 
-        if (-e "$fullpath/.svn")
-        {
-            # Warn user if the current repo URL is different than expected.
-            check_module_validity($module);
-            $result = update_module_path($module, @options);
-        }
-        else
-        {
-            $result = checkout_module_path($module, @options);
-        }
+        eval {
+            if (-e "$fullpath/.svn")
+            {
+                # Warn user if the current repo URL is different than expected.
+                check_module_validity($module);
+                $count = update_module_path($module, @options);
+            }
+            else
+            {
+                $count = checkout_module_path($module, @options);
+            }
+        };
 
-        if ($result)
+        if ($@)
         {
             error "Error updating r[$module], removing from list of packages to build.";
-            dont_build ($module); # Sends IPC message.
+            dont_build ($module, $ipc); # Sends IPC message.
             $hadError = 1;
         }
         else
         {
-            $ipc->sendMessage(IPC_MODULE_SUCCESS, $module);
+            my $message;
+            if (not defined $count)
+            {
+                $message = clr "b[y[Unknown changes]." if not defined $count;
+            }
+            else
+            {
+                $message = "1 file affected." if $count == 1;
+                $message = "$count files affected." if $count != 1;
+            }
+
+            $ipc->notifyUpdateSuccess($module, $message);
         }
 
-        print "\n";
+        info ""; # Print empty line.
     }
 
     info "<<<  Update Complete  >>>\n";
@@ -4183,9 +4237,13 @@ sub create_admin_dir
             {
                 pretend "Would have checked out g[kde-common]\n";
             }
-            elsif (checkout_module_path('kde-common', 'admin') != 0)
+            else
             {
-                return 0;
+                eval {
+                    checkout_module_path('kde-common', 'admin');
+                };
+
+                return 0 if $@;
             }
         }
     }
@@ -4453,18 +4511,19 @@ sub needs_refreshed
 # Run the svn command.  This is a special subroutine so that we can munge the
 # generated output to see what files have been added, and adjust the build
 # according.
+#
+# This function will throw an exception in the event of a build failure.
+#
 # First parameter is the module we're building.
 # Second parameter is the filename to use for the log file.
 # Third parameter is a reference to a list, which is the command ('svn') and all
 #       of its arguments.
+# Return value is the number of files update (may be undef if unable to tell)
 sub run_svn
 {
     my ($module, $logfilename, $arg_ref) = @_;
-    my %hash_count;
-    my $result;
     my $force_refresh = 0;
     my $conflict = 0;
-    my $logdir = get_log_dir($module);
 
     my $revision = get_option($module, 'revision');
     if ($revision ne '0')
@@ -4478,17 +4537,21 @@ sub run_svn
     }
 
     # Do svn update.
-    $result = log_command($module, $logfilename, $arg_ref);
+    my $result = log_command($module, $logfilename, $arg_ref);
 
-    # There will be no result if we're pretending, so don't even
-    # bother.
     return 0 if pretending;
 
+    # Exception handling. Scary!
+    die "Error updating $module: $!" unless $result == 0;
+
+    my $logdir = get_log_dir($module);
     $logfilename = "$logdir/$logfilename.log";
 
     # We need to open the file and try to determine what the Subversion process
     # did.
-    open SVN_LOG, "<$logfilename";
+    open SVN_LOG, "<$logfilename" or return undef;
+
+    my $count = 0;
     while (<SVN_LOG>)
     {
         # The check for capitalized letters in the second column is because
@@ -4496,15 +4559,8 @@ sub run_svn
         # all be uppercase), which makes it hard to tell apart from normal
         # sentences (like "At Revision foo"
 
-        # Count updates and patches together.
-        $hash_count{'updated'}++    if /^U[ A-Z]/;
-        $hash_count{'updated'}++    if /^P[ A-Z]/;
-        $hash_count{'deleted'}++    if /^D[ A-Z]/;
-        $hash_count{'added'}++      if /^A[ A-Z]/;
-        $hash_count{'removed'}++    if /^R[ A-Z]/;
-        $hash_count{'merged'}++     if /^G[ A-Z]/;
-        $hash_count{'modified'}++   if /^M[ A-Z]/;
-        $hash_count{'conflicted'}++ if /^C[ A-Z]/;
+        # Count all changes to the files.
+        $count++ if /^[UPDARGMC][ A-Z]/;
 
         # Check if we need to force a refresh.
         $force_refresh = 1 if /^A[ A-Z]/ and /Makefile\.am/;
@@ -4515,39 +4571,12 @@ sub run_svn
 
     close SVN_LOG;
 
-    my %endings = (
-        'updated'     => 'files were updated',
-        '1updated'    => 'file was updated',
-        'added'       => 'files were added',
-        '1added'      => 'file was added',
-        'removed'     => 'files were removed',
-        '1removed'    => 'file was removed',
-        'modified'    => 'files were modified',
-        '1modified'   => 'file was modified',
-        'conflicted'  => 'files had conflicts',
-        '1conflicted' => 'file had conflicts',
-        'deleted'     => 'files were deleted',
-        '1deleted'    => 'file was deleted',
-        'merged'      => 'files had changes merged',
-        '1merged'     => 'file had changes merged',
-    );
-
-    my ($key, $value);
-    while (($key, $value) = each %hash_count)
-    {
-        next unless $value > 0;
-        my $ending_key = $value > 1 ? $key : ('1' . $key);
-        my $ending = $endings{$ending_key};
-        info "\t$value $ending.";
-    }
-
     if ($conflict)
     {
         warning "Source code conflict exists in r[$module], this module will not";
         warning "build until it is resolved.";
-        dont_build($module);
 
-        return $result;
+        die "Source conflicts exist in $module";
     }
 
     if ($force_refresh and -e get_fullpath($module, 'build'))
@@ -4557,7 +4586,7 @@ sub run_svn
         set_option($module, '#cancel-clean', 1);
     }
 
-    return $result;
+    return $count;
 }
 
 # Subroutine to delete recursively, everything under the given directory,
@@ -4975,9 +5004,6 @@ sub make_apidox_supported
 sub build_module
 {
     my $module = shift;
-    my $cur_module_num = shift;
-    my $total_module_num = shift;
-    my $apidox = shift;
     my $builddir = get_fullpath($module, 'build');
     my $trynumber = 1;
 
@@ -4989,7 +5015,6 @@ sub build_module
     my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
     {
-        note "Building g[$module] ($cur_module_num/$total_module_num)";
         return 0 if not setup_build_directory($module);
         return 0 if not setup_build_system($module);
         return 1 if (get_option ($module, 'build-system-only'));
@@ -5132,13 +5157,9 @@ sub filter_l10n_module_list
 sub handle_build
 {
     my @build_done;
-    my $build_ref = shift;
     my $ipc = shift;
-    my $kdesvn = get_kdesvn_dir();
-    my $module;
-    my @modules = grep (!/^(KDE\/)?kde-common$/, @{$build_ref});
+    my @modules = grep (!/^(KDE\/)?kde-common$/, @build_list);
     my $result;
-    my $outfile = get_output_file ();
 
     # Handle l10n module, which is speshul.
     @modules = filter_l10n_module_list(@modules);
@@ -5177,13 +5198,11 @@ sub handle_build
     # Save the environment to keep module's env changes from affecting other
     # modules.
     my %env_backup = %ENV;
+    my $outfile = undef;
 
-    if (pretending)
+    if (not pretending)
     {
-        $outfile = undef;
-    }
-    else
-    {
+        $outfile = get_output_file();
         open STATUS_FILE, ">$outfile" or do {
             error <<EOF;
 	Unable to open output status file r[b[$outfile]
@@ -5196,8 +5215,9 @@ EOF
     my $num_modules = scalar @modules;
     my $i = 1;
 
-    while ($module = shift @modules)
+    while (my $module = shift @modules)
     {
+        note "Building g[$module] ($i/$num_modules)";
         my $start_time = time;
 
         # If using IPC, read in the contents of the message buffer, and wait
@@ -5211,8 +5231,9 @@ EOF
         while(list_has(@update_list, $module) and not $svn_status{$module})
         {
             my $buffer;
-            my $ipcType = $ipc->receiveMessage(\$buffer, 512);
+            info "\tWaiting for source code update.";
 
+            my $ipcType = $ipc->receiveMessage(\$buffer, 512);
             if (not defined $ipcType or not $ipcType)
             {
                 error " b[r[***] $module: IPC failure during Subversion update: r[b[$!]";
@@ -5221,21 +5242,29 @@ EOF
 
             whisper "\tReceived IPC status message for $buffer: $ipcType";
 
-            if($ipcType == IPC_MODULE_SUCCESS or $ipcType == IPC_MODULE_SKIPPED)
+            if($ipcType == IPC_MODULE_SUCCESS)
+            {
+                my ($module, $msg) = split(/,/, $buffer);
+                $svn_status{$module} = 'success';
+
+                note "\tSource update complete for g[$module]: $msg";
+            }
+            elsif($ipcType == IPC_MODULE_SKIPPED)
             {
                 $svn_status{$buffer} = 'success';
+                info "\tNo source update needed for g[$buffer]";
             }
             elsif($ipcType == IPC_MODULE_FAILURE)
             {
                 $svn_status{$buffer} = 'failed';
                 push @{$fail_lists{'update'}}, $buffer;
+                error "\tUnable to update r[$buffer], build canceled.";
             }
         }
 
         next if $svn_status{$module} eq 'failed';
-        whisper "\tBuilding g[$module]";
 
-        if (build_module ($module, $i, $num_modules))
+        if (build_module ($module))
         {
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
@@ -5258,9 +5287,12 @@ EOF
             }
         }
 
-        print "\n";
         %ENV = %env_backup;
         $i++;
+    }
+    continue # Happens at the end of each loop and on next
+    {
+        print "\n"; # Space things out
     }
 
     # If we have packages that failed to update we should probably mention them
@@ -5281,8 +5313,9 @@ EOF
     if (not pretending)
     {
         # Print out results, and output to a file
+        my $kdesvn = get_kdesvn_dir();
         open BUILT_LIST, ">$kdesvn/successfully-built";
-        foreach $module (@build_done)
+        foreach my $module (@build_done)
         {
             info "$module";
             print BUILT_LIST "$module\n";
@@ -5902,8 +5935,8 @@ eval
 
         # What we're going to do is fork another child to perform the svn
         # updates while we build.  Setup for this first by initializing some
-        # shared memory.
-        #
+        # shared memory.  In case of Coverity, set this to 0 that way we get
+        # NullIPC, even if the SysVIPC ctor fails.
         my $ipc = exists $ENV{'COVERITY_RUN'} ? 0 : new SysVIPC;
 
         if (not $ipc)
@@ -5911,12 +5944,13 @@ eval
             $ipc = new NullIPC;
             whisper "Using no IPC mechanism\n";
 
-            $result = handle_updates (\@update_list, $ipc);
-            $result = handle_build (\@build_list, $ipc) || $result;
+            $result = handle_updates ($ipc);
+            $result = handle_build ($ipc) || $result;
         }
         else
         {
             my $childPid = fork();
+
             if ($childPid == 0)
             {
                 my $childQuitHandler = sub {
@@ -5927,7 +5961,20 @@ eval
                 # Child, do svn after reseting signal handlers;
                 install_signal_handler($childQuitHandler);
 
-                exit handle_updates (\@update_list, $ipc);
+                # Is is very important to kill the IPC queue if we exit for any
+                # reason, so do some exception trapping here.  The parent
+                # exception does not have access to $ipc to force it to clear
+                # the queue.
+                eval {
+                    exit handle_updates ($ipc);
+                };
+
+                if ($@)
+                {
+                    print "Fatal error: $@\n";
+                    $ipc->releaseOnExit(1);
+                    exit 99;
+                }
             }
             else
             {
@@ -5935,7 +5982,7 @@ eval
                 $ipc->releaseOnExit(1);
 
                 # Parent, do build
-                $result = handle_build (\@build_list, $ipc);
+                $result = handle_build ($ipc);
 
                 waitpid ($childPid, 0);
 
