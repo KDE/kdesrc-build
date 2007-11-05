@@ -3,24 +3,24 @@
 
 <sect2 id="partial-builds">
 <title>Partially building a module</title>
-<para>It is possible to build only pieces from a single &kde; module.  For
-example, you may want to compile only one program from a module.  &kdesvn-build;
-has features to make this easy.  There are several complementing ways to
+<para>It is possible to build only pieces from a single &kde; module. For
+example, you may want to compile only one program from a module. &kdesvn-build;
+has features to make this easy. There are several complementing ways to
 do this.
 </para>
 
 <sect3 id="checking-out-parts">
 <title>Checking out portions of a module</title>
 
-<para>This is perhaps the best way to do this.  When it works, it will save you
-download time and disk space.  What happens is that &kdesvn-build; will download
-only the parts of a module that you specify.  This is done using the &checkout-only;
+<para>This is perhaps the best way to do this. When it works, it will save you
+download time and disk space. What happens is that &kdesvn-build; will download
+only the parts of a module that you specify. This is done using the &checkout-only;
 option for a module, which will specify a list of directories to download.
 </para>
 
 <tip><para>
 If you don't already know what to download from a module, it may be a good idea
-to browse the Subversion layout for a module first, using
+to browse the &subversion; layout for a module first, using
 <ulink url="http://websvn.kde.org/branches/KDE/3.5/">WebSVN</ulink>.
 </para></tip>
 
@@ -37,7 +37,7 @@ end module
 </informalexample>
 
 <important><para>The directories will be built in the order they are listed
-in the option.  If one of the directories needs something else from the module
+in the option. If one of the directories needs something else from the module
 to compile, then you need to make sure they are both in the &checkout-only;
 line, and that the required dependency goes before the directory that needs it.</para>
 
@@ -49,7 +49,7 @@ adding directories to the option to figure out.</para>
 <para>One final note to make about this option: If you change the value of this
 option, you should use <userinput><command>kdesvn-build</command> 
 <option>&cmd-refresh-build;</option> <option><replaceable>module</replaceable></option></userinput>
-in order to ensure that the module is reconfigured properly.  In addition,
+in order to ensure that the module is reconfigured properly. In addition,
 &kdesvn-build; will never remove existing files if you take away the number of
 directories from your &checkout-only; option, or add the option to a module that
 has already been checked out.</para>
@@ -60,24 +60,24 @@ has already been checked out.</para>
 <title>Removing directories from a build</title>
 <para>Instead of restricting what is downloaded, it is possible to download
 everything but have the build system leave out a few directories when it does
-the build.  This may be useful if one directory always breaks and is
+the build. This may be useful if one directory always breaks and is
 unnecessary to the rest of the module.
 </para>
 
-<para>This is controlled with the &do-not-compile; option.  It works similar
+<para>This is controlled with the &do-not-compile; option. It works similar
 to the &checkout-only; option just described, in that it is simply a list of
 directories that should not be compiled.</para>
 
 <important><para>
 Also like &checkout-only;, this option requires at least that the
 <command>configure</command> script is run again for the module after changing
-it.  This is done using the <userinput><command>kdesvn-build</command> 
+it. This is done using the <userinput><command>kdesvn-build</command> 
 <option>&cmd-reconfigure;</option>
 <option><replaceable>module</replaceable></option></userinput> command.
 </para></important>
 
 <informalexample>
-<para>To remove the dcoppython directory from the kdebindings build process:</para>
+<para>To remove the <filename>dcoppython</filename> directory from the kdebindings build process:</para>
 
 <screen>
 module <replaceable>kdebindings</replaceable>
@@ -98,11 +98,11 @@ downloaded).
 
 <para>This option is like the combination of &checkout-only; and &do-not-compile;:
 it downloads the entire module like &do-not-compile;, but only compiles the
-directories you specify, like &checkout-only;.  Because of this it is usually
+directories you specify, like &checkout-only;. Because of this it is usually
 better to simply use &checkout-only; instead.
 </para>
 
-<para>The same warnings apply as for the other two options, you must reconfigure
+<para>The same warnings apply as for the other two options: you must reconfigure
 the module if you change the value of &inst-apps;.
 </para>
 </sect3>
@@ -112,27 +112,26 @@ the module if you change the value of &inst-apps;.
 <sect2 id="using-unsermake">
 <title>Using &unsermake;</title>
 
-<para><application>unsermake</application> is an application designed to hook
-into the KDE build system and improve the build process by replacing some of
-the tools normally used (including <application>automake</application> and
-<application>make</application>).  It is especially useful for those who
+<para>&unsermake; is an application designed to hook
+into the &kde; build system and improve the build process by replacing some of
+the tools normally used (including &automake; and &make;). It is especially useful for those who
 are performing distributed compilation as it is much faster than the normal
-build system in this situation.  However, even for a single computer build,
-unsermake is faster than the competition.
+build system in this situation. However, even for a single computer build,
+&unsermake; is faster than the competition.
 </para>
 
-<para>In addition, unsermake includes support for estimating the progress of
-the current build procedure.  &kdesvn-build; takes advantage of this to
-provide a build progress indication when compiling.  See also <xref linkend="build-progress" />.
+<para>In addition, &unsermake; includes support for estimating the progress of
+the current build procedure. &kdesvn-build; takes advantage of this to
+provide a build progress indication when compiling. See also <xref linkend="build-progress" />.
 </para>
 
-<para>&kdesvn-build; provides support for using <application>unsermake</application>
-automatically.  &kdesvn-build; will use <application>unsermake</application>
+<para>&kdesvn-build; provides support for using &unsermake;
+automatically. &kdesvn-build; will use &unsermake;
 by default when it is possible to use it with a module.
 </para>
 
 <informalexample>
-<para>To disable <application>unsermake</application> support for every module,
+<para>To disable &unsermake; support for every module,
 do the following:</para>
 
 <screen>
@@ -141,7 +140,7 @@ global
 end global
 </screen>
 
-<para>To enable <application>unsermake</application> for a single module, even
+<para>To enable &unsermake; for a single module, even
 if it is disabled globally, do the following:</para>
 
 <screen>
@@ -154,15 +153,15 @@ end module
 </informalexample>
 
 <note><para>
-&kdesvn-build; will automatically update or checkout <application>unsermake</application>
-while performing the other updates.  If you prefer to manage <application>unsermake</application>
+&kdesvn-build; will automatically update or checkout &unsermake;
+while performing the other updates. If you prefer to manage &unsermake;
 yourself, then it is possible to do so, by setting the value for &use-unsermake;
-to <symbol>self</symbol> instead of <symbol>true</symbol>.</para>
+to <option>self</option> instead of <replaceable>true</replaceable>.</para>
 
 <para>When this is done, &kdesvn-build; will still try to use
-<application>unsermake</application>, but will not perform the updates.  You
-can either alter &binpath; to point to the correct unsermake directory, or
-checkout and update <application>unsermake</application> yourself from its
+&unsermake;, but will not perform the updates. You
+can either alter &binpath; to point to the correct &unsermake; directory, or
+checkout and update &unsermake; yourself from its
 module (currently kdenonbeta/unsermake).
 </para></note>
 
@@ -174,26 +173,26 @@ module (currently kdenonbeta/unsermake).
 <sect3 id="branches-and-tags">
 <title>What are branches and tags?</title>
 
-<para>&svn; supports managing the history of the &kde; source code.  &kde;
+<para>&subversion; supports managing the history of the &kde; source code. &kde;
 uses this support to create branches for development, and to tag the repository
 every so often with a new version release.
 </para>
 
 <para>For example, the &kmail; developers may be working on a new feature in
 a different branch in order to avoid breaking the version being used by most
-developers.  This branch has development ongoing inside it, even while the
+developers. This branch has development ongoing inside it, even while the
 main branch (called /trunk) may have development going on inside of it.
 </para>
 
 <para>A tag, on the other hand, is a snapshot of the source code repository
-at a position in time.  This is used by the &kde; administration team to mark
+at a position in time. This is used by the &kde; administration team to mark
 off a version of code suitable for release and still allow the developers to
 work on the code.
 </para>
 
-<para>In &svn;, there is no difference between branches, tags, or trunk within
-the code.  It is only a convention used by the developers.  This makes it
-difficult to properly support branches and tags within &kdesvn-build;.  However,
+<para>In &subversion;, there is no difference between branches, tags, or trunk within
+the code. It is only a convention used by the developers. This makes it
+difficult to properly support branches and tags within &kdesvn-build;. However,
 there are some things that can be done.
 </para>
 
@@ -207,10 +206,10 @@ range from a generic request for a version, to a specific URL to download
 for advanced users.
 </para>
 
-<para>The easiest method is to use the &branch; and &tag; options.  You simply
+<para>The easiest method is to use the &branch; and &tag; options. You simply
 use the option along with the name of the desired branch or tag for a module,
 and &kdesvn-build; will try to determine the appropriate location within the
-&kde; repository to download from.  For most &kde; modules this works very
+&kde; repository to download from. For most &kde; modules this works very
 well.</para>
 
 <informalexample>
@@ -235,7 +234,7 @@ end module
 
 </informalexample>
 
-<tip><para>You can specify a global branch value.  But if you do so, don't forget
+<tip><para>You can specify a global branch value. But if you do so, don't forget
 to specify a different branch for modules that shouldn't use the global branch!
 </para></tip>
 </sect3>
@@ -244,16 +243,16 @@ to specify a different branch for modules that shouldn't use the global branch!
 <title>Advanced branch support options</title>
 
 <para>&kdesvn-build; supports two options for situations where &branch; and &tag;
-guess the correct path improperly: &module-base-path; and &override-url;
+guess the correct path improperly: &module-base-path; and &override-url;.
 </para>
 
 <itemizedlist>
 <listitem><para>
-module-base-path is used to help &kdesvn-build; fill in the missing part of
-a modules path.  In the &kde; repository, all of the paths are of the form
-svnRoot/module-base-path/module-name.  Normally &kdesvn-build; can figure out
-the appropriate middle part by itself.  When it can't, you can use module-base-path,
-like this:
+&module-base-path; is used to help &kdesvn-build; fill in the missing part of
+a module's path. In the &kde; repository, all of the paths are of the form
+<filename>svnRoot/module-base-path/module-name</filename>. Normally &kdesvn-build;
+can figure out the appropriate middle part by itself. When it can't, you can use
+&module-base-path;, like this:
 </para>
 
 <informalexample>
@@ -265,13 +264,13 @@ end module
 </screen>
 
 <para>This would cause &kdesvn-build; to download qt-copy from (in this example),
-svn://anonsvn.kde.org/home/kde/<replaceable>branches/qt/3.3</replaceable>/qt-copy
+<filename>svn://anonsvn.kde.org/home/kde/<replaceable>branches/qt/3.3</replaceable>/qt-copy</filename>.
 </para>
 </informalexample>
 </listitem>
 
-<listitem><para>The override-url option, on the other hand, requires you to
-specify the exact path to download from.  However, this allows you to pull from
+<listitem><para>The &override-url; option, on the other hand, requires you to
+specify the exact path to download from. However, this allows you to pull from
 paths that &kdesvn-build; would have no hope of downloading from.
 </para>
 
@@ -285,7 +284,7 @@ end module
 </informalexample>
 
 <important><para>
-&kdesvn-build; will not touch or correct the value you specify for override-url
+&kdesvn-build; will not touch or correct the value you specify for &override-url;
 at all, so if you change your &svn-server; setting, you may need to update this
 as well.
 </para></important>
@@ -298,37 +297,37 @@ as well.
 </sect2>
 
 <sect2 id="building-successfully">
-<title>How &kdesvn-build; tries to ensure a successful build.</title>
+<title>How &kdesvn-build; tries to ensure a successful build</title>
 
 <sect3 id="automatic-rebuilds">
 <title>Automatic rebuilds</title>
 
 <para>Due to various issues with the &kde; build system, some of which
-are mitigated by using unsermake, &kdesvn-build; will automatically perform
+are mitigated by using &unsermake;, &kdesvn-build; will automatically perform
 a series of steps to automatically try to get a module to compile when it
 fails.</para>
 
 <orderedlist>
 <listitem><para>On the first failure, &kdesvn-build; will simply re-run the
-<command>make</command>.  Believe it or not, but this sometimes actually works,
+<command>make</command>. Believe it or not, but this sometimes actually works,
 and is quick to fail if it won't work.
 </para></listitem>
 
 <listitem><para>
 On the second failure, &kdesvn-build; will try to reconfigure the module and
-then rebuild it.  This usually catches situations where a build system file
-changed that requires reconfiguration but the build system did not perform that
+then rebuild it. This usually catches situations where a build-system file
+that requires reconfiguration changed, but the build system did not perform that
 step automatically.
 </para>
 
-<para>The module build directory is left intact for this step, so except for the
+<para>The module build directory is left intact for this step, so, except for the
 reconfigure step, this will also fail quickly if the build cannot be performed.
 </para>
 </listitem>
 
 <listitem><para>
 If the module still fails to build, &kdesvn-build; will give up and move on
-to the next module.  There are still things that you can do to <link
+to the next module. There are still things that you can do to <link
 linkend="manual-rebuilds">manually try to get the module to build</link>,
 however.
 </para></listitem>
@@ -336,11 +335,11 @@ however.
 
 <note><para>
 &kdesvn-build; will detect most cases where the build system needs to be
-reconfigured and will reconfigure automatically in that case.
+reconfigured, and will reconfigure automatically in that case.
 </para>
 
 <para>Also, if &kdesvn-build; was building the module for the first time, all
-of these steps are skipped since the clean rebuild doesn't usually fail except
+of these steps are skipped, since the clean rebuild doesn't usually fail except
 for a real error.</para>
 </note>
 </sect3>
@@ -352,12 +351,12 @@ source code changes in a way &kdesvn-build; doesn't recognize, you may need to
 manually rebuild the module.</para>
 
 <para>You can do this by simply running <userinput><command>kdesvn-build</command>
- <option>--refresh-build</option> <option><replaceable>module</replaceable></option></userinput>
+ <option>--refresh-build</option> <option><replaceable>module</replaceable></option></userinput>.
 </para>
 
 <para>If you would like to have &kdesvn-build; automatically rebuild the module
 during the next normal build update instead, you can create a special file.
-Every module has a build directory.  If you create a file called <filename>.refresh-me</filename>
+Every module has a build directory. If you create a file called <filename>.refresh-me</filename>
 in the build directory for a module, &kdesvn-build; will rebuild the module
 next time the build process occurs, even if it would normally perform the
 faster incremental build.</para>
@@ -369,7 +368,7 @@ If you change the setting of the &build-dir; option, then use that instead of
 </tip>
 
 <informalexample>
-<para>Rebuild using <filename>.refresh-me</filename> for module <replaceable>arts</replaceable></para>
+<para>Rebuild using <filename>.refresh-me</filename> for module <replaceable>arts</replaceable>:</para>
 <screen>
 <prompt>%</prompt> <userinput><command>touch</command> <filename>~/kdesvn/build/<replaceable>arts</replaceable></filename></userinput>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command></userinput>
@@ -381,7 +380,7 @@ If you change the setting of the &build-dir; option, then use that instead of
 <title>Controlling rebuild behavior</title>
 <para>You may not want &kdesvn-build; to always try and rebuild a module.
 You can permanently disable this behavior by changing the option &no-rebuild-on-fail;
-to have the value <userinput>true</userinput>.</para>
+to have the value <replaceable>true</replaceable>.</para>
 
 <para>You can disable this behavior temporarily (for one command) by using
 the &cmd-no-rebuild-on-fail; command line option.</para>
@@ -397,11 +396,11 @@ the &cmd-no-rebuild-on-fail; command line option.</para>
 </sect2>
 
 <sect2 id="changing-environment">
-<title>Changing environment variable settings.</title>
+<title>Changing environment variable settings</title>
 <para>&kdesvn-build; doesn't read the environment from the caller like the
-vast majority of most programs do.  Instead, it uses the settings it reads
-from the &rcfile; to construct the environment.  This is done mainly to
-ensure that when you build a module, the build is repeatable.  In other words,
+vast majority of most programs do. Instead, it uses the settings it reads
+from the <link linkend="configure-data">configuration file</link> to construct the environment. This is done mainly to
+ensure that build are repeatable. In other words,
 &kdesvn-build; can build a module even if you forgot what you set your
 environment variables to in the shell you ran &kdesvn-build; from.</para>
 
@@ -410,15 +409,16 @@ that &kdesvn-build; doesn't provide an option for directly.
 This is possible with the &set-env; option.</para>
 
 <para>Unlike most options, it can be set more than once, and it accepts two
-entries, separated by a space.  The first one is the name of the environment
+entries, separated by a space. The first one is the name of the environment
 variable to set, and the remainder of the line is the value.</para>
 
 <informalexample>
-<para>Set DISTRO=BSD for all modules:</para>
+<para>Set <userinput><envar>DISTRO</envar>=<replaceable>BSD</replaceable></userinput>
+for all modules:</para>
 <screen>
 global
   set-env <replaceable>DISTRO</replaceable> <replaceable>BSD</replaceable>
-end global  
+end global
 </screen>
 </informalexample>
 
@@ -431,15 +431,15 @@ end global
 <title>Resuming a failed or canceled build</title>
 
 <para>You can tell &kdesvn-build; to start building from a different module
-than it normally would.  This can be useful when a set of modules failed, or
-if you canceled a build run in the middle.  You can control this using the
+than it normally would. This can be useful when a set of modules failed, or
+if you canceled a build run in the middle. You can control this using the
 &cmd-resume-from; option.</para>
 
 <note><para>Using &cmd-resume-from; will skip the source code update.</para>
 </note>
 
 <informalexample>
-<para>Resuming the build starting from kdebase.</para>
+<para>Resuming the build starting from kdebase:</para>
 
 <screen>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--resume-from=<replaceable>kdebase</replaceable></option></userinput>
@@ -455,12 +455,12 @@ if you canceled a build run in the middle.  You can control this using the
 build from a module</link>, you can instead choose to update and build everything
 normally, but ignore a set of modules.</para>
 
-<para>You can do this using the &cmd-ignore-modules; option.  This option tells
-&kdesvn-build; to ignore all the of rest of the modules on the command line when
+<para>You can do this using the &cmd-ignore-modules; option. This option tells
+&kdesvn-build; to ignore all the modules on the command line when
 performing the update and build.</para>
 
 <informalexample>
-<para>Ignoring extragear/multimedia and kdenonbeta during a full run.</para>
+<para>Ignoring extragear/multimedia and kdenonbeta during a full run:</para>
 <screen>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdenonbeta</replaceable></userinput>
 </screen>
@@ -474,28 +474,28 @@ performing the update and build.</para>
 
 <sect3 id="changing-global-opts">
 <title>Changing global options</title>
-<para>You can change the setting of options read from the &rcfile; directly
-from the command line.  This change will override the configuration file
-setting, but is only temporary.  It only takes effect as long as it is still
+<para>You can change the setting of options read from the <link linkend="configure-data">configuration file</link> directly
+from the command line. This change will override the configuration file
+setting, but is only temporary. It only takes effect as long as it is still
 present on the command line.</para>
 
 <para>&kdesvn-build; allows you to change options named like <replaceable>option-name</replaceable>
-by passing an argument on the command line in the form <option>--<replaceable>option-name</replaceable>=value</option>.
-&kdesvn-build; will recognize if it doesn't know what the option is, and search
-for the name in its list of option names.  If it doesn't recognize the name, it
+by passing an argument on the command line in the form <userinput><option>--<replaceable>option-name</replaceable>=value</option></userinput>.
+&kdesvn-build; will recognize whether it doesn't know what the option is, and search
+for the name in its list of option names. If it doesn't recognize the name, it
 will warn you, otherwise it will remember the value you set it to and override
 any setting from the configuration file.</para>
 
 <informalexample>
 <para>Setting the &source-dir; option to <filename>/dev/null</filename> for
-testing.</para>
+testing:</para>
 
 <screen>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--pretend</option> <option>--<replaceable>source-dir</replaceable>=<replaceable>/dev/null</replaceable></option></userinput>
 </screen>
 
-<para>Disabling unsermake from the command line.  --refresh-build is used to
-force the changes to unsermake to take effect.</para>
+<para>Disabling &unsermake; from the command line. <option>--refresh-build</option> is used to
+force the changes to &unsermake; to take effect.</para>
 
 <screen>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--pretend</option> <option>--refresh-build</option> <option>--<replaceable>use-unsermake</replaceable>=<replaceable>false</replaceable></option></userinput>
@@ -507,12 +507,12 @@ force the changes to unsermake to take effect.</para>
 
 <sect3 id="changing-module-opts">
 <title>Changing module options</title>
-<para>It is also possible to change options only for a specific module.  The
+<para>It is also possible to change options only for a specific module. The
 syntax is similar: --<replaceable>module</replaceable>,<replaceable>option-name</replaceable>=<replaceable>value</replaceable>.
 </para>
 
 <para>This change overrides any duplicate setting for the module found in the
-&rcfile;, and applies only while the option is passed on the command line.</para>
+<link linkend="configure-data">configuration file</link>, and applies only while the option is passed on the command line.</para>
 
 <informalexample>
 <para>Using a different build directory for the kdeedu module:</para>
