@@ -969,6 +969,7 @@ authors using the address you can find <link linkend="authors">above</link>.
 <itemizedlist>
 <listitem><para><link linkend="conf-apidox">apidox</link>, to build API Documentation.</para></listitem>
 <listitem><para><link linkend="conf-apply-qt-patches">apply-qt-patches</link>, to enhance qt-copy.</para></listitem>
+<listitem><para><link linkend="conf-async">async</link>, to update and build at the same time.</para></listitem>
 <listitem><para><link linkend="conf-binpath">binpath</link>, to set the <envar>PATH</envar> variable.</para></listitem>
 <listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of /trunk.</para></listitem>
 <listitem><para><link linkend="conf-build-dir">build-dir</link>, to set the directory to build in.</para></listitem>
@@ -1046,6 +1047,16 @@ then the apply-patches script in qt-copy will be run prior to building, in
 order to apply the non-official patches to the qt-copy. Since these patches
 are normally the reason for using qt-copy instead of a stock &Qt;, it should not
 do any harm to enable it. The default is to enable the patches.</entry>
+</row>
+
+<row id="conf-async">
+<entry>async</entry>
+<entry>Cannot be overridden</entry>
+<entry><para>This option enables the asynchronous mode of operation, where the source
+code update and the build process will be performed in parallel, instead of waiting for
+all of the source code updates before starting the build process.  This option defaults
+to enabling asynchronous mode.  To disable, set this option to <replaceable>false</replaceable></para>
+<para>This option is available since the 1.7 release.</para></entry>
 </row>
 
 <row id="conf-binpath">
@@ -1620,6 +1631,15 @@ The script accepts the following command-line options:
 
 <variablelist>
 
+<varlistentry id="cmdline-async">
+<term><option>--async</option></term>
+<listitem><para>
+Enables the <link linkend="conf-async">asynchronous mode</link> to update and build
+at the same time.  This is the default, this option only needs specified if you
+have disabled it in the configuration.
+</para></listitem>
+</varlistentry>
+
 <varlistentry id="cmdline-help">
 <term><option>--help</option></term>
 <listitem><para>
@@ -1654,6 +1674,17 @@ Enable colorful output.
 <listitem><para>
 Sets the &niceness; value to <replaceable>value</replaceable> for the duration
 of this run. <replaceable>value</replaceable> should be between 0 and 20.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-async">
+<term><option>--no-async</option></term>
+<listitem><para>
+Disables the <link linkend="conf-async">asynchronous mode</link> of updating.
+Instead the update will be performed in its entirety before the build starts.
+This option will slow down the overall process, but if you encounter IPC errors
+while running &kdesvn-build; try using this option, and submitting a
+<ulink url="http://bugs.kde.org/">bug report</ulink>.
 </para></listitem>
 </varlistentry>
 
