@@ -6038,10 +6038,11 @@ sub handle_monitoring
                 # I'm pretty sure EOF shouldn't happen here, otherwise we'd
                 # have something to send.
                 my $msg = $ipc->receiveFromUpdater();
-                if (not defined $msg)
+                if (not defined $msg and $!)
                 {
                     error "r[mon]: Monitor IPC error, unexpected disappearance of updater.";
-                    error "r[mon]: Mysterious circumstances: r[b[$!]" if $!;
+                    error "r[mon]: Mysterious circumstances: r[b[$!]";
+                    return 1;
                 }
 
                 push @msgs, $msg;
