@@ -114,6 +114,13 @@ Build only, do not perform updates or install.
 
 Read configuration from filename instead of default.
 
+=item B<--no-async>
+
+Do not perform the source update and build in parallel.  With this enabled
+the entire source update will be performed before the build will start.  This
+will take longer overall.  You should only need to use this if you encounter
+bugs with the default (asynchronous) behavior.
+
 =item B<--debug>
 
 Activates debug mode.
@@ -260,6 +267,7 @@ use POSIX qw(strftime :sys_wait_h);
 use File::Find; # For our lndir reimplementation.
 use File::Basename;
 use Sys::Hostname;
+use IO::Handle;
 use Errno qw(:POSIX);
 
 # Debugging level constants.
@@ -284,7 +292,7 @@ use constant {
     IPC_ALL_UPDATING   => 6, # Informational message, feel free to start the build.
 };
 
-my $versionNum = '1.6-pre1';
+my $versionNum = '1.6-pre2';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -295,6 +303,7 @@ my %package_opts = (
   'global' => {
     "apidox"              => "",
     "apply-qt-patches"    => "",
+    "async"               => 1,
     "binpath"             => $ENV{'PATH'},
     "branch"              => "",
     "build-dir"           => "build",
@@ -350,66 +359,17 @@ my %package_opts = (
   }
 );
 
-# Define class for IPC object so that we can also make a simulated IPC object
-# and fallback to queued update and building.
+# Base class for IPC interaction. Should have most of the functionality, with
+# the actual bits of reading and writing left to subclasses.
 {
-    # Use SysV IPC protocols as it is built in to Perl.
-    package SysVIPC;
-
-    # Once again Perl's non-declaration of required constants proves awesome.
-    # NOTE: This is hopefully the same across all UNIXy libc's but I can make
-    # no guarantees.  Unfortunately the required Perl module (IPC::SysV) was
-    # not installed by default until apparently very recently so instead these
-    # are hardcoded.
-    use constant IPC_PRIVATE => 0;
-    use constant IPC_RMID => 0;
+    package BaseIPC;
 
     sub new
     {
-        my ($class, $key) = @_;
+        my $class = shift;
 
-        my $id = msgget(IPC_PRIVATE, 0644); # Permissions...
-
-        my $data = { 'id' => $id, 'rmMsgQueue' => 0 };
-
-        return bless $data, $class; # OOP in Perl is so completely retarded
-                                    # (although I suppose better than OOP in C)
-    }
-
-    # dtor
-    sub DESTROY
-    {
-        my $self = shift;
-
-        if($self->{'rmMsgQueue'})
-        {
-            msgctl($self->{'id'}, IPC_RMID, 0);
-        }
-    }
-
-    sub supportsConcurrency
-    {
-        return 1;
-    }
-
-    # Pass true if this object should deallocate the shared memory.  False
-    # by default.
-    sub releaseOnExit
-    {
-        my $self = shift;
-        my $rmMem = shift;
-
-        $self->{'rmMsgQueue'} = $rmMem;
-    }
-
-    sub sendMessage
-    {
-        my $self = shift;
-        my ($ipcType, $msg, $flags) = @_;
-
-        $flags = 0 unless defined $flags;
-
-        return msgsnd($self->{'id'}, pack("l! a*", $ipcType, $msg), $flags);
+        # Must bless a hash ref since subclasses expect it.
+        return bless {}, $class;
     }
 
     sub notifyUpdateSuccess
@@ -417,25 +377,195 @@ my %package_opts = (
         my $self = shift;
         my ($module, $msg) = @_;
 
-        $self->sendMessage(main::IPC_MODULE_SUCCESS, "$module,$msg");
+        $self->sendIPCMessage(main::IPC_MODULE_SUCCESS, "$module,$msg");
     }
 
+    # Sends an IPC message along with some IPC type information.
+    #
+    # First parameter is the IPC type to send.
+    # Second parameter is the actual message.
+    # All remaining parameters are sent to the object's sendMessage()
+    #  procedure.
+    sub sendIPCMessage
+    {
+        # Use shift for these to empty @_ of the parameters.
+        my $self = shift;
+        my $ipcType = shift;
+        my $msg = shift;
+
+        my $encodedMsg = pack("l! a*", $ipcType, $msg);
+        return $self->sendMessage("$encodedMsg\n", @_);
+    }
+
+    # Receives an IPC message and decodes it into the message and its
+    # associated type information.
+    #
+    # First parameter is a *reference* to a scalar to hold the message contents.
+    # All remaining parameters are passed to the underlying receiveMessage()
+    #  procedure.
+    #
+    # Returns the IPC type, or undef on failure.
+    sub receiveIPCMessage
+    {
+        my $self = shift;
+        my $outBuffer = shift;
+
+        my $msg = $self->receiveMessage(@_);
+        return undef if not defined $msg;
+
+        chomp $msg;
+        my $returnType;
+        ($returnType, $$outBuffer) = unpack("l! a*", $msg);
+
+        return $returnType;
+    }
+
+    # These must be reimplemented.  They must be able to handle scalars without
+    # any extra frills.
+    #
+    # sendMessage should accept one parameter (the message to send) and return
+    # true on success, or false on failure.  $! should hold the error information
+    # if false is returned.
+    sub sendMessage { die "Unimplemented.\n"; }
+
+    # receiveMessage should return a message received from the other side, or
+    # undef for EOF or error.  On error, $! should be set to hold the error
+    # information.
+    sub receiveMessage { die "Unimplemented.\n" }
+
+    # Should be reimplemented if default does not apply.
+    sub supportsConcurrency
+    {
+        return 0;
+    }
+}
+
+# IPC class that uses pipes for communication.  Basically requires
+# forking two children in order to communicate with.  Assumes that the two
+# children are the update process and a monitor process which keeps the update
+# going and informs us (the build process) of the status when we're ready to
+# hear about it.
+{
+    package PipeIPC;
+
+    our(@ISA);
+    @ISA = qw(BaseIPC);
+
+    sub new
+    {
+        my $class = shift;
+        my $self = $class->SUPER::new;
+
+        # Define file handles.
+        $self->{$_} = new IO::Handle foreach qw/fromMon toMon fromSvn toBuild/;
+
+        if (not pipe($self->{'fromSvn'}, $self->{'toMon'})or
+            not pipe($self->{'fromMon'}, $self->{'toBuild'}))
+        {
+            return undef;
+        }
+
+        return bless $self, $class;
+    }
+
+    # Must override to send to correct filehandle.
+    sub notifyUpdateSuccess
+    {
+        my $self = shift;
+        my ($module, $msg) = @_;
+
+        $self->sendIPCMessage(main::IPC_MODULE_SUCCESS, "$module,$msg", 'toMon');
+    }
+
+    # Closes the given list of filehandle ids.
+    sub closeFilehandles
+    {
+        my $self = shift;
+        my @fhs = @_;
+
+        for my $fh (@fhs) {
+            close $self->{$fh};
+            $self->{$fh} = 0;
+        }
+    }
+
+    # Call this to let the object know it will be the update process.
+    sub setUpdater
+    {
+        my $self = shift;
+        $self->closeFilehandles(qw/fromSvn fromMon toBuild/);
+    }
+
+    sub setBuilder
+    {
+        my $self = shift;
+        $self->closeFilehandles(qw/fromSvn toMon toBuild/);
+    }
+
+    sub setMonitor
+    {
+        my $self = shift;
+        $self->closeFilehandles(qw/toMon fromMon/);
+    }
+
+    sub supportsConcurrency
+    {
+        return 1;
+    }
+
+    # First parameter is the ipc Type of the message to send.
+    # Second parameter is the module name (or other message).
+    # Third parameter is the file handle id to send on.
+    sub sendMessage
+    {
+        my $self = shift;
+        my ($msg, $fh) = @_;
+
+        local $| = 1; # Flush the file handles.
+        return print {$self->{$fh}} $msg;
+    }
+
+    # Override of sendIPCMessage to specify which filehandle to send to.
+    sub sendIPCMessage
+    {
+        my $self = shift;
+        push @_, 'toMon'; # Add filehandle to args.
+
+        return $self->SUPER::sendIPCMessage(@_);
+    }
+
+    # Used by monitor process, so no message encoding or decoding required.
+    sub sendToBuilder
+    {
+        my ($self, $msg) = @_;
+        return $self->sendMessage($msg, 'toBuild');
+    }
+
+    # First parameter is a reference to the output buffer.
+    # Second parameter is the id of the filehandle to read from.
     sub receiveMessage
     {
         my $self = shift;
-        my ($outBuffer, $length, $flags) = @_;
+        my $fh = shift;
 
-        $flags = 0 unless defined $flags;
-        my $buffer = ""; # Define this to something to force allocation.
+        my $result = readline($self->{$fh});
+        return $result;
+    }
 
-        my $result = msgrcv($self->{'id'}, $buffer, $length, 0, $flags);
+    # Override of receiveIPCMessage to specify which filehandle to receive from.
+    sub receiveIPCMessage
+    {
+        my $self = shift;
+        push @_, 'fromMon'; # Add filehandle to args.
 
-        return $result if not $result;
+        return $self->SUPER::receiveIPCMessage(@_);
+    }
 
-        my $returnType;
-        ($returnType, $$outBuffer) = unpack("l! a*", $buffer);
-
-        return $returnType;
+    # Used by monitor process, so no message encoding or decoding required.
+    sub receiveFromUpdater
+    {
+        my $self = shift;
+        return $self->receiveMessage('fromSvn');
     }
 }
 
@@ -443,54 +573,33 @@ my %package_opts = (
 {
     package NullIPC;
 
+    our @ISA = qw(BaseIPC);
+
     sub new
     {
         my $class = shift;
-        my @msgQueue;
+        my $self = $class->SUPER::new;
 
-        return bless \@msgQueue, $class; # OOP in Perl is so completely retarded
-    }
-
-    # Defined for compatibility
-    sub releaseOnExit
-    {
-    }
-
-    sub supportsConcurrency
-    {
-        return 0;
+        $self->{'msgList'} = []; # List of messages.
+        return bless $self, $class; # OOP in Perl is so completely retarded
     }
 
     sub sendMessage
     {
         my $self = shift;
-        my ($ipcType, $msg) = @_;
+        my $msg = shift;
 
-        push @{$self}, pack("l! a*", $ipcType, $msg);
+        push @{$self->{'msgList'}}, $msg;
         return 1;
-    }
-
-    sub notifyUpdateSuccess
-    {
-        my $self = shift;
-        my ($module, $msg) = @_;
-
-        $self->sendMessage(main::IPC_MODULE_SUCCESS, "$module,$msg");
     }
 
     sub receiveMessage
     {
         my $self = shift;
-        my ($outBuffer, $length) = @_;
 
-        return undef unless scalar @{$self} > 0;
+        return undef unless scalar @{$self->{'msgList'}} > 0;
 
-        my $msg = shift @{$self};
-        my $returnType;
-
-        ($returnType, $$outBuffer) = unpack("l! a*", $msg);
-
-        return $returnType;
+        return shift @{$self->{'msgList'}};
     }
 }
 
@@ -2777,6 +2886,8 @@ EOM
 # srcdir != builddir.  If this function returns true kdesvn-build will use a
 # few hacks to simulate it, and will update e.g. configure paths appropriately
 # as well.
+#
+# Only run for non-CMake modules.
 sub module_needs_builddir_help
 {
     my $module = shift;
@@ -3209,6 +3320,16 @@ DONE
                 last SWITCH;
             };
 
+            /^--async$/ && do {
+                set_option('global', '#async', 1);
+                last SWITCH;
+            };
+
+            /^--no-async$/ && do {
+                set_option('global', '#async', 0);
+                last SWITCH;
+            };
+
             # Although equivalent to --no-build at this point, someday the
             # script may interpret the two differently, so get ready now.
             /^--svn-only$/ && do {      # Identically to --no-build
@@ -3398,6 +3519,12 @@ DONE
 
     @ARGV = @argv;
 
+    # Don't go async if only performing one phase.  It (should) work but why
+    # risk it?
+    if(get_option('global', 'manual-build') or get_option('global', 'no-svn'))
+    {
+        set_option('global', '#async', 0);
+    }
 }
 
 # Installs the given subroutine as a signal handler for a set of signals which
@@ -3791,7 +3918,7 @@ sub dont_build
 
     if ($ipc)
     {
-        $ipc->sendMessage(IPC_MODULE_FAILURE, $module);
+        $ipc->sendIPCMessage(IPC_MODULE_FAILURE, $module);
     }
     else
     {
@@ -3886,19 +4013,19 @@ sub handle_updates
     # No reason to print out the text if we're not doing anything.
     if (scalar @update_list == 0)
     {
-        $ipc->sendMessage(IPC_ALL_UPDATING, "update-list-empty");
+        $ipc->sendIPCMessage(IPC_ALL_UPDATING, "update-list-empty");
         return 0;
     }
 
     if (get_option ('global', 'no-svn'))
     {
-        $ipc->sendMessage(IPC_ALL_SKIPPED, "no-svn");
+        $ipc->sendIPCMessage(IPC_ALL_SKIPPED, "no-svn");
         return 0;
     }
 
     if (not check_for_ssh_agent())
     {
-        $ipc->sendMessage(IPC_ALL_FAILURE, "ssh-failure");
+        $ipc->sendIPCMessage(IPC_ALL_FAILURE, "ssh-failure");
         return 1;
     }
 
@@ -3914,7 +4041,7 @@ sub handle_updates
         if (not super_mkdir ($kdesvn))
         {
             error "Unable to make directory r[$kdesvn]!";
-            $ipc->sendMessage(IPC_ALL_FAILURE, "no-source-dir");
+            $ipc->sendIPCMessage(IPC_ALL_FAILURE, "no-source-dir");
 
             return 1;
         }
@@ -3922,7 +4049,7 @@ sub handle_updates
 
     # Once at this point, any errors we get should be limited to a module,
     # which means we can tell the build thread to start.
-    $ipc->sendMessage(IPC_ALL_UPDATING, "starting-updates");
+    $ipc->sendIPCMessage(IPC_ALL_UPDATING, "starting-updates");
 
     # Make sure KDE's SSL signature is present since --non-interactive is
     # passed to svn.
@@ -3938,7 +4065,7 @@ sub handle_updates
 
         if(get_option($module, 'no-svn'))
         {
-            $ipc->sendMessage(IPC_MODULE_SKIPPED, $module);
+            $ipc->sendIPCMessage(IPC_MODULE_SKIPPED, $module);
             next;
         }
 
@@ -5175,7 +5302,7 @@ sub handle_build
     # build.
     {
         my $buffer = "";
-        my $ipcType = $ipc->receiveMessage(\$buffer, 256);
+        my $ipcType = $ipc->receiveIPCMessage(\$buffer);
 
         if ($ipcType == IPC_ALL_FAILURE)
         {
@@ -5232,7 +5359,7 @@ EOF
             my $buffer;
             info "\tWaiting for source code update.";
 
-            my $ipcType = $ipc->receiveMessage(\$buffer, 512);
+            my $ipcType = $ipc->receiveIPCMessage(\$buffer);
             if (not defined $ipcType or not $ipcType)
             {
                 error " b[r[***] $module: IPC failure during Subversion update: r[b[$!]";
@@ -5364,6 +5491,7 @@ sub finish
     close_lock();
 
     open(LOG, ">>$logdir/build-log");
+    local $, = "\n"; # Change item separator to newline for output.
     print LOG @screen_log;
     close(LOG);
 
@@ -5812,6 +5940,181 @@ sub execute_command_line_program()
     };
 }
 
+# This subroutine is the monitoring process for when using PipeIPC.  It reads
+# in all status reports from the subversion update process and then holds on
+# to them.  When the build process is ready to read information we send what
+# we have.  Otherwise we're waiting on the update process to send us something.
+#
+# This convoluted arrangement is required to allow the subversion update
+# process to go from start to finish without undue interruption on it waiting
+# to write out its status to the build process which is usually busy.
+#
+# First parameter is the IPC object to use.
+#
+# Returns 0 on success, non-zero on failure.
+sub handle_monitoring
+{
+    my $ipc = shift;
+
+    # Setup some file handle sets to use in the select() call.
+    # The out ones are copies of the in ones since select() overwrites its
+    # parameters.
+    my ($win, $wout, $rin, $rout);
+    ($win, $rin) = ("") x 2; # Get rid of undefined warnings.
+
+    my @msgs;  # Message queue.
+
+    # Perl uses vec() to setup the file handle sets.  Make some local
+    # subroutines to make it suck less in the real code.
+    sub setFdInSet($$$) {
+        my ($set, $fh, $inSet) = @_;
+        vec($set, fileno($fh), 1) = $inSet;
+        return $set;
+    }
+
+    sub fdIsChosen($$) {
+        my ($set, $fh) = @_;
+        return vec($set, fileno($fh), 1) == 1;
+    }
+
+    # We will write to the build process and read from the update process.
+    $win = setFdInSet($win, $ipc->{'toBuild'}, 1);
+    $rin = setFdInSet($rin, $ipc->{'fromSvn'}, 1);
+
+    # Start the loop.  We will be waiting on either $win or $rin.  Whenever
+    # select() returns we must check both sets.
+    for(;;)
+    {
+        my $numFound = select($rout = $rin, $wout = $win, undef, undef);
+
+        if ($numFound == -1)
+        {
+            error "r[mon]: Monitor IPC error: r[$!]";
+            return 1;
+        }
+
+        # Check for svn updates first.
+        if (fdIsChosen($rout, $ipc->{'fromSvn'}))
+        {
+            my $msg = $ipc->receiveFromUpdater();
+
+            # undef can be returned on EOF as well as error.  EOF means the
+            # other side is presumably done.
+            if (not defined $msg and not $!)
+            {
+                $rin = setFdInSet($rin, $ipc->{'fromSvn'}, 0);
+                last; # Select no longer needed, just output to build.
+            }
+
+            # Don't check for $! first, it seems to always be set to EBADF.
+            # Probably I'm screwing up the select() call?
+            if ($msg)
+            {
+                push @msgs, $msg;
+            }
+            else
+            {
+                error "r[mon]: Error reading update: r[b[$!]";
+                return 1;
+            }
+        }
+
+        # Now check for build updates.
+        if (fdIsChosen($wout, $ipc->{'toBuild'}))
+        {
+            # If we're here the update is still going.  If we have no messages
+            # to send wait for that first.
+            if (not @msgs)
+            {
+                my ($rout2, $numFound2);
+                $numFound2 = select($rout2 = $rin, undef, undef, undef);
+
+                if ($numFound2 == -1 and $!)
+                {
+                    error "r[mon]: Monitor IPC error: r[$!]";
+                    return 1;
+                }
+
+                # I'm pretty sure EOF shouldn't happen here, otherwise we'd
+                # have something to send.
+                my $msg = $ipc->receiveFromUpdater();
+                if (not defined $msg)
+                {
+                    error "r[mon]: Monitor IPC error, unexpected disappearance of updater.";
+                    error "r[mon]: Mysterious circumstances: r[b[$!]" if $!;
+                }
+
+                push @msgs, $msg;
+            }
+
+            # Send the message.
+            if (!$ipc->sendToBuilder(shift @msgs))
+            {
+                error "r[mon]: Build process stopped too soon! r[$!]";
+                return 1;
+            }
+        }
+    }
+
+    # Send all remaining messages.
+    while (@msgs)
+    {
+        if (!$ipc->sendToBuilder(shift @msgs))
+        {
+            error "r[mon]: Build process stopped too soon! r[$!]";
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+# This subroutine performs the update and build process asynchronously.
+#
+# Only one thread or process of execution will return from this procedure.
+#
+# The first parameter should be the IPC object to use, which must support
+# concurrency.
+#
+# Returns 0 on success, non-zero on failure.
+sub handle_async_build
+{
+    # The exact method for async is that two children are forked.  One child
+    # is a svn update process.  The other child is a monitor process which will
+    # hold status updates from the svn process so that the svn updates may
+    # happen without waiting for us to be ready to read.
+
+    my $ipc = shift;
+
+    my $svnPid = fork;
+    if ($svnPid == 0)
+    { # child
+        $ipc->setUpdater();
+        exit handle_updates ($ipc);
+    }
+
+    # Parent
+    my $monPid = fork;
+    if ($monPid == 0)
+    { # monitor
+        $ipc->setMonitor();
+        exit handle_monitoring ($ipc);
+    }
+
+    # Still the parent, let's do the build.
+    $ipc->setBuilder();
+    my $result = handle_build ($ipc);
+
+    # Exit code is in $?.
+    waitpid ($svnPid, 0);
+    $result = 1 if $? != 0;
+
+    waitpid ($monPid, 0);
+    $result = 1 if $? != 0;
+
+    return $result;
+}
+
 # This subroutine sets up the default $package_opts{'global'} options.  They
 # are normally hardcoded, this function is a way to change the default based
 # on user input.  For example, we can change the value of options based on
@@ -5936,7 +6239,12 @@ eval
         # updates while we build.  Setup for this first by initializing some
         # shared memory.  In case of Coverity, set this to 0 that way we get
         # NullIPC, even if the SysVIPC ctor fails.
-        my $ipc = exists $ENV{'COVERITY_RUN'} ? 0 : new SysVIPC;
+        my $ipc = 0;
+
+        if(not exists $ENV{'COVERITY_RUN'} and get_option('global', 'async'))
+        {
+            $ipc = new PipeIPC;
+        }
 
         if (not $ipc)
         {
@@ -5948,46 +6256,7 @@ eval
         }
         else
         {
-            my $childPid = fork();
-
-            if ($childPid == 0)
-            {
-                my $childQuitHandler = sub {
-                    $ipc->releaseOnExit(1); # OK if we try to delete twice now
-                    exit 6;
-                };
-
-                # Child, do svn after reseting signal handlers;
-                install_signal_handler($childQuitHandler);
-
-                # Is is very important to kill the IPC queue if we exit for any
-                # reason, so do some exception trapping here.  The parent
-                # exception does not have access to $ipc to force it to clear
-                # the queue.
-                eval {
-                    exit handle_updates ($ipc);
-                };
-
-                if ($@)
-                {
-                    print "Fatal error: $@\n";
-                    $ipc->releaseOnExit(1);
-                    exit 99;
-                }
-            }
-            else
-            {
-                # We should release shm resources.
-                $ipc->releaseOnExit(1);
-
-                # Parent, do build
-                $result = handle_build ($ipc);
-
-                waitpid ($childPid, 0);
-
-                # Exit code is in $?.
-                $result = 1 if $? != 0;
-            }
+            $result = handle_async_build ($ipc);
         }
     }
     else
