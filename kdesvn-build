@@ -397,6 +397,22 @@ my %package_opts = (
         return $self->sendMessage("$encodedMsg\n", @_);
     }
 
+    # Static class function to unpack a message.
+    #
+    # First parameter is the message.
+    # Second parameter is a reference to a scalar to store the result in.
+    #
+    # Returns the IPC message type.
+    sub unpackMsg
+    {
+        my ($msg, $outBuffer) = @_;
+        my $returnType;
+
+        ($returnType, $$outBuffer) = unpack("l! a*", $msg);
+
+        return $returnType;
+    }
+
     # Receives an IPC message and decodes it into the message and its
     # associated type information.
     #
@@ -410,14 +426,28 @@ my %package_opts = (
         my $self = shift;
         my $outBuffer = shift;
 
+        # Check if we still have data left over from last read.
+        if ($self->{'residue'})
+        {
+            my ($first, $remainder) = split(/\n/, $self->{'residue'}, 2);
+            $self->{'residue'} = $remainder;
+
+            return unpackMsg($first, $outBuffer);
+        }
+
         my $msg = $self->receiveMessage(@_);
         return undef if not defined $msg;
 
         chomp $msg;
-        my $returnType;
-        ($returnType, $$outBuffer) = unpack("l! a*", $msg);
 
-        return $returnType;
+        # If other guy sent a ton of messages we may have a bunch that we
+        # received.  Assume they're separated by newlines.
+        my ($first, $remainder) = split(/\n/, $msg, 2);
+
+        # Save rest for later.
+        $self->{'residue'} = $remainder;
+
+        return unpackMsg($first, $outBuffer);
     }
 
     # These must be reimplemented.  They must be able to handle scalars without
@@ -521,8 +551,7 @@ my %package_opts = (
         my $self = shift;
         my ($msg, $fh) = @_;
 
-        local $| = 1; # Flush the file handles.
-        return print {$self->{$fh}} $msg;
+        return syswrite ($self->{$fh}, $msg);
     }
 
     # Override of sendIPCMessage to specify which filehandle to send to.
@@ -547,9 +576,13 @@ my %package_opts = (
     {
         my $self = shift;
         my $fh = shift;
+        my $value;
 
-        my $result = readline($self->{$fh});
-        return $result;
+        undef $!; # Clear error marker
+        my $result = sysread ($self->{$fh}, $value, 512); # Enough length I think.
+
+        return undef if not $result;
+        return $value;
     }
 
     # Override of receiveIPCMessage to specify which filehandle to receive from.
@@ -6035,8 +6068,7 @@ sub handle_monitoring
                     return 1;
                 }
 
-                # I'm pretty sure EOF shouldn't happen here, otherwise we'd
-                # have something to send.
+                # Assume EOF can happen here.
                 my $msg = $ipc->receiveFromUpdater();
                 if (not defined $msg and $!)
                 {
@@ -6045,11 +6077,11 @@ sub handle_monitoring
                     return 1;
                 }
 
-                push @msgs, $msg;
+                push @msgs, $msg if $msg;
             }
 
-            # Send the message.
-            if (!$ipc->sendToBuilder(shift @msgs))
+            # Send the message (if we got one).
+            if (scalar @msgs and !$ipc->sendToBuilder(shift @msgs))
             {
                 error "r[mon]: Build process stopped too soon! r[$!]";
                 return 1;
