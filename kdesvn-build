@@ -369,7 +369,10 @@ my %package_opts = (
         my $class = shift;
 
         # Must bless a hash ref since subclasses expect it.
-        return bless {}, $class;
+        my $ref = {};
+        $ref->{'residue'} = ''; # Define this for later.
+
+        return bless $ref, $class;
     }
 
     sub notifyUpdateSuccess
@@ -426,26 +429,35 @@ my %package_opts = (
         my $self = shift;
         my $outBuffer = shift;
 
-        # Check if we still have data left over from last read.
-        if ($self->{'residue'})
+        # Check if we still have data left over from last read, and if it
+        # contains a full message.
+        if ($self->{'residue'} =~ /\n/)
         {
             my ($first, $remainder) = split(/\n/, $self->{'residue'}, 2);
-            $self->{'residue'} = $remainder;
+            $self->{'residue'} = defined $remainder ? $remainder : '';
 
             return unpackMsg($first, $outBuffer);
         }
 
-        my $msg = $self->receiveMessage(@_);
-        return undef if not defined $msg;
+        # Read in messages enough to get to the message separator (\n)
+        my $msg = '';
+        while($msg !~ /\n/) {
+            my $msgFragment = $self->receiveMessage(@_);
+            $msg .= $msgFragment if defined $msgFragment;
 
-        chomp $msg;
+            last unless defined $msgFragment;
+        }
 
-        # If other guy sent a ton of messages we may have a bunch that we
-        # received.  Assume they're separated by newlines.
+        return undef if not defined $msg or $msg eq '';
+
+        # We may have residue still if we had a partial husk of a message, so
+        # append to the residue before breaking up the message.  We assume a
+        # newline separates the messages.
+        $msg = $self->{'residue'} . $msg;
         my ($first, $remainder) = split(/\n/, $msg, 2);
 
         # Save rest for later.
-        $self->{'residue'} = $remainder;
+        $self->{'residue'} = defined $remainder ? $remainder : '';
 
         return unpackMsg($first, $outBuffer);
     }
@@ -579,7 +591,7 @@ my %package_opts = (
         my $value;
 
         undef $!; # Clear error marker
-        my $result = sysread ($self->{$fh}, $value, 512); # Enough length I think.
+        my $result = sysread ($self->{$fh}, $value, 256);
 
         return undef if not $result;
         return $value;
@@ -819,7 +831,7 @@ sub get_screen_log_file
     return get_log_dir('global') . "/build-log";
 }
 
-# Subroutine to retrieve a subdirecty path for the given module.
+# Subroutine to retrieve a subdirectory path for the given module.
 # First parameter is the name of the module, and the second
 # parameter is the option key (e.g. build-dir or log-dir).
 sub get_subdir_path
@@ -6041,7 +6053,7 @@ sub handle_monitoring
 
             # Don't check for $! first, it seems to always be set to EBADF.
             # Probably I'm screwing up the select() call?
-            if ($msg)
+            if (defined $msg)
             {
                 push @msgs, $msg;
             }
