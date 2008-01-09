@@ -34,7 +34,11 @@ sub check_dbus_installed()
 sub check_clucene_installed()
 {
     # this efficient check algorithm was copied from the cmake check
-    return 0;
+    my $minVersion = '0.9.16';
+
+    my $result = system('pkg-config', '--exists', "clucene-core >= $minVersion");
+
+    return ($result >> 8) == 0;
 }
 
 # Install CLucene
@@ -148,13 +152,17 @@ sub download_install_dbus()
 
 sub check_cmake_installed()
 {
-    return 0;
-
-    my $minVersion = '2.4-patch 5';
-
     my $result = `cmake --version`;
 
-    return ($result =~ $minVersion);
+    if ($result =~ /2.4-patch (\d+)/) {
+        return 1 if ($1 >= 5);
+    }
+
+    if ($result =~ /2\.(\d+)-patch/) {
+        return 1 if ($1 > 4);
+    }
+
+    return 0;
 }
 
 # This subroutine downloads CMake if necessary, builds and installs it (all
@@ -189,6 +197,17 @@ sub download_install_lcms()
     return download_install_tar('lcms', '1.15', "http://www.littlecms.com/", []);
 }
 
+sub cleanup_soprano_mess()
+{
+    my $prefix = get_option('global', 'kdedir');
+
+    if (-f "$prefix/include/Soprano") {
+
+	unlink("$prefix/include/Soprano");
+	return 1;
+    }
+    return 0;
+}
 
 # This subroutine is run after the lock has been obtained, but before performing
 # any updates or builds.  Do any steps that need to be done only in the case of
@@ -199,6 +218,10 @@ sub download_install_lcms()
 sub perform_coverity_checks()
 {
     note "We are being run by g[Coverity].  Hi guys!";
+
+    if (cleanup_soprano_mess()) {
+	note "Soprano seems to have been messy installed. Cleaned install dir";
+    }
 
     unless (check_dbus_installed())
     {
