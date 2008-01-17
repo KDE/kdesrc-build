@@ -1153,11 +1153,15 @@ sub get_log_dir
         return undef;
     }
 
-    # Add symlink to the directory.
-    # TODO: This probably can result in a few dozen unnecessary calls to
-    # unlink and symlink, fix this.
-    unlink("$logbase/latest") if -l "$logbase/latest";
-    symlink("$LOG_DATE-$BUILD_ID", "$logbase/latest");
+    # Add symlink to the directory if it doesn't already point to the right
+    # location.  This operation should be atomic in async mode since the
+    # update thread should create the log dir before it is needed by the build
+    # thread (which will not have to unlink/symlink).
+    if(-l "$logbase/latest" and readlink("$logbase/latest") ne "$LOG_DATE-$BUILD_ID")
+    {
+        unlink("$logbase/latest") if -l "$logbase/latest";
+        symlink("$LOG_DATE-$BUILD_ID", "$logbase/latest");
+    }
 
     return $logpath;
 }
