@@ -3949,7 +3949,10 @@ sub super_mkdir
         $temp .= "$_/";
 
         next if -e $temp;
-        return 0 if not mkdir ($temp);
+
+        # Check again if the directory does not exist before failing, since this
+        # function may be run concurrently in different processes.
+        return 0 if not mkdir ($temp) and not -e $temp;
     }
 
     return 1;
