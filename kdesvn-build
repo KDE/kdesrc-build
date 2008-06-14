@@ -3045,6 +3045,15 @@ sub output_failed_module_list($@)
         for (@fail_list)
         {
             $logfile = get_option($_, '#error-log-file');
+
+            # async updates may cause us not to have a error log file stored.  There's only
+            # one place it should be though, take advantage of side-effect of log_command()
+            # to find it.
+            if (not $logfile) {
+                my $logdir = get_log_dir($_) . "/error.log";
+                $logfile = $logdir if -e $logdir;
+            }
+
             $logfile = "No log file" unless $logfile;
             $logfile =~ s|$homedir|~|;
 
