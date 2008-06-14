@@ -1026,6 +1026,26 @@ sub svn_module_url
         return handle_branch_tag_option($module, 'branches');
     }
 
+    if($module eq 'phonon')
+    {
+        # As of this time there is no phonon trunk as it's not a real module, only a
+        # figment of kdesvn-build's imagination.
+        error <<EOF;
+You are attempting to build r[b[phonon] from KDE trunk.  However phonon is
+developed in the y[b[kdesupport] module, not in its own module.
+
+If you intend to build the stable phonon you should add the appropriate
+g[b[branch] option in your rc file, i.e.
+
+module phonon
+    branch 4.2
+end module
+
+If you intend to build the latest phonon you must build it from kdesupport, remembering
+not to disable that module in your g[b[cmake-options].
+EOF
+    }
+
     # We can't use get_option($module) after this if we have to trim the module
     # name.
     $module = moduleBaseName($module);
@@ -2620,6 +2640,9 @@ sub default_module_branch
     {
         return $branched_modules{$module};
     }
+
+    # phonon has no trunk module, it is developed in kdesupport
+    return '4.2' if $module eq 'phonon';
 
     # KDE 4 default options starting here.
     return 'trunk';
