@@ -942,8 +942,8 @@ sub branch_prefix
     # like typing them all in. kdevelop and konstruct are special cases.
     my @kde_module_list = ((map {'kde' . $_} qw/accessibility
             addons admin artwork base bindings edu games graphics libs
-            multimedia network nonbeta pim sdk toys utils webdev pimlibs/), 'kdevelop',
-            'konstruct');
+            multimedia network pim pimlibs plasmoids sdk toys utils webdev/), 'kdevelop',
+            'konstruct', 'kdevplatform');
 
     # If the user already has the module in the form KDE/foo, it's already
     # done.
@@ -988,6 +988,11 @@ sub handle_branch_tag_option
     # Remove KDE/ prefix for module name.
     $module = moduleBaseName($module);
 
+    # Phonon has a slightly different branching scheme which includes the backends, therefore
+    # they are up one directory from normal.
+    # i.e. /branches/phonon/4.2/{backends,phonon}
+    return "$svn_server/$branch/$branchname" if $module eq 'phonon';
+
     return "$svn_server/$branch/$branchname/$module";
 }
 
@@ -1028,7 +1033,7 @@ sub svn_module_url
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
     # but there are the important ones.  The hash is associated with the value
     # 1 so that we can do a boolean test by looking up the module name.
-    my @non_trunk_modules = qw(extragear kdesupport koffice
+    my @non_trunk_modules = qw(extragear kdesupport koffice icecream kde-common
         playground qt-copy valgrind KDE kdereview www l10n-kde3 l10n-kde4);
 
     my $module_root = $module;
