@@ -59,7 +59,11 @@ global
 # by kdesvn-build).  This means that if sudo has to ask for your password, it
 # will fail, you need to configure sudo to be able to run "make install" and
 # "unsermake install" without requesting a password.
-# 	make-install-prefix sudo -S
+#
+# In addition, you can run kdesvn-build --no-install, and then
+# sudo kdesvn-build --install if you are unable to configure sudo to allow
+# make install with no password.
+#	 make-install-prefix sudo -S
 
 # This is the Qt installation to use to build KDE.  The default is qt-copy
 # from Subversion.  The ${build-dir} option uses whatever you set for
@@ -70,9 +74,8 @@ global
 	qtdir ~/qt4  # Default to installing Qt (Qt 4).
 #	qtdir ${build-dir}/build/qt-copy # Use built Qt (Qt 3).
 
-# You might want to use your system's built-in Qt already (4.1 or greater for
+# You might want to use your system's built-in Qt already (4.4 or greater for
 # KDE 4, 3.3.x for KDE 3.5.)  If so, assign the qtdir option appropriately.
-# See note above, KDE 4 may require qt-copy at times.
 #	qtdir /path/to/system/qt
 
 # This is the Subversion server to download the KDE sources from.  Developers:
@@ -89,6 +92,8 @@ global
 # the same options will not work, CMake expects them in a different format.
 # You should probably not need to use cmake-options however. KDE4_BUILD_TESTS
 # is provided as an example.
+#
+# Also see http://techbase.kde.org/Development/Tutorials/CMake#Command_Line_Variables
 #	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
 
 # These are the compilation flags to use by default when compiling KDE.
@@ -142,11 +147,12 @@ module qt-copy
 #	below the Qt 3 option line (by removing the # at the beginning) and
 #	comment the Qt 4 lines which follow.
 	configure-flags -qt-gif -no-exceptions -fast -qdbus \
-	                -nomake examples -nomake demos
+	                -nomake examples -nomake demos \
+	                -no-phonon # Phonon built separately
 
 #	QT 3 OPTIONS
 #	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng \
-#			-no-exceptions -fast -thread -debug 
+#	                -no-exceptions -fast -thread -debug
 #	make-options -j2 sub-src sub-tools # Build faster, no examples built
 
 	apply-qt-patches true          # Works with Qt 3 and 4, recommended as well.
@@ -158,10 +164,18 @@ end module
 #module arts
 #end module
 
+# Phonon is the multimedia interface for KDE 4.  It is developed in kdesupport
+# but a separate branch is available for stability.  It may also be included
+# with Qt so if you don't need it you may disable it.
+module phonon
+    branch 4.2
+end module
+
 # kdesupport contains taglib and QCA, and the Strigi library required for
 # kdelibs in KDE 4.  taglib is required for JuK, amarok, and the meta info
 # reader for music files in Konqueror.
 module kdesupport
+    cmake-options -DBUILD_WITH_phonon=OFF # Build phonon separately.
 end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
@@ -173,9 +187,8 @@ module kdelibs
 	# option:
 	# cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
 
-# If you're a programmer you may want to build the API docs.  Note that
-# it takes some time, and DOES NOT WORK with unsermake (or CMake, yet). :(
-#	apidox true
+# If you're a programmer you may want to build the API docs.  There is a
+# separate script in kdesdk/scripts to do that for you however.
 end module
 
 # If you are not using KDE 4 then uncomment or remove this module.  It is required
@@ -209,8 +222,8 @@ end module
 
 # kdenetwork has Kopete and other useful applications for the Internet and
 # other networks.
-#module kdenetwork
-#end module
+module kdenetwork
+end module
 
 # kdeadmin has system administration tools for your computer.
 #module kdeadmin
@@ -234,30 +247,34 @@ end module
 
 # kdepim contains KMail, Kontact, KOrganizer, and other insanely useful
 # programs that help you keep track of things.
-#module kdepim
+module kdepim
 #    KDE3 configure flags:
 #    configure-flags --disable-exchange
-#end module
+end module
 
 # kdeutils has miscellaneous programs which can be useful.  You probably won't
 # die if you remove this from the config file though.
-#module kdeutils
-#end module
+module kdeutils
+end module
 
 # kdegraphics contains various programs useful for graphics editing.  It
 # doesn't include Krita, which is part of KOffice, but it is worth it just for
-# KolourPaint.
-#module kdegraphics
-#end module
+# KolourPaint and Gwenview.
+module kdegraphics
+end module
 
 # Contains nifty diversions of time, which generally aren't games.
-#module kdetoys
-#end module
+module kdetoys
+end module
 
 # Educational programs.  Some are actually quite fun even if you're not trying
 # to learn anything.
-#module kdeedu
-#end module
+module kdeedu
+end module
+
+# Extra collection of useful plasma applets, runners, data engines, etc.
+module kdeplasmoids
+end module
 
 # The KDE Office Suite.  Includes a pretty expansive collection of programs.
 # It is rather large, so you can cut download and build times by removing it
