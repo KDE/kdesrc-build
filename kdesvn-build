@@ -292,7 +292,7 @@ use constant {
     IPC_ALL_UPDATING   => 6, # Informational message, feel free to start the build.
 };
 
-my $versionNum = '1.6';
+my $versionNum = '1.6.1';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -4958,12 +4958,7 @@ sub setup_build_system
     # Symlink source directory to build directory if module doesn't support
     # srcdir != builddir.  If it's qt-copy only do so if it is Qt 3.
     # Note that module_needs_builddir_help() already takes care of that test.
-    #
-    # Also, CMake requires srcdir != builddir so we could avoid making a fake
-    # builddir that CMake would just refuse to use anyways but the CMake-using
-    # modules (except for l10n-kde4) pretty much never need help anyways so
-    # that check is also already taken care of.
-    if (module_needs_builddir_help($module))
+    if (not $uses_cmake and module_needs_builddir_help($module))
     {
         whisper "\tFaking builddir for g[$module]";
         if (not prepare_fake_builddir($module))
