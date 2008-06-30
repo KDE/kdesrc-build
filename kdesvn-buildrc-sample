@@ -164,18 +164,20 @@ end module
 #module arts
 #end module
 
+# kdesupport contains taglib and QCA, and the Strigi library required for
+# kdelibs in KDE 4.  taglib is required for JuK, amarok, and the meta info
+# reader for music files in Konqueror.
+# kdesupport is also the bearer of automoc and all that is good and right with
+# CMake, install it before all KDE modules.
+module kdesupport
+    cmake-options -DBUILD_WITH_phonon=OFF # Build phonon separately.
+end module
+
 # Phonon is the multimedia interface for KDE 4.  It is developed in kdesupport
 # but a separate branch is available for stability.  It may also be included
 # with Qt so if you don't need it you may disable it.
 module phonon
     branch 4.2
-end module
-
-# kdesupport contains taglib and QCA, and the Strigi library required for
-# kdelibs in KDE 4.  taglib is required for JuK, amarok, and the meta info
-# reader for music files in Konqueror.
-module kdesupport
-    cmake-options -DBUILD_WITH_phonon=OFF # Build phonon separately.
 end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
