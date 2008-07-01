@@ -2723,10 +2723,15 @@ sub setup_default_modules()
     whisper "Setting up to build ", join(', ', @build_list), " by default.";
 
     for my $i (@update_list) {
-        if (not exists $package_opts{$i})
-        {
-            # Set up defaults
-            $package_opts{$i} = default_module_options($i);
+        my $options_ref = default_module_options($i);
+
+        # Apply default option only if option not already set.  If the option
+        # is here at this point it's probably user defined on the command line
+        # or setup by kdesvn-build based on an option.
+        for my $key (keys %{$options_ref}) {
+            if (not exists $package_opts{$i}{$key}) {
+                $package_opts{$i}{$key} = $options_ref->{$key};
+            }
         }
     }
 
@@ -2752,17 +2757,11 @@ sub parse_module
     my ($fh, $module) = @_;
     $module = 'global' unless $module;
 
-    # Make sure we acknowledge that we read the module name in from the
-    # file.
+    # Setup default options in case user specifies only module name to get it
+    # to build.
     if (not defined $package_opts{$module})
     {
         $package_opts{$module} = default_module_options($module);
-    }
-    elsif ($module ne 'global')
-    {
-        # Well it looks like we have a duplicate section.
-        warning " y[*] Duplicate section detected for module y[b[$module].";
-        warning " y[*] Options will be used from the last entry where they were set.";
     }
 
     # Read in each option
@@ -3171,10 +3170,6 @@ sub set_option
     # read_options() where the module-specific options are set.
     if (not exists $package_opts{$module})
     {
-        warning " y[*] set_option() called for undefined module y[$module]";
-        warning " y[*] This is probably a y[bug in kdesvn-build], please report";
-        warning " y[*] At bugs.kde.org.";
-
         $package_opts{$module} = default_module_options($module);
     }
 
