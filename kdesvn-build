@@ -4147,12 +4147,16 @@ sub handle_updates
     # passed to svn.
     install_missing_ssl_signature();
 
-    # Calculate l10n module name.
+    # Calculate l10n module name. The logic is duplicated on purpose with
+    # filter_l10n_module_list because we have to handle the $l10n/scripts
+    # directory specially (just on update).
     my $l10n = 'l10n-kde4';
     $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
 
     foreach my $module (@update_list)
     {
+        $module = $l10n if $module eq 'l10n'; # Correct internal name.
+
         check_for_module_config ($module);
 
         if(get_option($module, 'no-svn'))
@@ -4162,7 +4166,6 @@ sub handle_updates
         }
 
         my @options = split(' ', get_option($module, 'checkout-only'));
-        $module = $l10n if $module eq 'l10n'; # Correct internal name.
 
         # Use kde-langauges option if this isn't set on command line.
         if ($module eq $l10n and not scalar @options)
