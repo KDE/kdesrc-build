@@ -3328,14 +3328,15 @@ sub current_module_revision
         return undef;
     };
 
+    my $rev;
     while (<SVN_INFO>)
     {
         next unless /^Revision:/;
 
         chomp;
-        my ($rev) = /^Revision:\s*(\d+)/;
-        close SVN_INFO;
-        return $rev;
+        ($rev) = /^Revision:\s*(\d+)/;
+
+        # Keep reading to avoid broken pipe warnings.
     }
 
     close SVN_INFO;
