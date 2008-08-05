@@ -4521,10 +4521,10 @@ sub safe_run_cmake
     # grep out empty fields
     @commands = grep {!/^$/} @commands;
 
-    if (get_option ($module, 'do-not-compile'))
-    {
-        warning " y[*] kdesvn-build does not support y[do-not-compile] with CMake.";
-    }
+    # Add -DBUILD_foo=OFF options for the directories in do-not-compile.
+    # This will only work if the CMakeLists.txt file uses macro_optional_add_subdirectory()
+    my @masked_directories = split(' ', get_option($module, 'do-not-compile'));
+    push @commands, "-DBUILD_$_=OFF" foreach @masked_directories;
 
     # Get the user's CXXFLAGS, use them if specified and not already given
     # on the command line.
