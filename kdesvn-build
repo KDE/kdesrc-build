@@ -3252,6 +3252,8 @@ sub get_persistent_option
 # The directory used is the same directory that contains the rc file in use.
 sub write_persistent_options
 {
+    return if pretending;
+
     my $dir = dirname($rcfile);
     my $fh = IO::File->new("> $dir/.kdesvn-build-data");
 
@@ -4412,6 +4414,22 @@ sub safe_apply_patches
     return (log_command('qt-copy', 'apply-patches', [ "./apply_patches" ]));
 }
 
+# Returns a hash digest of the given options in the list.  The return value is
+# base64-encoded at this time.
+#
+# Note: Don't be dumb and pass data that depends on execution state as the
+# returned hash is almost certainly not useful for whatever you're doing with
+# it.  (i.e. passing a reference to a list is not helpful, pass the list itself)
+#
+# Parameters: List of scalar values to hash.
+# Return value: base64-encoded hash value.
+sub get_list_digest
+{
+    use Digest::MD5 "md5_base64"; # Included standard with Perl 5.8
+
+    return md5_base64(@_);
+}
+
 # Subroutine to run and log the configure command.  First parameter is the
 # path to the configure script to run, the second parameter is a scalar
 # containing all of the configure flags to apply
@@ -4503,6 +4521,7 @@ EOF
     info "\tRunning g[configure]...";
     unshift @commands, $script;
 
+    set_persistent_option($module, 'last-configure-flags', get_list_digest(@commands));
     return log_command($module, "configure", \@commands);
 }
 
@@ -4556,6 +4575,7 @@ sub safe_run_cmake
     safe_unlink "$srcdir/CMakeCache.txt"   if -e "$srcdir/CMakeCache.txt";
     safe_unlink "$builddir/CMakeCache.txt" if -e "$builddir/CMakeCache.txt";
 
+    set_persistent_option($module, 'last-cmake-options', get_list_digest(@commands));
     return log_command($module, "cmake", \@commands);
 }
 
