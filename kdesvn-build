@@ -305,7 +305,6 @@ my $versionNum = '1.6.2';
 # if the option is actually set.
 my %package_opts = (
   'global' => {
-    "apidox"              => "",
     "apply-qt-patches"    => "",
     "async"               => 1,
     "binpath"             => $ENV{'PATH'},
@@ -2442,7 +2441,7 @@ sub safe_rmtree
 # Returns 0 on success, non-zero on failure (shell script style)
 sub safe_make (@)
 {
-    my ($module, $trynumber, $apidox, @args) = @_;
+    my ($module, $trynumber, @args) = @_;
     my $opts;
     my $logdir = get_log_dir($module);
     my $checkout_dirs = get_option($module, "checkout-only");
@@ -2452,20 +2451,7 @@ sub safe_make (@)
 
     if (module_uses_cmake($module) or get_option($module, 'use-unsermake'))
     {
-        # Unsermake can't build apidox.
-        # CMake will have a different way of doing so.
-
         my $tool = module_uses_cmake($module) ? 'cmake' : 'unsermake';
-
-        if ($apidox)
-        {
-            warning " y[*] This module (g[$module]) uses $tool, but $tool doesn't";
-            warning " y[*] support building the API documentation.  The most-often updated";
-            warning " y[*] documentation is at http://www.englishbreakfastnetwork.org/";
-            warning " y[*] r[Aborting APIDOX build]";
-
-            return 0;
-        }
 
         if (module_uses_cmake($module))
         {
@@ -2535,10 +2521,8 @@ sub safe_make (@)
     # Check if we're installing
     if($installing)
     {
-        debug "Prepending install options, apidox: $apidox.";
-
-        $description = $apidox ? "API Documentation" : clr "g[$module]";
-        unshift @args, $make, $apidox ? 'install-apidox' : 'install';
+        $description = clr "g[$module]";
+        unshift @args, $make, 'install';
 
         my @install_cmd = split(' ', get_option ($module, 'make-install-prefix'));
         if (@install_cmd)
@@ -2559,9 +2543,8 @@ sub safe_make (@)
     else
     {
         $description = "Building API Documentation";
-        $description = "Compiling, attempt $trynumber" unless $apidox;
+        $description = "Compiling, attempt $trynumber";
 
-        push @args, 'apidox' if $apidox;
         unshift @args, $make;
 
         info "\t$description...";
@@ -2573,16 +2556,11 @@ sub safe_make (@)
         # Some subdirectories shouldn't have make run within them.
         next unless is_subdir_buildable($module, $subdir);
 
-        my $logname = "build-$trynumber";
-        if ($installing)
-        {
-            $logname = $apidox ? 'install-apidox' : 'install';
-        }
+        my $logname = $installing ? 'install' : "build-$trynumber";
 
         if ($subdir ne '')
         {
             $logname = $installing ? "install-$subdir" : "build-$subdir-$trynumber";
-            next if $apidox; # Don't built apidox in a subdirectory
 
             info $installing ? "\tInstalling " : "\tBuilding ", "subdirectory g[$subdir]";
         }
@@ -5382,18 +5360,6 @@ sub prettify_seconds
     return $str;
 }
 
-# Subroutine to determine if a given module can run make apidox.  Returns
-# boolean true if make apidox can be run.
-sub make_apidox_supported
-{
-    my $module = shift;
-
-    # TODO: Implement APIDOX for CMake.
-    return 0 if module_uses_cmake($module);
-
-    return $module =~ /^(KDE\/)?(kde(base|games|graphics|libs|pim|velop)|koffice)$/;
-}
-
 # Subroutine to build a given module.  The module to build is the first
 # parameter.  The second and third paramaters is the ordinal number of the
 # module being built (1 == first module, 2 == second, etc.), and the total
@@ -5461,23 +5427,13 @@ sub build_module
         }
         else
         {
-            # Build succeeded, build docs if necessary
-            my $apidox_result = 0;
-            my $build_apidox = make_apidox_supported($module) && get_option($module, 'apidox');
-            if ($build_apidox)
-            {
-                $apidox_result = safe_make ($module, $trynumber, 1);
-                error "\tCouldn't build API Documentation" if $apidox_result;
-            }
-
             my $elapsed = prettify_seconds (time - $start_time);
             my $do_install = get_option($module, 'install-after-build');
 
             info "\tBuild succeeded after g[$elapsed].";
             if ($do_install)
             {
-                handle_install($module, 0);
-                handle_install($module, 1) if $build_apidox and $apidox_result == 0;
+                handle_install($module);
             }
             else
             {
@@ -5881,7 +5837,6 @@ sub qt_copy_needs_installed
 # 'make install' in the directory.
 sub handle_install
 {
-    my $apidox = pop; # Take parameter off end of list (@_).
     my @no_install_modules = qw/kde-common/;
     my @modules = filter_l10n_module_list(@_);
     my $result = 0;
@@ -5923,7 +5878,7 @@ sub handle_install
         # safe_make() evilly uses the "install" parameter to use installation
         # mode instead of compile mode.  This is so we can get the subdirectory
         # handling for free.
-        if (safe_make ($module, "install", $apidox))
+        if (safe_make ($module, "install"))
         {
             error "\tUnable to install r[$module]!";
             $result = 1;
@@ -6461,8 +6416,9 @@ eval
 
     if (get_option('global', 'kde-languages'))
     {
-        set_option('l10n-kde3', 'apidox', 0); # Just set some option to init defaults.
-        set_option('l10n-kde4', 'apidox', 0); # Just set some option to init defaults.
+        # Just set some optionsto init defaults.
+        set_option('l10n-kde3', 'install-after-build', 1);
+        set_option('l10n-kde4', 'install-after-build', 1);
     }
 
     dump_options() if debugging;
@@ -6560,8 +6516,8 @@ eval
     }
     else
     {
-        # Installation mode (no apidox)
-        $result = handle_install (get_install_list(), 0);
+        # Installation mode
+        $result = handle_install (get_install_list());
     }
 
     output_failed_module_lists();
