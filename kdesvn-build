@@ -3302,7 +3302,10 @@ sub read_persistent_options
     # a hash called persistent-options which we can then merge into our
     # package_opts.
 
-    my $persistent_options = eval "my $persistent_data";
+    my $persistent_options;
+
+    # eval must appear after declaration of $persistent_options
+    eval $persistent_data;
     if ($@)
     {
         # Failed.
