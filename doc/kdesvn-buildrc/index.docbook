@@ -43,7 +43,6 @@ authors using the address you can find <link linkend="authors">above</link>.
 </para>
 
 <itemizedlist>
-<listitem><para><link linkend="conf-apidox">apidox</link>, to build API Documentation.</para></listitem>
 <listitem><para><link linkend="conf-apply-qt-patches">apply-qt-patches</link>, to enhance qt-copy.</para></listitem>
 <listitem><para><link linkend="conf-async">async</link>, to update and build at the same time.</para></listitem>
 <listitem><para><link linkend="conf-binpath">binpath</link>, to set the <envar>PATH</envar> variable.</para></listitem>
@@ -101,17 +100,13 @@ as well.
 <row id="conf-apidox">
 <entry>apidox</entry>
 <entry>Overrides global</entry>
-<entry><para>
-Set this option to <replaceable>true</replaceable> in order to have &kdesvn-build; automatically
-build and install the API documentation for the module after the normal build/install
-process. This only works for modules where <command>make apidox</command> does something,
-including kdelibs, kdebase and koffice, among others.
-</para>
-<para>This option does not work for modules using &unsermake; support, due to
-deficiencies in the &unsermake; build system. This option does not work for
-&kde; 4 modules because the required build system support has been migrated to
-a different program which &kdesvn-build; has not been corrected to use yet.
-</para>
+<entry><para>This option was used to allow for building KDE module API documentation.
+It was removed in &kdesvn-build; 1.6.3 due to it not being supported in KDE 4.  Online
+API documentation is available from <ulink url="http://api.kde.org/">kde.org</ulink>.
+In addition it is possible to build KDE 4's API documentation using a script included in
+the kdesdk module (/scripts directory).  See <ulink url="http://techbase.kde.org/Development/Tools/apidox">KDE
+TechBase</ulink> for more details.  It is still possible to manually build API documentation
+for older modules of course.</para>
 </entry>
 </row>
 
@@ -220,7 +215,7 @@ for all &kde; 4 modules, since they use &cmake; to build.</para>
 <para>Since these options are passed directly to the &cmake; command line, they
 should be given as they would be typed into &cmake;. For example:</para>
 
-<screen>  cmake-options -DRPATH_STYLE=default
+<screen>  cmake-options -DKDE4_BUILD_TESTS=ON
 </screen>
 
 <para>Since this is a hassle, &kdesvn-build; takes pains to ensure that as long
@@ -293,18 +288,18 @@ disable this check by setting <option>disable-agent-check</option> to <replaceab
 <row id="conf-do-not-compile">
 <entry>do-not-compile</entry>
 <entry>Overrides global</entry>
-<entry><para>Use this option to set the <envar>DO_NOT_COMPILE</envar> environment variable prior to
-running the configure script. According to the <ulink
-url="http://developer.kde.org/documentation/other/developer-faq.html">&kde;
-Developer FAQ</ulink>, this should cause any top-level directory you pass to not be
-built. The directories should be space-separated.</para>
+<entry><para>Use this option to select a specific set of directories to be built in a
+module (instead of all of them).  The directories to build should be space-separated.</para>
+
+<para>This feature is supported for both &kde; 3 and &kde; 4.  KDE 4 support was added in
+&kdesvn-build; 1.6.3.</para>
 
 <para>Note that the sources to the programs will still be downloaded. You can use
 the <link linkend="conf-checkout-only">checkout-only</link>
 directive to choose directories that you want to check out.</para>
 
-<important><para>This option does not yet work with modules built using
-&cmake;.</para></important>
+<para>For example, to hold &juk; and &kscd; in the kdemultimedia module from
+compiling, you would add "do-not-compile juk kscd" to your kdemultimedia settings.</para>
 </entry>
 </row>
 
