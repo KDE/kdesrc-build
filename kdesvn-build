@@ -2977,8 +2977,6 @@ EOM
 # srcdir != builddir.  If this function returns true kdesvn-build will use a
 # few hacks to simulate it, and will update e.g. configure paths appropriately
 # as well.
-#
-# Only run for non-CMake modules.
 sub module_needs_builddir_help
 {
     my $module = shift;
@@ -2986,6 +2984,9 @@ sub module_needs_builddir_help
 
     # l10n/lang needs help.
     return 1 if ($module =~ /^l10n-kde[34]\/?/);
+
+    # Other CMake-using modules are fine.
+    return 0 if module_uses_cmake($module);
 
     return list_has(@module_help_list, $module);
 }
@@ -5149,9 +5150,8 @@ sub setup_build_system
     }
 
     # Symlink source directory to build directory if module doesn't support
-    # srcdir != builddir.  If it's qt-copy only do so if it is Qt 3.
-    # Note that module_needs_builddir_help() already takes care of that test.
-    if (not $uses_cmake and module_needs_builddir_help($module))
+    # srcdir != builddir.
+    if (module_needs_builddir_help($module))
     {
         whisper "\tFaking builddir for g[$module]";
         if (not prepare_fake_builddir($module))
