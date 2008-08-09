@@ -2442,30 +2442,18 @@ sub safe_rmtree
 sub safe_make (@)
 {
     my ($module, $trynumber, @args) = @_;
-    my $opts;
     my $logdir = get_log_dir($module);
     my $checkout_dirs = get_option($module, "checkout-only");
     my @dirs = split(' ', $checkout_dirs);
     my $installing = $trynumber eq 'install';
+
     my $make = 'make';
+    my $opts = get_option($module, 'make-options');
 
-    if (module_uses_cmake($module) or get_option($module, 'use-unsermake'))
+    if (get_option($module, 'use-unsermake') and not module_uses_cmake($module))
     {
-        my $tool = module_uses_cmake($module) ? 'cmake' : 'unsermake';
-
-        if (module_uses_cmake($module))
-        {
-            $opts = get_option($module, 'make-options');
-        }
-        else
-        {
-            $make = get_option($module, 'unsermake-path');
-            $opts = get_option($module, 'unsermake-options');
-        }
-    }
-    else
-    {
-        $opts = get_option($module, 'make-options');
+        $make = get_option($module, 'unsermake-path');
+        $opts = get_option($module, 'unsermake-options');
     }
 
     # Convert the path to an absolute path since I've encountered a sudo that
@@ -2542,7 +2530,6 @@ sub safe_make (@)
     }
     else
     {
-        $description = "Building API Documentation";
         $description = "Compiling, attempt $trynumber";
 
         unshift @args, $make;
