@@ -294,6 +294,9 @@ use constant {
     IPC_ALL_SKIPPED    => 4, # Used to indicate a skipped update process (i.e. build anyways)
     IPC_ALL_FAILURE    => 5, # Used to indicate a major update failure (don't build)
     IPC_ALL_UPDATING   => 6, # Informational message, feel free to start the build.
+
+    # Used to indicate specifically that a source conflict has occurred.
+    IPC_MODULE_CONFLICT=> 7,
 };
 
 my $versionNum = '1.6.2';
@@ -1983,7 +1986,7 @@ sub update_module_path
 
     my $count = eval { run_svn($module, 'svn-up', \@args); };
 
-    if($@) # Update failed, try svn cleanup.
+    if($@ && $@ !~ /conflict exists/) # Update failed, try svn cleanup.
     {
         info "\tUpdate failed, trying a cleanup.";
         my $result = safe_system('svn', 'cleanup');
@@ -1992,7 +1995,7 @@ sub update_module_path
 
         info "\tCleanup complete.";
 
-        # Now try again.
+        # Now try again (allow exception to bubble up this time).
         $count = run_svn($module, 'svn-up-2', \@args);
     }
 
@@ -4145,12 +4148,25 @@ sub dont_build
 
     if ($ipc)
     {
-        $ipc->sendIPCMessage(IPC_MODULE_FAILURE, $module);
+        if (get_option($module, '#conflict-found'))
+        {
+            $ipc->sendIPCMessage(IPC_MODULE_CONFLICT, $module);
+        }
+        else
+        {
+            $ipc->sendIPCMessage(IPC_MODULE_FAILURE, $module);
+        }
     }
     else
     {
         # Weed out matches of the module name
         @build_list = grep (!/^$module$/, @build_list);
+
+        if (get_option($module, '#conflict-found'))
+        {
+            # Record now for posterity
+            set_persistent_option($module, "conflicts-present", 1);
+        }
     }
 
     push @{$fail_lists{'update'}}, $module;
@@ -4950,6 +4966,9 @@ sub run_svn
         warning "Source code conflict exists in r[$module], this module will not";
         warning "build until it is resolved.";
 
+        # If in async this only affects the update process, we need to IPC it
+        # to the build process.
+        set_option($module, '#conflict-found', 1);
         die "Source conflicts exist in $module";
     }
 
@@ -5347,6 +5366,76 @@ sub prettify_seconds
     return $str;
 }
 
+# Subroutine to check for subversion conflicts in a module.  Basically just
+# runs svn st and looks for "^C".
+#
+# First parameter is the module to check for conflicts on.
+# Returns boolean true if a conflict exists, false otherwise.
+sub module_has_conflict
+{
+    my $module = shift;
+    my $srcdir = get_fullpath($module, 'source');
+
+    info "\tChecking for source conflicts... ";
+
+    # svn up should set this option, so use it as a speedup.
+    return 0 unless get_persistent_option($module, 'conflicts-present');
+
+    my $pid = open SVN, "-|";
+    if (not defined $pid)
+    {
+        error "\tUnable to open check source conflict status: b[r[$!]";
+        return 0; # false allows the build to proceed anyways.
+    };
+
+    if (0 == $pid)
+    {
+        close STDERR; # No broken pipe warnings
+        exec (qw/svn --non-interactive st/, $srcdir) ||
+            die "Cannot execute 'svn' program: $!";
+        # Not reached
+    }
+
+    while (<SVN>)
+    {
+        if (/^C/)
+        {
+            error <<EOF;
+The $module module has source code conflicts present.  This can occur
+when you have made changes to the source code in the local copy
+at $srcdir
+that interfere with a change introduced in the source repository.
+EOF
+
+            error <<EOF if $module eq 'qt-copy';
+This module can experience this problem due to the apply_patches script
+sometimes.
+EOF
+
+            error <<EOF;
+To fix this, y[if you have made no source changes that you haven't committed],
+run y[svn revert -R $srcdir]
+to bring the source directory back to a pristine state and trying building the
+module again.
+
+NOTE: Again, if you have uncommitted source code changes, running this command
+will delete your changes in favor of the version in the source repository.
+EOF
+
+            kill "TERM", $pid; # Kill svn
+            waitpid ($pid, 0);
+            close SVN;
+            return 1;
+        }
+    }
+
+    # conflicts cleared apparently.
+    waitpid ($pid, 0);
+    close SVN;
+    set_persistent_option($module, 'conflicts-present', 0);
+    return 0;
+}
+
 # Subroutine to build a given module.  The module to build is the first
 # parameter.  The second and third paramaters is the ordinal number of the
 # module being built (1 == first module, 2 == second, etc.), and the total
@@ -5363,6 +5452,8 @@ sub build_module
     check_for_module_config($module);
 
     update_module_environment($module);
+
+    return 0 if (module_has_conflict($module));
 
     my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
@@ -5596,7 +5687,7 @@ EOF
                 $svn_status{$buffer} = 'success';
                 info "\tNo source update needed for g[$buffer]";
             }
-            elsif($ipcType == IPC_MODULE_FAILURE)
+            elsif($ipcType == IPC_MODULE_FAILURE or $ipcType == IPC_MODULE_CONFLICT)
             {
                 $svn_status{$buffer} = 'failed';
                 push @{$fail_lists{'update'}}, $buffer;
@@ -5609,6 +5700,11 @@ EOF
                 $fail_count = 0 unless defined $fail_count;
                 ++$fail_count;
                 set_persistent_option($buffer, 'failure-count', $fail_count);
+
+                if ($ipcType == IPC_MODULE_CONFLICT)
+                {
+                    set_persistent_option($buffer, 'conflicts-present', 1);
+                }
             }
         }
 
