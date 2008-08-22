@@ -5378,9 +5378,6 @@ sub module_has_conflict
 
     info "\tChecking for source conflicts... ";
 
-    # svn up should set this option, so use it as a speedup.
-    return 0 unless get_persistent_option($module, 'conflicts-present');
-
     my $pid = open SVN, "-|";
     if (not defined $pid)
     {
@@ -5432,7 +5429,6 @@ EOF
     # conflicts cleared apparently.
     waitpid ($pid, 0);
     close SVN;
-    set_persistent_option($module, 'conflicts-present', 0);
     return 0;
 }
 
@@ -5763,7 +5759,7 @@ EOF
         close STATUS_FILE;
     }
 
-    info "<<<  Build Done  >>>\n";
+    info "<<<  Build Done  >>>";
     info "\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>" if scalar @build_done > 0;
 
     if (not pretending)
