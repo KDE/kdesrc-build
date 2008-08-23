@@ -1680,7 +1680,7 @@ sub download_module_snapshot
     # use the j flag as it doesn't appear to be portable.
     my $result = safe_system('bunzip2', $filename);
     if($result) { # failure
-        error "Unable to decompress snapshot for r[$module]: $@";
+        error "Unable to decompress snapshot for r[$module]: $!";
 
         # Clean up the probably defective snapshot.
         safe_unlink($filename);
@@ -1693,7 +1693,7 @@ sub download_module_snapshot
 
     # Extract the file.
     $result = safe_system("tar", "xf", $filename);
-    my $savedError = $@; # Make sure safe_unlink doesn't overwrite.
+    my $savedError = $!; # Make sure safe_unlink doesn't overwrite.
 
     # Snapshot file is no longer necessary.
     safe_unlink($filename);
@@ -1840,7 +1840,7 @@ sub tarball_snapshot_revision
     if (not defined $conn)
     {
         error "Unable to connect to $tarballHost, snapshot check aborted.";
-        error "\tError message: r[$@]";
+        error "\tError message: r[$!]";
         return 0;
     }
 
