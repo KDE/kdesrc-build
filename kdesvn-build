@@ -2555,7 +2555,10 @@ sub safe_make (@)
 # This function returns the default branch for a given module.  Use this function whenever
 # you have to deal with checking whether the user is using the default branch.
 #
-# This function handles the use-stable-kde option correctly as well.  This
+# If the branch option is set globally then that value is used to come up with an
+# appropriate default (usually will be the same as the branch option but not always).
+#
+# This handles the use-stable-kde option correctly as well if branch is unset.  This
 # function may be called while parsing options for non-global modules, so it
 # can only call get_option() for 'global' entries.
 #
@@ -2564,45 +2567,49 @@ sub safe_make (@)
 sub default_module_branch
 {
     # Add the appropriate branch to this hash for stable modules.  Any module not listed
-    # here will default to 'trunk' when 'use-stable-kde' is set.
-    my %branched_modules = (
-        'kde-common'       => '3.5',
-        'kdeaccessibility' => '3.5',
-        'kdeadmin'         => '3.5',
-        'kdeartwork'       => '3.5',
-        'kdebase'          => '3.5',
-        'kdebindings'      => '3.5',
-        'kdeedu'           => '3.5',
-        'kdegames'         => '3.5',
-        'kdegraphics'      => '3.5',
-        'kdelibs'          => '3.5',
-        'kdemultimedia'    => '3.5',
-        'kdenetwork'       => '3.5',
-        'kdepim'           => '3.5',
-        'kdesdk'           => '3.5',
-        'kdetoys'          => '3.5',
-        'kdeutils'         => '3.5',
-        'kdevelop'         => '3.5',
-        'kdewebdev'        => '3.5',
-        'kdesupport'       => '3.5',
-        'koffice'          => '1.5', # Last 3.x release of KOffice suite.
-        'qt-copy'          => '3.3', # There is no Qt 3.5.x ;)
-        'arts'             => '1.5', # arts had a different versioning scheme.
+    # here will default to 3.5 when 'use-stable-kde' is set, global{'branch'} otherwise.
+    my %branched_modules_exceptions = (
+        '3.5' => {
+            'koffice' => '1.5', # Last 3.x release of KOffice suite.
+            'qt-copy' => '3.3', # There is no Qt 3.5.x ;)
+            'arts'    => '1.5', # arts had a different versioning scheme.
+        },
+        '4.0' => {
+            'qt-copy'    => '4.4',
+            'kdesupport' => 'trunk', # TODO: Change this once we have a better tag for releases.
+            'phonon'     => '4.2',   # Weird, I know.
+        },
+        '4.1' => {
+            'qt-copy'    => '4.4',
+            'kdesupport' => 'trunk', # TODO: Change this once we have a better tag for releases.
+            'phonon'     => '4.2',   # Weird, I know.
+        },
     );
 
-    my $module = shift;
+    # qr() compiles a regex for use in later matching.
+    my @unbranched_modules = ( qr(^extragear/), qr(^playground/), qr(^kdereview$) );
 
-    # Handle stable branch options.
-    if (get_option('global', 'use-stable-kde') and exists $branched_modules{$module})
+    my $module = shift;
+    my $branch = get_option('global', 'branch');
+    my $default = get_option('global', 'use-stable-kde') ? '3.5' : 'trunk';
+
+    # If the module doesn't normally get branched there's not much we can do, so we'll just
+    # return the default. (We search against regexps instead of module names here)
+    if (scalar grep { $module =~ $_ } @unbranched_modules)
     {
-        return $branched_modules{$module};
+        return $default;
     }
 
-    # phonon has no trunk module, it is developed in kdesupport
-    return '4.2' if $module eq 'phonon';
+    # Prefer branch settings, fallback to default.
+    $branch = $branch ? $branch : $default;
 
-    # KDE 4 default options starting here.
-    return 'trunk';
+    # Some modules have a different branch name for a given KDE version, handle that.
+    if (exists $branched_modules_exceptions{$branch}->{$module})
+    {
+        return $branched_modules_exceptions{$branch}->{$module};
+    }
+
+    return $branch;
 }
 
 # Given a module name, this subroutine returns a hash with the default module
