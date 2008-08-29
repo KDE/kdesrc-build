@@ -1178,6 +1178,11 @@ sub get_log_dir
         unlink("$logbase/latest") if -l "$logbase/latest";
         symlink("$LOG_DATE-$BUILD_ID", "$logbase/latest");
     }
+    elsif(not -e "$logbase/latest")
+    {
+        # Create symlink initially if we've never done it before.
+        symlink("$LOG_DATE-$BUILD_ID", "$logbase/latest");
+    }
 
     return $logpath;
 }
