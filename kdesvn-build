@@ -1169,19 +1169,59 @@ sub get_log_dir
         return undef;
     }
 
-    # Add symlink to the directory if it doesn't already point to the right
-    # location.  This operation should be atomic in async mode since the
-    # update thread should create the log dir before it is needed by the build
-    # thread (which will not have to unlink/symlink).
-    if(-l "$logbase/latest" and readlink("$logbase/latest") ne "$LOG_DATE-$BUILD_ID")
+    # Don't mess with Texas^H^H^H^H^Hsymlinks for 'global'
+    return $logpath if $module eq 'global';
+
+    # Add a symlink to the latest run for this module.  Previous kdesvn-build
+    # releases would use /latest as a symlink, but this made it hard to find
+    # the last run on e.g.  kdebindings if you built kdebase alone last time.
+    # So now latest is a directory that holds module symlinks.  We do need to
+    # be careful of modules that have multiple directory names though (like
+    # extragear/foo).
+
+    # This operation should be atomic in async mode since the update thread
+    # should create the log dir before it is needed by the build thread (which
+    # will not have to unlink/symlink).
+    if (-l "$logbase/latest")
     {
-        unlink("$logbase/latest") if -l "$logbase/latest";
-        symlink("$LOG_DATE-$BUILD_ID", "$logbase/latest");
+        # Remove old-style symlink
+        unlink("$logbase/latest");
     }
-    elsif(not -e "$logbase/latest")
+
+    if (not -e "$logbase/latest")
+    {
+        mkdir("$logbase/latest");
+    }
+
+    # Handle stuff like playground/utils or KDE/kdelibs
+    my ($moduleName, $modulePath) = fileparse($module);
+
+    # Setup directory path we need to create.
+    my $latestPath = "$logbase/latest";
+
+    # If we have a path separator we need to adjust and create dirs and stuff
+    if ($module =~ /\//)
+    {
+        $latestPath .= "/$modulePath";
+        super_mkdir($latestPath);
+    }
+    else
+    {
+        $moduleName = $module; # This just makes later stuff easier
+    }
+
+    my $symlinkTarget = "$logbase/$LOG_DATE-$BUILD_ID/$module";
+    my $symlink = "$latestPath/$moduleName";
+
+    if (-l $symlink and readlink($symlink) ne $symlinkTarget)
+    {
+        unlink($symlink);
+        symlink($symlinkTarget, $symlink);
+    }
+    elsif(not -e $symlink)
     {
         # Create symlink initially if we've never done it before.
-        symlink("$LOG_DATE-$BUILD_ID", "$logbase/latest");
+        symlink($symlinkTarget, $symlink);
     }
 
     return $logpath;
