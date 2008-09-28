@@ -4570,9 +4570,9 @@ sub safe_run_cmake
     # Get the user's CXXFLAGS, use them if specified and not already given
     # on the command line.
     my $cxxflags = get_option ($module, 'cxxflags');
-    if ($cxxflags and not grep { /^-DCMAKE_CXX_FLAGS=/ } @commands)
+    if ($cxxflags and not grep { /^-DCMAKE_CXX_FLAGS(:\w+)?=/ } @commands)
     {
-        push @commands, "-DCMAKE_CXX_FLAGS=$cxxflags";
+        push @commands, "-DCMAKE_CXX_FLAGS:STRING=$cxxflags";
     }
 
     my $prefix = get_option ($module, 'prefix');
