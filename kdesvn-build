@@ -5459,14 +5459,14 @@ EOF
             kill "TERM", $pid; # Kill svn
             waitpid ($pid, 0);
             close SVN;
-            return 1;
+            return 0;
         }
     }
 
     # conflicts cleared apparently.
     waitpid ($pid, 0);
     close SVN;
-    return 0;
+    return 1;
 }
 
 # Subroutine to build a given module.  The module to build is the first
@@ -5486,7 +5486,20 @@ sub build_module
 
     update_module_environment($module);
 
-    return 0 if (module_has_conflict($module));
+    my $log_filter = sub {
+        return unless defined $_;
+        print $_ if /^C/;
+        print $_ if /Checking for/;
+        return;
+    };
+
+    # Use log_command as the check so that an error file gets created.
+    if (0 != log_command($module, 'conflict-check',
+                         ['kdesvn-build', 'module_has_conflict', $module], $log_filter)
+       )
+    {
+        return 0;
+    }
 
     my $start_time = time;
     while (not defined $package_opts{$module}->{'#was-rebuilt'})
