@@ -829,6 +829,32 @@ sub get_output_file
     return $fname;
 }
 
+# This subroutine acts like split(' ', $_) except that double-quoted strings are not split in
+# the process.  Patch provided by Alain Boyer (alainboyer@gmail.com) based on a posting at
+# http://www.perlmonks.org/?node_id=212174.  Converted to an extended RE for readability by
+# mpyne.
+#
+# First parameter: String to split on whitespace.
+# Return value: A list of the individual words and quoted values in the string.
+sub split_quoted_on_whitespace($)
+{
+    my $str = shift;
+    my @words = $str =~
+      /"?      # Match 0-1 quotes
+       (       # Open grouping expression
+        (?<!") #   Match everything not following " (i.e. there was no quote)
+        \S+    #   Followed by 1 or more non-whitespace (this breaks on whitespace)
+        (?<!") #   Match everything not following " (don't read over a quote on accident)
+        |      #  or
+        [^"]+  #   All non-quote characters (After reading a quote)
+       )       # End grouping expression
+       "?      # Followed by 0-1 quotes
+       \s*     # Eat up whitespace
+      /xg; # g modifier repeats the match as often as possible to get all matches.
+
+    return @words;
+}
+
 # Subroutine that returns the path of a file used to output the log messages
 #
 # All files will be stored in the log directory.
@@ -4560,10 +4586,10 @@ sub safe_run_cmake
 {
     my $module = shift;
     my $srcdir = get_fullpath($module, 'source');
-    my @commands = split (/\s+/, get_option($module, 'cmake-options'));
+    my @commands = split_quoted_on_whitespace (get_option($module, 'cmake-options'));
 
     # grep out empty fields
-    @commands = grep {!/^$/} @commands;
+    @commands = grep {!/^\s*$/} @commands;
 
     # Add -DBUILD_foo=OFF options for the directories in do-not-compile.
     # This will only work if the CMakeLists.txt file uses macro_optional_add_subdirectory()
