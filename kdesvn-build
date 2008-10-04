@@ -1634,7 +1634,10 @@ sub install_module_snapshot
     my $module = shift;
 
     # Don't bother with snapshot if the user has their own URL picked out.
-    return 0 if (get_option($module, 'override-url'));
+    if (get_option($module, 'override-url') or get_option($module, 'module-base-path'))
+    {
+        return 0;
+    }
 
     my $moduleName = moduleBaseName($module); # KDE/kdelibs -> kdelibs
 
