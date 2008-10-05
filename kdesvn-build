@@ -1672,6 +1672,9 @@ sub install_module_snapshot
     # module is selected (usually trunk, perhaps 3.5)
     my $branch = get_option($module, 'tag');
     $branch = get_option($module, 'branch') if not $branch;
+
+    # FIXME: This is broken for kdesupport (since it is default tags) but should magically
+    # work since there will be no snapshot available.
     $branch = default_module_branch($module) if not $branch;
 
     my ($filename, $url, $dirName);
@@ -2650,12 +2653,12 @@ sub default_module_branch
         },
         '4.0' => {
             'qt-copy'    => '4.4',
-            'kdesupport' => 'trunk', # TODO: Change this once we have a better tag for releases.
+            'kdesupport' => 'tags/kdesupport-for-4.1', # See below.
             'phonon'     => '4.2',   # Weird, I know.
         },
         '4.1' => {
             'qt-copy'    => '4.4',
-            'kdesupport' => 'trunk', # TODO: Change this once we have a better tag for releases.
+            'kdesupport' => 'tags/kdesupport-for-4.1', # tags/ is special here (i.e. no branch)
             'phonon'     => '4.2',   # Weird, I know.
         },
     );
@@ -2698,10 +2701,24 @@ sub default_module_branch
 sub default_module_options
 {
     my $module = shift;
+    my $branch = default_module_branch($module);
+
+    # Hack to support default "tags" instead of default branches for kdesupport.
+
+    my @opts;
+    if ($branch =~ /^tags\//)
+    {
+        $branch =~ s/^tags\///; # Strip tags/
+        @opts = ('tag', $branch);
+    }
+    else
+    {
+        @opts = ('branch', $branch);
+    }
 
     return {
         'set-env' => { },
-        'branch'  => default_module_branch($module),
+        @opts,
     };
 }
 
