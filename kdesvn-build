@@ -4535,45 +4535,59 @@ EOF
         $script = get_fullpath($module, 'build') . "/configure";
     }
 
-    # Create specialized configure script for qt-copy.
-    if ($module eq 'qt-copy')
-    {
-        my $qtdir = get_fullpath('qt-copy', 'source');
+    # We use a special script for qt-copy to auto-accept the license, it is created
+    # just before running it (see below).
+    my $qtdir = get_fullpath('qt-copy', 'source');
+    my $builddir = get_fullpath($module, 'build');
 
-        debug "Creating g[$qtdir/configure.new] from g[$script]";
-
-        if(not pretending)
-        {
-            # Copy the configure script to accept the GPL license.
-
-            # $script should point to $srcdir/qt-copy/configure for both Qt
-            # 3 and 4.
-
-            open CONFIG, "<$script";
-            open NEWCONFIG, ">$qtdir/configure.new";
-
-            while(<CONFIG>)
-            {
-                s/read acceptance/acceptance=yes/;
-                print NEWCONFIG $_;
-            }
-
-            close NEWCONFIG;
-            close CONFIG;
-
-            chmod 0755, "$qtdir/configure.new";
-        }
-
-        $script = "$qtdir/configure.new";
-
-        note "\tb[r[GPL license selected for Qt].  See $srcdir/LICENSE.GPL";
-    }
-
-    info "\tRunning g[configure]...";
+    $script = "$qtdir/configure.new" if $module eq 'qt-copy';
     unshift @commands, $script;
 
-    set_persistent_option($module, 'last-configure-flags', get_list_digest(@commands));
-    return log_command($module, "configure", \@commands);
+    my $old_flags = get_persistent_option($module, 'last-configure-flags');
+
+    if((get_list_digest(@commands) ne $old_flags) or
+       (get_option($module, 'reconfigure')) or
+       (not -e "$builddir/Makefile")
+      )
+    {
+        # Create specialized configure script for qt-copy.
+        if ($module eq 'qt-copy')
+        {
+            debug "Creating g[$qtdir/configure.new] from g[$script]";
+
+            if(not pretending)
+            {
+                # Copy the configure script to accept the GPL license.
+
+                # $script should point to $srcdir/qt-copy/configure for both Qt
+                # 3 and 4.
+
+                open CONFIG, "<$script";
+                open NEWCONFIG, ">$qtdir/configure.new";
+
+                while(<CONFIG>)
+                {
+                    s/read acceptance/acceptance=yes/;
+                    print NEWCONFIG $_;
+                }
+
+                close NEWCONFIG;
+                close CONFIG;
+
+                chmod 0755, "$qtdir/configure.new";
+            }
+
+            note "\tb[r[GPL license selected for Qt].  See $srcdir/LICENSE.GPL";
+        }
+
+        info "\tRunning g[configure]...";
+
+        set_persistent_option($module, 'last-configure-flags', get_list_digest(@commands));
+        return log_command($module, "configure", \@commands);
+    }
+
+    # Skip execution of configure.
+    return 0;
 }
 
 # Subroutine to run CMake to create the build directory for a module.
@@ -4618,16 +4632,28 @@ sub safe_run_cmake
         $srcdir = ".";
     }
 
-    info "\tRunning g[cmake]...";
     unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
 
-    # Remove any stray CMakeCache.txt
+    my $old_options = get_persistent_option($module, 'last-cmake-options');
     my $builddir = get_fullpath($module, 'build');
-    safe_unlink "$srcdir/CMakeCache.txt"   if -e "$srcdir/CMakeCache.txt";
-    safe_unlink "$builddir/CMakeCache.txt" if -e "$builddir/CMakeCache.txt";
 
-    set_persistent_option($module, 'last-cmake-options', get_list_digest(@commands));
-    return log_command($module, "cmake", \@commands);
+    if (($old_options ne get_list_digest(@commands)) or
+        get_option($module, 'reconfigure') or
+        not -e "$builddir/CMakeCache.txt" # File should exist only on successful cmake run
+       )
+    {
+        info "\tRunning g[cmake]...";
+
+        # Remove any stray CMakeCache.txt
+        safe_unlink "$srcdir/CMakeCache.txt"   if -e "$srcdir/CMakeCache.txt";
+        safe_unlink "$builddir/CMakeCache.txt" if -e "$builddir/CMakeCache.txt";
+
+        set_persistent_option($module, 'last-cmake-options', get_list_digest(@commands));
+        return log_command($module, "cmake", \@commands);
+    }
+
+    # Skip cmake run
+    return 0;
 }
 
 # Subroutine to try and see if we've already tried to update kde-common
@@ -5161,7 +5187,6 @@ sub setup_build_system
     my $srcdir = get_fullpath($module, 'source');
     my $builddir = get_fullpath($module, 'build');
     my $uses_cmake = module_uses_cmake($module);
-    my $do_configure = get_option ($module, 'reconfigure');
 
     # We don't need to do this with CMake.  Parentheses required because otherwise
     # Perl parses as ($a = get_option()) and not foo.  This could also be fixed
@@ -5241,7 +5266,7 @@ sub setup_build_system
             return 0;
         }
 
-        $do_configure = 1;
+        set_option($module, '#reconfigure', 1); # Force reconfigure of the module
 
         if ($module eq "qt-copy" and get_option($module, 'apply-qt-patches'))
         {
@@ -5253,43 +5278,36 @@ sub setup_build_system
         return 1 if get_option ($module, 'build-system-only');
     }
 
-    # File which exists after configure has been run.
-    my $conf_key_file = "$builddir/Makefile";
-
-    # This depends on CMake not writing out CMakeCache.txt if it fails.
-    $conf_key_file = "$builddir/CMakeCache.txt" if $uses_cmake;
-
-    if ($do_configure or not -e $conf_key_file)
+    if (not -e "$builddir" and not super_mkdir("$builddir"))
     {
-        if (not -e "$builddir" and not super_mkdir("$builddir"))
+        error "\tUnable to create build directory for r[$module]!!";
+        return 0;
+    }
+
+    # Now we're in the checkout directory
+    # So, switch to the build dir.
+    # builddir is automatically set to the right value for qt-copy
+    p_chdir ($builddir);
+
+    # Appropriate configure function will skip automatically if configuration is
+    # unnecessary.  (re)configuration is always done if the 'reconfigure' option is true.
+    if (not $uses_cmake)
+    {
+        # configure the module (sh script return value semantics)
+        if (safe_configure ($module))
         {
-            error "\tUnable to create build directory for r[$module]!!";
+            error "\tUnable to configure r[$module]!";
             return 0;
         }
-
-        # Now we're in the checkout directory
-        # So, switch to the build dir.
-        # builddir is automatically set to the right value for qt-copy
-        p_chdir ($builddir);
-
-        if (not $uses_cmake)
+    }
+    else
+    {
+        # Use cmake to create the build directory (sh script return value
+        # semantics).
+        if (safe_run_cmake ($module))
         {
-            # configure the module (sh script return value semantics)
-            if (safe_configure ($module))
-            {
-                error "\tUnable to configure r[$module]!";
-                return 0;
-            }
-        }
-        else
-        {
-            # Use cmake to create the build directory (sh script return value
-            # semantics).
-            if (safe_run_cmake ($module))
-            {
-                error "\tUnable to configure r[$module] with CMake!";
-                return 0;
-            }
+            error "\tUnable to configure r[$module] with CMake!";
+            return 0;
         }
     }
 
