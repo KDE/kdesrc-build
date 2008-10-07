@@ -1335,7 +1335,7 @@ sub get_option
     return $$ref{$option} if defined $$ref{$option};
 
     # Some global options would probably make no sense applied to qt-copy.
-    return 0 if $module eq 'qt-copy' and list_has(@qtCopyOverrides, $option);
+    return '' if $module eq 'qt-copy' and list_has(@qtCopyOverrides, $option);
 
     return ${$global_opts}{$option};
 }
@@ -4560,7 +4560,7 @@ EOF
     $script = "$qtdir/configure.new" if $module eq 'qt-copy';
     unshift @commands, $script;
 
-    my $old_flags = get_persistent_option($module, 'last-configure-flags');
+    my $old_flags = get_persistent_option($module, 'last-configure-flags') || '';
 
     if((get_list_digest(@commands) ne $old_flags) or
        (get_option($module, 'reconfigure')) or
@@ -4579,7 +4579,7 @@ EOF
                 # $script should point to $srcdir/qt-copy/configure for both Qt
                 # 3 and 4.
 
-                open CONFIG, "<$script";
+                open CONFIG, "<$qtdir/configure";
                 open NEWCONFIG, ">$qtdir/configure.new";
 
                 while(<CONFIG>)
@@ -4651,7 +4651,7 @@ sub safe_run_cmake
 
     unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
 
-    my $old_options = get_persistent_option($module, 'last-cmake-options');
+    my $old_options = get_persistent_option($module, 'last-cmake-options') || '';
     my $builddir = get_fullpath($module, 'build');
 
     if (($old_options ne get_list_digest(@commands)) or
