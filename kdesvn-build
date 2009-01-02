@@ -3927,13 +3927,20 @@ sub get_lock
         };
         return 1; # Hope the sysopen worked.
     }
+    elsif ($errorCode != 0) # Some other error occurred.
+    {
+        warning " r[[*]: Error $! while creating lock file (is home directory available?)";
+        warning " r[[*]: Continuing the script for now...";
+
+        # Even if we fail it's generally better to allow the script to proceed
+        # without being a jerk about things, especially as more non-CLI-skilled
+        # users start using kdesvn-build to build KDE.
+        return 1;
+    }
 
     print LOCKFILE "$$\n";
     close LOCKFILE;
 
-    # Even if we fail it's generally better to allow the script to proceed
-    # without being a jerk about things, especially as more non-CLI-skilled
-    # users start using kdesvn-build to build KDE.
     return 1;
 }
 
