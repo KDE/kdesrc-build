@@ -3858,6 +3858,7 @@ sub install_signal_handler
 sub get_lock
 {
     my $lockfile = "$ENV{HOME}/.kdesvn-lock";
+    $! = 0; # Force reset to non-error status
     sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
     my $errorCode = $!; # Save for later testing.
 
@@ -3929,8 +3930,8 @@ sub get_lock
     }
     elsif ($errorCode != 0) # Some other error occurred.
     {
-        warning " r[[*]: Error $! while creating lock file (is home directory available?)";
-        warning " r[[*]: Continuing the script for now...";
+        warning " r[*]: Error $errorCode while creating lock file (is home directory available?)";
+        warning " r[*]: Continuing the script for now...";
 
         # Even if we fail it's generally better to allow the script to proceed
         # without being a jerk about things, especially as more non-CLI-skilled
