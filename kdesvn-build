@@ -3928,6 +3928,12 @@ sub get_lock
         };
         return 1; # Hope the sysopen worked.
     }
+    elsif ($errorCode == ENOTTY)
+    {
+        # Stupid bugs... normally sysopen will return ENOTTY, not sure who's to blame between
+        # glibc and Perl but I know that setting PERLIO=:stdio in the environment "fixes" things.
+        ; # pass
+    }
     elsif ($errorCode != 0) # Some other error occurred.
     {
         warning " r[*]: Error $errorCode while creating lock file (is home directory available?)";
