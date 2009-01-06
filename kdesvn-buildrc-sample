@@ -16,11 +16,15 @@ global
 # override-url option yourself.
 #
 # If you set this option to false, or leave it unset, kdesvn-build will build
-# /trunk, which corresponds right now with KDE 4.0.  If you set this option to
-# true, you should also comment out or remove the branch option which is set
-# in the "module kdelibs" section below.
+# /trunk.  If you set this option to true, you should also comment out or remove
+# the branch option which is set in the "module kdelibs" section below.
 #
 #	use-stable-kde false
+
+# By default (if the above is commented out), you are getting trunk.
+# If instead you want to check out another branch, like 4.2, use
+#
+#	module-base-path branches/KDE/4.2
 
 # binpath controls the value of the PATH environment variable during
 # compilation.  If you have unusual tools that need to be in the path to build
@@ -165,6 +169,10 @@ module qt-copy
 
 	apply-qt-patches true          # Works with Qt 3 and 4, recommended as well.
 #	make-options -j2
+
+#	To get the correct Qt for KDE-4.2, use something like this: (depending on your protocol for svn)
+#	override-url svn+ssh://svn.kde.org/home/kde/branches/qt/4.4
+
 end module
 
 # arts is the KDE sound library.  It is not expected to be used by the time
@@ -178,6 +186,8 @@ end module
 # kdesupport is also the bearer of automoc and all that is good and right with
 # CMake, install it before all KDE modules.
 module kdesupport
+     # To get the necessary kdesupport stuff for KDE-4.2, use:
+     # tag kdesupport-for-4.2
 end module
 
 # Phonon is the multimedia interface for KDE 4.  It is developed in kdesupport
@@ -210,7 +220,6 @@ end module
 # kdebase contains useful general-purpose programs, normally people would
 # expect a usable desktop to have these.
 module kdebase
-	#configure-flags --with-pam --with-shadow
 end module
 
 # kdemultimedia contains JuK, noatun, Kaboodle, and other KDE multimedia
@@ -222,14 +231,10 @@ end module
 module kdegames
 end module
 
-## Note: The following modules may not have been ported to KDE 4 yet, and may
-#  have changed significantly from their KDE 3 counterparts as well.  Because
-#  of this, they are commented out, uncomment it if you want to build it.
-
 # kdesdk is a useful module for software developers.  It is where kdesvn-build
 # is developed.
-#module kdesdk
-#end module
+module kdesdk
+end module
 
 # kdenetwork has Kopete and other useful applications for the Internet and
 # other networks.
