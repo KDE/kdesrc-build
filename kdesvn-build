@@ -284,20 +284,24 @@ use constant {
     ERROR   => 5,
 };
 
+{
+    # Separate package for namespacing.
+    package IPC;
 # IPC message types
-use constant {
-    IPC_MODULE_SUCCESS => 1, # Used for a successful svn checkout
-    IPC_MODULE_FAILURE => 2, # Used for a failed svn checkout
-    IPC_MODULE_SKIPPED => 3, # Used for a skipped svn checkout (i.e. build anyways)
+    use constant {
+        MODULE_SUCCESS => 1, # Used for a successful svn checkout
+        MODULE_FAILURE => 2, # Used for a failed svn checkout
+        MODULE_SKIPPED => 3, # Used for a skipped svn checkout (i.e. build anyways)
 
-    # One of these messages should be the first message placed on the queue.
-    IPC_ALL_SKIPPED    => 4, # Used to indicate a skipped update process (i.e. build anyways)
-    IPC_ALL_FAILURE    => 5, # Used to indicate a major update failure (don't build)
-    IPC_ALL_UPDATING   => 6, # Informational message, feel free to start the build.
+        # One of these messages should be the first message placed on the queue.
+        ALL_SKIPPED    => 4, # Used to indicate a skipped update process (i.e. build anyways)
+        ALL_FAILURE    => 5, # Used to indicate a major update failure (don't build)
+        ALL_UPDATING   => 6, # Informational message, feel free to start the build.
 
-    # Used to indicate specifically that a source conflict has occurred.
-    IPC_MODULE_CONFLICT=> 7,
-};
+        # Used to indicate specifically that a source conflict has occurred.
+        MODULE_CONFLICT=> 7,
+    };
+}
 
 my $versionNum = '1.7.1 (Tacoma Narrows)';
 
@@ -386,7 +390,7 @@ my %package_opts = (
         my $self = shift;
         my ($module, $msg) = @_;
 
-        $self->sendIPCMessage(main::IPC_MODULE_SUCCESS, "$module,$msg");
+        $self->sendIPCMessage(main::IPC::MODULE_SUCCESS, "$module,$msg");
     }
 
     # Sends an IPC message along with some IPC type information.
@@ -522,7 +526,7 @@ my %package_opts = (
         my $self = shift;
         my ($module, $msg) = @_;
 
-        $self->sendIPCMessage(main::IPC_MODULE_SUCCESS, "$module,$msg", 'toMon');
+        $self->sendIPCMessage(main::IPC::MODULE_SUCCESS, "$module,$msg", 'toMon');
     }
 
     # Closes the given list of filehandle ids.
@@ -4247,11 +4251,11 @@ sub dont_build
     {
         if (get_option($module, '#conflict-found'))
         {
-            $ipc->sendIPCMessage(IPC_MODULE_CONFLICT, $module);
+            $ipc->sendIPCMessage(IPC::MODULE_CONFLICT, $module);
         }
         else
         {
-            $ipc->sendIPCMessage(IPC_MODULE_FAILURE, $module);
+            $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $module);
         }
     }
     else
@@ -4353,19 +4357,19 @@ sub handle_updates
     # No reason to print out the text if we're not doing anything.
     if (scalar @update_list == 0)
     {
-        $ipc->sendIPCMessage(IPC_ALL_UPDATING, "update-list-empty");
+        $ipc->sendIPCMessage(IPC::ALL_UPDATING, "update-list-empty");
         return 0;
     }
 
     if (get_option ('global', 'no-svn'))
     {
-        $ipc->sendIPCMessage(IPC_ALL_SKIPPED, "no-svn");
+        $ipc->sendIPCMessage(IPC::ALL_SKIPPED, "no-svn");
         return 0;
     }
 
     if (not check_for_ssh_agent())
     {
-        $ipc->sendIPCMessage(IPC_ALL_FAILURE, "ssh-failure");
+        $ipc->sendIPCMessage(IPC::ALL_FAILURE, "ssh-failure");
         return 1;
     }
 
@@ -4381,7 +4385,7 @@ sub handle_updates
         if (not super_mkdir ($kdesvn))
         {
             error "Unable to make directory r[$kdesvn]!";
-            $ipc->sendIPCMessage(IPC_ALL_FAILURE, "no-source-dir");
+            $ipc->sendIPCMessage(IPC::ALL_FAILURE, "no-source-dir");
 
             return 1;
         }
@@ -4389,7 +4393,7 @@ sub handle_updates
 
     # Once at this point, any errors we get should be limited to a module,
     # which means we can tell the build thread to start.
-    $ipc->sendIPCMessage(IPC_ALL_UPDATING, "starting-updates");
+    $ipc->sendIPCMessage(IPC::ALL_UPDATING, "starting-updates");
 
     # Make sure KDE's SSL signature is present since --non-interactive is
     # passed to svn.
@@ -4409,7 +4413,7 @@ sub handle_updates
 
         if(get_option($module, 'no-svn'))
         {
-            $ipc->sendIPCMessage(IPC_MODULE_SKIPPED, $module);
+            $ipc->sendIPCMessage(IPC::MODULE_SKIPPED, $module);
             next;
         }
 
@@ -5735,17 +5739,17 @@ sub handle_build
         my $buffer = "";
         my $ipcType = $ipc->receiveIPCMessage(\$buffer);
 
-        if ($ipcType == IPC_ALL_FAILURE)
+        if ($ipcType == IPC::ALL_FAILURE)
         {
             error " b[r[*] Unable to perform the source update (y[$buffer]), therefore";
             error " b[r[*] unable to build.";
             return 1;
         }
-        elsif ($ipcType == IPC_ALL_SKIPPED)
+        elsif ($ipcType == IPC::ALL_SKIPPED)
         {
             $svn_status{$_} = 'skipped' foreach @update_list;
         }
-        elsif ($ipcType != IPC_ALL_UPDATING)
+        elsif ($ipcType != IPC::ALL_UPDATING)
         {
             error " b[r[***] IPC failure while expecting svn update status, wrong type: r[$ipcType]";
             return 1;
@@ -5799,19 +5803,19 @@ EOF
 
             whisper "\tReceived IPC status message for $buffer: $ipcType";
 
-            if($ipcType == IPC_MODULE_SUCCESS)
+            if($ipcType == IPC::MODULE_SUCCESS)
             {
                 my ($module, $msg) = split(/,/, $buffer);
                 $svn_status{$module} = 'success';
 
                 note "\tSource update complete for g[$module]: $msg";
             }
-            elsif($ipcType == IPC_MODULE_SKIPPED)
+            elsif($ipcType == IPC::MODULE_SKIPPED)
             {
                 $svn_status{$buffer} = 'success';
                 info "\tNo source update needed for g[$buffer]";
             }
-            elsif($ipcType == IPC_MODULE_FAILURE or $ipcType == IPC_MODULE_CONFLICT)
+            elsif($ipcType == IPC::MODULE_FAILURE or $ipcType == IPC::MODULE_CONFLICT)
             {
                 $svn_status{$buffer} = 'failed';
                 push @{$fail_lists{'update'}}, $buffer;
@@ -5825,7 +5829,7 @@ EOF
                 ++$fail_count;
                 set_persistent_option($buffer, 'failure-count', $fail_count);
 
-                if ($ipcType == IPC_MODULE_CONFLICT)
+                if ($ipcType == IPC::MODULE_CONFLICT)
                 {
                     set_persistent_option($buffer, 'conflicts-present', 1);
                 }
