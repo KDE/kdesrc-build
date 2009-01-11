@@ -303,7 +303,7 @@ use constant {
     };
 }
 
-my $versionNum = '1.7.1 (Tacoma Narrows)';
+my $versionNum = '1.8-pre1';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -1024,12 +1024,12 @@ sub handle_branch_tag_option
     # Remove KDE/ prefix for module name.
     $module = moduleBaseName($module);
 
-    # Phonon has a slightly different branching scheme which includes the backends, therefore
-    # they are up one directory from normal.
-    # i.e. /branches/phonon/4.2/{backends,phonon}
-    return "$svn_server/$branch/$branchname" if $module eq 'phonon';
+    # KDE modules have a different module naming scheme than the rest it seems.
+    return "$svn_server/$branch/$branchname/$module" if $branch =~ /\/KDE\/?$/;
 
-    return "$svn_server/$branch/$branchname/$module";
+    # Otherwise don't append the module name by default since it makes more
+    # sense to branch this way in many situations (i.e. kdesupport tags, phonon)
+    return "$svn_server/$branch/$branchname";
 }
 
 # Subroutine to return the appropriate SVN URL for a given module, based on
@@ -1072,8 +1072,7 @@ sub svn_module_url
     $module = moduleBaseName($module);
 
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
-    # but there are the important ones.  The hash is associated with the value
-    # 1 so that we can do a boolean test by looking up the module name.
+    # but these are the important ones.
     my @non_trunk_modules = qw(extragear kdesupport koffice icecream kde-common
         playground qt-copy valgrind KDE kdereview www l10n-kde3 l10n-kde4);
 
@@ -1082,8 +1081,8 @@ sub svn_module_url
 
     if (not $branch)
     {
-        $branch = 'trunk/KDE';
-        $branch = 'trunk' if list_has(@non_trunk_modules, $module_root);
+        $branch = "trunk/KDE/$module";
+        $branch = "trunk/$module" if list_has(@non_trunk_modules, $module_root);
     }
 
     $branch =~ s/^\/*//; # Eliminate / at beginning of string.
@@ -1092,7 +1091,9 @@ sub svn_module_url
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
 
-    return "$svn_server/$branch/$module";
+    # Note that the module name is no longer appended if module-base-path is used (i.e.
+    # $branch variable was set.  This is a change as of version 1.8.
+    return "$svn_server/$branch";
 }
 
 # Returns true if the Net::HTTP module is available.
@@ -2011,12 +2012,16 @@ sub checkout_module_path
         }
     }
 
+    my $svn_url = svn_module_url($module);
+    my $modulename = $pathinfo{'module'}; # i.e. kdelibs for KDE/kdelibs as $module
+
     push @args, ('svn', 'co', '--non-interactive');
     push @args, '-N' if scalar @path; # Tells svn to only update the base dir
-    push @args, svn_module_url($module);
-    push @args, $pathinfo{'module'};
+    push @args, $svn_url;
+    push @args, $modulename;
 
     note "Checking out g[$module]";
+
     my $count = run_svn($module, 'svn-co', \@args);
 
     p_chdir ($pathinfo{'module'}) if scalar @path;
@@ -5961,15 +5966,38 @@ sub finish
     exit $exitcode;
 }
 
-# Subroutine to determine the current repository URL for the current working
-# directory.
+# Subroutine to determine the current repository URL for the given module.
 sub get_repo_url
 {
-    my $output = `svn info | grep URL`;
+    my $module = shift;
+    my $srcDir = get_fullpath($module, 'source');
+    my $output = `svn info $srcDir | grep URL`;
     $output =~ s/URL\s*:\s*(.*)$/$1/;
     chomp $output;
 
     return $output;
+}
+
+# module-base-path handling changed with kdesvn-build 1.8.  This function
+# returns true for a given module if it looks like it is checked out with
+# module-base-path from an older version of kdesvn-build.
+sub module_base_path_changed
+{
+    my $module = shift;
+
+    if (get_option($module, 'module-base-path'))
+    {
+        # If the on disk URL ends in module name but module-base-path doesn't
+        # then this is probably the problem due to the version change.
+        my $modulename = moduleBaseName($module);
+        if (get_option($module, 'module-base-path') !~ /\/$modulename$/ &&
+            get_repo_url($module) =~ /\/$modulename$/)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 # Subroutine to determine whether or not the given module has the correct
@@ -5978,15 +6006,11 @@ sub get_repo_url
 # Return: Nothing.
 sub check_module_validity
 {
-    # This test reads the HD so don't bother during pretend.
-    return if pretending;
-
     my $module = shift;
     my $source_dir = get_fullpath($module, 'source');
     my $module_expected_url = svn_module_url($module);
 
-    p_chdir ($source_dir); # Required for get_repo_url
-    my $module_actual_url = get_repo_url();
+    my $module_actual_url = get_repo_url($module);
 
     eval { plugin_check_module_validity($module, $module_actual_url, $module_expected_url); };
 
@@ -6004,7 +6028,8 @@ sub check_module_validity
     if ($module_actual_url ne $module_expected_url)
     {
         # Check if the --svn-only flag was passed.
-        if (get_option('global', '#manual-build'))
+        if (get_option('global', '#manual-build') and not
+            module_base_path_changed($module))
         {
             note "g[$module] is checked out from a different location than expected.";
             note "Attempting to correct";
@@ -6030,6 +6055,29 @@ If the module is fine, please update your configuration file.
 If you use kdesvn-build with --svn-only it will try switching for you (might not work
 correctly).
 EOF
+        if (module_base_path_changed($module))
+        {
+            my $basePath = get_option($module, 'module-base-path');
+            warning <<EOF;
+ y[*] r[*] y[*] NOTE: This warning is probably due to a change in the handling of the
+ y[module-base-path] option in kdesvn-build 1.8.  You must now add the module
+ name to the end for some modules (this change was required because some KDE
+ modules no longer end in the module name).
+
+ For instance, if you previously had:
+ module $module
+   module-base-path $basePath
+ # ...
+ end module
+
+ you now want:
+
+ module $module
+   module-base-path ${basePath}g[b[/$module]
+ # ...
+ end module
+EOF
+        }
     }
 }
 
