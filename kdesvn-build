@@ -847,7 +847,8 @@ sub split_quoted_on_whitespace($)
 {
     my $str = shift;
     my @words = $str =~
-      /"?      # Match 0-1 quotes
+      /\s*     # Eat up whitespace
+       "?      # Match 0-1 quotes
        (       # Open grouping expression
         (?<!") #   Match everything not following " (i.e. there was no quote)
         \S+    #   Followed by 1 or more non-whitespace (this breaks on whitespace)
@@ -2210,7 +2211,7 @@ sub log_command
 
     if (pretending)
     {
-        pretend "\tWould have run g[", join (' ', @command);
+        pretend "\tWould have run g['", join ("' '", @command), "'";
         return 0;
     }
 
