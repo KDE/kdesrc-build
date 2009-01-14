@@ -1815,10 +1815,8 @@ sub download_module_snapshot
 
     # Switch svn host to proper host.
     my $svnHost = get_option($module, 'svn-server');
-    my $curSvnHost = `svn info | grep ^URL`;
-    $curSvnHost =~ s/^URL:\s*//;
+    my $curSvnHost = get_repo_url($module);
     $curSvnHost =~ s/\/home\/kde.*$/\/home\/kde/; # Remove stuff after /home/kde
-    chomp $curSvnHost;
 
     info "\tFinalizing Subversion information for g[$module]";
 
@@ -3443,7 +3441,7 @@ sub current_module_revision
     return get_svn_info($module, 'Revision');
 }
 
-# Subroutine to recursively deep copy (form a completely independent clone)
+# Subroutine to recursively deep copy (from a completely independent clone)
 # of the modules given for module A (first parameter) to module B (second
 # parameter).
 #
