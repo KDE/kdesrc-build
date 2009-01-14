@@ -270,6 +270,7 @@ use File::Spec;
 use Sys::Hostname;
 use IO::Handle;
 use IO::File;
+use IPC::Open3;
 use Errno qw(:POSIX);
 use Data::Dumper;
 use 5.008_000; # Require Perl 5.8.0
@@ -3384,6 +3385,53 @@ sub read_persistent_options
     }
 }
 
+# Returns a requested parameter from 'svn info' for the given module.
+#
+# First parameter is the module.
+# Second parameter is a string with the name of the parameter to retrieve (i.e. URL).
+#   Each line of output from svn info is searched for the requested string.
+# Returns the string value of the parameter or undef if an error occurred.
+sub get_svn_info
+{
+    my $module = shift;
+    my $param = shift;
+    my $srcdir = get_fullpath($module, 'source');
+    my $result; # Predeclare to outscope upcoming eval
+
+    # Search each line of output, ignore stderr.
+    # eval since IPC::Open3 uses exceptions.
+    eval
+    {
+        my $output;
+        my $pid = open3(0, $output, undef, 'svn', 'info', '--non-interactive', $srcdir);
+
+        # Just read all the input in so we can safely waitpid the process
+        my @lines = <$output>;
+        close $output;
+        waitpid $pid, 0;
+
+        foreach (@lines)
+        {
+            ($result) = m/^$param:\s*(.*)$/;
+
+            if ($result)
+            {
+                chomp $result;
+                last;
+            }
+        }
+    };
+
+    if($@)
+    {
+        error "Unable to run r[b[svn], is the Subversion program installed?";
+        error " -- Error was: r[$@]";
+        return undef;
+    }
+
+    return $result;
+}
+
 # Returns a string containing the current on-disk revision number of the
 # given Subversion repository, or undef if there was an error.
 #
@@ -3391,26 +3439,8 @@ sub read_persistent_options
 sub current_module_revision
 {
     my $module = shift;
-    my $srcdir = get_fullpath($module, 'source');
 
-    open SVN_INFO, "-|", "svn", "info", "--non-interactive", $srcdir or do {
-        warning "\tUnable to determine $module revision, is svn installed?";
-        return undef;
-    };
-
-    my $rev;
-    while (<SVN_INFO>)
-    {
-        next unless /^Revision:/;
-
-        chomp;
-        ($rev) = /^Revision:\s*(\d+)/;
-
-        # Keep reading to avoid broken pipe warnings.
-    }
-
-    close SVN_INFO;
-    return undef;
+    return get_svn_info($module, 'Revision');
 }
 
 # Subroutine to recursively deep copy (form a completely independent clone)
@@ -5974,12 +6004,7 @@ sub finish
 sub get_repo_url
 {
     my $module = shift;
-    my $srcDir = get_fullpath($module, 'source');
-    my $output = `svn info $srcDir | grep URL`;
-    $output =~ s/URL\s*:\s*(.*)$/$1/;
-    chomp $output;
-
-    return $output;
+    return get_svn_info($module, 'URL');
 }
 
 # module-base-path handling changed with kdesvn-build 1.8.  This function
