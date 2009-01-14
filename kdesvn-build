@@ -1669,6 +1669,8 @@ sub install_module_snapshot
 {
     my $module = shift;
 
+    whisper "Finding snapshot for g[$module]";
+
     # Don't bother with snapshot if the user has their own URL picked out.
     if (get_option($module, 'override-url') or get_option($module, 'module-base-path'))
     {
@@ -1693,9 +1695,18 @@ sub install_module_snapshot
     if ($branch eq 'trunk')
     {
         $filename = "$moduleName-svn.tar.bz2";
+        $filename =~ tr{/}{-}; # Substitute - for /
+        $dirName = $moduleName;
+
+        if ($filename =~ /^(playground|extragear)-/)
+        {
+            $filename = "kde$filename"; # Conform to snapshot naming convention
+            $dirName = "kde$moduleName";
+            $dirName =~ s{/}{-}; # Substitute here too.
+        }
+
         #$url = "ftp://ftp.kde.org/pub/kde/unstable/snapshots/$filename";
-        $url = "http://download.kde.org/download.php?url=unstable/snapshots/$moduleName-svn.tar.bz2";
-        $dirName = "$moduleName";
+        $url = "http://download.kde.org/download.php?url=unstable/snapshots/$filename";
 
         if (download_module_snapshot($module, $filename, $url, $dirName))
         {
@@ -1741,16 +1752,16 @@ sub install_module_snapshot
 sub download_module_snapshot
 {
     my ($module, $filename, $url, $dirName) = @_;
-    my $moduleName = moduleBaseName($module);
+    my %pathinfo = get_module_path_dir($module, 'source');
 
     # We are in either the source directory or $srcdir/KDE so moduleBaseName
     # is always the right directory name.
 
     if (pretending)
     {
-        pretend "Would have downloaded snapshot for g[$module], from";
+        pretend "Would have tried downloaded snapshot for g[$module], from";
         pretend "\tb[g[$url]";
-        return 1;
+        return 0; # Assume failure since pretending.
     }
 
     info "Downloading snapshot for g[$module]";
@@ -1797,13 +1808,13 @@ sub download_module_snapshot
     whisper "\tExtracted directory for g[$module]";
 
     # The extracted directory is possibly of a weird form, move it to the
-    # correct name (just $moduleName);
-    if($dirName ne $moduleName and not safe_rename($dirName, $moduleName)) {
+    # correct name (just $pathinfo{'module'});
+    if($dirName ne $pathinfo{'module'} and not safe_rename($dirName, $pathinfo{'module'})) {
         error "Unable to move directory for r[$module] into place: r[$!]";
 
         # Remove any created portions of the module tree.
         safe_rmtree($dirName);
-        safe_rmtree($moduleName);
+        safe_rmtree($pathinfo{'module'});
 
         return 0;
     }
@@ -1811,7 +1822,7 @@ sub download_module_snapshot
     whisper "\tg[$module] snapshot is in place.";
 
     # Module in place, now prepare it for checkout.
-    p_chdir($moduleName);
+    p_chdir($pathinfo{'module'});
 
     # Switch svn host to proper host.
     my $svnHost = get_option($module, 'svn-server');
@@ -1833,8 +1844,8 @@ sub download_module_snapshot
             error "\tr[$!]";
 
             # Remove any created portions of the module tree.
-            p_chdir("..");
-            safe_rmtree($moduleName);
+            p_chdir($pathinfo{'path'});
+            safe_rmtree($pathinfo{'module'});
 
             return 0;
         }
@@ -1855,8 +1866,8 @@ sub download_module_snapshot
         error "Unable to restore standard Subversion layout!";
 
         # Remove any created portions of the module tree.
-        p_chdir("..");
-        safe_rmtree($moduleName);
+        p_chdir($pathinfo{'path'});
+        safe_rmtree($pathinfo{'module'});
 
         return 0;
     }
@@ -1910,7 +1921,10 @@ sub tarball_snapshot_revision
 
     whisper "Checking if snapshot available for g[$module]";
 
-    return 0 unless has_Net_HTTP();
+    if(pretending or not has_Net_HTTP())
+    {
+        return 0;
+    }
 
     if (get_option($module, 'override-url'))
     {
@@ -2004,8 +2018,7 @@ sub checkout_module_path
 
     # First let's see if we have a snapshot checkout available.  If so, it
     # would probably be quicker to use it.
-    # TODO: Make this work when using the checkout-only option.
-    if (not pretending and not scalar @path and not get_option($module, 'disable-snapshot'))
+    if (not scalar @path and not get_option($module, 'disable-snapshot'))
     {
         if(install_module_snapshot($module))
         {
