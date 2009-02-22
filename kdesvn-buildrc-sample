@@ -7,41 +7,9 @@
 # overridden later.
 global
 
-# This option controls whether KDE 3.5 or KDE 4.0 is compiled.  If you set this
-# option to true, kdesvn-build will automatically select the correct branch of
-# a module needed to build KDE 3.5 in most cases.  Most modules will come from
-# the 3.5 branch, arts will come from 1.5, and qt-copy will come from 3.3.
-#
-# It is always possible to override the default by using the branch, tag, or
-# override-url option yourself.
-#
-# If you set this option to false, or leave it unset, kdesvn-build will build
-# /trunk.  If you set this option to true, you should also comment out or remove
-# the branch option which is set in the "module kdelibs" section below.
-#
-#	use-stable-kde false
-
-# By default (if the above is commented out), you are getting trunk.
-# If instead you want to check out another branch, like 4.2, use
-#
-#	module-base-path branches/KDE/4.2
-
-# binpath controls the value of the PATH environment variable during
-# compilation.  If you have unusual tools that need to be in the path to build
-# KDE, add them here.  KDE's and Qt's programs are automatically added.
-# If you leave this option blank, it will default to the PATH that kdesvn-build had
-# when it was started.
-#	binpath /bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
-#	binpath /usr/lib/ccache/bin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
-
 # This is the directory that your KDE sources are downloaded to.  This
 # directory also holds the build and log directories by default.
 #	source-dir ~/kdesvn
-
-# This directory is where everything gets built before it is installed.  By
-# default it is relative to the value for source-dir.  You can specify an
-# absolute path if you'd like (begin the path with a slash).
-#	build-dir build
 
 # This is the directory that KDE will end up installed at.  The default is
 # appropriate for a single-user installation of KDE, which requires no root
@@ -56,47 +24,28 @@ global
 # and that you should use separate test users or KDEHOME values to separate
 # the ksycoca databases. Only set prefix if you know what you're doing.
 
-# If you would like install KDE to the system (DO NOT INSTALL *over* a prior
-# installation!), then you'll probably need to use sudo to install everything.
-#
-# The -S parameter causes sudo to read from standard input (which is redirected
-# by kdesvn-build).  This means that if sudo has to ask for your password, it
-# will fail, you need to configure sudo to be able to run "make install" and
-# "unsermake install" without requesting a password.
-#
-# In addition, you can run kdesvn-build --no-install, and then
-# sudo kdesvn-build --install if you are unable to configure sudo to allow
-# make install with no password.
-#	 make-install-prefix sudo -S
-
 # This is the Qt installation to use to build KDE.  The default is qt-copy
-# from Subversion.  The ${build-dir} option uses whatever you set for
-# build-dir to automatically fill in the value.
-# For qt-copy users, this is also the directory to install qt-copy to.
-# KDE 4.0 may require qt-copy at times instead of a released Qt so it is
-# better to use qt-copy for /trunk users.
-	qtdir ~/qt4  # Default to installing Qt (Qt 4).
-#	qtdir ${build-dir}/build/qt-copy # Use built Qt (Qt 3).
+# from Subversion.  Qt will be installed to this directory, so it is
+# recommended to use something like ~/qt-4.
+# KDE /trunk requires a very recent Qt so qt-copy is the best route if you're
+# building /trunk.  If you are building an older branch you may use your
+# system installed Qt by setting qtdir to point to it (what qmake -v
+# reports with the /lib removed).
+	qtdir ~/qt4  # Default to installing Qt
 
-# You might want to use your system's built-in Qt already (4.4 or greater for
-# KDE 4, 3.3.x for KDE 3.5.)  If so, assign the qtdir option appropriately.
-#	qtdir /path/to/system/qt
+# By default (if the above is commented out), you are getting trunk.
+# If instead you want to check out another branch, like 4.2, use
+#	branch 4.2
+#
+# but also see the qt-copy and kdesupport modules below, which has special
+# requirements
 
 # This is the Subversion server to download the KDE sources from.  Developers:
 # Don't forget to add your username to the URL if necessary!
 #	svn-server svn://anonsvn.kde.org/home/kde
 
-# This controls the configure flags passed to every module (except qt-copy) by
-# default.  If you have module-specific configure flags, they will be placed
-# after these flags to allow the module setting to override the global setting.
-# This setting only applies to KDE 3 modules.
-	configure-flags --enable-debug
-
-# KDE 4 uses CMake.  The equivalent to configure-flags is cmake-options.  BUT
-# the same options will not work, CMake expects them in a different format.
-# You should probably not need to use cmake-options however. KDE4_BUILD_TESTS
-# is provided as an example.
-#
+# cmake-options controls the compilation options for building KDE 4 modules.
+# These options apply to all KDE modules unless otherwise specified.
 # NOTE: If you want the cxxflags option below to work (advanced users only)
 # then make sure to set the "-DCMAKE_BUILD_TYPE=none" here, or in the specific
 # module's cmake-options
@@ -105,14 +54,10 @@ global
 #	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
 	cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
-# These are the compilation flags to use by default when compiling KDE.
-# gcc supports a -march option in order to generate specific code for pentium4, athlon-xp,
-# etc.  See the gcc man page for more information.
-#
-# NOTE: For KDE 4 these flags are only applied if you set the CMAKE_BUILD_TYPE setting
-# to "none" (see the cmake-options setting)
-#
-#	cxxflags -pipe -march=i686 # For standard 32-bit systems.
+# These are the default options passed to the make command.  The default tries
+# to build with 2 parallel compiles.  If you are using distcc or have SMP, you
+# should experiment with setting this value higher for best performance.
+#	make-options -j2
 
 # KDE has one of the most extensive translation packages in the world.  They
 # are stored in the l10n module.  kdesvn-build can automatically try to build
@@ -124,23 +69,39 @@ global
 #	kde-languages fr        # French
 #	kde-languages en_GB cs  # British English and Czech
 
-# These are the default options passed to the make command.  The default tries
-# to build with 2 parallel compiles.  If you are using distcc or have SMP, you
-# should experiment with setting this value higher for best performance.
-#	make-options -j2
+# If you would like install KDE to the system (DO NOT INSTALL *over* a prior
+# installation!), then you'll probably need to use sudo to install everything.
+#
+# The -S parameter causes sudo to read from standard input (which is redirected
+# by kdesvn-build).  This means that if sudo has to ask for your password, it
+# will fail, you need to configure sudo to be able to run "make install" and
+# without requesting a password.
+#
+# In addition, you can run kdesvn-build --no-install, and then
+# sudo kdesvn-build --install if you are unable to configure sudo to allow
+# make install with no password.
+#	 make-install-prefix sudo -S
 
-# These are the default options passed to unsermake, which supports some
-# options not present with make.  The default tries to run 2 compile jobs
-# in parallel.  The -p option is used to display progress information.
-# unsermake can only be used with KDE 3.
-#	unsermake-options --compile-jobs=2 -p
+# binpath controls the value of the PATH environment variable during
+# compilation.  If you have unusual tools that need to be in the path to build
+# KDE, add them here.  KDE's and Qt's programs are automatically added.
+# If you leave this option blank, it will default to the PATH that kdesvn-build had
+# when it was started.
+#	binpath /bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
+#	binpath /usr/lib/ccache/bin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
 
-# unsermake is used by default for KDE 3 modules.  However, you may get tired
-# of kdesvn-build updating unsermake all the time.  In that case, uncomment the
-# following. NOTE: You are responsible for updating unsermake after that by
-# going to its directory and running 'svn up' when needed.  If you have not yet
-# downloaded unsermake let kdesvn-build update it before uncommenting.
-#	use-unsermake self
+# This directory is where everything gets built before it is installed.  By
+# default it is relative to the value for source-dir.  You can specify an
+# absolute path if you'd like (begin the path with a slash).
+#	build-dir build
+
+# These are the compilation flags to use by default when compiling KDE.
+# gcc supports a -march option in order to generate specific code for pentium4, athlon-xp,
+# etc.  See the gcc man page for more information.
+#
+# NOTE: For KDE 4 these flags are only applied if you set the CMAKE_BUILD_TYPE setting
+# to "none" (see the cmake-options setting)
+#	cxxflags -pipe -march=native # Don't use native with distributed build
 
 # You can use the set-env option to add values to the build environment.
 #	set-env LDFLAGS -Wl,-O1   # Optimize the linker, takes longer.
@@ -155,39 +116,36 @@ end global
 # optimizations added.  It is the easiest way to get Qt if you don't already
 # have it (and you don't want to use your distro's tools to install it.)
 module qt-copy
-#	Configure flags.  If you use Qt 3, then uncomment the lines
-#	below the Qt 3 option line (by removing the # at the beginning) and
-#	comment the Qt 4 lines which follow.
+# Configure flags.  If you compile phonon separately make sure to pass
+# -no-phonon.  Alternative if you use Qt's phonon, ensure kdesupport is
+# built without Phonon.
 	configure-flags -qt-gif -no-exceptions -fast -qdbus \
 	                -nomake examples -nomake demos \
 	                -no-phonon # Phonon built separately
 
-#	QT 3 OPTIONS
-#	configure-flags -system-zlib -qt-gif -system-libjpeg -system-libpng \
-#	                -no-exceptions -fast -thread -debug
-#	make-options -j2 sub-src sub-tools # Build faster, no examples built
-
-	apply-qt-patches true          # Works with Qt 3 and 4, recommended as well.
 #	make-options -j2
 
-#	To get the correct Qt for KDE-4.2, use something like this: (depending on your protocol for svn)
-#	override-url svn+ssh://svn.kde.org/home/kde/branches/qt/4.4
+# apply-qt-patches adds some recommended patches, normally bugfixes or
+# optimizations awaiting the next Qt release.
+	apply-qt-patches true # Works with Qt 3 and 4, recommended as well.
 
+# If you use the branch option up in the "global" section to set a
+# default KDE version you should manually choose a branch here for Qt.
+#	branch 4.4
 end module
-
-# arts is the KDE sound library.  It is not expected to be used by the time
-# KDE 4 is released.
-#module arts
-#end module
 
 # kdesupport contains taglib and QCA, and the Strigi library required for
 # kdelibs in KDE 4.  taglib is required for JuK, amarok, and the meta info
 # reader for music files in Konqueror.
 # kdesupport is also the bearer of automoc and all that is good and right with
-# CMake, install it before all KDE modules.
+# CMake, install it before all KDE modules but after Qt 4.
 module kdesupport
-     # To get the necessary kdesupport stuff for KDE-4.2, use:
-     # tag kdesupport-for-4.2
+# To get the necessary kdesupport stuff for KDE-4.2, use:
+#	tag kdesupport-for-4.2/kdesupport
+
+# Need to disable Phonon because a qt-copy comment said so?  Uncomment the
+# following:
+#	cmake-options -DBUILD_phonon=OFF
 end module
 
 # Phonon is the multimedia interface for KDE 4.  It is developed in kdesupport
@@ -196,29 +154,27 @@ end module
 # You can do phonon trunk if you'd like but it's included in kdesupport trunk
 # anyways.
 #module phonon
-#    branch 4.2
+#	branch 4.2
 #end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
 module kdelibs
-	# KDE 3 syntax:
-	# configure-flags --enable-sendfile --enable-mitshm
-
-	# KDE 4 uses CMake, if you need to pass options to the cmake command, use this
-	# option:
-	# cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
+# KDE 4 uses CMake, if you need to pass options to the cmake command, use this
+# option:
+#	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
 
 # If you're a programmer you may want to build the API docs.  There is a
 # separate script in kdesdk/scripts to do that for you however.
 end module
 
-# If you are not using KDE 4 then uncomment or remove this module.  It is required
-# before kdebase in KDE 4.
+# kdepimlibs contains required PIM (mail, instant messenger, etc.) basics
+# that are needed by some other KDE modules.  Should be built after kdelibs
 module kdepimlibs
 end module
 
 # kdebase contains useful general-purpose programs, normally people would
-# expect a usable desktop to have these.
+# expect a usable desktop to have these.  Includes required programs and
+# libraries in runtime/, and Konqueror, Dolphin, and Plasma.
 module kdebase
 end module
 
@@ -232,7 +188,8 @@ module kdegames
 end module
 
 # kdesdk is a useful module for software developers.  It is where kdesvn-build
-# is developed.
+# is developed, in addition to other handy scripts for KDE and general software
+# developers.  Programmers *need* this module for kcachegrind
 module kdesdk
 end module
 
@@ -241,32 +198,24 @@ end module
 module kdenetwork
 end module
 
-# kdeadmin has system administration tools for your computer.
-#module kdeadmin
-#    KDE3 configure flags:
-#    configure-flags --with-shadow --with-pam=yes
-#end module
-
-# kdebindings is useful for software developers, and for those who wish to run
-# some KDE programs that don't use C++.  The python bindings are not included
-# by default as they never build for me.  If you'd like to build all the
-# bindings, comment out the checkout-only option below.
-#
-# This module appears to be on its way to being ported to Qt 4, stay tuned.
-#module kdebindings
-#    checkout-only admin dcopc kalyptus smoke qtruby korundum kjsembed dcoppython
-
-#   kdebindings will probably need to use the following option to install successfully.
-#   You must configure the sudo program first to allow for passwordless operation.
-#   make-install-prefix sudo
-#end module
-
 # kdepim contains KMail, Kontact, KOrganizer, and other insanely useful
 # programs that help you keep track of things.
 module kdepim
-#    KDE3 configure flags:
-#    configure-flags --disable-exchange
 end module
+
+# kdeadmin has system administration tools for your computer.
+#module kdeadmin
+#end module
+
+# kdebindings is useful for software developers, and for those who wish to run
+# some KDE programs that don't use C++.
+#module kdebindings
+
+# kdebindings will probably need to use the following option to install
+# successfully due to necessary integration with the program interpreters.  You
+# must configure the sudo program first to allow for passwordless operation.
+#	make-install-prefix sudo -S
+#end module
 
 # kdeutils has miscellaneous programs which can be useful.  You probably won't
 # die if you remove this from the config file though.
@@ -296,7 +245,6 @@ end module
 # It is rather large, so you can cut download and build times by removing it
 # from this file.
 #module koffice
-#	branch 1.6 # The last released version for KDE 3.
 #end module
 
 ## A prerequisite for kdevelop other modules using the kdevelop platform, like
@@ -307,11 +255,7 @@ end module
 ## The KDevelop IDE, useful for developing all kinds of programs.  If you don't
 # plan on being a software developer you can save time by removing this from
 # your configuration.
-#
-# Note: KDevelop appears to have a port started towards KDE 4.  It may be
-# usable by now.
 #module kdevelop
-#	use-unsermake false
 #end module
 
 # Includes Quanta Plus and other web design tools.
@@ -338,12 +282,9 @@ end module
 
 # Includes various photo management applications.
 #module extragear/graphics
-#	checkout-only digikamimageplugins digikam gwenview kimdaba
 #end module
 
 # module extragear/network
-# 	# Options like checkout-only should work as before.
-# 	checkout-only konversation
 # end module
 
 # module playground/games
