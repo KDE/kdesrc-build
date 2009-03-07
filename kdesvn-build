@@ -6,7 +6,7 @@
 # Please also see the documentation that should be included with this program,
 # from the kdesdk/doc/scripts/kdesvn-build directory.
 #
-# Copyright © 2003 - 2008 Michael Pyne. <michael.pyne@kdemail.net>
+# Copyright © 2003 - 2009 Michael Pyne. <michael.pyne@kdemail.net>
 # Home page: http://kdesvn-build.kde.org/
 #
 # You may use, alter, and redistribute this software under the terms
@@ -5399,6 +5399,26 @@ sub setup_build_system
     return 1;
 }
 
+# Adds the given library paths to the path already given in an environment
+# variable.
+# First parameter is the name of the environment variable to modify
+# All remaining paramters are prepended to the current environment path, in
+#   the order given. (i.e. param1, param2, param3 -> param1:param2:param3:existing
+sub prepend_environment_path
+{
+    my $envName = shift;
+    my $curValue = '';
+    $curValue = ':' . $ENV{$envName} if exists $ENV{$envName};
+
+    my $envValue = join(':', @_) . $curValue;
+
+    $envValue =~ s/^:*//;
+    $envValue =~ s/:*$//; # Remove leading/trailing colons
+    $envValue =~ s/:+/:/; # Remove duplicate colons
+
+    setenv($envName, $envValue);
+}
+
 # Subroutine to setup the environment for a module.  First parameter is the name of
 # the module to set the environment for
 sub update_module_environment
@@ -5406,59 +5426,51 @@ sub update_module_environment
     my $module = shift;
     my $kdedir = get_option ($module, 'kdedir');
     my $qtdir = get_option ($module, 'qtdir');
-    my $path = join(':', "$qtdir/bin", "$kdedir/bin", get_option ($module, 'binpath'));
-    my $pc_path = "";
-    my $libpath = "";
+    my $prefix = get_option ($module, 'prefix');
+
+    $prefix = $kdedir unless $prefix;
 
     # Add some standard directories for pkg-config support.  Include env settings.
-    $pc_path = $ENV{'PKG_CONFIG_PATH'} if exists $ENV{'PKG_CONFIG_PATH'};
     my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
-
-    $pc_path = join(':', @pkg_config_dirs, $pc_path);
+    prepend_environment_path('PKG_CONFIG_PATH', @pkg_config_dirs);
 
     # Likewise, add standard directories that should be in LD_LIBRARY_PATH.
-    $libpath = $ENV{'LD_LIBRARY_PATH'} if exists $ENV{'LD_LIBRARY_PATH'};
-    my @ld_dirs = ("$qtdir/lib", "$kdedir/lib", $libpath, get_option($module, 'libpath'));
+    my @ld_dirs = ("$qtdir/lib", "$kdedir/lib", get_option($module, 'libpath'));
+    prepend_environment_path('LD_LIBRARY_PATH', @ld_dirs);
 
-    my $libdir = join(':', @ld_dirs);
+    my @path = ("$qtdir/bin", "$kdedir/bin", get_option ($module, 'binpath'));
 
-    # Set up the children's environment.  We use setenv since it
-    # won't set an environment variable to nothing.  (e.g, setting
-    # QTDIR to a blank string might confuse Qt or KDE.
-
-    # Remove leading and trailing colons, just in case.
-    # Also remove more than one colon.
-    for ($path, $libdir, $pc_path)
+    # Everyone loves unsermake (unless you love cmake).
+    if (module_uses_cmake($module))
     {
-        s/:+/:/;
-        s/^:*//;
-        s/:*$//;
+        prepend_environment_path('CMAKE_PREFIX_PATH', $prefix);
     }
-
-    # Everyone loves unsermake.  It's a pity that not every module will compile with it.
-    # Benjamin Meyer has an excellent article about speeding up distributed builds using
-    # unsermake.  You should notice a much faster build using distcc, and
-    # a slightly faster build even with only one CPU.
-    if (not module_uses_cmake($module) and get_option ($module, "use-unsermake"))
+    elsif (get_option ($module, "use-unsermake"))
     {
         my $unsermake = get_fullpath('unsermake', 'source');
-        $path = "$unsermake:$path";
+        unshift @path, $unsermake;
     }
     else
     {
         setenv ("UNSERMAKE", "no");
     }
 
-    setenv ('LD_LIBRARY_PATH', $libdir );
-    setenv ('PATH', $path);
+    prepend_environment_path('PATH', @path);
+
+    # Set up the children's environment.  We use setenv since it
+    # won't set an environment variable to nothing.  (e.g, setting
+    # QTDIR to a blank string might confuse Qt or KDE.
+
     setenv ('QTDIR', $qtdir);
-    setenv ('PKG_CONFIG_PATH', $pc_path);
 
     # If the module isn't kdelibs, also append kdelibs's KDEDIR setting.
     if ($module ne 'kdelibs')
     {
         my $kdelibsDir = get_option('kdelibs', 'kdedir');
-        $kdedir .= ":$kdelibsDir" if $kdelibsDir and $kdelibsDir ne $kdedir;
+        if ($kdelibsDir and $kdelibsDir ne $kdedir) {
+            whisper "Module $module uses different KDEDIR than kdelibs, including kdelibs as well.";
+            $kdedir .= ":$kdelibsDir"
+        }
     }
 
     setenv ('KDEDIRS', $kdedir);
@@ -5806,9 +5818,6 @@ sub handle_build
         }
     }
 
-    # Save the environment to keep module's env changes from affecting other
-    # modules.
-    my %env_backup = %ENV;
     my $outfile = undef;
 
     if (not pretending)
@@ -5829,6 +5838,7 @@ EOF
     while (my $module = shift @modules)
     {
         note "Building g[$module] ($i/$num_modules)";
+        local %ENV; # Saves environment to keep module changes from conflicting
         my $start_time = time;
 
         # If using IPC, read in the contents of the message buffer, and wait
@@ -5921,7 +5931,6 @@ EOF
             }
         }
 
-        %ENV = %env_backup;
         $i++;
     }
     continue # Happens at the end of each loop and on next
@@ -6160,9 +6169,6 @@ sub handle_install
             warning "\tTherefore, we can't install it. y[:-(].";
             next;
         }
-
-        # Just in case, I guess.
-        update_module_environment ($module);
 
         # The /admin directory is needed for install as well, make sure it's
         # there.
@@ -6816,7 +6822,11 @@ eval
     else
     {
         # Installation mode
-        $result = handle_install (get_install_list());
+        for my $module (get_install_list()) {
+            local %ENV; # Don't keep overwriting environment
+            update_module_environment ($module);
+            $result = handle_install ($module) || $result;
+        }
     }
 
     output_failed_module_lists();
