@@ -109,64 +109,6 @@ the module if you change the value of &inst-apps;.
 
 </sect2>
 
-<sect2 id="using-unsermake">
-<title>Using &unsermake;</title>
-
-<para>&unsermake; is an application designed to hook
-into the &kde; build system and improve the build process by replacing some of
-the tools normally used (including &automake; and &make;). It is especially useful for those who
-are performing distributed compilation as it is much faster than the normal
-build system in this situation. However, even for a single computer build,
-&unsermake; is faster than the competitors.
-</para>
-
-<para>In addition, &unsermake; includes support for estimating the progress of
-the current build procedure. &kdesvn-build; takes advantage of this to
-provide a build progress indication when compiling. See also <xref linkend="build-progress" />.
-</para>
-
-<para>&kdesvn-build; provides support for using &unsermake;
-automatically. &kdesvn-build; will use &unsermake;
-by default when it is possible to use it with a module.
-</para>
-
-<informalexample>
-<para>To disable &unsermake; support for every module,
-do the following:</para>
-
-<screen>
-global
-  use-unsermake false
-end global
-</screen>
-
-<para>To enable &unsermake; for a single module, even
-if it is disabled globally, do the following:</para>
-
-<screen>
-module <replaceable>module-name</replaceable>
-  use-unsermake true
-
-  # other options go here...
-end module
-</screen>
-</informalexample>
-
-<note><para>
-&kdesvn-build; will automatically update or checkout &unsermake;
-while performing the other updates. If you prefer to manage &unsermake;
-yourself, then it is possible to do so, by setting the value for &use-unsermake;
-to <replaceable>self</replaceable> instead of <replaceable>true</replaceable>.</para>
-
-<para>When this is done, &kdesvn-build; will still try to use
-&unsermake;, but will not perform the updates. You
-can either alter &binpath; to point to the correct &unsermake; directory, or
-checkout and update &unsermake; yourself from its
-module (currently kdenonbeta/unsermake).
-</para></note>
-
-</sect2>
-
 <sect2 id="using-branches">
 <title>Branching and tagging support for &kdesvn-build;</title>
 
@@ -302,8 +244,7 @@ as well.
 <sect3 id="automatic-rebuilds">
 <title>Automatic rebuilds</title>
 
-<para>Due to various issues with the &kde; build system, some of which
-are mitigated by using &unsermake;, &kdesvn-build; will automatically perform
+<para>Due to various issues with the &kde; build system &kdesvn-build; will automatically perform
 a series of steps to automatically try to get a module to compile when it
 fails.</para>
 
@@ -370,7 +311,7 @@ If you change the setting of the &build-dir; option, then use that instead of
 <informalexample>
 <para>Rebuild using <filename>.refresh-me</filename> for module <replaceable>arts</replaceable>:</para>
 <screen>
-<prompt>%</prompt> <userinput><command>touch</command> <filename class="directory">~/kdesvn/build/<replaceable>arts</replaceable></filename></userinput>
+<prompt>%</prompt> <userinput><command>touch</command> <filename class="directory">~/kdesvn/build/<replaceable>arts</replaceable>.refresh-me</filename></userinput>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command></userinput>
 </screen>
 </informalexample>
@@ -460,9 +401,9 @@ normally, but ignore a set of modules.</para>
 performing the update and build.</para>
 
 <informalexample>
-<para>Ignoring extragear/multimedia and kdenonbeta during a full run:</para>
+<para>Ignoring extragear/multimedia and kdereview during a full run:</para>
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdenonbeta</replaceable></userinput>
+<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdereview</replaceable></userinput>
 </screen>
 </informalexample>
 
@@ -492,13 +433,6 @@ testing:</para>
 
 <screen>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--pretend</option> <option>--<replaceable>source-dir</replaceable>=<replaceable>/dev/null</replaceable></option></userinput>
-</screen>
-
-<para>Disabling &unsermake; from the command line. <option>--refresh-build</option> is used to
-force the changes to &unsermake; to take effect.</para>
-
-<screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--pretend</option> <option>--refresh-build</option> <option>--<replaceable>use-unsermake</replaceable>=<replaceable>false</replaceable></option></userinput>
 </screen>
 
 </informalexample>
