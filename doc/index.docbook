@@ -13,7 +13,6 @@
   <!ENTITY ssh '<application>SSH</application>'>
   <!ENTITY subversion '<application>Subversion</application>'>
   <!ENTITY sudo '<application>Sudo</application>'>
-  <!ENTITY unsermake '<application>Unsermake</application>'>
   <!ENTITY url '<acronym>URL</acronym>'>
 
   <!-- These define shortcut entities for some of the configuration options.
@@ -44,7 +43,6 @@
   <!ENTITY set-env '<link linkend="conf-set-env">set-env</link>'>
   <!ENTITY libpath '<link linkend="conf-libpath">libpath</link>'>
   <!ENTITY binpath '<link linkend="conf-binpath">binpath</link>'>
-  <!ENTITY use-unsermake '<link linkend="conf-use-unsermake">use-unsermake</link>'>
 
   <!-- These define shortcut entities for some of the command line options.
        Just add them as necessary.
@@ -92,8 +90,8 @@
 
 <legalnotice>&FDLNotice;</legalnotice>
 
-<date>2008-08-09</date>
-<releaseinfo>1.6.3</releaseinfo>
+<date>2009-03-13</date>
+<releaseinfo>1.8</releaseinfo>
 
 <abstract>
 <para>&kdesvn-build; is a script which builds and installs &kde; directly from the sources found in the &kde; &subversion; repository.</para>
@@ -141,20 +139,13 @@ In this chapter, we show how to use the &kdesvn-build; to checkout modules from 
 
 <para>
 All topics present in this chapter are covered with even more detail in the
-<ulink url="http://quality.kde.org/develop/cvsguide/buildstep.php">
-Building &kde; from Source Step by Step Guide</ulink>, at the
-<ulink url="http://quality.kde.org">&kde; Quality Team Web site</ulink>.
+<ulink url="http://techbase.kde.org/Getting_Started/Build/KDE4">
+Building &kde; 4 from Source</ulink>, at the
+<ulink url="http://techbase.kde.org/">&kde; Techbase site</ulink>.
 If you are compiling &kde; for the first time, it is a good idea to read
 it, or consult it as a reference source. You will find detailed information
 about packaging tools and requirements, common compilation pitfalls and
 strategies and information about running your new &kde; installation.
-</para>
-
-<para>
-In addition, the <ulink url="http://techbase.kde.org/">&kde; TechBase</ulink>
-wiki maintains a procedure for <ulink
-url="http://techbase.kde.org/index.php?title=Getting_Started/Build/KDE4">building
-&kde; from source code</ulink>.
 </para>
 
 <sect1 id="before-building">
@@ -205,7 +196,8 @@ TechBase for specifics.</para></listitem>
 <listitem><para>The &subversion; client program, including support for Secure
 HTTP (https). To ensure needed support, you can run
 <userinput><command>svn <option>--version</option></command></userinput>.
-If the ra_dav module says that it handles the https scheme then you should be
+If the the output says that it handles the https scheme (for write access to svn.kde.org)
+or svn scheme (for readonly access to anonsvn.kde.org) then you should be
 set to go.</para></listitem>
 
 <listitem><para>The <application>gcc</application> compiler, with support for C++.
@@ -238,7 +230,7 @@ to have it. If you do not want to use the &Qt; copy, you need to do these things
 <listitem>
   <para>If you do not already have &Qt; installed, install it, including any
   relevant -dev or -devel packages. You will need at least &Qt; 3.3 if you are
-  building &kde; 3.5, or &Qt; 4.4 if you are building &kde; 4.</para>
+  building &kde; 3.5, or &Qt; 4.5 if you are building &kde; 4.</para>
 
   <note><para>If you are building &kde; 4 it is highly recommended to use the
   qt-copy version of &Qt;, making sure to apply recommended patches (this is
@@ -382,7 +374,7 @@ install qt-copy.</para></listitem>
 
 <listitem><para><link linkend="conf-svn-server">svn-server</link>, which
 selects what &url; to download the sources from. This is useful if you are a
-developer with a <ulink url="http://developer.kde.org/documentation/misc/firststepsaccount.php">&kde;
+developer with a <ulink url="http://techbase.kde.org/Contribute/First_Steps_with_your_KDE_SVN_Account">&kde;
 &subversion; account</ulink>.</para></listitem>
 </itemizedlist>
 </para>
@@ -443,8 +435,8 @@ in order to report the build failure.</para>
 
 <para>You can find more common examples of things that can go wrong and their
 solutions, as well as general tips and strategies to build &kde; in the
-<ulink url="http://quality.kde.org/develop/cvsguide/buildstep.php#step1">
-Building &kde; from Source Step by Step Guide</ulink>.
+<ulink url="http://techbase.kde.org/Getting_Started/Build/KDE4">
+Building &kde; 4 from Source</ulink>.
 </para>
 
 <note><para>For more information about &kdesvn-build;'s logging features,
@@ -766,7 +758,7 @@ for qt-copy or &kde; 4 modules.
 
 <listitem><para>
 &kdesvn-build; will show the <link linkend="build-progress">progress of your
-build</link> when using &unsermake; and &cmake;, and will always time the build
+build</link> when using &cmake;, and will always time the build
 process so you know after the fact how long it took.
 </para></listitem>
 
@@ -778,10 +770,6 @@ make, which is prone to failure after certain kinds of commits.
 <listitem><para>
 Comes built-in with a sane set of default options appropriate for building
 a base &kde; single-user installation from the anonymous &subversion; repository.
-</para></listitem>
-
-<listitem><para>
-Comes with &unsermake; support.
 </para></listitem>
 
 <listitem><para>
@@ -1007,7 +995,6 @@ authors using the address you can find <link linkend="authors">above</link>.
 <listitem><para><link linkend="conf-source-dir">source-dir</link>, to change where to download the source code to.</para></listitem>
 <listitem><para><link linkend="conf-stop-on-failure">stop-on-failure</link>, to make &kdesvn-build; stop as soon as a failure is encountered.</para></listitem>
 <listitem><para><link linkend="conf-svn-server">svn-server</link>, to change the server the sources are downloaded from.</para></listitem>
-<listitem><para><link linkend="conf-use-unsermake">use-unsermake</link>, to use the advanced &unsermake; build system.</para></listitem>
 </itemizedlist>
 
 
@@ -1226,8 +1213,8 @@ disable this check by setting <option>disable-agent-check</option> to <replaceab
 <row id="conf-do-not-compile">
 <entry>do-not-compile</entry>
 <entry>Overrides global</entry>
-<entry><para>Use this option to select a specific set of directories to be built in a
-module (instead of all of them).  The directories to build should be space-separated.</para>
+<entry><para>Use this option to select a specific set of directories not to be built in a
+module (instead of all of them). The directories not to build should be space-separated.</para>
 
 <para>This feature is supported for both &kde; 3 and &kde; 4.  KDE 4 support was added in
 &kdesvn-build; 1.6.3.</para>
@@ -1334,7 +1321,7 @@ which means &kde; will display in American English.</para>
 
 <para>For instance, to choose to install French, you would set the option to
 something like: <userinput><option>kde-languages</option> <replaceable>fr</replaceable></userinput>.
-You would still need to use &kcontrol; in order to choose the
+You would still need to use &systemsettings; in order to choose the
 French language, however.</para>
 </entry>
 </row>
@@ -1547,17 +1534,8 @@ from <ulink url="ftp://ftp.kde.org/">The &kde; FTP site</ulink> or one of <ulink
 url="http://download.kde.org/download.php">its mirrors</ulink>.</para>
 <para>If you are using &kdesvn-build; because you have having trouble getting
 a &kde; release to build on your distribution, consider using the <ulink
-url="http://developer.kde.org/build/konstruct/">Konstruct build tool</ulink>
+url="http://techbase.kde.org/Getting_Started/Build/Konstruct">Konstruct build tool</ulink>
 instead, which works from the release tarballs.</para>
-</entry>
-</row>
-
-<row id="conf-unsermake-options">
-<entry>unsermake-options</entry>
-<entry>Overrides global</entry>
-<entry>This option is just like <link linkend="conf-make-options">make-options</link>
-but for &unsermake;, which accepts some options that &make;
-cannot understand.
 </entry>
 </row>
 
@@ -1607,26 +1585,7 @@ will automatically download the &kde; 3.5 version of modules such as kdelibs
 and qt-copy, instead of downloading the &kde; 4 version. You can still use
 the &branch; or &tag; options for a module to override the setting that
 &kdesvn-build; picks. This way you can easily choose to download &kde; 3.5
-instead of the pre-release &kde; 4.</para>
-</entry>
-</row>
-
-<row id="conf-use-unsermake">
-<entry>use-unsermake</entry>
-<entry>Overrides global</entry>
-<entry><para>Set this option to <replaceable>true</replaceable> in order to use the
-experimental &unsermake; program instead of &automake; when running the configure
-script. This can lead to some serious decreases in build time, especially for
-<ulink url="http://www.csh.rit.edu/slashdot/distcc.html">distributed building
-systems</ulink>. This option defaults to <replaceable>true</replaceable> (for most modules).
-</para>
-
-<para>Normally if you use this option &kdesvn-build; will automatically keep
-&unsermake; up-to-date. This may start to get annoying, especially if you are
-managing &unsermake; yourself. If this is the case, you can set this option to
-<quote>self</quote>, and &kdesvn-build; will still use &unsermake;, but will not
-do anything special to keep it updated.
-</para>
+instead of the release &kde; 4.</para>
 </entry>
 </row>
 
@@ -1904,9 +1863,9 @@ linkend="conf-log-dir">log-dir</link> option, you would do:
 <term><option>--&lt;module-name&gt;,&lt;option-name&gt;=</option></term>
 <listitem><para>
 You can use this option to override an option in your <link linkend="configure-data">configuration file</link> for
-a specific module. For instance, to override the <link
+a specific module. <!--For instance, to override the <link
 linkend="conf-use-unsermake">use-unsermake</link> option for kdemultimedia, you
-would do: <option>--kdemultimedia,use-unsermake=false</option>.
+would do: <option>- -kdemultimedia,use-unsermake=false</option>.-->
 </para></listitem>
 </varlistentry>
 
@@ -2018,11 +1977,6 @@ The setting for &qtdir; is automatically propagated to the <envar>QTDIR</envar>
 environment variable while building.
 </para></listitem>
 
-<listitem><para>
-&kdesvn-build; will automatically adjust the environment as necessary to account
-for the setting of the &use-unsermake; option.
-</para></listitem>
-
 </itemizedlist>
 
 </sect2>
@@ -2132,12 +2086,6 @@ building a module; that way you know about how much longer it will take to
 build a module.
 </para>
 
-<para>In order to use this feature, the &use-unsermake; option must be enabled
-for the module. This option is normally enabled by default, but some modules
-do not support it and are automatically stopped from using &unsermake;.
-So if you think you have enabled &unsermake; and you still do not
-see a progress report when building the module, it may be possible that the
-module does not support &unsermake;.</para>
 </sect2>
 
 </sect1>
@@ -2250,64 +2198,6 @@ better to simply use &checkout-only; instead.
 the module if you change the value of &inst-apps;.
 </para>
 </sect3>
-
-</sect2>
-
-<sect2 id="using-unsermake">
-<title>Using &unsermake;</title>
-
-<para>&unsermake; is an application designed to hook
-into the &kde; build system and improve the build process by replacing some of
-the tools normally used (including &automake; and &make;). It is especially useful for those who
-are performing distributed compilation as it is much faster than the normal
-build system in this situation. However, even for a single computer build,
-&unsermake; is faster than the competitors.
-</para>
-
-<para>In addition, &unsermake; includes support for estimating the progress of
-the current build procedure. &kdesvn-build; takes advantage of this to
-provide a build progress indication when compiling. See also <xref linkend="build-progress" />.
-</para>
-
-<para>&kdesvn-build; provides support for using &unsermake;
-automatically. &kdesvn-build; will use &unsermake;
-by default when it is possible to use it with a module.
-</para>
-
-<informalexample>
-<para>To disable &unsermake; support for every module,
-do the following:</para>
-
-<screen>
-global
-  use-unsermake false
-end global
-</screen>
-
-<para>To enable &unsermake; for a single module, even
-if it is disabled globally, do the following:</para>
-
-<screen>
-module <replaceable>module-name</replaceable>
-  use-unsermake true
-
-  # other options go here...
-end module
-</screen>
-</informalexample>
-
-<note><para>
-&kdesvn-build; will automatically update or checkout &unsermake;
-while performing the other updates. If you prefer to manage &unsermake;
-yourself, then it is possible to do so, by setting the value for &use-unsermake;
-to <replaceable>self</replaceable> instead of <replaceable>true</replaceable>.</para>
-
-<para>When this is done, &kdesvn-build; will still try to use
-&unsermake;, but will not perform the updates. You
-can either alter &binpath; to point to the correct &unsermake; directory, or
-checkout and update &unsermake; yourself from its
-module (currently kdenonbeta/unsermake).
-</para></note>
 
 </sect2>
 
@@ -2446,8 +2336,7 @@ as well.
 <sect3 id="automatic-rebuilds">
 <title>Automatic rebuilds</title>
 
-<para>Due to various issues with the &kde; build system, some of which
-are mitigated by using &unsermake;, &kdesvn-build; will automatically perform
+<para>Due to various issues with the &kde; build system &kdesvn-build; will automatically perform
 a series of steps to automatically try to get a module to compile when it
 fails.</para>
 
@@ -2514,7 +2403,7 @@ If you change the setting of the &build-dir; option, then use that instead of
 <informalexample>
 <para>Rebuild using <filename>.refresh-me</filename> for module <replaceable>arts</replaceable>:</para>
 <screen>
-<prompt>%</prompt> <userinput><command>touch</command> <filename class="directory">~/kdesvn/build/<replaceable>arts</replaceable></filename></userinput>
+<prompt>%</prompt> <userinput><command>touch</command> <filename class="directory">~/kdesvn/build/<replaceable>arts</replaceable>.refresh-me</filename></userinput>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command></userinput>
 </screen>
 </informalexample>
@@ -2604,9 +2493,9 @@ normally, but ignore a set of modules.</para>
 performing the update and build.</para>
 
 <informalexample>
-<para>Ignoring extragear/multimedia and kdenonbeta during a full run:</para>
+<para>Ignoring extragear/multimedia and kdereview during a full run:</para>
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdenonbeta</replaceable></userinput>
+<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdereview</replaceable></userinput>
 </screen>
 </informalexample>
 
@@ -2636,13 +2525,6 @@ testing:</para>
 
 <screen>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--pretend</option> <option>--<replaceable>source-dir</replaceable>=<replaceable>/dev/null</replaceable></option></userinput>
-</screen>
-
-<para>Disabling &unsermake; from the command line. <option>--refresh-build</option> is used to
-force the changes to &unsermake; to take effect.</para>
-
-<screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--pretend</option> <option>--refresh-build</option> <option>--<replaceable>use-unsermake</replaceable>=<replaceable>false</replaceable></option></userinput>
 </screen>
 
 </informalexample>
@@ -2838,8 +2720,8 @@ code in. Sometimes &kdesvn-build; will have to copy a source directory to
 create a fake build directory. When this happens, space-saving symlinks are
 used, so this should not be a hassle on disk space. The build directory will
 typically be much larger than the source directory for a module. For example,
-the build directory for kdebase is about 455 megabytes, whereas kdebase's
-source is only around 195 megabytes.</para>
+the build directory for kdebase is about 1050 megabytes, whereas kdebase's
+source is only around 550 megabytes.</para>
 
 <para>Luckily, the build directory is not required after a module has
 successfully been built and installed. &kdesvn-build; can automatically
@@ -2914,7 +2796,7 @@ autotools-based system that &kde; has used from the beginning.</para>
 url="http://techbase.kde.org/Development/Tutorials/CMake">&kde; TechBase</ulink>.
 Basically, instead of running <userinput><command>make</command> <option>-f</option> 
 <filename>Makefile.cvs</filename></userinput>, then <command>configure</command>,
-then &unsermake; (or &make;), we simply run &cmake; and then &make;.
+then &make;, we simply run &cmake; and then &make;.
 </para>
 
 <para>&kdesvn-build; has support for &cmake;. A few features of &kdesvn-build;
@@ -2938,6 +2820,7 @@ the same.</para>
 <chapter id="credits-and-licenses">
 <title>Credits And Licenses</title>
 
+<!-- TRANS:CREDIT_FOR_TRANSLATORS -->
 &underFDL;
 
 </chapter>
