@@ -3414,6 +3414,7 @@ sub get_svn_info
     eval
     {
         my $output;
+        local $ENV{'LANG'} = 'C'; # Make the svn output untranslated
         my $pid = open3(0, $output, undef, 'svn', 'info', '--non-interactive', $srcdir);
 
         # Just read all the input in so we can safely waitpid the process
@@ -5336,7 +5337,7 @@ sub setup_build_system
     # The l10n-kde4 module requires some initial build system setup unlike
     # every other CMake module.  We can tell if it has been setup because then
     # its builddir will have a CMakeLists.txt
-    if ($module =~ /^l10n-kde4\/?/ and not -e "$builddir/CMakeLists.txt")
+    if ($module =~ /^l10n-kde4\/?/)
     {
         $do_makeconf = 1;
     }
