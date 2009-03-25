@@ -3203,6 +3203,11 @@ sub output_failed_module_lists()
 
     my @super_fail = grep { &{$persistent_opt}($_) }(keys %package_opts);
 
+    # Only show packages we're actually updating/building
+    @super_fail = grep {
+        list_has(@update_list, $_) or list_has(@build_list, $_)
+    } (@super_fail);
+
     if (@super_fail)
     {
         warning "\nThe following modules have failed to build 3 or more times in a row:";
