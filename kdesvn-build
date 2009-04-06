@@ -5563,7 +5563,15 @@ sub module_has_conflict
     my $module = shift;
     my $srcdir = get_fullpath($module, 'source');
 
-    info "\tChecking for source conflicts... ";
+    if (get_option($module, 'no-svn'))
+    {
+        whisper "\tSource code conflict check skipped.";
+        return 1;
+    }
+    else
+    {
+        info "\tChecking for source conflicts... ";
+    }
 
     my $pid = open SVN, "-|";
     if (not defined $pid)
