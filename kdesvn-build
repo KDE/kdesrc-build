@@ -5655,15 +5655,11 @@ sub run_tests
 
     my @args = split(' ', get_option($module, 'make-options'));
 
-    # Step 1: Ensure the tests are built.
-    my $result = log_command($module, 'test-build', [ 'make', @args, 'buildtests' ]);
-    if ($result != 0) {
-        error "Unable to build tests for r[$module], skipping test run.";
-        return 0;
-    }
+    # Step 1: Ensure the tests are built, oh wait we already did that when we ran
+    # CMake :)
 
     # Step 2: Run the tests.
-    $result = log_command($module, 'test-results', [ 'make', @args, 'test' ]);
+    my $result = log_command($module, 'test-results', [ 'make', @args, 'test' ]);
     if ($result != 0) {
         warning "Some tests failed for y[$module], consult latest/$module/test-results for info";
         return 0;
