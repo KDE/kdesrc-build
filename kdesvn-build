@@ -355,6 +355,7 @@ our %package_opts = (
     "refresh-build"       => "",
     "remove-after-install"=> "none", # { none, builddir, all }
     "revision"            => 0,
+    "run-tests"           => 0,
     "set-env"             => { }, # Hash of environment vars to set
     "source-dir"          => "$ENV{HOME}/kdesvn",
     "stop-on-failure"     => "",
@@ -4716,6 +4717,14 @@ sub safe_run_cmake
 
     push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
 
+    if (get_option($module, 'run-tests') and
+        not grep { /^\s*-DKDE4_BUILD_TESTS(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
+       )
+    {
+        whisper "Enabling tests";
+        push @commands, "-DKDE4_BUILD_TESTS:BOOL=ON";
+    }
+
     # For l10n-kde4, we must run cmake to search in the (fake) build dir.  There
     # is no srcdir != builddir (but we do simulate it).
     if ($module =~ /^l10n-kde4\/?/)
@@ -5627,6 +5636,42 @@ EOF
     return 1;
 }
 
+# Subroutine to run the testsuite for a given module.
+#
+# First parameter is the module to run tests for.
+# Returns true if all tests passed, false if some failed or there was an
+#   error running tests.
+sub run_tests
+{
+    my $module = shift;
+
+    if (not module_uses_cmake($module)) {
+        warning "Cannot run test suite for r[$module] as it does not use CMake";
+        return 1; # But return true anyways
+    }
+
+    # Note that we do not run safe_make, which should really be called
+    # safe_compile at this point.  We do parse make_options though.
+
+    my @args = split(' ', get_option($module, 'make-options'));
+
+    # Step 1: Ensure the tests are built.
+    my $result = log_command($module, 'test-build', [ 'make', @args, 'buildtests' ]);
+    if ($result != 0) {
+        error "Unable to build tests for r[$module], skipping test run.";
+        return 0;
+    }
+
+    # Step 2: Run the tests.
+    $result = log_command($module, 'test-results', [ 'make', @args, 'test' ]);
+    if ($result != 0) {
+        warning "Some tests failed for y[$module], consult latest/$module/test-results for info";
+        return 0;
+    }
+
+    return 1;
+}
+
 # Subroutine to build a given module.  The module to build is the first
 # parameter.  The second and third paramaters is the ordinal number of the
 # module being built (1 == first module, 2 == second, etc.), and the total
@@ -5710,10 +5755,14 @@ sub build_module
         else
         {
             my $elapsed = prettify_seconds (time - $start_time);
-            my $do_install = get_option($module, 'install-after-build');
-
             info "\tBuild succeeded after g[$elapsed].";
-            if ($do_install)
+
+            if (get_option($module, 'run-tests'))
+            {
+                run_tests($module); # Don't fail if this fails... yet
+            }
+
+            if (get_option($module, 'install-after-build'))
             {
                 handle_install($module);
             }
