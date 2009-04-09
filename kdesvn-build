@@ -371,6 +371,19 @@ our %package_opts = (
   }
 );
 
+# This hash is used to store environment variables to be used on the next
+# execution of log_command().  This is done so that we don't have to fork new
+# processes just to change values in the environment.
+#
+# Previously we simply saved %ENV in a temp hash, but that broke on some systems.
+# Then we used 'local %ENV' to push/pop the environment from a stack but it only
+# really worked on the developer's system. :(
+#
+# Now we save environment variables to set right after forking...
+#
+# Don't use this except via setenv(), resetenv(), and log_command().
+my %ENV_VARS;
+
 # Base class for IPC interaction. Should have most of the functionality, with
 # the actual bits of reading and writing left to subclasses.
 {
@@ -2261,6 +2274,11 @@ sub log_command
     else
     {
         # Child
+
+        # Apply altered environment variables.
+        whisper "Environment altered for child";
+        $ENV{$_} = $ENV_VARS{$_} foreach keys %ENV_VARS;
+
         if (not defined $logdir or not -e $logdir)
         {
             # Error creating directory for some reason.
@@ -2759,7 +2777,14 @@ sub setenv
 
     whisper "\tWould have set g[$var]=y[$val]." if pretending;
 
-    $ENV{$var} = $val;
+    $ENV_VARS{$var} = $val;
+}
+
+# Clears out the list of environment variables to apply to created
+# subprocesses.
+sub resetenv
+{
+    %ENV_VARS = ();
 }
 
 # Display a message to the user regarding their relative lack of
@@ -5897,7 +5922,7 @@ EOF
     while (my $module = shift @modules)
     {
         note "Building g[$module] ($i/$num_modules)";
-        local %ENV; # Saves environment to keep module changes from conflicting
+        resetenv(); # Resets the list of env vars to change
         my $start_time = time;
 
         # If using IPC, read in the contents of the message buffer, and wait
@@ -6882,7 +6907,7 @@ eval
     {
         # Installation mode
         for my $module (get_install_list()) {
-            local %ENV; # Don't keep overwriting environment
+            resetenv(); # Don't keep overwriting environment
             update_module_environment ($module);
             $result = handle_install ($module) || $result;
         }
