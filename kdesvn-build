@@ -4748,6 +4748,11 @@ sub safe_run_cmake
     {
         whisper "Enabling tests";
         push @commands, "-DKDE4_BUILD_TESTS:BOOL=ON";
+
+        # Also enable phonon tests.
+        if ($module =~ /^(kdesupport|phonon)$/) {
+            push @commands, "-DPHONON_BUILD_TESTS:BOOL=ON";
+        }
     }
 
     # For l10n-kde4, we must run cmake to search in the (fake) build dir.  There
@@ -5676,15 +5681,13 @@ sub run_tests
     }
 
     # Note that we do not run safe_make, which should really be called
-    # safe_compile at this point.  We do parse make_options though.
-
-    my @args = split(' ', get_option($module, 'make-options'));
+    # safe_compile at this point.
 
     # Step 1: Ensure the tests are built, oh wait we already did that when we ran
     # CMake :)
 
     # Step 2: Run the tests.
-    my $result = log_command($module, 'test-results', [ 'make', @args, 'test' ]);
+    my $result = log_command($module, 'test-results', [ 'make', 'test' ]);
     if ($result != 0) {
         my $logdir = get_log_dir($module);
         warning "Some tests failed for y[$module], consult $logdir/test-results.log for info";
