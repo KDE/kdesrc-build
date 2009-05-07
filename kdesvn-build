@@ -267,6 +267,7 @@ use POSIX qw(strftime :sys_wait_h);
 use File::Find; # For our lndir reimplementation.
 use File::Basename;
 use File::Spec;
+use File::Glob ':glob';
 use Sys::Hostname;
 use IO::Handle;
 use IO::File;
@@ -349,6 +350,7 @@ our %package_opts = (
     "override-url"        => "",
     "prefix"              => "", # Override installation prefix.
     "pretend"             => "",
+    "purge-old-logs"      => 0,
     "qtdir"               => "$ENV{HOME}/kdesvn/build/qt-copy",
     "reconfigure"         => "",
     "recreate-configure"  => "",
@@ -2497,10 +2499,15 @@ sub path_to_prog
 sub safe_rmtree
 {
     my $path = shift;
+
+    # Pretty user-visible path
+    my $user_path = $path;
+    $user_path =~ s/^$ENV{HOME}/~/;
+
     my $delete_file_or_dir = sub {
-        # $_ is the filename/dirname
+        # $_ is the filename/dirname.
         return if $_ eq '.' or $_ eq '..';
-        if (-f $_)
+        if (-f $_ || -l $_)
         {
             unlink ($_) or die "Unable to delete $File::Find::name!";
         }
@@ -2512,7 +2519,7 @@ sub safe_rmtree
 
     if (pretending)
     {
-        pretend "Would have recursively removed $path";
+        pretend "Would have removed all files/folders in $user_path";
         return 1;
     }
 
@@ -2520,7 +2527,7 @@ sub safe_rmtree
     # delete just fine.
     if (not -d $path)
     {
-        error "Cannot recursively remove $path, as it is not a directory.";
+        error "Cannot recursively remove $user_path, as it is not a directory.";
         return 0;
     }
 
@@ -2535,7 +2542,7 @@ sub safe_rmtree
 
     if ($@)
     {
-        error "Unable to remove directory $path: $@";
+        error "Unable to remove directory $user_path: $@";
         return 0;
     }
 
@@ -6777,6 +6784,87 @@ sub setup_option_defaults()
     }
 }
 
+# Returns the unique entries in the given list, original ordering is not
+# maintained.
+sub unique_list
+{
+    my @entries = sort @_;
+    my @result;
+    my $last = '';
+
+    for my $entry (@entries) {
+        next if ((not defined $entry) || ($last eq $entry));
+
+        push @result, $entry;
+        $last = $entry;
+    }
+
+    return @result;
+}
+
+# Returns a list of module directory IDs that must be kept due to being
+# referenced from the "latest" symlink.  It should be called with the "latest"
+# directory that is a standard subdirectory of the log directory.
+#
+# First parameter is the directory to search under for symlinks.  This
+# subroutine will call itself recursively if necessary to search under the given
+# directory.  Any symlinks are read to see which log directory is pointed to.
+sub needed_module_logs
+{
+    my $logdir = shift;
+    my @dirs;
+
+    # A lexicalized var (my $foo) is required in face of recursiveness.
+    opendir(my $fh, $logdir) || die "Can't opendir $logdir: $!";
+    my $dir = readdir($fh);
+
+    while(defined $dir) {
+        if (-l "$logdir/$dir") {
+            my $link = readlink("$logdir/$dir");
+            push @dirs, $link;
+        }
+        elsif ($dir !~ /^\.{1,2}$/) {
+            # Skip . and .. directories (this is a great idea, trust me)
+            push @dirs, needed_module_logs("$logdir/$dir");
+        }
+        $dir = readdir $fh;
+    }
+
+    closedir $fh;
+
+    # Convert directory names to numeric IDs.
+    @dirs = map { m/(\d{4}-\d\d-\d\d-\d\d)/ } (@dirs);
+    return unique_list(@dirs);
+}
+
+# This function removes log directories from old kdesvn-build runs.  All log
+# directories not referenced by $log_dir/latest somehow are made to go away.
+sub cleanup_log_directory
+{
+    my $logdir = get_subdir_path('global', 'log-dir');
+
+    # This glob relies on the date being in the specific format YYYY-MM-DD-ID
+    my @dirs = bsd_glob("$logdir/????-??-??-??/", GLOB_NOSORT);
+    my @needed = needed_module_logs("$logdir/latest");
+
+    # Convert a list to a hash lookup since Perl lacks a "list-has"
+    my %needed_table;
+    @needed_table{@needed} = (1) x @needed;
+
+    my $length = scalar @dirs - scalar @needed;
+    if ($length > 15) { # Arbitrary man is arbitrary
+        note "Removing y[b[$length] out of g[b[$#dirs] old log directories (this may take some time)...";
+    }
+    elsif ($length > 0) {
+        info "Removing g[b[$length] out of g[b[$#dirs] old log directories...";
+    }
+
+    for my $dir (@dirs) {
+        my ($id) = ($dir =~ m/(\d\d\d\d-\d\d-\d\d-\d\d)/);
+        safe_rmtree($dir) unless $needed_table{$id};
+    }
+}
+
 # Script starts.
 
 # Adding in a way to load all the functions without running the program to
@@ -6919,6 +7007,7 @@ eval
         }
     }
 
+    cleanup_log_directory() if get_option('global', 'purge-old-logs');
     output_failed_module_lists();
     email_error_report();
 
