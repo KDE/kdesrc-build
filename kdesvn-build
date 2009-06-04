@@ -4656,6 +4656,9 @@ EOF
         }
 
         push @commands, "-prefix", $prefix;
+
+        # Auto-accept the license (only works in very recent versions of qt-copy though
+        push @commands, '-confirm-license', '-opensource';
     }
 
     # We're special casing these modules because we're using the lndir
@@ -4665,51 +4668,16 @@ EOF
         $script = get_fullpath($module, 'build') . "/configure";
     }
 
-    # We use a special script for qt-copy to auto-accept the license, it is created
-    # just before running it (see below).
-    my $qtdir = get_fullpath('qt-copy', 'source');
-    my $builddir = get_fullpath($module, 'build');
-
-    $script = "$qtdir/configure.new" if $module eq 'qt-copy';
     unshift @commands, $script;
 
     my $old_flags = get_persistent_option($module, 'last-configure-flags') || '';
+    my $builddir = get_fullpath($module, 'build');
 
     if((get_list_digest(@commands) ne $old_flags) or
        (get_option($module, 'reconfigure')) or
        (not -e "$builddir/Makefile")
       )
     {
-        # Create specialized configure script for qt-copy.
-        if ($module eq 'qt-copy')
-        {
-            debug "Creating g[$qtdir/configure.new] from g[$script]";
-
-            if(not pretending)
-            {
-                # Copy the configure script to accept the GPL license.
-
-                # $script should point to $srcdir/qt-copy/configure for both Qt
-                # 3 and 4.
-
-                open CONFIG, "<$qtdir/configure";
-                open NEWCONFIG, ">$qtdir/configure.new";
-
-                while(<CONFIG>)
-                {
-                    s/read acceptance/acceptance=yes/;
-                    print NEWCONFIG $_;
-                }
-
-                close NEWCONFIG;
-                close CONFIG;
-
-                chmod 0755, "$qtdir/configure.new";
-            }
-
-            note "\tb[r[GPL license selected for Qt].  See $srcdir/LICENSE.GPL";
-        }
-
         info "\tRunning g[configure]...";
 
         set_persistent_option($module, 'last-configure-flags', get_list_digest(@commands));
