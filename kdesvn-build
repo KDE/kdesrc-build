@@ -3451,9 +3451,11 @@ sub get_svn_info
     # eval since IPC::Open3 uses exceptions.
     eval
     {
+        # Need to chdir into the srcdir, in case srcdir is a symlink. svn info /path/to/symlink barfs.
+        p_chdir ($srcdir);
         my $output;
         local $ENV{'LANG'} = 'C'; # Make the svn output untranslated
-        my $pid = open3(0, $output, undef, 'svn', 'info', '--non-interactive', $srcdir);
+        my $pid = open3(0, $output, undef, 'svn', 'info', '--non-interactive', '.');
 
         # Just read all the input in so we can safely waitpid the process
         my @lines = <$output>;
