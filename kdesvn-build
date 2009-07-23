@@ -6,7 +6,7 @@
 # Please also see the documentation that should be included with this program,
 # from the kdesdk/doc/scripts/kdesvn-build directory.
 #
-# Copyright © 2003 - 2009 Michael Pyne. <michael.pyne@kdemail.net>
+# Copyright © 2003 - 2009 Michael Pyne. <mpyne@kde.org>
 # Home page: http://kdesvn-build.kde.org/
 #
 # You may use, alter, and redistribute this software under the terms
@@ -160,29 +160,13 @@ Forces update to revision <rev> from Subversion.
 =item B<--refresh-build>
 
 Start the build from scratch.  This means that the build directory for the
-module B<will be deleted> before make -f Makefile.cvs or cmake is run again.
-You can use B<--recreate-configure> to do the same thing without deleting the
-module build directory for KDE 3 modules.  KDE 4 modules have no separate
-configure command, use the B<--reconfigure> option to get the same effect.
+module B<will be deleted> before cmake is run again.
 
 =item B<--reconfigure>
 
 Run configure again, but don't clean the build directory or recreate the
 configure script.  For KDE 4 modules, this option runs cmake again without
 deleting the build directory.
-
-=item B<--recreate-configure>
-
-Run make -f Makefile.cvs again to redo the configure script.  The build
-directory is not deleted.  This command is ignored for KDE 4 modules, where
-it is not applicable.
-
-=item B<--no-rebuild-on-fail>
-
-Do not try to rebuild a module from scratch if it failed building.  Normally
-kdesvn-build will try progressively harder to build the module before giving
-up.   This option is always enabled for KDE 4 modules, where the build system
-is accurate enough that the rebuilding behavior is not necessary.
 
 =item B<--build-system-only>
 
@@ -207,8 +191,7 @@ setting of the global B<svn-server> option for this instance of kdesvn-build.
 Likewise, allow you to override any module specific option from the
 command line.
 
-Example: B<--kdelibs,use-unsermake=false> would disable unsermake for the
-kdelibs module.
+Example: B<--kdelibs,branch=4.2> would compile kdelibs using the 4.2 branch.
 
 =item B<--help>
 
@@ -238,9 +221,10 @@ Output the program version.
 
 =head1 BUGS
 
-Since kdesvn-build doesn't generally save information related to the build and
-prior settings, you may need to manually re-run kdesvn-build with a flag like
-B<--recreate-configure> if you change some options, including B<use-unsermake>.
+kdesvn-build saves some information about how a build was performed so that
+e.g. changing cmake-options will automatically re-run CMake.  But this isn't
+done everywhere, so sometimes it's still required to manually use
+B<--refresh-build> or B<--reconfigure>
 
 Please use KDE bugzilla at http://bugs.kde.org for information and
 reporting bugs.
@@ -253,7 +237,7 @@ docbook documentation, using the help kioslave, F<help:/kdesvn-build>.
 
 =head1 AUTHOR
 
-Michael Pyne <michael.pyne@kdemail.net>
+Michael Pyne <mpyne@kde.org>
 
 Man page written by:
 Carlos Leonhard Woelz <carlos.woelz@kdemail.net>
@@ -305,7 +289,7 @@ use constant {
     };
 }
 
-my $versionNum = '1.9.1';
+my $versionNum = '1.10';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -314,7 +298,6 @@ my $versionNum = '1.9.1';
 # if the option is actually set.
 our %package_opts = (
   'global' => {
-    "apply-qt-patches"    => "",
     "async"               => 1,
     "binpath"             => $ENV{'PATH'},
     "branch"              => "",
@@ -322,7 +305,7 @@ our %package_opts = (
     "build-system-only"   => "",
     "checkout-only"       => "",
     "cmake-options"       => "",
-    "configure-flags"     => "--enable-debug",
+    "configure-flags"     => "",
     "colorful-output"     => 1, # Use color by default.
     "cxxflags"            => "-pipe",
     "debug"               => "",
@@ -334,7 +317,6 @@ our %package_opts = (
     "email-address"       => "",
     "email-on-compile-error" => "",
     "install-after-build" => 1, # Default to true
-    "inst-apps"           => "",
     "kdedir"              => "$ENV{HOME}/kde",
     "kde-languages"       => "",
     "libpath"             => "",
@@ -346,16 +328,15 @@ our %package_opts = (
     "module-base-path"    => "",  # Used for tags and branches
     "niceness"            => "10",
     "no-svn"              => "",
-    "no-rebuild-on-fail"  => "",
     "override-url"        => "",
     "prefix"              => "", # Override installation prefix.
     "pretend"             => "",
     "purge-old-logs"      => 0,
     "qtdir"               => "$ENV{HOME}/kdesvn/build/qt-copy",
     "reconfigure"         => "",
-    "recreate-configure"  => "",
     "refresh-build"       => "",
     "remove-after-install"=> "none", # { none, builddir, all }
+    "repository"          => '',     # qt-copy's git repo
     "revision"            => 0,
     "run-tests"           => 0,
     "set-env"             => { }, # Hash of environment vars to set
@@ -363,13 +344,6 @@ our %package_opts = (
     "stop-on-failure"     => "",
     "svn-server"          => "svn://anonsvn.kde.org/home/kde",
     "tag"                 => "",
-    "tarball-host"        => "kdesvn-build.kde.org",            # Undocumented
-    "tarball-path"        => "/other",                          # Undocumented
-    "tarball-revision-script" => "/other/module-revision.php",  # Undocumented
-    "unsermake-options"   => "--compile-jobs=2 -p",
-    "unsermake-path"      => "unsermake",
-    "use-stable-kde"      => 0,   # Controls whether to default to 3.5 or 4.
-    "use-unsermake"       => "1", # Default to true now, we may need a blacklist
   }
 );
 
@@ -951,12 +925,13 @@ sub module_uses_cmake
 
     return 1 if $module =~ /^l10n-kde4\/?/;
 
+    # No CMakeLists?  Expected for qt-copy
+    return 0 if $module eq 'qt-copy';
+
     # No CMakeLists.txt found, if the directory existed don't use CMake,
-    # otherwise use the stable-kde option to determine.
+    # otherwise assume we are using CMake for now.
 
-    return 0 if -e $srcdir;
-
-    return not get_option($module, 'use-stable-kde');
+    return not -e $srcdir;
 }
 
 # Convenience subroutine to get the source root dir.
@@ -1095,7 +1070,7 @@ sub svn_module_url
     # The following modules are in /trunk, not /trunk/KDE.  There are others,
     # but these are the important ones.
     my @non_trunk_modules = qw(extragear kdesupport koffice icecream kde-common
-        playground qt-copy valgrind KDE kdereview www l10n-kde3 l10n-kde4);
+        playground qt-copy KDE kdereview www l10n-kde4);
 
     my $module_root = $module;
     $module_root =~ s/\/.*//; # Remove everything after the first slash
@@ -1286,10 +1261,7 @@ sub blacklisted
 {
     my ($module, $option) = @_;
 
-    # Known to not work.
-    my @unsermake_ban_list = qw/valgrind kde-common qt-copy kdebindings/;
-
-    return list_has(@unsermake_ban_list, $module) if ($option eq 'use-unsermake');
+    # There was more here with KDE 3...
     return 0;
 }
 
@@ -1338,8 +1310,7 @@ sub get_option
     # No sticky options left.
     # Configure flags, cmake options, and CXXFLAGS are appended to the global
     # option
-    if ($module ne 'qt-copy' && ($option eq 'configure-flags'
-        || $option eq 'cxxflags' || $option eq 'cmake-options'))
+    if ($module ne 'qt-copy' && ($option eq 'cxxflags' || $option eq 'cmake-options'))
     {
         my $value = ${$global_opts}{$option};
 
@@ -1671,9 +1642,8 @@ sub download_file
 }
 
 # This subroutine is used to try and download a Subversion checkout snapshot
-# for a given module.  For trunk modules, the KDE FTP repository is checked
-# first.  For other modules or if not available from KDE FTP, the host
-# set by the tarball-host option (default kdesvn-build.kde.org) is checked.
+# for a given module.  Modules that have branches or tags associated with them
+# are not attempted.
 #
 # If available the snapshot is downloaded and installed into the normal
 # location for a kdesvn-build source checkout and already switched into the
@@ -1688,7 +1658,9 @@ sub install_module_snapshot
     whisper "Finding snapshot for g[$module]";
 
     # Don't bother with snapshot if the user has their own URL picked out.
-    if (get_option($module, 'override-url') or get_option($module, 'module-base-path'))
+    if (get_option($module, 'override-url') or
+        get_option($module, 'module-base-path') or
+        $module eq 'qt-copy') # Uses git.
     {
         return 0;
     }
@@ -1697,7 +1669,7 @@ sub install_module_snapshot
 
     # The branch for the module is the tag option if specified, otherwise the
     # branch option if specified.  Otherwise the default branch for the
-    # module is selected (usually trunk, perhaps 3.5)
+    # module is selected (usually trunk, perhaps 4.3)
     my $branch = get_option($module, 'tag');
     $branch = get_option($module, 'branch') if not $branch;
 
@@ -1708,41 +1680,20 @@ sub install_module_snapshot
     my ($filename, $url, $dirName);
 
     # If a trunk module, try to obtain from KDE FTP first.
-    if ($branch eq 'trunk')
+    return 0 if ($branch ne 'trunk');
+
+    $filename = "$moduleName-svn.tar.bz2";
+    $filename =~ tr{/}{-}; # Substitute - for /
+    $dirName = $moduleName;
+
+    if ($filename =~ /^(playground|extragear)-/)
     {
-        $filename = "$moduleName-svn.tar.bz2";
-        $filename =~ tr{/}{-}; # Substitute - for /
-        $dirName = $moduleName;
-
-        if ($filename =~ /^(playground|extragear)-/)
-        {
-            $filename = "kde$filename"; # Conform to snapshot naming convention
-            $dirName = "kde$moduleName";
-            $dirName =~ s{/}{-}; # Substitute here too.
-        }
-
-        #$url = "ftp://ftp.kde.org/pub/kde/unstable/snapshots/$filename";
-        $url = "http://download.kde.org/download.php?url=unstable/snapshots/$filename";
-
-        if (download_module_snapshot($module, $filename, $url, $dirName))
-        {
-            return 1; # We're done.
-        }
+        $filename = "kde$filename"; # Conform to snapshot naming convention
+        $dirName = "kde$moduleName";
+        $dirName =~ s{/}{-}; # Substitute here too.
     }
 
-    # No snapshot from KDE FTP, try the normal source.
-    my $revision = tarball_snapshot_revision($module);
-    my $tarballHost = get_option($module, 'tarball-host');
-    my $snapshotPath = get_option($module, 'tarball-path');
-
-    if ($revision <= 0)
-    {
-        return 0; # No snapshot is available.
-    }
-
-    $filename = "$moduleName-$branch-svn-r$revision.tar.bz2";
-    $url = "http://$tarballHost$snapshotPath/$filename";
-    $dirName = "$moduleName-$branch-svn-r$revision";
+    $url = "http://download.kde.org/download.php?url=unstable/snapshots/$filename";
 
     return download_module_snapshot($module, $filename, $url, $dirName);
 }
@@ -1920,93 +1871,63 @@ sub moduleBaseName
     return $module;
 }
 
-# This subroutine contacts a remote web server (defined by the tarball-host
-# option) and calls a php script to determine if there is a tarball snapshot
-# available for the given module and branch.  The revision number of the
-# snapshot is returned.  0 is returned if there is no revision available or
-# some other error occurred.
+# Perform a git clone to checkout the latest branch of either the official
+# Qt Software Qt 4, or the KDE-Qt repository (essentially the old qt-copy
+# with patches applied).
 #
-# First parameter: Module to query for.
-sub tarball_snapshot_revision
+# First parameter is the module to perform the checkout of.
+# Second parameter is the repository (typically URL) to use.
+# Returns boolean true if successful, false otherwise.
+sub git_clone_module
 {
     my $module = shift;
-    my $tarballHost = get_option($module, "tarball-host");
-    my $revisionScript = get_option($module, "tarball-revision-script");
-    my $branch = get_option($module, 'branch');
-    my $moduleName = moduleBaseName($module);
+    my $git_repo = shift;
+    my $srcdir = get_fullpath($module, 'source');
 
-    whisper "Checking if snapshot available for g[$module]";
+    my $result = log_command($module, 'git-clone', ['git', 'clone', '--', $git_repo, $srcdir]);
+    return ($result == 0);
+}
 
-    if(pretending or not has_Net_HTTP())
-    {
-        return 0;
+# Updates an already existing git checkout by running git pull.
+#
+# First parameter is the module to download.
+# Returns boolean true if successful, otherwise 0.
+sub git_update_module
+{
+    my $module = shift;
+    my $srcdir = get_fullpath($module, 'source');
+
+    p_chdir($srcdir);
+    my $result = log_command($module, 'git-pull', ['git', 'pull']);
+
+    return ($result == 0);
+}
+
+# Either performs the initial checkout or updates the current git checkout for qt-copy,
+# as appropriate.
+#
+# If errors are encountered, an exception is raised using die().
+#
+# Returns the number of files updated (actually it just returns 0 now, but maybe someday)
+sub update_qt_checkout()
+{
+    my $module = 'qt-copy'; # bwahaha, not shift for once
+    my $srcdir = get_fullpath($module, 'source');
+
+    if (-e $srcdir) {
+        git_update_module($module) or die "Can't update $module: $!";
     }
+    else {
+        my $git_repo = get_option($module, 'repository');
 
-    if (get_option($module, 'override-url'))
-    {
-        whisper "\tb[override-url] in effect for g[$module], snapshot not available.";
-        return 0;
-    }
-
-    $branch = default_module_branch($module) if not $branch; # Use default value.
-    debug "Looking up revision number for g[$module-$branch] from g[$tarballHost$revisionScript]";
-
-    my $conn = Net::HTTP->new ('Host' => $tarballHost);
-    if (not defined $conn)
-    {
-        error "Unable to connect to $tarballHost, snapshot check aborted.";
-        error "\tError message: r[$!]";
-        return 0;
-    }
-
-    # Send connection request
-    $conn->write_request('GET' => "$revisionScript?module=$moduleName&branch=$branch",
-                         'User-Agent' => "Mozilla/5.0 (compatible; kdesvn-build $versionNum)",
-                         );
-
-    my ($code, $msg, %h) = $conn->read_response_headers();
-
-    # Require HTTP success code.
-    if (200 != $code)
-    {
-        debug "Server returned $code $msg";
-        whisper "Error received from server: r[$code $msg]";
-        return 0;
-    }
-
-    my ($buf, $result, $revision);
-    $revision = '';
-
-    while (1)
-    {
-        $result = $conn->read_entity_body($buf, 2048);
-        if (not defined $result)
-        {
-            whisper "Error reading revision number from server: r[$!]";
-            return 0;
+        if (not $git_repo) {
+            die "Unable to checkout Qt, you must specify a repository to use.";
         }
 
-        last unless $result;
-        $revision .= $buf;
+        git_clone_module($module, "$git_repo") or die "Can't checkout $module: $!";
     }
 
-    # Response received should be in the form "Revision: <number>".  Strip down
-    # to the number part.
-    chomp $revision;
-    ($result) = ($revision =~ /^Revision:\s*(\d+)/);
-
-    $conn->close;
-
-    if ($result and $result > 0)
-    {
-        whisper "g[$module] is g[available] for rapid download.";
-        return $result;
-    }
-    else
-    {
-        whisper "g[$module] is y[not available] for rapid download.";
-        return 0;
-    }
+    return 0;
 }
 
 # Checkout a module that has not been checked out before, along with any
@@ -2101,11 +2022,6 @@ sub update_module_path
         # Now try again (allow exception to bubble up this time).
         $count = run_svn($module, 'svn-up-2', \@args);
     }
-
-    # If the admin dir exists and is a soft link, remove it so that svn can
-    # update it if need be.  The link will automatically be re-created later
-    # in the process if necessary by the build functions.
-    unlink ("$fullpath/admin") if -l "$fullpath/admin";
 
     my $count2 = update_module_subdirectories($module, @path);
 
@@ -2309,6 +2225,8 @@ sub log_command
         # Call internal function, name given by $command[1]
         if($command[0] eq 'kdesvn-build')
         {
+            # No colors!
+            ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
             debug "Calling $command[1]";
 
             my $cmd = $command[1];
@@ -2367,11 +2285,10 @@ sub set_error_logfile
     symlink "$logfile", "$logdir/error.log";
 }
 
-# Subroutine to run make (unsermake with KDE 3) and process the build process
-# output in order to provide completion updates.  If using CMake, CMake 2.4.3
-# or later is required.  This procedure takes the same arguments as
-# log_command() (described here as well), except that the callback argument
-# is not used.
+# Subroutine to run make and process the build process output in order to
+# provide completion updates.  This procedure takes the same arguments as
+# log_command() (described here as well), except that the callback argument is
+# not used.
 #
 # First parameter is the name of the module being built (for logging purposes
 #   and such).
@@ -2385,27 +2302,15 @@ sub run_make_command
 {
     my ($module, $filename, $argRef) = @_;
 
-    my $isunsermake = ${$argRef}[0] =~ 'unsermake';
-
     debug "run_make_command: $module, ", join(', ', @{$argRef});
 
     # There are situations when we don't want (or can't get) progress output:
-    # 1. Automake (i.e. not cmake, not unsermake)
+    # 1. Not using CMake (i.e. Qt)
     # 2. If we're not printing to a terminal.
     # 3. When we're debugging (we'd interfere with debugging output).
-    if ((!module_uses_cmake($module) and !$isunsermake) or
-        not -t STDERR or
-        debugging)
+    if ((!module_uses_cmake($module)) or not -t STDERR or debugging)
     {
         return log_command($module, $filename, $argRef);
-    }
-
-    # Make sure -p is in the unsermake flags, it's the whole reason for using
-    # this function.
-    if ($isunsermake and !(grep /^(-p)|(--print-progress)$/, @{$argRef}))
-    {
-        # Add in front of element 1, deleting 0 elements.
-        splice @{$argRef}, 1, 0, '-p';
     }
 
     # Setup callback function for use by log_command.
@@ -2426,19 +2331,9 @@ sub run_make_command
 
             my $percentage = '';
 
-            if ($isunsermake)
+            if ($input =~ /^\[\s*([0-9]+)%]/)
             {
-                if ($input =~ /([0-9]+)% (creating|compiling|linking)/)
-                {
-                    $percentage = $1;
-                }
-            }
-            else # CMake.
-            {
-                if ($input =~ /^\[\s*([0-9]+)%]/)
-                {
-                    $percentage = $1;
-                }
+                $percentage = $1;
             }
 
             # Update terminal (\e[K clears to the end of line) if the
@@ -2462,9 +2357,8 @@ sub is_subdir_buildable
 {
     my ($module, $dir) = @_;
 
-    return 0 if $dir eq 'admin';
     return 0 if $dir eq 'kalyptus' and $module eq 'kdebindings';
-    return 0 if $dir eq 'scripts' and ($module eq 'l10n-kde3' or $module eq 'l10n-kde4');
+    return 0 if $dir eq 'scripts' and ($module eq 'l10n-kde4');
     return 1;
 }
 
@@ -2551,26 +2445,19 @@ sub safe_rmtree
 
 # Subroutine to run the make command with the arguments given by the passed
 # list.  The first argument of the list given must be the module that we're
-# making.  The second argument is the "try number", used in creating the log
-# file name.
+# making.
 #
 # Returns 0 on success, non-zero on failure (shell script style)
 sub safe_make (@)
 {
-    my ($module, $trynumber, @args) = @_;
+    my ($module, @args) = @_;
     my $logdir = get_log_dir($module);
     my $checkout_dirs = get_option($module, "checkout-only");
     my @dirs = split(' ', $checkout_dirs);
-    my $installing = $trynumber eq 'install';
+    my $installing = (scalar @args > 0) && ($args[0] eq 'install');
 
     my $make = 'make';
     my $opts = get_option($module, 'make-options');
-
-    if (get_option($module, 'use-unsermake') and not module_uses_cmake($module))
-    {
-        $make = get_option($module, 'unsermake-path');
-        $opts = get_option($module, 'unsermake-options');
-    }
 
     # Convert the path to an absolute path since I've encountered a sudo that
     # is apparently unable to guess.  Maybe it's better that it doesn't guess
@@ -2581,44 +2468,17 @@ sub safe_make (@)
     {
         # Weird, we can't find make, you'd think configure would have
         # noticed...
-        error " r[b[*] Unable to find the g[make] executable!";
-
-        # Make sure we don't bother trying again, this is a more serious
-        # error.
-        set_option($module, "#was-rebuilt", 1);
+        error " r[b[*] Unable to find the g[$make] executable!";
         return 1;
     }
 
-    # Add make-options to the given options.
-    # If we're installing, we need to strip out parallel build options.  If any
-    # other options would break installation I will probably need to add a
-    # separate make-install-options option. :-(
-    unshift (@args, split(' ', $opts));
-
-    if ($installing and grep(/^-j/, @args))
-    {
-        whisper "\tStripping parallel install instructions for g[$module]";
-
-        # Find -j option
-        for (my $i = 0; $i < scalar @args; ++$i)
-        {
-            if ($args[$i] =~ /^-j/)
-            {
-                # Found it, now decide whether to remove -jfoo option or -j
-                # and the next argument.
-                if ($args[$i] eq '-j')
-                {
-                    splice(@args, $i, 2); # Remove 2 elements at $i
-                }
-                else
-                {
-                    splice(@args, $i, 1); # Remove 1 element at $i
-                }
-
-                $i = -1; # Restart search ($i will increment to 0)
-            }
-        }
+    # Add make-options to the given options, unless we're installing (since
+    # things like parallel build options will break install).
+    if (not $installing) {
+        unshift (@args, split(' ', $opts));
     }
+
+    unshift (@args, $make);
 
     my $description;
 
@@ -2626,7 +2486,6 @@ sub safe_make (@)
     if($installing)
     {
         $description = clr "g[$module]";
-        unshift @args, $make, 'install';
 
         my @install_cmd = split(' ', get_option ($module, 'make-install-prefix'));
         if (@install_cmd)
@@ -2646,11 +2505,7 @@ sub safe_make (@)
     }
     else
     {
-        $description = "Compiling, attempt $trynumber";
-
-        unshift @args, $make;
-
-        info "\t$description...";
+        info "\tCompiling...";
     }
 
     push (@dirs, "") if scalar @dirs == 0;
@@ -2659,11 +2514,14 @@ sub safe_make (@)
         # Some subdirectories shouldn't have make run within them.
         next unless is_subdir_buildable($module, $subdir);
 
-        my $logname = $installing ? 'install' : "build-$trynumber";
+        # The -1 used to be an increasing prefix but with CMake we don't
+        # continually reattempt.  Leave the -1 for now since I expect
+        # most are used to the build log ending in it.
+        my $logname = $installing ? 'install' : "build-1";
 
         if ($subdir ne '')
         {
-            $logname = $installing ? "install-$subdir" : "build-$subdir-$trynumber";
+            $logname = $installing ? "install-$subdir" : "build-$subdir-1";
 
             info $installing ? "\tInstalling " : "\tBuilding ", "subdirectory g[$subdir]";
         }
@@ -2686,29 +2544,21 @@ sub safe_make (@)
 # If the branch option is set globally then that value is used to come up with an
 # appropriate default (usually will be the same as the branch option but not always).
 #
-# This handles the use-stable-kde option correctly as well if branch is unset.  This
-# function may be called while parsing options for non-global modules, so it
-# can only call get_option() for 'global' entries.
+# This function may be called while parsing options for non-global modules, so
+# it can only call get_option() for 'global' entries.
 #
 # First parameter: module to get default branch of.
-# Returns: branch name. e.g. 'trunk', '3.5', 'work/make-it-cool'
+# Returns: branch name. e.g. 'trunk', '4.3', 'work/make-it-cool'
 sub default_module_branch
 {
     # Add the appropriate branch to this hash for stable modules.  Any module not listed
-    # here will default to 3.5 when 'use-stable-kde' is set, global{'branch'} otherwise.
+    # here will default to global{'branch'}.
     my %branched_modules_exceptions = (
-        '3.5' => {
-            'koffice' => '1.5', # Last 3.x release of KOffice suite.
-            'qt-copy' => '3.3', # There is no Qt 3.5.x ;)
-            'arts'    => '1.5', # arts had a different versioning scheme.
-        },
         '4.0' => {
-            'qt-copy'    => '4.4',
             'kdesupport' => 'tags/kdesupport-for-4.1', # See below.
             'phonon'     => '4.2',   # Weird, I know.
         },
         '4.1' => {
-            'qt-copy'    => '4.4',
             'kdesupport' => 'tags/kdesupport-for-4.1', # tags/ is special here (i.e. no branch)
             'phonon'     => '4.2',   # Weird, I know.
         },
@@ -2719,7 +2569,10 @@ sub default_module_branch
 
     my $module = shift;
     my $branch = get_option('global', 'branch');
-    my $default = get_option('global', 'use-stable-kde') ? '3.5' : 'trunk';
+    my $default = 'trunk';
+
+    # Go go gadget git!
+    $default = 'master' if $module eq 'qt-copy';
 
     # If the module doesn't normally get branched there's not much we can do, so we'll just
     # return the default. (We search against regexps instead of module names here)
@@ -2747,30 +2600,47 @@ sub default_module_branch
 # module options to be available.
 #
 # First parameter is the module to get options for.
-# Return is a hash containing the default module options, suitable for assignment
-# to %package_opts.
+#
+# Return is a hash reference containing the default module options, suitable
+# for assignment to %package_opts.
 sub default_module_options
 {
     my $module = shift;
     my $branch = default_module_branch($module);
+    my %options = (
+        'set-env' => { },
+    );
 
     # Hack to support default "tags" instead of default branches for kdesupport.
+    my $tagname = 'branch';
 
-    my @opts;
     if ($branch =~ /^tags\//)
     {
         $branch =~ s/^tags\///; # Strip tags/
-        @opts = ('tag', $branch);
-    }
-    else
-    {
-        @opts = ('branch', $branch);
+        $tagname = 'tag';
     }
 
-    return {
-        'set-env' => { },
-        @opts,
-    };
+    $options{$tagname} = $branch;
+
+    if ($module eq 'qt-copy') {
+        # Setup default options for qt-copy
+        my %qtcopy_opts = (
+            'configure-flags' => '-qt-gif -no-phonon -qdbus -nomake demos -nomake examples -fast',
+            'repository' => 'git://qt.gitorious.org/qt/qt.git',
+            'branch'     => 'master',
+        );
+
+        # Merge (uses Perl hash slice)
+        @options{keys %qtcopy_opts} = values %qtcopy_opts;
+        delete @options{qw(tag)}; # These don't apply to qt-copy git
+    }
+
+    if ($module eq 'kdesupport') {
+        # Phonon is built separately as its own submodule
+        $options{'cmake-options'} = '-DBUILD_phonon=OFF';
+    }
+
+    return \%options;
 }
 
 # Subroutine to add a variable to the environment, but ONLY if it
@@ -2847,18 +2717,6 @@ sub setup_default_modules()
             }
         }
     }
-
-    # Setup default options for qt-copy
-    $package_opts{'qt-copy'} = {
-        'configure-flags' => '-qt-gif -no-phonon -qdbus -nomake demos -nomake examples -no-exceptions -fast',
-        'apply-qt-patches' => 1,
-        'branch'  => default_module_branch('qt-copy'),
-        'set-env' => { },
-        'make-options' => get_option('global', 'make-options'),
-    };
-
-    # kdesupport needs to be told to avoid phonon.
-    set_option('kdesupport', 'cmake-options', '-DBUILD_phonon=OFF');
 }
 
 # Reads in the options from the config file and adds them to the option store.
@@ -3089,10 +2947,10 @@ EOM
 sub module_needs_builddir_help
 {
     my $module = shift;
-    my @module_help_list = qw/kdebindings valgrind/;
+    my @module_help_list = qw/kdebindings/;
 
     # l10n/lang needs help.
-    return 1 if ($module =~ /^l10n-kde[34]\/?/);
+    return 1 if ($module =~ /^l10n-kde4\/?/);
 
     # Other CMake-using modules are fine.
     return 0 if module_uses_cmake($module);
@@ -3621,13 +3479,8 @@ Options:
     --revision (or -r)=<rev> Forces update to revision <rev> from Subversion.
 
     --refresh-build      Start the build from scratch.
-    --reconfigure        Run configure again, but don't clean the build
-                         directory or re-run make -f Makefile.cvs.
-    --recreate-configure Run make -f Makefile.cvs again to redo the configure
-                         script.
-    --no-rebuild-on-fail Don't try to rebuild a module from scratch if it
-                         failed building and we didn't already try to build it
-                         from scratch.
+    --reconfigure        Run CMake/configure again, but don't clean the build
+                         directory.
     --build-system-only  Create the build infrastructure, but don't actually
                          perform the build.
     --run=<program>      Runs the given program in the same environment
@@ -3708,11 +3561,6 @@ DONE
 
             /^--reconfigure$/ && do {
                 set_option('global', '#reconfigure', 1);
-                last SWITCH;
-            };
-
-            /^--recreate-configure$/ && do {
-                set_option('global', '#recreate-configure', 1);
                 last SWITCH;
             };
 
@@ -3800,11 +3648,6 @@ DONE
                 set_option('global', '#kdedir', $prefix);
                 set_option('global', '#reconfigure', 1);
 
-                last SWITCH;
-            };
-
-            /^--no-rebuild-on-fail$/ && do {
-                set_option('global', '#no-rebuild-on-fail', 1);
                 last SWITCH;
             };
 
@@ -3911,9 +3754,7 @@ DONE
 
                     # TODO: In pathological situations this may cause an
                     # inaccurate collection of options for this module due to
-                    # the default options not being set correctly.  (i.e.
-                    # use-stable-kde is false now, if set to true on command
-                    # line the module options will be wrong).
+                    # the default options not being set correctly.
                     set_option($module, "#$option", $value);
                 }
 
@@ -4061,53 +3902,6 @@ sub close_lock
     unlink $lockfile;
 }
 
-sub adjust_update_list
-{
-    my $list_ref = shift;
-    my $build_ref = shift;
-
-    # Check to see if the user has requested for one of the modules to be
-    # built using unsermake.  If so, we need to check if unsermake is
-    # already supposed to be checked out.  If so, we need to make sure that
-    # unsermake is present in any checkout-only directives, and if not, we need
-    # to add unsermake to the checkout list.
-    my $unsermake_needed = 0;
-
-    for my $module (@{$build_ref})
-    {
-        if(get_option($module, 'use-unsermake') and not module_uses_cmake($module))
-        {
-            debug "Unsermake is needed.";
-            $unsermake_needed = 1;
-            last;
-        }
-    }
-
-    # If the user has told us that they will manage unsermake then we don't
-    # need to do anything.
-    $unsermake_needed = 0 if get_option('global', 'use-unsermake') eq 'self';
-
-    # If the user has set manual-update, don't second-guess them.
-    $unsermake_needed = 0 if get_option('unsermake', 'manual-update');
-
-    debug "Do we update unsermake? ", ($unsermake_needed ? 'yes' : 'no');
-
-    if ($unsermake_needed)
-    {
-        if (not list_has(@{$list_ref}, 'unsermake'))
-        {
-            whisper "Adding unsermake to build.";
-
-            # unsermake isn't being downloaded by the user.
-            unshift (@{$list_ref}, 'unsermake');
-            $package_opts{'unsermake'} = {
-                'manual-build' => 'true',
-                'tag'          => 'unmaintained/3',
-            };
-        }
-    }
-}
-
 # Subroutine to get the list of Subversion modules to update.  Returned
 # as a list.  Parse the command-line arguments first.
 sub get_update_list
@@ -4116,7 +3910,6 @@ sub get_update_list
 
     # l10n module has different names for KDE 3 and KDE 4.
     my $l10n = 'l10n-kde4';
-    $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
 
     if (get_option('global', 'kde-languages') and not get_option($l10n, 'manual-update'))
     {
@@ -4144,7 +3937,6 @@ sub get_build_list
 
     # l10n module has different names for KDE 3 and KDE 4.
     my $l10n = 'l10n-kde4';
-    $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
 
     # Add l10n to build list if needed.
     if (get_option('global', 'kde-languages') and not get_option($l10n, 'manual-build'))
@@ -4500,7 +4292,6 @@ sub handle_updates
     # filter_l10n_module_list because we have to handle the $l10n/scripts
     # directory specially (just on update).
     my $l10n = 'l10n-kde4';
-    $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
 
     foreach my $module (@update_list)
     {
@@ -4539,7 +4330,10 @@ sub handle_updates
         my $count;
 
         eval {
-            if (-e "$fullpath/.svn")
+            if ($module eq 'qt-copy') {
+                $count = update_qt_checkout();
+            }
+            elsif (-e "$fullpath/.svn")
             {
                 # Warn user if the current repo URL is different than expected.
                 check_module_validity($module);
@@ -4554,6 +4348,7 @@ sub handle_updates
         if ($@)
         {
             error "Error updating r[$module], removing from list of packages to build.";
+            error " > y[$@]";
             dont_build ($module, $ipc); # Sends IPC message.
             $hadError = 1;
         }
@@ -4578,23 +4373,6 @@ sub handle_updates
 
     info "<<<  Update Complete  >>>\n";
     return $hadError;
-}
-
-# Subroutine to run the qt-copy apply_patches script.
-# Returns 0 on success, non-zero on failure.
-sub safe_apply_patches
-{
-    my $srcdir = get_fullpath('qt-copy', 'source');
-
-    if (pretending)
-    {
-        pretend "\tWould have run g[./apply_patches]";
-        return 0;
-    }
-
-    info "\tg[Applying recommended Qt patches].";
-    p_chdir ($srcdir);
-    return (log_command('qt-copy', 'apply-patches', [ "./apply_patches" ]));
 }
 
 # Returns a hash digest of the given options in the list.  The return value is
@@ -4623,45 +4401,40 @@ sub safe_configure
     my $script = "$srcdir/configure";
 
     my @commands = split (/\s+/, get_option($module, 'configure-flags'));
+    push @commands, '-confirm-license', '-opensource';
 
     # Get the user's CXXFLAGS
     my $cxxflags = get_option ($module, 'cxxflags');
     setenv ('CXXFLAGS', $cxxflags);
     setenv ('DO_NOT_COMPILE', get_option ($module, 'do-not-compile'));
 
-    if ($module ne 'qt-copy')
-    {
-        my $prefix = get_option ($module, 'prefix');
-
-        # If still no prefix, use KDEDIR
-        $prefix = get_option($module, 'kdedir') unless $prefix;
-
-        push @commands, "CXXFLAGS=$cxxflags" if $cxxflags;
-        push @commands, "--prefix=$prefix";
-    }
-    else # qt-copy
-    {
-        my $prefix = get_option($module, 'qtdir');
-
-        # Some users have added -prefix manually to their flags, they
-        # probably shouldn't anymore. :)
-
-        if (scalar grep /^-prefix(=.*)?$/, @commands)
-        {
-            warning <<EOF;
- b[y[*]
- b[y[*] You have the y[-prefix] option selected in your qt-copy configure flags.
- b[y[*] kdesvn-build will correctly add the -prefix option to match your Qt
- b[y[*] directory setting, so you do not need to use -prefix yourself.
- b[y[*]
+    # This is only run for qt-copy, so let's verify that.
+    if ($module ne 'qt-copy') {
+        error <<EOF;
+r[b[ *] kdesvn-build assumes that only Qt would be compiled using a configure
+r[b[ *] script, but we're trying to configure r[b[$module].  Please report a
+r[b[ *] bug at http://bugs.kde.org/ -- Unable to build this module.
 EOF
-        }
-
-        push @commands, "-prefix", $prefix;
-
-        # Auto-accept the license (only works in very recent versions of qt-copy though
-        push @commands, '-confirm-license', '-opensource';
+        return 1;
     }
+
+    my $prefix = get_option($module, 'qtdir');
+
+    # Some users have added -prefix manually to their flags, they
+    # probably shouldn't anymore. :)
+
+    if (scalar grep /^-prefix(=.*)?$/, @commands)
+    {
+        warning <<EOF;
+b[y[*]
+b[y[*] You have the y[-prefix] option selected in your qt-copy configure flags.
+b[y[*] kdesvn-build will correctly add the -prefix option to match your Qt
+b[y[*] directory setting, so you do not need to use -prefix yourself.
+b[y[*]
+EOF
+    }
+
+    push @commands, "-prefix", $prefix;
 
     # We're special casing these modules because we're using the lndir
     # hack for them.
@@ -4670,16 +4443,23 @@ EOF
         $script = get_fullpath($module, 'build') . "/configure";
     }
 
+    # We use a special script for qt-copy to auto-accept the license, it is created
+    # just before running it (see below).
+    my $qtdir = get_fullpath('qt-copy', 'source');
+    my $builddir = get_fullpath($module, 'build');
+
+    $script = "$qtdir/configure" if $module eq 'qt-copy';
     unshift @commands, $script;
 
     my $old_flags = get_persistent_option($module, 'last-configure-flags') || '';
-    my $builddir = get_fullpath($module, 'build');
 
     if((get_list_digest(@commands) ne $old_flags) or
        (get_option($module, 'reconfigure')) or
        (not -e "$builddir/Makefile")
       )
     {
+        note "\tb[r[LGPL license selected for Qt].  See $srcdir/LICENSE.LGPL";
+
         info "\tRunning g[configure]...";
 
         set_persistent_option($module, 'last-configure-flags', get_list_digest(@commands));
@@ -4772,83 +4552,8 @@ sub safe_run_cmake
 # Subroutine to try and see if we've already tried to update kde-common
 sub has_updated_kdecommon
 {
-    # Test fast case first.
-    return 1 if get_option('global', '#has-checked-for-admin');
-
     # Double check that it wasn't in the update list.
-    if (grep(/^(KDE\/)?kde-common$/, @update_list))
-    {
-        set_option('global', '#has-checked-for-admin', 1);
-        return 1;
-    }
-
-    return 0;
-}
-
-# Subroutine to automatically create an admir dir for a module if it doesn't
-# have one.  The first parameter is the module name.  It is assumed that we
-# are already in the source directory, the current directory will not be
-# changed.
-#
-# Returns boolean true on success, boolean false on failure.
-#
-# NOTE: This subroutine might try to call an svn update, as long as #no-svn
-# isn't set.
-sub create_admin_dir
-{
-    my $module = shift;
-    my $fullpath = get_fullpath($module, 'source');
-
-    # Don't bother if it's qt-copy, or if we've already got an admin
-    # directory.
-    return 1 if $module eq 'qt-copy';
-    return 1 if -e "$fullpath/admin";
-
-    # Find kde-common
-    my $admindir = get_fullpath('kde-common', 'source') . '/admin';
-    if (not -e $admindir)
-    {
-        $admindir = get_fullpath('KDE/kde-common', 'source') . '/admin';
-    }
-
-    if (not -e $admindir)
-    {
-        # Can't find kde-common, it's apparently not installed.
-        if (not has_updated_kdecommon())
-        {
-            # We haven't tried downloading it, now would be a good time.
-            note "Can't find y[kde-common], going to try downloading it.";
-
-            if (get_option('kde-common', 'no-svn'))
-            {
-                # Not allowed to update.
-                error "r[!!] Updating has been blocked, can't get y[kde-common].";
-                return 0;
-            }
-
-            # Checkout the directory.
-            $admindir = get_fullpath('kde-common', 'source') . '/admin';
-            if (pretending)
-            {
-                pretend "Would have checked out g[kde-common]\n";
-            }
-            else
-            {
-                eval {
-                    checkout_module_path('kde-common', 'admin');
-                };
-
-                return 0 if $@;
-            }
-        }
-    }
-
-    p_chdir ($fullpath);
-
-    whisper "\tCreating symbolic link to g[/admin directory].";
-    return 1 if pretending;
-
-    return symlink $admindir, "$fullpath/admin";
+    return (grep(/^(KDE\/)?kde-common$/, @update_list)) ? 1 : 0;
 }
 
 # Subroutine to recursively symlink a directory into another location, in a
@@ -4966,22 +4671,6 @@ sub prepare_fake_builddir
     # Skip modules that don't need special treatment.
     return 1 unless module_needs_builddir_help($module);
 
-    # Backwards compatibility hack.
-    # kdesvn-build 0.97 and earlier would physically copy the Qt source
-    # directory to the build directory.  kdesvn-build versions after that use
-    # the lndir program that is used for kdebindings and valgrind for
-    # portability reasons.  This will break for users who have a real copy of
-    # Qt, so check here if the qt-copy configure script file is a real file
-    # (not a symlink), and if so, use the old method (since presumably it
-    # worked earlier).
-    if ($module eq 'qt-copy' and -e "$builddir/configure" and not -l "$builddir/configure")
-    {
-        whisper "Using deprecated qt-copy builddir faking method.";
-
-        # Use old method of copying.
-        $args = [ 'cp', '-af', $srcdir, $builddir ];
-    }
-
     # Use an internal routine to complete the directory symlinking (or the
     # alternate routine in the case of old qt-copy).
     if (log_command ($module, 'create-builddir', $args))
@@ -4994,15 +4683,15 @@ sub prepare_fake_builddir
 }
 
 # Subroutine to create the build system for a module.  This involves making
-# sure the directory exists and then running make -f Makefile.cvs.  This
-# subroutine assumes that the module is already downloaded.
+# sure the directory exists and then running any preparatory steps (like for
+# l10n modules).  This subroutine assumes that the module is already
+# downloaded.
 sub safe_create_build_system
 {
     my $module = shift;
     my $srcdir = get_fullpath($module, 'source');
     my $builddir = get_fullpath($module, 'build');
     my $uses_cmake = module_uses_cmake($module);
-    my $instapps = get_option($module, 'inst-apps');
 
     whisper "\tCMake support for $module: ", $uses_cmake ? "Yes" : "No";
 
@@ -5012,62 +4701,28 @@ sub safe_create_build_system
         return 0;
     }
 
-    # If we're using CMake, stick around long enough to check for inst-apps,
-    # and eventually other valid options we don't support yet, and warn if
-    # they are in use.  We do nothing further in this function because we
-    # skip this step when using CMake.
-    # Exception: KDE 4 l10n modules use CMake but require extra preparation
+    # KDE 4 l10n modules use CMake but require extra preparation
     # before they can be built, so don't abort out for that module.
     if ($uses_cmake)
     {
-        warning " b[y[*] CMake does not support the inst-apps option!" if $instapps;
         return 0 unless $module =~ /^l10n-kde4\/?/; # Done.
     }
 
-    # These modules will run make -f Makefile.cvs in (fake) builddir to keep
-    # srcdir clean. Except for qt-copy when not using qt-builddir-hack.
-    if(module_needs_builddir_help($module))
-    {
-        p_chdir ($builddir);
-    }
-    else
-    {
-        p_chdir ($srcdir); # Run make -f Makefile.cvs in srcdir.
-    }
+    # Setup in the build directory.
+    p_chdir ($builddir);
 
-    if ($instapps)
-    {
-        open (INSTAPPS, ">inst-apps") or do {
-            error "\tUnable to create inst-apps file for r[$module]!";
-            return 1;
-        };
-
-        print INSTAPPS "$instapps\n";
-        close INSTAPPS;
-    }
-    else
-    {
-        unlink ("$srcdir/inst-apps");
+    # Verify we're building what we expect.
+    if ($module !~ /^l10n-kde4\//) {
+        error " r[b[*] kdesvn-build only expects to need to create a build system for l10n";
+        error " r[b[*] modules, but was asked to do so for r[b[$module] -- aborting.";
+        return 1;
     }
 
-    # qt-copy 4.x doesn't need any other help.
-    if ($module eq 'qt-copy' and not -e 'Makefile.cvs')
-    {
-        return 0;
-    }
+    my ($lang) = ($module =~ /^l10n-kde4\/(.*)$/);
+    my $cmd_ref = [ './scripts/autogen.sh', $lang ];
 
-    my $cmd_ref = [ 'make', '-f', 'Makefile.cvs' ];
-    $cmd_ref = [ './autogen.sh' ] if $module eq 'valgrind';
-
-    if ($module =~ /^l10n-kde[34]\//)
-    {
-        my ($lang) = ($module =~ /^l10n-kde[34]\/(.*)$/);
-
-        # autogen.sh must be run from one level below for some reason.
-        p_chdir ("../");
-
-        $cmd_ref = [ './scripts/autogen.sh', $lang ];
-    }
+    # autogen.sh must be run from one level below for some reason.
+    p_chdir ("../");
 
     if (log_command ($module, "build-system", $cmd_ref))
     {
@@ -5117,7 +4772,6 @@ sub needs_refreshed
 sub run_svn
 {
     my ($module, $logfilename, $arg_ref) = @_;
-    my $force_refresh = 0;
     my $conflict = 0;
 
     my $revision = get_option($module, 'revision');
@@ -5157,10 +4811,6 @@ sub run_svn
         # Count all changes to the files.
         $count++ if /^[UPDARGMC][ A-Z]/;
 
-        # Check if we need to force a refresh.
-        $force_refresh = 1 if /^A[ A-Z]/ and /Makefile\.am/;
-        $force_refresh = 1 if /^[PAMGU][ A-Z]/ and /configure\.in\.in/;
-
         $conflict = 1 if /^C[ A-Z]/;
     }
 
@@ -5177,13 +4827,6 @@ sub run_svn
         die "Source conflicts exist in $module";
     }
 
-    if ($force_refresh and -e get_fullpath($module, 'build'))
-    {
-        info "File(s) related to the build system were updated, forcing a refresh.";
-        set_option($module, 'refresh-build', 1);
-        set_option($module, '#cancel-clean', 1);
-    }
-
     return $count;
 }
 
@@ -5192,6 +4835,10 @@ sub run_svn
 #
 # i.e. the effect is similar to "rm -r $arg/* $arg/.*".
 #
+# This assumes we're called from a separate child process.  Therefore the
+# normal logging routines are /not used/, since our output will be logged
+# by the parent kdesvn-build.
+#
 # The first parameter should be the absolute path to the directory to delete.
 #
 # Returns boolean true on success, boolean false on failure.
@@ -5199,7 +4846,7 @@ sub prune_under_directory
 {
     my $dir = shift;
 
-    debug "Deleting under r[$dir]";
+    print "starting delete of $dir\n";
 
     # This closure subroutine will be called for every file/directory.
     # It will be called in a postorder traversal (i.e. parent processed after
@@ -5215,7 +4862,7 @@ sub prune_under_directory
         if (not -l _ and -d _)
         {
             # Remove directory.
-            debug "Removing directory y[$name]";
+            debug "Removing directory $name";
             if (not pretending)
             {
                 rmdir ($name) or die "Couldn't delete $name!: $!";
@@ -5224,7 +4871,7 @@ sub prune_under_directory
         else
         {
             # Remove file/symlink/etc.
-            debug "Removing file y[$name]";
+            debug "Removing file $name";
             if (not pretending)
             {
                 unlink ($name) or die "Couldn't delete $name!: $!";
@@ -5272,8 +4919,11 @@ sub clean_build_system
     {
         info "\tRemoving files in build directory for g[$module]";
 
-        if (not prune_under_directory($builddir))
+        # This variant of log_command runs the sub prune_under_directory($builddir)
+        # in a forked child, so that we can log its output.
+        if (log_command($module, 'clean-builddir', [ 'kdesvn-build', 'prune_under_directory', $builddir ]))
         {
+            error " r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.";
             return 0; # False for this function.
         }
 
@@ -5301,16 +4951,10 @@ sub setup_build_system
     my $builddir = get_fullpath($module, 'build');
     my $uses_cmake = module_uses_cmake($module);
 
-    # We don't need to do this with CMake.  Parentheses required because otherwise
-    # Perl parses as ($a = get_option()) and not foo.  This could also be fixed
-    # by using && instead of and.
-    my $do_makeconf = (get_option ($module, 'recreate-configure') and not $uses_cmake);
-
     # As a special case to the normal instances where we will rebuild a module,
     # also force a rebuild if we're using CMake but the current build directory
     # is unsermake-based.  libtool is only used by autotools/unsermake.
-    if (needs_refreshed($module) or
-        ($uses_cmake and -e "$builddir/libtool"))
+    if (needs_refreshed($module) or ($uses_cmake and -e "$builddir/libtool"))
     {
         # The build system needs created, either because it doesn't exist, or
         # because the user has asked that it be completely rebuilt.
@@ -5321,10 +4965,6 @@ sub setup_build_system
             info "\t\ty[Rebuild forced] due to switch of build system to CMake.";
         }
 
-        # Define this option to tell later functions that we tried to rebuild
-        # this module.
-        set_option($module, '#was-rebuilt', 1);
-
         # Check to see if we're actually supposed to go through the cleaning
         # process.
         if (not get_option($module, '#cancel-clean') and
@@ -5333,8 +4973,6 @@ sub setup_build_system
             warning "\tUnable to clean r[$module]!";
             return 0;
         }
-
-        $do_makeconf = 1;
     }
 
     # Symlink source directory to build directory if module doesn't support
@@ -5349,16 +4987,6 @@ sub setup_build_system
         }
     }
 
-    # Check for admin dir, if it doesn't exist, create a softlink.  This doesn't
-    # seem to be necessary for CMake however.
-    if (not $uses_cmake and not create_admin_dir($module))
-    {
-        warning "Unable to find /admin directory for y[$module], it probably";
-        warning "won't build.";
-        # But continue anyways, because in this case I'm just not sure that it
-        # won't work in the future. ;)
-    }
-
     my $confpath = module_needs_builddir_help($module) ? $builddir : $srcdir;
 
     # The l10n-kde4 module requires some initial build system setup unlike
@@ -5366,13 +4994,6 @@ sub setup_build_system
     # its builddir will have a CMakeLists.txt
     if ($module =~ /^l10n-kde4\/?/)
     {
-        $do_makeconf = 1;
-    }
-
-    if ($do_makeconf or (not $uses_cmake and not -e "$confpath/configure"))
-    {
-        whisper "\ty[Recreating configure script].";
-
         if (safe_create_build_system ($module))
         {
             error "\tUnable to create configure system from checkout.";
@@ -5380,15 +5001,6 @@ sub setup_build_system
         }
 
         set_option($module, '#reconfigure', 1); # Force reconfigure of the module
-
-        if ($module eq "qt-copy" and get_option($module, 'apply-qt-patches'))
-        {
-            # Run apply-patches script
-            return 0 if safe_apply_patches ();
-        }
-
-        # Check to see if we're supposed to stop here
-        return 1 if get_option ($module, 'build-system-only');
     }
 
     if (not -e "$builddir" and not super_mkdir("$builddir"))
@@ -5468,19 +5080,9 @@ sub update_module_environment
 
     my @path = ("$qtdir/bin", "$kdedir/bin", get_option ($module, 'binpath'));
 
-    # Everyone loves unsermake (unless you love cmake).
     if (module_uses_cmake($module))
     {
         prepend_environment_path('CMAKE_PREFIX_PATH', $prefix);
-    }
-    elsif (get_option ($module, "use-unsermake"))
-    {
-        my $unsermake = get_fullpath('unsermake', 'source');
-        unshift @path, $unsermake;
-    }
-    else
-    {
-        setenv ("UNSERMAKE", "no");
     }
 
     prepend_environment_path('PATH', @path);
@@ -5579,10 +5181,13 @@ sub prettify_seconds
 # runs svn st and looks for "^C".
 #
 # First parameter is the module to check for conflicts on.
-# Returns boolean true if a conflict exists, false otherwise.
+# Returns 0 if a conflict exists, non-zero otherwise.
 sub module_has_conflict
 {
     my $module = shift;
+
+    return 1 if $module eq 'qt-copy'; # git strikes again
+
     my $srcdir = get_fullpath($module, 'source');
 
     if (get_option($module, 'no-svn'))
@@ -5692,7 +5297,6 @@ sub build_module
 {
     my $module = shift;
     my $builddir = get_fullpath($module, 'build');
-    my $trynumber = 1;
 
     # Do some tests to make sure we're ready to build.
     check_for_module_config($module);
@@ -5715,73 +5319,39 @@ sub build_module
     }
 
     my $start_time = time;
-    while (not defined $package_opts{$module}->{'#was-rebuilt'})
+
+    return 0 if not setup_build_directory($module);
+    return 0 if not setup_build_system($module);
+    return 1 if (get_option ($module, 'build-system-only'));
+
+    if (safe_make ($module))
     {
-        return 0 if not setup_build_directory($module);
-        return 0 if not setup_build_system($module);
-        return 1 if (get_option ($module, 'build-system-only'));
+        # Build failed
 
-        if (safe_make ($module, $trynumber))
+        my $elapsed = prettify_seconds (time - $start_time);
+
+        # Well we tried, but it isn't going to happen.
+        note "\n\tUnable to build y[$module]!";
+        info "\tTook g[$elapsed].";
+        return 0;
+    }
+    else
+    {
+        my $elapsed = prettify_seconds (time - $start_time);
+        info "\tBuild succeeded after g[$elapsed].";
+
+        if (get_option($module, 'run-tests'))
         {
-            # Build failed
-            # There are several reasons why the build could fail.  If we're
-            # using unsermake for this module, then perhaps we just need to
-            # run make again.  After that, we can re-run make -f Makefile.cvs
-            # and etc and then try make again.  If that STILL doesn't work, we
-            # can try rm -rf $builddir/$module and rebuild.
+            run_tests($module); # Don't fail if this fails... yet
+        }
 
-            my $elapsed = prettify_seconds (time - $start_time);
-            my $was_rebuilt = defined $package_opts{$module}{'#was-rebuilt'};
-            $start_time = time;
-
-            ++$trynumber;
-
-            if ($trynumber > 3 or $was_rebuilt or get_option ($module, 'no-rebuild-on-fail'))
-            {
-                # Well we tried, but it isn't going to happen.
-                note "\n\tUnable to build y[$module]!";
-                info "\tTook g[$elapsed].";
-                return 0;
-            }
-
-            if ($trynumber == 2)
-            {
-                # Just try again
-                info "\n\ty[Couldn't build, going to try again just in case].";
-                info "\tTook g[$elapsed].";
-                next;
-            }
-
-            # Don't remove the old modules, but re-run make -f
-            # Makefile.cvs and configure.
-            info "\n\tStill couldn't build, recreating build system (builddir is safe).";
-            info "\tTook g[$elapsed] of time.";
-
-            set_option($module, '#cancel-clean', 1);
-            set_option($module, 'refresh-build', 1);
-
-            # Loop again
+        if (get_option($module, 'install-after-build'))
+        {
+            handle_install($module);
         }
         else
         {
-            my $elapsed = prettify_seconds (time - $start_time);
-            info "\tBuild succeeded after g[$elapsed].";
-
-            if (get_option($module, 'run-tests'))
-            {
-                run_tests($module); # Don't fail if this fails... yet
-            }
-
-            if (get_option($module, 'install-after-build'))
-            {
-                handle_install($module);
-            }
-            else
-            {
-                info "\tSkipping install for y[$module]";
-            }
-
-            last; # Don't forget to exit the loop!
+            info "\tSkipping install for y[$module]";
         }
     }
 
@@ -5802,8 +5372,6 @@ sub filter_l10n_module_list
 {
     my @modules = @_;
     my $l10n = 'l10n-kde4';
-
-    $l10n = 'l10n-kde3' if get_option('global', 'use-stable-kde');
 
     # Only filter if 'l10n' is actually present in list.
     my @matches = grep {$_ eq $l10n or $_ eq 'l10n'} @modules;
@@ -6065,6 +5633,13 @@ sub check_for_module_config
 EOF
         $package_opts{$module} = default_module_options($module);
     }
+
+    # This can happen if there *is* a config specified but the user
+    # did not specify a repository option.  We can't default it in
+    # global because once KDE switches the default would be wrong.
+    if ($module eq 'qt-copy' and not get_option($module, 'repository')) {
+        set_option($module, 'repository', 'git://qt.gitorious.org/qt/qt.git');
+    }
 }
 
 # Subroutine to exit the script cleanly, including removing any
@@ -6241,16 +5816,6 @@ sub handle_install
             warning "\tThe build system doesn't exist for r[$module].";
             warning "\tTherefore, we can't install it. y[:-(].";
             next;
-        }
-
-        # The /admin directory is needed for install as well, make sure it's
-        # there.
-        if (not module_uses_cmake($module) and not create_admin_dir($module))
-        {
-            warning "Unable to find /admin directory for y[$module], it probably";
-            warning "won't install.";
-            # But continue anyways, because in this case I'm just not sure that it
-            # won't work in the future. ;)
         }
 
         # safe_make() evilly uses the "install" parameter to use installation
@@ -6743,23 +6308,6 @@ sub handle_async_build
     return $result;
 }
 
-# This subroutine sets up the default $package_opts{'global'} options.  They
-# are normally hardcoded, this function is a way to change the default based
-# on user input.  For example, we can change the value of options based on
-# the use-stable-kde option.
-sub setup_option_defaults()
-{
-    if(not get_option('global', 'use-stable-kde'))
-    {
-        # Should be empty if user hasn't reset the option.
-        if(get_option('global', 'no-rebuild-on-fail') eq '')
-        {
-            debug "Building modules only once by default (cmake).";
-            set_option('global', 'no-rebuild-on-fail', 1);
-        }
-    }
-}
-
 # Returns the unique entries in the given list, original ordering is not
 # maintained.
 sub unique_list
@@ -6859,7 +6407,6 @@ eval
     # doing.
     process_arguments();        # Process --help, --install, etc. first.
     read_options();             # If we're still here, read the options
-    setup_option_defaults();    # Setup default options, based on user input
 
     initialize_environment();   # Initialize global env vars.
 
@@ -6876,7 +6423,6 @@ eval
     if (get_option('global', 'kde-languages'))
     {
         # Just set some optionsto init defaults.
-        set_option('l10n-kde3', 'install-after-build', 1);
         set_option('l10n-kde4', 'install-after-build', 1);
     }
 
@@ -6941,9 +6487,6 @@ eval
     # kdelibs/khtml, and the script will only try to update that part of
     # the module.  This also updates for the l10n module (kde-languages option)
     munge_lists();
-
-    # Make sure unsermake is checked out automatically if needed.
-    adjust_update_list(\@update_list, \@build_list);
 
     if (not $install_flag)
     {
