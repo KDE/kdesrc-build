@@ -1885,6 +1885,10 @@ sub git_clone_module
     my $srcdir = get_fullpath($module, 'source');
 
     my $result = log_command($module, 'git-clone', ['git', 'clone', '--', $git_repo, $srcdir]);
+    if ($result == 0) {
+        set_persistent_option($module, 'git-cloned-repository', $git_repo);
+    }
+
     return ($result == 0);
 }
 
@@ -1896,12 +1900,25 @@ sub git_update_module
 {
     my $module = shift;
     my $srcdir = get_fullpath($module, 'source');
+    my $old_repo = get_persistent_option($module, 'git-cloned-repository');
+    my $cur_repo = get_option($module, 'repository');
 
     p_chdir($srcdir);
-    my $result = log_command($module, 'git-pull', ['git', 'pull']);
 
-    return ($result == 0);
+    if ((not $old_repo) or ($cur_repo eq $old_repo)) {
+        my $result = log_command($module, 'git-pull', ['git', 'pull']);
+        return ($result == 0);
+    }
+    else {
+        warning " y[b[*] y[$module]'s repository has changed";
+        warning " y[b[*] from\t$old_repo";
+        warning " y[b[*] to\t$cur_repo,";
+        warning " y[b[*] but support for this has not been implemented yet.";
+        warning " y[b[*] No update has occurred, but proceeding anyways.";
+        return 1;
+    }
 }
+
 
 # Either performs the initial checkout or updates the current git checkout for qt-copy,
 # as appropriate.
@@ -1909,9 +1926,9 @@ sub git_update_module
 # If errors are encountered, an exception is raised using die().
 #
 # Returns the number of files updated (actually it just returns 0 now, but maybe someday)
-sub update_qt_checkout()
+sub update_module_git_checkout
 {
-    my $module = 'qt-copy'; # bwahaha, not shift for once
+    my $module = shift;
     my $srcdir = get_fullpath($module, 'source');
 
     if (-e $srcdir) {
@@ -1927,7 +1944,7 @@ sub update_qt_checkout()
         git_clone_module($module, "$git_repo") or die "Can't checkout $module: $!";
     }
 
-    return 0;
+    return 0; # TODO Fixy McFix
 }
 
 # Checkout a module that has not been checked out before, along with any
@@ -4330,8 +4347,9 @@ sub handle_updates
         my $count;
 
         eval {
-            if ($module eq 'qt-copy') {
-                $count = update_qt_checkout();
+            if (get_option($module, 'repository')) {
+                # Handle git module update
+                $count = update_module_git_checkout($module);
             }
             elsif (-e "$fullpath/.svn")
             {
