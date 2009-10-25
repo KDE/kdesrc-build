@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Script to handle building KDE from Subversion.  All of the configuration is
+# Script to handle building KDE from source code.  All of the configuration is
 # stored in the file ~/.kdesvn-buildrc.
 #
 # Please also see the documentation that should be included with this program,
@@ -33,7 +33,7 @@
 =head1 DESCRIPTION
 
 The B<kdesvn-build> script is used to automate the download, build,
-and install process for KDE (using Subversion).
+and install process for KDE (using Subversion and/or git).
 
 It is recommended that you first setup a F<.kdesvn-buildrc> file
 in your home directory. Please refer to the B<kdesvn-build> help file
@@ -43,13 +43,12 @@ with this program.  If you don't setup a F<.kdesvn-buildrc>, a
 default set of options will be used, and a few modules will be
 built by default.
 
-After setting up F<.kdesvn-buildrc>, you can run this program from
-either the command-line or from cron. It will automatically
-download the modules from Subversion, create the build
-system, and configure and make the modules you tell it to.
-You can use this program to install KDE as well,
-if you are building KDE for a single user. Note that B<kdesvn-build>
-will try to install the modules by default.
+After setting up F<.kdesvn-buildrc>, you can run this program from either the
+command-line or from cron. It will automatically download the modules from the
+source repository, create the build system, and configure and make the modules
+you tell it to.  You can use this program to install KDE as well, if you are
+building KDE for a single user. Note that B<kdesvn-build> will try to install
+the modules by default.
 
 If you DO specify module names on the command line, then your settings will
 still be read from F<.kdesvn-buildrc>, but the script will try to build and
@@ -90,9 +89,9 @@ With this switch only warnings and errors will be output.
 Be very detailed in what is going on, and what actions kdesvn-build is taking.
 Only B<--debug> is more detailed.
 
-=item B<--no-svn>
+=item B<--no-svn>, B<--no-src>
 
-Skip contacting the Subversion server.
+Skip contacting the source server.
 
 =item B<--no-build>
 
@@ -102,9 +101,9 @@ Skip the build process.
 
 Don't automatically install after build.
 
-=item B<--svn-only>
+=item B<--svn-only>, B<--src-only>
 
-Update from Subversion only (Identical to B<--no-build> at this point).
+Update the source code only (Identical to B<--no-build> at this point).
 
 =item B<--build-only>
 
@@ -127,7 +126,7 @@ Activates debug mode.
 
 =item B<--pretend>,  B<-p>
 
-Do not contact the Subversion server, run make, or create / delete files
+Do not contact the source server, run make, or create / delete files
 and directories. Instead, output what the script would have done.
 
 =item B<--nice=E<lt>valueE<gt>>
@@ -150,7 +149,7 @@ Remove color from the output.
 
 =item B<--resume-from=E<lt>pkgE<gt>>
 
-Starts building from the given package, without performing the Subversion
+Starts building from the given package, without performing the source
 update.
 
 =item B<--revision=E<lt>revE<gt>>, B<-r=E<lt>revE<gt>>
@@ -176,7 +175,7 @@ Create the build infrastructure, but don't actually perform the build.
 
 Try to install the packages passed on the command line, or all packages in
 F<~/.kdesvn-buildrc> that don't have manual-build set. Building and
-Subversion updates are not performed.
+source updates are not performed.
 
 =item B<--E<lt>optionE<gt>=>
 
@@ -3067,7 +3066,7 @@ sub setup_module_environment
 }
 
 # Subroutine to initialize some environment variable for building
-# KDE from Subversion.  Change this section if a dependency changes later.
+# KDE from source.  Change this section if a dependency changes later.
 sub initialize_environment
 {
     if(-t STDOUT and get_option('global', 'colorful-output'))
@@ -3528,7 +3527,7 @@ DONE
 $version
 
 This script automates the download, build, and install process for KDE (using
-Subversion).
+the latest source code).
 
 It is recommended that you first setup a .kdesvn-buildrc file in your home
 directory.  Please visit http://kdesvn-build.kde.org/ for
@@ -3538,11 +3537,11 @@ a default set of options will be used, which a few modules to be built by
 default.
 
 After setting up .kdesvn-buildrc, you can run this program from either the
-command-line or from cron.  It will automatically download the modules from
-Subversion, create the build system, and configure and make the modules you
-tell it to.  If you\'d like, you can use this program to install KDE as well,
-if you\'re building KDE for a single user.  Note that kdesvn-build will try
-by default to install the modules.
+command-line or from cron.  It will automatically download the modules from the
+source repository, create the build system, and configure and make the modules
+you tell it to.  If you\'d like, you can use this program to install KDE as
+well, if you\'re building KDE for a single user.  Note that kdesvn-build will
+try by default to install the modules.
 
 Basic synopsis, after setting up .kdesvn-buildrc:
 \$ kdesvn-build [module names] (Download, build, and install KDE)
@@ -3557,16 +3556,18 @@ The script is distributed under the terms of the GNU General Public License
 v2, and includes ABSOLUTELY NO WARRANTY!!!
 
 Options:
-    --no-svn             Skip contacting the Subversion server.
+    --no-svn             Skip contacting the source server.
+    --no-src
     --no-build           Skip the build process.
     --no-install         Don't automatically install after build.
     --purge-old-logs     Remove old log files after build.
 
-    --svn-only           Update from Subversion only (Identical to --no-build
+    --svn-only           Only update the source code (Identical to --no-build
                          at this point).
+    --src-only
     --build-only         Build only, don't perform updates or install.
 
-    --pretend (or -p)    Don't actually contact the Subversion server, run make,
+    --pretend (or -p)    Don't actually contact the source server, run make,
                          or create/delete files and directories.  Instead,
                          output what the script would have done.
     --quiet (or -q)      Be less descriptive of the build process, without
@@ -3587,7 +3588,7 @@ Options:
                          --reconfigure.
 
     --resume-from=<pkg>  Starts building from the given package, without
-                         performing the Subversion update.
+                         performing the source update.
     --revision (or -r)=<rev> Forces update to revision <rev> from Subversion.
 
     --refresh-build      Start the build from scratch.
@@ -3599,7 +3600,7 @@ Options:
                          kdesvn-build runs in.
     --install            Try to install the packages passed on the command
                          line, or all packages in ~/.kdesvn-buildrc that don't
-                         have manual-build set.  Building and Subversion
+                         have manual-build set.  Building and source
                          updates are not performed.
 
     --<option>=          Any unrecognized options are added to the global
@@ -3635,7 +3636,7 @@ DONE
                 last SWITCH;
             };
 
-            /^--no-svn$/ && do {
+            /^--no-(src|svn)$/ && do {
                 set_option('global', '#no-svn', 1);
                 last SWITCH;
             };
@@ -3703,12 +3704,12 @@ DONE
 
             # Although equivalent to --no-build at this point, someday the
             # script may interpret the two differently, so get ready now.
-            /^--svn-only$/ && do {      # Identically to --no-build
+            /^--(src|svn)-only$/ && do {      # Identically to --no-build
                 set_option('global', '#manual-build', 1);
                 last SWITCH;
             };
 
-            # Don't run Subversion or install
+            # Don't run source updates or install
             /^--build-only$/ && do {
                 set_option('global', '#no-svn', 1);
                 set_option('global', '#install-after-build', 0);
@@ -3904,7 +3905,7 @@ sub install_signal_handler
 }
 
 # Subroutine to try to get a lock on the script's lockfile to prevent
-# more than one script from updating KDE Subversion at once.
+# more than one script from updating KDE at once.
 # The value returned depends on the system's open() call.  Normally 0
 # is failure and non-zero is success (e.g. a file descriptor to read).
 # TODO: This could be improved to not fight over the lock when the scripts are
@@ -4014,7 +4015,7 @@ sub close_lock
     unlink $lockfile;
 }
 
-# Subroutine to get the list of Subversion modules to update.  Returned
+# Subroutine to get the list of KDE modules to update.  Returned
 # as a list.  Parse the command-line arguments first.
 sub get_update_list
 {
@@ -4037,7 +4038,7 @@ sub get_update_list
     return @return_list;
 }
 
-# Subroutine to get the list of Subversion modules to build.  Returned
+# Subroutine to get the list of KDE modules to build.  Returned
 # as a list.  A module will not be built if manual-build is set
 # in the module's options.  The command-line arguments should have been
 # parsed first.
@@ -4339,7 +4340,7 @@ EOF
     return 1;
 }
 
-# Subroutine to update a list of Subversion modules.  The first
+# Subroutine to update a list of modules.  The first
 # parameter is a reference of a list of the modules to update.
 # If the module has not already been checkout out, this subroutine
 # will do so for you.
@@ -4377,12 +4378,12 @@ sub handle_updates
     # Be much quieter if operating multiprocess.
     set_option('global', '#debug-level', WARNING) if $ipc->supportsConcurrency();
 
-    note "<<<  Updating Subversion Directories  >>>";
+    note "<<<  Updating Source Directories  >>>";
     info " "; # Add newline for aesthetics unless in quiet mode.
 
     if (not -e $kdesvn)
     {
-        whisper "KDE Subversion download directory doesn't exist, creating.\n";
+        whisper "KDE source download directory doesn't exist, creating.\n";
         if (not super_mkdir ($kdesvn))
         {
             error "Unable to make directory r[$kdesvn]!";
@@ -5611,7 +5612,7 @@ EOF
             my $ipcType = $ipc->receiveIPCMessage(\$buffer);
             if (not defined $ipcType or not $ipcType)
             {
-                error " b[r[***] $module: IPC failure during Subversion update: r[b[$!]";
+                error " b[r[***] $module: IPC failure during source update: r[b[$!]";
                 return 1;
             }
 
@@ -6207,7 +6208,7 @@ EOF
     $mailer->open({
         'From'    => $from_addy,
         'To'      => $email_addy,
-        'Subject' => 'KDE Subversion build compile error',
+        'Subject' => 'KDE build compile error',
     });
 
     print $mailer $email_body;
@@ -6247,11 +6248,11 @@ sub execute_command_line_program()
 }
 
 # This subroutine is the monitoring process for when using PipeIPC.  It reads
-# in all status reports from the subversion update process and then holds on
+# in all status reports from the source update process and then holds on
 # to them.  When the build process is ready to read information we send what
 # we have.  Otherwise we're waiting on the update process to send us something.
 #
-# This convoluted arrangement is required to allow the subversion update
+# This convoluted arrangement is required to allow the source update
 # process to go from start to finish without undue interruption on it waiting
 # to write out its status to the build process which is usually busy.
 #
