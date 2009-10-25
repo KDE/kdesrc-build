@@ -3319,7 +3319,7 @@ sub write_persistent_options
 {
     return if pretending;
 
-    my $dir = dirname($rcfile);
+    my $dir = dirname($rcfile ? $rcfile : "");
     my $fh = IO::File->new("> $dir/.kdesvn-build-data");
 
     if (not defined $fh)
@@ -3352,7 +3352,7 @@ sub write_persistent_options
 # The directory used is the same directory that contains the rc file in use.
 sub read_persistent_options
 {
-    my $dir = dirname($rcfile);
+    my $dir = dirname($rcfile ? $rcfile : "");
     my $fh = IO::File->new("<$dir/.kdesvn-build-data");
 
     return unless defined $fh;
