@@ -1900,10 +1900,9 @@ sub get_svn_branch
     return $branch;
 }
 
-# Perform a git clone to checkout the latest branch of either the official
-# Qt Software Qt 4, or the KDE-Qt repository (essentially the old qt-copy
-# with patches applied).
-# Assumes the __kdesvn-build-remote git remote has been setup.
+# Perform a git clone to checkout the latest branch of a given git module
+#
+# Afterwards a special remote name is setup for later usage (__kdesvn-build-remote)
 #
 # First parameter is the module to perform the checkout of.
 # Second parameter is the repository (typically URL) to use.
@@ -1918,6 +1917,7 @@ sub git_clone_module
     if ($result == 0) {
         set_persistent_option($module, 'git-cloned-repository', $git_repo);
 
+        p_chdir($srcdir);
         $result = log_command($module, 'git-remote-setup',
                     ['git', 'remote', 'add', '__kdesvn-build-remote', $git_repo]);
     }
@@ -1955,14 +1955,12 @@ sub git_update_module
     my $srcdir = get_fullpath($module, 'source');
     my $old_repo = get_persistent_option($module, 'git-cloned-repository');
     my $cur_repo = get_option($module, 'repository');
+    my $branch = get_git_branch($module);
+    my $result;
 
     p_chdir($srcdir);
 
-    if ((not $old_repo) or ($cur_repo eq $old_repo)) {
-        my $result = log_command($module, 'git-pull', ['git', 'pull']);
-        return ($result == 0);
-    }
-    else {
+    if ($old_repo and ($cur_repo ne $old_repo)) {
         note " y[b[*] y[$module]'s selected repository has changed:";
         note " y[b[*] from\t$old_repo";
         note " y[b[*] to\t$cur_repo,";
@@ -1978,27 +1976,26 @@ sub git_update_module
             return 0;
         }
 
-        my $branch = get_git_branch($module);
-        if (0 != log_command($module, 'git-fetch', ['git', 'fetch', '__kdesvn-build-remote'])) {
-            return 0;
-        }
-
-        # If the user doesn't already have this branch, check it out.
-        if (not git_has_branch($branch)) {
-            $result = log_command($module, 'git-checkout-branch',
-                          ['git', 'checkout', '-b', $branch, "__kdesvn-build-remote/$branch"]);
-            return 0 if $result != 0;
-        }
-        else {
-            $result = log_command($module, 'git-checkout-update',
-                          ['git', 'checkout', "__kdesvn-build-remote/$branch"]);
-        }
-
         # Update what we think is the current repository on-disk.
         set_persistent_option($module, 'git-cloned-repository', $cur_repo);
-
-        return $result == 0;
     }
+
+    # Download updated objects
+    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', '__kdesvn-build-remote'])) {
+        return 0;
+    }
+
+    # If the user doesn't already have this branch, check it out.
+    if (not git_has_branch($branch)) {
+        $result = log_command($module, 'git-checkout-branch',
+                      ['git', 'checkout', '-b', $branch, "__kdesvn-build-remote/$branch"]);
+    }
+    else {
+        $result = log_command($module, 'git-checkout-update',
+                      ['git', 'checkout', $branch]);
+    }
+
+    return $result == 0;
 }
 
 
