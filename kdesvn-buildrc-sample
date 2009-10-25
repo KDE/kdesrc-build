@@ -34,10 +34,10 @@ global
 	qtdir ~/qt4  # Default to installing Qt
 
 # By default (if the above is commented out), you are getting trunk.
-# If instead you want to check out another branch, like 4.2, use
-#	branch 4.2
+# If instead you want to check out another branch, like 4.3, use
+#	branch 4.3
 #
-# but also see the qt-copy and kdesupport modules below, which has special
+# but also see the qt-copy and kdesupport modules below, which have special
 # requirements
 
 # This is the Subversion server to download the KDE sources from.  Developers:
@@ -74,7 +74,7 @@ global
 #
 # The -S parameter causes sudo to read from standard input (which is redirected
 # by kdesvn-build).  This means that if sudo has to ask for your password, it
-# will fail, you need to configure sudo to be able to run "make install" and
+# will fail, you need to configure sudo to be able to run "make install"
 # without requesting a password.
 #
 # In addition, you can run kdesvn-build --no-install, and then
@@ -119,9 +119,12 @@ end global
 # qt-copy is a copy of Nokia's Qt, optionally with some bugfixes and
 # optimizations added.  It is the easiest way to get Qt if you don't already
 # have it (and you don't want to use your distro's tools to install it.)
+#
+# Note that this module uses the "git" source control tool instead of
+# Subversion, so read carefully the comments below. ;)
 module qt-copy
 # Configure flags.  If you compile phonon separately make sure to pass
-# -no-phonon.  Alternative if you use Qt's phonon, ensure kdesupport is
+# -no-phonon.  Alternatively, if you use Qt's phonon, ensure kdesupport is
 # built without Phonon.
 	configure-flags -qt-gif -no-exceptions -fast -qdbus \
 	                -nomake examples -nomake demos \
@@ -129,21 +132,23 @@ module qt-copy
 
 #	make-options -j2
 
-	# Default Qt repository
-	repository git://gitorious.org/qt/qt.git
-
-# KDE's "qt-copy" with extra patches/bugfixes If you use to have apply-patches
-# true, uncomment this, remove the repository line above, and remove
-# apply-patches
-#	repository git://gitorious.org/+kde-developers/qt/kde-qt.git
+#	Default Qt repository -- Use this if you want Nokia's official Qt
+#	without any KDE fixes or extensions.
+#	repository git://gitorious.org/qt/qt.git
+#
+#	KDE's (slightly) modified Qt repository.  This includes various
+#	optimizations and bugfixes and is generally what KDE developers use.
+#	This is recommended in most cases.  If you used to use the old
+#	"apply-patches" option, this is the git equivalent.
+	repository git://gitorious.org/+kde-developers/qt/kde-qt.git
 
 # If you use the branch option up in the "global" section to set a
-# default KDE version you should manually choose a branch here for Qt.
+# default KDE version, you should manually choose a branch here for Qt.
 # You can see the available branches by looking first on gitorious.org,
 # or by using "git branch -r" from the qt-copy source directory.
 # ** NOTE ** This doesn't actually do anything yet, kdesvn-build just runs
 # "git pull" to update.
-#	branch master-stable
+	branch 4.6-stable-patched
 end module
 
 # kdesupport contains taglib and QCA, and the Strigi library required for
@@ -152,8 +157,8 @@ end module
 # kdesupport is also the bearer of automoc and all that is good and right with
 # CMake, install it before all KDE modules but after Qt 4.
 module kdesupport
-# To get the necessary kdesupport stuff for KDE-4.2, use:
-#	tag kdesupport-for-4.2/kdesupport
+# To get the necessary kdesupport stuff for KDE-4.3, use:
+#	tag kdesupport-for-4.3/kdesupport
 
 	cmake-options -DBUILD_phonon=OFF # We prefer Qt's phonon
 end module
@@ -281,18 +286,27 @@ end module
 # http://websvn.kde.org/trunk/extragear and
 # http://websvn.kde.org/trunk/playground
 
-# Includes the popular K3B and Amarok programs.
+# Amarok is a KDE application that uses the "git" source control system, like
+# Nokia Qt does.  It used to be in extragear/multimedia.  If you want to
+# build and install amarok, simply uncomment this module
+#module amarok
+#	repository git://gitorious.org/amarok/amarok.git
+#end module
+
+# Includes the popular K3B cd/dvd burner and various media players.
 #module extragear/multimedia
 #end module
 
-# Includes various photo management applications.
+# Includes various photo management applications, scanner frontends, etc.
 #module extragear/graphics
 #end module
 
+# KTorrent, Konversation, some Kopete plugins, Choqok, etc.
 # module extragear/network
 # end module
 
-# module playground/games
-# end module
+# Has Mailody
+#module extragear/pim
+#end module
 
 # Add more modules as needed.
