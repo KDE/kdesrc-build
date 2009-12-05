@@ -269,6 +269,12 @@ use constant {
     ERROR   => 5,
 };
 
+use constant {
+    # We use a named remote to make some git commands work that don't accept the
+    # full path.
+    GIT_REMOTE_ALIAS => '__kdesvn-build-remote',
+};
+
 {
     # Separate package for namespacing.
     package IPC;
@@ -1918,7 +1924,7 @@ sub git_clone_module
 
         p_chdir($srcdir);
         $result = log_command($module, 'git-remote-setup',
-                    ['git', 'remote', 'add', '__kdesvn-build-remote', $git_repo]);
+                    ['git', 'remote', 'add', GIT_REMOTE_ALIAS, $git_repo]);
     }
 
     return ($result == 0);
@@ -1959,39 +1965,39 @@ sub git_update_module
 
     p_chdir($srcdir);
 
+    # Ensure any existing remote is removed and recreated
+    # Don't log it, we don't need the output
+    safe_system('git', 'remote', 'rm', GIT_REMOTE_ALIAS);
+
+    $result = log_command($module, 'git-remote-setup',
+                ['git', 'remote', 'add', GIT_REMOTE_ALIAS, $cur_repo]);
+    if ($result != 0) {
+        return 0;
+    }
+
     if ($old_repo and ($cur_repo ne $old_repo)) {
         note " y[b[*] y[$module]'s selected repository has changed:";
         note " y[b[*] from\t$old_repo";
         note " y[b[*] to\t$cur_repo,";
         note " y[b[*] Attempting to perform the switch";
 
-        # Ensure any existing remote is removed and recreated
-        # Don't log it, we don't need the output
-        safe_system(qw(git remote rm __kdesvn-build-remote));
-
-        my $result = log_command($module, 'git-remote-setup',
-                    ['git', 'remote', 'add', '__kdesvn-build-remote', $cur_repo]);
-        if ($result != 0) {
-            return 0;
-        }
-
         # Update what we think is the current repository on-disk.
         set_persistent_option($module, 'git-cloned-repository', $cur_repo);
     }
 
     # Download updated objects
-    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', $cur_repo])) {
+    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', GIT_REMOTE_ALIAS])) {
         return 0;
     }
 
     # If the user doesn't already have this branch, check it out.
     if (not git_has_branch($branch)) {
         $result = log_command($module, 'git-checkout-branch',
-                      ['git', 'checkout', '-b', $branch, "$cur_repo/$branch"]);
+                      ['git', 'checkout', '-b', $branch, GIT_REMOTE_ALIAS . "/$branch"]);
     }
     else {
         $result = log_command($module, 'git-checkout-update',
-                      ['git', 'checkout', $branch]);
+                      ['git', 'checkout', GIT_REMOTE_ALIAS . "/$branch"]);
     }
 
     return $result == 0;
