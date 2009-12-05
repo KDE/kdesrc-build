@@ -123,12 +123,20 @@ end global
 # Note that this module uses the "git" source control tool instead of
 # Subversion, so read carefully the comments below. ;)
 module qt-copy
-# Configure flags.  If you compile phonon separately make sure to pass
-# -no-phonon.  Alternatively, if you use Qt's phonon, ensure kdesupport is
-# built without Phonon.
-	configure-flags -qt-gif -fast -dbus \
+# Configure flags. See README.kde-qt for the official recommended ones, which
+# may become inconsistent with these sample flags.
+# Do not specify -prefix, kdesvn-build will handle that.
+#
+# Phonon note:
+# - If you compile phonon separately make sure to pass -no-phonon.
+# - Alternatively, if you use Qt's phonon, ensure kdesupport is
+#   built without Phonon.
+# - As of KDE 4.4/Qt 4.6 the "right answer" is to use kdesupport's phonon.
+	configure-flags -qt-gif -fast -debug -no-separate-debug-info \
+	                -system-zlib -system-libpng -system-libjpeg \
+	                -dbus -webkit -plugin-sql-mysql \
 	                -nomake examples -nomake demos \
-	                -phonon # Phonon built as part of Qt now
+	                -no-phonon # See "module phonon" below
 
 #	make-options -j2
 
@@ -146,9 +154,10 @@ module qt-copy
 # default KDE version, you should manually choose a branch here for Qt.
 # You can see the available branches by looking first on gitorious.org,
 # or by using "git branch -r" from the qt-copy source directory.
-# ** NOTE ** This doesn't actually do anything yet, kdesvn-build just runs
-# "git pull" to update.
-	branch 4.6-stable-patched
+#
+# The "master" branch is the best choice for both kde-qt and official Qt if
+# you have no preference.
+	branch master
 end module
 
 # kdesupport contains taglib and QCA, and the Strigi library required for
@@ -160,7 +169,7 @@ module kdesupport
 # To get the necessary kdesupport stuff for KDE-4.3, use:
 #	tag kdesupport-for-4.3/kdesupport
 
-	cmake-options -DBUILD_phonon=OFF # We prefer Qt's phonon
+	cmake-options -DBUILD_phonon=ON # We prefer our phonon
 end module
 
 # QCA is the Qt Cryptographic Architecture library and is required for some
