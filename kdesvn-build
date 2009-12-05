@@ -4381,8 +4381,12 @@ sub handle_updates
         return 1;
     }
 
-    # Be much quieter if operating multiprocess.
-    set_option('global', '#debug-level', WARNING) if $ipc->supportsConcurrency();
+    # Be much quieter if operating multiprocess and the user has not chosen a
+    # different mode.
+    if ($ipc->supportsConcurrency() and not get_option('global', '#debug-level'))
+    {
+        set_option('global', '#debug-level', WARNING);
+    }
 
     note "<<<  Updating Source Directories  >>>";
     info " "; # Add newline for aesthetics unless in quiet mode.
