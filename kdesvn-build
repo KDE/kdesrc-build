@@ -1342,6 +1342,19 @@ sub get_option
     return ${$global_opts}{$option};
 }
 
+# Returns a string describing the scm platform of the given module.
+#
+# First parameter: Module to get scm type of.
+# Returns: 'git' or 'svn' at this point.
+sub module_scm_type
+{
+    my $module = shift;
+
+    # If it needs a repo it's git. Everything else is svn for now.
+    return 'git' if get_option($module, 'repository');
+    return 'svn';
+}
+
 # Subroutine used to handle the checkout-only option.  It handles
 # updating subdirectories of an already-checked-out module.
 #
@@ -1665,7 +1678,7 @@ sub install_module_snapshot
     # Don't bother with snapshot if the user has their own URL picked out.
     if (get_option($module, 'override-url') or
         get_option($module, 'module-base-path') or
-        $module eq 'qt-copy') # Uses git.
+        module_scm_type($module) eq 'git')
     {
         return 0;
     }
@@ -1921,10 +1934,6 @@ sub git_clone_module
     my $result = log_command($module, 'git-clone', ['git', 'clone', '--', $git_repo, $srcdir]);
     if ($result == 0) {
         set_persistent_option($module, 'git-cloned-repository', $git_repo);
-
-        p_chdir($srcdir);
-        $result = log_command($module, 'git-remote-setup',
-                    ['git', 'remote', 'add', GIT_REMOTE_ALIAS, $git_repo]);
     }
 
     return ($result == 0);
@@ -2903,7 +2912,7 @@ sub default_module_options
         my %qtcopy_opts = (
             'configure-flags' => '-qt-gif -phonon -dbus -nomake demos -nomake examples -fast',
             'repository' => 'git://gitorious.org/+kde-developers/qt/kde-qt.git',
-            'branch'     => '4.6-stable-patched',
+            'branch'     => 'master',
         );
 
         # Merge (uses Perl hash slice)
@@ -4645,7 +4654,7 @@ sub handle_updates
         my $count;
 
         eval {
-            if (get_option($module, 'repository')) {
+            if (module_scm_type($module) eq 'git') {
                 # Handle git module update
                 $count = update_module_git_checkout($module);
             }
@@ -5502,8 +5511,6 @@ sub module_has_conflict
 {
     my $module = shift;
 
-    return 1 if $module eq 'qt-copy'; # git strikes again
-
     my $srcdir = get_fullpath($module, 'source');
 
     if (get_option($module, 'no-svn'))
@@ -5627,7 +5634,8 @@ sub build_module
     };
 
     # Use log_command as the check so that an error file gets created.
-    if (0 != log_command($module, 'conflict-check',
+    if ((module_scm_type($module) eq 'svn') &&
+        0 != log_command($module, 'conflict-check',
                          ['kdesvn-build', 'module_has_conflict', $module], $log_filter)
        )
     {
