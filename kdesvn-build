@@ -1931,22 +1931,169 @@ sub git_clone_module
 }
 
 # Returns boolean true if the git checkout for the current source directory
-# contains a specified branch name.
+# contains a specified branch name. No processing of the branch name is
+# performed, so if you need to check for a remote head, use something like
+# "refs/remotes/$remote/$branch".
 #
 # First parameter is the branch name.
 sub git_has_branch
 {
     my $branch = shift;
 
-    my @output = slurp_program_output('git', 'branch');
+    # system() is used instead of safe_system since we'd like pretend output
+    # to reflect reality.
+    my $result = system(qw(git show-ref --verify --quiet), $branch);
+    return ($result == 0);
+}
 
-    foreach (@output) {
-        chomp;
-        s/^\s*\*?\s*//; # Remove leading gunk
-        return 1 if ($_ eq $branch);
+# We use a very-oddly-named remote name for the situations where we don't care
+# about user interaction with git. However 99% of the time the 'origin' remote
+# will be what we want anyways, and 0.5% of the rest the user will have
+# manually added a remote, which we should try to utilize when doing checkouts
+# for instance. To aid in this, this subroutine returns a list of all
+# remote aliased matching the supplied repository (besides the internal
+# alias that is).
+#
+# Assumes that we are already in the proper source directory.
+#
+# First parameter: Repository URL to match.
+# Returns: A list of matching remote names (list in case the user hates us
+# and has aliased more than one remote to the same repo). Obviously the list
+# will be empty if no remote names were found.
+sub git_get_best_remote_names
+{
+    my $repoUrl = shift;
+    my @outputs;
+
+    # The Repo URL isn't much good, let's find a remote name to use it with.
+    # We'd have to escape the repo URL to pass it to Git, which I don't trust,
+    # so we just look for all remotes and make sure the URL matches afterwards.
+    eval {
+        @outputs = slurp_git_config_output(
+            qw/git config --null --get-regexp remote\..*\.url ./
+        );
+    };
+
+    if($@) {
+        error "Unable to run git config, is there a setup error?";
+        return ();
     }
 
-    return 0;
+    my @results;
+    foreach my $output (@outputs) {
+        # git config output between key/val is divided by newline.
+        my ($remoteName, $url) = split(/\n/, $output);
+
+        $remoteName =~ s/^remote\.//;
+        $remoteName =~ s/\.url$//; # Extract the cruft
+
+        # Skip our alias
+        next if $remoteName eq GIT_REMOTE_ALIAS;
+
+        # Skip other remotes
+        next if $url ne $repoUrl;
+
+        # Try to avoid "weird" remote names.
+        next if $remoteName !~ /^[\w-]*$/;
+
+        # A winner is this one.
+        push @results, $remoteName;
+    }
+
+    return @results;
+}
+
+# Generates a potential new branch name for the case where we have to setup
+# a new remote-tracking branch for a repository/branch. There are several
+# criteria that go into this:
+# * The name will be in the style $repo-$branch to allow the user to make
+#   $branch-only names.
+# * The name chosen must not already exist. This methods tests for that.
+# * The repo name chosen should be (ideally) a remote name that the user has
+#   added. If not, we'll try to autogenerate a repo name (but not add a
+#   remote!) based on the repository.git part of the URI. In no case will the
+#   internal remote alias be used.
+#
+# As with nearly all git support functions, the git remote alias should already
+# be setup, and we should be running in the source directory of the git module.
+# Don't call this function unless you've already checked that a suitable
+# remote-tracking branch doesn't exist.
+#
+# First parameter: The module being worked on.
+# Second parameter: A *reference* to a list of remote names (all pointing to
+#                   the same repository) which are valid.
+# Third parameter: The name of the remote head we need to make a branch name
+# of.
+# Returns: A useful branch name that doesn't already exist, or '' if no
+# name can be generated.
+sub git_make_branchname
+{
+    my $module = shift;
+    my $remoteNamesRef = shift;
+    my $branch = shift;
+    my $chosenName;
+
+    # Pick the first "best" remote name, if available.
+    $chosenName = $remoteNamesRef->[0] if @{$remoteNamesRef};
+    return "$chosenName-$branch" if $chosenName;
+
+    # No name chosen, assume origin.
+
+    info " b[y[*] \tNo existing remote repository found for y[$module], assuming b[g[origin].";
+
+    return "origin-$branch";
+}
+
+# This subroutine finds an existing remote-tracking branch name for the given repository's
+# named remote. For instance if the user was using the local remote-tracking branch
+# called 'qt-stable' to track kde-qt's master branch, this subroutine would return the
+# branchname 'qt-stable' when passed kde-qt and 'master'.
+#
+# First parameter: The module we are working on.
+# Second parameter: A *reference* to a list of remote names to check against.
+#                   It is important that this list all really point against the
+#                   same repository URL however. (See
+#                   git_get_best_remote_names)
+# Third parameter: The remote head name to find a local branch for.
+# Returns: Empty string if no match is found, or the name of the local remote-tracking
+#          branch if one exists.
+sub git_get_remote_branchname
+{
+    my $module = shift;
+    my $remoteNamesRef = shift;
+    my $branchName = shift;
+
+    # Dereference our remote names.
+    my @remoteNames = @{$remoteNamesRef};
+
+    # Look for our branchName in each possible remote alias.
+    foreach my $remoteName (@remoteNames) {
+        # We'll parse git config output to search for branches that have a
+        # remote of $remoteName and a 'merge' of refs/heads/$branchName.
+
+        my @branches = slurp_git_config_output(
+            qw/git config --null --get-regexp branch\..*\.remote/, $remoteName
+        );
+
+        foreach my $gitBranch (@branches) {
+            # The key/value is \n separated, we just want the key.
+            my ($keyName) = split(/\n/, $gitBranch);
+            my ($thisBranch) = ($keyName =~ m/^branch\.(.*)\.remote$/);
+
+            # We have the local branch name, see if it points to the remote
+            # branch we want.
+            my @configOutput = slurp_git_config_output(
+                qw/git config --null/, "branch.$thisBranch.merge"
+            );
+
+            if(@configOutput && $configOutput[0] eq "refs/heads/$branchName") {
+                # We have a winner
+                return $thisBranch;
+            }
+        }
+    }
+
+    return '';
 }
 
 # Updates an already existing git checkout by running git pull.
@@ -1961,43 +2108,74 @@ sub git_update_module
     my $old_repo = get_persistent_option($module, 'git-cloned-repository');
     my $cur_repo = get_option($module, 'repository');
     my $branch = get_git_branch($module);
+    my $remoteName = GIT_REMOTE_ALIAS;
     my $result;
 
     p_chdir($srcdir);
 
-    # Ensure any existing remote is removed and recreated
-    # Don't log it, we don't need the output
-    safe_system('git', 'remote', 'rm', GIT_REMOTE_ALIAS);
+    # Search for an existing remote name first. If none, add our alias.
+    my @remoteNames = git_get_best_remote_names($cur_repo);
 
-    $result = log_command($module, 'git-remote-setup',
-                ['git', 'remote', 'add', GIT_REMOTE_ALIAS, $cur_repo]);
-    if ($result != 0) {
+    if (@remoteNames) {
+        $remoteName = $remoteNames[0];
+    }
+    elsif(log_command($module, 'git-remote-setup',
+                       ['git', 'remote', 'add', GIT_REMOTE_ALIAS, $cur_repo])
+            != 0)
+    {
         return 0;
     }
 
     if ($old_repo and ($cur_repo ne $old_repo)) {
-        note " y[b[*] y[$module]'s selected repository has changed:";
-        note " y[b[*] from\t$old_repo";
-        note " y[b[*] to\t$cur_repo,";
-        note " y[b[*] Attempting to perform the switch";
+        note " y[b[*]\ty[$module]'s selected repository has changed";
+        note " y[b[*]\tAttempting to perform the switch";
 
         # Update what we think is the current repository on-disk.
         set_persistent_option($module, 'git-cloned-repository', $cur_repo);
     }
 
     # Download updated objects
-    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', GIT_REMOTE_ALIAS])) {
+    # This also updates remote heads so do this before we start comparing branches
+    # and such.
+    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', $remoteName])) {
         return 0;
     }
 
-    # If the user doesn't already have this branch, check it out.
-    if (not git_has_branch($branch)) {
+    # The 'branch' option requests a given head in the user's selected
+    # repository. Normally the remote head is mapped to a local branch, which
+    # can have a different name. So, first we make sure the remote head is
+    # actually available, and if it is we compare its SHA1 with local branches
+    # to find a matching SHA1. Any local branches that are found must also be
+    # remote-tracking. If this is all true we just re-use that branch,
+    # otherwise we create our own remote-tracking branch.
+    my $branchName = git_get_remote_branchname($module, \@remoteNames, $branch);
+
+    if (not $branchName) {
+        my $newName = git_make_branchname($module, \@remoteNames, $branch);
+        whisper "\tUpdating g[$module] with new remote-tracking branch y[$newName]";
         $result = log_command($module, 'git-checkout-branch',
-                      ['git', 'checkout', '-b', $branch, GIT_REMOTE_ALIAS . "/$branch"]);
+                      ['git', 'checkout', '-b', $newName, "$remoteName/$branch"]);
     }
     else {
+        whisper "\tUpdating g[$module] using existing branch g[$branchName]";
         $result = log_command($module, 'git-checkout-update',
-                      ['git', 'checkout', GIT_REMOTE_ALIAS . "/$branch"]);
+                      ['git', 'checkout', $branchName]);
+
+        # If we're already on the branch just doing the checkout doesn't do
+        # anything, we need to merge changes forward.
+        if ($result == 0) {
+            # Checkout is complete, make sure we're actually locally where the
+            # remote is.
+            info "\tAdvancing checkout to latest source";
+            $result = log_command($module, 'git-merge',
+                          ['git', 'merge', "$remoteName/$branch"]);
+        }
+    }
+
+    if ($remoteName eq GIT_REMOTE_ALIAS) {
+        # Ensure any existing remote alias is removed
+        # Don't log it, we don't need the output
+        safe_system('git', 'remote', 'rm', GIT_REMOTE_ALIAS);
     }
 
     return $result == 0;
@@ -3403,6 +3581,7 @@ sub slurp_program_output
     my ($program, @args) = @_;
     my $output;
 
+    debug "Slurping '$program' '", join("' '", @args), "'";
     my $pid = open3(0, $output, undef, $program, @args);
 
     # Just read all the input in so we can safely waitpid the process
@@ -3412,6 +3591,19 @@ sub slurp_program_output
     waitpid $pid, 0;
 
     return @lines;
+}
+
+# A simple wrapper that is used to split the output of 'git config --null'
+# correctly. All parameters are then passed to slurp_program_output (so look
+# there for help on usage).
+sub slurp_git_config_output
+{
+    local $/ = "\000"; # Split on null
+
+    # This gets rid of the trailing nulls for single-line output. (chomp uses
+    # $/ instead of hardcoding newline
+    chomp(my @output = slurp_program_output(@_));
+    return @output;
 }
 
 # Returns a requested parameter from 'svn info' for the given module.
