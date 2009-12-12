@@ -4497,13 +4497,24 @@ sub split_url
 # be controlled with the disable-agent-check parameter.
 sub check_for_ssh_agent
 {
-    my $agent_running = 0;
-    my $server = get_option('global', 'svn-server');
-    my ($proto, $host) = split_url($server);
+    my @servers = map {
+        if (module_scm_type($_) eq 'svn') {
+            get_option($_, 'svn-server');
+        }
+        else {
+            get_option($_, 'repository');
+        }
+    } (@update_list);
 
     # Don't bother with all this if the user isn't even using SSH.
-    return 1 if($proto !~ /ssh/) or get_option('global', 'disable-agent-check');
     return 1 if pretending;
+
+    my @sshServers = grep {
+        my ($proto, $host) = split_url($_);
+        $proto =~ /ssh/;
+    } @servers;
+
+    return 1 if (not @sshServers) or get_option('global', 'disable-agent-check');
 
     # We're using ssh to download, see if ssh-agent is running.
     return 1 unless exists $ENV{'SSH_AGENT_PID'};
@@ -4610,7 +4621,9 @@ sub handle_updates
 
     # Make sure KDE's SSL signature is present since --non-interactive is
     # passed to svn.
-    install_missing_ssl_signature();
+    if (grep { module_scm_type($_) eq 'svn' } @update_list) {
+        install_missing_ssl_signature();
+    }
 
     # Calculate l10n module name. The logic is duplicated on purpose with
     # filter_l10n_module_list because we have to handle the $l10n/scripts
