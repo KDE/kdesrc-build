@@ -3,7 +3,7 @@
 <!-- This goes into $KDEDIR/share/apps/katepart/syntax, or
      it can go to $KDEHOME/share/apps/katepart/syntax
  -->
-<language name="kdesvn-buildrc" version="0.2" kateversion="2.4" section="Configuration" extensions=".kdesvn-buildrc;kdesvn-buildrc" author="Michael Pyne &lt;michael.pyne@kdemail.net&gt;" license="LGPL">
+<language name="kdesvn-buildrc" version="0.3" kateversion="2.4" section="Configuration" extensions=".kdesvn-buildrc;kdesvn-buildrc" author="Michael Pyne &lt;mpyne@kde.org&gt;" license="LGPL">
 
   <highlighting>
     <list name="bools">
@@ -11,8 +11,6 @@
       <item>false</item>
       <item>TRUE</item>
       <item>FALSE</item>
-      <item>self</item> <!-- Only used by use-unsermake, don't feel like
-                             forking a separate context for it though. -->
     </list>
 
     <list name="setEnvOptions">
@@ -21,24 +19,24 @@
 
     <!-- These options should only have a boolean value passed to them. -->
     <list name="boolOptions">
-      <item>apidox</item>
-      <item>apply-qt-patches</item>
+      <item>async</item>
       <item>build-system-only</item>
       <item>colorful-output</item>
       <item>debug</item>
       <item>disable-agent-check</item>
+      <item>install-after-build</item>
       <item>manual-build</item>
       <item>manual-update</item>
       <item>no-svn</item>
-      <item>no-rebuild-on-fail</item>
+      <item>no-src</item>
       <item>pretend</item>
+      <item>purge-old-logs</item>
       <item>reconfigure</item>
       <item>recreate-configure</item>
       <item>refresh-build</item>
       <item>remove-after-install</item>
+      <item>run-tests</item>
       <item>stop-on-failure</item>
-      <item>use-unsermake</item>
-      <item>use-qt-builddir-hack</item>
     </list>
 
     <list name="options">
@@ -46,6 +44,7 @@
       <item>branch</item>
       <item>build-dir</item>
       <item>checkout-only</item>
+      <item>cmake-options</item>
       <item>configure-flags</item>
       <item>cxxflags</item>
       <item>debug-level</item>
@@ -53,9 +52,8 @@
       <item>do-not-compile</item>
       <item>email-address</item>
       <item>email-on-compile-error</item>
-      <item>install-after-build</item>
-      <item>inst-apps</item>
       <item>kdedir</item>
+      <item>kde-languages</item>
       <item>libpath</item>
       <item>log-dir</item>
       <item>make-install-prefix</item>
@@ -65,63 +63,62 @@
       <item>override-url</item>
       <item>prefix</item>
       <item>qtdir</item>
+      <item>repository</item>
       <item>revision</item>
       <item>source-dir</item>
       <item>svn-server</item>
       <item>tag</item>
-      <item>unsermake-options</item>
-      <item>unsermake-path</item>
     </list>
 
     <contexts>
       <context name="Module" attribute="Normal Text" lineEndContext="#stay">
         <DetectSpaces/>
-	<RegExpr attribute="Comment" String="#.*$" context="#stay"/>
-	<RegExpr attribute="Global Declaration" context="Module Options" String="global" beginRegion="Global Options" firstNonSpace="true" />
-	<RegExpr attribute="Module Declaration" context="Module Decl" String="module\s+" firstNonSpace="true" />
+        <RegExpr attribute="Comment" String="#.*$" context="#stay"/>
+        <RegExpr attribute="Global Declaration" context="Module Options" String="global" beginRegion="Global Options" firstNonSpace="true" />
+        <RegExpr attribute="Module Declaration" context="Module Decl" String="module\s+" firstNonSpace="true" />
       </context>
 
       <context name="Module Decl" attribute="Module Name" lineEndContext="Module Options">
         <RegExpr String="[a-zA-Z0-9-]*" context="#stay" beginRegion="Module Options"/>
-	<RegExpr attribute="Comment" String="#.*$" context="#stay"/>
+        <RegExpr attribute="Comment" String="#.*$" context="#stay"/>
       </context>
 
       <context name="Module Options" attribute="Normal Text" lineEndContext="#stay">
         <DetectSpaces/>
-	<RegExpr attribute="Comment" String="#.*$" context="#stay"/>
-	<keyword attribute="Option Name" context="Environment Name" String="setEnvOptions" />
-	<keyword attribute="Option Name" context="Option Value" String="options"/>
-	<keyword attribute="Option Name" context="Bool Option Value" String="boolOptions"/>
+        <RegExpr attribute="Comment" String="#.*$" context="#stay"/>
+        <keyword attribute="Option Name" context="Environment Name" String="setEnvOptions" />
+        <keyword attribute="Option Name" context="Option Value" String="options"/>
+        <keyword attribute="Option Name" context="Bool Option Value" String="boolOptions"/>
 
-	<RegExpr attribute="Module Declaration" context="Module" endRegion="Module Options" String="end module" firstNonSpace="true"/>
-	<RegExpr attribute="Module Declaration" context="Module" endRegion="Global Options" String="end global" firstNonSpace="true"/>
+        <RegExpr attribute="Module Declaration" context="Module" endRegion="Module Options" String="end module" firstNonSpace="true"/>
+        <RegExpr attribute="Module Declaration" context="Module" endRegion="Global Options" String="end global" firstNonSpace="true"/>
 
-	<!-- No kdesvn-build options start with digits or a dash. -->
-	<RegExpr attribute="Possible Error" context="Option Value" String="[0-9-][a-zA-Z0-9-]+" />
-	<RegExpr attribute="Unknown Option Name" context="Option Value" String="[a-zA-Z0-9-]+" />
+        <!-- No kdesvn-build options start with digits or a dash. -->
+        <RegExpr attribute="Possible Error" context="Option Value" String="[0-9-][a-zA-Z0-9-]+" />
+        <RegExpr attribute="Unknown Option Name" context="Option Value" String="[a-zA-Z0-9-]+" />
       </context>
 
       <context name="Option Value" attribute="Normal Text" lineEndContext="#pop">
-	<RegExpr attribute="Comment" String="#.*$" />
-	<DetectSpaces/>
-	<RegExpr attribute="Variable" String="\$\{[a-zA-Z0-9-]+\}"/>
-	<RegExpr attribute="Option Value" String="[a-zA-Z:0-9,./+!=@-]*" context="#stay" />
+        <RegExpr attribute="Comment" String="#.*$" />
+        <DetectSpaces/>
+        <RegExpr attribute="Variable" String="\$\{[a-zA-Z0-9-]+\}"/>
+        <RegExpr attribute="Option Value" String="[a-zA-Z:0-9,./+!=@-]*" context="#stay" />
         <LineContinue context="#stay"/>
-	<AnyChar attribute="Option Value" String="\\"/>
+        <AnyChar attribute="Option Value" String="\\"/>
       </context>
 
       <context name="Bool Option Value" attribute="Normal Text" lineEndContext="#pop">
         <keyword attribute="Option Value" context="#stay" String="bools"/>
-	<RegExpr attribute="Comment" String="#.*$" />
-	<DetectSpaces/>
-	<RegExpr attribute="Possible Error" String="[^\\]*"/>
+        <RegExpr attribute="Comment" String="#.*$" />
+        <DetectSpaces/>
+        <RegExpr attribute="Possible Error" String="[^\\]*"/>
         <LineContinue attribute="Possible Error" context="#stay"/>
-	<AnyChar attribute="Possible Error" String="\\"/>
+        <AnyChar attribute="Possible Error" String="\\"/>
       </context>
 
       <context name="Environment Name" attribute="Environment Variable Name" lineEndContext="#pop">
-	<RegExpr attribute="Comment" String="#.*$" />
-	<DetectSpaces/>
+        <RegExpr attribute="Comment" String="#.*$" />
+        <DetectSpaces/>
         <RegExpr attribute="Environment Variable Name" context="Option Value" String="[a-zA-Z0-9_-]+" />
       </context>
     </contexts>
