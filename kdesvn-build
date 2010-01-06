@@ -748,11 +748,10 @@ sub branch_prefix
     my @tag_components = qw/arts koffice amarok kst qt taglib/;
 
     # The map call adds the kde prefix to the module names because I don't feel
-    # like typing them all in. kdevelop and konstruct are special cases.
+    # like typing them all in.
     my @kde_module_list = ((map {'kde' . $_} qw/accessibility
             addons admin artwork base bindings edu games graphics libs
-            multimedia network pim pimlibs plasma-addons sdk toys utils webdev/), 'kdevelop',
-            'konstruct', 'kdevplatform');
+            multimedia network pim pimlibs plasma-addons sdk toys utils webdev/));
 
     # If the user already has the module in the form KDE/foo, it's already
     # done.
@@ -2629,6 +2628,9 @@ sub default_module_branch
     my $branch = get_option('global', 'branch');
     my $default = '';
 
+    # Using git? Default to master for now.
+    return 'master' if module_scm_type($module) eq 'git';
+
     # If the module doesn't normally get branched there's not much we can do, so we'll just
     # return the default. (We search against regexps instead of module names here)
     if (scalar grep { $module =~ $_ } @unbranched_modules)
@@ -2665,6 +2667,25 @@ sub default_module_options
     my %options = (
         'set-env' => { },
     );
+    my %module_options = (
+        'qt-copy' => {
+            'configure-flags' => '-qt-gif -phonon -dbus -nomake demos -nomake examples -fast',
+            'repository' => 'git://gitorious.org/+kde-developers/qt/kde-qt.git',
+            'branch'     => 'master',
+        },
+        'kdesupport' => {
+            # Phonon is built separately as its own submodule
+            'cmake-options' => '-DBUILD_phonon=OFF',
+        },
+        'kdevplatform' => {
+            # It moved recently so try to adjust gracefully (maybe)
+            'module-base-path' => 'trunk/extragear/sdk/kdevplatform',
+        },
+        'kdevelop' => {
+            # It moved recently so try to adjust gracefully (maybe)
+            'module-base-path' => 'trunk/extragear/sdk/kdevelop',
+        },
+    );
 
     # Hack to support default "tags" instead of default branches for kdesupport.
     if ($branch =~ /^tags\//)
@@ -2673,23 +2694,12 @@ sub default_module_options
         $options{'tag'} = $branch;
     }
 
-    if ($module eq 'qt-copy') {
-        # Setup default options for qt-copy
-        my %qtcopy_opts = (
-            'configure-flags' => '-qt-gif -phonon -dbus -nomake demos -nomake examples -fast',
-            'repository' => 'git://gitorious.org/+kde-developers/qt/kde-qt.git',
-            'branch'     => 'master',
-        );
+    # If no specific module options just return the default
+    return \%options unless exists $module_options{$module};
 
-        # Merge (uses Perl hash slice)
-        @options{keys %qtcopy_opts} = values %qtcopy_opts;
-        delete @options{qw(tag)}; # These don't apply to qt-copy git
-    }
-
-    if ($module eq 'kdesupport') {
-        # Phonon is built separately as its own submodule
-        $options{'cmake-options'} = '-DBUILD_phonon=OFF';
-    }
+    # Otherwise merge in options (uses Perl hash slice)
+    my $this_module_options = $module_options{$module};
+    @options{keys %{$this_module_options}} = values %{$this_module_options};
 
     return \%options;
 }
@@ -2901,6 +2911,9 @@ EOM
             exit 1;
         }
 
+        # Set rcfile to something so the user knows what file to edit to
+        # get what they want to work.
+        $rcfile = '~/.kdesvn-buildrc';
         no_config_whine();
         setup_default_modules();
         return;
