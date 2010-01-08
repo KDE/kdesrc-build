@@ -1,16 +1,16 @@
 <?xml version="1.0" ?>
 <!DOCTYPE book PUBLIC "-//KDE//DTD DocBook XML V4.2-Based Variant V1.1//EN" "dtd/kdex.dtd" [
-  <!ENTITY kappname "Kdesvn-build">
+  <!ENTITY kappname "kdesvn-build">
   <!ENTITY package "kdesdk">
   <!ENTITY % addindex "IGNORE">
   <!ENTITY % English "INCLUDE"> <!-- Change language only here -->
-  <!ENTITY kdesvn-build "<application>Kdesvn-build</application>">
-  <!ENTITY autoconf '<application>Autoconf</application>'>
-  <!ENTITY automake '<application>Automake</application>'>
+  <!ENTITY kdesvn-build "<application>kdesvn-build</application>">
   <!ENTITY BSD '<acronym>BSD</acronym>'>
+  <!ENTITY git '<application>Git</application>'>
   <!ENTITY cmake '<application>CMake</application>'>
   <!ENTITY make '<application>Make</application>'>
   <!ENTITY ssh '<application>SSH</application>'>
+  <!ENTITY cron '<application>Cron</application>'>
   <!ENTITY subversion '<application>Subversion</application>'>
   <!ENTITY sudo '<application>Sudo</application>'>
   <!ENTITY url '<acronym>URL</acronym>'>
@@ -20,7 +20,6 @@
   -->
 
   <!ENTITY configure-flags '<link linkend="conf-configure-flags">configure-flags</link>'>
-  <!ENTITY apply-qt-patches '<link linkend="conf-apply-qt-patches">apply-qt-patches</link>'>
   <!ENTITY kdedir '<link linkend="conf-kdedir">kdedir</link>'>
   <!ENTITY qtdir '<link linkend="conf-qtdir">qtdir</link>'>
   <!ENTITY build-dir '<link linkend="conf-build-dir">build-dir</link>'>
@@ -31,10 +30,7 @@
   <!ENTITY email-on-compile-error '<link linkend="conf-email-on-compile-error">email-on-compile-error</link>'>
   <!ENTITY colorful-output '<link linkend="conf-colorful-output">colorful-output</link>'>
   <!ENTITY tag '<link linkend="conf-tag">tag</link>'>
-  <!ENTITY apidox '<link linkend="conf-apidox">apidox</link>'>
   <!ENTITY branch '<link linkend="conf-branch">branch</link>'>
-  <!ENTITY no-rebuild-on-fail '<link linkend="conf-no-rebuild-on-fail">no-rebuild-on-fail</link>'>
-  <!ENTITY inst-apps '<link linkend="conf-inst-apps">inst-apps</link>'>
   <!ENTITY do-not-compile '<link linkend="conf-do-not-compile">do-not-compile</link>'>
   <!ENTITY checkout-only '<link linkend="conf-checkout-only">checkout-only</link>'>
   <!ENTITY svn-server '<link linkend="conf-svn-server">svn-server</link>'>
@@ -50,16 +46,10 @@
   <!ENTITY cmd-nice '<link linkend="cmdline-nice">--nice</link>'>
   <!ENTITY cmd-ignore-modules '<link linkend="cmdline-ignore-modules">--ignore-modules</link>'>
   <!ENTITY cmd-resume-from '<link linkend="cmdline-resume-from">--resume-from</link>'>
-  <!ENTITY cmd-no-rebuild-on-fail '<link linkend="cmdline-no-rebuild-on-fail">--no-rebuild-on-fail</link>'>
   <!ENTITY cmd-reconfigure '<link linkend="cmdline-reconfigure">--reconfigure</link>'>
   <!ENTITY cmd-refresh-build '<link linkend="cmdline-refresh-build">--refresh-build</link>'>
 ]>
 
-<!-- Todo
-rm all kde3 stuff for next version
-change stable to 4
-is konstrukt really working for kde4?
--->
 <book lang="&language;">
 
 <bookinfo>
@@ -68,12 +58,12 @@ is konstrukt really working for kde4?
 <authorgroup id="authors">
 <author>
 <firstname>Michael</firstname><surname>Pyne</surname>
-<affiliation><address><email>michael.pyne@kdemail.net</email></address></affiliation>
-</author> 
+<affiliation><address><email>mpyne@kde.org</email></address></affiliation>
+</author>
 <author>
 <firstname>Carlos</firstname><surname>Woelz</surname>
 <affiliation><address><email>carloswoelz@imap-mail.com</email></address></affiliation>
-</author> 
+</author>
 
 
 <!-- TRANS:ROLES_OF_TRANSLATORS -->
@@ -84,6 +74,8 @@ is konstrukt really working for kde4?
 <year>2006</year>
 <year>2007</year>
 <year>2008</year>
+<year>2009</year>
+<year>2010</year>
 <holder>Michael Pyne</holder>
 </copyright>
 
@@ -92,14 +84,14 @@ is konstrukt really working for kde4?
 <holder>Carlos Woelz</holder>
 </copyright>
 
-
 <legalnotice>&FDLNotice;</legalnotice>
 
-<date>2009-03-13</date>
-<releaseinfo>1.8</releaseinfo>
+<date>2010-01-08</date>
+<releaseinfo>1.11</releaseinfo>
 
 <abstract>
-<para>&kdesvn-build; is a script which builds and installs &kde; directly from the sources found in the &kde; &subversion; repository.</para>
+<para>&kdesvn-build; is a script which builds and installs &kde; software
+directly from the &kde; project's source code repositories.</para>
 </abstract>
 
 <keywordset>
@@ -107,6 +99,8 @@ is konstrukt really working for kde4?
 <keyword>kdesdk</keyword>
 <keyword>SVN</keyword>
 <keyword>Subversion</keyword>
+<keyword>git</keyword>
+<keyword>gitorious</keyword>
 <keyword>KDE development</keyword>
 </keywordset>
 
@@ -116,37 +110,48 @@ is konstrukt really working for kde4?
 <title>Introduction</title>
 
 <para>
-&kdesvn-build; is a script to help users install  <ulink
-url="http://www.kde.org/">&kde;</ulink> from its <ulink
-url="http://subversion.tigris.org/">&subversion;</ulink> source repository.
+&kdesvn-build; is a script to help users install <ulink
+url="http://www.kde.org/">&kde;</ulink> software from its <ulink
+url="http://subversion.tigris.org/">&subversion;</ulink> and <ulink
+url="http://gitscm.org/">&git;</ulink> source repositories.
+<!-- Deliberately not KDE SC, we can also install Extragear, amarok, etc. -->
 </para>
 
 <para>
-Here we document the &kdesvn-build; <link linkend="configure-data">configuration file</link> syntax and options, its <link
-linkend="cmdline">command line options</link>, <link
-linkend="features">features</link>, and an <link
-linkend="getting-started">overview</link> of all necessary steps required to
-build &kde; from source, including the steps which you should perform using
-other tools, or in other words, steps that are not automatically performed by
-the &kdesvn-build; script.
+This guide is an overview to describe the following aspects of &kdesvn-build;
+operation:
+</para>
+
+<itemizedlist>
+<listitem><para>Notable <link linkend="features">features</link>.</para></listitem>
+<listitem><para>An <link linkend="getting-started">overview</link> of the steps
+required to get started.</para></listitem>
+<listitem><para>The <link linkend="configure-data">configuration file</link> syntax
+and options.</para></listitem>
+<listitem><para>The <link linkend="cmdline">command line options</link>.</para></listitem>
+</itemizedlist>
+
+<para>Also documented are the steps which you should perform using
+other tools, (in other words, steps that are not automatically performed by
+&kdesvn-build;).
 </para>
 
 </chapter>
-
 <chapter id="getting-started">
 <title>Getting Started</title>
 
 <para>
-In this chapter, we show how to use the &kdesvn-build; to checkout modules from the
-&kde; repository and build them. We also provide a basic explanation of the &kde;
-&subversion; structure and the steps you have to perform before running the script.
+In this chapter, we show how to use the &kdesvn-build; to checkout modules from
+the &kde; repository and build them. We also provide a basic explanation of the
+&kde; &subversion; structure and the steps you have to perform before running
+the script.
 </para>
 
 <para>
 All topics present in this chapter are covered with even more detail in the
 <ulink url="http://techbase.kde.org/Getting_Started/Build/KDE4">
-Building &kde; 4 from Source</ulink>, at the
-<ulink url="http://techbase.kde.org/">&kde; Techbase site</ulink>.
+Building &kde; 4 from Source</ulink> article, at the
+<ulink url="http://techbase.kde.org/">&kde; TechBase site</ulink>.
 If you are compiling &kde; for the first time, it is a good idea to read
 it, or consult it as a reference source. You will find detailed information
 about packaging tools and requirements, common compilation pitfalls and
@@ -160,13 +165,16 @@ strategies and information about running your new &kde; installation.
 <title>Setup a new user account</title>
 
 <para>
-It is recommended that you download and build &kde; using a separate user
-account. If you already have &kde; packages installed, the best choice
+It is recommended that you use a different user account to build, install,
+and run your &kde; software from, since less permissions are required, and
+to avoid interfering with your distribution's packages.
+If you already have &kde; packages installed, the best choice
 would be to create a different (dedicated) user to build and run the new &kde;.
-The advantage of building &kde; with a dedicated user is you can not break
-the base system, and you will always have a way to comfortably work when
-things go wrong.
 </para>
+
+<tip><para>Leaving your system &kde; untouched also allows you to have an
+emergency fallback in case a compiled &kde; is unstable for whatever reason.
+</para></tip>
 
 <para>
 Later, you can do a system installation if you wish. This document
@@ -182,66 +190,63 @@ in order to prepare and use the system installation correctly.
 
 <para>Before using the &kdesvn-build; script (or any other building
 strategy) you must install the development tools and libraries needed for &kde;.
-The complete list of required tools can be found from the
-<ulink url="http://www.kde.org/info/requirements/3.5.php">&kde; Compilation
-Requirements</ulink> page. Requirements for the &kde; 4 series may be obtained
-from the <ulink url="http://techbase.kde.org/">KDE TechBase</ulink>.
+The complete list of required tools can be found from
+the <ulink url="http://techbase.kde.org/">KDE TechBase</ulink>.
 </para>
 
 <para>Here is a list of some of the things you will need:</para>
 <itemizedlist>
 
-<listitem><para>If you are building &kde; 3, you will need the GNU Autotools (i.e. &automake;
-and &autoconf;).</para></listitem>
+<listitem><para>You will need &cmake;.  The required version will vary
+depending on what version of &kde; 4 you are building, see TechBase for
+specifics.</para></listitem>
 
-<listitem><para>If you are building &kde; 4, you will need &cmake;.  The required
-version will vary depending on what version of &kde; 4 you are building, see the
-TechBase for specifics.</para></listitem>
+<listitem><para>Also needed is the &subversion; client program, including
+support for Secure HTTP (https). To ensure needed support, you can run
+<userinput><command>svn <option>--version</option></command></userinput>.  If
+the output says that it handles the https scheme (for write access to
+svn.kde.org) or svn scheme (for readonly access to anonsvn.kde.org) then you
+should be set to go.</para></listitem>
 
-<listitem><para>The &subversion; client program, including support for Secure
-HTTP (https). To ensure needed support, you can run
-<userinput><command>svn <option>--version</option></command></userinput>.
-If the output says that it handles the https scheme (for write access to svn.kde.org)
-or svn scheme (for readonly access to anonsvn.kde.org) then you should be
-set to go.</para></listitem>
+<listitem><para>If you are building &Qt; or any of the various &kde; modules
+that are available from <ulink url="http://gitorious.org/">Gitorious</ulink>
+then you will need the <ulink url="http://gitscm.org/">Git source control
+manager</ulink> installed as well.</para></listitem>
 
-<listitem><para>The <application>gcc</application> compiler, with support for C++.
-Versions 3.3 or higher are the best supported.</para></listitem>
-
-<listitem><para>Be sure to check the <ulink
-url="http://www.kde.org/info/requirements/3.5.php">&kde; Compilation
-Requirements</ulink> page to make sure that any other needed libraries are
-included.</para></listitem>
+<listitem><para>You will need a C++ development environment. GCC 3.4 or
+later is recommended.</para></listitem>
 
 </itemizedlist>
 
-<para>One exception is the &Qt; library. &kdesvn-build; will normally install a
-copy of &Qt; whether you have it installed or not, so it is not necessary for you
-to have it. If you do not want to use the &Qt; copy, you need to do these things:
-</para>
+<note><para>Most operating system distributions include a method of easily
+installing required development tools. Consult the TechBase <ulink
+url="http://techbase.kde.org/Getting_Started/Build/KDE4">Getting Started</ulink>
+page's <quote>Required Packages from your Distribution</quote> section to see
+if these instructions are already available.</para></note>
+
+<para>One exception to the required libraries is the &Qt; library.
+&kdesvn-build; will normally install a copy of &Qt; whether you have it
+installed or not, so it is not necessary for you to have it. If you do not want
+to use the &Qt; copy, you need to do these things:</para>
 
 <itemizedlist>
 <listitem>
-  <para>Make sure to remove the qt-copy module from your <link linkend="configure-data">configuration file</link>, as you
-  will not need it, and having it would add extra time to your build.</para>
+  <para>Make sure to remove the qt-copy module from your <link
+  linkend="configure-data">configuration file</link>, as you will not need it,
+  and having it would add extra time to your build.</para>
 </listitem>
 
 <listitem>
   <para>Change the setting of the <link linkend="conf-qtdir">qtdir</link>
-  option in your <link linkend="configure-data">configuration file</link> to point to your system &Qt;. This is normally
-  equal to the setting of $<envar>QTDIR</envar> for your system.</para>
+  option in your <link linkend="configure-data">configuration file</link> to
+  point to your system &Qt;. This is normally equal to the setting of
+  $<envar>QTDIR</envar> for your system.</para>
 </listitem>
 
 <listitem>
   <para>If you do not already have &Qt; installed, install it, including any
-  relevant -dev or -devel packages. You will need at least &Qt; 3.3 if you are
-  building &kde; 3.5, or &Qt; 4.5 if you are building &kde; 4.</para>
-
-  <note><para>If you are building &kde; 4 it is highly recommended to use the
-  qt-copy version of &Qt;, making sure to apply recommended patches (this is
-  the default setting, controlled by the <link
-  linkend="conf-apply-qt-patches">apply-qt-patches
-  option</link>).</para></note>
+  relevant -dev or -devel packages. You will need at least
+  &Qt; 4.6 if you are building &kde; 4.</para>
 </listitem>
 </itemizedlist>
 
@@ -310,7 +315,7 @@ by default installs a useful &kde; installation using very generic installation
 flags, which may be different from your needs. So it is best to use a
 <link linkend="configure-data">configuration file</link>. </para>
 
-<para>The <link linkend="configure-data">configuration file</link> should be called <filename>.kdesvn-buildrc</filename>. 
+<para>The <link linkend="configure-data">configuration file</link> should be called <filename>.kdesvn-buildrc</filename>.
 This file should be installed on
 the home folder (<filename class="directory">~/</filename>), and contain all configuration data
 required for the script to run, like configuration options,
@@ -358,13 +363,6 @@ The default settings should actually already be appropriate to perform a
 directories that will be searched for commands. This is exactly the same as
 the <envar>PATH</envar> variable in the shell.</para></listitem>
 
-<listitem><para><link linkend="conf-use-stable-kde">use-stable-kde</link> to
-change the default version to build of &kde; modules. By default &kdesvn-build;
-will build the trunk version of &kde; (currently &kde; 4). If you want to build
-the latest stable release of &kde; instead of using your distribution packages
-(right now the &kde; 3.5 branch is stable) you would set this option to <replaceable>true</replaceable>.
-</para></listitem>
-
 <listitem><para><link linkend="conf-kdedir">kdedir</link>, which changes the
 destination directory that &kde; is installed to. This defaults to
 <filename class="directory">~/kde</filename>, which is a single-user installation.</para></listitem>
@@ -409,8 +407,7 @@ Now you are ready to run the script. From a terminal window,
 log in to the user you are using to compile &kde; and execute
 the script:
 <screen>
-<prompt>&percnt;</prompt><command>su</command> <option>-</option> <replaceable>devel-username</replaceable>
-<prompt>&percnt;</prompt><command>kdesvn-build</command>
+<prompt>$</prompt><command>kdesvn-build</command>
 </screen>
 </para>
 
@@ -429,14 +426,14 @@ it is sufficient to look at <filename class="directory">~/kdesvn/log/latest/<rep
 that module. If the file says (at the bottom) that you are missing some
 packages, try installing the package (including any appropriate -dev packages)
 before trying to build that module, and pass the <link
-linkend="cmdline-reconfigure">--reconfigure</link> option after install the
+linkend="cmdline-reconfigure">--reconfigure</link> option after installing the
 missing packages.</para>
 
-<para>Or, if the error appears to be a build error
-then it is probably an error with the &kde; source, which will hopefully be
-resolved within a few days. If it is not resolved within that time, feel free
-to mail the <email>kde-devel@kde.org</email> (subscription may be required first)
-in order to report the build failure.</para>
+<para>Or, if the error appears to be a build error then it is probably an error
+with the &kde; source, which will hopefully be resolved within a few days. If
+it is not resolved within that time, feel free to mail the
+<email>kde-devel@kde.org</email> mailing list (subscription may be required
+first) in order to report the build failure.</para>
 
 <para>You can find more common examples of things that can go wrong and their
 solutions, as well as general tips and strategies to build &kde; in the
@@ -688,7 +685,7 @@ linkend="conf-revision">revision</link> is checked out of a module.
 &kdesvn-build; can automatically switch a source directory to checkout from
 a different repository, branch, or tag. This happens automatically when you
 change an option that changes what the repository &url; should be, but you must
-use the <link linkend="cmdline-svn-only">--svn-only</link> option to let
+use the <link linkend="cmdline-src-only">--src-only</link> option to let
 &kdesvn-build; know that it is acceptable to perform the switch.
 </para></listitem>
 
@@ -696,6 +693,13 @@ use the <link linkend="cmdline-svn-only">--svn-only</link> option to let
 &kdesvn-build; can <link linkend="partial-builds">checkout only portions of a
 module</link>, for those situations where you only need one program from a
 large module.
+</para></listitem>
+
+<listitem><para>
+The initial download of some modules can be accelerated by &kdesvn-build;,
+which will (if available) automatically download a module snapshot from the
+&kde; mirrors and use that to setup the initial checkout. This saves time
+and bandwidth for both your system and the &kde; servers.
 </para></listitem>
 
 <listitem><para>
@@ -892,7 +896,7 @@ and not under <filename class="directory"><symbol>${log-dir}</symbol>/latest/kde
 
 <para>In each module log directory, you will find a set of files for each
 operation that &kdesvn-build; performs. If &kdesvn-build; updates a module,
-you may see filenames such as <filename>svn-co.log</filename> (for a 
+you may see filenames such as <filename>svn-co.log</filename> (for a
 module checkout) or <filename>svn-up.log</filename> (when updating a module
 that has already been checked out). If the <command>configure</command>
 command was run, then you would expect to see a <filename>configure.log</filename>
@@ -926,7 +930,10 @@ but is instead at the &konsole; or terminal where you ran &kdesvn-build;.</para>
 </chapter>
 
 <chapter id="kdesvn-buildrc">
-<title>The Format of .kdesvn-buildrc</title>
+<title>Configuring &kdesvn-build;</title>
+
+<sect1 id="kdesvn-buildrc-overview">
+<title>Overview of &kdesvn-build; configuration</title>
 
 <para>
 To use the script, you must have a file in your home directory called
@@ -970,7 +977,6 @@ authors using the address you can find <link linkend="authors">above</link>.
 </para>
 
 <itemizedlist>
-<listitem><para><link linkend="conf-apply-qt-patches">apply-qt-patches</link>, to enhance qt-copy.</para></listitem>
 <listitem><para><link linkend="conf-async">async</link>, to update and build at the same time.</para></listitem>
 <listitem><para><link linkend="conf-binpath">binpath</link>, to set the <envar>PATH</envar> variable.</para></listitem>
 <listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of /trunk.</para></listitem>
@@ -983,7 +989,6 @@ authors using the address you can find <link linkend="authors">above</link>.
 <listitem><para><link linkend="conf-dest-dir">dest-dir</link> to change the directory name for a module.</para></listitem>
 <listitem><para><link linkend="conf-disable-agent-check">disable-agent-check</link>, to keep &kdesvn-build; from checking on ssh-agent's status.</para></listitem>
 <listitem><para><link linkend="conf-do-not-compile">do-not-compile</link>, to mark directories to skip building.</para></listitem>
-<listitem><para><link linkend="conf-inst-apps">inst-apps</link>, to only build and install some directories.</para></listitem>
 <listitem><para><link linkend="conf-install-after-build">install-after-build</link>, to avoid installing after the build process.</para></listitem>
 <listitem><para><link linkend="conf-kdedir">kdedir</link>, to set the directory to install &kde; to.</para></listitem>
 <listitem><para><link linkend="conf-kde-languages">kde-languages</link>, to set the translation packages to download and install.</para></listitem>
@@ -1002,6 +1007,9 @@ authors using the address you can find <link linkend="authors">above</link>.
 <listitem><para><link linkend="conf-svn-server">svn-server</link>, to change the server the sources are downloaded from.</para></listitem>
 </itemizedlist>
 
+</sect1>
+<sect1 id="conf-options-table">
+<title>Table of available configuration options</title>
 
 <para>
 Here is a table of the various options, and some comments on them. Any
@@ -1039,11 +1047,9 @@ for older modules of course.</para>
 <row id="conf-apply-qt-patches">
 <entry>apply-qt-patches</entry>
 <entry>Overrides global</entry>
-<entry>This option is only useful for qt-copy. If it is set to a non-zero value,
-then the apply-patches script in qt-copy will be run prior to building, in
-order to apply the non-official patches to the qt-copy. Since these patches
-are normally the reason for using qt-copy instead of a stock &Qt;, it should not
-do any harm to enable it. The default is to enable the patches.</entry>
+<entry>This option was removed in kdesvn-build 1.10. To get the same effect,
+see <xref linkend="using-qt-copy" /> and the <link
+linkend="conf-repository">repository</link> option.</entry>
 </row>
 
 <row id="conf-async">
@@ -1061,7 +1067,7 @@ to enabling asynchronous mode.  To disable, set this option to <replaceable>fals
 <entry>Overrides global</entry>
 <entry><para>Set this option to set the environment variable PATH while building.
 You cannot override this setting in a module option. The default value is
-<filename class="directory">/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin</filename>. This environment
+the $<envar>PATH</envar> that is set when the script starts. This environment
 variable should include the colon-separated paths of your development
 toolchain. The paths <filename class="directory">$<envar>KDEDIR</envar>/bin</filename> and
 <filename class="directory">$<envar>QTDIR</envar>/bin</filename> are automatically added. You
@@ -1074,14 +1080,14 @@ may use the tilde (~) for any paths you add using this option.</para>
 <entry>Overrides global</entry>
 <entry><para>Set this option to checkout from a branch of &kde; instead of the
 default of <replaceable>trunk</replaceable>, where &kde; development occurs.
-For instance, to checkout &kde; 3.4 branch, you would set this option to
-<replaceable>3.4</replaceable>.</para>
-<para>Note that some modules use a different branch name. Notably, the
-required arts module does not go by &kde; version numbers. The arts that
-accompanied &kde; 3.4 was version 1.4.</para>
+For instance, to checkout &kde; 4.4 branch, you would set this option to
+<replaceable>4.4</replaceable>.</para>
 <para>If &kdesvn-build; fails to properly download a branch with this option, you
 may have to manually specify the &url; to download from using the <link
-linkend="conf-override-url">override-url</link> option.</para>
+linkend="conf-module-base-path">module-base-path</link> or <link
+linkend="conf-override-url">override-url</link> options.</para>
+<para>Note: This option also works with source modules that use
+&git; instead of &subversion;.</para>
 </entry>
 </row>
 
@@ -1090,23 +1096,27 @@ linkend="conf-override-url">override-url</link> option.</para>
 <entry>Overrides global</entry>
 <entry>Use this option to change the directory to contain the built sources. There
 are three different ways to use it:
-<itemizedlist>
+
+<orderedlist>
 
 <listitem><para>Relative to the &kde; &subversion; source directory (see <link
-linkend="conf-source-dir">the source-dir option</link>). This is the default, and
-the way the script worked up to version 0.61. This mode is selected if you
-type a directory name that does not start with a tilde (~) or a slash (/).</para>
-<para>The default value is <filename class="directory">build</filename>.</para></listitem>
+linkend="conf-source-dir">the source-dir option</link>). This is the default,
+and is selected if you type a directory name that does not start with a tilde
+(~) or a slash (/).</para> <para>The default value is <filename
+class="directory">build</filename>.</para></listitem>
 
-<listitem><para>Absolute path. If you specify a path that begins with a /, then that path
-is used directly. For example, <filename class="directory">/tmp/kde-obj-dir/</filename>.</para></listitem>
+<listitem><para>Absolute path. If you specify a path that begins with a /, then
+that path is used directly. For example, <filename
+class="directory">/tmp/kde-obj-dir/</filename>.</para></listitem>
 
-<listitem><para>Relative to your home directory. If you specify a path that begins with a
-~, then the path is used relative to your home directory, analogous to the
-shell's tilde-expansion. For example, <filename class="directory">~/builddir</filename> would set the build
-directory to <filename class="directory">/home/user-name/builddir</filename>.</para></listitem>
+<listitem><para>Relative to your home directory. If you specify a path that
+begins with a ~, then the path is used relative to your home directory,
+analogous to the shell's tilde-expansion. For example, <filename
+class="directory">~/builddir</filename> would set the build directory to
+<filename
+class="directory">/home/user-name/builddir</filename>.</para></listitem>
 
-</itemizedlist>
+</orderedlist>
 
 Perhaps surprisingly, this option can be changed per module.
 
@@ -1116,27 +1126,27 @@ Perhaps surprisingly, this option can be changed per module.
 <row id="conf-checkout-only">
 <entry>checkout-only</entry>
 <entry>Overrides global</entry>
-<entry>Set this option to checkout &subversion; sources piece by piece. The value
-for this option should be a space separated list of directories to checkout.
-If you do not include the admin directory, it will automatically be included (if
-necessary). When checking out piece by piece, the admin directory will be
-pulled in from kde-common, which is where it exists on the &subversion; server.
-Although this option overrides the global option, be aware that setting this as
-a global option makes no sense.
-</entry>
+<entry><para>Set this option to checkout &subversion; sources piece by piece. The
+value for this option should be a space-separated list of directories to
+checkout.  Although this option overrides the global option, be aware that
+setting this as a global option makes no sense.
+</para>
+
+<para>Note that this setting has no effect on &git; modules due to the
+operation of the &git; source control system.</para></entry>
 </row>
 
 <row id="conf-cmake-options">
 <entry>cmake-options</entry>
 <entry>Appends to global options (not applicable to qt-copy)</entry>
-<entry><para>Use this option to specify what flags to pass to &cmake; when creating
-the build system for the module. When this is used as a global option, it is
-applied to all modules that this script builds. When used as a module option,
-it is added to the end of the global options. This allows you to specify
-common &cmake; options in the global section.</para>
+<entry><para>Use this option to specify what flags to pass to &cmake; when
+creating the build system for the module. When this is used as a global option,
+it is applied to all modules that this script builds. When used as a module
+option, it is added to the end of the global options. This allows you to
+specify common &cmake; options in the global section.</para>
 
-<para>This option replaces <link linkend="conf-configure-flags">configure-flags</link>
-for all &kde; 4 modules, since they use &cmake; to build.</para>
+<para>This option does not apply to qt-copy (which does not use &cmake;). Use
+<link linkend="conf-configure-flags">configure-flags</link> instead.</para>
 
 <para>Since these options are passed directly to the &cmake; command line, they
 should be given as they would be typed into &cmake;. For example:</para>
@@ -1146,22 +1156,21 @@ should be given as they would be typed into &cmake;. For example:</para>
 
 <para>Since this is a hassle, &kdesvn-build; takes pains to ensure that as long
 as the rest of the options are set correctly, you should be able to leave this
-option blank.</para></entry>
+option blank. (In other words, <emphasis>required</emphasis> &cmake; parameters
+are set for you automatically)</para></entry>
 </row>
 
 <row id="conf-configure-flags">
 <entry>configure-flags</entry>
-<entry>Appends to global options (except for qt-copy)</entry>
-<entry><para>Use this option to specify what flags to pass to ./configure when creating
-the build system for the module. When this is used as a global-option, it is
-applied to all modules that this script builds. qt-copy uses a much different
-set of configure options than the rest of &kde;, so this option
-<emphasis>overrides</emphasis> the global settings when applied to qt-copy.
-</para>
+<entry>Overrides global</entry>
+<entry><para>Use this option to specify what flags to pass to ./configure when
+creating the build system for the module. When this is used as a global-option,
+it is applied to all modules that this script builds. <emphasis>This option
+only works for qt-copy.</emphasis></para>
 
-<para>This option applies to qt-copy and all &kde; 3 modules. &kde; 4 modules use
-&cmake;, which is controlled using the <link linkend="conf-cmake-options">cmake-options</link>
-option.</para>
+<para>To change configuration settings for KDE 4 modules, see
+<link linkend="conf-cmake-options">cmake-options</link>.
+</para>
 </entry>
 </row>
 
@@ -1178,8 +1187,8 @@ color codes to anything but a terminal (such as xterm, &konsole;, or the normal
 <row id="conf-cxxflags">
 <entry>cxxflags</entry>
 <entry>Appends to global option</entry>
-<entry><para>Use this option to specify what flags to pass to <command>./configure</command> as the
-<envar>CXXFLAGS</envar> when creating the build system for the module. This option is
+<entry><para>Use this option to specify what flags to use for building the
+module. This option is
 specified here instead of with <link
 linkend="conf-configure-flags">configure-flags</link> or <link
 linkend="conf-cmake-options">cmake-options</link> because this option will also
@@ -1207,11 +1216,12 @@ or directory separators in the name as this will interfere with any
 <row id="conf-disable-agent-check">
 <entry>disable-agent-check</entry>
 <entry>Cannot be overridden</entry>
-<entry>Normally if you are using &ssh; to download the &subversion; sources (such as
-if you are using the svn+ssh protocol), &kdesvn-build; will try and make sure that
-if you are using ssh-agent, it is actually managing some &ssh; identities. This is
-to try and prevent &ssh; from asking for your pass phrase for every module. You can
-disable this check by setting <option>disable-agent-check</option> to <replaceable>true</replaceable>.
+<entry>Normally if you are using &ssh; to download the &subversion; sources
+(such as if you are using the svn+ssh protocol), &kdesvn-build; will try and
+make sure that if you are using ssh-agent, it is actually managing some &ssh;
+identities. This is to try and prevent &ssh; from asking for your pass phrase
+for every module. You can disable this check by setting
+<option>disable-agent-check</option> to <replaceable>true</replaceable>.
 </entry>
 </row>
 
@@ -1220,9 +1230,6 @@ disable this check by setting <option>disable-agent-check</option> to <replaceab
 <entry>Overrides global</entry>
 <entry><para>Use this option to select a specific set of directories not to be built in a
 module (instead of all of them). The directories not to build should be space-separated.</para>
-
-<para>This feature is supported for both &kde; 3 and &kde; 4.  KDE 4 support was added in
-&kdesvn-build; 1.6.3.</para>
 
 <para>Note that the sources to the programs will still be downloaded. You can use
 the <link linkend="conf-checkout-only">checkout-only</link>
@@ -1237,14 +1244,13 @@ compiling, you would add "do-not-compile juk kscd" to your kdemultimedia setting
 <entry>email-address</entry>
 <entry>Cannot be overridden</entry>
 <entry>
-<para>Set this option to the e-mail address &kdesvn-build; should send from should
-it ever need to send e-mail. You do not need to worry about this if you do not
-use any feature which send e-mail. (They are all disabled by default).
+<para>Set this option to the e-mail address &kdesvn-build; should send from
+should it ever need to send e-mail. You do not need to worry about this if you
+do not use any feature which send e-mail. (They are all disabled by default).
 </para>
 
 <para>Currently only <link linkend="conf-email-on-compile-error">email-on-compile-error</link>
-needs this option.
-</para>
+needs this option.</para>
 </entry>
 </row>
 
@@ -1268,24 +1274,8 @@ is usually not what you want.
 <row id="conf-inst-apps">
 <entry>inst-apps</entry>
 <entry>Overrides global</entry>
-<entry><para>This is the opposite of the <link
-linkend="conf-do-not-compile">do-not-compile</link> option. This option makes it
-so that only the given top-level directories are built. The directories should
-be space-separated.</para>
-
-<para>Any changes do not take effect until the next time
-<command>make <option>-f</option> Makefile.cvs</command> is
-run, either automatically by the script, or manually by the <link
-linkend="cmdline-refresh-build"><option>--refresh-build</option></link> or <link
-linkend="cmdline-recreate-configure"><option>--recreate-configure</option></link> options.
-</para>
-
-<important><para>This option does not yet work with modules built using
-the &cmake; build system.</para></important>
-
-<para>Note that the sources to the programs will still be downloaded. You can use
-the <link linkend="conf-checkout-only">checkout-only</link>
-directive to choose directories that you want to check out.</para>
+<entry>
+This option was removed in version 1.10
 </entry>
 </row>
 
@@ -1293,52 +1283,57 @@ directive to choose directories that you want to check out.</para>
 <entry>install-after-build</entry>
 <entry>Overrides global</entry>
 <entry>This option is used to install the package after it successfully builds.
-This option is enabled by default. If you want to disable this, you need to
-set this option to 0 in the <link linkend="configure-data">configuration file</link>. You can also use the
-<link linkend="cmdline-no-install"><option>--no-install</option></link> command line flag.
+This option is enabled by default. If you want to disable this, you need to set
+this option to 0 in the <link linkend="configure-data">configuration
+file</link>. You can also use the <link
+linkend="cmdline-no-install"><option>--no-install</option></link> command line
+flag.
 </entry>
 </row>
 
 <row id="conf-kdedir">
 <entry>kdedir</entry>
 <entry>Overrides global</entry>
-<entry>This option sets the directory that &kde; will be installed to after it is
-built. It defaults to <filename class="directory">~/kde</filename>. If you change this to a directory
-needing root access, you may want to read about the <link
-linkend="conf-make-install-prefix">make-install-prefix</link> option as well.</entry>
+<entry>This option sets the directory that &kde; will be installed to after it
+is built. It defaults to <filename class="directory">~/kde</filename>. If you
+change this to a directory needing root access, you may want to read about the
+<link linkend="conf-make-install-prefix">make-install-prefix</link> option as
+well.</entry>
 </row>
 
 <row id="conf-kde-languages">
 <entry>kde-languages</entry>
 <entry>Cannot be overridden</entry>
-<entry><para>This option allows you to choose to download and install localization
-packages along with &kde;. You might do this if you do not live in the United
-States and would like to &kde; translated into your native language.</para>
+<entry><para>This option allows you to choose to download and install
+localization packages along with &kde;. You might do this if you do not live in
+the United States and would like to &kde; translated into your native
+language.</para>
 
 <para>To use this option, set it to a space-separated list of languages to
-install. Each language has a language code associated with it, which you 
+install. Each language has a language code associated with it, which you
 can look up at this page: <ulink
 url="http://i18n.kde.org/teams/">http://i18n.kde.org/teams/</ulink>.
 </para>
 
-<para>It is alright to choose only one language. By default, none are downloaded,
-which means &kde; will display in American English.</para>
+<para>It is alright to choose only one language. By default, none are
+downloaded, which means &kde; will display in American English.</para>
 
 <para>For instance, to choose to install French, you would set the option to
-something like: <userinput><option>kde-languages</option> <replaceable>fr</replaceable></userinput>.
-You would still need to use &systemsettings; in order to choose the
-French language, however.</para>
+something like: <userinput><option>kde-languages</option>
+<replaceable>fr</replaceable></userinput>.  You would still need to use
+&systemsettings; in order to choose the French language, however.</para>
 </entry>
 </row>
 
 <row id="conf-libpath">
 <entry>libpath</entry>
 <entry>Overrides global</entry>
-<entry>Set this option to set the environment variable LD_LIBRARY_PATH while
-building. You cannot override this setting in a module option. The default
-value is blank, but the paths <filename class="directory">$<envar>KDEDIR</envar>/lib</filename> and
-<filename class="directory">$<envar>QTDIR</envar>/lib</filename> are automatically
-added. You may use the tilde (~) for any paths you add using this option.
+<entry>Set this option to set the environment variable
+<envar>LD_LIBRARY_PATH</envar> while building. You cannot override this setting
+in a module option. The default value is blank, but the paths <filename
+class="directory">$<envar>KDEDIR</envar>/lib</filename> and <filename
+class="directory">$<envar>QTDIR</envar>/lib</filename> are automatically added.
+You may use the tilde (~) for any paths you add using this option.
 </entry>
 </row>
 
@@ -1346,8 +1341,7 @@ added. You may use the tilde (~) for any paths you add using this option.
 <entry>log-dir</entry>
 <entry>Overrides global</entry>
 <entry>Use this option to change the directory used to hold the log files
-generated by the script. This setting can be set on a per-module basis as of
-version 0.64 or later.
+generated by the script.
 </entry>
 </row>
 
@@ -1363,8 +1357,8 @@ please be careful while dealing with root privileges.</entry>
 <row id="conf-make-options">
 <entry>make-options</entry>
 <entry>Overrides global</entry>
-<entry>Set this variable in order to pass command line options to the <command>make</command>
-command. This is useful for programs such as <ulink
+<entry>Set this variable in order to pass command line options to the
+<command>make</command> command. This is useful for programs such as <ulink
 url="http://distcc.samba.org/"><application>distcc</application></ulink> or
 systems with more than one processor core.
 </entry>
@@ -1373,19 +1367,21 @@ systems with more than one processor core.
 <row id="conf-manual-build">
 <entry>manual-build</entry>
 <entry>Overrides global</entry>
-<entry>Set the option value to <replaceable>true</replaceable> to keep the build process from attempting to
-build this module. It will still be kept up-to-date when updating from &subversion;.
-This option is exactly equivalent to the <link
-linkend="cmdline-no-build"><option>--no-build</option></link> command line option.
+<entry>Set the option value to <replaceable>true</replaceable> to keep the
+build process from attempting to build this module. It will still be kept
+up-to-date when updating from &subversion;.  This option is exactly equivalent
+to the <link linkend="cmdline-no-build"><option>--no-build</option></link>
+command line option.
 </entry>
 </row>
 
 <row id="conf-manual-update">
 <entry>manual-update</entry>
 <entry>Overrides global</entry>
-<entry>Set the option value to <replaceable>true</replaceable> to keep the build process from attempting to
-update (and by extension, build or install) this module. If you set this
-option for a module, then you have pretty much commented it out.
+<entry>Set the option value to <replaceable>true</replaceable> to keep the
+build process from attempting to update (and by extension, build or install)
+this module. If you set this option for a module, then you have essentially
+commented it out.
 </entry>
 </row>
 
@@ -1396,12 +1392,17 @@ option for a module, then you have pretty much commented it out.
 module in question. This can be used, for example, to pull specific branches
 or tagged versions of libraries. <ulink url="http://websvn.kde.org/">The &kde;
 Source Viewer</ulink> is invaluable in helping to pick the right path.</para>
+
 <para>Note that &kdesvn-build; constructs the final path according to the
 following template:
-<varname>$svn-server</varname>/home/kde/<varname>$module-base-path</varname>/<varname>$module-name</varname>.
+<filename class="directory"><varname>$svn-server</varname>/home/kde/<varname>$module-base-path</varname></filename>.
 </para>
-<para>The default value is either <quote>trunk</quote> or
-<quote>trunk/KDE</quote>, depending on the module name.</para>
+
+<para>The default value is either <filename
+class="directory">trunk/<varname>$module</varname></filename> or <filename
+class="directory">trunk/KDE/<varname>$module</varname></filename>, depending on
+the module name.</para>
+
 <tip><para>Use the <link linkend="conf-branch">branch</link> or <link
 linkend="conf-tag">tag</link> options instead whenever they are applicable.
 </para></tip>
@@ -1427,10 +1428,8 @@ module if it normally would have tried anyways.</entry>
 <row id="conf-no-rebuild-on-fail">
 <entry>no-rebuild-on-fail</entry>
 <entry>Overrides global</entry>
-<entry>Set this option value to <replaceable>true</replaceable> to always prevent &kdesvn-build; from trying
-to rebuild this module if it should fail an incremental build. Normally
-&kdesvn-build; will try to rebuild the module from scratch to counteract the
-effect of a stray &subversion; update messing up the build system.</entry>
+<entry>This option was removed in version 1.10, since this behavior no longer helps
+due to fixes in the underlying build system.</entry>
 </row>
 
 <row id="conf-override-url">
@@ -1440,6 +1439,30 @@ effect of a stray &subversion; update messing up the build system.</entry>
 to pass to &subversion; <emphasis>completely unchanged</emphasis>. You should
 generally use this if you want to download a specific release but &kdesvn-build;
 cannot figure out what you mean using <link linkend="conf-branch">branch</link>.
+</entry>
+</row>
+
+<row id="conf-prefix">
+<entry>prefix</entry>
+<entry>Overrides global</entry>
+<entry>This option controls where to install the module (normally the
+<option><link linkend="conf-kdedir">kdedir</link></option> setting is used).
+</entry>
+</row>
+
+<row id="conf-purge-old-logs">
+<entry>purge-old-logs</entry>
+<entry>Overrides global</entry>
+<entry><para>This option controls whether old log directories are automatically
+deleted or not. The default value is <replaceable>false</replaceable>.</para>
+
+<para>Even if you have not set this option to true, you can manually purge the
+old log directories by running:</para>
+
+<screen>kdesvn-build --no-src --no-build --purge-old-logs kdelibs</screen>
+
+<para>You can use any module name in the above command line, it does not have
+to be kdelibs.</para>
 </entry>
 </row>
 
@@ -1477,6 +1500,15 @@ since &kdesvn-build; will be unable to perform incremental builds.</para>
 </entry>
 </row>
 
+<row id="conf-repository">
+<entry>repository</entry>
+<entry>Overrides global</entry>
+<entry><para>This option was introduced with version 1.10, and is used to
+specify the &git; repository to download the source code for the module.
+&Qt; (and therefore qt-copy) would need this option, as well as various
+&kde; modules that are in the process of conversion to use &git;.</para></entry>
+</row>
+
 <row id="conf-revision">
 <entry>revision</entry>
 <entry>Overrides global</entry>
@@ -1486,6 +1518,16 @@ given, even if options like <link linkend="conf-branch">branch</link> are in
 effect. If the module is already at the given revision then it will not be
 updated further unless this option is changed or removed from the
 configuration.</entry>
+</row>
+
+<row id="conf-run-tests">
+<entry>run-tests</entry>
+<entry>Overrides global</entry>
+<entry>If set to <replaceable>true</replaceable>, then the module will be
+built with support for running its test suite, and the test suite will be
+executed as part of the build process. &kdesvn-build; will show a simple
+report of the test results. This is useful for developers or those who want
+to ensure their system is setup correctly.</entry>
 </row>
 
 <row id="conf-set-env">
@@ -1537,10 +1579,6 @@ The default is the anonymous &subversion; repository, <filename>svn://anonsvn.kd
 want</emphasis> to use this option. &kde; releases are available in tarball form
 from <ulink url="ftp://ftp.kde.org/">The &kde; FTP site</ulink> or one of <ulink
 url="http://download.kde.org/download.php">its mirrors</ulink>.</para>
-<para>If you are using &kdesvn-build; because you have having trouble getting
-a &kde; release to build on your distribution, consider using the <ulink
-url="http://techbase.kde.org/Getting_Started/Build/Konstruct">Konstruct build tool</ulink>
-instead, which works from the release tarballs.</para>
 </entry>
 </row>
 
@@ -1555,42 +1593,18 @@ require &cmake;, and &cmake; use is not permitted on any other modules.
 <row id="conf-use-qt-builddir-hack">
 <entry>use-qt-builddir-hack</entry>
 <entry>Overrides global</entry>
-<entry>Although this option overrides the global option, it only makes sense for
-qt-copy. Set this option to <replaceable>true</replaceable> to enable the script's
-srcdir != builddir mode. When enabled,
-&kdesvn-build; will copy the qt-copy source module to the build directory,
-and perform builds from there. That means your <envar>QTDIR</envar> environment variable
-should be set to
-<filename class="directory">$<symbol>{qt-copy-build-dir}</symbol>/qt-copy/lib</filename>
-instead. You should also change your <link linkend="conf-qtdir">qtdir</link>
-option accordingly. Incremental &make; should still work in this mode, as the
-timestamps will be preserved after the copy. If you use the
-<link linkend="conf-apply-qt-patches">apply-qt-patches</link> option, the patches
-will be applied in the build directory, not the source directory.
-This option defaults to <replaceable>true</replaceable>.
+<entry>This option has been removed due to improvements in the &Qt; build
+system.
 </entry>
 </row>
 
 <row id="conf-use-stable-kde">
 <entry>use-stable-kde</entry>
 <entry>Cannot be overridden</entry>
-<entry><para>Since &kdesvn-build; has support for building &kde; 3 and 4, there
-needs to be some way to tell which version to build. By default, &kdesvn-build;
-will build the main line of &kde; development (called /trunk). But, this is
-for &kde; 4, which is not yet ready for wide release.
+<entry><para>
+This option was removed in version 1.10, which limits support to KDE 4,
+removing the effect of this option.
 </para>
-
-<para>You can use the &branch; option globally or for a module in order to
-download for &kde; 3.5 (or 3.4, etc.). However, this is not convenient as some
-modules (such as kdesupport) are shared by 3.5 and 4. In addition, it is a
-lot of branch options that must be added to the configuration file.</para>
-
-<para>So, if you set this global option to <replaceable>true</replaceable>, &kdesvn-build;
-will automatically download the &kde; 3.5 version of modules such as kdelibs
-and qt-copy, instead of downloading the &kde; 4 version. You can still use
-the &branch; or &tag; options for a module to override the setting that
-&kdesvn-build; picks. This way you can easily choose to download &kde; 3.5
-instead of the release &kde; 4.</para>
 </entry>
 </row>
 
@@ -1599,16 +1613,25 @@ instead of the release &kde; 4.</para>
 </tgroup>
 </table>
 
+</sect1>
 </chapter>
 
 <chapter id="cmdline">
 <title>Command Line Options and Environment Variables</title>
 
+<sect1 id="supported-envvars">
+<title>Supported Environment Variables</title>
+
 <para>
-This script does not use environment variables. If you need to set environment
+&kdesvn-build; does not use environment variables. If you need to set environment
 variables for the build or install process, please see the <link
 linkend="conf-set-env">set-env</link> option.
 </para>
+
+</sect1>
+
+<sect1 id="supported-cmdline-params">
+<title>Supported command-line parameters</title>
 
 <para>
 The script accepts the following command-line options:
@@ -1617,30 +1640,31 @@ The script accepts the following command-line options:
 <variablelist>
 
 <varlistentry id="cmdline-async">
-<term><option>--async</option></term>
+<term><parameter>--async</parameter></term>
 <listitem><para>
-Enables the <link linkend="conf-async">asynchronous mode</link> to update and build
-at the same time.  This is the default, this option only needs specified if you
-have disabled it in the configuration.
+Enables the <link linkend="conf-async">asynchronous mode</link>, which can
+perform the source code updates and module builds at the same time.  This is
+the default, this option only needs specified if you have disabled it in the
+configuration.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-help">
-<term><option>--help</option></term>
+<term><parameter>--help</parameter></term>
 <listitem><para>
 Only display simple help on this script.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-version">
-<term><option>--version</option></term>
+<term><parameter>--version</parameter></term>
 <listitem><para>
 Display the program version.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-author">
-<term><option>--author</option></term>
+<term><parameter>--author</parameter></term>
 <listitem><para>
 Display contact information for the
 author.
@@ -1648,22 +1672,24 @@ author.
 </varlistentry>
 
 <varlistentry id="cmdline-color">
-<term><option>--color</option></term>
+<term><parameter>--color</parameter></term>
 <listitem><para>
-Enable colorful output.
+Enable colorful output. (This is the default for interactive terminals).
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-nice">
-<term><option>--nice=<replaceable>value</replaceable></option></term>
+<term><parameter>--nice=<replaceable>value</replaceable></parameter></term>
 <listitem><para>
-Sets the &niceness; value to <replaceable>value</replaceable> for the duration
-of this run. <replaceable>value</replaceable> should be between 0 and 20.
+This value adjusts the computer CPU priority requested by &kdesvn-build;, and
+should be in the range of 0-20. 0 is highest priority (because it is the
+least <quote>nice</quote>), 20 is lowest priority. &kdesvn-build; defaults
+to 10.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-no-async">
-<term><option>--no-async</option></term>
+<term><parameter>--no-async</parameter></term>
 <listitem><para>
 Disables the <link linkend="conf-async">asynchronous mode</link> of updating.
 Instead the update will be performed in its entirety before the build starts.
@@ -1674,21 +1700,28 @@ while running &kdesvn-build; try using this option, and submitting a
 </varlistentry>
 
 <varlistentry id="cmdline-no-color">
-<term><option>--no-color</option></term>
+<term><parameter>--no-color</parameter></term>
 <listitem><para>
 Disable colorful output.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-pretend">
-<term><option>--pretend</option> (or <option>-p</option>)</term>
+<term><parameter>--pretend</parameter> (or <parameter>-p</parameter>)</term>
 <listitem><para>
-Do not actually <emphasis>do</emphasis> anything, but act like you did.
+&kdesvn-build; will run through the update and build process, but instead of
+performing any actions to update or build, will instead output what the
+script would have done (e.g. what commands to run, general steps being taken,
+etc.).</para>
+
+<para>Note: Simple read-only commands (such as reading file information) may
+still be run to make the output more relevant (such as correctly simulating
+whether source code would be checked out or updated).
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-quiet">
-<term><option>--quiet</option> (or <option>-q</option>)</term>
+<term><parameter>--quiet</parameter> (or <parameter>-q</parameter>)</term>
 <listitem><para>
 Do not be as noisy with the output. With this switch only the basics are
 output.
@@ -1696,74 +1729,79 @@ output.
 </varlistentry>
 
 <varlistentry id="cmdline-really-quiet">
-<term><option>--really-quiet</option></term>
+<term><parameter>--really-quiet</parameter></term>
 <listitem><para>
 Only output warnings and errors.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-verbose">
-<term><option>--verbose</option></term>
+<term><parameter>--verbose</parameter> (or <parameter>-v</parameter>)</term>
 <listitem><para>
 Be very descriptive about what is going on, and what &kdesvn-build; is doing.
 </para></listitem>
 </varlistentry>
 
-<varlistentry id="cmdline-svn-only">
-<term><option>--svn-only</option></term>
+<varlistentry id="cmdline-src-only">
+<term><parameter>--src-only</parameter> (or <parameter>--svn-only</parameter>)</term>
 <listitem><para>
-Only perform the source update.
+Only perform the source update. (The <parameter>--svn-only</parameter> is
+only supported for compatibility with older scripts).
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-build-only">
-<term><option>--build-only</option></term>
+<term><parameter>--build-only</parameter></term>
 <listitem><para>
 Only perform the build process.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-ignore-modules">
-<term><option>--ignore-modules</option></term>
+<term><parameter>--ignore-modules</parameter></term>
 <listitem><para>
-Do not include the modules passed on the rest of the command line in the update/build
-process.
+Do not include the modules passed on the rest of the command line in the
+update/build process (this is useful if you want to build most of the modules
+in your <link linkend="configure-data">configuration file</link> and just skip
+a few).
 </para></listitem>
 </varlistentry>
 
-<varlistentry id="cmdline-no-svn">
-<term><option>--no-svn</option></term>
+<varlistentry id="cmdline-no-src">
+<term><parameter>--no-src</parameter> (or <parameter>--no-svn</parameter>)</term>
 <listitem><para>
-Skip contacting the &subversion; server.
+Skip contacting the &subversion; server. (The <parameter>--no-svn</parameter>
+parameter is only supported for compatibility with older versions of the
+script).
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-no-build">
-<term><option>--no-build</option></term>
+<term><parameter>--no-build</parameter></term>
 <listitem><para>
 Skip the build process.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-no-install">
-<term><option>--no-install</option></term>
+<term><parameter>--no-install</parameter></term>
 <listitem><para>
 Do not automatically install packages after they are built.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-debug">
-<term><option>--debug</option></term>
+<term><parameter>--debug</parameter></term>
 <listitem><para>
-Enables debug mode for the script. Currently
-this means that all output will be dumped to the standard output in addition to being
-logged in the log directory like normal. Also, many functions are much more
-verbose about what they are doing in debugging mode.
+Enables debug mode for the script. Currently this means that all output will be
+dumped to the standard output in addition to being logged in the log directory
+like normal. Also, many functions are much more verbose about what they are
+doing in debugging mode.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-no-rebuild-on-fail">
-<term><option>--no-rebuild-on-fail</option></term>
+<term><parameter>--no-rebuild-on-fail</parameter></term>
 <listitem><para>
 Do not try to
 rebuild modules that have failed building from scratch. &kdesvn-build; will
@@ -1773,104 +1811,155 @@ scratch.
 </varlistentry>
 
 <varlistentry id="cmdline-refresh-build">
-<term><option>--refresh-build</option></term>
+<term><parameter>--refresh-build</parameter></term>
 <listitem><para>
 Recreate the build system and make from scratch.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-reconfigure">
-<term><option>--reconfigure</option></term>
+<term><parameter>--reconfigure</parameter></term>
 <listitem><para>
-Run the configure script again without cleaning the build directory.
-</para></listitem>
-</varlistentry>
-
-<varlistentry id="cmdline-recreate-configure">
-<term><option>--recreate-configure</option></term>
-<listitem><para>
-Run <command>make <option>-f</option>
-Makefile.cvs</command> again to create the configure script, and continue
-building as normal. This option implies <option><link linkend="cmdline-reconfigure">--reconfigure</link></option>.
+Run <command>cmake</command> (for &kde; modules) or
+<command>configure</command> (for &Qt;) again, without cleaning the build
+directory. You should not normally have to specify this, as &kdesvn-build; will
+detect when you change the relevant options and automatically re-run the build
+setup. This option is implied if <parameter><link
+linkend="cmdline-refresh-build">--refresh-build</link></parameter> is used.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-resume-from">
-<term><option>--resume-from</option></term>
+<term><parameter>--resume-from</parameter></term>
 <listitem><para>
 This option is used to resume the build starting from the given module, which
-should be the next option on the command line. This option
-implies <link linkend="cmdline-no-svn"><option>--no-svn</option></link>. You should not specify
-other module names on the command line.
+should be the next option on the command line. This option implies <link
+linkend="cmdline-no-src"><parameter>--no-src</parameter></link>. You should not
+specify other module names on the command line.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-rc-file">
-<term><option>--rc-file</option></term>
+<term><parameter>--rc-file</parameter></term>
 <listitem><para>
-which interprets the next command line
-parameter as the file to read the configuration options from. The default
-value for this parameter is ~/.kdesvn-buildrc.
+This interprets the next command line parameter as the file to read the
+configuration options from. The default value for this parameter is
+<filename>kdesvn-buildrc</filename> (checked in the current directory) if
+it is present, or <filename>~/.kdesvn-buildrc</filename> otherwise. See
+also <xref linkend="kdesvn-buildrc" />.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-run">
-<term><option>--run</option></term>
+<term><parameter>--run</parameter></term>
 <listitem><para>
 This option interprets the next item on the command line as a program to run,
 and &kdesvn-build; will then finish reading the configuration file, update the
 environment as normal, and then execute the given program.</para>
 
-<para>This will not work to start a shell with the &kdesvn-build; environment in
-most cases however, since interactive shells typically reset at least part of
-the environment variables (such as <envar>PATH</envar> and
+<para>This will not work to start a shell with the &kdesvn-build; environment
+in most cases however, since interactive shells typically reset at least part
+of the environment variables (such as <envar>PATH</envar> and
 <envar>KDEDIRS</envar>) in the startup sequence.
-</para></listitem>
+</para>
+
+<tip><para>If you want to see the environment used by &kdesvn-build;, you
+can run the <command>printenv</command> command:</para>
+<informalexample>
+<screen>$ <command>kdesvn-build</command> <parameter>--run</parameter> <parameter>printenv</parameter>
+KDE_SESSION_VERSION=4
+SDL_AUDIODRIVER=alsa
+LANGUAGE=
+XCURSOR_THEME=Oxygen_Blue
+LESS=-R -M --shift 5
+QMAIL_CONTROLDIR=/var/qmail/control
+... etc.
+</screen>
+</informalexample></tip>
+</listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-prefix">
-<term><option>--prefix=&lt;/path/to/kde&gt;</option></term>
+<term><parameter>--prefix=&lt;/path/to/kde&gt;</parameter></term>
 <listitem><para>
-This allows you to change the directory that &kde; will be installed to from the command line.
-This option implies <link linkend="cmdline-reconfigure"><option>--reconfigure</option></link>.
+This allows you to change the directory that &kde; will be installed to from
+the command line.  This option implies <link
+linkend="cmdline-reconfigure"><parameter>--reconfigure</parameter></link>,
+but using <link linkend="cmdline-refresh-build"><parameter>--refresh-build</parameter></link>
+may still be required.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-revision">
+<term><parameter>--revision</parameter></term>
+<listitem><para>
+This option causes &kdesvn-build; to checkout a specific numbered revision
+for each &subversion; module, overriding any <link linkend="conf-branch">branch</link>,
+<link linkend="conf-tag">tag</link>, or <link linkend="conf-revision">revision</link>
+options already set for these modules.</para>
+
+<para>This option is likely not a good idea, and is only supported for
+compatibility with older scripts.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-build-system-only">
-<term><option>--build-system-only</option></term>
+<term><parameter>--build-system-only</parameter></term>
 <listitem><para>
-Stop after running <command>make <option>-f</option> Makefile.cvs</command>. The configure
-script will still need to be run, which &kdesvn-build; will do next time. This lets you
-prepare all the configure scripts at once so you can view the <command>./configure
-<option>--help</option></command> for each module, and edit your configure-flags accordingly.
+This option causes &kdesvn-build; to abort building a module just before
+the <command>make</command> command would have been run. This is supported
+for compatibility with older versions only, this effect is not helpful for
+the current &kde; build system.
 </para></listitem>
 </varlistentry>
 
-<varlistentry id="cmdline-install"><term><option>--install</option></term>
+<varlistentry id="cmdline-install"><term><parameter>--install</parameter></term>
 <listitem><para>
-If this is the only command-line option, it tries to install all of the modules contained in
-successfully-built, except for qt-copy, which does not need installation. If command-line
-options are specified after <option>--install</option>, they are all assumed to be modules to install.
+If this is the only command-line option, it tries to install all of the modules
+contained in <filename>log/latest/build-status</filename>. If command-line
+options are specified after <parameter>--install</parameter>, they are all
+assumed to be modules to install (even if they did not successfully build on
+the last run).
 </para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-purge-old-logs"><term><parameter>--purge-old-logs</parameter></term>
+<listitem><para>
+This option causes &kdesvn-build; to delete unneeded log directories after
+the build, to save disk space. All log directories that are not needed to
+satisfy a link from <filename>log/latest</filename> will be deleted. This is disabled
+by default. To enable this option by default, see the <link linkend="conf-purge-old-logs">purge-old-logs</link>
+option.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-snapshots"><term><parameter>--no-snapshots</parameter></term>
+<listitem><para>
+Supplying this option causes &kdesvn-build; to always prefer a &subversion;
+initial checkout of a module instead of using a &subversion; module snapshot.
+</para>
+
+<note><para>Module snapshots <emphasis>are</emphasis> real &subversion;
+checkouts. You should not need to specify this option, it is only a troubleshooting
+aid.</para></note>
+</listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-global-option">
-<term><option>--&lt;option-name&gt;=</option></term>
+<term><parameter>--&lt;option-name&gt;=</parameter></term>
 <listitem><para>
 You can use this option to override an option in your <link linkend="configure-data">configuration file</link> for
 every module. For instance, to override the <link
 linkend="conf-log-dir">log-dir</link> option, you would do:
-<userinput><option>--log-dir=<filename class="directory"><replaceable>/path/to/dir</replaceable></filename></option></userinput>.
+<userinput><parameter>--log-dir=<filename class="directory"><replaceable>/path/to/dir</replaceable></filename></parameter></userinput>.
 </para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-module-option">
-<term><option>--&lt;module-name&gt;,&lt;option-name&gt;=</option></term>
+<term><parameter>--&lt;module-name&gt;,&lt;option-name&gt;=</parameter></term>
 <listitem><para>
 You can use this option to override an option in your <link linkend="configure-data">configuration file</link> for
-a specific module. <!--For instance, to override the <link
-linkend="conf-use-unsermake">use-unsermake</link> option for kdemultimedia, you
-would do: <option>- -kdemultimedia,use-unsermake=false</option>.-->
+a specific module.
 </para></listitem>
 </varlistentry>
 
@@ -1880,6 +1969,8 @@ would do: <option>- -kdemultimedia,use-unsermake=false</option>.-->
 Any other command-line options are assumed to be modules to update and build.
 Please, do not mix building with installing.
 </para>
+
+</sect1>
 
 </chapter>
 
@@ -1909,41 +2000,49 @@ do with this tool.</para>
 
 <sect2 id="using-qt-copy">
 <title>qt-copy support</title>
-<para>&kdesvn-build; strives to maintain excellent support for the qt-copy
-module included in the &kde; &subversion; repository.</para>
+<para>&kdesvn-build; supports building the &Qt; toolkit used by &kde; software
+as a convenience to users. This support is handled by a special module named
+qt-copy.</para>
 
-<note><para>
-qt-copy is a copy of the source code for the latest release of the &Qt; toolkit
-used by &kde;. It also contains a patchset of optimization and bug improvement
-patches which may optionally be applied. These patches are still compatible
-with the &Qt; library so that code produced using qt-copy will run with normal
-&Qt;.
-</para></note>
+<note><para>&Qt; is developed under a separate repository from &kde; software
+located at <ulink
+url="http://qt.gitorious.org/qt">http://qt.gitorious.org/qt</ulink>.</para></note>
 
-<para>Most of the differences required for qt-copy are handled automatically by
-&kdesvn-build;. However, there are a few differences you may need to know
-about.</para>
+<para>In order to build &Qt;, you should make sure that the
+<link linkend="conf-qtdir">qtdir</link> setting is set to the directory you'd
+like to install &Qt; to, as described in <xref linkend="configure-data"/>.</para>
 
-<itemizedlist>
-<listitem><para>Normally the value for &configure-flags; for a module is
-appended to the global setting for &configure-flags;. However, the
-&configure-flags; setting for qt-copy will replace the global setting since
-they are not equivalent command lines.
-</para></listitem>
+<para>You should then ensure that the qt-copy module is added to
+your <filename>.kdesvn-buildrc</filename>, before any other modules in the
+file. If you are using the sample configuration file, you can simply
+uncomment the existing qt-copy module entry.</para>
 
-<listitem><para>&kdesvn-build; will automatically define some extra environment
-variables to build qt-copy that are not normally required for the rest of &kde;.
-</para></listitem>
+<para>Now you should verify the <link
+linkend="conf-repository">repository</link> option and <link
+linkend="conf-branch">branch</link> options are set appropriately:</para>
 
-<listitem><para>
-qt-copy also has support for an optional patch set containing some bug fixes
-and optimizations that have not yet made it to the official &Qt;. To enable
-these, set the &apply-qt-patches; option to <replaceable>true</replaceable>. After
-making this change you may have to run <userinput><command>kdesvn-build</command>
-<option>--refresh-build</option> <option>qt-copy</option></userinput>.
-</para></listitem>
+<orderedlist>
+<listitem><para>The first option is to build with a grouping of recommended bug
+fix and optimization patches applied (this used to be controlled using an
+option called apply-patches). This collection is developed in a separate
+repository at <ulink
+url="http://gitorious.org/+kde-developers/qt/kde-qt">http://gitorious.org/+kde-developers/qt/kde-qt</ulink>.
+If you would like to build with patches applied (most &kde; developers do) then
+you should set your repository option to
+<userinput>git://gitorious.org/+kde-developers/qt/kde-qt.git</userinput></para>
+</listitem>
 
-</itemizedlist>
+<listitem><para>Otherwise, to build the standard &Qt;, set your repository
+option to
+<userinput>git://gitorious.org/qt/qt.git</userinput></para></listitem>
+</orderedlist>
+
+<para>In both cases, the branch option should be set to <userinput>master</userinput> (unless you'd
+like to build a different branch).</para>
+
+<note><para>In some cases the underlying source control software is unable to
+work when run from &kdesvn-build;, but will still work fine when run from the
+command prompt. This bug is still under investigation.</para></note>
 
 </sect2>
 
@@ -2008,7 +2107,7 @@ permanently, then you need to adjust the &niceness; setting in the
 <link linkend="configure-data">configuration file</link>. The &niceness; setting controls how <quote>nice</quote> &kdesvn-build; is to other
 programs. In other words, having a higher &niceness; gives &kdesvn-build; a
 lower priority. So to give &kdesvn-build; a higher priority, reduce the
-&niceness; (and vice versa). The &niceness; can go from 0 (not nice at all, 
+&niceness; (and vice versa). The &niceness; can go from 0 (not nice at all,
 highest priority) to 20 (super nice, lowest priority).</para>
 
 <para>You can also temporarily change the priority for &kdesvn-build; by
@@ -2144,7 +2243,7 @@ adding directories to the option to figure out.</para>
 </important>
 
 <para>One final note to make about this option: If you change the value of this
-option, you should use <userinput><command>kdesvn-build</command> 
+option, you should use <userinput><command>kdesvn-build</command>
 <option>&cmd-refresh-build;</option> <option><replaceable>module</replaceable></option></userinput>
 in order to ensure that the module is reconfigured properly. In addition,
 &kdesvn-build; will never remove existing files if you take away the number of
@@ -2168,7 +2267,7 @@ directories that should not be compiled.</para>
 <important><para>
 Also like &checkout-only;, this option requires at least that the
 <command>configure</command> script is run again for the module after changing
-it. This is done using the <userinput><command>kdesvn-build</command> 
+it. This is done using the <userinput><command>kdesvn-build</command>
 <option>&cmd-reconfigure;</option>
 <option><replaceable>module</replaceable></option></userinput> command.
 </para></important>
@@ -2183,25 +2282,6 @@ end module
 </screen>
 </informalexample>
 
-</sect3>
-
-<sect3 id="limiting-using-inst-apps">
-<title>Compiling a few directories from a full module</title>
-
-<para>You can use the &inst-apps; option to specify that only a few directories
-out of a full module are to be built (but the entire module is still
-downloaded).
-</para>
-
-<para>This option is like the combination of &checkout-only; and &do-not-compile;:
-it downloads the entire module like &do-not-compile;, but only compiles the
-directories you specify, like &checkout-only;. Because of this it is usually
-better to simply use &checkout-only; instead.
-</para>
-
-<para>The same warnings apply as for the other two options: you must reconfigure
-the module if you change the value of &inst-apps;.
-</para>
 </sect3>
 
 </sect2>
@@ -2341,45 +2421,28 @@ as well.
 <sect3 id="automatic-rebuilds">
 <title>Automatic rebuilds</title>
 
-<para>Due to various issues with the &kde; build system &kdesvn-build; will automatically perform
-a series of steps to automatically try to get a module to compile when it
-fails.</para>
+<para>&kdesvn-build; used to include features to automatically attempt to
+rebuild the module after a failure (as sometimes this re-attempt would work,
+due to bugs in the build system at that time). Thanks to switching to &cmake;
+the build system no longer suffers from these bugs, and so &kdesvn-build; will
+not try to build a module more than once. There are situations where
+&kdesvn-build; will automatically take action though:</para>
 
-<orderedlist>
-<listitem><para>On the first failure, &kdesvn-build; will simply re-run the
-<command>make</command>. Believe it or not, but this sometimes actually works,
-and is quick to fail if it will not work.
-</para></listitem>
+<itemizedlist>
 
-<listitem><para>
-On the second failure, &kdesvn-build; will try to reconfigure the module and
-then rebuild it. This usually catches situations where a build-system file
-that requires reconfiguration changed, but the build system did not perform that
-step automatically.
-</para>
+<listitem><para>If you change <link linkend="conf-configure-flags">configure-flags</link>
+or <link linkend="conf-cmake-options">cmake-options</link> for a module, then
+&kdesvn-build; will detect that and automatically re-run configure or cmake
+for that module.</para></listitem>
 
-<para>The module build directory is left intact for this step, so, except for the
-reconfigure step, this will also fail quickly if the build cannot be performed.
-</para>
-</listitem>
+<listitem><para>If the buildsystem does not exist (even if &kdesvn-build; did
+not delete it) then &kdesvn-build; will automatically re-create it. This is
+useful to allow for performing a full <link
+linkend="cmdline-refresh-build">--refresh-build</link> for a specific module
+without having that performed on other modules.</para></listitem>
 
-<listitem><para>
-If the module still fails to build, &kdesvn-build; will give up and move on
-to the next module. There are still things that you can do to <link
-linkend="manual-rebuilds">manually try to get the module to build</link>,
-however.
-</para></listitem>
-</orderedlist>
+</itemizedlist>
 
-<note><para>
-&kdesvn-build; will detect most cases where the build system needs to be
-reconfigured, and will reconfigure automatically in that case.
-</para>
-
-<para>Also, if &kdesvn-build; was building the module for the first time, all
-of these steps are skipped, since the clean rebuild does not usually fail except
-for a real error.</para>
-</note>
 </sect3>
 
 <sect3 id="manual-rebuilds">
@@ -2414,37 +2477,18 @@ If you change the setting of the &build-dir; option, then use that instead of
 </informalexample>
 </sect3>
 
-<sect3 id="controlling-rebuild-behavior">
-<title>Controlling rebuild behavior</title>
-<para>You may not want &kdesvn-build; to always try and rebuild a module.
-You can permanently disable this behavior by changing the option &no-rebuild-on-fail;
-to have the value <replaceable>true</replaceable>.</para>
-
-<para>You can disable this behavior temporarily (for one command) by using
-the &cmd-no-rebuild-on-fail; command line option.</para>
-
-<informalexample>
-<screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--no-rebuild-on-fail</option></userinput>
-</screen>
-</informalexample>
-
-</sect3>
-
 </sect2>
 
 <sect2 id="changing-environment">
 <title>Changing environment variable settings</title>
-<para>&kdesvn-build; does not read the environment from the caller like the
-vast majority of most programs do. Instead, it uses the settings it reads
-from the <link linkend="configure-data">configuration file</link> to construct the environment. This is done mainly to
-ensure that builds are repeatable. In other words,
-&kdesvn-build; can build a module even if you forgot what you set your
-environment variables to in the shell you ran &kdesvn-build; from.</para>
+<para>Normally &kdesvn-build; uses the environment that is present when
+starting up when running programs to perform updates and builds. This is useful
+for when you are running &kdesvn-build; from the command line.</para>
 
-<para>However, you may want to change the setting for environment variables 
-that &kdesvn-build; does not provide an option for directly.
-This is possible with the &set-env; option.</para>
+<para>However, you may want to change the setting for environment variables
+that &kdesvn-build; does not provide an option for directly. (For instance,
+to setup any required environment variables when running &kdesvn-build; on
+a timer such as &cron;) This is possible with the &set-env; option.</para>
 
 <para>Unlike most options, it can be set more than once, and it accepts two
 entries, separated by a space. The first one is the name of the environment
@@ -2569,13 +2613,13 @@ syntax is similar: --<replaceable>module</replaceable>,<replaceable>option-name<
 access the &kde; source repository do not accidentally forget to leave the
 &ssh; Agent tool enabled. This can cause &kdesvn-build; to hang indefinitely
 waiting for the developer to type in their &ssh; password,
-so by default, &kdesvn-build; will check if the Agent is running before
+so by default &kdesvn-build; will check if the Agent is running before
 performing source updates.
 </para>
 
 <note><para>This is only done for &kde; developers using &ssh;. This is because
-no password is required for the default anonymous checkout. &subversion; will handle
-passwords for the second possible protocol for &kde; developers, https.
+no password is required for the default anonymous checkout. &subversion; will
+handle passwords for the second possible protocol for &kde; developers, https.
 </para></note>
 
 <para>You may wish to disable the &ssh; Agent check, in case of situations where
@@ -2799,25 +2843,20 @@ autotools-based system that &kde; has used from the beginning.</para>
 
 <para>A introduction to &cmake; page is available on the <ulink
 url="http://techbase.kde.org/Development/Tutorials/CMake">&kde; TechBase</ulink>.
-Basically, instead of running <userinput><command>make</command> <option>-f</option> 
+Basically, instead of running <userinput><command>make</command> <option>-f</option>
 <filename>Makefile.cvs</filename></userinput>, then <command>configure</command>,
 then &make;, we simply run &cmake; and then &make;.
 </para>
 
 <para>&kdesvn-build; has support for &cmake;. A few features of &kdesvn-build;
-were really features of the underlying buildsystem, including <link linkend="conf-inst-apps">inst-apps</link>,
-<link linkend="conf-configure-flags">configure-flags</link>, 
+were really features of the underlying buildsystem, including
+<link linkend="conf-configure-flags">configure-flags</link>
 and <link linkend="conf-do-not-compile">do-not-compile</link>. When equivalent
 features are available, they are provided. For instance, the equivalent to the
 configure-flags option is <link linkend="conf-cmake-options">cmake-options</link>, and the
 <link linkend="conf-do-not-compile">do-not-compile</link> option is also supported for &cmake;
 as of &kdesvn-build; version 1.6.3.
 </para>
-
-<para>However, some options (like <link linkend="conf-inst-apps">inst-apps</link>) have no direct
-equivalent, and are disabled. Should I find a way to implement them with &cmake;
-I will do so and re-enable the option. However, more or less everything works
-the same.</para>
 
 </sect1>
 </chapter>
