@@ -1,16 +1,16 @@
 <?xml version="1.0" ?>
 <!DOCTYPE book PUBLIC "-//KDE//DTD DocBook XML V4.2-Based Variant V1.1//EN" "dtd/kdex.dtd" [
-  <!ENTITY kappname "Kdesvn-build">
+  <!ENTITY kappname "kdesvn-build">
   <!ENTITY package "kdesdk">
   <!ENTITY % addindex "IGNORE">
   <!ENTITY % English "INCLUDE"> <!-- Change language only here -->
-  <!ENTITY kdesvn-build "<application>Kdesvn-build</application>">
-  <!ENTITY autoconf '<application>Autoconf</application>'>
-  <!ENTITY automake '<application>Automake</application>'>
+  <!ENTITY kdesvn-build "<application>kdesvn-build</application>">
   <!ENTITY BSD '<acronym>BSD</acronym>'>
+  <!ENTITY git '<application>Git</application>'>
   <!ENTITY cmake '<application>CMake</application>'>
   <!ENTITY make '<application>Make</application>'>
   <!ENTITY ssh '<application>SSH</application>'>
+  <!ENTITY cron '<application>Cron</application>'>
   <!ENTITY subversion '<application>Subversion</application>'>
   <!ENTITY sudo '<application>Sudo</application>'>
   <!ENTITY url '<acronym>URL</acronym>'>
@@ -20,7 +20,6 @@
   -->
 
   <!ENTITY configure-flags '<link linkend="conf-configure-flags">configure-flags</link>'>
-  <!ENTITY apply-qt-patches '<link linkend="conf-apply-qt-patches">apply-qt-patches</link>'>
   <!ENTITY kdedir '<link linkend="conf-kdedir">kdedir</link>'>
   <!ENTITY qtdir '<link linkend="conf-qtdir">qtdir</link>'>
   <!ENTITY build-dir '<link linkend="conf-build-dir">build-dir</link>'>
@@ -31,10 +30,7 @@
   <!ENTITY email-on-compile-error '<link linkend="conf-email-on-compile-error">email-on-compile-error</link>'>
   <!ENTITY colorful-output '<link linkend="conf-colorful-output">colorful-output</link>'>
   <!ENTITY tag '<link linkend="conf-tag">tag</link>'>
-  <!ENTITY apidox '<link linkend="conf-apidox">apidox</link>'>
   <!ENTITY branch '<link linkend="conf-branch">branch</link>'>
-  <!ENTITY no-rebuild-on-fail '<link linkend="conf-no-rebuild-on-fail">no-rebuild-on-fail</link>'>
-  <!ENTITY inst-apps '<link linkend="conf-inst-apps">inst-apps</link>'>
   <!ENTITY do-not-compile '<link linkend="conf-do-not-compile">do-not-compile</link>'>
   <!ENTITY checkout-only '<link linkend="conf-checkout-only">checkout-only</link>'>
   <!ENTITY svn-server '<link linkend="conf-svn-server">svn-server</link>'>
@@ -50,7 +46,6 @@
   <!ENTITY cmd-nice '<link linkend="cmdline-nice">--nice</link>'>
   <!ENTITY cmd-ignore-modules '<link linkend="cmdline-ignore-modules">--ignore-modules</link>'>
   <!ENTITY cmd-resume-from '<link linkend="cmdline-resume-from">--resume-from</link>'>
-  <!ENTITY cmd-no-rebuild-on-fail '<link linkend="cmdline-no-rebuild-on-fail">--no-rebuild-on-fail</link>'>
   <!ENTITY cmd-reconfigure '<link linkend="cmdline-reconfigure">--reconfigure</link>'>
   <!ENTITY cmd-refresh-build '<link linkend="cmdline-refresh-build">--refresh-build</link>'>
   <!ENTITY introduction SYSTEM "introduction/index.docbook">
@@ -63,7 +58,11 @@
   <!ENTITY features-overview SYSTEM "features/features-overview.docbook">
   <!ENTITY kdesvn-build-logging SYSTEM "features/kdesvn-build-logging.docbook">
   <!ENTITY kdesvn-buildrc SYSTEM "kdesvn-buildrc/index.docbook">
+  <!ENTITY kdesvn-buildrc-overview SYSTEM "kdesvn-buildrc/kdesvn-buildrc-overview.docbook">
+  <!ENTITY conf-options-table SYSTEM "kdesvn-buildrc/conf-options-table.docbook">
   <!ENTITY cmdline SYSTEM "cmdline/index.docbook">
+  <!ENTITY supported-envvars SYSTEM "cmdline/supported-envvars.docbook">
+  <!ENTITY supported-cmdline-params SYSTEM "cmdline/supported-cmdline-params.docbook">
   <!ENTITY using-kdesvn-build SYSTEM "using-kdesvn-build/index.docbook">
   <!ENTITY using-kdesvn-build-preface SYSTEM "using-kdesvn-build/using-kdesvn-build-preface.docbook">
   <!ENTITY basic-features SYSTEM "using-kdesvn-build/basic-features.docbook">
@@ -75,11 +74,6 @@
   <!ENTITY credits-and-licenses SYSTEM "credits-and-licenses/index.docbook">
 ]>
 
-<!-- Todo
-rm all kde3 stuff for next version
-change stable to 4
-is konstrukt really working for kde4?
--->
 <book lang="&language;">
 
 <bookinfo>
@@ -88,12 +82,12 @@ is konstrukt really working for kde4?
 <authorgroup id="authors">
 <author>
 <firstname>Michael</firstname><surname>Pyne</surname>
-<affiliation><address><email>michael.pyne@kdemail.net</email></address></affiliation>
-</author> 
+<affiliation><address><email>mpyne@kde.org</email></address></affiliation>
+</author>
 <author>
 <firstname>Carlos</firstname><surname>Woelz</surname>
 <affiliation><address><email>carloswoelz@imap-mail.com</email></address></affiliation>
-</author> 
+</author>
 
 
 <!-- TRANS:ROLES_OF_TRANSLATORS -->
@@ -104,6 +98,8 @@ is konstrukt really working for kde4?
 <year>2006</year>
 <year>2007</year>
 <year>2008</year>
+<year>2009</year>
+<year>2010</year>
 <holder>Michael Pyne</holder>
 </copyright>
 
@@ -112,14 +108,14 @@ is konstrukt really working for kde4?
 <holder>Carlos Woelz</holder>
 </copyright>
 
-
 <legalnotice>&FDLNotice;</legalnotice>
 
-<date>2009-03-13</date>
-<releaseinfo>1.8</releaseinfo>
+<date>2010-01-08</date>
+<releaseinfo>1.11</releaseinfo>
 
 <abstract>
-<para>&kdesvn-build; is a script which builds and installs &kde; directly from the sources found in the &kde; &subversion; repository.</para>
+<para>&kdesvn-build; is a script which builds and installs &kde; software
+directly from the &kde; project's source code repositories.</para>
 </abstract>
 
 <keywordset>
@@ -127,13 +123,14 @@ is konstrukt really working for kde4?
 <keyword>kdesdk</keyword>
 <keyword>SVN</keyword>
 <keyword>Subversion</keyword>
+<keyword>git</keyword>
+<keyword>gitorious</keyword>
 <keyword>KDE development</keyword>
 </keywordset>
 
 </bookinfo>
 
 &introduction;
-
 &getting-started;
 
 &features;

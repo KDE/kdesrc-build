@@ -3,41 +3,49 @@
 
 <sect2 id="using-qt-copy">
 <title>qt-copy support</title>
-<para>&kdesvn-build; strives to maintain excellent support for the qt-copy
-module included in the &kde; &subversion; repository.</para>
+<para>&kdesvn-build; supports building the &Qt; toolkit used by &kde; software
+as a convenience to users. This support is handled by a special module named
+qt-copy.</para>
 
-<note><para>
-qt-copy is a copy of the source code for the latest release of the &Qt; toolkit
-used by &kde;. It also contains a patchset of optimization and bug improvement
-patches which may optionally be applied. These patches are still compatible
-with the &Qt; library so that code produced using qt-copy will run with normal
-&Qt;.
-</para></note>
+<note><para>&Qt; is developed under a separate repository from &kde; software
+located at <ulink
+url="http://qt.gitorious.org/qt">http://qt.gitorious.org/qt</ulink>.</para></note>
 
-<para>Most of the differences required for qt-copy are handled automatically by
-&kdesvn-build;. However, there are a few differences you may need to know
-about.</para>
+<para>In order to build &Qt;, you should make sure that the
+<link linkend="conf-qtdir">qtdir</link> setting is set to the directory you'd
+like to install &Qt; to, as described in <xref linkend="configure-data"/>.</para>
 
-<itemizedlist>
-<listitem><para>Normally the value for &configure-flags; for a module is
-appended to the global setting for &configure-flags;. However, the
-&configure-flags; setting for qt-copy will replace the global setting since
-they are not equivalent command lines.
-</para></listitem>
+<para>You should then ensure that the qt-copy module is added to
+your <filename>.kdesvn-buildrc</filename>, before any other modules in the
+file. If you are using the sample configuration file, you can simply
+uncomment the existing qt-copy module entry.</para>
 
-<listitem><para>&kdesvn-build; will automatically define some extra environment
-variables to build qt-copy that are not normally required for the rest of &kde;.
-</para></listitem>
+<para>Now you should verify the <link
+linkend="conf-repository">repository</link> option and <link
+linkend="conf-branch">branch</link> options are set appropriately:</para>
 
-<listitem><para>
-qt-copy also has support for an optional patch set containing some bug fixes
-and optimizations that have not yet made it to the official &Qt;. To enable
-these, set the &apply-qt-patches; option to <replaceable>true</replaceable>. After
-making this change you may have to run <userinput><command>kdesvn-build</command>
-<option>--refresh-build</option> <option>qt-copy</option></userinput>.
-</para></listitem>
+<orderedlist>
+<listitem><para>The first option is to build with a grouping of recommended bug
+fix and optimization patches applied (this used to be controlled using an
+option called apply-patches). This collection is developed in a separate
+repository at <ulink
+url="http://gitorious.org/+kde-developers/qt/kde-qt">http://gitorious.org/+kde-developers/qt/kde-qt</ulink>.
+If you would like to build with patches applied (most &kde; developers do) then
+you should set your repository option to
+<userinput>git://gitorious.org/+kde-developers/qt/kde-qt.git</userinput></para>
+</listitem>
 
-</itemizedlist>
+<listitem><para>Otherwise, to build the standard &Qt;, set your repository
+option to
+<userinput>git://gitorious.org/qt/qt.git</userinput></para></listitem>
+</orderedlist>
+
+<para>In both cases, the branch option should be set to <userinput>master</userinput> (unless you'd
+like to build a different branch).</para>
+
+<note><para>In some cases the underlying source control software is unable to
+work when run from &kdesvn-build;, but will still work fine when run from the
+command prompt. This bug is still under investigation.</para></note>
 
 </sect2>
 
@@ -102,7 +110,7 @@ permanently, then you need to adjust the &niceness; setting in the
 <link linkend="configure-data">configuration file</link>. The &niceness; setting controls how <quote>nice</quote> &kdesvn-build; is to other
 programs. In other words, having a higher &niceness; gives &kdesvn-build; a
 lower priority. So to give &kdesvn-build; a higher priority, reduce the
-&niceness; (and vice versa). The &niceness; can go from 0 (not nice at all, 
+&niceness; (and vice versa). The &niceness; can go from 0 (not nice at all,
 highest priority) to 20 (super nice, lowest priority).</para>
 
 <para>You can also temporarily change the priority for &kdesvn-build; by

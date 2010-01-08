@@ -47,7 +47,7 @@ adding directories to the option to figure out.</para>
 </important>
 
 <para>One final note to make about this option: If you change the value of this
-option, you should use <userinput><command>kdesvn-build</command> 
+option, you should use <userinput><command>kdesvn-build</command>
 <option>&cmd-refresh-build;</option> <option><replaceable>module</replaceable></option></userinput>
 in order to ensure that the module is reconfigured properly. In addition,
 &kdesvn-build; will never remove existing files if you take away the number of
@@ -71,7 +71,7 @@ directories that should not be compiled.</para>
 <important><para>
 Also like &checkout-only;, this option requires at least that the
 <command>configure</command> script is run again for the module after changing
-it. This is done using the <userinput><command>kdesvn-build</command> 
+it. This is done using the <userinput><command>kdesvn-build</command>
 <option>&cmd-reconfigure;</option>
 <option><replaceable>module</replaceable></option></userinput> command.
 </para></important>
@@ -86,25 +86,6 @@ end module
 </screen>
 </informalexample>
 
-</sect3>
-
-<sect3 id="limiting-using-inst-apps">
-<title>Compiling a few directories from a full module</title>
-
-<para>You can use the &inst-apps; option to specify that only a few directories
-out of a full module are to be built (but the entire module is still
-downloaded).
-</para>
-
-<para>This option is like the combination of &checkout-only; and &do-not-compile;:
-it downloads the entire module like &do-not-compile;, but only compiles the
-directories you specify, like &checkout-only;. Because of this it is usually
-better to simply use &checkout-only; instead.
-</para>
-
-<para>The same warnings apply as for the other two options: you must reconfigure
-the module if you change the value of &inst-apps;.
-</para>
 </sect3>
 
 </sect2>
@@ -244,45 +225,28 @@ as well.
 <sect3 id="automatic-rebuilds">
 <title>Automatic rebuilds</title>
 
-<para>Due to various issues with the &kde; build system &kdesvn-build; will automatically perform
-a series of steps to automatically try to get a module to compile when it
-fails.</para>
+<para>&kdesvn-build; used to include features to automatically attempt to
+rebuild the module after a failure (as sometimes this re-attempt would work,
+due to bugs in the build system at that time). Thanks to switching to &cmake;
+the build system no longer suffers from these bugs, and so &kdesvn-build; will
+not try to build a module more than once. There are situations where
+&kdesvn-build; will automatically take action though:</para>
 
-<orderedlist>
-<listitem><para>On the first failure, &kdesvn-build; will simply re-run the
-<command>make</command>. Believe it or not, but this sometimes actually works,
-and is quick to fail if it will not work.
-</para></listitem>
+<itemizedlist>
 
-<listitem><para>
-On the second failure, &kdesvn-build; will try to reconfigure the module and
-then rebuild it. This usually catches situations where a build-system file
-that requires reconfiguration changed, but the build system did not perform that
-step automatically.
-</para>
+<listitem><para>If you change <link linkend="conf-configure-flags">configure-flags</link>
+or <link linkend="conf-cmake-options">cmake-options</link> for a module, then
+&kdesvn-build; will detect that and automatically re-run configure or cmake
+for that module.</para></listitem>
 
-<para>The module build directory is left intact for this step, so, except for the
-reconfigure step, this will also fail quickly if the build cannot be performed.
-</para>
-</listitem>
+<listitem><para>If the buildsystem does not exist (even if &kdesvn-build; did
+not delete it) then &kdesvn-build; will automatically re-create it. This is
+useful to allow for performing a full <link
+linkend="cmdline-refresh-build">--refresh-build</link> for a specific module
+without having that performed on other modules.</para></listitem>
 
-<listitem><para>
-If the module still fails to build, &kdesvn-build; will give up and move on
-to the next module. There are still things that you can do to <link
-linkend="manual-rebuilds">manually try to get the module to build</link>,
-however.
-</para></listitem>
-</orderedlist>
+</itemizedlist>
 
-<note><para>
-&kdesvn-build; will detect most cases where the build system needs to be
-reconfigured, and will reconfigure automatically in that case.
-</para>
-
-<para>Also, if &kdesvn-build; was building the module for the first time, all
-of these steps are skipped, since the clean rebuild does not usually fail except
-for a real error.</para>
-</note>
 </sect3>
 
 <sect3 id="manual-rebuilds">
@@ -317,37 +281,18 @@ If you change the setting of the &build-dir; option, then use that instead of
 </informalexample>
 </sect3>
 
-<sect3 id="controlling-rebuild-behavior">
-<title>Controlling rebuild behavior</title>
-<para>You may not want &kdesvn-build; to always try and rebuild a module.
-You can permanently disable this behavior by changing the option &no-rebuild-on-fail;
-to have the value <replaceable>true</replaceable>.</para>
-
-<para>You can disable this behavior temporarily (for one command) by using
-the &cmd-no-rebuild-on-fail; command line option.</para>
-
-<informalexample>
-<screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--no-rebuild-on-fail</option></userinput>
-</screen>
-</informalexample>
-
-</sect3>
-
 </sect2>
 
 <sect2 id="changing-environment">
 <title>Changing environment variable settings</title>
-<para>&kdesvn-build; does not read the environment from the caller like the
-vast majority of most programs do. Instead, it uses the settings it reads
-from the <link linkend="configure-data">configuration file</link> to construct the environment. This is done mainly to
-ensure that builds are repeatable. In other words,
-&kdesvn-build; can build a module even if you forgot what you set your
-environment variables to in the shell you ran &kdesvn-build; from.</para>
+<para>Normally &kdesvn-build; uses the environment that is present when
+starting up when running programs to perform updates and builds. This is useful
+for when you are running &kdesvn-build; from the command line.</para>
 
-<para>However, you may want to change the setting for environment variables 
-that &kdesvn-build; does not provide an option for directly.
-This is possible with the &set-env; option.</para>
+<para>However, you may want to change the setting for environment variables
+that &kdesvn-build; does not provide an option for directly. (For instance,
+to setup any required environment variables when running &kdesvn-build; on
+a timer such as &cron;) This is possible with the &set-env; option.</para>
 
 <para>Unlike most options, it can be set more than once, and it accepts two
 entries, separated by a space. The first one is the name of the environment

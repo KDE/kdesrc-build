@@ -5,13 +5,16 @@
 <title>Setup a new user account</title>
 
 <para>
-It is recommended that you download and build &kde; using a separate user
-account. If you already have &kde; packages installed, the best choice
+It is recommended that you use a different user account to build, install,
+and run your &kde; software from, since less permissions are required, and
+to avoid interfering with your distribution's packages.
+If you already have &kde; packages installed, the best choice
 would be to create a different (dedicated) user to build and run the new &kde;.
-The advantage of building &kde; with a dedicated user is you can not break
-the base system, and you will always have a way to comfortably work when
-things go wrong.
 </para>
+
+<tip><para>Leaving your system &kde; untouched also allows you to have an
+emergency fallback in case a compiled &kde; is unstable for whatever reason.
+</para></tip>
 
 <para>
 Later, you can do a system installation if you wish. This document
@@ -27,66 +30,63 @@ in order to prepare and use the system installation correctly.
 
 <para>Before using the &kdesvn-build; script (or any other building
 strategy) you must install the development tools and libraries needed for &kde;.
-The complete list of required tools can be found from the
-<ulink url="http://www.kde.org/info/requirements/3.5.php">&kde; Compilation
-Requirements</ulink> page. Requirements for the &kde; 4 series may be obtained
-from the <ulink url="http://techbase.kde.org/">KDE TechBase</ulink>.
+The complete list of required tools can be found from
+the <ulink url="http://techbase.kde.org/">KDE TechBase</ulink>.
 </para>
 
 <para>Here is a list of some of the things you will need:</para>
 <itemizedlist>
 
-<listitem><para>If you are building &kde; 3, you will need the GNU Autotools (i.e. &automake;
-and &autoconf;).</para></listitem>
+<listitem><para>You will need &cmake;.  The required version will vary
+depending on what version of &kde; 4 you are building, see TechBase for
+specifics.</para></listitem>
 
-<listitem><para>If you are building &kde; 4, you will need &cmake;.  The required
-version will vary depending on what version of &kde; 4 you are building, see the
-TechBase for specifics.</para></listitem>
+<listitem><para>Also needed is the &subversion; client program, including
+support for Secure HTTP (https). To ensure needed support, you can run
+<userinput><command>svn <option>--version</option></command></userinput>.  If
+the output says that it handles the https scheme (for write access to
+svn.kde.org) or svn scheme (for readonly access to anonsvn.kde.org) then you
+should be set to go.</para></listitem>
 
-<listitem><para>The &subversion; client program, including support for Secure
-HTTP (https). To ensure needed support, you can run
-<userinput><command>svn <option>--version</option></command></userinput>.
-If the output says that it handles the https scheme (for write access to svn.kde.org)
-or svn scheme (for readonly access to anonsvn.kde.org) then you should be
-set to go.</para></listitem>
+<listitem><para>If you are building &Qt; or any of the various &kde; modules
+that are available from <ulink url="http://gitorious.org/">Gitorious</ulink>
+then you will need the <ulink url="http://gitscm.org/">Git source control
+manager</ulink> installed as well.</para></listitem>
 
-<listitem><para>The <application>gcc</application> compiler, with support for C++.
-Versions 3.3 or higher are the best supported.</para></listitem>
-
-<listitem><para>Be sure to check the <ulink
-url="http://www.kde.org/info/requirements/3.5.php">&kde; Compilation
-Requirements</ulink> page to make sure that any other needed libraries are
-included.</para></listitem>
+<listitem><para>You will need a C++ development environment. GCC 3.4 or
+later is recommended.</para></listitem>
 
 </itemizedlist>
 
-<para>One exception is the &Qt; library. &kdesvn-build; will normally install a
-copy of &Qt; whether you have it installed or not, so it is not necessary for you
-to have it. If you do not want to use the &Qt; copy, you need to do these things:
-</para>
+<note><para>Most operating system distributions include a method of easily
+installing required development tools. Consult the TechBase <ulink
+url="http://techbase.kde.org/Getting_Started/Build/KDE4">Getting Started</ulink>
+page's <quote>Required Packages from your Distribution</quote> section to see
+if these instructions are already available.</para></note>
+
+<para>One exception to the required libraries is the &Qt; library.
+&kdesvn-build; will normally install a copy of &Qt; whether you have it
+installed or not, so it is not necessary for you to have it. If you do not want
+to use the &Qt; copy, you need to do these things:</para>
 
 <itemizedlist>
 <listitem>
-  <para>Make sure to remove the qt-copy module from your <link linkend="configure-data">configuration file</link>, as you
-  will not need it, and having it would add extra time to your build.</para>
+  <para>Make sure to remove the qt-copy module from your <link
+  linkend="configure-data">configuration file</link>, as you will not need it,
+  and having it would add extra time to your build.</para>
 </listitem>
 
 <listitem>
   <para>Change the setting of the <link linkend="conf-qtdir">qtdir</link>
-  option in your <link linkend="configure-data">configuration file</link> to point to your system &Qt;. This is normally
-  equal to the setting of $<envar>QTDIR</envar> for your system.</para>
+  option in your <link linkend="configure-data">configuration file</link> to
+  point to your system &Qt;. This is normally equal to the setting of
+  $<envar>QTDIR</envar> for your system.</para>
 </listitem>
 
 <listitem>
   <para>If you do not already have &Qt; installed, install it, including any
-  relevant -dev or -devel packages. You will need at least &Qt; 3.3 if you are
-  building &kde; 3.5, or &Qt; 4.5 if you are building &kde; 4.</para>
-
-  <note><para>If you are building &kde; 4 it is highly recommended to use the
-  qt-copy version of &Qt;, making sure to apply recommended patches (this is
-  the default setting, controlled by the <link
-  linkend="conf-apply-qt-patches">apply-qt-patches
-  option</link>).</para></note>
+  relevant -dev or -devel packages. You will need at least
+  &Qt; 4.6 if you are building &kde; 4.</para>
 </listitem>
 </itemizedlist>
 
@@ -155,7 +155,7 @@ by default installs a useful &kde; installation using very generic installation
 flags, which may be different from your needs. So it is best to use a
 <link linkend="configure-data">configuration file</link>. </para>
 
-<para>The <link linkend="configure-data">configuration file</link> should be called <filename>.kdesvn-buildrc</filename>. 
+<para>The <link linkend="configure-data">configuration file</link> should be called <filename>.kdesvn-buildrc</filename>.
 This file should be installed on
 the home folder (<filename class="directory">~/</filename>), and contain all configuration data
 required for the script to run, like configuration options,
