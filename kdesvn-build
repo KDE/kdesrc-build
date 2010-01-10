@@ -658,9 +658,9 @@ sub get_subdir_path
     }
     else
     {
-        # Relative directory, tack it on to the end of $kdesvn.
-        my $kdesvndir = get_kdesvn_dir();
-        $dir = "$kdesvndir/$dir";
+        # Relative directory, tack it on to the end of $kdesrcdir.
+        my $kdesrcdir = get_option($module, 'source-dir');
+        $dir = "$kdesrcdir/$dir";
     }
 
     return $dir;
@@ -712,12 +712,12 @@ sub module_uses_cmake
 }
 
 # Convenience subroutine to get the source root dir.
-sub get_kdesvn_dir
+sub get_source_dir
 {
     my $module = shift;
     $module = 'global' unless defined $module;
 
-    return get_option ($module, 'source-dir');
+    return get_subdir_path ($module, 'source-dir');
 }
 
 # Function to work around a Perl language limitation.
@@ -1182,7 +1182,7 @@ sub get_module_path_dir
     my $module = shift;
     my $type = shift;
     my $destdir = get_dest_dir($module);
-    my $srcbase = get_kdesvn_dir();
+    my $srcbase = get_source_dir($module);
     $srcbase = get_build_dir($module) if $type eq 'build';
 
     my $combined = "$srcbase/$destdir";
@@ -4350,7 +4350,7 @@ EOF
 sub handle_updates
 {
     my $ipc = shift;
-    my $kdesvn = get_kdesvn_dir();
+    my $kdesrc = get_source_dir();
     my $hadError = 0;
 
     # No reason to print out the text if we're not doing anything.
@@ -4382,12 +4382,12 @@ sub handle_updates
     note "<<<  Updating Source Directories  >>>";
     info " "; # Add newline for aesthetics unless in quiet mode.
 
-    if (not -e $kdesvn)
+    if (not -e $kdesrc)
     {
         whisper "KDE source download directory doesn't exist, creating.\n";
-        if (not super_mkdir ($kdesvn))
+        if (not super_mkdir ($kdesrc))
         {
-            error "Unable to make directory r[$kdesvn]!";
+            error "Unable to make directory r[$kdesrc]!";
             $ipc->sendIPCMessage(IPC::ALL_FAILURE, "no-source-dir");
 
             return 1;
@@ -4414,6 +4414,18 @@ sub handle_updates
         $module = $l10n if $module eq 'l10n'; # Correct internal name.
 
         check_for_module_config ($module);
+
+        my $module_src_dir = get_source_dir($module);
+        if ($kdesrc ne $module_src_dir)
+        {
+            # This module has a different source directory, ensure it exists.
+            if (not super_mkdir($module_src_dir))
+            {
+                error "Unable to create separate source directory for r[$module]";
+                $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $module);
+                next;
+            }
+        }
 
         if(get_option($module, 'no-svn'))
         {
@@ -5527,7 +5539,7 @@ sub filter_l10n_module_list
 # If the packages are not already checked-out and/or updated, this
 # subroutine WILL NOT do so for you.
 #
-# This subroutine assumes that the $kdesvn directory has already been
+# This subroutine assumes that the $kdesrc directory has already been
 # set up.  It will create $builddir if it doesn't already exist.
 #
 # If $builddir/$module/.refresh-me exists, the subroutine will
@@ -5713,8 +5725,8 @@ EOF
     if (not pretending)
     {
         # Print out results, and output to a file
-        my $kdesvn = get_kdesvn_dir();
-        open BUILT_LIST, ">$kdesvn/successfully-built";
+        my $kdesrc = get_source_dir();
+        open BUILT_LIST, ">$kdesrc/successfully-built";
         foreach my $module (@build_done)
         {
             info "$module";
