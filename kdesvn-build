@@ -1140,7 +1140,10 @@ sub update_module_subdirectories
     {
         info "\tUpdating g[$dir]";
 
-        my $count = run_svn($module, "svn-up-$dir", [ 'svn', 'up', $dir ]);
+        my $logname = $dir;
+        $logname =~ tr{/}{-};
+
+        my $count = run_svn($module, "svn-up-$logname", [ 'svn', 'up', $dir ]);
         $numChanged = undef unless defined $count;
         $numChanged += $count if defined $numChanged;
     }
@@ -2579,6 +2582,8 @@ sub safe_make (@)
         if ($subdir ne '')
         {
             $logname = $installing ? "install-$subdir" : "build-$subdir-1";
+            # Remove slashes in favor of something else.
+            $logname =~ tr{/}{-};
 
             info $installing ? "\tInstalling " : "\tBuilding ", "subdirectory g[$subdir]";
         }
