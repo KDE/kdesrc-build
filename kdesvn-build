@@ -135,7 +135,7 @@ our %package_opts = (
 # Now we save environment variables to set right after forking...
 #
 # Don't use this except via setenv(), resetenv(), and log_command().
-my %ENV_VARS;
+our %ENV_VARS;
 
 # Base class for IPC interaction. Should have most of the functionality, with
 # the actual bits of reading and writing left to subclasses.
@@ -5199,6 +5199,9 @@ sub update_module_environment
 
     $prefix = $kdedir unless $prefix;
 
+    # Add global set-envs
+    setup_module_environment ('global');
+
     # Add some standard directories for pkg-config support.  Include env settings.
     my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
     prepend_environment_path('PKG_CONFIG_PATH', @pkg_config_dirs);
@@ -5235,7 +5238,7 @@ sub update_module_environment
     setenv ('KDEDIRS', $kdedir);
 
     # Read in user environment defines
-    setup_module_environment ($module);
+    setup_module_environment ($module) unless $module eq 'global';
 }
 
 # Subroutine to make sure the build directory for a module is setup.
