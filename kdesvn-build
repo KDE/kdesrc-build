@@ -5720,6 +5720,13 @@ EOF
         }
 
         close STATUS_FILE;
+
+        # Update the symlink in latest to point to this file.
+        my $logdir = get_subdir_path('global', 'log-dir');
+        if (-l "$logdir/latest/build-status") {
+            safe_unlink("$logdir/latest/build-status");
+        }
+        symlink($outfile, "$logdir/latest/build-status");
     }
 
     info "<<<  Build Done  >>>";
