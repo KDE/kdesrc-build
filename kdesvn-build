@@ -1699,7 +1699,10 @@ sub git_clone_module
     my $git_repo = shift;
     my $srcdir = get_fullpath($module, 'source');
 
-    my $result = log_command($module, 'git-clone', ['git', 'clone', '--', $git_repo, $srcdir]);
+    # The -v forces progress output from git, which seems to work around either a git or
+    # gitorious.org bug causing timeout errors after cloning large repositories (such as
+    # qt-copy...)
+    my $result = log_command($module, 'git-clone', ['git', 'clone', '-v', '--', $git_repo, $srcdir]);
     if ($result == 0) {
         set_persistent_option($module, 'git-cloned-repository', $git_repo);
     }
@@ -2276,7 +2279,9 @@ sub log_command
         # Make sure we log everything.  If the command is svn, it is possible
         # that the client will produce output trying to get a password, so
         # don't redirect stderr in that case.
-        open (STDERR, ">&STDOUT") unless $command[0] eq 'svn';
+        # In the case of git, we forced on progress output so let's leave that
+        # interactive to keep the logs sane.
+        open (STDERR, ">&STDOUT") unless $command[0] eq 'svn' || $command[0] eq 'git';
 
         # Call internal function, name given by $command[1]
         if($command[0] eq 'kdesvn-build')
