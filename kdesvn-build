@@ -807,66 +807,76 @@ sub handle_branch_tag_option
 
 # Subroutine to return the appropriate SVN URL for a given module, based on
 # the user settings.  For example, 'kdelibs' -> https://svn.kde.org/home/kde/trunk/KDE/kdelibs
+#
+# This operates under a double hierarchy:
+# 1. If any module-specific option is present, it wins.
+# 2. If only global options are present, the order override-url, tag, branch, module-base-path,
+#    is preferred.
 sub svn_module_url
 {
     my $module = shift;
     my $svn_server = get_option($module, 'svn-server');
-    my $branch = get_option($module, 'module-base-path');
+    my $modulePath;
 
-    # Allow user to override normal processing of the module in a few ways,
-    # to make it easier to still be able to use kdesvn-build even when I
-    # can't be there to manually update every little special case.
-    if(get_option($module, 'override-url'))
-    {
-        return get_option($module, 'override-url');
+    foreach my $levelLimit ('module', 'allow-inherit') {
+        $modulePath = get_option($module, 'module-base-path', $levelLimit);
+
+        # Allow user to override normal processing of the module in a few ways,
+        # to make it easier to still be able to use kdesvn-build even when I
+        # can't be there to manually update every little special case.
+        if(get_option($module, 'override-url', $levelLimit))
+        {
+            return get_option($module, 'override-url', $levelLimit);
+        }
+
+        if(get_option($module, 'tag', $levelLimit))
+        {
+            return handle_branch_tag_option($module, 'tags');
+        }
+
+        # Note we check for 'trunk', not default_module_branch().  We handle 'trunk' in the
+        # rest of the code path, any branch (even if default) should be handled in
+        # handle_branch_tag_option().
+        my $branch = get_option($module, 'branch', $levelLimit);
+        if($branch and $branch ne 'trunk')
+        {
+            return handle_branch_tag_option($module, 'branches');
+        }
+
+        if($module eq 'phonon')
+        {
+            $module = 'kdesupport/phonon';
+        }
+
+        # We can't use get_option($module) after this if we have to trim the module
+        # name.
+        $module = moduleBaseName($module);
+
+        # The following modules are in /trunk, not /trunk/KDE.  There are others,
+        # but these are the important ones.
+        my @non_trunk_modules = qw(extragear kdesupport koffice icecream kde-common
+            playground qt-copy KDE kdereview www l10n-kde4);
+
+        my $module_root = $module;
+        $module_root =~ s/\/.*//; # Remove everything after the first slash
+
+        if (not $modulePath and $levelLimit eq 'allow-inherit')
+        {
+            $modulePath = "trunk/KDE/$module";
+            $modulePath = "trunk/$module" if list_has(@non_trunk_modules, $module_root);
+            $modulePath =~ s/^\/*//; # Eliminate / at beginning of string.
+            $modulePath =~ s/\/*$//; # Likewise at the end.
+        }
+
+        last if $modulePath;
     }
-
-    if(get_option($module, 'tag'))
-    {
-        return handle_branch_tag_option($module, 'tags');
-    }
-
-    # Note we check for 'trunk', not default_module_branch().  We handle 'trunk' in the
-    # rest of the code path, any branch (even if default) should be handled in
-    # handle_branch_tag_option().
-    if(get_option($module, 'branch') and
-       get_option($module, 'branch') ne 'trunk')
-    {
-        return handle_branch_tag_option($module, 'branches');
-    }
-
-    if($module eq 'phonon')
-    {
-        $module = 'kdesupport/phonon';
-    }
-
-    # We can't use get_option($module) after this if we have to trim the module
-    # name.
-    $module = moduleBaseName($module);
-
-    # The following modules are in /trunk, not /trunk/KDE.  There are others,
-    # but these are the important ones.
-    my @non_trunk_modules = qw(extragear kdesupport koffice icecream kde-common
-        playground qt-copy KDE kdereview www l10n-kde4);
-
-    my $module_root = $module;
-    $module_root =~ s/\/.*//; # Remove everything after the first slash
-
-    if (not $branch)
-    {
-        $branch = "trunk/KDE/$module";
-        $branch = "trunk/$module" if list_has(@non_trunk_modules, $module_root);
-    }
-
-    $branch =~ s/^\/*//; # Eliminate / at beginning of string.
-    $branch =~ s/\/*$//; # Likewise at the end.
 
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
 
     # Note that the module name is no longer appended if module-base-path is used (i.e.
     # $branch variable was set.  This is a change as of version 1.8.
-    return "$svn_server/$branch";
+    return "$svn_server/$modulePath";
 }
 
 # Returns true if the Net::HTTP module is available.
@@ -1025,17 +1035,6 @@ sub get_log_dir
     return $logpath;
 }
 
-# This function returns true if the given option doesn't make sense with the
-# given module.
-# blacklisted($module, $option)
-sub blacklisted
-{
-    my ($module, $option) = @_;
-
-    # There was more here with KDE 3...
-    return 0;
-}
-
 # This subroutine returns an option value for a given module.  Some
 # globals can't be overridden by a module's choice.  If so, the
 # module's choice will be ignored, and a warning will be issued.
@@ -1044,46 +1043,56 @@ sub blacklisted
 #
 # First parameter: Name of module
 # Second paramenter: Name of option
+# Third parameter: Level limit (optional). If not present, then the value
+# 'allow-inherit' is used. Options:
+#   - allow-inherit: Module is used if present (with exceptions), otherwise
+#     global is used.
+#   - module: Only module is used (if you want only global then use a module of 'global')
 sub get_option
 {
     my $module = shift;
     my $option = shift;
-    my $global_opts = $package_opts{'global'};
+    my $levelLimit = shift;
+    my $globalOpts = $package_opts{'global'};
     my @lockedOpts = qw(pretend disable-agent-check);
 
-    # These options should not apply to qt-copy when specified as part of
-    # globals by default.  Only options which might reasonably be used in the
-    # global section have been included here.
-    my @qtCopyOverrides = qw(branch configure-flags tag);
+    # Default value
+    $levelLimit = 'allow-inherit' unless defined $levelLimit;
 
     # These options can't override globals
     if (list_has(@lockedOpts, $option) or $module eq 'global')
     {
-        return ${$global_opts}{"#$option"} if exists ${$global_opts}{"#$option"};
-        return ${$global_opts}{$option};
+        return ${$globalOpts}{"#$option"} if exists ${$globalOpts}{"#$option"};
+        return ${$globalOpts}{$option};
     }
 
-    # Don't even try this
-    return 0 if blacklisted($module, $option);
+    # Some global options would probably make no sense applied to qt-copy.
+    my @qtCopyOverrides = qw(branch configure-flags tag);
+    $levelLimit = 'module' if ($module eq 'qt-copy' && list_has(@qtCopyOverrides, $option));
+
+    # Ensure levelLimit is not broken
+    my @validLevelLimits = qw(allow-inherit module);
+    if (not list_has(@validLevelLimits, $levelLimit))
+    {
+        die "Invalid level limit $levelLimit passed to get_option";
+    }
 
     my $ref = $package_opts{$module};
 
     # Check for a sticky option
     return $$ref{"#$option"} if exists $$ref{"#$option"};
 
-    # Next in order of precedence
-    if (defined ${$global_opts}{"#$option"} and not
-        ($module eq 'qt-copy' and list_has(@qtCopyOverrides, $option)))
-    {
-        return ${$global_opts}{"#$option"};
-    }
+    # If we are limited to module options then find it and return it
+    return $$ref{$option} if $levelLimit eq 'module';
+
+    # Otherwise, keep going in order of precedence
+    return ${$globalOpts}{"#$option"} if defined ${$globalOpts}{"#$option"};
 
     # No sticky options left.
-    # Configure flags, cmake options, and CXXFLAGS are appended to the global
-    # option
+    # cmake options and CXXFLAGS are appended to the global option
     if ($module ne 'qt-copy' && ($option eq 'cxxflags' || $option eq 'cmake-options'))
     {
-        my $value = ${$global_opts}{$option};
+        my $value = ${$globalOpts}{$option};
 
         if(defined $$ref{$option})
         {
@@ -1102,10 +1111,7 @@ sub get_option
     # If we're reading for global options, we're pretty much done.
     return $$ref{$option} if defined $$ref{$option};
 
-    # Some global options would probably make no sense applied to qt-copy.
-    return '' if $module eq 'qt-copy' and list_has(@qtCopyOverrides, $option);
-
-    return ${$global_opts}{$option};
+    return ${$globalOpts}{$option};
 }
 
 # Returns a string describing the scm platform of the given module.
