@@ -86,8 +86,8 @@
 
 <legalnotice>&FDLNotice;</legalnotice>
 
-<date>2010-01-08</date>
-<releaseinfo>1.11</releaseinfo>
+<date>2010-01-30</date>
+<releaseinfo>1.12</releaseinfo>
 
 <abstract>
 <para>&kdesvn-build; is a script which builds and installs &kde; software
@@ -1590,6 +1590,17 @@ require &cmake;, and &cmake; use is not permitted on any other modules.
 </entry>
 </row>
 
+<row id="conf-use-idle-io-priority">
+<entry>use-idle-io-priority</entry>
+<entry>Cannot be overridden</entry>
+<entry>This option, added in &kdesvn-build; 1.12, will cause a lower priority
+to be used for disk and other I/O usage, which can significantly improve the
+responsiveness of the rest of the system at the expense of slightly longer
+running times for &kdesvn-build;. The default is to be disabled, to enable
+the lower disk priority set this to <replaceable>true</replaceable>.
+</entry>
+</row>
+
 <row id="conf-use-qt-builddir-hack">
 <entry>use-qt-builddir-hack</entry>
 <entry>Overrides global</entry>
@@ -2087,9 +2098,9 @@ environment variable while building.
 
 <sect2 id="build-priority">
 <title>Changing &kdesvn-build;'s build priority</title>
-<para>Programs can run with different priority levels on Operating Systems
-nowadays, including &Linux; and &BSD;. This allows the system to allocate time
-for the different programs in accordance with how important they are.
+<para>Programs can run with different priority levels on Operating Systems,
+including &Linux; and &BSD;. This allows the system to allocate time for the
+different programs in accordance with how important they are.
 </para>
 
 <para>&kdesvn-build; will normally allocate itself a low priority so that the
@@ -2102,17 +2113,18 @@ it runs before routine batch processes and before CPU donation programs
 such as <ulink url="http://setiathome.ssl.berkeley.edu/">Seti@Home</ulink>.
 </para>
 
-<para>To alter &kdesvn-build; so that it uses a higher, or lower priority level
-permanently, then you need to adjust the &niceness; setting in the
-<link linkend="configure-data">configuration file</link>. The &niceness; setting controls how <quote>nice</quote> &kdesvn-build; is to other
-programs. In other words, having a higher &niceness; gives &kdesvn-build; a
-lower priority. So to give &kdesvn-build; a higher priority, reduce the
-&niceness; (and vice versa). The &niceness; can go from 0 (not nice at all,
-highest priority) to 20 (super nice, lowest priority).</para>
+<para>To alter &kdesvn-build; so that it uses a higher (or lower) priority
+level permanently, then you need to adjust the &niceness; setting in the <link
+linkend="configure-data">configuration file</link>. The &niceness; setting
+controls how <quote>nice</quote> &kdesvn-build; is to other programs. In other
+words, having a higher &niceness; gives &kdesvn-build; a lower priority. So to
+give &kdesvn-build; a higher priority, reduce the &niceness; (and vice versa).
+The &niceness; can go from 0 (not nice at all, highest priority) to 20 (super
+nice, lowest priority).</para>
 
-<para>You can also temporarily change the priority for &kdesvn-build; by
-using the &cmd-nice; <link linkend="cmdline">command line option</link>. The value to the option is used
-exactly the same as for &niceness;.</para>
+<para>You can also temporarily change the priority for &kdesvn-build; by using
+the &cmd-nice; <link linkend="cmdline">command line option</link>. The value to
+the option is used exactly the same as for &niceness;.</para>
 
 <note><para>It is possible for some programs run by the super user to have a
 negative nice value, with a correspondingly even higher priority for such
@@ -2134,8 +2146,22 @@ normal):</para>
 <screen>
     &niceness; <replaceable>15</replaceable>
 </screen>
-
 </informalexample>
+
+<tip>
+<para>The <link linkend="conf-niceness">niceness</link> option only affects the
+usage of the computer's processor(s). One other major affect on computer
+performance relates to how much data input or output (<acronym>I/O</acronym>) a
+program uses. In order to control how much <acronym>I/O</acronym> a program can
+use, modern &Linux; operating systems support a similar tool called
+<application>ionice</application>. &kdesvn-build; supports
+<application>ionice</application>, (but only to enable or disable it
+completely) using the <link
+linkend="conf-use-idle-io-priority">use-idle-io-priority</link> option,
+since &kdesvn-build; version 1.12.
+</para>
+</tip>
+
 </sect2>
 
 <sect2 id="root-installation">

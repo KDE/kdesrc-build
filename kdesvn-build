@@ -121,6 +121,7 @@ our %package_opts = (
     "stop-on-failure"     => "",
     "svn-server"          => "svn://anonsvn.kde.org/home/kde",
     "tag"                 => "",
+    "use-idle-io-priority"=> 0,
   }
 );
 
@@ -3060,10 +3061,22 @@ sub initialize_environment
         $BOLD = "\e[1m";
     }
 
+    update_module_environment ('global');
+}
+
+sub setup_operating_environment
+{
     # Set the process priority
     setpriority PRIO_PROCESS, 0, get_option('global', 'niceness');
 
-    update_module_environment ('global');
+    # Set the IO priority if available.
+    if(get_option('global', 'use-idle-io-priority')) {
+        # -p $$ is our PID, -c3 is idle priority
+        # 0 return value means success
+        if(safe_system('ionice', '-c3', '-p', $$) != 0) {
+            warning " b[y[*] Unable to lower I/O priority, continuing...";
+        }
+    }
 }
 
 # Subroutine to get a list of modules to install, either from the command line
@@ -4189,7 +4202,7 @@ sub safe_system(@)
 {
     if (not pretending)
     {
-        info "\tExecuting g[", join(" ", @_);
+        whisper "\tExecuting g[", join(" ", @_);
         return system (@_) >> 8;
     }
 
@@ -6566,6 +6579,7 @@ eval
         execute_command_line_program();
     }
 
+    setup_operating_environment(); # i.e. niceness, ulimits, etc.
     setup_logging_subsystem(); # Setup logging directories.
 
     if (get_option('global', 'kde-languages'))
