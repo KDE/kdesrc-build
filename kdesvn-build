@@ -2837,6 +2837,14 @@ sub parse_module
             last if /^end\s+module/; # Stop
         }
 
+        # Sanity check, make sure the section is correctly terminated
+        if(/^(module\s|module$)/)
+        {
+            error "Invalid configuration file $rcfile at line $.\nAdd an 'end module' before " .
+                  "starting a new module.\n";
+            exit 1; # exit instead of finish() since we're not fully setup yet.
+        }
+
         # The option is the first word, followed by the
         # flags on the rest of the line.  The interpretation
         # of the flags is dependant on the option.
