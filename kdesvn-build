@@ -1114,6 +1114,34 @@ sub get_option
     return ${$globalOpts}{$option};
 }
 
+# Returns a Perl object worth "die"ing for. (i.e. can be given to the die
+# function and handled appropriately later with an eval). The returned
+# reference will be an instance of BuildException. The actual exception type is
+# passed in as the first parameter (as a string), and can be retrieved from the
+# object later using the 'exception_type' key, and the message is returned as
+# 'message'
+#
+# First parameter: Exception type
+# Second parameter: Message to show to user
+# Return: Reference to the exception object suitable for giving to "die"
+sub make_exception
+{
+    my $exception_type = shift;
+    my $message = shift;
+
+    $exception_type = 'Exception' unless defined $exception_type;
+
+    my $obj = eval {
+        package BuildException;
+        my $new_obj = {'exception_type' => $exception_type,
+                       'message'        => $message };
+        bless($new_obj);
+        return $new_obj;
+    };
+
+    return $obj;
+}
+
 # Returns a string describing the scm platform of the given module.
 #
 # First parameter: Module to get scm type of.
@@ -3612,6 +3640,8 @@ Options:
 
     --resume-from=<pkg>  Starts building from the given package, without
                          performing the source update.
+    --resume-after=<pkg> Starts building after the given package, without
+                         performing the source update.
     --revision (or -r)=<rev> Forces update to revision <rev> from Subversion.
 
     --refresh-build      Start the build from scratch.
@@ -3865,6 +3895,19 @@ DONE
                 last SWITCH;
             };
 
+            /^--resume-after=?/ && do {
+                $_ = extract_option_value($_, @ARGV);
+                if (not $_)
+                {
+                    print "You must pass a module to resume after to the --resume-after option!\n";
+                    exit 7;
+                }
+
+                set_option('global', '#resume-after', $_);
+                set_option('global', '#no-svn', 1);
+                last SWITCH;
+            };
+
             /^--/ && do {
                 # First let's see if they're trying to override a global option.
                 my ($option) = /^--([-\w\d\/]+)/;
@@ -4066,10 +4109,29 @@ sub get_update_list
 # in the module's options.  The command-line arguments should have been
 # parsed first.
 #
-# This subroutine will handle the --resume-from options.
+# This subroutine will handle the --resume-from and --resume-after options.
 sub get_build_list
 {
     my $resume_point = get_option('global', '#resume-from');
+    my $resume_point_after = get_option('global', '#resume-after');
+
+    # Set resume_point.
+    if ($resume_point_after)
+    {
+        if ($resume_point)
+        {
+            # Whoops, can't enable both
+            error <<EOF;
+You specified both r[b[--resume-from] and r[b[--resume-after] but you can only
+use one.
+EOF
+
+            die make_exception('Runtime',
+                "Both --resume-after and --resume-from specified.");
+        }
+
+        $resume_point = $resume_point_after;
+    }
 
     # l10n module has different names for KDE 3 and KDE 4.
     my $l10n = 'l10n-kde4';
@@ -4086,7 +4148,10 @@ sub get_build_list
     {
         if ($resume_point)
         {
-            warning "I'm confused, you enabled y[--no-build] and y[--resume-from].";
+            my $option = '--resume-from';
+            $option = '--resume-after' if get_option('global', '#resume-after');
+
+            warning "I'm confused, you enabled y[--no-build] and y[$option].";
             warning "Skipping the build process.";
         }
 
@@ -4099,6 +4164,12 @@ sub get_build_list
         while (scalar @build_list > 0)
         {
             last if $build_list[0] eq $resume_point;
+            shift @build_list;
+        }
+
+        # One further for the --resume-after case.
+        if ($resume_point_after)
+        {
             shift @build_list;
         }
 
@@ -6716,9 +6787,15 @@ eval
 if ($@)
 {
     # We encountered an error.
-    print "Encountered an error in the execution of the script.\n";
-    print "The error reported was $@\n";
-    print "Please submit a bug against kdesvn-build on http://bugs.kde.org/\n";
+    if ($@->isa('BuildException')) {
+        print "\tCaught exception: ", $@->{'message'}, "\n";
+        print "\n\tAborting.\n";
+    }
+    else {
+        print "Encountered an error in the execution of the script.\n";
+        print "The error reported was $@\n";
+        print "Please submit a bug against kdesvn-build on http://bugs.kde.org/\n";
+    }
 
     $result = 99;
 }

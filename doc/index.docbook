@@ -46,6 +46,7 @@
   <!ENTITY cmd-nice '<link linkend="cmdline-nice">--nice</link>'>
   <!ENTITY cmd-ignore-modules '<link linkend="cmdline-ignore-modules">--ignore-modules</link>'>
   <!ENTITY cmd-resume-from '<link linkend="cmdline-resume-from">--resume-from</link>'>
+  <!ENTITY cmd-resume-after '<link linkend="cmdline-resume-after">--resume-after</link>'>
   <!ENTITY cmd-reconfigure '<link linkend="cmdline-reconfigure">--reconfigure</link>'>
   <!ENTITY cmd-refresh-build '<link linkend="cmdline-refresh-build">--refresh-build</link>'>
 ]>
@@ -1847,7 +1848,26 @@ This option is used to resume the build starting from the given module, which
 should be the next option on the command line. This option implies <link
 linkend="cmdline-no-src"><parameter>--no-src</parameter></link>. You should not
 specify other module names on the command line.
-</para></listitem>
+</para>
+<para>See also: <xref linkend="cmdline-resume-after"/> and <xref
+linkend="resuming-failed"/>. You would prefer to use this command line option
+if you have fixed the build error and want &kdesvn-build; to complete the
+build.</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-resume-after">
+<term><parameter>--resume-after</parameter></term>
+<listitem><para>
+This option is used to resume the build starting after the given module, which
+should be the next option on the command line. This option implies <link
+linkend="cmdline-no-src"><parameter>--no-src</parameter></link>. You should not
+specify other module names on the command line.
+</para>
+<para>See also: <xref linkend="cmdline-resume-from"/> and <xref
+linkend="resuming-failed"/>. You would prefer to use this command line option
+if you have fixed the build error and have also built and installed the module
+yourself, and want &kdesvn-build; to start again with the next
+module.</para></listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-rc-file">
@@ -2541,16 +2561,25 @@ end global
 <para>You can tell &kdesvn-build; to start building from a different module
 than it normally would. This can be useful when a set of modules failed, or
 if you canceled a build run in the middle. You can control this using the
-&cmd-resume-from; option.</para>
+&cmd-resume-from; option and the &cmd-resume-after; option.</para>
 
-<note><para>Using &cmd-resume-from; will skip the source code update.</para>
-</note>
+<note><para>Using either of the resume options will skip the source code
+update.</para> </note>
 
 <informalexample>
 <para>Resuming the build starting from kdebase:</para>
 
 <screen>
 <prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--resume-from=<replaceable>kdebase</replaceable></option></userinput>
+</screen>
+</informalexample>
+
+<informalexample>
+<para>Resuming the build starting after kdebase (in case you manually fixed
+the issue and installed the module yourself):</para>
+
+<screen>
+<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--resume-after=<replaceable>kdebase</replaceable></option></userinput>
 </screen>
 </informalexample>
 
