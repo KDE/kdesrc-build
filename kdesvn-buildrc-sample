@@ -169,7 +169,10 @@ module kdesupport
 # To get the necessary kdesupport stuff for KDE-4.3, use:
 #	tag kdesupport-for-4.3/kdesupport
 
-	cmake-options -DBUILD_phonon=ON # We prefer our phonon
+#	Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE is required to allow Amarok
+#	(defined below, near the end of this file) to build.
+	cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE \
+	              -DBUILD_phonon=ON # We prefer our phonon
 end module
 
 # QCA is the Qt Cryptographic Architecture library and is required for some
@@ -304,6 +307,9 @@ end module
 # Amarok is a KDE application that uses the "git" source control system, like
 # Nokia Qt does.  It used to be in extragear/multimedia.  If you want to
 # build and install amarok, simply uncomment this module
+#   NOTE: Ensure you've enabled ASF and MP4 support above in kdesupport. (If
+#   you build the kdesupport/taglib module by itself, then make sure you've
+#   enabled this support for taglib).
 #module amarok
 #	repository git://gitorious.org/amarok/amarok.git
 #end module
