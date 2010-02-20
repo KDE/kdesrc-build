@@ -172,20 +172,15 @@ module kdesupport
 #	Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE is required to allow Amarok
 #	(defined below, near the end of this file) to build.
 	cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE \
-	              -DBUILD_phonon=ON # We prefer our phonon
+	              -DBUILD_phonon=OFF # We prefer our phonon, but see below
 end module
 
-# QCA is the Qt Cryptographic Architecture library and is required for some
-# applications that support cryptography, such as kopete.  You can disable
-# this if you don't need it, but it will not build as part of kdesupport.
-#
-# Note if you do need QCA it's way easier and better supported to simply
-# install your distribution's QCA packages.
-
-# module qca
-	# We have to fixup the resolved path manually here.
-#	module-base-path trunk/kdesupport/qca
-# end module
+# Phonon, the KDE multimedia interface, is required for KDE. It is present in
+# Qt but the "official" development branch for it is on gitorious.org (it used
+# to be in kdesupport, above).
+module phonon-git
+    repository git://gitorious.org/phonon/phonon.git
+end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
 module kdelibs
