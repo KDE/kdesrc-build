@@ -128,15 +128,15 @@ module qt-copy
 # Do not specify -prefix, kdesvn-build will handle that.
 #
 # Phonon note:
-# - If you compile phonon separately make sure to pass -no-phonon.
+# - If you compile phonon separately, make sure to pass -no-phonon.
 # - Alternatively, if you use Qt's phonon, ensure kdesupport is
-#   built without Phonon.
-# - As of KDE 4.4/Qt 4.6 the "right answer" is to use kdesupport's phonon.
+#   built without Phonon and don't use phonon-git below.
+# - As of KDE 4.4/Qt 4.6 the "right answer" is the first option: separate phonon.
 	configure-flags -qt-gif -fast -debug -no-separate-debug-info \
 	                -system-zlib -system-libpng -system-libjpeg \
 	                -dbus -webkit -plugin-sql-mysql \
 	                -nomake examples -nomake demos \
-	                -no-phonon # See "module phonon" below
+	                -no-phonon # See "module phonon-git" below
 
 #	make-options -j2
 
@@ -166,13 +166,13 @@ end module
 # kdesupport is also the bearer of automoc and all that is good and right with
 # CMake, install it before all KDE modules but after Qt 4.
 module kdesupport
-# To get the necessary kdesupport stuff for KDE-4.3, use:
-#	tag kdesupport-for-4.3/kdesupport
+# To get the necessary kdesupport stuff for KDE-4.4, use:
+#	tag kdesupport-for-4.4/kdesupport
+# and add -DBUILD_phonon=OFF to the cmake-options below (not needed in trunk).
 
 #	Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE is required to allow Amarok
 #	(defined below, near the end of this file) to build.
-	cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE \
-	              -DBUILD_phonon=OFF # We prefer our phonon, but see below
+	cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE
 end module
 
 # Phonon, the KDE multimedia interface, is required for KDE. It is present in
