@@ -2560,21 +2560,29 @@ sub safe_make (@)
     my @dirs = split(' ', $checkout_dirs);
     my $installing = (scalar @args > 0) && ($args[0] eq 'install');
 
-    my $make = 'make';
+    my $make;
     my $opts = get_option($module, 'make-options');
 
-    # Convert the path to an absolute path since I've encountered a sudo that
-    # is apparently unable to guess.  Maybe it's better that it doesn't guess
+    # Non Linux systems can sometimes fail to build when GNU Make would work,
+    # so prefer GNU Make if present, otherwise try regular make.  Also, convert
+    # the path to an absolute path since I've encountered a sudo that is
+    # apparently unable to guess.  Maybe it's better that it doesn't guess
     # anyways from a security point-of-view.
-    $make = path_to_prog($make) unless pretending;
-
-    if(not defined $make)
-    {
+    if(path_to_prog('gmake')) {
+        $make = path_to_prog('gmake');
+    }
+    elsif(path_to_prog('make')) {
+        $make = path_to_prog('make');
+    }
+    else {
         # Weird, we can't find make, you'd think configure would have
         # noticed...
         error " r[b[*] Unable to find the g[$make] executable!";
         return 1;
     }
+
+    # Make it prettier if pretending.
+    $make =~ s{^/.*/}{} if pretending;
 
     # Add make-options to the given options, unless we're installing (since
     # things like parallel build options will break install).
