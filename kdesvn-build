@@ -6,7 +6,7 @@
 # Please also see the documentation that should be included with this program,
 # from the kdesdk/doc/scripts/kdesvn-build directory.
 #
-# Copyright © 2003 - 2009 Michael Pyne. <mpyne@kde.org>
+# Copyright © 2003 - 2010 Michael Pyne. <mpyne@kde.org>
 # Home page: http://kdesvn-build.kde.org/
 #
 # You may use, alter, and redistribute this software under the terms
@@ -799,6 +799,10 @@ sub handle_branch_tag_option
 
     # KDE modules have a different module naming scheme than the rest it seems.
     return "$svn_server/$branch/$branchname/$module" if $branch =~ /\/KDE\/?$/;
+
+    # Non-trunk translations happen in a single branch. Assume all non-trunk global
+    # branches are intended for the stable translations.
+    return "$svn_server/branches/stable/$module" if ($module =~ /^l10n-kde4\/?/ && $branch ne 'trunk');
 
     # Otherwise don't append the module name by default since it makes more
     # sense to branch this way in many situations (i.e. kdesupport tags, phonon)
