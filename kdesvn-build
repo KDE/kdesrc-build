@@ -121,6 +121,7 @@ our %package_opts = (
     "stop-on-failure"     => "",
     "svn-server"          => "svn://anonsvn.kde.org/home/kde",
     "tag"                 => "",
+    "use-clean-install"   => 0,
     "use-idle-io-priority"=> 0,
   }
 );
@@ -441,14 +442,15 @@ my @build_list;   # List of modules to build.
 # uses the key name to display text to the user so it should describe the
 # actual category of failure.  You should also add the key name to
 # output_failed_module_lists since it uses its own sorted list.
-my @fail_display_order = qw/build update install/;
+my @fail_display_order = qw/build update install uninstall/;
 my %fail_lists = (
     'build'   => [ ],
     'install' => [ ],
+    'uninstall'=>[ ],
     'update'  => [ ],
 );
 
-my $install_flag; # True if we're in install mode.
+my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 my @rcfiles = ("./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
@@ -2558,7 +2560,8 @@ sub safe_make (@)
     my $logdir = get_log_dir($module);
     my $checkout_dirs = get_option($module, "checkout-only");
     my @dirs = split(' ', $checkout_dirs);
-    my $installing = (scalar @args > 0) && ($args[0] eq 'install');
+    my $install_mode = (scalar @args > 0) && ($args[0] =~ /^(un)?install$/);
+    my $uninstalling = $install_mode && $args[0] eq 'uninstall';
 
     my $make;
     my $opts = get_option($module, 'make-options');
@@ -2586,7 +2589,7 @@ sub safe_make (@)
 
     # Add make-options to the given options, unless we're installing (since
     # things like parallel build options will break install).
-    if (not $installing) {
+    if (not $install_mode) {
         unshift (@args, split(' ', $opts));
     }
 
@@ -2594,8 +2597,8 @@ sub safe_make (@)
 
     my $description;
 
-    # Check if we're installing
-    if($installing)
+    # Check if we're installing or uninstalling
+    if($install_mode)
     {
         $description = clr "g[$module]";
 
@@ -2613,7 +2616,12 @@ sub safe_make (@)
             unshift @args, @install_cmd;
         }
 
-        info "\tInstalling $description.";
+        if ($uninstalling) {
+            info "\tUninstalling $description.";
+        }
+        else {
+            info "\tInstalling $description.";
+        }
     }
     else
     {
@@ -2629,15 +2637,28 @@ sub safe_make (@)
         # The -1 used to be an increasing prefix but with CMake we don't
         # continually reattempt.  Leave the -1 for now since I expect
         # most are used to the build log ending in it.
-        my $logname = $installing ? 'install' : "build-1";
+        my $logname = $install_mode ? 'install' : "build-1";
+        $logname = 'uninstall' if $uninstalling;
 
         if ($subdir ne '')
         {
-            $logname = $installing ? "install-$subdir" : "build-$subdir-1";
+            $logname = $install_mode ? "install-$subdir" : "build-$subdir-1";
+            $logname = "uninstall-$subdir" if $uninstalling;
+
             # Remove slashes in favor of something else.
             $logname =~ tr{/}{-};
 
-            info $installing ? "\tInstalling " : "\tBuilding ", "subdirectory g[$subdir]";
+            if ($install_mode) {
+                if ($args[0] eq 'uninstall') {
+                    info "\tUninstalling subdirectory g[$subdir]";
+                }
+                else {
+                    info "\tInstalling subdirectory g[$subdir]";
+                }
+            }
+            else {
+                info "\tBuilding subdirectory g[$subdir]";
+            }
         }
 
         my $builddir = get_fullpath($module, 'build') . "/$subdir";
@@ -3131,6 +3152,20 @@ sub setup_operating_environment
             warning " b[y[*] Unable to lower I/O priority, continuing...";
         }
     }
+}
+
+# Subroutine to get a list of modules to uninstall, by using the command line
+# if present (returned in reverse order to fool our uninstall routine), or
+# the build list filtered by those modules actually installed (not in reverse
+# order).
+sub get_uninstall_list
+{
+    # Reversed since the user typed it in, to fool handle_uninstall
+    return reverse @ARGV if (scalar @ARGV);
+
+    return grep {
+        defined get_persistent_option($_, 'last-install-rev')
+    } (@build_list);
 }
 
 # Subroutine to get a list of modules to install, either from the command line
@@ -3689,7 +3724,12 @@ DONE
             };
 
             /^--install$/ && do {
-                $install_flag = 1;
+                $run_mode = 'install';
+                last SWITCH;
+            };
+
+            /^--uninstall$/ && do {
+                $run_mode = 'uninstall';
                 last SWITCH;
             };
 
@@ -6047,25 +6087,31 @@ sub qt_copy_needs_installed
     return 1;
 }
 
+# Returns the given list of modules, excluding those that can not be
+# installed or uninstalled.
+sub filter_non_installable_modules
+{
+    my @excluded_modules = qw/kde-common/;
+    push @excluded_modules, 'qt-copy' unless qt_copy_needs_installed();
+
+    return grep {!list_has(@excluded_modules, $_)} (@_);
+}
+
 # Subroutine to handle the installation process.  Simply calls
-# 'make install' in the directory.
+# 'make install' in the build directory.
+#
+# Return value is a shell-style success code (0 == success)
 sub handle_install
 {
-    my @no_install_modules = qw/kde-common/;
     my @modules = filter_l10n_module_list(@_);
+    @modules = filter_non_installable_modules(@modules);
     my $result = 0;
 
     for my $module (@modules)
     {
+        resetenv();
+        update_module_environment ($module);
         check_for_module_config ($module);
-
-        if (list_has(@no_install_modules, $module) or
-            ($module eq 'qt-copy' and !qt_copy_needs_installed())
-           )
-        {
-            info "\tg[$module] doesn't need to be installed.";
-            next;
-        }
 
         my $builddir = get_fullpath ($module, 'build');
 
@@ -6074,6 +6120,16 @@ sub handle_install
             warning "\tThe build system doesn't exist for r[$module].";
             warning "\tTherefore, we can't install it. y[:-(].";
             next;
+        }
+
+        # We can optionally uninstall prior to installing
+        # to weed out old unused files.
+        if (get_option ($module, 'use-clean-install') &&
+            get_persistent_option ($module, 'last-install-rev') &&
+            safe_make ($module, 'uninstall'))
+        {
+            warning "\tUnable to uninstall r[$module] before installing the new build.";
+            warning "\tContinuing anyways...";
         }
 
         # safe_make() evilly uses the "install" parameter to use installation
@@ -6125,6 +6181,63 @@ sub handle_install
     return $result;
 }
 
+# Subroutine to handle the installation process.  Simply calls
+# 'make uninstall' in the build directory, assuming that Qt or
+# CMake can actually handle it.
+#
+# The order of the modules is often significant, in the case of
+# this function the modules are uninstalled IN THE OPPOSITE ORDER
+# than passed in, to be more compatible with the rest of the code.
+#
+# Return value is a shell-style success code (0 == success)
+sub handle_uninstall
+{
+    my @modules = filter_l10n_module_list(@_);
+    @modules = filter_non_installable_modules(@modules);
+    my $result = 0;
+
+    for my $module (reverse @modules)
+    {
+        resetenv();
+        update_module_environment ($module);
+        check_for_module_config ($module);
+
+        my $builddir = get_fullpath ($module, 'build');
+
+        if (not pretending and not -e "$builddir/Makefile")
+        {
+            warning "\tThe build system doesn't exist for r[$module].";
+            warning "\tTherefore it cannot be uninstalled by this program.";
+            next;
+        }
+
+        # safe_make() evilly uses the "install" parameter to use installation
+        # mode instead of compile mode.  This is so we can get the subdirectory
+        # handling for free.
+        if (safe_make ($module, "uninstall"))
+        {
+            error "\tUnable to uninstall r[$module]!";
+            $result = 1;
+            push @{$fail_lists{'uninstall'}}, $module;
+
+            if (get_option($module, 'stop-on-failure'))
+            {
+                note "y[Stopping here].";
+                return 1; # Error
+            }
+        }
+
+        if (pretending)
+        {
+            pretend "\tWould have uninstalled g[$module]";
+            next;
+        }
+
+        next if $result != 0; # Don't delete anything if the build failed.
+    }
+
+    return $result;
+}
 # This subroutine goes and makes sure that any entries in the update and build
 # lists that have a directory separator are faked into using the checkout-only
 # feature.  This doesn't really work for install mode though.
@@ -6747,7 +6860,7 @@ eval
     # the module.  This also updates for the l10n module (kde-languages option)
     munge_lists();
 
-    if (not $install_flag)
+    if ($run_mode eq 'build')
     {
         # No packages to install, we're in build mode
 
@@ -6775,14 +6888,16 @@ eval
             $result = handle_async_build ($ipc);
         }
     }
-    else
+    elsif ($run_mode eq 'install')
     {
         # Installation mode
-        for my $module (get_install_list()) {
-            resetenv(); # Don't keep overwriting environment
-            update_module_environment ($module);
-            $result = handle_install ($module) || $result;
-        }
+        $result = handle_install (get_install_list());
+    }
+    elsif ($run_mode eq 'uninstall')
+    {
+        # Use build list since that's likely what the user has recently built
+        # and installed.
+        $result = handle_uninstall (get_uninstall_list());
     }
 
     cleanup_log_directory() if get_option('global', 'purge-old-logs');
