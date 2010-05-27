@@ -669,30 +669,6 @@ sub get_subdir_path
     return $dir;
 }
 
-
-# Subroutine to return the name of the destination directory for the 
-# build routines.  Based on the dest-build-dir option.  The return value will be
-# relative to the build dir.  The user may use the '$MODULE' or '${MODULE}'
-# sequences, which will be replaced by the name of the module in question.
-#
-# The first parameter should be the module name.
-sub get_dest_build_dir
-{
-    my $module = shift;
-    my $dest_dir = get_option($module, 'dest-build-dir');
-
-    if ($dest_dir eq '')
-    {
-        return get_dest_dir($module);
-    }
-    else
-    {
-        $dest_dir =~ s/(\${MODULE})|(\$MODULE\b)/$module/g;
-
-        return $dest_dir;
-    }
-}
-
 # Subroutine to return the name of the destination directory for the checkout
 # and build routines.  Based on the dest-dir option.  The return value will be
 # relative to the src/build dir.  The user may use the '$MODULE' or '${MODULE}'
@@ -1252,7 +1228,6 @@ sub get_module_path_dir
     my $destdir = get_dest_dir($module);
     my $srcbase = get_source_dir($module);
     $srcbase = get_build_dir($module) if $type eq 'build';
-    $destdir = get_dest_build_dir($module) if $type eq 'build';
 
     my $combined = "$srcbase/$destdir";
 
