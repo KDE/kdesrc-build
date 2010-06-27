@@ -1,19 +1,19 @@
 #!/usr/bin/perl -w
 
 # Script to handle building KDE from source code.  All of the configuration is
-# stored in the file ~/.kdesvn-buildrc.
+# stored in the file ~/.kdesrc-buildrc.
 #
 # Please also see the documentation that should be included with this program,
-# from the kdesdk/doc/scripts/kdesvn-build directory.
+# from the kdesdk/doc/scripts/kdesrc-build directory.
 #
 # Copyright © 2003 - 2010 Michael Pyne. <mpyne@kde.org>
-# Home page: http://kdesvn-build.kde.org/
+# Home page: http://kdesrc-build.kde.org/
 #
 # You may use, alter, and redistribute this software under the terms
 # of the GNU General Public License, v2 (or any later version).
 
 # Pod documentation: Removed in favor of --help and the index.docbook in the
-# kdesdk/doc/scripts/kdesvn-build directory.
+# kdesdk/doc/scripts/kdesrc-build directory.
 
 use strict;
 use warnings;
@@ -44,7 +44,7 @@ use constant {
 use constant {
     # We use a named remote to make some git commands work that don't accept the
     # full path.
-    GIT_REMOTE_ALIAS => '__kdesvn-build-remote',
+    GIT_REMOTE_ALIAS => '__kdesvn-build-remote', # Historical name
 };
 
 {
@@ -66,7 +66,7 @@ use constant {
     };
 }
 
-my $versionNum = '1.12-pre1';
+my $versionNum = '1.12';
 
 # Some global variables
 # Remember kids, global variables are evil!  I only get to do this
@@ -453,7 +453,8 @@ my %fail_lists = (
 my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
-my @rcfiles = ("./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
+my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc",
+               "./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
 my $rcfile; # the file that was used; set by read_options
 my @screen_log;
 
@@ -828,7 +829,7 @@ sub svn_module_url
         $modulePath = get_option($module, 'module-base-path', $levelLimit);
 
         # Allow user to override normal processing of the module in a few ways,
-        # to make it easier to still be able to use kdesvn-build even when I
+        # to make it easier to still be able to use kdesrc-build even when I
         # can't be there to manually update every little special case.
         if(get_option($module, 'override-url', $levelLimit))
         {
@@ -911,7 +912,7 @@ BEGIN {
 # (if necessary).
 #
 # The returned value does not include the module name at the end (as the build
-# path on disk doesn't always use the module name given in the .kdesvn-buildrc),
+# path on disk doesn't always use the module name given in the .kdesrc-buildrc),
 # so be sure to add on the module name if needed.
 sub get_build_dir
 {
@@ -986,7 +987,7 @@ sub get_log_dir
     # Don't mess with Texas^H^H^H^H^Hsymlinks for 'global'
     return $logpath if $module eq 'global';
 
-    # Add a symlink to the latest run for this module.  Previous kdesvn-build
+    # Add a symlink to the latest run for this module.  Previous kdesrc-build
     # releases would use /latest as a symlink, but this made it hard to find
     # the last run on e.g.  kdebindings if you built kdebase alone last time.
     # So now latest is a directory that holds module symlinks.  We do need to
@@ -1254,7 +1255,7 @@ sub get_fullpath
 # This subroutine downloads the specified file from a host, and saves it to the
 # given filename.
 #
-# First parameter: Hostname of the server (i.e. kdesvn-build.kde.org)
+# First parameter: Hostname of the server (i.e. kdesrc-build.kde.org)
 # Second parameter: Path of the file on the host (i.e. /files/blah.tbz2)
 # Third parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
 # Fourth parameter: Reference to hash used to record if a redirection occurred,
@@ -1279,7 +1280,7 @@ sub download_http_file
 
     # Send connection request
     $conn->write_request('GET' => "$path",
-                         'User-Agent' => "Mozilla/5.0 (compatible; kdesvn-build $versionNum)",
+                         'User-Agent' => "Mozilla/5.0 (compatible; kdesrc-build $versionNum)",
                          );
 
     my ($code, $msg, %h) = $conn->read_response_headers();
@@ -1406,7 +1407,7 @@ sub download_ftp_file
 # and FTP are supported, depending on if the required Net::HTTP and Net::FTP
 # modules are available.
 #
-# First parameter: URL of link to download (i.e. http://kdesvn-build.kde.org/foo.tbz2)
+# First parameter: URL of link to download (i.e. http://kdesrc-build.kde.org/foo.tbz2)
 # Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
 # Return value is 0 for failure, non-zero for success.
 sub download_file
@@ -1473,7 +1474,7 @@ sub download_file
 # are not attempted.
 #
 # If available the snapshot is downloaded and installed into the normal
-# location for a kdesvn-build source checkout and already switched into the
+# location for a kdesrc-build source checkout and already switched into the
 # correct svn-server setting.
 #
 # The first parameter is the module to download.
@@ -1527,7 +1528,7 @@ sub install_module_snapshot
 # This subroutine tries to download a Subversion checkout snapshot of a given
 # module (and it actually handles the downloading).  If the download succeeds,
 # this function will automatically arrange the extracted module to fit the
-# normal kdesvn-build source layout, and take the necessary steps to restore
+# normal kdesrc-build source layout, and take the necessary steps to restore
 # the snapshot to a state as if it had just been checked out from Subversion.
 #
 # The finalized Subversion checked will then have svn up run in order to
@@ -1676,7 +1677,7 @@ sub download_module_snapshot
         error "again later.";
 
         # Don't delete anything here, we're close enough to being good that
-        # kdesvn-build should be able to fix this later.
+        # kdesrc-build should be able to fix this later.
         return 1;
     }
 
@@ -1729,7 +1730,8 @@ sub get_svn_branch
 
 # Perform a git clone to checkout the latest branch of a given git module
 #
-# Afterwards a special remote name is setup for later usage (__kdesvn-build-remote)
+# Afterwards a special remote name is setup for later usage
+# (__kdesvn-build-remote). This name is retained due to its historical usage.
 #
 # First parameter is the module to perform the checkout of.
 # Second parameter is the repository (typically URL) to use.
@@ -2240,7 +2242,7 @@ END
 #   failure.
 #
 # NOTE: This function has a special feature.  If the command passed into the
-#   argument reference is 'kdesvn-build', then log_command will, when it forks,
+#   argument reference is 'kdesrc-build', then log_command will, when it forks,
 #   execute the subroutine named by the second parameter rather than executing
 #   a child process.  The remaining arguments in the list are passed to the
 #   subroutine that is called.
@@ -2307,7 +2309,7 @@ sub log_command
 # problems for users using make-install-prefix when a password is desired, or
 # when svn complains about the SSL signature.  I think I've fixed the latter,
 # and I've decided that users should configure sudo to not need the password,
-# or simply run sudo kdesvn-build instead of using make-install-prefix.  Now
+# or simply run sudo kdesrc-build instead of using make-install-prefix.  Now
 # other commands will fail instead of hanging at the terminal.  As it stands, it can still
 # be canceled using an exported env var just in case.
 
@@ -2325,7 +2327,7 @@ sub log_command
         open (STDERR, ">&STDOUT") unless $command[0] eq 'svn' || $command[0] eq 'git';
 
         # Call internal function, name given by $command[1]
-        if($command[0] eq 'kdesvn-build')
+        if($command[0] eq 'kdesrc-build')
         {
             # No colors!
             ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
@@ -2345,7 +2347,7 @@ sub log_command
 
         # Don't leave empty output files, give an indication of the particular
         # command run. Use print to go to stdout.
-        print "# kdesvn-build running: '", join("' '", @command), "'\n";
+        print "# kdesrc-build running: '", join("' '", @command), "'\n";
 
         # External command.
         exec (@command) or do {
@@ -2354,7 +2356,7 @@ sub log_command
 r[b[Unable to execute "$cmd_string"]!
 	$!
 
-Please check your binpath setting (it controls the PATH used by kdesvn-build).
+Please check your binpath setting (it controls the PATH used by kdesrc-build).
 Currently it is set to g[$ENV{PATH}].
 EOF
             # Don't use return, this is the child still!
@@ -2804,24 +2806,24 @@ sub resetenv
 }
 
 # Display a message to the user regarding their relative lack of
-# ~/.kdesvn-buildrc, and point them to some help.  We will continue using a
+# ~/.kdesrc-buildrc, and point them to some help.  We will continue using a
 # default set of options.
 sub no_config_whine
 {
     my $searched = join("\n    ", @rcfiles);
-    my $homepage = "http://kdesvn-build.kde.org/";
+    my $homepage = "http://kdesrc-build.kde.org/";
 
     note <<"HOME";
 Unable to open configuration file!
 We looked for:
     $searched
 
-kdesvn-build will continue using a default set of options.  These options may
-not apply to you, so feel free to visit the kdesvn-build homepage
+kdesrc-build will continue using a default set of options.  These options may
+not apply to you, so feel free to visit the kdesrc-build homepage
 
 b[g[$homepage]
 
-and access the kdesvn-build documentation.  Also the latest release package
+and access the kdesrc-build documentation.  Also the latest release package
 will have a sample configuration file that you can edit to your liking.
 
 HOME
@@ -2849,7 +2851,7 @@ sub setup_default_modules()
 
         # Apply default option only if option not already set.  If the option
         # is here at this point it's probably user defined on the command line
-        # or setup by kdesvn-build based on an option.
+        # or setup by kdesrc-build based on an option.
         for my $key (keys %{$options_ref}) {
             if (not exists $package_opts{$i}{$key}) {
                 $package_opts{$i}{$key} = $options_ref->{$key};
@@ -2999,7 +3001,7 @@ EOM
 
         # Set rcfile to something so the user knows what file to edit to
         # get what they want to work.
-        $rcfile = '~/.kdesvn-buildrc';
+        $rcfile = '~/.kdesrc-buildrc';
         no_config_whine();
         setup_default_modules();
         return;
@@ -3014,7 +3016,7 @@ EOM
         s/^\s*//;       # Remove leading whitespace
         next if (/^\s*$/); # Skip blank lines
 
-        # First command in .kdesvn-buildrc should be a global
+        # First command in .kdesrc-buildrc should be a global
         # options declaration, even if none are defined.
         if (not /^global\s*$/)
         {
@@ -3091,7 +3093,7 @@ EOM
 }
 
 # Subroutine to check if the given module needs special treatment to support
-# srcdir != builddir.  If this function returns true kdesvn-build will use a
+# srcdir != builddir.  If this function returns true kdesrc-build will use a
 # few hacks to simulate it, and will update e.g. configure paths appropriately
 # as well.
 sub module_needs_builddir_help
@@ -3353,7 +3355,7 @@ sub set_option
     $package_opts{$module}{$option} = $value;
 }
 
-# Sets a "persistent" option which will be read in for a module when kdesvn-build starts
+# Sets a "persistent" option which will be read in for a module when kdesrc-build starts
 # up and written back out at (normal) program exit.
 #
 # First parameter is the module to set the option for, or 'global'.
@@ -3380,7 +3382,7 @@ sub set_persistent_option
 #     Note that unlike set_option/get_option, no inheritance is done at this point so if
 #     an option is present globally but not for a module you must check both if that's what
 #     you want.
-# Second paramter is the name of the value to retrieve (i.e. the key)
+# Second parameter is the name of the value to retrieve (i.e. the key)
 # A scalar is always the return value.
 sub get_persistent_option
 {
@@ -3393,9 +3395,9 @@ sub get_persistent_option
     return $package_opts{$module}{'persistent-options'}{$key};
 }
 
-# Writes out the persistent options to the file .kdesvn-build-data.  Note: If
+# Writes out the persistent options to the file .kdesrc-build-data.  Note: If
 # the file already exists, it is only overwritten if the file contains
-# "AUTOGENERATED BY kdesvn-build" in the first line in case someone actually
+# "AUTOGENERATED BY kdesrc-build" in the first line in case someone actually
 # used this file name before this feature was added.
 #
 # The directory used is the same directory that contains the rc file in use.
@@ -3404,7 +3406,7 @@ sub write_persistent_options
     return if pretending;
 
     my $dir = dirname($rcfile ? $rcfile : "");
-    my $fh = IO::File->new("> $dir/.kdesvn-build-data");
+    my $fh = IO::File->new("> $dir/.kdesrc-build-data");
 
     if (not defined $fh)
     {
@@ -3412,7 +3414,7 @@ sub write_persistent_options
         return;
     }
 
-    print $fh "# AUTOGENERATED BY kdesvn-build $versionNum\n";
+    print $fh "# AUTOGENERATED BY kdesrc-build $versionNum\n";
 
     # Modules with persistent options
     my @names = grep { exists $package_opts{$_}{'persistent-options'} } keys %package_opts;
@@ -3431,14 +3433,16 @@ sub write_persistent_options
 }
 
 # Reads in all persistent options from the file where they are kept
-# (.kdesvn-build-data) for use in the program.
+# (.kdesrc-build-data) for use in the program.
 #
 # The directory used is the same directory that contains the rc file in use.
 sub read_persistent_options
 {
     my $dir = dirname($rcfile ? $rcfile : "");
-    my $fh = IO::File->new("<$dir/.kdesvn-build-data");
+    my $fh = IO::File->new("<$dir/.kdesrc-build-data");
 
+    # Don't penalize user for name change.
+    $fh = IO::File->new("<$dir/.kdesvn-build-data") unless defined $fh;
     return unless defined $fh;
 
     my $persistent_data;
@@ -3602,7 +3606,7 @@ sub clone_options
 sub process_arguments
 {
     my $arg;
-    my $version = "kdesvn-build $versionNum";
+    my $version = "kdesrc-build $versionNum";
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <mpyne\@kde.org>
@@ -3627,25 +3631,25 @@ $version
 This script automates the download, build, and install process for KDE (using
 the latest source code).
 
-It is recommended that you first setup a .kdesvn-buildrc file in your home
-directory.  Please visit http://kdesvn-build.kde.org/ for
+It is recommended that you first setup a .kdesrc-buildrc file in your home
+directory.  Please visit http://kdesrc-build.kde.org/ for
 information on how to write the file, or consult the sample file which should
-have been included with this program.  If you don't setup a .kdesvn-buildrc,
+have been included with this program.  If you don't setup a .kdesrc-buildrc,
 a default set of options will be used, which a few modules to be built by
 default.
 
-After setting up .kdesvn-buildrc, you can run this program from either the
+After setting up .kdesrc-buildrc, you can run this program from either the
 command-line or from cron.  It will automatically download the modules from the
 source repository, create the build system, and configure and make the modules
 you tell it to.  If you\'d like, you can use this program to install KDE as
-well, if you\'re building KDE for a single user.  Note that kdesvn-build will
+well, if you\'re building KDE for a single user.  Note that kdesrc-build will
 try by default to install the modules.
 
-Basic synopsis, after setting up .kdesvn-buildrc:
-\$ kdesvn-build [module names] (Download, build, and install KDE)
+Basic synopsis, after setting up .kdesrc-buildrc:
+\$ kdesrc-build [module names] (Download, build, and install KDE)
 
 If you don\'t specify any particular module names, then your settings
-in .kdesvn-buildrc will be used.  If you DO specify a module name, then
+in .kdesrc-buildrc will be used.  If you DO specify a module name, then
 your settings will still be read, but the script will try to build/install
 the modules in the order given on the command line.
 
@@ -3669,7 +3673,7 @@ Options:
                          or create/delete files and directories.  Instead,
                          output what the script would have done.
     --quiet (or -q)      Be less descriptive of the build process, without
-                         printing each little substep kdesvn-build is
+                         printing each little substep kdesrc-build is
                          performing.
     --really-quiet       Only warnings and errors will be displayed.
     --verbose (or -v)    Be *very* descriptive of the build process.  Only
@@ -3697,9 +3701,9 @@ Options:
     --build-system-only  Create the build infrastructure, but don't actually
                          perform the build.
     --run=<program>      Runs the given program in the same environment
-                         kdesvn-build runs in.
+                         kdesrc-build runs in.
     --install            Try to install the packages passed on the command
-                         line, or all packages in ~/.kdesvn-buildrc that don't
+                         line, or all packages in ~/.kdesrc-buildrc that don't
                          have manual-build set.  Building and source
                          updates are not performed.
 
@@ -3712,10 +3716,10 @@ Options:
     --author             Output the author(s)\'s name.
     --version            Output the program version.
 
-You can get more help by going online to http://kdesvn-build.kde.org/ to view
+You can get more help by going online to http://kdesrc-build.kde.org/ to view
 the online documentation.  The documentation is installed with the kdesdk
 module, so you may be able to view the documentation using KHelpCenter or
-Konqueror at help:/kdesvn-build
+Konqueror at help:/kdesrc-build
 DONE
                 # We haven't done any locking... no need to finish()
                 #  Avoids log-dir errors due to having not performed.
@@ -3734,7 +3738,7 @@ DONE
             };
 
             # Option exists for debugging.  This disables downloading of
-            # snapshots from kdesvn-build.kde.org (kdesvn-build won't even
+            # snapshots from kdesrc-build.kde.org (kdesrc-build won't even
             # check if it's possible).
             /^--no-snapshots$/ && do {
                 set_option('global', '#disable-snapshot', 1);
@@ -4059,15 +4063,15 @@ sub get_lock
 
         if($pid)
         {
-            # Recent kdesvn-build; we wrote a PID in there.
+            # Recent kdesrc-build; we wrote a PID in there.
             chomp $pid;
 
             # See if something's running with this PID.
             if (kill(0, $pid) == 1)
             {
-                # Something *is* running, likely kdesvn-build.  Don't use error,
+                # Something *is* running, likely kdesrc-build.  Don't use error,
                 # it'll scan for $!
-                print clr " r[*y[*r[*] kdesvn-build appears to be running.  Do you want to:\n";
+                print clr " r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n";
                 print clr "  (b[Q])uit, (b[P])roceed anyways?: ";
 
                 my $choice = <STDIN>;
@@ -4075,13 +4079,13 @@ sub get_lock
 
                 if(lc $choice ne 'p')
                 {
-                    print clr " y[*] kdesvn-build run canceled.\n";
+                    print clr " y[*] kdesrc-build run canceled.\n";
                     exit 1;
                 }
 
                 # We still can't grab the lockfile, let's just hope things
                 # work out.
-                print clr " y[*] kdesvn-build run in progress by user request.\n";
+                print clr " y[*] kdesrc-build run in progress by user request.\n";
                 return 1;
             }
 
@@ -4092,7 +4096,7 @@ sub get_lock
 
         # No pid found, optimistically assume the user isn't running
         # twice.
-        warning " y[WARNING]: stale kdesvn-build lockfile found, deleting.";
+        warning " y[WARNING]: stale kdesrc-build lockfile found, deleting.";
         unlink $lockfile;
         sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL and do
         {
@@ -4114,7 +4118,7 @@ sub get_lock
 
         # Even if we fail it's generally better to allow the script to proceed
         # without being a jerk about things, especially as more non-CLI-skilled
-        # users start using kdesvn-build to build KDE.
+        # users start using kdesrc-build to build KDE.
         return 1;
     }
 
@@ -4487,7 +4491,7 @@ EOF
         if ($result) # Run this code for both death-by-signal and nonzero return
         {
             print "\nUnable to add SSH identity, aborting.\n";
-            print "If you don't want kdesvn-build to check in the future,\n";
+            print "If you don't want kdesrc-build to check in the future,\n";
             print clr "Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n";
 
             return 0;
@@ -4700,7 +4704,7 @@ sub safe_configure
     # This is only run for qt-copy, so let's verify that.
     if ($module ne 'qt-copy') {
         error <<EOF;
-r[b[ *] kdesvn-build assumes that only Qt would be compiled using a configure
+r[b[ *] kdesrc-build assumes that only Qt would be compiled using a configure
 r[b[ *] script, but we're trying to configure r[b[$module].  Please report a
 r[b[ *] bug at http://bugs.kde.org/ -- Unable to build this module.
 EOF
@@ -4717,7 +4721,7 @@ EOF
         warning <<EOF;
 b[y[*]
 b[y[*] You have the y[-prefix] option selected in your qt-copy configure flags.
-b[y[*] kdesvn-build will correctly add the -prefix option to match your Qt
+b[y[*] kdesrc-build will correctly add the -prefix option to match your Qt
 b[y[*] directory setting, so you do not need to use -prefix yourself.
 b[y[*]
 EOF
@@ -4952,10 +4956,10 @@ sub prepare_fake_builddir
     my $builddir = get_fullpath($module, 'build');
     my $srcdir = get_fullpath($module, 'source');
 
-    # List reference, not a real list.  The initial kdesvn-build does *NOT*
-    # fork another kdesvn-build using exec, see sub log_command() for more
+    # List reference, not a real list.  The initial kdesrc-build does *NOT*
+    # fork another kdesrc-build using exec, see sub log_command() for more
     # info.
-    my $args = [ 'kdesvn-build', 'safe_lndir', $srcdir, $builddir ];
+    my $args = [ 'kdesrc-build', 'safe_lndir', $srcdir, $builddir ];
 
     # Skip modules that don't need special treatment.
     return 1 unless module_needs_builddir_help($module);
@@ -5002,7 +5006,7 @@ sub safe_create_build_system
 
     # Verify we're building what we expect.
     if ($module !~ /^l10n-kde4\//) {
-        error " r[b[*] kdesvn-build only expects to need to create a build system for l10n";
+        error " r[b[*] kdesrc-build only expects to need to create a build system for l10n";
         error " r[b[*] modules, but was asked to do so for r[b[$module] -- aborting.";
         return 1;
     }
@@ -5126,7 +5130,7 @@ sub run_svn
 #
 # This assumes we're called from a separate child process.  Therefore the
 # normal logging routines are /not used/, since our output will be logged
-# by the parent kdesvn-build.
+# by the parent kdesrc-build.
 #
 # The first parameter should be the absolute path to the directory to delete.
 #
@@ -5210,7 +5214,7 @@ sub clean_build_system
 
         # This variant of log_command runs the sub prune_under_directory($builddir)
         # in a forked child, so that we can log its output.
-        if (log_command($module, 'clean-builddir', [ 'kdesvn-build', 'prune_under_directory', $builddir ]))
+        if (log_command($module, 'clean-builddir', [ 'kdesrc-build', 'prune_under_directory', $builddir ]))
         {
             error " r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.";
             return 0; # False for this function.
@@ -5603,7 +5607,7 @@ sub build_module
     # Use log_command as the check so that an error file gets created.
     if ((module_scm_type($module) eq 'svn') &&
         0 != log_command($module, 'conflict-check',
-                         ['kdesvn-build', 'module_has_conflict', $module], $log_filter)
+                         ['kdesrc-build', 'module_has_conflict', $module], $log_filter)
        )
     {
         return 0;
@@ -5649,7 +5653,7 @@ sub build_module
     return 1;
 }
 
-# kdesvn-build supports putting the l10n module on the command line, but it is
+# kdesrc-build supports putting the l10n module on the command line, but it is
 # rather weird in that l10n isn't used as a module internally, instead the
 # l10n/$lang are treated for the most part as modules.
 #
@@ -6012,7 +6016,7 @@ sub check_module_validity
     if (exists $ENV{'COVERITY_RUN'} and $module_actual_url ne $module_expected_url)
     {
         warning "Something is wrong with your $module. Let's see if we can correct it. ";
-        warning "kdesvn-build expects:        y[$module_expected_url]";
+        warning "kdesrc-build expects:        y[$module_expected_url]";
         warning "The module is actually from: y[$module_actual_url]";
 
         system("svn status --no-ignore | grep '^[I?]' | cut -b8- | xargs rm -rf");
@@ -6038,7 +6042,7 @@ sub check_module_validity
  y[!!] g[$module] seems to be checked out from somewhere other than expected.
  y[!!]
 
-kdesvn-build expects:        y[$module_expected_url]
+kdesrc-build expects:        y[$module_expected_url]
 The module is actually from: y[$module_actual_url]
 
 If the module location is incorrect, you can fix it by either deleting the
@@ -6047,7 +6051,7 @@ g[b[source] directory, or by changing to the source directory and running
 
 If the module is fine, please update your configuration file.
 
-If you use kdesvn-build with --svn-only it will try switching for you (might not work
+If you use kdesrc-build with --src-only it will try switching for you (might not work
 correctly).
 EOF
         if (module_base_path_changed($module))
@@ -6055,7 +6059,7 @@ EOF
             my $basePath = get_option($module, 'module-base-path');
             warning <<EOF;
  y[*] r[*] y[*] NOTE: This warning is probably due to a change in the handling of the
- y[module-base-path] option in kdesvn-build 1.8.  You must now add the module
+ y[module-base-path] option in kdesrc-build 1.8.  You must now add the module
  name to the end for some modules (this change was required because some KDE
  modules no longer end in the module name).
 
@@ -6428,7 +6432,7 @@ sub email_error_report
 
     # Initial e-mail header.
     my $email_body = <<EOF;
-The following errors were detected in the kdesvn-build run just completed.
+The following errors were detected in the kdesrc-build run just completed.
 
 EOF
 
@@ -6472,8 +6476,8 @@ EOF
     $mailer->close;
 }
 
-# Exits out of kdesvn-build, executing the user's preferred shell instead.  The
-# difference is that the environment variables should be as set in kdesvn-build
+# Exits out of kdesrc-build, executing the user's preferred shell instead.  The
+# difference is that the environment variables should be as set in kdesrc-build
 # instead of as read from .bashrc and friends.
 #
 # Meant to implement the --shell command line option.
@@ -6489,7 +6493,7 @@ sub execute_command_line_program()
 
     if (($< != $>) and ($> == 0))
     {
-        error "kdesvn-build will not run a program as root unless you really are root.";
+        error "kdesrc-build will not run a program as root unless you really are root.";
         exit 1;
     }
 
@@ -6732,7 +6736,7 @@ sub needed_module_logs
     return unique_list(@dirs);
 }
 
-# This function removes log directories from old kdesvn-build runs.  All log
+# This function removes log directories from old kdesrc-build runs.  All log
 # directories not referenced by $log_dir/latest somehow are made to go away.
 sub cleanup_log_directory
 {
@@ -6766,8 +6770,8 @@ sub cleanup_log_directory
 # enable some kind of automated QA testing.
 if (__PACKAGE__ eq 'test')
 {
-    print "kdesvn-build being run from testing framework, BRING IT.\n";
-    print "kdesvn-build is version $versionNum\n";
+    print "kdesrc-build being run from testing framework, BRING IT.\n";
+    print "kdesrc-build is version $versionNum\n";
     return 1;
 }
 
@@ -6806,7 +6810,7 @@ if ($@)
     # We encountered an error.
     print "Encountered an error in the execution of the script.\n";
     print "The error reported was $@\n";
-    print "Please submit a bug against kdesvn-build on http://bugs.kde.org/\n";
+    print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
 
     # Don't finish, because we haven't attained the lock yet.
     exit 99;
@@ -6838,7 +6842,7 @@ eval
             open(C, "< $0-coverity") or die;
         } else {
             open(C, "-|", "svn", "cat",
-                "svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesvn-build-coverity");
+                "svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesrc-build-coverity");
         }
         my @plugin = <C>;
         close(C);
@@ -6921,7 +6925,7 @@ if ($@)
     else {
         print "Encountered an error in the execution of the script.\n";
         print "The error reported was $@\n";
-        print "Please submit a bug against kdesvn-build on http://bugs.kde.org/\n";
+        print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
     }
 
     $result = 99;
