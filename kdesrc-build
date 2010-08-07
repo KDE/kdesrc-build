@@ -1711,6 +1711,39 @@ sub get_git_branch
     return $branch;
 }
 
+# Returns the current sha1 of the given git "commit-ish".
+sub git_commit_id
+{
+    my $commit = shift;
+    $commit = 'HEAD' unless $commit;
+
+    my $id = `git rev-parse $commit` or die "Can't parse git commit $commit";
+    chomp $id;
+
+    return $id;
+}
+
+# Returns the number of non-merge commits between the given two
+# git heads.
+#
+# First parameter is the git commit-ish to start at,
+# Second parameter is the git commit-ish to end at.
+# Return value is an integer with the number of commits between them. This
+# figure should probably be taken to be approximate, it corresponds to
+# git rev-list $left..$right | wc -l
+sub git_count_commits
+{
+    my $left = shift;
+    my $right = shift;
+
+    open(my $git, '-|', 'git', 'rev-list', "$left..$right");
+    my $count = 0;
+
+    $count++ while(<$git>);
+    close $git;
+    return $count;
+}
+
 # Returns the first valid value among the following (for the given module,
 # assumed to be a Subversion module):
 # 1. User's selected branch option
@@ -1936,6 +1969,8 @@ sub git_update_module
 
     p_chdir($srcdir);
 
+    my $start_commit = git_commit_id();
+
     # Search for an existing remote name first. If none, add our alias.
     my @remoteNames = git_get_best_remote_names($cur_repo);
 
@@ -1946,7 +1981,7 @@ sub git_update_module
                        ['git', 'remote', 'add', GIT_REMOTE_ALIAS, $cur_repo])
             != 0)
     {
-        return 0;
+        die "Unable to add a git remote named " . GIT_REMOTE_ALIAS . " for $cur_repo";
     }
 
     if ($old_repo and ($cur_repo ne $old_repo)) {
@@ -1961,7 +1996,7 @@ sub git_update_module
     # This also updates remote heads so do this before we start comparing branches
     # and such.
     if (0 != log_command($module, 'git-fetch', ['git', 'fetch', $remoteName])) {
-        return 0;
+        die "Unable to perform git fetch for $remoteName, which should be $cur_repo";
     }
 
     # The 'branch' option requests a given head in the user's selected
@@ -1976,22 +2011,27 @@ sub git_update_module
     if (not $branchName) {
         my $newName = git_make_branchname($module, \@remoteNames, $branch);
         whisper "\tUpdating g[$module] with new remote-tracking branch y[$newName]";
-        $result = log_command($module, 'git-checkout-branch',
-                      ['git', 'checkout', '-b', $newName, "$remoteName/$branch"]);
+        if (0 != log_command($module, 'git-checkout-branch',
+                      ['git', 'checkout', '-b', $newName, "$remoteName/$branch"]))
+        {
+            die "Unable to perform a git checkout of $remoteName/$branch to a local branch of $newName";
+        }
     }
     else {
         whisper "\tUpdating g[$module] using existing branch g[$branchName]";
-        $result = log_command($module, 'git-checkout-update',
-                      ['git', 'checkout', $branchName]);
+        if (0 != log_command($module, 'git-checkout-update',
+                      ['git', 'checkout', $branchName]))
+        {
+            die "Unable to perform a git checkout to existing branch $branchName";
+        }
 
         # If we're already on the branch just doing the checkout doesn't do
         # anything, we need to merge changes forward.
-        if ($result == 0) {
-            # Checkout is complete, make sure we're actually locally where the
-            # remote is.
-            info "\tAdvancing checkout to latest source";
-            $result = log_command($module, 'git-merge',
-                          ['git', 'merge', "$remoteName/$branch"]);
+        info "\tAdvancing checkout to latest source";
+        if (0 != log_command($module, 'git-merge',
+                      ['git', 'merge', "$remoteName/$branch"]))
+        {
+            die "Unable to merge latest remote git changes into the current local git branch";
         }
     }
 
@@ -2001,7 +2041,7 @@ sub git_update_module
         safe_system('git', 'remote', 'rm', GIT_REMOTE_ALIAS);
     }
 
-    return $result == 0;
+    return git_count_commits($start_commit, git_commit_id());
 }
 
 
@@ -2017,7 +2057,8 @@ sub update_module_git_checkout
     my $srcdir = get_fullpath($module, 'source');
 
     if (-e $srcdir) {
-        git_update_module($module) or die "Can't update $module: $!";
+        # Note that this function will throw an exception on failure.
+        return git_update_module($module);
     }
     else {
         my $git_repo = get_option($module, 'repository');
@@ -2027,6 +2068,7 @@ sub update_module_git_checkout
         }
 
         git_clone_module($module, "$git_repo") or die "Can't checkout $module: $!";
+        # TODO: Count number of files checked out?
     }
 
     return 0; # TODO Fixy McFix
