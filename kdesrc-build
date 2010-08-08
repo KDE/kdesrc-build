@@ -52,17 +52,18 @@ use constant {
     package IPC;
 # IPC message types
     use constant {
-        MODULE_SUCCESS => 1, # Used for a successful svn checkout
-        MODULE_FAILURE => 2, # Used for a failed svn checkout
-        MODULE_SKIPPED => 3, # Used for a skipped svn checkout (i.e. build anyways)
+        MODULE_SUCCESS  => 1, # Used for a successful src checkout
+        MODULE_FAILURE  => 2, # Used for a failed src checkout
+        MODULE_SKIPPED  => 3, # Used for a skipped src checkout (i.e. build anyways)
+        MODULE_UPTODATE => 4, # Used to skip building a module when had no code updates
 
         # One of these messages should be the first message placed on the queue.
-        ALL_SKIPPED    => 4, # Used to indicate a skipped update process (i.e. build anyways)
-        ALL_FAILURE    => 5, # Used to indicate a major update failure (don't build)
-        ALL_UPDATING   => 6, # Informational message, feel free to start the build.
+        ALL_SKIPPED     => 5, # Used to indicate a skipped update process (i.e. build anyways)
+        ALL_FAILURE     => 6, # Used to indicate a major update failure (don't build)
+        ALL_UPDATING    => 7, # Informational message, feel free to start the build.
 
         # Used to indicate specifically that a source conflict has occurred.
-        MODULE_CONFLICT=> 7,
+        MODULE_CONFLICT => 8,
     };
 }
 
@@ -2068,10 +2069,14 @@ sub update_module_git_checkout
         }
 
         git_clone_module($module, "$git_repo") or die "Can't checkout $module: $!";
-        # TODO: Count number of files checked out?
+
+        # TODO: Count number of files checked out? Right now we return >0 to
+        # ensure that kdesrc-build doesn't try to skip it, but we should
+        # improve this.
+        return 1;
     }
 
-    return 0; # TODO Fixy McFix
+    return 0;
 }
 
 # Checkout a module that has not been checked out before, along with any
@@ -4434,23 +4439,22 @@ sub super_mkdir
 # Subroutine to remove a package from the package build list.  This
 # is for use when you've detected an error that should keep the
 # package from building, but you don't want to abort completely.
+#
+# First parameter is the module that did not build.
+# Second parameter is the IPC connection to send the required message over
+# Third parameter is the error reason (e.g. IPC::MODULE_CONFLICT).
+# No return value;
 sub dont_build
 {
     my $module = shift;
     my $ipc = shift;
+    my $reason = shift;
 
     whisper "Not building $module";
 
     if ($ipc)
     {
-        if (get_option($module, '#conflict-found'))
-        {
-            $ipc->sendIPCMessage(IPC::MODULE_CONFLICT, $module);
-        }
-        else
-        {
-            $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $module);
-        }
+        $ipc->sendIPCMessage($reason, $module);
     }
     else
     {
@@ -4464,7 +4468,10 @@ sub dont_build
         }
     }
 
-    push @{$fail_lists{'update'}}, $module;
+    if ($reason != IPC::MODULE_UPTODATE)
+    {
+        push @{$fail_lists{'update'}}, $module;
+    }
 }
 
 # Subroutine to split a url into a protocol and host
@@ -4684,7 +4691,10 @@ sub handle_updates
         {
             error "Error updating r[$module], removing from list of packages to build.";
             error " > y[$@]";
-            dont_build ($module, $ipc); # Sends IPC message.
+
+            my $reason = get_option($module, '#update-error');
+            $reason = IPC::MODULE_FAILURE unless $reason; # Default error code
+            dont_build ($module, $ipc, $reason); # Sends IPC message.
             $hadError = 1;
         }
         else
@@ -4693,14 +4703,19 @@ sub handle_updates
             if (not defined $count)
             {
                 $message = clr "b[y[Unknown changes]." if not defined $count;
+                $ipc->notifyUpdateSuccess($module, $message);
             }
-            else
+            elsif ($count)
             {
                 $message = "1 file affected." if $count == 1;
                 $message = "$count files affected." if $count != 1;
+                $ipc->notifyUpdateSuccess($module, $message);
             }
-
-            $ipc->notifyUpdateSuccess($module, $message);
+            else
+            {
+                whisper "This module will not be built. Nothing updated.";
+                dont_build($module, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
+            }
         }
 
         info ""; # Print empty line.
@@ -5158,7 +5173,7 @@ sub run_svn
 
         # If in async this only affects the update process, we need to IPC it
         # to the build process.
-        set_option($module, '#conflict-found', 1);
+        set_option($module, '#update-error', IPC::MODULE_CONFLICT);
         die "Source conflicts exist in $module";
     }
 
@@ -5872,9 +5887,25 @@ EOF
                     set_persistent_option($buffer, 'conflicts-present', 1);
                 }
             }
+            elsif ($ipcType == IPC::MODULE_UPTODATE)
+            {
+                # Properly account for users manually doing --refresh-build or
+                # using .refresh-me.
+                if (needs_refreshed($module))
+                {
+                    $svn_status{$buffer} = 'success';
+                    note "\tNo source update, but g[$module] meets other building criteria.";
+                }
+                else
+                {
+                    $svn_status{$buffer} = 'skipped';
+                    note "\tSkipping g[$module]. Already up-to-date.";
+                }
+            }
         }
 
         next if $svn_status{$module} eq 'failed';
+        ($i++ and next) if $svn_status{$module} eq 'skipped';
 
         if (build_module ($module))
         {
