@@ -760,13 +760,6 @@ to update part of a module.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; will automatically download and create the required <filename class="directory">/admin</filename>
-directory for a module if it is not downloaded from &subversion; the first time for
-some reason. This only applies to &kde; 3 modules, as /admin is not required
-for qt-copy or &kde; 4 modules.
-</para></listitem>
-
-<listitem><para>
 &kdesvn-build; will show the <link linkend="build-progress">progress of your
 build</link> when using &cmake;, and will always time the build
 process so you know after the fact how long it took.
@@ -1081,8 +1074,8 @@ may use the tilde (~) for any paths you add using this option.</para>
 <entry>Overrides global</entry>
 <entry><para>Set this option to checkout from a branch of &kde; instead of the
 default of <replaceable>trunk</replaceable>, where &kde; development occurs.
-For instance, to checkout &kde; 4.4 branch, you would set this option to
-<replaceable>4.4</replaceable>.</para>
+For instance, to checkout &kde; 4.5 branch, you would set this option to
+<replaceable>4.5</replaceable>.</para>
 <para>If &kdesvn-build; fails to properly download a branch with this option, you
 may have to manually specify the &url; to download from using the <link
 linkend="conf-module-base-path">module-base-path</link> or <link
@@ -2263,7 +2256,7 @@ option for a module, which will specify a list of directories to download.
 <tip><para>
 If you do not already know what to download from a module, it may be a good idea
 to browse the &subversion; layout for a module first, using
-<ulink url="http://websvn.kde.org/branches/KDE/4.4/">WebSVN</ulink>.
+<ulink url="http://websvn.kde.org/branches/KDE/4.5/">WebSVN</ulink>.
 </para></tip>
 
 <informalexample>
@@ -2378,21 +2371,21 @@ and &kdesvn-build; will try to determine the appropriate location within the
 well.</para>
 
 <informalexample>
-<para>To download kdelibs from &kde; 4.4 (which is simply known as the 4.4 branch):
+<para>To download kdelibs from &kde; 4.5 (which is simply known as the 4.5 branch):
 </para>
 
 <screen>
 module kdelibs
-  branch <replaceable>4.4</replaceable>
+  branch <replaceable>4.5</replaceable>
   # other options...
 end module
 </screen>
 
-<para>Or, to download kdemultimedia as it was released with &kde; 4.4.3:</para>
+<para>Or, to download kdemultimedia as it was released with &kde; 4.5.1:</para>
 
 <screen>
 module kdemultimedia
-  tag <replaceable>4.4.3</replaceable>
+  tag <replaceable>4.5.1</replaceable>
   # other options...
 end module
 </screen>
@@ -2422,31 +2415,30 @@ can figure out the appropriate middle part by itself. When it cannot, you can us
 
 <informalexample>
 <screen>
-module qt-copy
-  # branch does not work here yet
-  module-base-path branches/qt/4.4
+module kdesupport
+    # kdesupport supports various tags to easily organize the required
+    # software for a given KDE Platform release.
+    module-base-path tags/kdesupport-for-4.5
 end module
 </screen>
 
-<para>This would cause &kdesvn-build; to download qt-copy from (in this example),
-<filename>svn://anonsvn.kde.org/home/kde/<replaceable>branches/qt/4.4</replaceable>/qt-copy</filename>.
+<para>This would cause &kdesvn-build; to download kdesupport from (in this example),
+<filename>svn://anonsvn.kde.org/home/kde/<replaceable>tags/kdesupport-for-4.5</replaceable></filename>.
 </para>
 </informalexample>
+<tip><para>In previous versions of &kdesvn-build;, the &module-base-path; was
+handled differently. If you encounter trouble using an old module-base-path
+definition perhaps you should verify that the actual path is as &kdesvn-build;
+expects by using the <link linkend="cmdline-pretend">--pretend</link> option.
+</para></tip>
 </listitem>
 
 <listitem><para>The &override-url; option, on the other hand, requires you to
 specify the exact path to download from. However, this allows you to pull from
-paths that &kdesvn-build; would have no hope of downloading from.
+paths that previous versions of &kdesvn-build; would have no hope of downloading from.
+Currently, the &module-base-path; option should be sufficient for any Subversion
+source URL.
 </para>
-
-<informalexample>
-<screen>
-module qt-copy
-  # Specify exact path to grab.
-  override-url svn://anonsvn.kde.org/home/kde/branches/qt/4.4/qt-copy
-end module
-</screen>
-</informalexample>
 
 <important><para>
 &kdesvn-build; will not touch or correct the value you specify for &override-url;
