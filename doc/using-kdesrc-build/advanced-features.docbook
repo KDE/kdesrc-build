@@ -4,7 +4,7 @@
 <sect2 id="partial-builds">
 <title>Partially building a module</title>
 <para>It is possible to build only pieces from a single &kde; module. For
-example, you may want to compile only one program from a module. &kdesvn-build;
+example, you may want to compile only one program from a module. &kdesrc-build;
 has features to make this easy. There are several complementing ways to
 do this.
 </para>
@@ -13,7 +13,7 @@ do this.
 <title>Checking out portions of a module</title>
 
 <para>This is perhaps the best way to do this. When it works, it will save you
-download time and disk space. What happens is that &kdesvn-build; will download
+download time and disk space. What happens is that &kdesrc-build; will download
 only the parts of a module that you specify. This is done using the &checkout-only;
 option for a module, which will specify a list of directories to download.
 </para>
@@ -47,10 +47,10 @@ adding directories to the option to figure out.</para>
 </important>
 
 <para>One final note to make about this option: If you change the value of this
-option, you should use <userinput><command>kdesvn-build</command>
+option, you should use <userinput><command>kdesrc-build</command>
 <option>&cmd-refresh-build;</option> <option><replaceable>module</replaceable></option></userinput>
 in order to ensure that the module is reconfigured properly. In addition,
-&kdesvn-build; will never remove existing files if you take away the number of
+&kdesrc-build; will never remove existing files if you take away the number of
 directories from your &checkout-only; option, or add the option to a module that
 has already been checked out.</para>
 
@@ -71,7 +71,7 @@ directories that should not be compiled.</para>
 <important><para>
 Also like &checkout-only;, this option requires at least that the
 <command>configure</command> script is run again for the module after changing
-it. This is done using the <userinput><command>kdesvn-build</command>
+it. This is done using the <userinput><command>kdesrc-build</command>
 <option>&cmd-reconfigure;</option>
 <option><replaceable>module</replaceable></option></userinput> command.
 </para></important>
@@ -91,7 +91,7 @@ end module
 </sect2>
 
 <sect2 id="using-branches">
-<title>Branching and tagging support for &kdesvn-build;</title>
+<title>Branching and tagging support for &kdesrc-build;</title>
 
 <sect3 id="branches-and-tags">
 <title>What are branches and tags?</title>
@@ -115,7 +115,7 @@ work on the code.
 
 <para>In &subversion;, there is no difference between branches, tags, or trunk within
 the code. It is only a convention used by the developers. This makes it
-difficult to properly support branches and tags within &kdesvn-build;. However,
+difficult to properly support branches and tags within &kdesrc-build;. However,
 there are some things that can be done.
 </para>
 
@@ -131,7 +131,7 @@ for advanced users.
 
 <para>The easiest method is to use the &branch; and &tag; options. You simply
 use the option along with the name of the desired branch or tag for a module,
-and &kdesvn-build; will try to determine the appropriate location within the
+and &kdesrc-build; will try to determine the appropriate location within the
 &kde; repository to download from. For most &kde; modules this works very
 well.</para>
 
@@ -165,15 +165,15 @@ to specify a different branch for modules that should not use the global branch!
 <sect3 id="advanced-branches">
 <title>Advanced branch support options</title>
 
-<para>&kdesvn-build; supports two options for situations where &branch; and &tag;
+<para>&kdesrc-build; supports two options for situations where &branch; and &tag;
 guess the correct path improperly: &module-base-path; and &override-url;.
 </para>
 
 <itemizedlist>
 <listitem><para>
-&module-base-path; is used to help &kdesvn-build; fill in the missing part of
+&module-base-path; is used to help &kdesrc-build; fill in the missing part of
 a module's path. In the &kde; repository, all of the paths are of the form
-<filename class="directory">svnRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesvn-build;
+<filename class="directory">svnRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesrc-build;
 can figure out the appropriate middle part by itself. When it cannot, you can use
 &module-base-path;, like this:
 </para>
@@ -187,26 +187,26 @@ module kdesupport
 end module
 </screen>
 
-<para>This would cause &kdesvn-build; to download kdesupport from (in this example),
+<para>This would cause &kdesrc-build; to download kdesupport from (in this example),
 <filename>svn://anonsvn.kde.org/home/kde/<replaceable>tags/kdesupport-for-4.5</replaceable></filename>.
 </para>
 </informalexample>
-<tip><para>In previous versions of &kdesvn-build;, the &module-base-path; was
+<tip><para>In previous versions of &kdesrc-build;, the &module-base-path; was
 handled differently. If you encounter trouble using an old module-base-path
-definition perhaps you should verify that the actual path is as &kdesvn-build;
+definition perhaps you should verify that the actual path is as &kdesrc-build;
 expects by using the <link linkend="cmdline-pretend">--pretend</link> option.
 </para></tip>
 </listitem>
 
 <listitem><para>The &override-url; option, on the other hand, requires you to
 specify the exact path to download from. However, this allows you to pull from
-paths that previous versions of &kdesvn-build; would have no hope of downloading from.
+paths that previous versions of &kdesrc-build; would have no hope of downloading from.
 Currently, the &module-base-path; option should be sufficient for any Subversion
 source URL.
 </para>
 
 <important><para>
-&kdesvn-build; will not touch or correct the value you specify for &override-url;
+&kdesrc-build; will not touch or correct the value you specify for &override-url;
 at all, so if you change your &svn-server; setting, you may need to update this
 as well.
 </para></important>
@@ -219,27 +219,27 @@ as well.
 </sect2>
 
 <sect2 id="building-successfully">
-<title>How &kdesvn-build; tries to ensure a successful build</title>
+<title>How &kdesrc-build; tries to ensure a successful build</title>
 
 <sect3 id="automatic-rebuilds">
 <title>Automatic rebuilds</title>
 
-<para>&kdesvn-build; used to include features to automatically attempt to
+<para>&kdesrc-build; used to include features to automatically attempt to
 rebuild the module after a failure (as sometimes this re-attempt would work,
 due to bugs in the build system at that time). Thanks to switching to &cmake;
-the build system no longer suffers from these bugs, and so &kdesvn-build; will
+the build system no longer suffers from these bugs, and so &kdesrc-build; will
 not try to build a module more than once. There are situations where
-&kdesvn-build; will automatically take action though:</para>
+&kdesrc-build; will automatically take action though:</para>
 
 <itemizedlist>
 
 <listitem><para>If you change <link linkend="conf-configure-flags">configure-flags</link>
 or <link linkend="conf-cmake-options">cmake-options</link> for a module, then
-&kdesvn-build; will detect that and automatically re-run configure or cmake
+&kdesrc-build; will detect that and automatically re-run configure or cmake
 for that module.</para></listitem>
 
-<listitem><para>If the buildsystem does not exist (even if &kdesvn-build; did
-not delete it) then &kdesvn-build; will automatically re-create it. This is
+<listitem><para>If the buildsystem does not exist (even if &kdesrc-build; did
+not delete it) then &kdesrc-build; will automatically re-create it. This is
 useful to allow for performing a full <link
 linkend="cmdline-refresh-build">--refresh-build</link> for a specific module
 without having that performed on other modules.</para></listitem>
@@ -251,17 +251,17 @@ without having that performed on other modules.</para></listitem>
 <sect3 id="manual-rebuilds">
 <title>Manually rebuilding a module</title>
 <para>If you make a change to a module's option settings, or the module's
-source code changes in a way &kdesvn-build; does not recognize, you may need to
+source code changes in a way &kdesrc-build; does not recognize, you may need to
 manually rebuild the module.</para>
 
-<para>You can do this by simply running <userinput><command>kdesvn-build</command>
+<para>You can do this by simply running <userinput><command>kdesrc-build</command>
  <option>--refresh-build</option> <option><replaceable>module</replaceable></option></userinput>.
 </para>
 
-<para>If you would like to have &kdesvn-build; automatically rebuild the module
+<para>If you would like to have &kdesrc-build; automatically rebuild the module
 during the next normal build update instead, you can create a special file.
 Every module has a build directory. If you create a file called <filename>.refresh-me</filename>
-in the build directory for a module, &kdesvn-build; will rebuild the module
+in the build directory for a module, &kdesrc-build; will rebuild the module
 next time the build process occurs, even if it would normally perform the
 faster incremental build.</para>
 
@@ -275,7 +275,7 @@ If you change the setting of the &build-dir; option, then use that instead of
 <para>Rebuild using <filename>.refresh-me</filename> for module <replaceable>arts</replaceable>:</para>
 <screen>
 <prompt>%</prompt> <userinput><command>touch</command> <filename class="directory">~/kdesvn/build/<replaceable>arts</replaceable>.refresh-me</filename></userinput>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command></userinput>
 </screen>
 </informalexample>
 </sect3>
@@ -284,13 +284,13 @@ If you change the setting of the &build-dir; option, then use that instead of
 
 <sect2 id="changing-environment">
 <title>Changing environment variable settings</title>
-<para>Normally &kdesvn-build; uses the environment that is present when
+<para>Normally &kdesrc-build; uses the environment that is present when
 starting up when running programs to perform updates and builds. This is useful
-for when you are running &kdesvn-build; from the command line.</para>
+for when you are running &kdesrc-build; from the command line.</para>
 
 <para>However, you may want to change the setting for environment variables
-that &kdesvn-build; does not provide an option for directly. (For instance,
-to setup any required environment variables when running &kdesvn-build; on
+that &kdesrc-build; does not provide an option for directly. (For instance,
+to setup any required environment variables when running &kdesrc-build; on
 a timer such as &cron;) This is possible with the &set-env; option.</para>
 
 <para>Unlike most options, it can be set more than once, and it accepts two
@@ -315,7 +315,7 @@ end global
 <sect3 id="resuming-failed">
 <title>Resuming a failed or canceled build</title>
 
-<para>You can tell &kdesvn-build; to start building from a different module
+<para>You can tell &kdesrc-build; to start building from a different module
 than it normally would. This can be useful when a set of modules failed, or
 if you canceled a build run in the middle. You can control this using the
 &cmd-resume-from; option and the &cmd-resume-after; option.</para>
@@ -327,7 +327,7 @@ update.</para> </note>
 <para>Resuming the build starting from kdebase:</para>
 
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--resume-from=<replaceable>kdebase</replaceable></option></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--resume-from=<replaceable>kdebase</replaceable></option></userinput>
 </screen>
 </informalexample>
 
@@ -336,7 +336,7 @@ update.</para> </note>
 the issue and installed the module yourself):</para>
 
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--resume-after=<replaceable>kdebase</replaceable></option></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--resume-after=<replaceable>kdebase</replaceable></option></userinput>
 </screen>
 </informalexample>
 
@@ -350,13 +350,13 @@ build from a module</link>, you can instead choose to update and build everythin
 normally, but ignore a set of modules.</para>
 
 <para>You can do this using the &cmd-ignore-modules; option. This option tells
-&kdesvn-build; to ignore all the modules on the command line when
+&kdesrc-build; to ignore all the modules on the command line when
 performing the update and build.</para>
 
 <informalexample>
 <para>Ignoring extragear/multimedia and kdereview during a full run:</para>
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdereview</replaceable></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdereview</replaceable></userinput>
 </screen>
 </informalexample>
 
@@ -373,9 +373,9 @@ from the command line. This change will override the configuration file
 setting, but is only temporary. It only takes effect as long as it is still
 present on the command line.</para>
 
-<para>&kdesvn-build; allows you to change options named like <replaceable>option-name</replaceable>
+<para>&kdesrc-build; allows you to change options named like <replaceable>option-name</replaceable>
 by passing an argument on the command line in the form <userinput><option>--<replaceable>option-name</replaceable>=value</option></userinput>.
-&kdesvn-build; will recognize whether it does not know what the option is, and search
+&kdesrc-build; will recognize whether it does not know what the option is, and search
 for the name in its list of option names. If it does not recognize the name, it
 will warn you, otherwise it will remember the value you set it to and override
 any setting from the configuration file.</para>
@@ -385,7 +385,7 @@ any setting from the configuration file.</para>
 testing:</para>
 
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--pretend</option> <option>--<replaceable>source-dir</replaceable>=<replaceable>/dev/null</replaceable></option></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--pretend</option> <option>--<replaceable>source-dir</replaceable>=<replaceable>/dev/null</replaceable></option></userinput>
 </screen>
 
 </informalexample>
@@ -405,7 +405,7 @@ syntax is similar: --<replaceable>module</replaceable>,<replaceable>option-name<
 <para>Using a different build directory for the kdeedu module:</para>
 
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--<replaceable>kdeedu</replaceable>,<replaceable>build-dir</replaceable>=<replaceable>temp-build</replaceable></option></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--<replaceable>kdeedu</replaceable>,<replaceable>build-dir</replaceable>=<replaceable>temp-build</replaceable></option></userinput>
 </screen>
 
 </informalexample>
