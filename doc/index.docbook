@@ -1,10 +1,10 @@
 <?xml version="1.0" ?>
 <!DOCTYPE book PUBLIC "-//KDE//DTD DocBook XML V4.2-Based Variant V1.1//EN" "dtd/kdex.dtd" [
-  <!ENTITY kappname "kdesvn-build">
+  <!ENTITY kappname "kdesrc-build">
   <!ENTITY package "kdesdk">
   <!ENTITY % addindex "IGNORE">
   <!ENTITY % English "INCLUDE"> <!-- Change language only here -->
-  <!ENTITY kdesvn-build "<application>kdesvn-build</application>">
+  <!ENTITY kdesrc-build "<application>kdesrc-build</application>">
   <!ENTITY BSD '<acronym>BSD</acronym>'>
   <!ENTITY git '<application>Git</application>'>
   <!ENTITY cmake '<application>CMake</application>'>
@@ -54,7 +54,7 @@
 <book lang="&language;">
 
 <bookinfo>
-<title>&kdesvn-build; Script Manual</title>
+<title>&kdesrc-build; Script Manual</title>
 
 <authorgroup id="authors">
 <author>
@@ -91,7 +91,7 @@
 <releaseinfo>1.12</releaseinfo>
 
 <abstract>
-<para>&kdesvn-build; is a script which builds and installs &kde; software
+<para>&kdesrc-build; is a script which builds and installs &kde; software
 directly from the &kde; project's source code repositories.</para>
 </abstract>
 
@@ -103,6 +103,9 @@ directly from the &kde; project's source code repositories.</para>
 <keyword>git</keyword>
 <keyword>gitorious</keyword>
 <keyword>KDE development</keyword>
+<!-- Older names for the software -->
+<keyword>kdesvn-build</keyword>
+<keyword>kdecvs-build</keyword>
 </keywordset>
 
 </bookinfo>
@@ -111,15 +114,18 @@ directly from the &kde; project's source code repositories.</para>
 <title>Introduction</title>
 
 <para>
-&kdesvn-build; is a script to help users install <ulink
+&kdesrc-build; is a script to help users install <ulink
 url="http://www.kde.org/">&kde;</ulink> software from its <ulink
 url="http://subversion.tigris.org/">&subversion;</ulink> and <ulink
 url="http://gitscm.org/">&git;</ulink> source repositories.
 <!-- Deliberately not KDE SC, we can also install Extragear, amarok, etc. -->
 </para>
 
+<tip><para>This software used to be called kdesvn-build, so you may still see
+references to kdesvn-build on the Internet or in your installed documentation.</para></tip>
+
 <para>
-This guide is an overview to describe the following aspects of &kdesvn-build;
+This guide is an overview to describe the following aspects of &kdesrc-build;
 operation:
 </para>
 
@@ -134,7 +140,7 @@ and options.</para></listitem>
 
 <para>Also documented are the steps which you should perform using
 other tools, (in other words, steps that are not automatically performed by
-&kdesvn-build;).
+&kdesrc-build;).
 </para>
 
 </chapter>
@@ -142,7 +148,7 @@ other tools, (in other words, steps that are not automatically performed by
 <title>Getting Started</title>
 
 <para>
-In this chapter, we show how to use the &kdesvn-build; to checkout modules from
+In this chapter, we show how to use the &kdesrc-build; to checkout modules from
 the &kde; repository and build them. We also provide a basic explanation of the
 &kde; &subversion; structure and the steps you have to perform before running
 the script.
@@ -189,7 +195,7 @@ in order to prepare and use the system installation correctly.
 <sect2 id="before-building-preparation">
 <title>Ensure your system is ready to build &kde; source</title>
 
-<para>Before using the &kdesvn-build; script (or any other building
+<para>Before using the &kdesrc-build; script (or any other building
 strategy) you must install the development tools and libraries needed for &kde;.
 The complete list of required tools can be found from
 the <ulink url="http://techbase.kde.org/">KDE TechBase</ulink>.
@@ -226,7 +232,7 @@ page's <quote>Required Packages from your Distribution</quote> section to see
 if these instructions are already available.</para></note>
 
 <para>One exception to the required libraries is the &Qt; library.
-&kdesvn-build; will normally install a copy of &Qt; whether you have it
+&kdesrc-build; will normally install a copy of &Qt; whether you have it
 installed or not, so it is not necessary for you to have it. If you do not want
 to use the &Qt; copy, you need to do these things:</para>
 
@@ -266,41 +272,41 @@ required software.
 </sect2>
 
 <sect2 id="before-building-prepare-script">
-<title>Setup &kdesvn-build;</title>
+<title>Setup &kdesrc-build;</title>
 
-<sect3 id="get-kdesvn-build">
-<title>Install &kdesvn-build;</title>
+<sect3 id="get-kdesrc-build">
+<title>Install &kdesrc-build;</title>
 <para>
-You probably already have a version of the &kdesvn-build; script installed
+You probably already have a version of the &kdesrc-build; script installed
 in your system. However, if you do not, you can download it from
-<ulink url="http://kdesvn-build.kde.org/">&kdesvn-build; home page</ulink>,
+<ulink url="http://kdesrc-build.kde.org/">&kdesrc-build; home page</ulink>,
 or you can find it from its home in the &kde; source repository.</para>
 
-<note><para>&kdesvn-build; is included with the kdesdk module, and the module
+<note><para>&kdesrc-build; is included with the kdesdk module, and the module
 is often installed by distributions already. If you have downloaded
-&kdesvn-build; ensure that you are using the version you downloaded. You can
+&kdesrc-build; ensure that you are using the version you downloaded. You can
 use the --version option to be sure you are running the version you think
 you are.</para></note>
 
 <orderedlist>
-<listitem><para>To download &kdesvn-build; from its home page, simply go to the
-<ulink url="http://kdesvn-build.kde.org/">&kdesvn-build; home page</ulink> and download the latest appropriate release. The release is
+<listitem><para>To download &kdesrc-build; from its home page, simply go to the
+<ulink url="http://kdesrc-build.kde.org/">&kdesrc-build; home page</ulink> and download the latest appropriate release. The release is
 packaged as a compressed tarball archive, which you can extract using &ark; or
 <command>tar</command>. The contents of the archive include the actual
-&kdesvn-build; script, and a sample configuration file
-(<filename>kdesvn-buildrc-sample</filename>).</para></listitem>
+&kdesrc-build; script, and a sample configuration file
+(<filename>kdesrc-buildrc-sample</filename>).</para></listitem>
 
-<listitem><para>Or, you can obtain &kdesvn-build; from its source repository,
+<listitem><para>Or, you can obtain &kdesrc-build; from its source repository,
 located at: <ulink url="http://websvn.kde.org/trunk/KDE/kdesdk/scripts/">http://websvn.kde.org/trunk/KDE/kdesdk/scripts/</ulink>.
 This is the &kde; Software Development Kit scripting directory, which is the
-home of &kdesvn-build;. You can click on the <filename>kdesvn-build</filename> entry which will
+home of &kdesrc-build;. You can click on the <filename>kdesrc-build</filename> entry which will
 bring you to a page where you can download the latest revision. Do so, and
-save it to a convenient spot on your hard disk. Do the same for <filename>kdesvn-buildrc-sample</filename>
+save it to a convenient spot on your hard disk. Do the same for <filename>kdesrc-buildrc-sample</filename>
 if you need to.</para></listitem>
 </orderedlist>
 
 <para>No matter which technique you use, you need to make sure that the
-<filename>kdesvn-build</filename> file is executable. For convenience you
+<filename>kdesrc-build</filename> file is executable. For convenience you
 should make sure it is in a directory contained in the <envar>PATH</envar>
 environment variable, otherwise you may get messages saying that the command
 was not found, or you may run a previously-installed version by mistake.</para>
@@ -309,25 +315,25 @@ was not found, or you may run a previously-installed version by mistake.</para>
 <sect3 id="setup-rcfile">
 <title>Prepare the configuration file</title>
 
-<para>Although &kdesvn-build; does not require you to create a <link linkend="configure-data">configuration file</link>, it
+<para>Although &kdesrc-build; does not require you to create a <link linkend="configure-data">configuration file</link>, it
 makes the work flow much easier. Using a <link linkend="configure-data">configuration file</link>, you can control which
-modules are installed, or remove modules you do not want to install. &kdesvn-build;
+modules are installed, or remove modules you do not want to install. &kdesrc-build;
 by default installs a useful &kde; installation using very generic installation
 flags, which may be different from your needs. So it is best to use a
 <link linkend="configure-data">configuration file</link>. </para>
 
-<para>The <link linkend="configure-data">configuration file</link> should be called <filename>.kdesvn-buildrc</filename>.
+<para>The <link linkend="configure-data">configuration file</link> should be called <filename>.kdesrc-buildrc</filename>.
 This file should be installed on
 the home folder (<filename class="directory">~/</filename>), and contain all configuration data
 required for the script to run, like configuration options,
 compiling options, location of the sources, the destination of the installation
 (prefix), the modules that should be built, &etc;. The default configuration
-data is provided by the <filename>kdesvn-buildrc-sample</filename> file, which
-you can copy over as <filename>~/.kdesvn-buildrc</filename> and then edit.
+data is provided by the <filename>kdesrc-buildrc-sample</filename> file, which
+you can copy over as <filename>~/.kdesrc-buildrc</filename> and then edit.
 </para>
 
 <para>You can find more information about the syntax of the <link linkend="configure-data">configuration file</link>
-in <xref linkend="configure-data" /> and in <xref linkend="kdesvn-buildrc" />.
+in <xref linkend="configure-data" /> and in <xref linkend="kdesrc-buildrc" />.
 </para>
 
 </sect3>
@@ -338,19 +344,19 @@ in <xref linkend="configure-data" /> and in <xref linkend="kdesvn-buildrc" />.
 <title>Setting the Configuration Data</title>
 
 <para>
-To use &kdesvn-build;, you should have a file in your home directory called
-<filename>.kdesvn-buildrc</filename>, which sets the general options and sets the modules
+To use &kdesrc-build;, you should have a file in your home directory called
+<filename>.kdesrc-buildrc</filename>, which sets the general options and sets the modules
 you would like to download and build.
 </para>
 
-<note><para>It is possible to use different configuration files for &kdesvn-build;,
-which is described in <xref linkend="kdesvn-buildrc" />. If you need to use
+<note><para>It is possible to use different configuration files for &kdesrc-build;,
+which is described in <xref linkend="kdesrc-buildrc" />. If you need to use
 multiple configurations, please see that section. Here, we will assume the
-configuration is stored in <filename>~/.kdesvn-buildrc</filename>.</para></note>
+configuration is stored in <filename>~/.kdesrc-buildrc</filename>.</para></note>
 
 <para>
 The easiest way to proceed is to use the
-<filename>kdesvn-buildrc-sample</filename> file as a template, changing global
+<filename>kdesrc-buildrc-sample</filename> file as a template, changing global
 options to match your wants, and also change the list of modules you want to
 build.
 </para>
@@ -387,40 +393,40 @@ developer with a <ulink url="http://techbase.kde.org/Contribute/First_Steps_with
 After the global section is a list of modules to build, bracketed by
 module ... end module lines. Check if the listed modules are in fact the
 modules you want to build. The default options from the
-<filename>kdesvn-buildrc-sample</filename> file should be enough to get a
+<filename>kdesrc-buildrc-sample</filename> file should be enough to get a
 fairly complete &kde; installation. Save the result as
-<filename>.kdesvn-buildrc</filename> in your home folder.
+<filename>.kdesrc-buildrc</filename> in your home folder.
 </para>
 
 <para>
-If you wish to fine tune your <filename>.kdesvn-buildrc</filename>,
-consult <xref linkend="kdesvn-buildrc" /> for detailed information
+If you wish to fine tune your <filename>.kdesrc-buildrc</filename>,
+consult <xref linkend="kdesrc-buildrc" /> for detailed information
 about all configuration options.
 </para>
 
 </sect1>
 
 <sect1 id="building-and-troubleshooting">
-<title>Using the &kdesvn-build; script</title>
+<title>Using the &kdesrc-build; script</title>
 
 <para>
 Now you are ready to run the script. From a terminal window,
 log in to the user you are using to compile &kde; and execute
 the script:
 <screen>
-<prompt>$</prompt><command>kdesvn-build</command>
+<prompt>$</prompt><command>kdesrc-build</command>
 </screen>
 </para>
 
 <para>
 Now, the script should start downloading the sources and compiling them. Depending on
-how many modules you are downloading, it is possible that &kdesvn-build;
+how many modules you are downloading, it is possible that &kdesrc-build;
 will not succeed the first time you compile &kde;. Do not despair!
 </para>
 
-<para>&kdesvn-build; logs the output of every command it runs. By default,
+<para>&kdesrc-build; logs the output of every command it runs. By default,
 the log files are kept in <filename class="directory">~/kdesvn/log</filename>. To see what
-the caused an error for a module in the last &kdesvn-build; command, usually
+the caused an error for a module in the last &kdesrc-build; command, usually
 it is sufficient to look at <filename class="directory">~/kdesvn/log/latest/<replaceable>module-name</replaceable>/error.log</filename>.</para>
 
 <para>In that file, you will see the error that caused the build to fail for
@@ -442,8 +448,8 @@ solutions, as well as general tips and strategies to build &kde; in the
 Building &kde; 4 from Source</ulink>.
 </para>
 
-<note><para>For more information about &kdesvn-build;'s logging features,
-please see <xref linkend="kdesvn-build-logging"/>.</para></note>
+<note><para>For more information about &kdesrc-build;'s logging features,
+please see <xref linkend="kdesrc-build-logging"/>.</para></note>
 
 </sect1>
 
@@ -603,11 +609,11 @@ type:</para>
 shortcut key for the already running desktop. This is normally
 <keycombo action="simul">&Ctrl;&Alt;<keycap>F7</keycap></keycombo>, you may need
 to use <keycap>F6</keycap> or <keycap>F8</keycap> instead. To return to your
-&kdesvn-build;-compiled &kde;, you would use the same sequence, except with the
+&kdesrc-build;-compiled &kde;, you would use the same sequence, except with the
 next function key. For example, if you needed to enter <keycombo action="simul">&Ctrl;&Alt;<keycap>F7</keycap></keycombo>
 to switch to your regular &kde;, you would need to enter
 <keycombo action="simul">&Ctrl;&Alt;<keycap>F8</keycap></keycombo> to go back
-to your &kdesvn-build; &kde;.</para>
+to your &kdesrc-build; &kde;.</para>
 </tip>
 
 </sect2>
@@ -622,7 +628,7 @@ to your &kdesvn-build; &kde;.</para>
 <title>Feature Overview</title>
 
 <para>
-&kdesvn-build; features include:
+&kdesrc-build; features include:
 </para>
 
 <itemizedlist>
@@ -633,11 +639,11 @@ ranging from being very quiet to a full debug level.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; can, with the assistance of the <ulink
-url="http://kdesvn-build.kde.org/">&kdesvn-build; website</ulink> and the
-&kde; FTP server (FTP since &kdesvn-build; 1.4), allow for speedy checkouts of
+&kdesrc-build; can, with the assistance of the <ulink
+url="http://kdesrc-build.kde.org/">&kdesrc-build; website</ulink> and the
+&kde; FTP server (FTP since &kdesrc-build; 1.4), allow for speedy checkouts of
 some modules. If the module you are checking out has already been packaged at
-the website, then &kdesvn-build; will download the snapshot and prepare it for
+the website, then &kdesrc-build; will download the snapshot and prepare it for
 use on your computer.
 </para>
 
@@ -658,11 +664,11 @@ module.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; has <link linkend="kdesvn-build-color">colorized output</link>.
+&kdesrc-build; has <link linkend="kdesrc-build-color">colorized output</link>.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; does not require a <acronym>GUI</acronym> present to operate. So,
+&kdesrc-build; does not require a <acronym>GUI</acronym> present to operate. So,
 you can build &kde; without needing an alternate graphical environment.
 </para></listitem>
 
@@ -671,40 +677,40 @@ Supports setting default options for all modules (such as the compilation
 settings or the configuration options). Such options can normally be changed
 for specific modules as well.</para>
 
-<para>Also, &kdesvn-build; will <link linkend="kdesvn-build-std-flags">add
+<para>Also, &kdesrc-build; will <link linkend="kdesrc-build-std-flags">add
 standard flags</link> as appropriate to save you the trouble and possible
 errors from typing them yourself.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; can checkout a specific <link linkend="using-branches">branch
+&kdesrc-build; can checkout a specific <link linkend="using-branches">branch
 or tag</link> of a module. You can also ensure that a specific <link
 linkend="conf-revision">revision</link> is checked out of a module.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; can automatically switch a source directory to checkout from
+&kdesrc-build; can automatically switch a source directory to checkout from
 a different repository, branch, or tag. This happens automatically when you
 change an option that changes what the repository &url; should be, but you must
 use the <link linkend="cmdline-src-only">--src-only</link> option to let
-&kdesvn-build; know that it is acceptable to perform the switch.
+&kdesrc-build; know that it is acceptable to perform the switch.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; can <link linkend="partial-builds">checkout only portions of a
+&kdesrc-build; can <link linkend="partial-builds">checkout only portions of a
 module</link>, for those situations where you only need one program from a
 large module.
 </para></listitem>
 
 <listitem><para>
-The initial download of some modules can be accelerated by &kdesvn-build;,
+The initial download of some modules can be accelerated by &kdesrc-build;,
 which will (if available) automatically download a module snapshot from the
 &kde; mirrors and use that to setup the initial checkout. This saves time
 and bandwidth for both your system and the &kde; servers.
 </para></listitem>
 
 <listitem><para>
-For developers: &kdesvn-build; will <link linkend="ssh-agent-reminder">remind
+For developers: &kdesrc-build; will <link linkend="ssh-agent-reminder">remind
 you</link> if you use svn+ssh:// but <application>ssh-agent</application> is
 not running, as this will lead to repeated password requests from
 &ssh;.
@@ -721,19 +727,19 @@ time.
 </para></listitem>
 
 <listitem><para>
-The locations for the directories used by &kdesvn-build; are configurable (even
+The locations for the directories used by &kdesrc-build; are configurable (even
 per module).
 </para></listitem>
 
 <listitem><para>
 Can use &sudo;, or a different user-specified command
 to <link linkend="root-installation">install modules</link> so that
-&kdesvn-build; does not need to be run as the super user.
+&kdesrc-build; does not need to be run as the super user.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; runs <link linkend="build-priority">with reduced priority</link>
-by default to allow you to still use your computer while &kdesvn-build; is
+&kdesrc-build; runs <link linkend="build-priority">with reduced priority</link>
+by default to allow you to still use your computer while &kdesrc-build; is
 working.
 </para></listitem>
 
@@ -743,7 +749,7 @@ branches</link>.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; will use a set of techniques to <link linkend="building-successfully">try
+&kdesrc-build; will use a set of techniques to <link linkend="building-successfully">try
 and guarantee</link> a successful build.
 </para></listitem>
 
@@ -754,13 +760,13 @@ modules</link> temporarily for a given build.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; can quickly perform a <link linkend="partial-builds">partial
+&kdesrc-build; can quickly perform a <link linkend="partial-builds">partial
 build</link> of a module directly from the command line, when you only need
 to update part of a module.
 </para></listitem>
 
 <listitem><para>
-&kdesvn-build; will show the <link linkend="build-progress">progress of your
+&kdesrc-build; will show the <link linkend="build-progress">progress of your
 build</link> when using &cmake;, and will always time the build
 process so you know after the fact how long it took.
 </para></listitem>
@@ -796,7 +802,7 @@ you can specify options to apply to individual modules as well.
 Since the autotools sometimes get out of sync with changes to the
 source tree, you can force a rebuild of a module by creating a file called
 .refresh-me in the build directory of the module in question, or by running
-&kdesvn-build; with the <option>--refresh-build</option> option.
+&kdesrc-build; with the <option>--refresh-build</option> option.
 </para></listitem>
 
 <listitem><para>
@@ -842,14 +848,14 @@ it is about to execute, without actually executing it.
 
 </sect1>
 
-<sect1 id="kdesvn-build-logging">
-<title>&kdesvn-build;'s build logging</title>
+<sect1 id="kdesrc-build-logging">
+<title>&kdesrc-build;'s build logging</title>
 
 <sect2 id="logging-overview">
 <title>Logging overview</title>
 
-<para>Logging is a &kdesvn-build; feature whereby the output from every command
-that &kdesvn-build; runs is saved to a file for examination later, if
+<para>Logging is a &kdesrc-build; feature whereby the output from every command
+that &kdesrc-build; runs is saved to a file for examination later, if
 necessary. This is done because it is often necessary to have the output of
 these programs when there is a build failure, because there are so many
 reasons why a build can fail in the first place.</para>
@@ -865,18 +871,18 @@ option. The in rest of this section, this value will be referred to as
 <symbol>${log-dir}</symbol>).</para>
 
 <para>Under <symbol>${log-dir}</symbol>, is a set of directories, one for every
-time that &kdesvn-build; was run. Each directory is named with the date, and
-the run number. For instance, the second time that &kdesvn-build; is run on
+time that &kdesrc-build; was run. Each directory is named with the date, and
+the run number. For instance, the second time that &kdesrc-build; is run on
 May 26, 2004, it would create a directory called <filename>2004-05-26-02</filename>,
 where the 2004-05-26 is for the date, and the -02 is the run number.</para>
 
-<para>For your convenience, &kdesvn-build; will also create a link to the
+<para>For your convenience, &kdesrc-build; will also create a link to the
 logs for your latest run, called <filename class="directory">latest</filename>. So the logs for
-the most recent &kdesvn-build; run should always be under <filename class="directory"><symbol>${log-dir}</symbol>/latest</filename>.
+the most recent &kdesrc-build; run should always be under <filename class="directory"><symbol>${log-dir}</symbol>/latest</filename>.
 </para>
 
-<para>Now, each directory for a &kdesvn-build; run will itself contain a set of
-directories, one for every &kde; module that &kdesvn-build; tries to build. Also,
+<para>Now, each directory for a &kdesrc-build; run will itself contain a set of
+directories, one for every &kde; module that &kdesrc-build; tries to build. Also,
 a file called <filename>build-status</filename> will be contained in the directory,
 which will allow you to determine which modules built and which failed.</para>
 
@@ -884,12 +890,12 @@ which will allow you to determine which modules built and which failed.</para>
 If a module itself has a submodule (such as extragear/multimedia,
 playground/utils, or KDE/kdelibs), then there would actually be a matching
 layout in the log directory. For example, the logs for KDE/kdelibs after the
-last &kdesvn-build; run would be found in <filename class="directory"><symbol>${log-dir}</symbol>/latest/KDE/kdelibs</filename>,
+last &kdesrc-build; run would be found in <filename class="directory"><symbol>${log-dir}</symbol>/latest/KDE/kdelibs</filename>,
 and not under <filename class="directory"><symbol>${log-dir}</symbol>/latest/kdelibs</filename>.
 </para></note>
 
 <para>In each module log directory, you will find a set of files for each
-operation that &kdesvn-build; performs. If &kdesvn-build; updates a module,
+operation that &kdesrc-build; performs. If &kdesrc-build; updates a module,
 you may see filenames such as <filename>svn-co.log</filename> (for a
 module checkout) or <filename>svn-up.log</filename> (when updating a module
 that has already been checked out). If the <command>configure</command>
@@ -898,11 +904,11 @@ in that directory.</para>
 
 <para>If an error occurred, you should be able to see an explanation of why in
 one of the files. To help you determine which file contains the error,
-&kdesvn-build; will create a link from the file containing the error (such as
+&kdesrc-build; will create a link from the file containing the error (such as
 <filename>build-1.log</filename> to a file called <filename>error.log</filename>).</para>
 
 <para>The upshot to all of this is that to see why a module failed to build
-after your last &kdesvn-build;, the file you should look at first is
+after your last &kdesrc-build;, the file you should look at first is
 <filename><symbol>${log-dir}</symbol>/latest/<replaceable>module-name</replaceable>/error.log</filename>.
 </para>
 
@@ -911,10 +917,10 @@ an installation), then perhaps there was no error. Some of the tools used by
 the &kde; build system will sometimes mistakenly report an error when there was
 none.</para>
 
-<para>Also, some commands will evade &kdesvn-build;'s output redirection and
+<para>Also, some commands will evade &kdesrc-build;'s output redirection and
 bypass the log file in certain circumstances (normally when performing the
 first &subversion; checkout), and the error output in that case is not in the log file
-but is instead at the &konsole; or terminal where you ran &kdesvn-build;.</para>
+but is instead at the &konsole; or terminal where you ran &kdesrc-build;.</para>
 </tip>
 
 </sect3>
@@ -923,15 +929,15 @@ but is instead at the &konsole; or terminal where you ran &kdesvn-build;.</para>
 
 </chapter>
 
-<chapter id="kdesvn-buildrc">
-<title>Configuring &kdesvn-build;</title>
+<chapter id="kdesrc-buildrc">
+<title>Configuring &kdesrc-build;</title>
 
-<sect1 id="kdesvn-buildrc-overview">
-<title>Overview of &kdesvn-build; configuration</title>
+<sect1 id="kdesrc-buildrc-overview">
+<title>Overview of &kdesrc-build; configuration</title>
 
 <para>
 To use the script, you must have a file in your home directory called
-<filename>.kdesvn-buildrc</filename>, which describes the modules you would
+<filename>.kdesrc-buildrc</filename>, which describes the modules you would
 like to download and build.
 </para>
 
@@ -981,7 +987,7 @@ authors using the address you can find <link linkend="authors">above</link>.
 <listitem><para><link linkend="conf-configure-flags">configure-flags</link> to define what flags to configure a module with.</para></listitem>
 <listitem><para><link linkend="conf-cxxflags">cxxflags</link> to define the <envar>CXXFLAGS</envar> variable.</para></listitem>
 <listitem><para><link linkend="conf-dest-dir">dest-dir</link> to change the directory name for a module.</para></listitem>
-<listitem><para><link linkend="conf-disable-agent-check">disable-agent-check</link>, to keep &kdesvn-build; from checking on ssh-agent's status.</para></listitem>
+<listitem><para><link linkend="conf-disable-agent-check">disable-agent-check</link>, to keep &kdesrc-build; from checking on ssh-agent's status.</para></listitem>
 <listitem><para><link linkend="conf-do-not-compile">do-not-compile</link>, to mark directories to skip building.</para></listitem>
 <listitem><para><link linkend="conf-install-after-build">install-after-build</link>, to avoid installing after the build process.</para></listitem>
 <listitem><para><link linkend="conf-kdedir">kdedir</link>, to set the directory to install &kde; to.</para></listitem>
@@ -997,7 +1003,7 @@ authors using the address you can find <link linkend="authors">above</link>.
 <listitem><para><link linkend="conf-qtdir">qtdir</link>, to set the path to &Qt;.</para></listitem>
 <listitem><para><link linkend="conf-set-env">set-env</link>, to set an environment variable.</para></listitem>
 <listitem><para><link linkend="conf-source-dir">source-dir</link>, to change where to download the source code to.</para></listitem>
-<listitem><para><link linkend="conf-stop-on-failure">stop-on-failure</link>, to make &kdesvn-build; stop as soon as a failure is encountered.</para></listitem>
+<listitem><para><link linkend="conf-stop-on-failure">stop-on-failure</link>, to make &kdesrc-build; stop as soon as a failure is encountered.</para></listitem>
 <listitem><para><link linkend="conf-svn-server">svn-server</link>, to change the server the sources are downloaded from.</para></listitem>
 </itemizedlist>
 
@@ -1029,7 +1035,7 @@ as well.
 <entry>apidox</entry>
 <entry>Overrides global</entry>
 <entry><para>This option was used to allow for building KDE module API documentation.
-It was removed in &kdesvn-build; 1.6.3 due to it not being supported in KDE 4.  Online
+It was removed in &kdesrc-build; 1.6.3 due to it not being supported in KDE 4.  Online
 API documentation is available from <ulink url="http://api.kde.org/">kde.org</ulink>.
 In addition it is possible to build KDE 4's API documentation using a script included in
 the kdesdk module (/scripts directory).  See <ulink url="http://techbase.kde.org/Development/Tools/apidox">KDE
@@ -1041,7 +1047,7 @@ for older modules of course.</para>
 <row id="conf-apply-qt-patches">
 <entry>apply-qt-patches</entry>
 <entry>Overrides global</entry>
-<entry>This option was removed in kdesvn-build 1.10. To get the same effect,
+<entry>This option was removed in kdesrc-build 1.10. To get the same effect,
 see <xref linkend="using-qt-copy" /> and the <link
 linkend="conf-repository">repository</link> option.</entry>
 </row>
@@ -1076,7 +1082,7 @@ may use the tilde (~) for any paths you add using this option.</para>
 default of <replaceable>trunk</replaceable>, where &kde; development occurs.
 For instance, to checkout &kde; 4.5 branch, you would set this option to
 <replaceable>4.5</replaceable>.</para>
-<para>If &kdesvn-build; fails to properly download a branch with this option, you
+<para>If &kdesrc-build; fails to properly download a branch with this option, you
 may have to manually specify the &url; to download from using the <link
 linkend="conf-module-base-path">module-base-path</link> or <link
 linkend="conf-override-url">override-url</link> options.</para>
@@ -1148,7 +1154,7 @@ should be given as they would be typed into &cmake;. For example:</para>
 <screen>  cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
 </screen>
 
-<para>Since this is a hassle, &kdesvn-build; takes pains to ensure that as long
+<para>Since this is a hassle, &kdesrc-build; takes pains to ensure that as long
 as the rest of the options are set correctly, you should be able to leave this
 option blank. (In other words, <emphasis>required</emphasis> &cmake; parameters
 are set for you automatically)</para></entry>
@@ -1171,8 +1177,8 @@ only works for qt-copy.</emphasis></para>
 <row id="conf-colorful-output">
 <entry>colorful-output</entry>
 <entry>Cannot be overridden</entry>
-<entry>Set this option to <replaceable>false</replaceable> to disable the colorful output of &kdesvn-build;.
-This option defaults to <replaceable>true</replaceable>. Note that &kdesvn-build; will not output the
+<entry>Set this option to <replaceable>false</replaceable> to disable the colorful output of &kdesrc-build;.
+This option defaults to <replaceable>true</replaceable>. Note that &kdesrc-build; will not output the
 color codes to anything but a terminal (such as xterm, &konsole;, or the normal
 &Linux; console).
 </entry>
@@ -1211,7 +1217,7 @@ or directory separators in the name as this will interfere with any
 <entry>disable-agent-check</entry>
 <entry>Cannot be overridden</entry>
 <entry>Normally if you are using &ssh; to download the &subversion; sources
-(such as if you are using the svn+ssh protocol), &kdesvn-build; will try and
+(such as if you are using the svn+ssh protocol), &kdesrc-build; will try and
 make sure that if you are using ssh-agent, it is actually managing some &ssh;
 identities. This is to try and prevent &ssh; from asking for your pass phrase
 for every module. You can disable this check by setting
@@ -1238,7 +1244,7 @@ compiling, you would add "do-not-compile juk kscd" to your kdemultimedia setting
 <entry>email-address</entry>
 <entry>Cannot be overridden</entry>
 <entry>
-<para>Set this option to the e-mail address &kdesvn-build; should send from
+<para>Set this option to the e-mail address &kdesrc-build; should send from
 should it ever need to send e-mail. You do not need to worry about this if you
 do not use any feature which send e-mail. (They are all disabled by default).
 </para>
@@ -1253,13 +1259,13 @@ needs this option.</para>
 <entry>Cannot be overridden</entry>
 <entry>
 <para>You can set this option to the email address to send a report to when a
-module fails to build. &kdesvn-build; will wait until all the modules are done
+module fails to build. &kdesrc-build; will wait until all the modules are done
 and collate all of the results in the report. The report is only sent if a
 module fails to build.
 </para>
 
 <para>Please see the <link linkend="conf-email-address">email-address</link>
-option to set the address &kdesvn-build; should send from, since the default
+option to set the address &kdesrc-build; should send from, since the default
 is usually not what you want.
 </para>
 </entry>
@@ -1382,12 +1388,12 @@ commented it out.
 <row id="conf-module-base-path">
 <entry>module-base-path</entry>
 <entry>Overrides global</entry>
-<entry><para>Set this option to override &kdesvn-build;'s default directory path to the
+<entry><para>Set this option to override &kdesrc-build;'s default directory path to the
 module in question. This can be used, for example, to pull specific branches
 or tagged versions of libraries. <ulink url="http://websvn.kde.org/">The &kde;
 Source Viewer</ulink> is invaluable in helping to pick the right path.</para>
 
-<para>Note that &kdesvn-build; constructs the final path according to the
+<para>Note that &kdesrc-build; constructs the final path according to the
 following template:
 <filename class="directory"><varname>$svn-server</varname>/home/kde/<varname>$module-base-path</varname></filename>.
 </para>
@@ -1407,14 +1413,14 @@ linkend="conf-tag">tag</link> options instead whenever they are applicable.
 <entry>niceness</entry>
 <entry>Cannot be overridden</entry>
 <entry>Set this option to a number between 20 and 0. The higher the number, the
-lower a priority &kdesvn-build; will set for itself. The default is 10.
+lower a priority &kdesrc-build; will set for itself. The default is 10.
 </entry>
 </row>
 
 <row id="conf-no-svn">
 <entry>no-svn</entry>
 <entry>Overrides global</entry>
-<entry>If this option is set to true then &kdesvn-build; will not update the
+<entry>If this option is set to true then &kdesrc-build; will not update the
 source code for the module automatically.  It will still try to build the
 module if it normally would have tried anyways.</entry>
 </row>
@@ -1429,9 +1435,9 @@ due to fixes in the underlying build system.</entry>
 <row id="conf-override-url">
 <entry>override-url</entry>
 <entry>Overrides global</entry>
-<entry>If you set this option, &kdesvn-build; will use its value as the &url;
+<entry>If you set this option, &kdesrc-build; will use its value as the &url;
 to pass to &subversion; <emphasis>completely unchanged</emphasis>. You should
-generally use this if you want to download a specific release but &kdesvn-build;
+generally use this if you want to download a specific release but &kdesrc-build;
 cannot figure out what you mean using <link linkend="conf-branch">branch</link>.
 </entry>
 </row>
@@ -1453,7 +1459,7 @@ deleted or not. The default value is <replaceable>false</replaceable>.</para>
 <para>Even if you have not set this option to true, you can manually purge the
 old log directories by running:</para>
 
-<screen>kdesvn-build --no-src --no-build --purge-old-logs kdelibs</screen>
+<screen>kdesrc-build --no-src --no-build --purge-old-logs kdelibs</screen>
 
 <para>You can use any module name in the above command line, it does not have
 to be kdelibs.</para>
@@ -1490,7 +1496,7 @@ installed.
 
 <para>Note that using this option can have a significant detrimental impact on
 both your bandwidth usage (if you use <replaceable>all</replaceable>) and the time taken to compile &kde;,
-since &kdesvn-build; will be unable to perform incremental builds.</para>
+since &kdesrc-build; will be unable to perform incremental builds.</para>
 </entry>
 </row>
 
@@ -1506,7 +1512,7 @@ specify the &git; repository to download the source code for the module.
 <row id="conf-revision">
 <entry>revision</entry>
 <entry>Overrides global</entry>
-<entry>If this option is set to a value other than 0 (zero), &kdesvn-build;
+<entry>If this option is set to a value other than 0 (zero), &kdesrc-build;
 will force the &subversion; update to bring the module to the exact revision
 given, even if options like <link linkend="conf-branch">branch</link> are in
 effect. If the module is already at the given revision then it will not be
@@ -1519,7 +1525,7 @@ configuration.</entry>
 <entry>Overrides global</entry>
 <entry>If set to <replaceable>true</replaceable>, then the module will be
 built with support for running its test suite, and the test suite will be
-executed as part of the build process. &kdesvn-build; will show a simple
+executed as part of the build process. &kdesrc-build; will show a simple
 report of the test results. This is useful for developers or those who want
 to ensure their system is setup correctly.</entry>
 </row>
@@ -1579,7 +1585,7 @@ url="http://download.kde.org/download.php">its mirrors</ulink>.</para>
 <row id="conf-use-cmake">
 <entry>use-cmake</entry>
 <entry>Overrides global</entry>
-<entry>This option was removed in &kdesvn-build; 1.4 as all &kde; 4 modules
+<entry>This option was removed in &kdesrc-build; 1.4 as all &kde; 4 modules
 require &cmake;, and &cmake; use is not permitted on any other modules.
 </entry>
 </row>
@@ -1587,10 +1593,10 @@ require &cmake;, and &cmake; use is not permitted on any other modules.
 <row id="conf-use-idle-io-priority">
 <entry>use-idle-io-priority</entry>
 <entry>Cannot be overridden</entry>
-<entry>This option, added in &kdesvn-build; 1.12, will cause a lower priority
+<entry>This option, added in &kdesrc-build; 1.12, will cause a lower priority
 to be used for disk and other I/O usage, which can significantly improve the
 responsiveness of the rest of the system at the expense of slightly longer
-running times for &kdesvn-build;. The default is to be disabled, to enable
+running times for &kdesrc-build;. The default is to be disabled, to enable
 the lower disk priority set this to <replaceable>true</replaceable>.
 </entry>
 </row>
@@ -1628,7 +1634,7 @@ removing the effect of this option.
 <title>Supported Environment Variables</title>
 
 <para>
-&kdesvn-build; does not use environment variables. If you need to set environment
+&kdesrc-build; does not use environment variables. If you need to set environment
 variables for the build or install process, please see the <link
 linkend="conf-set-env">set-env</link> option.
 </para>
@@ -1686,9 +1692,9 @@ Enable colorful output. (This is the default for interactive terminals).
 <varlistentry id="cmdline-nice">
 <term><parameter>--nice=<replaceable>value</replaceable></parameter></term>
 <listitem><para>
-This value adjusts the computer CPU priority requested by &kdesvn-build;, and
+This value adjusts the computer CPU priority requested by &kdesrc-build;, and
 should be in the range of 0-20. 0 is highest priority (because it is the
-least <quote>nice</quote>), 20 is lowest priority. &kdesvn-build; defaults
+least <quote>nice</quote>), 20 is lowest priority. &kdesrc-build; defaults
 to 10.
 </para></listitem>
 </varlistentry>
@@ -1699,7 +1705,7 @@ to 10.
 Disables the <link linkend="conf-async">asynchronous mode</link> of updating.
 Instead the update will be performed in its entirety before the build starts.
 This option will slow down the overall process, but if you encounter IPC errors
-while running &kdesvn-build; try using this option, and submitting a
+while running &kdesrc-build; try using this option, and submitting a
 <ulink url="http://bugs.kde.org/">bug report</ulink>.
 </para></listitem>
 </varlistentry>
@@ -1714,7 +1720,7 @@ Disable colorful output.
 <varlistentry id="cmdline-pretend">
 <term><parameter>--pretend</parameter> (or <parameter>-p</parameter>)</term>
 <listitem><para>
-&kdesvn-build; will run through the update and build process, but instead of
+&kdesrc-build; will run through the update and build process, but instead of
 performing any actions to update or build, will instead output what the
 script would have done (e.g. what commands to run, general steps being taken,
 etc.).</para>
@@ -1743,7 +1749,7 @@ Only output warnings and errors.
 <varlistentry id="cmdline-verbose">
 <term><parameter>--verbose</parameter> (or <parameter>-v</parameter>)</term>
 <listitem><para>
-Be very descriptive about what is going on, and what &kdesvn-build; is doing.
+Be very descriptive about what is going on, and what &kdesrc-build; is doing.
 </para></listitem>
 </varlistentry>
 
@@ -1809,7 +1815,7 @@ doing in debugging mode.
 <term><parameter>--no-rebuild-on-fail</parameter></term>
 <listitem><para>
 Do not try to
-rebuild modules that have failed building from scratch. &kdesvn-build; will
+rebuild modules that have failed building from scratch. &kdesrc-build; will
 never try to do this to a module that already was tried to be built from
 scratch.
 </para></listitem>
@@ -1827,7 +1833,7 @@ Recreate the build system and make from scratch.
 <listitem><para>
 Run <command>cmake</command> (for &kde; modules) or
 <command>configure</command> (for &Qt;) again, without cleaning the build
-directory. You should not normally have to specify this, as &kdesvn-build; will
+directory. You should not normally have to specify this, as &kdesrc-build; will
 detect when you change the relevant options and automatically re-run the build
 setup. This option is implied if <parameter><link
 linkend="cmdline-refresh-build">--refresh-build</link></parameter> is used.
@@ -1844,7 +1850,7 @@ specify other module names on the command line.
 </para>
 <para>See also: <xref linkend="cmdline-resume-after"/> and <xref
 linkend="resuming-failed"/>. You would prefer to use this command line option
-if you have fixed the build error and want &kdesvn-build; to complete the
+if you have fixed the build error and want &kdesrc-build; to complete the
 build.</para></listitem>
 </varlistentry>
 
@@ -1859,7 +1865,7 @@ specify other module names on the command line.
 <para>See also: <xref linkend="cmdline-resume-from"/> and <xref
 linkend="resuming-failed"/>. You would prefer to use this command line option
 if you have fixed the build error and have also built and installed the module
-yourself, and want &kdesvn-build; to start again with the next
+yourself, and want &kdesrc-build; to start again with the next
 module.</para></listitem>
 </varlistentry>
 
@@ -1868,9 +1874,9 @@ module.</para></listitem>
 <listitem><para>
 This interprets the next command line parameter as the file to read the
 configuration options from. The default value for this parameter is
-<filename>kdesvn-buildrc</filename> (checked in the current directory) if
-it is present, or <filename>~/.kdesvn-buildrc</filename> otherwise. See
-also <xref linkend="kdesvn-buildrc" />.
+<filename>kdesrc-buildrc</filename> (checked in the current directory) if
+it is present, or <filename>~/.kdesrc-buildrc</filename> otherwise. See
+also <xref linkend="kdesrc-buildrc" />.
 </para></listitem>
 </varlistentry>
 
@@ -1878,19 +1884,19 @@ also <xref linkend="kdesvn-buildrc" />.
 <term><parameter>--run</parameter></term>
 <listitem><para>
 This option interprets the next item on the command line as a program to run,
-and &kdesvn-build; will then finish reading the configuration file, update the
+and &kdesrc-build; will then finish reading the configuration file, update the
 environment as normal, and then execute the given program.</para>
 
-<para>This will not work to start a shell with the &kdesvn-build; environment
+<para>This will not work to start a shell with the &kdesrc-build; environment
 in most cases however, since interactive shells typically reset at least part
 of the environment variables (such as <envar>PATH</envar> and
 <envar>KDEDIRS</envar>) in the startup sequence.
 </para>
 
-<tip><para>If you want to see the environment used by &kdesvn-build;, you
+<tip><para>If you want to see the environment used by &kdesrc-build;, you
 can run the <command>printenv</command> command:</para>
 <informalexample>
-<screen>$ <command>kdesvn-build</command> <parameter>--run</parameter> <parameter>printenv</parameter>
+<screen>$ <command>kdesrc-build</command> <parameter>--run</parameter> <parameter>printenv</parameter>
 KDE_SESSION_VERSION=4
 SDL_AUDIODRIVER=alsa
 LANGUAGE=
@@ -1917,7 +1923,7 @@ may still be required.
 <varlistentry id="cmdline-revision">
 <term><parameter>--revision</parameter></term>
 <listitem><para>
-This option causes &kdesvn-build; to checkout a specific numbered revision
+This option causes &kdesrc-build; to checkout a specific numbered revision
 for each &subversion; module, overriding any <link linkend="conf-branch">branch</link>,
 <link linkend="conf-tag">tag</link>, or <link linkend="conf-revision">revision</link>
 options already set for these modules.</para>
@@ -1930,7 +1936,7 @@ compatibility with older scripts.
 <varlistentry id="cmdline-build-system-only">
 <term><parameter>--build-system-only</parameter></term>
 <listitem><para>
-This option causes &kdesvn-build; to abort building a module just before
+This option causes &kdesrc-build; to abort building a module just before
 the <command>make</command> command would have been run. This is supported
 for compatibility with older versions only, this effect is not helpful for
 the current &kde; build system.
@@ -1949,7 +1955,7 @@ the last run).
 
 <varlistentry id="cmdline-purge-old-logs"><term><parameter>--purge-old-logs</parameter></term>
 <listitem><para>
-This option causes &kdesvn-build; to delete unneeded log directories after
+This option causes &kdesrc-build; to delete unneeded log directories after
 the build, to save disk space. All log directories that are not needed to
 satisfy a link from <filename>log/latest</filename> will be deleted. This is disabled
 by default. To enable this option by default, see the <link linkend="conf-purge-old-logs">purge-old-logs</link>
@@ -1959,7 +1965,7 @@ option.
 
 <varlistentry id="cmdline-no-snapshots"><term><parameter>--no-snapshots</parameter></term>
 <listitem><para>
-Supplying this option causes &kdesvn-build; to always prefer a &subversion;
+Supplying this option causes &kdesrc-build; to always prefer a &subversion;
 initial checkout of a module instead of using a &subversion; module snapshot.
 </para>
 
@@ -1998,33 +2004,33 @@ Please, do not mix building with installing.
 
 </chapter>
 
-<chapter id="using-kdesvn-build">
-<title>Using &kdesvn-build;</title>
+<chapter id="using-kdesrc-build">
+<title>Using &kdesrc-build;</title>
 
-<sect1 id="using-kdesvn-build-preface">
+<sect1 id="using-kdesrc-build-preface">
 <title>Preface</title>
 
-<para>Normally using &kdesvn-build; after you have gone through <xref linkend="getting-started" />
+<para>Normally using &kdesrc-build; after you have gone through <xref linkend="getting-started" />
 is as easy as doing the following from a terminal prompt:</para>
 
 <screen>
-<prompt>&percnt;</prompt> <command><userinput>kdesvn-build</userinput></command>
+<prompt>&percnt;</prompt> <command><userinput>kdesrc-build</userinput></command>
 </screen>
 
-<para>&kdesvn-build; will then download the sources for &kde;, try to configure
+<para>&kdesrc-build; will then download the sources for &kde;, try to configure
 and build them, and then install them.</para>
 
-<para>Read on to discover how &kdesvn-build; does this, and what else you can
+<para>Read on to discover how &kdesrc-build; does this, and what else you can
 do with this tool.</para>
 
 </sect1>
 
 <sect1 id="basic-features">
-<title>Basic &kdesvn-build; features</title>
+<title>Basic &kdesrc-build; features</title>
 
 <sect2 id="using-qt-copy">
 <title>qt-copy support</title>
-<para>&kdesvn-build; supports building the &Qt; toolkit used by &kde; software
+<para>&kdesrc-build; supports building the &Qt; toolkit used by &kde; software
 as a convenience to users. This support is handled by a special module named
 qt-copy.</para>
 
@@ -2037,7 +2043,7 @@ url="http://qt.gitorious.org/qt">http://qt.gitorious.org/qt</ulink>.</para></not
 like to install &Qt; to, as described in <xref linkend="configure-data"/>.</para>
 
 <para>You should then ensure that the qt-copy module is added to
-your <filename>.kdesvn-buildrc</filename>, before any other modules in the
+your <filename>.kdesrc-buildrc</filename>, before any other modules in the
 file. If you are using the sample configuration file, you can simply
 uncomment the existing qt-copy module entry.</para>
 
@@ -2065,14 +2071,14 @@ option to
 like to build a different branch).</para>
 
 <note><para>In some cases the underlying source control software is unable to
-work when run from &kdesvn-build;, but will still work fine when run from the
+work when run from &kdesrc-build;, but will still work fine when run from the
 command prompt. This bug is still under investigation.</para></note>
 
 </sect2>
 
-<sect2 id="kdesvn-build-std-flags">
-<title>Standard flags added by &kdesvn-build;</title>
-<para>To save you time, &kdesvn-build; adds some standard paths to your
+<sect2 id="kdesrc-build-std-flags">
+<title>Standard flags added by &kdesrc-build;</title>
+<para>To save you time, &kdesrc-build; adds some standard paths to your
 environment for you:
 </para>
 
@@ -2110,48 +2116,48 @@ environment variable while building.
 </sect2>
 
 <sect2 id="build-priority">
-<title>Changing &kdesvn-build;'s build priority</title>
+<title>Changing &kdesrc-build;'s build priority</title>
 <para>Programs can run with different priority levels on Operating Systems,
 including &Linux; and &BSD;. This allows the system to allocate time for the
 different programs in accordance with how important they are.
 </para>
 
-<para>&kdesvn-build; will normally allocate itself a low priority so that the
+<para>&kdesrc-build; will normally allocate itself a low priority so that the
 rest of the programs on your system are unaffected and can run normally.
-Using this technique, &kdesvn-build; will use extra CPU when it is available.
+Using this technique, &kdesrc-build; will use extra CPU when it is available.
 </para>
 
-<para>&kdesvn-build; will still maintain a high enough priority level so that
+<para>&kdesrc-build; will still maintain a high enough priority level so that
 it runs before routine batch processes and before CPU donation programs
 such as <ulink url="http://setiathome.ssl.berkeley.edu/">Seti@Home</ulink>.
 </para>
 
-<para>To alter &kdesvn-build; so that it uses a higher (or lower) priority
+<para>To alter &kdesrc-build; so that it uses a higher (or lower) priority
 level permanently, then you need to adjust the &niceness; setting in the <link
 linkend="configure-data">configuration file</link>. The &niceness; setting
-controls how <quote>nice</quote> &kdesvn-build; is to other programs. In other
-words, having a higher &niceness; gives &kdesvn-build; a lower priority. So to
-give &kdesvn-build; a higher priority, reduce the &niceness; (and vice versa).
+controls how <quote>nice</quote> &kdesrc-build; is to other programs. In other
+words, having a higher &niceness; gives &kdesrc-build; a lower priority. So to
+give &kdesrc-build; a higher priority, reduce the &niceness; (and vice versa).
 The &niceness; can go from 0 (not nice at all, highest priority) to 20 (super
 nice, lowest priority).</para>
 
-<para>You can also temporarily change the priority for &kdesvn-build; by using
+<para>You can also temporarily change the priority for &kdesrc-build; by using
 the &cmd-nice; <link linkend="cmdline">command line option</link>. The value to
 the option is used exactly the same as for &niceness;.</para>
 
 <note><para>It is possible for some programs run by the super user to have a
 negative nice value, with a correspondingly even higher priority for such
-programs. Setting a negative (or even 0) &niceness; for &kdesvn-build; is not
+programs. Setting a negative (or even 0) &niceness; for &kdesrc-build; is not
 a great idea, as it will not help run time significantly, but will make your
 computer seem very sluggish should you still need to use it.
 </para></note>
 
 <informalexample>
-<para>To run &kdesvn-build; with a niceness of 15 (a lower priority than
+<para>To run &kdesrc-build; with a niceness of 15 (a lower priority than
 normal):</para>
 
 <screen>
-<prompt>&percnt;</prompt> <userinput><command>kdesvn-build</command> <option>--nice=<replaceable>15</replaceable></option></userinput>
+<prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--nice=<replaceable>15</replaceable></option></userinput>
 </screen>
 
 <para>Or, you can edit the <link linkend="configure-data">configuration file</link> to make the change permanent:</para>
@@ -2167,11 +2173,11 @@ usage of the computer's processor(s). One other major affect on computer
 performance relates to how much data input or output (<acronym>I/O</acronym>) a
 program uses. In order to control how much <acronym>I/O</acronym> a program can
 use, modern &Linux; operating systems support a similar tool called
-<application>ionice</application>. &kdesvn-build; supports
+<application>ionice</application>. &kdesrc-build; supports
 <application>ionice</application>, (but only to enable or disable it
 completely) using the <link
 linkend="conf-use-idle-io-priority">use-idle-io-priority</link> option,
-since &kdesvn-build; version 1.12.
+since &kdesrc-build; version 1.12.
 </para>
 </tip>
 
@@ -2179,7 +2185,7 @@ since &kdesvn-build; version 1.12.
 
 <sect2 id="root-installation">
 <title>Installation as the superuser</title>
-<para>You may wish to have &kdesvn-build; run the installation with super user
+<para>You may wish to have &kdesrc-build; run the installation with super user
 privileges. This may be for the unrecommended system-wide installation.
 This is also useful when using a recommended single user &kde; build, however.
 This is because some modules (especially kdebase) install programs that will
@@ -2187,12 +2193,12 @@ briefly need elevated permissions when run. They are not able to achieve these
 permission levels unless they are installed with the elevated permissions.
 </para>
 
-<para>You could simply run &kdesvn-build; as the super user directly, but this
+<para>You could simply run &kdesrc-build; as the super user directly, but this
 is not recommended, since the program has not been audited for that kind of use.
 Although it should be safe to run the program in this fashion, it is better to
 avoid running as the super user when possible.</para>
 
-<para>To take care of this, &kdesvn-build; provides the &make-install-prefix;
+<para>To take care of this, &kdesrc-build; provides the &make-install-prefix;
 option. You can use this option to specify a command to use to perform the
 installation as another user. The recommended way to use this command is with
 the &sudo; program, which will run the install command as the super user.
@@ -2239,7 +2245,7 @@ build a module.
 <sect2 id="partial-builds">
 <title>Partially building a module</title>
 <para>It is possible to build only pieces from a single &kde; module. For
-example, you may want to compile only one program from a module. &kdesvn-build;
+example, you may want to compile only one program from a module. &kdesrc-build;
 has features to make this easy. There are several complementing ways to
 do this.
 </para>
@@ -2248,7 +2254,7 @@ do this.
 <title>Checking out portions of a module</title>
 
 <para>This is perhaps the best way to do this. When it works, it will save you
-download time and disk space. What happens is that &kdesvn-build; will download
+download time and disk space. What happens is that &kdesrc-build; will download
 only the parts of a module that you specify. This is done using the &checkout-only;
 option for a module, which will specify a list of directories to download.
 </para>
@@ -2282,10 +2288,10 @@ adding directories to the option to figure out.</para>
 </important>
 
 <para>One final note to make about this option: If you change the value of this
-option, you should use <userinput><command>kdesvn-build</command>
+option, you should use <userinput><command>kdesrc-build</command>
 <option>&cmd-refresh-build;</option> <option><replaceable>module</replaceable></option></userinput>
 in order to ensure that the module is reconfigured properly. In addition,
-&kdesvn-build; will never remove existing files if you take away the number of
+&kdesrc-build; will never remove existing files if you take away the number of
 directories from your &checkout-only; option, or add the option to a module that
 has already been checked out.</para>
 
@@ -2306,7 +2312,7 @@ directories that should not be compiled.</para>
 <important><para>
 Also like &checkout-only;, this option requires at least that the
 <command>configure</command> script is run again for the module after changing
-it. This is done using the <userinput><command>kdesvn-build</command>
+it. This is done using the <userinput><command>kdesrc-build</command>
 <option>&cmd-reconfigure;</option>
 <option><replaceable>module</replaceable></option></userinput> command.
 </para></important>
@@ -2326,7 +2332,7 @@ end module
 </sect2>
 
 <sect2 id="using-branches">
-<title>Branching and tagging support for &kdesvn-build;</title>
+<title>Branching and tagging support for &kdesrc-build;</title>
 
 <sect3 id="branches-and-tags">
 <title>What are branches and tags?</title>
@@ -2350,7 +2356,7 @@ work on the code.
 
 <para>In &subversion;, there is no difference between branches, tags, or trunk within
 the code. It is only a convention used by the developers. This makes it
-difficult to properly support branches and tags within &kdesvn-build;. However,
+difficult to properly support branches and tags within &kdesrc-build;. However,
 there are some things that can be done.
 </para>
 
@@ -2366,7 +2372,7 @@ for advanced users.
 
 <para>The easiest method is to use the &branch; and &tag; options. You simply
 use the option along with the name of the desired branch or tag for a module,
-and &kdesvn-build; will try to determine the appropriate location within the
+and &kdesrc-build; will try to determine the appropriate location within the
 &kde; repository to download from. For most &kde; modules this works very
 well.</para>
 
@@ -2400,15 +2406,15 @@ to specify a different branch for modules that should not use the global branch!
 <sect3 id="advanced-branches">
 <title>Advanced branch support options</title>
 
-<para>&kdesvn-build; supports two options for situations where &branch; and &tag;
+<para>&kdesrc-build; supports two options for situations where &branch; and &tag;
 guess the correct path improperly: &module-base-path; and &override-url;.
 </para>
 
 <itemizedlist>
 <listitem><para>
-&module-base-path; is used to help &kdesvn-build; fill in the missing part of
+&module-base-path; is used to help &kdesrc-build; fill in the missing part of
 a module's path. In the &kde; repository, all of the paths are of the form
-<filename class="directory">svnRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesvn-build;
+<filename class="directory">svnRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesrc-build;
 can figure out the appropriate middle part by itself. When it cannot, you can use
 &module-base-path;, like this:
 </para>
@@ -2422,26 +2428,26 @@ module kdesupport
 end module
 </screen>
 
-<para>This would cause &kdesvn-build; to download kdesupport from (in this example),
+<para>This would cause &kdesrc-build; to download kdesupport from (in this example),
 <filename>svn://anonsvn.kde.org/home/kde/<replaceable>tags/kdesupport-for-4.5</replaceable></filename>.
 </para>
 </informalexample>
-<tip><para>In previous versions of &kdesvn-build;, the &module-base-path; was
+<tip><para>In previous versions of &kdesrc-build;, the &module-base-path; was
 handled differently. If you encounter trouble using an old module-base-path
-definition perhaps you should verify that the actual path is as &kdesvn-build;
+definition perhaps you should verify that the actual path is as &kdesrc-build;
 expects by using the <link linkend="cmdline-pretend">--pretend</link> option.
 </para></tip>
 </listitem>
 
 <listitem><para>The &override-url; option, on the other hand, requires you to
 specify the exact path to download from. However, this allows you to pull from
-paths that previous versions of &kdesvn-build; would have no hope of downloading from.
+paths that previous versions of &kdesrc-build; would have no hope of downloading from.
 Currently, the &module-base-path; option should be sufficient for any Subversion
 source URL.
 </para>
 
 <important><para>
-&kdesvn-build; will not touch or correct the value you specify for &override-url;
+&kdesrc-build; will not touch or correct the value you specify for &override-url;
 at all, so if you change your &svn-server; setting, you may need to update this
 as well.
 </para></important>
@@ -2454,27 +2460,27 @@ as well.
 </sect2>
 
 <sect2 id="building-successfully">
-<title>How &kdesvn-build; tries to ensure a successful build</title>
+<title>How &kdesrc-build; tries to ensure a successful build</title>
 
 <sect3 id="automatic-rebuilds">
 <title>Automatic rebuilds</title>
 
-<para>&kdesvn-build; used to include features to automatically attempt to
+<para>&kdesrc-build; used to include features to automatically attempt to
 rebuild the module after a failure (as sometimes this re-attempt would work,
 due to bugs in the build system at that time). Thanks to switching to &cmake;
-the build system no longer suffers from these bugs, and so &kdesvn-build; will
+the build system no longer suffers from these bugs, and so &kdesrc-build; will
 not try to build a module more than once. There are situations where
-&kdesvn-build; will automatically take action though:</para>
+&kdesrc-build; will automatically take action though:</para>
 
 <itemizedlist>
 
 <listitem><para>If you change <link linkend="conf-configure-flags">configure-flags</link>
 or <link linkend="conf-cmake-options">cmake-options</link> for a module, then
-&kdesvn-build; will detect that and automatically re-run configure or cmake
+&kdesrc-build; will detect that and automatically re-run configure or cmake
 for that module.</para></listitem>
 
-<listitem><para>If the buildsystem does not exist (even if &kdesvn-build; did
-not delete it) then &kdesvn-build; will automatically re-create it. This is
+<listitem><para>If the buildsystem does not exist (even if &kdesrc-build; did
+not delete it) then &kdesrc-build; will automatically re-create it. This is
 useful to allow for performing a full <link
 linkend="cmdline-refresh-build">--refresh-build</link> for a specific module
 without having that performed on other modules.</para></listitem>
@@ -2486,17 +2492,17 @@ without having that performed on other modules.</para></listitem>
 <sect3 id="manual-rebuilds">
 <title>Manually rebuilding a module</title>
 <para>If you make a change to a module's option settings, or the module's
-source code changes in a way &kdesvn-build; does not recognize, you may need to
+source code changes in a way &kdesrc-build; does not recognize, you may need to
 manually rebuild the module.</para>
 
-<para>You can do this by simply running <userinput><command>kdesvn-build</command>
+<para>You can do this by simply running <userinput><command>kdesrc-build</command>
  <option>--refresh-build</option> <option><replaceable>module</replaceable></option></userinput>.
 </para>
 
-<para>If you would like to have &kdesvn-build; automatically rebuild the module
+<para>If you would like to have &kdesrc-build; automatically rebuild the module
 during the next normal build update instead, you can create a special file.
 Every module has a build directory. If you create a file called <filename>.refresh-me</filename>
-in the build directory for a module, &kdesvn-build; will rebuild the module
+in the build directory for a module, &kdesrc-build; will rebuild the module
 next time the build process occurs, even if it would normally perform the
 faster incremental build.</para>
 
@@ -2510,7 +2516,7 @@ If you change the setting of the &build-dir; option, then use that instead of
 <para>Rebuild using <filename>.refresh-me</filename> for module <replaceable>arts</replaceable>:</para>
 <screen>
 <prompt>%</prompt> <userinput><command>touch</command> <filename class="directory">~/kdesvn/build/<replaceable>arts</replaceable>.refresh-me</filename></userinput>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command></userinput>
 </screen>
 </informalexample>
 </sect3>
@@ -2519,13 +2525,13 @@ If you change the setting of the &build-dir; option, then use that instead of
 
 <sect2 id="changing-environment">
 <title>Changing environment variable settings</title>
-<para>Normally &kdesvn-build; uses the environment that is present when
+<para>Normally &kdesrc-build; uses the environment that is present when
 starting up when running programs to perform updates and builds. This is useful
-for when you are running &kdesvn-build; from the command line.</para>
+for when you are running &kdesrc-build; from the command line.</para>
 
 <para>However, you may want to change the setting for environment variables
-that &kdesvn-build; does not provide an option for directly. (For instance,
-to setup any required environment variables when running &kdesvn-build; on
+that &kdesrc-build; does not provide an option for directly. (For instance,
+to setup any required environment variables when running &kdesrc-build; on
 a timer such as &cron;) This is possible with the &set-env; option.</para>
 
 <para>Unlike most options, it can be set more than once, and it accepts two
@@ -2550,7 +2556,7 @@ end global
 <sect3 id="resuming-failed">
 <title>Resuming a failed or canceled build</title>
 
-<para>You can tell &kdesvn-build; to start building from a different module
+<para>You can tell &kdesrc-build; to start building from a different module
 than it normally would. This can be useful when a set of modules failed, or
 if you canceled a build run in the middle. You can control this using the
 &cmd-resume-from; option and the &cmd-resume-after; option.</para>
@@ -2562,7 +2568,7 @@ update.</para> </note>
 <para>Resuming the build starting from kdebase:</para>
 
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--resume-from=<replaceable>kdebase</replaceable></option></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--resume-from=<replaceable>kdebase</replaceable></option></userinput>
 </screen>
 </informalexample>
 
@@ -2571,7 +2577,7 @@ update.</para> </note>
 the issue and installed the module yourself):</para>
 
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--resume-after=<replaceable>kdebase</replaceable></option></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--resume-after=<replaceable>kdebase</replaceable></option></userinput>
 </screen>
 </informalexample>
 
@@ -2585,13 +2591,13 @@ build from a module</link>, you can instead choose to update and build everythin
 normally, but ignore a set of modules.</para>
 
 <para>You can do this using the &cmd-ignore-modules; option. This option tells
-&kdesvn-build; to ignore all the modules on the command line when
+&kdesrc-build; to ignore all the modules on the command line when
 performing the update and build.</para>
 
 <informalexample>
 <para>Ignoring extragear/multimedia and kdereview during a full run:</para>
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdereview</replaceable></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--ignore-modules</option> <replaceable>extragear/multimedia kdereview</replaceable></userinput>
 </screen>
 </informalexample>
 
@@ -2608,9 +2614,9 @@ from the command line. This change will override the configuration file
 setting, but is only temporary. It only takes effect as long as it is still
 present on the command line.</para>
 
-<para>&kdesvn-build; allows you to change options named like <replaceable>option-name</replaceable>
+<para>&kdesrc-build; allows you to change options named like <replaceable>option-name</replaceable>
 by passing an argument on the command line in the form <userinput><option>--<replaceable>option-name</replaceable>=value</option></userinput>.
-&kdesvn-build; will recognize whether it does not know what the option is, and search
+&kdesrc-build; will recognize whether it does not know what the option is, and search
 for the name in its list of option names. If it does not recognize the name, it
 will warn you, otherwise it will remember the value you set it to and override
 any setting from the configuration file.</para>
@@ -2620,7 +2626,7 @@ any setting from the configuration file.</para>
 testing:</para>
 
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--pretend</option> <option>--<replaceable>source-dir</replaceable>=<replaceable>/dev/null</replaceable></option></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--pretend</option> <option>--<replaceable>source-dir</replaceable>=<replaceable>/dev/null</replaceable></option></userinput>
 </screen>
 
 </informalexample>
@@ -2640,7 +2646,7 @@ syntax is similar: --<replaceable>module</replaceable>,<replaceable>option-name<
 <para>Using a different build directory for the kdeedu module:</para>
 
 <screen>
-<prompt>%</prompt> <userinput><command>kdesvn-build</command> <option>--<replaceable>kdeedu</replaceable>,<replaceable>build-dir</replaceable>=<replaceable>temp-build</replaceable></option></userinput>
+<prompt>%</prompt> <userinput><command>kdesrc-build</command> <option>--<replaceable>kdeedu</replaceable>,<replaceable>build-dir</replaceable>=<replaceable>temp-build</replaceable></option></userinput>
 </screen>
 
 </informalexample>
@@ -2656,11 +2662,11 @@ syntax is similar: --<replaceable>module</replaceable>,<replaceable>option-name<
 
 <sect2 id="ssh-agent-reminder">
 <title>&ssh; Agent checks</title>
-<para>&kdesvn-build; can ensure that &kde; developers that use &ssh; to
+<para>&kdesrc-build; can ensure that &kde; developers that use &ssh; to
 access the &kde; source repository do not accidentally forget to leave the
-&ssh; Agent tool enabled. This can cause &kdesvn-build; to hang indefinitely
+&ssh; Agent tool enabled. This can cause &kdesrc-build; to hang indefinitely
 waiting for the developer to type in their &ssh; password,
-so by default &kdesvn-build; will check if the Agent is running before
+so by default &kdesrc-build; will check if the Agent is running before
 performing source updates.
 </para>
 
@@ -2670,7 +2676,7 @@ handle passwords for the second possible protocol for &kde; developers, https.
 </para></note>
 
 <para>You may wish to disable the &ssh; Agent check, in case of situations where
-&kdesvn-build; is mis-detecting the presence of an agent. To disable the
+&kdesrc-build; is mis-detecting the presence of an agent. To disable the
 agent check, set the <option>disable-agent-check</option> option to
 <replaceable>true</replaceable>.</para>
 
@@ -2688,38 +2694,38 @@ end global
 </sect1>
 
 <sect1 id="other-features">
-<title>Other &kdesvn-build; features</title>
+<title>Other &kdesrc-build; features</title>
 
 <sect2 id="changing-verbosity">
-<title>Changing the amount of output from &kdesvn-build;</title>
-<para>&kdesvn-build; has several options to control the amount of output the
+<title>Changing the amount of output from &kdesrc-build;</title>
+<para>&kdesrc-build; has several options to control the amount of output the
 script generates. In any case, errors will always be output.</para>
 
 <itemizedlist>
 <listitem><para>The <option>--quiet</option> option (short form is
-<option>-q</option>) causes &kdesvn-build; to be mostly silent. Only important
+<option>-q</option>) causes &kdesrc-build; to be mostly silent. Only important
 messages, warnings, or errors will be shown. When available, build progress
 information is still shown.</para></listitem>
 
 <listitem><para>The <option>--really-quiet</option> option (no short form)
-causes &kdesvn-build; to only display important warnings or errors while it is
+causes &kdesrc-build; to only display important warnings or errors while it is
 running.</para></listitem>
 
 <listitem><para>The <option>--verbose</option> option (short form is
-<option>-v</option>) causes &kdesvn-build; to be very detailed in its
+<option>-v</option>) causes &kdesrc-build; to be very detailed in its
 output.</para></listitem>
 
 <listitem><para>The <option>--debug</option> option is for debugging purposes
-only, it causes &kdesvn-build; to act as if <option>--verbose</option> was
+only, it causes &kdesrc-build; to act as if <option>--verbose</option> was
 turned on, causes commands to also output to the terminal, and will display
 debugging information for many functions.</para></listitem>
 </itemizedlist>
 
 </sect2>
 
-<sect2 id="kdesvn-build-color">
+<sect2 id="kdesrc-build-color">
 <title>Color output</title>
-<para>When being run from &konsole; or a different terminal, &kdesvn-build;
+<para>When being run from &konsole; or a different terminal, &kdesrc-build;
 will normally display with colorized text.</para>
 
 <para>You can disable this by using the <option>--no-color</option> on the
@@ -2740,12 +2746,12 @@ end global
 
 <sect2 id="email-reports">
 <title>E-mailing build failure reports</title>
-<para>&kdesvn-build; can send a e-mail report to an e-mail address of your
+<para>&kdesrc-build; can send a e-mail report to an e-mail address of your
 choice when a module fails to build for whatever reason. The way it works
-is that you choose an e-mail address that &kdesvn-build; will send from,
+is that you choose an e-mail address that &kdesrc-build; will send from,
 and an e-mail address to notify when there is an error.</para>
 
-<para>&kdesvn-build; will then, at the end of a complete run, construct an
+<para>&kdesrc-build; will then, at the end of a complete run, construct an
 e-mail if there were any modules that failed to build. The e-mail will contain
 an abbreviated failure log for each module. Only one e-mail is sent for a
 run, even if 15 modules failed to build.
@@ -2753,12 +2759,12 @@ run, even if 15 modules failed to build.
 
 <para>This feature is not enabled by default. To enable it, you need to set
 both the &email-address; and &email-on-compile-error; options. <option>email-address</option>
-controls the address &kdesvn-build; sends from, and <option>email-on-compile-error</option>
+controls the address &kdesrc-build; sends from, and <option>email-on-compile-error</option>
 controls where to send the e-mail message to.
 </para>
 
 <tip>
-<para>&kdesvn-build; uses the Perl-standard Mail::Mailer module to send e-mail.
+<para>&kdesrc-build; uses the Perl-standard Mail::Mailer module to send e-mail.
 It is included with Perl 5.8, and is installable with Perl 5.6. Mail::Mailer
 supports <application>Sendmail</application> (including <application>Sendmail</application>-compatible
 e-mail clients), native <acronym>SMTP</acronym> transport, and <application>qmail</application>.
@@ -2770,7 +2776,7 @@ e-mail clients), native <acronym>SMTP</acronym> transport, and <application>qmai
 
 <screen>
 global
-  email-address          foo@example.com    # From: address for any kdesvn-build e-mail
+  email-address          foo@example.com    # From: address for any kdesrc-build e-mail
   email-on-compile-error bar@example.com    # To: address for build failure e-mail
 end global
 </screen>
@@ -2781,22 +2787,22 @@ end global
 <sect2 id="deleting-build-dir">
 <title>Removing unneeded directories after a build</title>
 <para>Are you short on disk space but still want to run a bleeding-edge
-&kde; checkout?  &kdesvn-build; can help reduce your disk usage when building
+&kde; checkout?  &kdesrc-build; can help reduce your disk usage when building
 &kde; from &subversion;.</para>
 
 <note><para>Be aware that building &kde; does take a lot of space. There are
-several major space-using pieces when using &kdesvn-build;:</para></note>
+several major space-using pieces when using &kdesrc-build;:</para></note>
 
 <orderedlist>
 <listitem><para>The actual source checkout can take up a fair amount of space.
 The default modules take up about 1.6 gigabytes of on-disk space. You can reduce
 this amount by making sure that you are only building as many modules as you
-actually want. &kdesvn-build; will not delete source code from disk even if you
+actually want. &kdesrc-build; will not delete source code from disk even if you
 delete the entry from the <link linkend="configure-data">configuration file</link>, so make sure that you go and delete unused
 source checkouts from the source directory. Note that the source files are
 downloaded from the Internet, you <emphasis>should not</emphasis> delete them
 if you are actually using them, at least until you are done using
-&kdesvn-build;.</para>
+&kdesrc-build;.</para>
 
 <para>Also, if you already have a &Qt; installed by your distribution (and
 the odds are good that you do), you probably do not need to install the
@@ -2804,15 +2810,15 @@ qt-copy module. That will shave about 200 megabytes off of the on-disk source
 size.</para>
 
 <para>One thing to note is that due to the way &subversion; works: there are actually
-two files on disk for every file checked-out from the repository. &kdesvn-build;
+two files on disk for every file checked-out from the repository. &kdesrc-build;
 does not have code at this point to try and minimize the source size when the
 source is not being used.
 </para>
 </listitem>
 
 <listitem>
-<para>&kdesvn-build; will create a separate build directory to build the source
-code in. Sometimes &kdesvn-build; will have to copy a source directory to
+<para>&kdesrc-build; will create a separate build directory to build the source
+code in. Sometimes &kdesrc-build; will have to copy a source directory to
 create a fake build directory. When this happens, space-saving symlinks are
 used, so this should not be a hassle on disk space. The build directory will
 typically be much larger than the source directory for a module. For example,
@@ -2820,10 +2826,10 @@ the build directory for kdebase is about 1050 megabytes, whereas kdebase's
 source is only around 550 megabytes.</para>
 
 <para>Luckily, the build directory is not required after a module has
-successfully been built and installed. &kdesvn-build; can automatically
+successfully been built and installed. &kdesrc-build; can automatically
 remove the build directory after installing a module, see the examples below
 for more information. Note that taking this step will make it impossible
-for &kdesvn-build; to perform the time-saving incremental builds.</para>
+for &kdesrc-build; to perform the time-saving incremental builds.</para>
 </listitem>
 
 <listitem><para>
@@ -2895,14 +2901,14 @@ Basically, instead of running <userinput><command>make</command> <option>-f</opt
 then &make;, we simply run &cmake; and then &make;.
 </para>
 
-<para>&kdesvn-build; has support for &cmake;. A few features of &kdesvn-build;
+<para>&kdesrc-build; has support for &cmake;. A few features of &kdesrc-build;
 were really features of the underlying buildsystem, including
 <link linkend="conf-configure-flags">configure-flags</link>
 and <link linkend="conf-do-not-compile">do-not-compile</link>. When equivalent
 features are available, they are provided. For instance, the equivalent to the
 configure-flags option is <link linkend="conf-cmake-options">cmake-options</link>, and the
 <link linkend="conf-do-not-compile">do-not-compile</link> option is also supported for &cmake;
-as of &kdesvn-build; version 1.6.3.
+as of &kdesrc-build; version 1.6.3.
 </para>
 
 </sect1>
