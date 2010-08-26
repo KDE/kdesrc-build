@@ -110,7 +110,7 @@ our %package_opts = (
     "prefix"              => "", # Override installation prefix.
     "pretend"             => "",
     "purge-old-logs"      => 0,
-    "qtdir"               => "$ENV{HOME}/kdesvn/build/qt-copy",
+    "qtdir"               => "$ENV{HOME}/kdesrc/build/qt-copy",
     "reconfigure"         => "",
     "refresh-build"       => "",
     "remove-after-install"=> "none", # { none, builddir, all }
@@ -118,7 +118,7 @@ our %package_opts = (
     "revision"            => 0,
     "run-tests"           => 0,
     "set-env"             => { }, # Hash of environment vars to set
-    "source-dir"          => "$ENV{HOME}/kdesvn",
+    "source-dir"          => "$ENV{HOME}/kdesrc",
     "stop-on-failure"     => "",
     "svn-server"          => "svn://anonsvn.kde.org/home/kde",
     "tag"                 => "",
@@ -1211,15 +1211,15 @@ sub has_base_module
 # For example, with $module == 'KDE/kdelibs', and no change in the dest-dir
 # option, you'd get something like:
 # {
-#   'path'     => '/home/user/kdesvn/KDE',
+#   'path'     => '/home/user/kdesrc/KDE',
 #   'module'   => 'kdelibs',
-#   'fullpath' => '/home/user/kdesvn/KDE/kdelibs'
+#   'fullpath' => '/home/user/kdesrc/KDE/kdelibs'
 # }
 # If dest-dir were changed to e.g. extragear-multimedia, you'd get:
 # {
-#   'path'     => '/home/user/kdesvn',
+#   'path'     => '/home/user/kdesrc',
 #   'module'   => 'extragear-multimedia',
-#   'fullpath' => '/home/user/kdesvn/extragear-multimedia'
+#   'fullpath' => '/home/user/kdesrc/extragear-multimedia'
 # }
 # First parameter is the module.
 # Second parameter is either source or build.
@@ -4081,7 +4081,7 @@ sub install_signal_handler
 # handling separate tasks.
 sub get_lock
 {
-    my $lockfile = "$ENV{HOME}/.kdesvn-lock";
+    my $lockfile = "$ENV{HOME}/.kdesrc-lock";
     $! = 0; # Force reset to non-error status
     sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
     my $errorCode = $!; # Save for later testing.
@@ -4178,7 +4178,7 @@ sub get_lock
 # Subroutine to free the lock allocated by get_lock()
 sub close_lock
 {
-    my $lockfile = "$ENV{HOME}/.kdesvn-lock";
+    my $lockfile = "$ENV{HOME}/.kdesrc-lock";
 
     close LOCKFILE;
     unlink $lockfile;
