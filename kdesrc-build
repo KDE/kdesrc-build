@@ -2737,14 +2737,24 @@ sub default_module_branch
 {
     # Add the appropriate branch to this hash for stable modules.  Any module not listed
     # here will default to global{'branch'}.
+    # tags/ is special as a returned module prefix as it is converted to be a
+    # tag internally instead of a branch.
     my %branched_modules_exceptions = (
+        # Don't integrate these kdesupport tags with the code near the end of this
+        # function as the naming conventions are actually slightly different.
         '4.0' => {
-            'kdesupport' => 'tags/kdesupport-for-4.1', # See below.
+            'kdesupport' => 'tags/kdesupport-for-4.1/kdesupport', # See below.
             'phonon'     => '4.2',   # Weird, I know.
         },
         '4.1' => {
-            'kdesupport' => 'tags/kdesupport-for-4.1', # tags/ is special here (i.e. no branch)
+            'kdesupport' => 'tags/kdesupport-for-4.1/kdesupport',
             'phonon'     => '4.2',   # Weird, I know.
+        },
+        '4.2' => {
+            'kdesupport' => 'tags/kdesupport-for-4.2/kdesupport',
+        },
+        '4.3' => {
+            'kdesupport' => 'tags/kdesupport-for-4.3/kdesupport',
         },
     );
 
@@ -2753,7 +2763,6 @@ sub default_module_branch
 
     my $module = shift;
     my $branch = get_option('global', 'branch');
-    my $default = '';
 
     # Using git? Default to master for now.
     return 'master' if module_scm_type($module) eq 'git';
@@ -2762,16 +2771,20 @@ sub default_module_branch
     # return the default. (We search against regexps instead of module names here)
     if (scalar grep { $module =~ $_ } @unbranched_modules)
     {
-        return $default;
+        return '';
     }
-
-    # Prefer branch settings, fallback to default.
-    $branch = $branch ? $branch : $default;
 
     # Some modules have a different branch name for a given KDE version, handle that.
     if (exists $branched_modules_exceptions{$branch}->{$module})
     {
         return $branched_modules_exceptions{$branch}->{$module};
+    }
+
+    # kdesupport uses a naming convention to tag required kdesupport software for
+    # a release, see if we're supposed to fall under that.
+    if ($module eq 'kdesupport' && $branch =~ /^\d\.\d*$/)
+    {
+        return "tags/kdesupport-for-$branch";
     }
 
     return $branch;
