@@ -1133,7 +1133,9 @@ setting this as a global option makes no sense.
 </para>
 
 <para>Note that this setting has no effect on &git; modules due to the
-operation of the &git; source control system.</para></entry>
+operation of the &git; source control system.</para>
+
+<para>See <xref linkend="checking-out-parts"/> for an example.</para></entry>
 </row>
 
 <row id="conf-cmake-options">
@@ -1160,6 +1162,16 @@ option blank. (In other words, <emphasis>required</emphasis> &cmake; parameters
 are set for you automatically)</para></entry>
 </row>
 
+<row id="conf-colorful-output">
+<entry>colorful-output</entry>
+<entry>Cannot be overridden</entry>
+<entry>Set this option to <replaceable>false</replaceable> to disable the colorful output of &kdesrc-build;.
+This option defaults to <replaceable>true</replaceable>. Note that &kdesrc-build; will not output the
+color codes to anything but a terminal (such as xterm, &konsole;, or the normal
+&Linux; console).
+</entry>
+</row>
+
 <row id="conf-configure-flags">
 <entry>configure-flags</entry>
 <entry>Overrides global</entry>
@@ -1171,16 +1183,6 @@ only works for qt-copy.</emphasis></para>
 <para>To change configuration settings for KDE 4 modules, see
 <link linkend="conf-cmake-options">cmake-options</link>.
 </para>
-</entry>
-</row>
-
-<row id="conf-colorful-output">
-<entry>colorful-output</entry>
-<entry>Cannot be overridden</entry>
-<entry>Set this option to <replaceable>false</replaceable> to disable the colorful output of &kdesrc-build;.
-This option defaults to <replaceable>true</replaceable>. Note that &kdesrc-build; will not output the
-color codes to anything but a terminal (such as xterm, &konsole;, or the normal
-&Linux; console).
 </entry>
 </row>
 
@@ -1237,6 +1239,8 @@ directive to choose directories that you want to check out.</para>
 
 <para>For example, to hold &juk; and &kscd; in the kdemultimedia module from
 compiling, you would add "do-not-compile juk kscd" to your kdemultimedia settings.</para>
+
+<para>See <xref linkend="not-compiling"/> for an example.</para>
 </entry>
 </row>
 
@@ -1284,8 +1288,8 @@ This option was removed in version 1.10
 <entry>Overrides global</entry>
 <entry>This option is used to install the package after it successfully builds.
 This option is enabled by default. If you want to disable this, you need to set
-this option to 0 in the <link linkend="configure-data">configuration
-file</link>. You can also use the <link
+this option to <replaceable>false</replaceable> in the <link
+linkend="configure-data">configuration file</link>. You can also use the <link
 linkend="cmdline-no-install"><option>--no-install</option></link> command line
 flag.
 </entry>
@@ -1413,7 +1417,8 @@ linkend="conf-tag">tag</link> options instead whenever they are applicable.
 <entry>niceness</entry>
 <entry>Cannot be overridden</entry>
 <entry>Set this option to a number between 20 and 0. The higher the number, the
-lower a priority &kdesrc-build; will set for itself. The default is 10.
+lower a priority &kdesrc-build; will set for itself, i.e. the higher the
+number, the "nicer" the program is. The default is 10.
 </entry>
 </row>
 
@@ -1447,6 +1452,9 @@ cannot figure out what you mean using <link linkend="conf-branch">branch</link>.
 <entry>Overrides global</entry>
 <entry>This option controls where to install the module (normally the
 <option><link linkend="conf-kdedir">kdedir</link></option> setting is used).
+Using this option allows you to install a module to a different directory than
+where the KDE Platform libraries are installed, such as if you were using
+&kdesrc-build; only to build applications.
 </entry>
 </row>
 
@@ -1459,7 +1467,8 @@ deleted or not. The default value is <replaceable>false</replaceable>.</para>
 <para>Even if you have not set this option to true, you can manually purge the
 old log directories by running:</para>
 
-<screen>kdesrc-build --no-src --no-build --purge-old-logs kdelibs</screen>
+<command>kdesrc-build --no-src --no-build --purge-old-logs
+<replaceable>kdelibs</replaceable></command>
 
 <para>You can use any module name in the above command line, it does not have
 to be kdelibs.</para>
@@ -1550,8 +1559,8 @@ globally).</para>
 <entry>Overrides global</entry>
 <entry>This option is used to set the directory on your computer to store the &kde;
 &subversion; sources at. If you do not specify this value, the default is
-<filename class="directory">~/kdesvn</filename>. If
-you do specify this value, use an absolute path name.
+<filename class="directory">~/kdesrc</filename>. You may use the tilde (~)
+to represent the home directory if using this option.
 </entry>
 </row>
 
@@ -1567,8 +1576,12 @@ by default.
 <row id="conf-svn-server">
 <entry>svn-server</entry>
 <entry>Overrides global</entry>
-<entry>This option is used to set the server used to check out from &subversion;.
-The default is the anonymous &subversion; repository, <filename>svn://anonsvn.kde.org/</filename></entry>
+<entry><para>This option is used to set the server used to check out from &subversion;.
+The default is the anonymous &subversion; repository, <filename>svn://anonsvn.kde.org/</filename></para>
+<note><para>If you are developing for KDE, use the &subversion; repository that
+was provided to you when you received your developer account, instead of the
+anonymous repository.</para></note>
+</entry>
 </row>
 
 <row id="conf-tag">
