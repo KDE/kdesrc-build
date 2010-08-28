@@ -78,6 +78,7 @@ our %package_opts = (
   'global' => {
     "async"               => 1,
     "binpath"             => $ENV{'PATH'},
+    "build-when-unchanged"=> 1, # Safe default
     "branch"              => "",
     "build-dir"           => "build",
     "build-system-only"   => "",
@@ -3815,6 +3816,11 @@ DONE
                 last SWITCH;
             };
 
+            /^--(force-build)|(no-build-when-unchanged)$/ && do {
+                set_option('global', '#build-when-unchanged', 1);
+                last SWITCH;
+            };
+
             /^--purge-old-logs=?/ && do {
                 set_option('global', '#purge-old-logs', 1);
                 last SWITCH;
@@ -3977,6 +3983,8 @@ DONE
 
             /^(--dry-run)|(--pretend)|(-p)$/ && do {
                 set_option('global', '#pretend', 1);
+                # Simulate the build process too.
+                set_option('global', '#build-when-unchanged', 1);
                 last SWITCH;
             };
 
@@ -5912,13 +5920,23 @@ EOF
                 else
                 {
                     $svn_status{$buffer} = 'skipped';
-                    note "\tSkipping g[$module]. Already up-to-date.";
                 }
             }
         }
 
         next if $svn_status{$module} eq 'failed';
-        ($i++ and next) if $svn_status{$module} eq 'skipped';
+
+        # Skip actually building a module if the user has selected to skip
+        # builds when the source code was not actually updated. But, don't skip
+        # if we didn't successfully build last time.
+        if (!get_option($module, 'build-when-unchanged') &&
+            $svn_status{$module} eq 'skipped' &&
+            get_persistent_option($module, 'failure-count') == 0)
+        {
+            note "\tSkipping g[$module], its source code has not changed.";
+            $i++;
+            next;
+        }
 
         if (build_module ($module))
         {

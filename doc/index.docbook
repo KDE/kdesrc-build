@@ -1118,6 +1118,32 @@ Perhaps surprisingly, this option can be changed per module.
 </entry>
 </row>
 
+<row id="conf-build-when-unchanged">
+<entry>build-when-unchanged</entry>
+<entry>Module setting overrides global</entry>
+<entry><para>Use this option in order to control whether &kdesrc-build; always
+tries to build a module that has not had any source code updates.</para>
+
+<para>By setting <option>build-when-unchanged</option> to
+<replaceable>true</replaceable>, &kdesrc-build; always attempts the build phase
+for a module, even if the module did not have any source code updates. This is
+the default setting since it is more likely to lead to a correct
+build.</para>
+
+<para>By setting <option>build-when-unchanged</option> to
+<replaceable>false</replaceable>, &kdesrc-build; will only attempt to run the
+build phase for a module if the module has a source code update, or in other
+situations where it is likely that a rebuild is actually required. This can save
+time, especially if you run &kdesrc-build; daily, or more frequently.</para>
+
+<important><para>This feature is provided as an optimization only. Like many
+other optimizations, there are trade-offs for the correctness of your
+installation. For instance, changes to the qt-copy or kdelibs modules may cause
+a rebuild of other modules to be necessary, even if the source code doesn't
+change at all.</para></important>
+</entry>
+</row>
+
 <row id="conf-checkout-only">
 <entry>checkout-only</entry>
 <entry>Module setting overrides global</entry>
@@ -1807,6 +1833,21 @@ Skip the build process.
 <listitem><para>
 Do not automatically install packages after they are built.
 </para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-build-when-unchanged">
+<term><parameter>--no-build-when-unchanged</parameter></term>
+<term><parameter>--force-build</parameter></term>
+<listitem><para>
+This option explicitly disables skipping the build process (an optimization
+controlled by the <link
+linkend="conf-build-when-unchanged">build-when-unchanged</link> option. This is
+useful for making &kdesrc-build; run the build when you have changed something
+that &kdesrc-build; cannot check.</para>
+
+<para><parameter>--force-build</parameter> performs the exact same function, and
+is perhaps easier to remember.</para>
+</listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-debug">
