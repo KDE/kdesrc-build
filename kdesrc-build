@@ -4510,23 +4510,33 @@ sub split_url
 # be controlled with the disable-agent-check parameter.
 sub check_for_ssh_agent
 {
-    my @servers = map {
-        if (module_scm_type($_) eq 'svn') {
-            get_option($_, 'svn-server');
-        }
-        else {
-            get_option($_, 'repository');
-        }
-    } (@update_list);
-
     # Don't bother with all this if the user isn't even using SSH.
     return 1 if pretending;
 
-    my @sshServers = grep {
-        my ($proto, $host) = split_url($_);
-        $proto =~ /ssh/;
-    } @servers;
+    my @svnServers = grep {
+        module_scm_type($_) eq 'svn';
+    } (@update_list);
 
+    my @gitServers = grep {
+        module_scm_type($_) eq 'git';
+    } (@update_list);
+
+    my @sshServers = grep {
+        my ($proto, $host) = split_url(get_option($_, 'svn-server'));
+
+        # Check if ssh is explicitly used in the proto, or if the host is the
+        # developer main svn.
+        (defined $proto && $proto =~ /ssh/) || (defined $host && $host =~ /^svn\.kde\.org/);
+    } @svnServers;
+
+    push @sshServers, grep {
+        # Check for git+ssh:// or user@git.kde.org:/path/etc.
+        my $repo = get_option($_, 'repository');
+        info "\t\tChecking repo g[b[", $repo, "]";
+        ($repo =~ /^git\+ssh:\/\//) || ($repo =~ /^[a-zA-Z0-9_.]+@.*:\//);
+    } @gitServers;
+
+    whisper "\tChecking for SSH Agent" if (scalar @sshServers);
     return 1 if (not @sshServers) or get_option('global', 'disable-agent-check');
 
     # We're using ssh to download, see if ssh-agent is running.
