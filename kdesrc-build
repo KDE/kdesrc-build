@@ -5660,7 +5660,21 @@ sub run_tests
     my $result = log_command($module, 'test-results', [ 'make', 'test' ]);
     if ($result != 0) {
         my $logdir = get_log_dir($module);
-        warning "Some tests failed for y[$module], consult $logdir/test-results.log for info";
+        my $logfile = "$logdir/test-results.log";
+        my $numTests = -1;
+        # Extract the number of failed tests
+        if (open(my $logf, "<$logfile")) {
+           my @lines = <$logf>;
+           my @matches = grep (/failed out of/, @lines);
+           if (scalar(@matches)) {
+               ($numTests) = $matches[0] =~ /([0-9]+) tests failed out of/;
+           }
+        }
+        if ($numTests > -1 ) {
+           warning "\t$numTests tests failed for y[$module], consult $logdir/test-results.log for info";
+        } else {
+           warning "\tSome tests failed for y[$module], consult $logdir/test-results.log for info";
+        }
         return 0;
     } else {
         info "\tAll tests ran successfully.";
