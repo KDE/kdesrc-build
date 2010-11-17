@@ -77,7 +77,7 @@ my $versionNum = '1.12.1-pre';
 our %package_opts = (
   'global' => {
     "async"               => 1,
-    "binpath"             => $ENV{'PATH'},
+    "binpath"             => '',
     "build-when-unchanged"=> 1, # Safe default
     "branch"              => "",
     "build-dir"           => "build",
@@ -5420,17 +5420,29 @@ sub setup_build_system
 }
 
 # Adds the given library paths to the path already given in an environment
-# variable.
+# variable. In addition, detected "system paths" are stripped to ensure that
+# we don't inadvertently re-add a system path to be promoted over the custom
+# code we're compiling (for instance, when a system Qt is used and installed to
+# /usr).
+#
 # First parameter is the name of the environment variable to modify
 # All remaining paramters are prepended to the current environment path, in
 #   the order given. (i.e. param1, param2, param3 -> param1:param2:param3:existing
 sub prepend_environment_path
 {
     my $envName = shift;
-    my $curValue = '';
-    $curValue = ':' . $ENV{$envName} if exists $ENV{$envName};
+    my @curPaths = split(':', $ENV{$envName}) if defined $ENV{$envName};
 
-    my $envValue = join(':', @_) . $curValue;
+    # Filter out entries to add that are already in the environment from the
+    # system.
+    for my $path (grep { list_has(@curPaths, $_) } (@_) ) {
+        whisper "\tNot prepending y[$path] to y[$envName] as it appears " .
+                "to already be defined in y[$envName].";
+    }
+
+    @_ = grep { not list_has(@curPaths, $_); } (@_);
+
+    my $envValue = join(':', @_, @curPaths);
 
     $envValue =~ s/^:*//;
     $envValue =~ s/:*$//; # Remove leading/trailing colons
