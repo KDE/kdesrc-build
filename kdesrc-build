@@ -117,7 +117,7 @@ our %package_opts = (
     "remove-after-install"=> "none", # { none, builddir, all }
     "repository"          => '',     # module's git repo
     "revision"            => 0,
-    "run-tests"           => 0,
+    "run-tests"           => 0,  # 1 = make test, upload = make Experimental
     "set-env"             => { }, # Hash of environment vars to set
     "source-dir"          => "$ENV{HOME}/kdesrc",
     "stop-on-failure"     => "",
@@ -4897,6 +4897,12 @@ sub safe_run_cmake
             push @commands, "-DPHONON_BUILD_TESTS:BOOL=ON";
         }
     }
+    if (get_option($module, 'run-tests') eq 'upload')
+    {
+        whisper "Enabling upload of test results";
+        push @commands, "-DBUILD_experimental:BOOL=ON";
+    }
+
 
     # For l10n-kde4, we must run cmake to search in the (fake) build dir.  There
     # is no srcdir != builddir (but we do simulate it).
@@ -5667,8 +5673,13 @@ sub run_tests
     # Step 1: Ensure the tests are built, oh wait we already did that when we ran
     # CMake :)
 
+    my $make_target = 'test';
+    if (get_option($module, 'run-tests') eq 'upload') {
+        $make_target = 'Experimental';
+    }
+
     # Step 2: Run the tests.
-    my $result = log_command($module, 'test-results', [ 'make', 'test' ]);
+    my $result = log_command($module, 'test-results', [ 'make', $make_target ]);
     if ($result != 0) {
         my $logdir = get_log_dir($module);
         my $logfile = "$logdir/test-results.log";
