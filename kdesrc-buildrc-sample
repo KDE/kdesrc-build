@@ -40,7 +40,14 @@ global
 # but also see the qt-copy and kdesupport modules below, which have special
 # requirements
 
-# This is the Subversion server to download the KDE sources from.  Developers:
+# To use a single git repository to download multiple KDE source modules, you can
+# define a "base repository", which you can use later with a "module-set" declaration
+# and the "use-modules" option. This sets up the "kde-git" git repository, you can change
+# the URL if you are a developer.
+	git-repository-base kde-git git://anongit.kde.org/
+#	git-repository-base kde-git git@git.kde.org: # Developers
+
+# This is the Subversion server to download the rest of the KDE sources from.  Developers:
 # Don't forget to add your username to the URL if necessary!
 #	svn-server svn://anonsvn.kde.org/home/kde
 
@@ -160,6 +167,23 @@ module qt-copy
 	branch master
 end module
 
+# Next is shown a "module-set", which is passed the name of the repository base (defined
+# in the global section with git-repository-base). The only option accepted inside a
+# module-set is the 'use-modules' option, which is simply passed a list of each module
+# you want to build. For every single module passed, kdesrc-build will create the
+# appropriate "module" option, with the right repository setting (base + module name).
+#
+# If you need to set more options, you can add a module <name> ... end module as normal
+# after the module-set, but keep in mind if you do this that you won't change the order
+# the modules are built in.
+#
+# Example:
+module-set kde-git
+    # automoc is essential for building KDE's CMake-based modules, and so should be first
+    # in this module set (but after Qt, if you're using qt-copy)
+    use-modules automoc cagibi attica soprano polkit-qt-1
+end module-set
+
 # kdesupport contains taglib and QCA, and the Strigi library required for
 # kdelibs in KDE 4.  taglib is required for JuK, amarok, and the meta info
 # reader for music files in Konqueror.
@@ -171,31 +195,6 @@ module kdesupport
 #	Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE (for taglib) is required to allow Amarok
 #	(defined below, near the end of this file) to build.
 	cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE
-end module
-
-# automoc is very needed for KDE's cmake support, install it before all KDE modules but after Qt 4.
-module automoc
-  repository git://git.kde.org/automoc
-end module
-module cagibi
-  repository git://git.kde.org/cagibi
-end module
-
-module attica
-  # Read-only access
-  repository git://git.kde.org/attica
-  # Read-write access
-  # repository git@git.kde.org:attica
-end module
-module soprano
-  # Read-only access
-  repository git://git.kde.org/soprano
-  # Read-write access
-  # repository git@git.kde.org:soprano
-end module
-
-module polkit-qt-1
-  repository git://git.kde.org/polkit-qt-1
 end module
 
 # Phonon, the KDE multimedia interface, is required for KDE. It is present in
@@ -215,13 +214,11 @@ module kdelibs
 # separate script in kdesdk/scripts to do that for you however.
 end module
 
-# akonadi is required for kdepimlibs
-module akonadi
-  # Read-only access
-  repository git://git.kde.org/akonadi
-  # Read-write access
-  # repository git@git.kde.org:akonadi
-end module
+# akonadi is required for kdepimlibs. Added to this module-set so that it is next to
+# kdepimlibs -- it could just as well be part of the earlier module-set.
+module-set kde-git
+    use-modules akonadi
+end module-set
 
 # kdepimlibs contains required PIM (mail, instant messenger, etc.) basics
 # that are needed by some other KDE modules.  Should be built after kdelibs
@@ -344,7 +341,12 @@ end module
 #	repository git@git.kde.org:amarok.git
 #end module
 
-# Includes the popular K3B cd/dvd burner and various media players.
+# --- The K3B cd/dvd/etc. burner.
+#module-set kde-git
+#    use-modules k3b
+#end module-set
+
+# Includes various media players.
 #module extragear/multimedia
 #end module
 
