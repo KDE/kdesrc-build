@@ -3093,6 +3093,7 @@ sub parse_moduleset
     my ($fh, $repoName) = @_;
     my $repoSet = get_option('global', 'git-repository-base');
     my @modules;
+    my %optionSet; # We read all options, and apply them to all modules
 
     if (not exists $repoSet->{$repoName}) {
         error "There is no repository assigned to y[b[$repoName] when assigning";
@@ -3101,35 +3102,41 @@ sub parse_moduleset
     }
 
     while(read_line($fh)) {
-        return @modules if /^end\s+module(-?set)?$/;
+        last if /^end\s+module(-?set)?$/;
 
         my ($option, $value) = split_option_value($_);
 
         if ($option eq 'use-modules') {
             @modules = split(' ', $value);
+
+            if (not @modules) {
+                error "No modules were selected for repository y[b[$repoName]";
+                error "in the y[use-modules] on line $. of $rcfile";
+                exit 1;
+            }
         }
         else {
-            warning "Ignoring option $option on line $. of $rcfile";
-            next;
+            $optionSet{$option} = $value;
+        }
+    }
+
+    # Setup default options for each module
+    for my $module (@modules) {
+        my $moduleName = $module;
+        $moduleName =~ s/\.git$//; # Remove trailing .git for module name
+
+        if (not defined $package_opts{$moduleName})
+        {
+            $package_opts{$moduleName} = default_module_options($moduleName);
         }
 
-        if (not @modules) {
-            error "No modules were selected for repository y[b[$repoName]";
-            error "in the y[use-modules] on line $. of $rcfile";
-            exit 1;
-        }
+        set_option($moduleName, 'repository', $repoSet->{$repoName} . $module);
 
-        # Setup default options for each module
-        for my $module (@modules) {
-            my $moduleName = $module;
-            $moduleName =~ s/\.git$//; # Remove trailing .git for module name
-
-            if (not defined $package_opts{$moduleName})
-            {
-                $package_opts{$moduleName} = default_module_options($moduleName);
-            }
-
-            set_option($moduleName, 'repository', $repoSet->{$repoName} . $module);
+        # Apply all options in the module set to this virtual module.
+        # At this point it's possible to override repository after we just
+        # set it, but let's not announce that too loudly...
+        for my $option (keys %optionSet) {
+            set_option($moduleName, $option, $optionSet{$option});
         }
     }
 
