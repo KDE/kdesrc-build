@@ -2076,7 +2076,6 @@ sub git_update_module
     return git_count_commits($start_commit, git_commit_id());
 }
 
-
 # Either performs the initial checkout or updates the current git checkout for qt-copy,
 # as appropriate.
 #
@@ -3346,9 +3345,9 @@ sub setup_module_environment
     }
 }
 
-# Subroutine to initialize some environment variable for building
-# KDE from source.  Change this section if a dependency changes later.
-sub initialize_environment
+# Sets our debugging color aliases for use at the terminal. No parameters,
+# no return value.
+sub set_debug_colors
 {
     if(-t STDOUT and get_option('global', 'colorful-output'))
     {
@@ -3358,8 +3357,10 @@ sub initialize_environment
         $NORMAL = "\e[0m";
         $BOLD = "\e[1m";
     }
-
-    update_module_environment ('global');
+    else
+    {
+        ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
+    }
 }
 
 sub setup_operating_environment
@@ -3593,6 +3594,11 @@ sub set_option
 
     debug "  Setting $module,$option = $value";
     $package_opts{$module}{$option} = $value;
+
+    if ($option eq 'colorful-output')
+    {
+        set_debug_colors(); # Update ASAP
+    }
 }
 
 # Sets a "persistent" option which will be read in for a module when kdesrc-build starts
@@ -7102,10 +7108,10 @@ eval
 {
     # Note: Don't change the order around unless you're sure of what you're
     # doing.
-    process_arguments();        # Process --help, --install, etc. first.
-    read_options();             # If we're still here, read the options
-
-    initialize_environment();   # Initialize global env vars.
+    set_debug_colors();  # Default to colorized output if sending to TTY
+    process_arguments(); # Process --help, --install, etc. first.
+    read_options();      # If we're still here, read the options
+    update_module_environment('global'); # Initialize global env vars.
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
