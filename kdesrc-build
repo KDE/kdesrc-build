@@ -3074,7 +3074,7 @@ sub parse_module
         {
             error "Invalid configuration file $rcfile at line $.\nAdd an 'end module' before " .
                   "starting a new module.\n";
-            exit 1; # exit instead of finish() since we're not fully setup yet.
+            die make_exception('Config', "Invalid $rcfile");
         }
 
         my ($option, $value) = split_option_value($_);
@@ -3099,7 +3099,7 @@ module-set kde
   use-modules automoc akonadi soprano attica
 end module-set
 EOF
-                exit 1;
+                die make_exception('Config', "Invalid git-repository-base");
             }
 
             $value->{$repo} = $url;
@@ -3134,7 +3134,7 @@ sub parse_moduleset
             if (not @modules) {
                 error "No modules were selected for the current module-set";
                 error "in the y[use-modules] on line $. of $rcfile";
-                exit 1;
+                die make_exception('Config', 'Invalid use-modules');
             }
         }
         else {
@@ -3173,7 +3173,7 @@ These repositories are defined by g[b[git-repository-base] in the global
 section of $rcfile. Make sure you spelled your repository name right!
 EOF
 
-                    exit 1;
+                    die make_exception('Config', 'Unknown repository base');
                 }
 
                 $value = $repoSet->{$value} . $module;
@@ -3222,7 +3222,7 @@ file, leave the --rc-file option out of the command line.
 If you want to force an empty rc file, use --rc-file /dev/null
 
 EOM
-            exit 1;
+            die make_exception('Runtime', "Missing $rcfiles[0]");
         }
 
         # Set rcfile to something so the user knows what file to edit to
@@ -3247,8 +3247,8 @@ EOM
         if (not /^global\s*$/)
         {
             error "Invalid configuration file: $rcfile.";
-            error "Expecting global settings section at line $.!";
-            exit 1;
+            error "Expecting global settings section at b[r[line $.]!";
+            die make_exception('Config', 'Missing global section');
         }
 
         # Now read in each global option
@@ -3284,9 +3284,8 @@ EOM
         {
             if (not /^module-set\s*$/) {
                 error "Invalid configuration file $rcfile!";
-                error "Expecting a start of module section at line $. of $rcfile.";
-
-                exit 1;
+                error "Expecting a start of module section at r[b[line $.].";
+                die make_exception('Config', 'Ungrouped/Unknown option');
             }
 
             # A moduleset can give us more than one module to add.
@@ -3431,7 +3430,7 @@ sub get_install_list
         {
             error "Can't determine what modules have built.  You must";
             error "specify explicitly on the command line what modules to build.";
-            exit (1); # Don't finish, no lock has been taken.
+            die make_exception('Runtime', 'No modules can be installed, none were built.');
         }
 
         while (<BUILTLIST>)
@@ -3552,6 +3551,21 @@ sub extract_option_value($\@)
 
     return undef if scalar @{$options_ref} == 0;
     return shift @{$options_ref};
+}
+
+# Like extract_option_value, but throws an exception if the value is not actually present,
+# so you don't have to check for it yourself. If you do get a return value, it will be
+# defined to something.
+sub extract_option_value_required($\@)
+{
+    my ($option, $options_ref) = @_;
+    my $returnValue = extract_option_value($option, @$options_ref);
+
+    if (not defined $returnValue) {
+        die make_exception('Runtime', "Option $option needs to be set to some value instead of left blank");
+    }
+
+    return $returnValue;
 }
 
 # Utility subroutine to handle setting the environment variable type of value.
@@ -4079,13 +4093,7 @@ DONE
             # Start up a program with the environment variables as
             # read from the config file.
             /^--run=?/ && do {
-                my $program = extract_option_value($_, @ARGV);
-                if (not $program)
-                {
-                    print "You must specify a program to run with the --run option.\n";
-                    exit 32;
-                }
-
+                my $program = extract_option_value_required($_, @ARGV);
                 set_option('global', '#start-program', $program);
 
                 # Save remaining command line options to pass to the program.
@@ -4098,25 +4106,14 @@ DONE
             };
 
             /^--rc-file=?/ && do {
-                my $rcfile = extract_option_value($_, @ARGV);
-                if (not $rcfile)
-                {
-                    print "You must specify a filename to use as the config file!\n";
-                    exit 8;
-                }
-
+                my $rcfile = extract_option_value_required($_, @ARGV);
                 @rcfiles = ( $rcfile );
 
                 last SWITCH;
             };
 
             /^--prefix=?/ && do {
-                my $prefix = extract_option_value($_, @ARGV);
-                if (not $prefix)
-                {
-                    print "No prefix selected with the --prefix option.\n";
-                    exit 8;
-                }
+                my $prefix = extract_option_value_required($_, @ARGV);
 
                 set_option('global', '#kdedir', $prefix);
                 set_option('global', '#reconfigure', 1);
@@ -4125,18 +4122,9 @@ DONE
             };
 
             /^--nice=?/ && do {
-                my $niceness = extract_option_value($_, @ARGV);
+                my $niceness = extract_option_value_required($_, @ARGV);
 
-                if(defined $niceness)
-                {
-                    set_option('global', '#niceness', $niceness);
-                }
-                else
-                {
-                    print "You need to specify a value for the --nice option\n";
-                    exit 8;
-                }
-
+                set_option('global', '#niceness', $niceness);
                 last SWITCH;
             };
 
@@ -4179,41 +4167,25 @@ DONE
             };
 
             /^(--revision|-r)=?/ && do {
-                my $revision = extract_option_value($_, @ARGV);
-                if (not $revision)
-                {
-                    print "No revision selected with the --revision option.\n";
-                    exit 8;
-                }
-
+                my $revision = extract_option_value_required($_, @ARGV);
                 set_option('global', '#revision', $revision);
 
                 last SWITCH;
             };
 
             /^--resume-from=?/ && do {
-                $_ = extract_option_value($_, @ARGV);
-                if (not $_)
-                {
-                    print "You must pass a module to resume from to the --resume-from option!\n";
-                    exit 7;
-                }
-
+                $_ = extract_option_value_required($_, @ARGV);
                 set_option('global', '#resume-from', $_);
                 set_option('global', '#no-svn', 1);
+
                 last SWITCH;
             };
 
             /^--resume-after=?/ && do {
-                $_ = extract_option_value($_, @ARGV);
-                if (not $_)
-                {
-                    print "You must pass a module to resume after to the --resume-after option!\n";
-                    exit 7;
-                }
-
+                $_ = extract_option_value_required($_, @ARGV);
                 set_option('global', '#resume-after', $_);
                 set_option('global', '#no-svn', 1);
+
                 last SWITCH;
             };
 
@@ -7135,10 +7107,16 @@ eval
 
 if ($@)
 {
-    # We encountered an error.
-    print "Encountered an error in the execution of the script.\n";
-    print "The error reported was $@\n";
-    print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
+    if ($@->isa('BuildException')) {
+        print $@->{'exception_type'}, " error: ", $@->{'message'}, "\n";
+        print "\tCan't continue, so stopping now.\n";
+    }
+    else {
+        # We encountered an error.
+        print "Encountered an error in the execution of the script.\n";
+        print "The error reported was $@\n";
+        print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
+    }
 
     # Don't finish, because we haven't attained the lock yet.
     exit 99;
