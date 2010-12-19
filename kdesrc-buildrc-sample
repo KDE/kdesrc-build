@@ -40,10 +40,10 @@ global
 # but also see the qt-copy and kdesupport modules below, which have special
 # requirements
 
-# To use a single git repository to download multiple KDE source modules, you can
-# define a "base repository", which you can use later with a "module-set" declaration
-# and the "use-modules" option. This sets up the "kde-git" git repository, you can change
-# the URL if you are a developer.
+# To use a single git repository to download multiple KDE source modules, you
+# can define a "base repository", which you can use later with a "module-set"
+# grouping and the "use-modules" option. This sets up the "kde-git" git
+# repository, you can change the URL if you are a developer.
 	git-repository-base kde-git git://anongit.kde.org/
 #	git-repository-base kde-git git@git.kde.org: # Developers
 
@@ -167,21 +167,32 @@ module qt-copy
 	branch master
 end module
 
-# Next is shown a "module-set", which is passed the name of the repository base (defined
-# in the global section with git-repository-base). The only option accepted inside a
-# module-set is the 'use-modules' option, which is simply passed a list of each module
-# you want to build. For every single module passed, kdesrc-build will create the
-# appropriate "module" option, with the right repository setting (base + module name).
+# Next is shown a "module-set", which is a grouping of modules that has special
+# handling of the "repository" option (the module name is automatically added
+# to the end for every module defined in this set), and accepts the special
+# use-modules option to determine what modules are included in the group.
+# Any other options included as defined for every module in the set.
+# For every single module passed, kdesrc-build will create the appropriate
+# "module" option, with the right repository setting (base + module name).
 #
-# If you need to set more options, you can add a module <name> ... end module as normal
-# after the module-set, but keep in mind if you do this that you won't change the order
-# the modules are built in.
+# If you need to set more options for only individual modules, you can add a
+# module <name> ... end module as normal after the module-set, but keep in mind
+# if you do this that you won't change the order the modules are built in.
 #
 # Example:
-module-set kde-git
+module-set
     # automoc is essential for building KDE's CMake-based modules, and so should be first
     # in this module set (but after Qt, if you're using qt-copy)
     use-modules automoc cagibi attica soprano polkit-qt-1
+
+    # Special handling occurs with this option when used in module-set so you don't
+    # have to re-type repository names.
+    repository kde-git
+
+    # Other options are simply passed to each defined module. For example if you
+    # uncomment the next line, then the "debugfull" build type will be used for every
+    # module in this set.
+    # cmake-options -DCMAKE_BUILD_TYPE=debugfull
 end module-set
 
 # kdesupport contains taglib and QCA, and the Strigi library required for
@@ -221,9 +232,11 @@ module kdelibs
 end module
 
 # akonadi is required for kdepimlibs. Added to this module-set so that it is next to
-# kdepimlibs -- it could just as well be part of the earlier module-set.
-module-set kde-git
+# kdepimlibs -- it could just as well be part of the earlier module-set. Having a
+# module-set of only one module allows us to use the repository alias made earlier.
+module-set
     use-modules akonadi
+    repository kde-git
 end module-set
 
 # kdepimlibs contains required PIM (mail, instant messenger, etc.) basics
@@ -348,8 +361,9 @@ end module
 #end module
 
 # --- The K3B cd/dvd/etc. burner.
-#module-set kde-git
+#module-set
 #    use-modules k3b
+#    repository kde-git
 #end module-set
 
 # Includes various media players.

@@ -3118,6 +3118,7 @@ EOF
 sub parse_moduleset
 {
     my $fh = shift;
+    my $repoSet = get_option('global', 'git-repository-base');
     my @modules;
     my %optionSet; # We read all options, and apply them to all modules
     my $startLine = $.; # For later error messages
@@ -3160,7 +3161,25 @@ sub parse_moduleset
         # At this point it's possible to override repository after we just
         # set it, but let's not announce that too loudly...
         for my $option (keys %optionSet) {
-            set_option($moduleName, $option, $optionSet{$option});
+            my $value = $optionSet{$option};
+
+            if ($option eq 'repository') {
+                if (not exists $repoSet->{$value}) {
+                    error <<EOF;
+There is no repository assigned to y[b[$value] when assigning a moduleset on
+line $startLine of $rcfile.
+
+These repositories are defined by g[b[git-repository-base] in the global
+section of $rcfile. Make sure you spelled your repository name right!
+EOF
+
+                    exit 1;
+                }
+
+                $value = $repoSet->{$value} . $module;
+            }
+
+            set_option($moduleName, $option, $value);
         }
     }
 
@@ -3572,25 +3591,6 @@ sub set_option
     }
 
     return if handle_set_env($package_opts{$module}, $option, $value);
-
-    if ($option eq 'repository')
-    {
-        my $repos = get_option('global', 'git-repository-base');
-        if (exists $repos->{$value})
-        {
-            # Use repository alias defined earlier.
-            $value = $repos->{$value};
-        }
-        elsif ($value =~ /^[a-zA-Z0-9_-]+$/)
-        {
-            # Check for people trying to use repo aliases and failing.
-            error "Trying to set $value as the repository for $module, but $value neither:";
-            error " 1) Looks like a valid Git repository URL, or";
-            error " 2) Matches a previously defined git-repository-base alias";
-            error "You probably misspelled y[b[$value], check your $rcfile!";
-            die "Invalid repository option for $module";
-        }
-    }
 
     debug "  Setting $module,$option = $value";
     $package_opts{$module}{$option} = $value;
