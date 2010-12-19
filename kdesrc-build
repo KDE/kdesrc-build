@@ -1785,6 +1785,8 @@ sub git_clone_module
     # repositories (such as qt-copy...)
     unshift (@args, '-v') if $module eq 'qt-copy';
 
+    note "Cloning g[$module]";
+
     my $result = log_command($module, 'git-clone', ['git', 'clone', @args]);
     if ($result == 0) {
         set_persistent_option($module, 'git-cloned-repository', $git_repo);
@@ -1992,6 +1994,7 @@ sub git_update_module
 
     p_chdir($srcdir);
 
+    note "Updating g[$module]";
     my $start_commit = git_commit_id();
 
     # Search for an existing remote name first. If none, add our alias.
@@ -3115,16 +3118,10 @@ EOF
 # Returns the expanded list of module names to include.
 sub parse_moduleset
 {
-    my ($fh, $repoName) = @_;
-    my $repoSet = get_option('global', 'git-repository-base');
+    my $fh = shift;
     my @modules;
     my %optionSet; # We read all options, and apply them to all modules
-
-    if (not exists $repoSet->{$repoName}) {
-        error "There is no repository assigned to y[b[$repoName] when assigning";
-        error "a moduleset on line $. of $rcfile";
-        exit 1;
-    }
+    my $startLine = $.; # For later error messages
 
     while(read_line($fh)) {
         last if /^end\s+module(-?set)?$/;
@@ -3135,7 +3132,7 @@ sub parse_moduleset
             @modules = split(' ', $value);
 
             if (not @modules) {
-                error "No modules were selected for repository y[b[$repoName]";
+                error "No modules were selected for the current module-set";
                 error "in the y[use-modules] on line $. of $rcfile";
                 exit 1;
             }
@@ -3143,6 +3140,11 @@ sub parse_moduleset
         else {
             $optionSet{$option} = $value;
         }
+    }
+
+    if (not scalar @modules) {
+        warning "No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]";
+        warning "You should use the g[b[use-modules] option to make the module-set useful.";
     }
 
     # Setup default options for each module
@@ -3154,8 +3156,6 @@ sub parse_moduleset
         {
             $package_opts{$moduleName} = default_module_options($moduleName);
         }
-
-        set_option($moduleName, 'repository', $repoSet->{$repoName} . $module);
 
         # Apply all options in the module set to this virtual module.
         # At this point it's possible to override repository after we just
@@ -3264,18 +3264,15 @@ EOM
 
         if (not $modulename)
         {
-            ($modulename) = /^module-set\s+([-\/\.\w]+)$/;
-
-            if (not $modulename) {
+            if (not /^module-set\s*$/) {
                 error "Invalid configuration file $rcfile!";
                 error "Expecting a start of module section at line $. of $rcfile.";
-                error "Global settings will be retained.";
 
                 exit 1;
             }
 
             # A moduleset can give us more than one module to add.
-            @addedModules = parse_moduleset(\*CONFIG, $modulename);
+            @addedModules = parse_moduleset(\*CONFIG);
         }
         else {
             parse_module(\*CONFIG, $modulename);
@@ -3574,6 +3571,25 @@ sub set_option
     }
 
     return if handle_set_env($package_opts{$module}, $option, $value);
+
+    if ($option eq 'repository')
+    {
+        my $repos = get_option('global', 'git-repository-base');
+        if (exists $repos->{$value})
+        {
+            # Use repository alias defined earlier.
+            $value = $repos->{$value};
+        }
+        elsif ($value =~ /^[a-zA-Z0-9_-]+$/)
+        {
+            # Check for people trying to use repo aliases and failing.
+            error "Trying to set $value as the repository for $module, but $value neither:";
+            error " 1) Looks like a valid Git repository URL, or";
+            error " 2) Matches a previously defined git-repository-base alias";
+            error "You probably misspelled y[b[$value], check your $rcfile!";
+            die "Invalid repository option for $module";
+        }
+    }
 
     debug "  Setting $module,$option = $value";
     $package_opts{$module}{$option} = $value;
