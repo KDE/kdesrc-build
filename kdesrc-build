@@ -1809,6 +1809,19 @@ sub git_has_branch
     return ($result == 0);
 }
 
+# Returns true if the git module in the current directory has a remote of the
+# name given by the first parameter.
+sub git_has_remote
+{
+    my $remote = shift;
+
+    open my $output, '-|', qw(git remote);
+    my @remotes = grep { /^$remote/ } (<$output>);
+    close $output;
+
+    return @remotes > 0;
+}
+
 # We use a very-oddly-named remote name for the situations where we don't care
 # about user interaction with git. However 99% of the time the 'origin' remote
 # will be what we want anyways, and 0.5% of the rest the user will have
@@ -1850,9 +1863,6 @@ sub git_get_best_remote_names
         $remoteName =~ s/^remote\.//;
         $remoteName =~ s/\.url$//; # Extract the cruft
 
-        # Skip our alias
-        next if $remoteName eq GIT_REMOTE_ALIAS;
-
         # Skip other remotes
         next if $url ne $repoUrl;
 
@@ -1861,6 +1871,12 @@ sub git_get_best_remote_names
 
         # A winner is this one.
         push @results, $remoteName;
+    }
+
+    # If we have more than one matching remote, make sure our ugly internal remote name
+    # is removed.
+    if (scalar @results > 1) {
+        @results = grep { $_ ne GIT_REMOTE_ALIAS } (@results);
     }
 
     return @results;
@@ -1984,11 +2000,23 @@ sub git_update_module
     if (@remoteNames) {
         $remoteName = $remoteNames[0];
     }
-    elsif(log_command($module, 'git-remote-setup',
+    else {
+        if(git_has_remote(GIT_REMOTE_ALIAS)) {
+            if(log_command($module, 'git-update-remote',
+                        ['git', 'remote', 'set-url', GIT_REMOTE_ALIAS, $cur_repo])
+                != 0)
+            {
+                die "Unable to update the fetch URL for existing remote alias for $module";
+            }
+        }
+        elsif(log_command($module, 'git-remote-setup',
                        ['git', 'remote', 'add', GIT_REMOTE_ALIAS, $cur_repo])
             != 0)
-    {
-        die "Unable to add a git remote named " . GIT_REMOTE_ALIAS . " for $cur_repo";
+        {
+            die "Unable to add a git remote named " . GIT_REMOTE_ALIAS . " for $cur_repo";
+        }
+
+        push @remoteNames, GIT_REMOTE_ALIAS;
     }
 
     if ($old_repo and ($cur_repo ne $old_repo)) {
@@ -2040,12 +2068,6 @@ sub git_update_module
         {
             die "Unable to merge latest remote git changes into the current local git branch";
         }
-    }
-
-    if ($remoteName eq GIT_REMOTE_ALIAS) {
-        # Ensure any existing remote alias is removed
-        # Don't log it, we don't need the output
-        safe_system('git', 'remote', 'rm', GIT_REMOTE_ALIAS);
     }
 
     return git_count_commits($start_commit, git_commit_id());
