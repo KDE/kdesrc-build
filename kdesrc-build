@@ -1727,24 +1727,21 @@ sub git_commit_id
     return $id;
 }
 
-# Returns the number of non-merge commits between the given two
-# git heads.
+# Returns the number of lines in the output of the given command. The command
+# and all required arguments should be passed as a normal list, and the current
+# directory should already be set as appropriate.
 #
-# First parameter is the git commit-ish to start at,
-# Second parameter is the git commit-ish to end at.
-# Return value is an integer with the number of commits between them. This
-# figure should probably be taken to be approximate, it corresponds to
-# git rev-list $left..$right | wc -l
-sub git_count_commits
+# Return value is the number of lines of output.
+# Exceptions are raised if the command could not be run.
+sub count_command_output
 {
-    my $left = shift;
-    my $right = shift;
+    my @args = @_;
 
-    open(my $git, '-|', 'git', 'rev-list', "$left..$right");
+    open(my $fh, '-|', @args);
     my $count = 0;
 
-    $count++ while(<$git>);
-    close $git;
+    $count++ while(<$fh>);
+    close $fh;
     return $count;
 }
 
@@ -2073,7 +2070,8 @@ sub git_update_module
         }
     }
 
-    return git_count_commits($start_commit, git_commit_id());
+    my $end_commit = git_commit_id();
+    return count_command_output('git', 'rev-list', "$start_commit..$end_commit");
 }
 
 # Either performs the initial checkout or updates the current git checkout for qt-copy,
@@ -2100,10 +2098,8 @@ sub update_module_git_checkout
 
         git_clone_module($module, "$git_repo") or die "Can't checkout $module: $!";
 
-        # TODO: Count number of files checked out? Right now we return >0 to
-        # ensure that kdesrc-build doesn't try to skip it, but we should
-        # improve this.
-        return 1;
+        return 1 if pretending;
+        return count_command_output('git', '--git-dir', "$srcdir/.git", 'ls-files');
     }
 
     return 0;
