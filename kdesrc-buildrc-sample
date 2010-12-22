@@ -136,14 +136,14 @@ module qt-copy
 #
 # Phonon note:
 # - If you compile phonon separately, make sure to pass -no-phonon.
-# - Alternatively, if you use Qt's phonon, ensure kdesupport is
-#   built without Phonon and don't use phonon-git below.
-# - As of KDE 4.4/Qt 4.6 the "right answer" is the first option: separate phonon.
+# - Alternatively, if you use Qt's phonon, remove "phonon" from the use-modules
+#   option in the module-set below.
+# - As of KDE 4.6/Qt 4.7 the "right answer" is the first option: separate phonon.
 	configure-flags -qt-gif -fast -debug -no-separate-debug-info \
 	                -system-zlib -system-libpng -system-libjpeg \
 	                -dbus -webkit -plugin-sql-mysql \
 	                -nomake examples -nomake demos \
-	                -no-phonon # See "module phonon-git" below
+	                -no-phonon # See module-set below
 
 #	make-options -j2
 
@@ -183,7 +183,8 @@ end module
 module-set
     # automoc is essential for building KDE's CMake-based modules, and so should be first
     # in this module set (but after Qt, if you're using qt-copy)
-    use-modules automoc cagibi attica soprano polkit-qt-1
+    # Phonon is the KDE multimedia layer, which is occasionally synced to Qt.
+    use-modules automoc cagibi attica soprano polkit-qt-1 phonon
 
     # Special handling occurs with this option when used in module-set so you don't
     # have to re-type repository names.
@@ -201,18 +202,10 @@ end module-set
 module kdesupport
 # To get the necessary kdesupport stuff for KDE-4.5, use:
 #	tag kdesupport-for-4.5/kdesupport
-# and add -DBUILD_phonon=OFF to the cmake-options below (not needed in trunk).
 
 #	Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE (for taglib) is required to allow Amarok
 #	(defined below, near the end of this file) to build.
 	cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE
-end module
-
-# Phonon, the KDE multimedia interface, is required for KDE. It is present in
-# Qt but the "official" development branch for it is on gitorious.org (it used
-# to be in kdesupport, above).
-module phonon-git
-    repository git://gitorious.org/phonon/phonon.git
 end module
 
 # Support for notification area menus via the DBusMenu protocol

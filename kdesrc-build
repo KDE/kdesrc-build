@@ -854,6 +854,8 @@ sub svn_module_url
             return handle_branch_tag_option($module, 'branches');
         }
 
+        # This isn't true nowadays, but *is* true for older versions of phonon which
+        # were developed in subversion.
         if($module eq 'phonon')
         {
             $module = 'kdesupport/phonon';
@@ -2835,13 +2837,12 @@ sub default_module_options
     );
     my %module_options = (
         'qt-copy' => {
-            'configure-flags' => '-qt-gif -phonon -dbus -nomake demos -nomake examples -fast',
+            'configure-flags' => '-qt-gif -no-phonon -dbus -nomake demos -nomake examples -fast',
             'repository' => 'git://gitorious.org/+kde-developers/qt/kde-qt.git',
             'branch'     => 'master',
         },
-        'kdesupport' => {
-            # Phonon is built separately as its own submodule
-            'cmake-options' => '-DBUILD_phonon=OFF',
+        'phonon' => {
+            'repository' => 'git://anongit.kde.org/phonon',
         },
         'kdevplatform' => {
             # It moved recently so try to adjust gracefully (maybe) (round 2)
@@ -5039,7 +5040,7 @@ sub safe_run_cmake
         push @commands, "-DKDE4_BUILD_TESTS:BOOL=ON";
 
         # Also enable phonon tests.
-        if ($module =~ /^(kdesupport|phonon)$/) {
+        if ($module =~ /^phonon$/) {
             push @commands, "-DPHONON_BUILD_TESTS:BOOL=ON";
         }
     }
