@@ -3,7 +3,13 @@
 <!-- This goes into $KDEDIR/share/apps/katepart/syntax, or
      it can go to $KDEHOME/share/apps/katepart/syntax
  -->
-<language name="kdesrc-buildrc" version="0.5.2" kateversion="2.4" section="Configuration" extensions=".kdesrc-buildrc;kdesrc-buildrc;.kdesvn-buildrc;kdesvn-buildrc" author="Michael Pyne &lt;mpyne@kde.org&gt;" license="LGPL">
+<language name = "kdesrc-buildrc"
+       version = "0.5.3"
+   kateversion = "3.5"
+       section = "Configuration"
+    extensions = ".kdesrc-buildrc;kdesrc-buildrc;.kdesvn-buildrc;kdesvn-buildrc"
+        author = "Michael Pyne &lt;mpyne@kde.org&gt;"
+       license = "LGPL">
 
   <highlighting>
     <list name="bools">
@@ -11,6 +17,8 @@
       <item>false</item>
       <item>TRUE</item>
       <item>FALSE</item>
+      <item>0</item>
+      <item>1</item>
     </list>
 
     <list name="setEnvOptions">
@@ -23,27 +31,38 @@
     </list>
 
     <!-- These options should only have a boolean value passed to them. -->
-    <list name="boolOptions">
+    <list name="globalBoolOptions">
       <item>async</item>
-      <item>build-system-only</item>
-      <item>build-when-unchanged</item>
       <item>colorful-output</item>
       <item>disable-agent-check</item>
       <item>disable-snapshot</item>
+      <item>pretend</item>
+      <item>purge-old-logs</item>
+      <item>stop-on-failure</item>
+      <item>use-idle-io-priority</item>
+    </list>
+
+    <list name="boolOptions">
+      <item>build-system-only</item>
+      <item>build-when-unchanged</item>
       <item>install-after-build</item>
       <item>manual-build</item>
       <item>manual-update</item>
-      <item>no-svn</item>
       <item>no-src</item>
-      <item>pretend</item>
-      <item>purge-old-logs</item>
       <item>reconfigure</item>
       <item>recreate-configure</item>
       <item>refresh-build</item>
       <item>remove-after-install</item>
       <item>run-tests</item>
-      <item>stop-on-failure</item>
-      <item>use-idle-io-priority</item>
+    </list>
+
+    <list name="globalOptions">
+      <item>email-address</item>
+      <item>email-on-compile-error</item>
+      <item>git-repository-base</item>
+      <item>kde-languages</item>
+      <item>niceness</item>
+      <item>debug-level</item>
     </list>
 
     <list name="options">
@@ -54,20 +73,14 @@
       <item>cmake-options</item>
       <item>configure-flags</item>
       <item>cxxflags</item>
-      <item>debug-level</item>
       <item>dest-dir</item>
       <item>do-not-compile</item>
-      <item>email-address</item>
-      <item>email-on-compile-error</item>
-      <item>git-repository-base</item>
       <item>kdedir</item>
-      <item>kde-languages</item>
       <item>libpath</item>
       <item>log-dir</item>
       <item>make-install-prefix</item>
       <item>make-options</item>
       <item>module-base-path</item>
-      <item>niceness</item>
       <item>override-url</item>
       <item>prefix</item>
       <item>qtdir</item>
@@ -76,77 +89,108 @@
       <item>source-dir</item>
       <item>svn-server</item>
       <item>tag</item>
-      <item>use-modules</item>
     </list>
 
     <contexts>
-      <context name="Module" attribute="Normal Text" lineEndContext="#stay">
+      <context name="Root Level" attribute="Normal Text" lineEndContext="#stay">
         <DetectSpaces/>
-        <RegExpr attribute="Comment" String="#.*$" context="#stay"/>
-        <RegExpr attribute="Global Declaration" context="Module Options" String="global" beginRegion="Global Options" firstNonSpace="true" />
-        <RegExpr attribute="Module Declaration" context="ModuleSet Decl" String="module-set\s+" firstNonSpace="true" />
-        <RegExpr attribute="Module Declaration" context="Module Decl" String="module\s+" firstNonSpace="true" />
+        <StringDetect attribute="Global Declaration" context="Global Options" String="global" beginRegion="Global Options" firstNonSpace="true" />
+        <StringDetect attribute="Module Declaration" context="ModuleSet Options" String="module-set" beginRegion="ModuleSet Options" firstNonSpace="true" />
+
+        <!-- Only match if a module name is given -->
+        <StringDetect attribute="Module Declaration" context="Module Decl" String="module" firstNonSpace="true" beginRegion="Module Options"/>
+        <DetectChar context="Comment" char="#"/>
       </context>
 
-      <context name="ModuleSet Decl" attribute="Module Name" lineEndContext="ModuleSet Options">
-        <RegExpr String="[a-zA-Z0-9/-]*" context="#stay" beginRegion="ModuleSet Options"/>
-        <RegExpr attribute="Comment" String="#.*$" context="#stay"/>
+      <context name="Comment" attribute="Comment" lineEndContext="#pop">
       </context>
 
       <context name="Module Decl" attribute="Module Name" lineEndContext="Module Options">
-        <RegExpr String="[a-zA-Z0-9/-]*" context="#stay" beginRegion="Module Options"/>
-        <RegExpr attribute="Comment" String="#.*$" context="#stay"/>
+        <DetectSpaces/>
+        <RegExpr attribute="Module Name" String="[a-zA-Z0-9/-]+"/>
+        <DetectChar context="Comment" char="#"/>
       </context>
 
-      <context name="Module Options" attribute="Normal Text" lineEndContext="#stay">
+      <context name="Common Module Options" attribute="Normal Text">
         <DetectSpaces/>
-        <RegExpr attribute="Comment" String="#.*$" context="#stay"/>
+        <StringDetect String="cmake-options" context="CMake Option" attribute="Option Name" />
         <keyword attribute="Option Name" context="Environment Name" String="setEnvOptions" />
         <keyword attribute="Option Name" context="Option Value" String="options"/>
         <keyword attribute="Option Name" context="Bool Option Value" String="boolOptions"/>
 
-        <RegExpr attribute="Module Declaration" context="Module" endRegion="Module Options" String="end module" firstNonSpace="true"/>
-        <RegExpr attribute="Module Declaration" context="Module" endRegion="Global Options" String="end global" firstNonSpace="true"/>
-
         <!-- No kdesrc-build options start with digits or a dash. -->
         <RegExpr attribute="Possible Error" context="Option Value" String="[0-9-][a-zA-Z0-9_-]+" />
         <RegExpr attribute="Unknown Option Name" context="Option Value" String="[a-zA-Z0-9_-]+" />
+        <DetectChar context="Comment" char="#"/>
+      </context>
+
+      <context attribute="Normal Text" name="CMake Option" lineEndContext="#pop">
+        <DetectSpaces/>
+        <RegExpr attribute="Option Name" String="-D[A-Za-z0-9_]+"/>
+        <DetectChar char="="/>
+        <RegExpr attribute="Option Value" String="[^\s]+"/>
+      </context>
+
+      <context name="Global Options" attribute="Normal Text" lineEndContext="#stay">
+        <RegExpr attribute="Module Declaration" context="Root Level" endRegion="Global Options" String="end global" firstNonSpace="true"/>
+        <keyword attribute="Possible Error" String="moduleSetOptions"/>
+
+        <!-- Specific to global section -->
+        <keyword attribute="Option Name" context="Option Value" String="globalOptions"/>
+        <keyword attribute="Option Name" context="Bool Option Value" String="globalBoolOptions"/>
+
+        <IncludeRules context="Common Module Options"/>
+      </context>
+
+      <context name="Module Options" attribute="Normal Text" lineEndContext="#stay">
+        <DetectSpaces/>
+        <RegExpr attribute="Module Declaration" context="Root Level" endRegion="Module Options" String="end module" firstNonSpace="true"/>
+        <keyword attribute="Possible Error" String="moduleSetOptions"/>
+
+        <!-- Specific to global section -->
+        <keyword attribute="Possible Error" context="Option Value" String="globalOptions"/>
+        <keyword attribute="Possible Error" context="Bool Option Value" String="globalBoolOptions"/>
+
+        <IncludeRules context="Common Module Options"/>
       </context>
 
       <context name="ModuleSet Options" attribute="Normal Text" lineEndContext="#stay">
         <DetectSpaces/>
-        <RegExpr attribute="Comment" String="#.*$" context="#stay"/>
+        <RegExpr attribute="Module Declaration" context="Root Level" endRegion="ModuleSet Options" String="end module(-?set)?$" firstNonSpace="true"/>
+        <StringDetect String="use-modules" context="ModuleSet use-module" attribute="Option Name"/>
         <keyword attribute="Option Name" context="Option Value" String="moduleSetOptions"/>
 
-        <RegExpr attribute="Module Declaration" context="Module" endRegion="ModuleSet Options" String="end module(-?set)?$" firstNonSpace="true"/>
+        <!-- Specific to global section -->
+        <keyword attribute="Possible Error" context="Option Value" String="globalOptions"/>
+        <keyword attribute="Possible Error" context="Bool Option Value" String="globalBoolOptions"/>
 
-        <!-- No kdesrc-build options start with digits or a dash. -->
-        <RegExpr attribute="Possible Error" context="Option Value" String="[0-9-][a-zA-Z0-9_-]+" />
-        <RegExpr attribute="Unknown Option Name" context="Option Value" String="[a-zA-Z0-9_-]+" />
+        <IncludeRules context="Common Module Options"/>
+      </context>
+
+      <context name="ModuleSet use-module" attribute="Module Name" lineEndContext="#pop">
+        <DetectChar context="Comment" char="#"/>
+        <LineContinue attribute="Possible Error" context="#stay"/>
       </context>
 
       <context name="Option Value" attribute="Normal Text" lineEndContext="#pop">
-        <RegExpr attribute="Comment" String="#.*$" />
         <DetectSpaces/>
         <RegExpr attribute="Variable" String="\$\{[a-zA-Z0-9_-]+\}"/>
         <RegExpr attribute="Option Value" String="[a-zA-Z:0-9,./+!=@_-]*" context="#stay" />
-        <LineContinue context="#stay"/>
-        <AnyChar attribute="Option Value" String="\\"/>
+        <DetectChar context="Comment" char="#"/>
+        <LineContinue attribute="Option Value" context="#stay"/>
       </context>
 
-      <context name="Bool Option Value" attribute="Normal Text" lineEndContext="#pop">
+      <context name="Bool Option Value" attribute="Possible Error" lineEndContext="#pop">
+        <DetectSpaces attribute="Normal Text"/>
         <keyword attribute="Option Value" context="#stay" String="bools"/>
-        <RegExpr attribute="Comment" String="#.*$" />
-        <DetectSpaces/>
-        <RegExpr attribute="Possible Error" String="[^\\]*"/>
+        <DetectChar context="Comment" char="#"/>
         <LineContinue attribute="Possible Error" context="#stay"/>
-        <AnyChar attribute="Possible Error" String="\\"/>
       </context>
 
       <context name="Environment Name" attribute="Environment Variable Name" lineEndContext="#pop">
-        <RegExpr attribute="Comment" String="#.*$" />
         <DetectSpaces/>
         <RegExpr attribute="Environment Variable Name" context="Option Value" String="[a-zA-Z0-9_-]+" />
+        <DetectChar context="Comment" char="#"/>
       </context>
     </contexts>
 
@@ -159,9 +203,9 @@
       <itemData name="Environment Variable Name" defStyleNum="dsString" color="#EE6A50" />
       <itemData name="Option Value"        defStyleNum="dsDecVal" />
       <itemData name="Variable"            defStyleNum="dsOthers" />
-      <itemData name="Module Declaration"  defStyleNum="dsKeyword"/>
+      <itemData name="Module Declaration"  defStyleNum="dsKeyword" bold="false"/>
       <itemData name="Module Name"         defStyleNum="dsOthers" bold="true" />
-      <itemData name="Global Declaration"  defStyleNum="dsKeyword"/>
+      <itemData name="Global Declaration"  defStyleNum="dsKeyword" bold="true" />
       <itemData name="Possible Error"      defStyleNum="dsError" />
     </itemDatas>
   </highlighting>
