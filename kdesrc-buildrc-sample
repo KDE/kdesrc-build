@@ -198,9 +198,14 @@ end module-set
 
 # This set includes the modules required for the "strigi" file analyzer, used to extract
 # information contained in various file types for Dolphin previews, Nepomuk tagging, etc.
+# Because of the way the strigi git module is setup, CMake *must* be run in order to
+# complete the source code update. This is handled by the "reconfigure" option. In addition,
+# a special option to CMake is required to get the strigi build system to complete the
+# update.
 module-set
-    use-modules libstreams libstreamanalyzer strigiutils strigidaemon strigiclient
-
+    use-modules strigi
+    cmake-options -DSTRIGI_SYNC_SUBMODULES=TRUE
+    reconfigure true # CMake needs to always be run to finish the update.
     repository kde-git
 end module-set
 
