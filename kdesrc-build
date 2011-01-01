@@ -1976,11 +1976,101 @@ sub git_get_remote_branchname
     return '';
 }
 
+# This stashes existing changes if necessary, and then runs git pull --rebase in order
+# to advance the given module to the latest head. Finally, if changes were stashed, they
+# are applied and the stash stack is popped.
+#
+# It is assumed that the required remote has been setup already, that we are on the right
+# branch, and that we are already in the correct directory.
+#
+# Returns true on success, false otherwise. Some egregious errors result in
+# exceptions being thrown however.
+sub git_stash_and_update
+{
+    my $module = shift;
+    my $date = strftime ("%F-%R", gmtime()); # ISO Date, hh:mm time
+
+    # To find out if we should stash, we just use git diff --quiet, twice to
+    # account for the index and the working dir.
+    my $status = system('git', 'diff', '--quiet');
+    my $needsStash = 0;
+
+    if ($status == -1 || $status & 127) {
+        die make_exception('Runtime',
+            "$module doesn't appear to be a git module when" .
+            "trying to see if there are changes.");
+    }
+
+    if ($status) {
+        # There is local changes.
+        $needsStash = 1;
+    }
+    else {
+        $status = system('git', 'diff', '--cached', '--quiet');
+        if ($status == -1 || $status & 127) {
+            die make_exception('Runtime',
+                "$module doesn't appear to be a git module when" .
+                "trying to see if there are changes.");
+        }
+        else {
+            $needsStash = ($status != 0);
+        }
+    }
+
+    if ($needsStash) {
+        info "\tLocal changes detected, stashing them away...";
+        $status = log_command($module, 'git-stash-save', [
+                qw(git stash save --quiet), "kdesrc-build auto-stash at $date",
+            ]);
+        if ($status != 0) {
+            die make_exception('Runtime',
+                "Unable to stash local changes for $module, aborting update.");
+        }
+    }
+
+    $status = log_command($module, 'git-pull-rebase', [
+            qw(git pull --rebase --quiet)
+        ]);
+
+    if ($status != 0) {
+        error "Unable to update the source code for r[b[$module]";
+        return 0;
+    }
+
+    # Update is performed and successful, re-apply the stashed changes
+    if ($needsStash) {
+        info "\tModule updated, reapplying your local changes.";
+        $status = log_command($module, 'git-stash-pop', [
+                qw(git stash pop --index --quiet)
+            ]);
+        if ($status != 0) {
+            error <<EOF;
+ r[b[*]
+ r[b[*] Unable to re-apply stashed changes to r[b[$module]!
+ r[b[*]
+ * These changes were saved using the name "kdesrc-build auto-stash at $date"
+ * and should still be available using the name stash\@{0}, the command run
+ * to re-apply was y[git stash --pop --index]. Resolve this before you run
+ * kdesrc-build to update this module again.
+ *
+ * If you do not desire to keep your local changes, then you can generally run
+ * r[b[git reset --hard HEAD], or simply delete the source directory for
+ * $module. Developers be careful, doing either of these options will remove
+ * any of your local work.
+EOF
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 # Updates an already existing git checkout by running git pull.
 # Assumes the __kdesvn-build-remote git remote has been setup.
 #
 # First parameter is the module to download.
-# Returns boolean true if successful, otherwise 0.
+# Return parameter is the number of affected *commits*. Errors are
+# returned only via exceptions because of this.
 sub git_update_module
 {
     my $module = shift;
@@ -2031,9 +2121,9 @@ sub git_update_module
 
     # Download updated objects
     # This also updates remote heads so do this before we start comparing branches
-    # and such.
+    # and such, even though we will later use git pull.
     if (0 != log_command($module, 'git-fetch', ['git', 'fetch', $remoteName])) {
-        die "Unable to perform git fetch for $remoteName, which should be $cur_repo";
+        die "Unable to perform git fetch or $remoteName, which should be $cur_repo";
     }
 
     # The 'branch' option requests a given head in the user's selected
@@ -2061,19 +2151,18 @@ sub git_update_module
         {
             die "Unable to perform a git checkout to existing branch $branchName";
         }
-
-        # If we're already on the branch just doing the checkout doesn't do
-        # anything, we need to merge changes forward.
-        info "\tAdvancing checkout to latest source";
-        if (0 != log_command($module, 'git-merge',
-                      ['git', 'merge', "$remoteName/$branch"]))
-        {
-            die "Unable to merge latest remote git changes into the current local git branch";
-        }
     }
 
-    my $end_commit = git_commit_id();
-    return count_command_output('git', 'rev-list', "$start_commit..$end_commit");
+    # With all remote branches fetched, and the checkout of our desired branch
+    # completed, we can now use git pull to complete the changes.
+    if (git_stash_and_update($module)) {
+        my $end_commit = git_commit_id();
+        return count_command_output('git', 'rev-list', "$start_commit..$end_commit");
+    }
+    else {
+        # We must throw an exception if we fail.
+        die "Unable to update $module";
+    }
 }
 
 # Either performs the initial checkout or updates the current git checkout for qt-copy,
@@ -4891,7 +4980,15 @@ sub handle_updates
             else
             {
                 whisper "This module will not be built. Nothing updated.";
+                $message = "0 files affected.";
                 dont_build($module, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
+            }
+
+            # We doing e.g. --src-only, the build phase that normally outputs
+            # number of files updated doesn't get run, so manually mention it
+            # here.
+            if (!$ipc->supportsConcurrency()) {
+                info "\t$module update complete, $message";
             }
         }
 
