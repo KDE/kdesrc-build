@@ -5378,11 +5378,13 @@ sub needs_refreshed
         debug ".refresh-me exists for $module." if -e "$builddir/.refresh-me";
         debug "refresh-build option set for $module." if get_option($module, 'refresh-build');
         debug "Can't find configure key file for $module." if not -e "$builddir/$conf_file_key";
+        debug "l10n always needs autogen.sh run" if $module =~ /^l10n-kde4/;
     }
 
     return 1 if ((not -e "$builddir") ||
         (-e "$builddir/.refresh-me") ||
         get_option($module, "refresh-build") ||
+        $module =~ /^l10n-kde4/ ||
         (not -e "$builddir/$conf_file_key"));
 
     return 0;
