@@ -6090,9 +6090,6 @@ sub handle_build
     my @modules = grep (!/^(KDE\/)?kde-common$/, @build_list);
     my $result;
 
-    # Handle l10n module, which is speshul.
-    @modules = filter_l10n_module_list(@modules);
-
     # No reason to print building messages if we're not building.
     return 0 if scalar @modules == 0;
 
@@ -6217,6 +6214,19 @@ EOF
         }
 
         next if $svn_status{$module} eq 'failed';
+
+        # The update process will send an IPC response for 'l10n-kde4', so we
+        # must wait until after that response is received before filtering our
+        # l10n module into the list of l10n-kde4/{$kde-languages}.
+        # There will be no IPC updates for any l10n modules added from
+        # filter_l10n_module_list, but that is OK, as the reading code above
+        # only checks for modules that were in @update_list. The extra modules
+        # added are *not* in @update_list, and so we don't expect IPC output
+        # for them.
+        if ($module eq 'l10n-kde4') {
+            @modules = filter_l10n_module_list('l10n-kde4', @modules);
+            next;
+        }
 
         # Skip actually building a module if the user has selected to skip
         # builds when the source code was not actually updated. But, don't skip
@@ -6652,6 +6662,12 @@ sub munge_lists
         while ($_ = shift @$list_ref) {
             # Split at directory separators.
             my ($modulename, @dirs) = split(/\//);
+
+            # Convert l10n alias to actual module.
+            if ($modulename eq 'l10n') {
+                $modulename = 'l10n-kde4';
+                $_ = $modulename;
+            }
 
             # For these modules, the first part of the directory separator
             # actually belongs with the module name.
