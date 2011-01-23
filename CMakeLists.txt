@@ -8,6 +8,4 @@ include(MacroLibrary)
 
 macro_optional_add_subdirectory(doc)
 
-configure_file(kdesrc-build ${CMAKE_CURRENT_BINARY_DIR}/kdesrc-build  @ONLY)
-
-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/kdesrc-build DESTINATION ${BIN_INSTALL_DIR})
+install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${BIN_INSTALL_DIR})
