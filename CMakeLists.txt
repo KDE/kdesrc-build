@@ -12,6 +12,10 @@ include(MacroLibrary)
 #macro_optional_add_subdirectory(doc)
 
 # Null install target so CMake succeeds
-add_custom_target(install
-    COMMAND /bin/true
-    )
+#add_custom_target(install
+#    COMMAND /bin/true
+#    )
+
+configure_file(kdesrc-build ${CMAKE_CURRENT_BINARY_DIR}/kdesrc-build  @ONLY)
+
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/kdesrc-build DESTINATION ${BIN_INSTALL_DIR})
