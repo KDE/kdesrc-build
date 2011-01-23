@@ -9,3 +9,5 @@ include(MacroLibrary)
 macro_optional_add_subdirectory(doc)
 
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${BIN_INSTALL_DIR})
+install(FILES kdesrc-buildrc.xml DESTINATION ${DATA_INSTALL_DIR}/katepart/syntax)
+
