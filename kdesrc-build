@@ -5951,6 +5951,45 @@ sub run_tests
     return 1;
 }
 
+# Returns true if the given module appears to be a Subversion module which has
+# migrated to git.
+sub module_is_migrated
+{
+    my $module = shift;
+    my $rev = current_module_revision($module) || 0;
+    my $srcdir = get_fullpath($module, 'source');
+
+    # TODO Add other ways of auto-guessing that a migration to git.kde.org has
+    # occurred, such as kde_projects.xml
+    if ($rev > 0 && -f "$srcdir/MIGRATED") {
+        note <<EOF;
+ y[b[***]
+The y[b[$module] module appears to have been converted to a git.kde.org
+project.  This module b[can no longer be built], but the new git.kde.org
+module can be.  To do this:
+
+  1) Convert the b[$module] module in your configuration file
+     ($rcfile).
+     This is usually as easy as adding a line such as
+
+        repository git://anongit.kde.org/$module
+
+     to the existing module options. The git:// URL above is just a guess, you
+     should check the $srcdir directory for a README file,
+     MIGRATED file, etc. to point you to where the git module resides. You
+     can also check https://projects.kde.org/
+
+  2) Delete the module source directory at b[$srcdir] after making sure
+     there's no changes you want to keep. kdesrc-build does not do this for
+     you since you may have files or changes you want to keep.
+
+  3) Run b[kdesrc-build $module] to checkout and build the module using git
+     instead of Subversion.
+EOF
+        return 1;
+    }
+}
+
 # Subroutine to build a given module.  The module to build is the first
 # parameter.  The second and third paramaters is the ordinal number of the
 # module being built (1 == first module, 2 == second, etc.), and the total
@@ -5964,6 +6003,9 @@ sub build_module
 
     # Do some tests to make sure we're ready to build.
     check_for_module_config($module);
+
+    # Make sure this module isn't migrated to git
+    return 0 if module_is_migrated($module);
 
     update_module_environment($module);
 
