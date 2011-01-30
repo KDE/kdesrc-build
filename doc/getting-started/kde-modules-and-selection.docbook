@@ -1,0 +1,179 @@
+<sect1 id="kde-modules-and-selection">
+<title>Module Organization and selection</title>
+
+<sect2 id="kde-layers">
+<title>KDE Software Organization</title>
+
+<para>
+&kde; software is split into different components, many of which can be built
+by &kdesrc-build;. Understanding this organization will help you properly
+select the software modules that you want built.
+</para>
+
+<orderedlist>
+<listitem><para>At the lowest level comes Nokia's &Qt; library, which is a
+very powerful, cross-platform <quote>toolkit</quote> library. &kde; is based on
+&Qt;, and some of the non-&kde; libraries required by &kde; are also based on
+&Qt;. &kdesrc-build; can build &Qt;, or use the one already installed on your
+system if it is a recent enough version.</para></listitem>
+
+<listitem><para>On top of &Qt; are required libraries that are necessary for
+&kde; software to work. Some of these libraries are not considered part of
+&kde; itself due to their generic nature, but are still essential to the &kde;
+Platform. These libraries tended to get combined into a single
+<literal>kdesupport</literal> module.</para>
+
+<note><para>As of &kde; Platform 4.6, many of these kdesupport modules are being
+migrated over to <ulink url="http://projects.kde.org/">git.kde.org</ulink>,
+although they are still not considered part of the Platform.</para></note>
+</listitem>
+
+<listitem><para>On top of these essential libraries comes the &kde; Platform.
+These are the libraries that are required for &kde; applications to work. A
+full desktop environment is not provided by the Platform however.
+</para>
+
+<para>For &kdesrc-build;, the Platform layer consists of the <literal>kdelibs</literal>,
+<literal>kdepimlibs</literal>, and <literal>kdebase</literal> modules.</para>
+
+<note><para>Technically, only the <filename
+class="directory">/runtime</filename> directory of <literal>kdebase</literal>
+is part of the &kde; Platform. This will be corrected when kdebase is converted
+to use &git;.</para></note>
+</listitem>
+
+<listitem><para>On top of the Platform, come several different things:</para>
+    <itemizedlist>
+        <listitem><para><quote>Third-party</quote> applications. These are
+        applications that use the &kde; Platform but are not authored by or in
+        association with the &kde; project.</para></listitem>
+
+        <listitem><para>A full <quote>workspace</quote> desktop environment.
+        This is what users normally see when they <quote>log-in to
+        &kde;</quote>.  This is provided by the &plasma; Desktop, mostly in
+        <literal>kdebase/workspace</literal>.  </para></listitem>
+
+        <listitem><para>The &kde; Software Compilation. This is a collection of
+        useful software included with the Platform and &plasma; Desktop,
+        grouped into individual modules. These are the modules that have names
+        starting with <literal>kde</literal>. For example,
+        <literal>kdepim</literal> is a component of the Software Compilation
+        that contains email, news-reading, calendar/organizational software,
+        &etc;, while <literal>kdegames</literal> contains a collection of
+        high-quality games to while away the time.</para></listitem>
+
+        <listitem><para>Finally, there is a collection of software (also
+        collected in modules) whose development is supported by &kde; resources
+        (such as translation, source control, bug tracking, &etc;) but is not
+        released by &kde; or considered part of the Software Compilation. These
+        modules are known as <quote>Extragear</quote>, and have module names
+        such as <literal>extragear/network</literal>. As with
+        <literal>kdesupport</literal>, some of these Extragear applications are
+        migrating to <ulink
+        url="http://projects.kde.org/">git.kde.org</ulink>.</para></listitem>
+    </itemizedlist>
+</listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="selecting-modules">
+<title>Selecting modules to build</title>
+
+<para>Selecting which of the possible modules to build is controlled by
+<link linkend="kdesrc-buildrc">the configuration file</link>.
+After the <literal>global</literal> section is a list of modules to build,
+bracketed by module ... end module lines. An example entry for a module is
+shown in <xref linkend="conf-module-example"/>.</para>
+
+<example id="conf-module-example">
+<title>Example module entry in the configuration file</title>
+<programlisting>
+module <replaceable>module-name</replaceable>
+    # Options for this module go here, example:
+    <link linkend="conf-make-options">make-options</link> -j4 # Run 4 compiles at a time
+end module
+</programlisting>
+</example>
+
+<tip><para>It is possible to declare a module with no options. In fact, most of
+your modules will likely be declared this way.</para></tip>
+
+<para>&kdesrc-build; only builds the modules you have listed in your configuration
+file. In addition, the modules are built in the order specified in the configuration
+file. For this reason you should ensure that the order of modules in your
+configuration file is consistent with the organization given in
+<xref linkend="kde-layers"/>.</para>
+
+<para>There is a sample file that comes with &kdesrc-build; called
+<filename>kdesrc-buildrc-sample</filename>. It is recommended to copy this file
+to a file called <filename>~/.kdesrc-buildrc</filename> (<emphasis>Note the
+leading period in front of kdesrc-buildrc!</emphasis>). Afterwards, edit the
+new file to adjust the default options to your liking. (Each option is described
+in more detail in <xref linkend="kdesrc-buildrc"/>). The default modules
+should be enough to ensure a fairly complete &kde; installation, however you
+can remove many of the modules that show up after <literal>kdebase</literal>
+if you'd like to save disk space or build time.</para>
+
+</sect2>
+
+<sect2 id="module-sets">
+<title>Module Sets</title>
+
+<para>&kdesrc-build; is usually able to guess where to download the source code
+for a given module quite easily, by using your setting for <link
+linkend="conf-svn-server">svn-server</link> and the module name for each module
+to create a single Subversion URL, which describes exactly where to download
+the source code from.</para>
+
+<para>With the move to Git, many larger Subversion modules were further
+sub-divided in the process, and there was no guarantee of where to find a
+module based just on the module name. Because of this, a concept called
+<quote>module sets</quote> was developed for &kdesrc-build; 1.12.1.</para>
+
+<para>By using a module set, you can quickly declare many Git modules to be
+downloaded and built, as if you'd typed out a separate module declaration for
+each one. The <link linkend="conf-repository">repository</link> opiton is
+handled specially to setup where each module is downloaded from, which every
+other option contained in the module set is copied to every module generated
+in this fashion.</para>
+
+<example id="example-using-module-sets">
+<title>Using module sets</title>
+<programlisting>
+global
+    <option><link linkend="conf-git-repository-base">git-repository-base</link></option> <replaceable>kde-git</replaceable> <replaceable>git://anongit.kde.org/</replaceable>
+end global
+
+module <replaceable>qt-copy</replaceable>
+    # Options removed for brevity
+end module
+
+module-set # Note there's no name for this (or any) set
+    <option><link linkend="conf-repository">repository</link></option> <replaceable>kde-git</replaceable>
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>automoc</replaceable> <replaceable>attica</replaceable> <replaceable>akonadi</replaceable>
+end module-set
+
+# Other modules as necessary...
+module <replaceable>kdesupport</replaceable>
+end module
+</programlisting>
+</example>
+
+<para>In <xref linkend="example-using-module-sets"/> a brief module set is
+shown.  When &kdesrc-build; encounters this module set, it acts as if, for
+every module given in <option>use-modules</option>, that an individual module
+has been declared, with its <option>repository</option> equal to the
+module-set's <option>repository</option> followed immediately by the given
+module name.</para>
+
+<para>In addition, other options can be passed in a module set, which are
+copied to every new module that is created this way. By using module-set it is
+possible to quickly declare many Git modules that are all based on the same
+repository URL.</para>
+
+<para>Module sets use the options <simplelist><member><link
+linkend="conf-git-repository-base">git-repository-base</link></member>
+<member><link
+linkend="conf-use-modules">use-modules</link></member></simplelist></para>
+</sect2>
+</sect1>

@@ -6,14 +6,43 @@ Now you are ready to run the script. From a terminal window,
 log in to the user you are using to compile &kde; and execute
 the script:
 <screen>
-<prompt>$</prompt><command>kdesrc-build</command>
+<prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command></userinput>
 </screen>
 </para>
 
+<para>Afterwards, you should see output similar to that in <xref
+linkend="example-single-module"/>:</para>
+
+<example id="example-single-module">
+<title>Example output of building a single module</title>
+<screen>
+<prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>kdelibs</option></userinput>
+Script started processing at Wed Dec 22 13:21:45 2010
+&lt;&lt;&lt;  Build Process  &gt;&gt;&gt;
+Building kdelibs (1/1)
+        Waiting for source code update.
+        Source update complete for kdelibs: 48 files affected.
+        Checking for source conflicts...
+        Compiling...
+        Build succeeded after 13 minutes, and 6 seconds.
+        Installing kdelibs.
+        Overall time for kdelibs was 13 minutes, and 53 seconds.
+
+&lt;&lt;&lt;  Build Done  &gt;&gt;&gt;
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+kdelibs
+
+Script finished processing at Wed Dec 22 13:35:38 2010
+Your logs are saved in /home/kde-src/log-kdesrc-build/2010-12-22-01
+</screen>
+</example>
+
 <para>
-Now, the script should start downloading the sources and compiling them. Depending on
-how many modules you are downloading, it is possible that &kdesrc-build;
-will not succeed the first time you compile &kde;. Do not despair!
+At this point, &kdesrc-build; should start downloading the sources and
+compiling them. Depending on how many modules you are downloading, it is
+possible that &kdesrc-build; will not succeed the first time you compile &kde;.
+Do not despair!
 </para>
 
 <para>&kdesrc-build; logs the output of every command it runs. By default,
@@ -21,24 +50,38 @@ the log files are kept in <filename class="directory">~/kdesrc/log</filename>. T
 the caused an error for a module in the last &kdesrc-build; command, usually
 it is sufficient to look at <filename class="directory">~/kdesrc/log/latest/<replaceable>module-name</replaceable>/error.log</filename>.</para>
 
+<tip><para>Perhaps the easiest way to find out what error caused a module to
+fail to build is to search backward with a case-insensitive search, starting
+from the end of the file looking for the word <literal>error</literal>.  Once
+that is found, scroll up to make sure there are no other error messages nearby.
+The first error message in a group is usually the underlying
+problem.</para></tip>
+
 <para>In that file, you will see the error that caused the build to fail for
 that module. If the file says (at the bottom) that you are missing some
 packages, try installing the package (including any appropriate -dev packages)
-before trying to build that module, and pass the <link
-linkend="cmdline-reconfigure">--reconfigure</link> option after installing the
-missing packages.</para>
+before trying to build that module again. Make sure that when you run
+&kdesrc-build; again to pass the <link
+linkend="cmdline-reconfigure">--reconfigure</link> option so that
+&kdesrc-build; forces the module to check for the missing packages
+again.</para>
 
-<para>Or, if the error appears to be a build error then it is probably an error
-with the &kde; source, which will hopefully be resolved within a few days. If
-it is not resolved within that time, feel free to mail the
-<email>kde-devel@kde.org</email> mailing list (subscription may be required
-first) in order to report the build failure.</para>
+<para>Or, if the error appears to be a build error (such as a syntax error,
+<quote>incorrect prototype</quote>, <quote>unknown type</quote>, or similar)
+then it is probably an error with the &kde; source, which will hopefully be
+resolved within a few days. If it is not resolved within that time, feel free
+to mail the <email>kde-devel@kde.org</email> mailing list (subscription may be
+required first) in order to report the build failure.</para>
 
 <para>You can find more common examples of things that can go wrong and their
 solutions, as well as general tips and strategies to build &kde; in the
 <ulink url="http://techbase.kde.org/Getting_Started/Build/KDE4">
 Building &kde; 4 from Source</ulink>.
 </para>
+
+<para>On the other hand, assuming everything went well, you should have a new
+&kde; install on your computer, and now it is simply a matter of running
+it, described next in <xref linkend="environment"/>.</para>
 
 <note><para>For more information about &kdesrc-build;'s logging features,
 please see <xref linkend="kdesrc-build-logging"/>.</para></note>
