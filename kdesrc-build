@@ -432,6 +432,156 @@ our %ENV_VARS;
     }
 }
 
+# kde_projects.xml module-handling code.
+# The core of this was graciously contributed by Allen Winter, and then
+# touched-up and kdesrc-build'ed by myself -mpyne.
+{
+    package KDEXMLReader;
+    use XML::Parser;
+
+    my @nameStack = ();        # Used to assign full names to modules.
+    my %xmlGroupingIds;        # XML tags which group repositories.
+    my @modules;               # Result list
+    my $curRepository;         # ref to hash table when we are in a repo
+    my $trackingReposFlag = 0; # >0 if we should be tracking for repo elements.
+    my $inRepo = 0;            # >0 if we are actually in a repo element.
+    my $repoFound = 0;         # If we've already found the repo we need.
+    my $searchProject = '';    # Project we're looking for.
+
+    # Note on searchProject: A /-separated path is fine, in which case we look
+    # for the right-most part of the full path which matches all of searchProject.
+    # e.g. kde/kdebase/kde-runtime would be matched searchProject of either
+    # "kdebase/kde-runtime" or simply "kde-runtime".
+    sub getModulesForProject
+    {
+        # These are the elements that can have <repo> under them AFAICS, and
+        # participate in module naming. e.g. kde/calligra or
+        # extragear/utils/kdesrc-build
+        @xmlGroupingIds{qw/component module project/} = 1;
+
+        my ($class, $proj) = @_;
+
+        $searchProject = $proj;
+        @modules = ();
+        @nameStack = ();
+        $inRepo = 0;
+        $trackingReposFlag = 0;
+        $curRepository = undef;
+
+        my $parser = XML::Parser->new(
+            Handlers =>
+                {
+                    Start => \&xmlTagStart,
+                    End => \&xmlTagEnd,
+                    Char => \&xmlCharData,
+                },
+        );
+
+        my $srcdir = main::get_source_dir();
+        my $result = $parser->parsefile("$srcdir/kde_projects.xml");
+        return @modules;
+    }
+
+    sub xmlTagStart
+    {
+        my ($expat, $element, %attrs) = @_;
+
+        # In order to ensure that repos which are recursively under this node are
+        # actually handled, we increment this flag if it's already >0 (which means
+        # we're actively tracking repos for some given module).
+        # xmlTagEnd will then decrement the flag so we eventually stop tracking
+        # repos once we've fully recursively handled the node we cared about.
+        if ($trackingReposFlag > 0) {
+            ++$trackingReposFlag;
+        }
+
+        if (exists $xmlGroupingIds{$element}) {
+            push @nameStack, $attrs{'identifier'};
+
+            # If we're not tracking something, see if we should be. The logic is
+            # fairly long-winded but essentially just breaks searchProject into
+            # its components and compares it item-for-item to the end of our name
+            # stack.
+            if ($trackingReposFlag <= 0) {
+                my @searchParts = split(m{/}, $searchProject);
+                if (scalar @nameStack >= scalar @searchParts) {
+                    my @candidateArray = @nameStack[-(scalar @searchParts)..-1];
+                    die "candidate vs. search array mismatch" if $#candidateArray != $#searchParts;
+
+                    $trackingReposFlag = 1;
+                    for (my $i = 0; $i < scalar @searchParts; ++$i) {
+                        $trackingReposFlag &&= $searchParts[$i] eq $candidateArray[$i];
+                    }
+
+                    # Reset our found flag if we're looking for another repo
+                    $repoFound = 0 if $trackingReposFlag > 0;
+                }
+            }
+        }
+
+        # Checking that we haven't already found a repo helps us out in
+        # situations where a supermodule has its own repo, -OR- you could build
+        # it in submodules. We won't typically want to do both, so prefer
+        # supermodules this way. (e.g. Calligra and its Krita submodules)
+        if ($element eq 'repo' &&     # Found a repo
+            $trackingReposFlag > 0 && # When we were looking for one
+            ($trackingReposFlag <= $repoFound || $repoFound == 0))
+                # (That isn't a direct child of an existing repo)
+        {
+            die "We are already tracking a repository" if $inRepo > 0;
+            $inRepo = 1;
+            $repoFound = $trackingReposFlag;
+            $curRepository = {
+                'fullName' => join('/', @nameStack),
+                'repo' => '',
+                'name' => $nameStack[-1],
+                'active' => 'false',
+            }; # Repo/Active to be added by char handler.
+        }
+
+        # Character data is integrated by the char handler. To avoid having it dump
+        # all willy-nilly into our dict, we leave a flag for what the resultant key
+        # should be.
+        if ($element eq 'active' && $inRepo) {
+            $curRepository->{'needs'} = 'active';
+        }
+
+        if ($element eq 'url' && $inRepo && $attrs{'protocol'} eq 'git') {
+            $curRepository->{'needs'} = 'repo';
+        }
+    }
+
+    sub xmlTagEnd
+    {
+        my ($expat, $element) = @_;
+
+        if (exists $xmlGroupingIds{$element}) {
+            pop @nameStack;
+        }
+
+        if ($element eq 'repo' && $inRepo) {
+            $inRepo = 0;
+            push @modules, $curRepository;
+            $curRepository = undef;
+        }
+
+        # See xmlTagStart above for an explanation.
+        --$trackingReposFlag;
+    }
+
+    sub xmlCharData
+    {
+        my ($expat, $utf8Data) = @_;
+
+        if ($curRepository && defined $curRepository->{'needs'}) {
+            $curRepository->{$curRepository->{'needs'}} = $utf8Data;
+            delete $curRepository->{'needs'};
+        }
+    }
+
+    1;
+}
+
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
 
@@ -3195,6 +3345,42 @@ EOF
     }
 }
 
+# Tries to download the kde_projects.xml file needed to make use-xml-modules
+# work. Only tries once per script run. If it does succeed, the result is
+# saved to $srcdir/kde_projects.xml
+#
+# Returns 0 if the file could not be downloaded, 1 otherwise.
+sub ensure_projects_xml_present
+{
+    my $srcdir = get_source_dir();
+
+    my $cached_status = get_option('global', '#cached_project_xml_check');
+    if (defined $cached_status && $cached_status eq 'failed') {
+        die "Attempted to find projects.xml after it already failed";
+    }
+
+    return $cached_status if $cached_status;
+
+    # Not previously attempted, let's make a try.
+    super_mkdir($srcdir) unless -d "$srcdir";
+    my $file = "$srcdir/kde_projects.xml";
+    my $host = "projects.kde.org";
+    my $path = "/kde_projects.xml";
+    my $redirections = { };
+
+    my $result = 1;
+    if (!pretending) {
+        $result = download_http_file($host, $path, $file, $redirections);
+    }
+
+    set_option('global', '#cached_project_xml_check',
+        $result ? 'success' : 'failed');
+
+    if (!$result) {
+        die "Unable to download kde_projects.xml for the use-xml-module option!";
+    }
+}
+
 # Reads in a "moduleset".
 #
 # First parameter is the filehandle to the config file to read from.
@@ -3206,6 +3392,7 @@ sub parse_moduleset
     my $fh = shift;
     my $repoSet = get_option('global', 'git-repository-base');
     my @modules;
+    my @xmlModules;
     my %optionSet; # We read all options, and apply them to all modules
     my $startLine = $.; # For later error messages
 
@@ -3223,14 +3410,23 @@ sub parse_moduleset
                 die make_exception('Config', 'Invalid use-modules');
             }
         }
+        elsif ($option eq 'use-xml-modules') {
+            ensure_projects_xml_present();
+            my @xmlModuleNames = split(' ', $value);
+
+            if (not @xmlModuleNames) {
+                error "No modules were selected for the current module-set";
+                error "in the y[xml-use-modules] on line $. of $rcfile";
+                die make_exception('Config', 'Invalid xml-use-modules');
+            }
+
+            foreach my $xmlModule (@xmlModuleNames) {
+                push @xmlModules, KDEXMLReader->getModulesForProject($xmlModule);
+            }
+        }
         else {
             $optionSet{$option} = $value;
         }
-    }
-
-    if (not scalar @modules) {
-        warning "No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]";
-        warning "You should use the g[b[use-modules] option to make the module-set useful.";
     }
 
     # Setup default options for each module
@@ -3267,6 +3463,32 @@ EOF
 
             set_option($moduleName, $option, $value);
         }
+    }
+
+    for my $xmlModule (@xmlModules) {
+        next if $xmlModule->{'active'} eq 'false';
+
+        my $moduleName = $xmlModule->{'name'};
+        if (not defined $package_opts{$moduleName})
+        {
+            $package_opts{$moduleName} = default_module_options($moduleName);
+        }
+
+        # Apply all options in the module set to this virtual module.
+        for my $option (keys %optionSet) {
+            my $value = $optionSet{$option};
+
+            next if $option eq 'repository';
+            set_option($moduleName, $option, $value);
+        }
+
+        set_option($moduleName, 'repository', $xmlModule->{'repo'});
+        push @modules, $moduleName;
+    }
+
+    if (not scalar @modules) {
+        warning "No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]";
+        warning "You should use the g[b[use-modules] option to make the module-set useful.";
     }
 
     return @modules;
