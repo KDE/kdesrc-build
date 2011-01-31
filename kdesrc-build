@@ -4955,6 +4955,10 @@ sub handle_updates
 
         if ($@)
         {
+            if ($@->isa('BuildException')) {
+                $@ = $@->{'message'};
+            }
+
             error "Error updating r[$module], removing from list of packages to build.";
             error " > y[$@]";
 
