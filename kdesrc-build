@@ -1992,7 +1992,8 @@ sub git_stash_and_update
 
     # To find out if we should stash, we just use git diff --quiet, twice to
     # account for the index and the working dir.
-    my $status = safe_system('git', 'diff', '--quiet');
+    # Note: Don't use safe_system, as the error code is stripped to the exit code
+    my $status = pretending() ? 0 : system('git', 'diff', '--quiet');
 
     if ($status == -1 || $status & 127) {
         die make_exception('Runtime',
@@ -2006,7 +2007,7 @@ sub git_stash_and_update
         $needsStash = 1;
     }
     else {
-        $status = safe_system('git', 'diff', '--cached', '--quiet');
+        $status = pretending() ? 0 : system('git', 'diff', '--cached', '--quiet');
         if ($status == -1 || $status & 127) {
             die make_exception('Runtime',
                 "$module doesn't appear to be a git module when" .
