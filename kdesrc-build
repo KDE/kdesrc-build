@@ -3281,8 +3281,6 @@ sub setup_default_modules()
 
         Module->push(Module->new($i, 'null'));
     }
-
-    @update_list = @build_list = @defaultModuleList;
 }
 
 # Reads a "line" from a file. This line is stripped of comments and extraneous
@@ -3519,13 +3517,26 @@ sub parse_moduleset
                 die make_exception('Config', 'Invalid use-xml-modules');
             }
 
-            foreach my $xmlModule (@xmlModuleNames) {
-                push @xmlModules, KDEXMLReader->getModulesForProject($xmlModule);
-            }
+            push @xmlModules, @xmlModuleNames;
         }
         else {
             $optionSet{$option} = $value;
         }
+    }
+
+    # Check before we start looping whether the user did something silly.
+    if (exists $optionSet{'repository'} &&
+        not exists $repoSet->{$optionSet{'repository'}})
+    {
+        error <<EOF;
+There is no repository assigned to y[b[$optionSet{repository}] when assigning a moduleset on
+line $startLine of $rcfile.
+
+These repositories are defined by g[b[git-repository-base] in the global
+section of $rcfile. Make sure you spelled your repository name right!
+EOF
+
+        die make_exception('Config', 'Unknown repository base');
     }
 
     # List of new-ed modules to be returned, and possibly actually queued up
@@ -3544,61 +3555,56 @@ sub parse_moduleset
             $package_opts{$moduleName} = default_module_options($moduleName);
         }
 
-        # Apply all options in the module set to this virtual module.
-        # At this point it's possible to override repository after we just
-        # set it, but let's not announce that too loudly...
-        for my $option (keys %optionSet) {
-            my $value = $optionSet{$option};
+        # Dump all options into the existing option hash.
+        @{$package_opts{$moduleName}}{keys %optionSet} = values %optionSet;
 
-            if ($option eq 'repository') {
-                if (not exists $repoSet->{$value}) {
-                    error <<EOF;
-There is no repository assigned to y[b[$value] when assigning a moduleset on
-line $startLine of $rcfile.
-
-These repositories are defined by g[b[git-repository-base] in the global
-section of $rcfile. Make sure you spelled your repository name right!
-EOF
-
-                    die make_exception('Config', 'Unknown repository base');
-                }
-
-                $value = $repoSet->{$value} . $module;
-            }
-
-            set_option($moduleName, $option, $value);
+        # Fixup for the special repository handling if need be.
+        if (exists $optionSet{'repository'}) {
+            set_option($moduleName, 'repository', $optionSet{'repository'} . $module);
         }
     }
 
+    # Extraction of relevant XML modules to be handled immediately after
+    # this phase of execution.
     for my $xmlModule (@xmlModules) {
-        next if $xmlModule->{'active'} eq 'false';
-
-        my $moduleName = $xmlModule->{'name'};
-        if (not defined $package_opts{$moduleName})
-        {
-            $package_opts{$moduleName} = default_module_options($moduleName);
-        }
-
-        push @moduleList, Module->new($moduleName, 'git');
-
-        # Apply all options in the module set to this virtual module.
-        for my $option (keys %optionSet) {
-            my $value = $optionSet{$option};
-
-            next if $option eq 'repository';
-            set_option($moduleName, $option, $value);
-        }
-
-        set_option($moduleName, 'repository', $xmlModule->{'repo'});
-        push @modules, $moduleName;
+        push @moduleList, Module->new($xmlModule, 'proj');
+        push @modules, $xmlModule;
     }
 
-    if (not scalar @modules) {
+    if (not scalar @moduleList) {
         warning "No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]";
         warning "You should use the g[b[use-modules] option to make the module-set useful.";
     }
 
     return @moduleList;
+}
+
+# Goes through the provided modules that have the 'proj' type (i.e. XML
+# projects.kde.org database) and expands the proj-types into their equivalent
+# git modules, and returns the fully expanded list. Non-proj modules are
+# included in the sequence they were originally.
+sub expandXMLModules
+{
+    my @modules = @_;
+
+    # Using a sub allows me to use the 'return' keyword.
+    my $filter = sub {
+        return $_ if $_->{'type'} ne 'proj';
+        my $name = $_->{'name'};
+        my @xmlResults = grep {
+            $_->{'active'} ne 'false'
+        } (KDEXMLReader->getModulesForProject($name));
+
+        # Setup module options
+        foreach my $xml (@xmlResults) {
+            clone_options($name, $xml->{'name'});
+            set_option($xml->{'name'}, 'repository', $xml->{'repo'});
+        }
+
+        return map { Module->new($_->{'name'}, 'git') } (@xmlResults);
+    };
+
+    return map { &$filter($_) } (@modules);
 }
 
 # This subroutine reads in the settings from the user's configuration
@@ -4791,7 +4797,7 @@ sub get_update_list
 
     if (get_option('global', 'kde-languages') and not get_option($l10n, 'manual-update'))
     {
-        push @update_list, $l10n; # Add l10n module to potential update list.
+        Module->push(Module->new($l10n, 'svn'));
     }
 
     return grep {
@@ -7572,9 +7578,21 @@ eval
     # doing.
     set_debug_colors();  # Default to colorized output if sending to TTY
     my @modules = process_arguments(); # Process --help, --install, etc. first.
+
+    # Change name and type of command line entries beginning with + to force
+    # them to be XML project modules.
+    foreach (@modules) {
+        if (substr($_->{name}, 0, 1) eq '+') {
+            debug "Forcing $_->{name} to be an XML module";
+            $_->{type} = 'proj';
+            substr($_->{name}, 0, 1) = ''; # Remove first char
+        }
+    }
+
     my @optionModules = read_options();      # If we're still here, read the options
 
     @modules = @optionModules unless scalar @modules;
+    @modules = expandXMLModules(@modules);
     print Dumper(\@modules);
     Module->push($_) foreach @modules;
     foreach my $module (Module::moduleList()) {
