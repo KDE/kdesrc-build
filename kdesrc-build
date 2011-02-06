@@ -18,6 +18,7 @@
 use strict;
 use warnings;
 use Fcntl;    # For sysopen constants
+use Carp;
 use POSIX qw(strftime :sys_wait_h);
 use File::Find; # For our lndir reimplementation.
 use File::Basename;
@@ -599,7 +600,8 @@ our %ENV_VARS;
         my $module = {
             name => $name,
             type => $type || 'null',
-            phases => $ModulePhases,
+            # Weird [@$foo] forces a copy of underlying list.
+            phases => [@$ModulePhases],
         };
 
         return bless $module, $class;
@@ -608,7 +610,7 @@ our %ENV_VARS;
     sub push
     {
         my ($self, $module) = @_;
-        die "No module to push" unless $module;
+        Carp::confess("No module to push") unless $module;
 
         if (grep ($_->{name} eq $module->{name}, @ModuleList)) {
             debug( "Skipping duplicate module $module->{name}");
@@ -628,13 +630,27 @@ our %ENV_VARS;
     sub setPhases
     {
         my ($self, @phases) = @_;
-        $ModulePhases = \@phases; # Doesn't affect already created modules.
+
+        if ($self->isa(__PACKAGE__)) {
+            $self->{phases} = [@phases];
+        }
+        else {
+            $ModulePhases = [@phases]; # Doesn't affect already created modules.
+        }
     }
 
     sub filterOutPhase
     {
         my ($self, $deadPhase) = @_;
-        @$ModulePhases = grep($_ ne $deadPhase, @$ModulePhases);
+
+        # If already blessed, act like method, otherwise act like static
+        # class function.
+        if ($self->isa(__PACKAGE__)) {
+            @{$self->{'phases'}} = grep($_ ne $deadPhase, @{$self->{'phases'}});
+        }
+        else {
+            @$ModulePhases = grep($_ ne $deadPhase, @$ModulePhases);
+        }
     }
 
     sub moduleList
@@ -4786,23 +4802,32 @@ sub close_lock
     unlink $lockfile;
 }
 
-# Subroutine to get the list of KDE modules to update.  Returned
-# as a list.  Parse the command-line arguments first.
-sub get_update_list
+sub updateModulePhases
 {
-    return @ARGV unless $#ARGV == -1;
+    my @modules = @_;
 
-    # l10n module has different names for KDE 3 and KDE 4.
-    my $l10n = 'l10n-kde4';
+    whisper "Filtering out module phases.";
+    for my $module (@modules) {
+        my $name = $module->{name};
 
-    if (get_option('global', 'kde-languages') and not get_option($l10n, 'manual-update'))
-    {
-        Module->push(Module->new($l10n, 'svn'));
+        if (get_option($name, 'manual-update') ||
+            get_option($name, 'no-svn') || get_option($name, 'no-src'))
+        {
+            $module->setPhases();
+            next;
+        }
+
+        if (get_option($name, 'manual-build')) {
+            $module->filterOutPhase('build');
+            $module->filterOutPhase('test');
+            $module->filterOutPhase('install');
+        }
+
+        $module->filterOutPhase('install') unless get_option($name, 'install-after-build');
+        $module->filterOutPhase('test') unless get_option($name, 'run-tests');
     }
 
-    return grep {
-        not get_option($_, 'manual-update')
-    } (@update_list);
+    return @modules;
 }
 
 # Subroutine to get the list of KDE modules to build.  Returned
@@ -7591,15 +7616,6 @@ eval
 
     my @optionModules = read_options();      # If we're still here, read the options
 
-    @modules = @optionModules unless scalar @modules;
-    @modules = expandXMLModules(@modules);
-    print Dumper(\@modules);
-    Module->push($_) foreach @modules;
-    foreach my $module (Module::moduleList()) {
-        print "Module to build: $module->{name}, in phases ", join(', ', @{$module->{phases}}), "\n";
-    }
-    exit 0;
-
     update_module_environment('global'); # Initialize global env vars.
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
@@ -7610,14 +7626,28 @@ eval
         execute_command_line_program();
     }
 
+    if (get_option('global', 'kde-languages'))
+    {
+        # Just set some options to init defaults.
+        set_option('l10n-kde4', 'install-after-build', 1);
+    }
+
     setup_operating_environment(); # i.e. niceness, ulimits, etc.
     setup_logging_subsystem(); # Setup logging directories.
 
-    if (get_option('global', 'kde-languages'))
-    {
-        # Just set some optionsto init defaults.
-        set_option('l10n-kde4', 'install-after-build', 1);
-    }
+    my $commandLineModules = scalar @modules;
+
+    @modules = @optionModules unless $commandLineModules;
+    @modules = expandXMLModules(@modules);
+
+    # If modules were on the command line then they are effectively forced to
+    # process unless overridden by command line options as well. If phases
+    # *were* overridden on the command line, then no update pass is required
+    # (all modules already have correct phases)
+    @modules = updateModulePhases(@modules) unless $commandLineModules;
+
+    # Add to global module list now that we've filtered everything.
+    Module->push($_) foreach @modules;
 
     dump_options() if debugging;
 };
@@ -7675,8 +7705,10 @@ eval
     eval { plugin_setup_default_modules(\@update_list, \@build_list, \%package_opts); };
     $@ = ''; # Clear errors that result when not using Coverity plugin.
 
-    @update_list = get_update_list();
-    @build_list = get_build_list();
+    @update_list = grep { list_has (@{$_->{phases}}, 'update') } (Module::moduleList());
+    @update_list = map { $_->{name} } (@update_list);
+    @build_list = grep { list_has (@{$_->{phases}}, 'build') } (Module::moduleList());
+    @build_list = map { $_->{name} } (@build_list);
 
     debug "Update list is ", join (', ', @update_list);
     debug "Build list is ", join (', ', @build_list);
