@@ -582,6 +582,70 @@ our %ENV_VARS;
     1;
 }
 
+{
+    package Module;
+
+    my $ModulePhases = [qw/update build test install/];
+    my @ModuleList;  # List of modules
+
+    # Alias the main package's debug to our package.
+    *debug = \&main::debug;
+
+    sub new
+    {
+        my ($class, $name, $type) = @_;
+        die "Empty Module constructed" unless $name;
+
+        my $module = {
+            name => $name,
+            type => $type || 'null',
+            phases => $ModulePhases,
+        };
+
+        return bless $module, $class;
+    }
+
+    sub push
+    {
+        my ($self, $module) = @_;
+        die "No module to push" unless $module;
+
+        if (grep ($_->{name} eq $module->{name}, @ModuleList)) {
+            debug( "Skipping duplicate module $module->{name}");
+        }
+        else {
+            debug("Adding $module->{name} to module list");
+            push @ModuleList, $module;
+        }
+    }
+
+    sub phases
+    {
+        my ($self) = shift;
+        return @$ModulePhases;
+    }
+
+    sub setPhases
+    {
+        my ($self, @phases) = @_;
+        $ModulePhases = \@phases; # Doesn't affect already created modules.
+    }
+
+    sub filterOutPhase
+    {
+        my ($self, $deadPhase) = @_;
+        @$ModulePhases = grep($_ ne $deadPhase, @$ModulePhases);
+    }
+
+    sub moduleList
+    {
+        my $self = shift;
+        return @ModuleList;
+    }
+
+    1;
+}
+
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
 
@@ -591,28 +655,19 @@ my %ignore_list;  # List of packages to refuse to include in the build list.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
 
-my @module_list;  # List of modules
-my $module_phases = [qw/update build test install/];
-
-# Each module in the above list is of the form:
-# {
-#   name => 'user-set-name',
-#   phases => [
-#     qw/update build test install/
-#   ],
-#   type => qw/svn git proj null/ # Only one of these
-#   children => [ references to modules of this same type ]
-# }
+# Each module in the above list is of the form: { name => 'user-set-name',
+# phases => [ qw/update build test install/ ], type => qw/svn git proj null/ #
+# Only one of these }
 #
 # Where 'phases' can have at most one of each entry in the list above. Each
 # phase has the obvious meaning, except purge is run at the end to possibly
 # free up disk space.
 #
-# 'type' is the module type (as determined by heuristics, or directly by
-# the user via svn-server or repository). If 'proj', the module can be
-# converted to an equivalent 'git' module type by doing some processing of
-# the kde_projects.xml file. If (and only if) 'null', the module will have
-# children which should be looked at when determining how to proceed.
+# 'type' is the module type (as determined by heuristics, or directly by the
+# user via svn-server or repository). If 'proj', the module can be converted to
+# an equivalent 'git' module type by doing some processing of the
+# kde_projects.xml file. 'null' is only used at e.g. the command line where the
+# module type may not be known yet.
 
 # Dictionary of lists of failed modules, keyed by the name of the operation
 # that caused the failure (e.g. build).  Note that output_failed_module_lists
@@ -3206,6 +3261,8 @@ sub setup_default_modules()
                 $package_opts{$i}{$key} = $options_ref->{$key};
             }
         }
+
+        Module->push(Module->new($i, 'null'));
     }
 }
 
@@ -3404,18 +3461,6 @@ sub ensure_projects_xml_present
     }
 }
 
-# Adds a module object to the list of modules, but only if a module with that
-# name is not already present.
-sub queue_new_module
-{
-    my $module = shift;
-
-    if (not grep($_->{name} eq $module->{name}, @module_list))
-    {
-        push @module_list, $module;
-    }
-}
-
 # Reads in a "moduleset".
 #
 # First parameter is the filehandle to the config file to read from.
@@ -3464,17 +3509,16 @@ sub parse_moduleset
         }
     }
 
+    # List of new-ed modules to be returned, and possibly actually queued up
+    # for update/build.
+    my @moduleList;
+
     # Setup default options for each module
     for my $module (@modules) {
         my $moduleName = $module;
         $moduleName =~ s/\.git$//; # Remove trailing .git for module name
 
-        queue_new_module({
-            name     => $moduleName,
-            phases   => $module_phases,
-            type     => 'null', # Determine later
-            children => [ ],
-        });
+        push @moduleList, Module->new($moduleName);
 
         if (not defined $package_opts{$moduleName})
         {
@@ -3516,12 +3560,7 @@ EOF
             $package_opts{$moduleName} = default_module_options($moduleName);
         }
 
-        queue_new_module({
-            name     => $moduleName,
-            phases   => $module_phases,
-            type     => 'git',
-            children => [ ],
-        });
+        push @moduleList, Module->new($moduleName, 'git');
 
         # Apply all options in the module set to this virtual module.
         for my $option (keys %optionSet) {
@@ -3540,7 +3579,7 @@ EOF
         warning "You should use the g[b[use-modules] option to make the module-set useful.";
     }
 
-    return @modules;
+    return @moduleList;
 }
 
 # This subroutine reads in the settings from the user's configuration
@@ -3550,6 +3589,8 @@ sub read_options
     # The options are stored in the file $rcfile
     my $success = 0;
     my $global_opts = $package_opts{'global'};
+    my @module_list;
+
     for my $file (@rcfiles)
     {
         if (open CONFIG, "<$file")
@@ -3632,8 +3673,6 @@ EOM
         s/^\s*//;          # Remove leading whitespace
         next if (/^\s*$/); # Skip blank lines
 
-        my @addedModules = ();
-
         # Get modulename (has dash, dots, slashes, or letters/numbers)
         ($modulename) = /^module\s+([-\/\.\w]+)\s*$/;
 
@@ -3646,25 +3685,15 @@ EOM
             }
 
             # A moduleset can give us more than one module to add.
-            @addedModules = parse_moduleset(\*CONFIG);
+            push @module_list, parse_moduleset(\*CONFIG);
         }
         else {
             parse_module(\*CONFIG, $modulename);
-            push @addedModules, $modulename;
-            queue_new_module({
-                name     => $modulename,
-                phases   => $module_phases,
-                type     => 'null',
-                children => [ ],
-            });
+            push @module_list, Module->new($modulename);
         }
 
         # Don't build default modules if user has their own wishes.
-        if ($using_default)
-        {
-            $using_default = 0;
-            @update_list = @build_list = ( );
-        }
+        $using_default = 0;
     }
 
     close CONFIG;
@@ -3679,7 +3708,12 @@ EOM
 
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
-    setup_default_modules() if $using_default;
+    if ($using_default) {
+        setup_default_modules();
+        return ();
+    }
+
+    return @module_list;
 }
 
 # Subroutine to check if the given module needs special treatment to support
@@ -4209,17 +4243,6 @@ sub clone_options
     }
 }
 
-sub remove_phase_from_modules
-{
-    my $phase_to_remove = shift;
-
-    for my $module (@module_list) {
-        @{$module->{phases}} = grep {
-            $_ ne $phase_to_remove
-        } (@{$module->{phases}});
-    }
-}
-
 # Subroutine to process the command line arguments.  Any arguments so
 # processed will be removed from @ARGV.
 # The arguments are generally documented in doc.html now.
@@ -4352,14 +4375,14 @@ DONE
 
             /^--install$/ && do {
                 $run_mode = 'install';
-                $module_phases = ['install'];
+                Module->setPhases('install');
 
                 last SWITCH;
             };
 
             /^--uninstall$/ && do {
                 $run_mode = 'uninstall';
-                $module_phases = ['uninstall'];
+                Module->setPhases('uninstall');
 
                 last SWITCH;
             };
@@ -4374,13 +4397,13 @@ DONE
 
             /^--no-(src|svn)$/ && do {
                 set_option('global', '#no-svn', 1);
-                @$module_phases = grep { $_ ne 'update' } @$module_phases;
+                Module->filterOutPhase('update');
                 last SWITCH;
             };
 
             /^--no-install$/ && do {
                 set_option('global', '#install-after-build', 0);
-                @$module_phases = grep { $_ ne 'install' } @$module_phases;
+                Module->filterOutPhase('install');
                 last SWITCH;
             };
 
@@ -4432,7 +4455,7 @@ DONE
 
             /^--no-build$/ && do {
                 set_option('global', '#manual-build', 1);
-                @$module_phases = grep { $_ ne 'build' } @$module_phases;
+                Module->filterOutPhase('build');
                 last SWITCH;
             };
 
@@ -4450,7 +4473,7 @@ DONE
             # script may interpret the two differently, so get ready now.
             /^--(src|svn)-only$/ && do {      # Identically to --no-build
                 set_option('global', '#manual-build', 1);
-                $module_phases = ['update'];
+                Module->setPhases('update');
                 last SWITCH;
             };
 
@@ -4459,7 +4482,7 @@ DONE
                 set_option('global', '#no-svn', 1);
                 set_option('global', '#install-after-build', 0);
 
-                $module_phases = ['build'];
+                Module->setPhases('build');
                 last SWITCH;
             };
 
@@ -4602,23 +4625,17 @@ DONE
         }
     }
 
-    @ARGV = @argv;
-    # Make a new module for each entry on the command line.
-    foreach my $newModule (@ARGV) {
-        queue_new_module({
-            name     => $newModule,
-            phases   => $module_phases,
-            type     => 'null', # Determine later
-            children => [ ],
-        });
-    }
-
     # Don't go async if only performing one phase.  It (should) work but why
     # risk it?
-    if (scalar @ARGV == 1)
+    if (scalar Module->phases() == 1)
     {
         set_option('global', '#async', 0);
     }
+
+    @ARGV = @argv;
+
+    # @ARGV should contain all the modules we'll be using.
+    return map { Module->new($_) } (@ARGV);
 }
 
 # Installs the given subroutine as a signal handler for a set of signals which
@@ -7535,16 +7552,17 @@ eval
     # Note: Don't change the order around unless you're sure of what you're
     # doing.
     set_debug_colors();  # Default to colorized output if sending to TTY
-    process_arguments(); # Process --help, --install, etc. first.
-    read_options();      # If we're still here, read the options
-    print Dumper(\@module_list);
-    # TODO: Split the *expansion* of XML modules away from the *reading* in
-    # parse_moduleset() so that we can support building XML modules straight
-    # from the command line.
-    foreach my $module (@module_list) {
+    my @modules = process_arguments(); # Process --help, --install, etc. first.
+    my @optionModules = read_options();      # If we're still here, read the options
+
+    @modules = @optionModules unless scalar @modules;
+    print Dumper(\@modules);
+    Module->push($_) foreach @modules;
+    foreach my $module (Module::moduleList()) {
         print "Module to build: $module->{name}, in phases ", join(', ', @{$module->{phases}}), "\n";
     }
     exit 0;
+
     update_module_environment('global'); # Initialize global env vars.
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
