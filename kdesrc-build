@@ -591,6 +591,29 @@ my %ignore_list;  # List of packages to refuse to include in the build list.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
 
+my @module_list;  # List of modules
+my $module_phases = [qw/update build test install/];
+
+# Each module in the above list is of the form:
+# {
+#   name => 'user-set-name',
+#   phases => [
+#     qw/update build test install/
+#   ],
+#   type => qw/svn git proj null/ # Only one of these
+#   children => [ references to modules of this same type ]
+# }
+#
+# Where 'phases' can have at most one of each entry in the list above. Each
+# phase has the obvious meaning, except purge is run at the end to possibly
+# free up disk space.
+#
+# 'type' is the module type (as determined by heuristics, or directly by
+# the user via svn-server or repository). If 'proj', the module can be
+# converted to an equivalent 'git' module type by doing some processing of
+# the kde_projects.xml file. If (and only if) 'null', the module will have
+# children which should be looked at when determining how to proceed.
+
 # Dictionary of lists of failed modules, keyed by the name of the operation
 # that caused the failure (e.g. build).  Note that output_failed_module_lists
 # uses the key name to display text to the user so it should describe the
@@ -3382,6 +3405,18 @@ sub ensure_projects_xml_present
     }
 }
 
+# Adds a module object to the list of modules, but only if a module with that
+# name is not already present.
+sub queue_new_module
+{
+    my $module = shift;
+
+    if (not grep($_->{name} eq $module->{name}, @module_list))
+    {
+        push @module_list, $module;
+    }
+}
+
 # Reads in a "moduleset".
 #
 # First parameter is the filehandle to the config file to read from.
@@ -3418,7 +3453,7 @@ sub parse_moduleset
             if (not @xmlModuleNames) {
                 error "No modules were selected for the current module-set";
                 error "in the y[xml-use-modules] on line $. of $rcfile";
-                die make_exception('Config', 'Invalid xml-use-modules');
+                die make_exception('Config', 'Invalid use-xml-modules');
             }
 
             foreach my $xmlModule (@xmlModuleNames) {
@@ -3434,6 +3469,13 @@ sub parse_moduleset
     for my $module (@modules) {
         my $moduleName = $module;
         $moduleName =~ s/\.git$//; # Remove trailing .git for module name
+
+        queue_new_module({
+            name     => $moduleName,
+            phases   => $module_phases,
+            type     => 'null', # Determine later
+            children => [ ],
+        });
 
         if (not defined $package_opts{$moduleName})
         {
@@ -3474,6 +3516,13 @@ EOF
         {
             $package_opts{$moduleName} = default_module_options($moduleName);
         }
+
+        queue_new_module({
+            name     => $moduleName,
+            phases   => $module_phases,
+            type     => 'git',
+            children => [ ],
+        });
 
         # Apply all options in the module set to this virtual module.
         for my $option (keys %optionSet) {
@@ -3603,6 +3652,12 @@ EOM
         else {
             parse_module(\*CONFIG, $modulename);
             push @addedModules, $modulename;
+            queue_new_module({
+                name     => $modulename,
+                phases   => $module_phases,
+                type     => 'null',
+                children => [ ],
+            });
         }
 
         # Don't build default modules if user has their own wishes.
@@ -3611,18 +3666,6 @@ EOM
             $using_default = 0;
             @update_list = @build_list = ( );
         }
-
-        # Don't re-add duplicated modules (it may be possible to see a module
-        # declaration for a module already seen in a module-set)
-        @addedModules = grep { not exists $readModules{$_} } (@addedModules);
-
-        # Done reading options, add this module(s) to the update lists
-        push (@update_list, @addedModules);
-        push (@build_list, @addedModules);
-
-        # Add an entry for each module that has been read in so we don't
-        # add it later to update/build list.
-        @readModules{@addedModules} = 1;
     }
 
     close CONFIG;
@@ -3631,8 +3674,9 @@ EOM
     # to update or build, based on the --ignore-modules option already present
     # on the command line. manual-update and manual-build are also relevant,
     # but handled in get_build_list or get_update_list.
-    @update_list = grep { not exists $ignore_list{$_} } (@update_list);
-    @build_list = grep { not exists $ignore_list{$_} } (@build_list);
+    @module_list = grep {
+        not exists $ignore_list{$_->{name}}
+    } (@module_list);
 
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
@@ -4166,6 +4210,17 @@ sub clone_options
     }
 }
 
+sub remove_phase_from_modules
+{
+    my $phase_to_remove = shift;
+
+    for my $module (@module_list) {
+        @{$module->{phases}} = grep {
+            $_ ne $phase_to_remove
+        } (@{$module->{phases}});
+    }
+}
+
 # Subroutine to process the command line arguments.  Any arguments so
 # processed will be removed from @ARGV.
 # The arguments are generally documented in doc.html now.
@@ -4298,11 +4353,15 @@ DONE
 
             /^--install$/ && do {
                 $run_mode = 'install';
+                $module_phases = ['install'];
+
                 last SWITCH;
             };
 
             /^--uninstall$/ && do {
                 $run_mode = 'uninstall';
+                $module_phases = ['uninstall'];
+
                 last SWITCH;
             };
 
@@ -4316,11 +4375,13 @@ DONE
 
             /^--no-(src|svn)$/ && do {
                 set_option('global', '#no-svn', 1);
+                @$module_phases = grep { $_ ne 'update' } @$module_phases;
                 last SWITCH;
             };
 
             /^--no-install$/ && do {
                 set_option('global', '#install-after-build', 0);
+                @$module_phases = grep { $_ ne 'install' } @$module_phases;
                 last SWITCH;
             };
 
@@ -4372,6 +4433,7 @@ DONE
 
             /^--no-build$/ && do {
                 set_option('global', '#manual-build', 1);
+                @$module_phases = grep { $_ ne 'build' } @$module_phases;
                 last SWITCH;
             };
 
@@ -4389,6 +4451,7 @@ DONE
             # script may interpret the two differently, so get ready now.
             /^--(src|svn)-only$/ && do {      # Identically to --no-build
                 set_option('global', '#manual-build', 1);
+                $module_phases = ['update'];
                 last SWITCH;
             };
 
@@ -4396,6 +4459,8 @@ DONE
             /^--build-only$/ && do {
                 set_option('global', '#no-svn', 1);
                 set_option('global', '#install-after-build', 0);
+
+                $module_phases = ['build'];
                 last SWITCH;
             };
 
@@ -4539,10 +4604,19 @@ DONE
     }
 
     @ARGV = @argv;
+    # Make a new module for each entry on the command line.
+    foreach my $newModule (@ARGV) {
+        queue_new_module({
+            name     => $newModule,
+            phases   => $module_phases,
+            type     => 'null', # Determine later
+            children => [ ],
+        });
+    }
 
     # Don't go async if only performing one phase.  It (should) work but why
     # risk it?
-    if(get_option('global', 'manual-build') or get_option('global', 'no-svn'))
+    if (scalar @ARGV == 1)
     {
         set_option('global', '#async', 0);
     }
@@ -7464,6 +7538,14 @@ eval
     set_debug_colors();  # Default to colorized output if sending to TTY
     process_arguments(); # Process --help, --install, etc. first.
     read_options();      # If we're still here, read the options
+    print Dumper(\@module_list);
+    # TODO: Split the *expansion* of XML modules away from the *reading* in
+    # parse_moduleset() so that we can support building XML modules straight
+    # from the command line.
+    foreach my $module (@module_list) {
+        print "Module to build: $module->{name}, in phases ", join(', ', @{$module->{phases}}), "\n";
+    }
+    exit 0;
     update_module_environment('global'); # Initialize global env vars.
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
