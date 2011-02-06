@@ -3158,18 +3158,30 @@ sub default_module_options
             'repository' => 'git://anongit.kde.org/qt-kde',
             'branch'     => 'master',
         },
-        'phonon' => {
-            'repository' => 'git://anongit.kde.org/phonon',
+        'strigi' => {
+            # Until the strigi build system supports independent submodule
+            # builds.
+            'cmake-options' => '-DSTRIGI_SYNC_SUBMODULES=TRUE',
+            'reconfigure'   => 'true',
         },
-        'kdevplatform' => {
-            # It moved recently so try to adjust gracefully (maybe) (round 2)
-            'repository' => 'git://gitorious.org/kdevelop/kdevplatform.git',
+        'kdesupport' => {
+            'cmake-options' => '-DWITH_ASF=TRUE -DWITH_MP4=TRUE',
         },
-        'kdevelop' => {
-            # It moved recently so try to adjust gracefully (maybe) (round 2)
-            'repository' => 'git://gitorious.org/kdevelop/kdevelop.git',
+        'dbusmenu-qt' => {
+            'repository' => 'git://gitorious.org/dbusmenu/dbusmenu-qt.git',
         },
     );
+
+    # Most KDE modules seem to be moving to git, but some remain in svn.
+    my @nonKDEgitModules = qw(
+        qt-copy kdesupport dbusmenu-qt
+        kdemultimedia kdeartwork kdeutils kdegraphics kdegames
+        kdetoys kdeedu kdenetwork
+    );
+
+    if (not list_has(@nonKDEgitModules, $module)) {
+        $options{'repository'} = "git://anongit.kde.org/$module";
+    }
 
     # Hack to support default "tags" instead of default branches for kdesupport.
     if ($branch =~ /^tags\//)
@@ -3241,16 +3253,21 @@ HOME
 # default modules.
 sub setup_default_modules()
 {
-    # kdesupport must come before other KDE modules.
-    @update_list = qw(qt-copy kdesupport phonon kdelibs kdepimlibs kdebase kdeartwork
-                      kdemultimedia kdepim kdeutils kdegraphics kdegames
-                      kdetoys kdeedu kdenetwork kdeutils);
+    # TODO: Move this to the build-support git repo.
+    my @defaultModuleList = qw(
+        qt-copy automoc cagibi attica soprano polkit-qt-1 phonon
+        strigi kdesupport dbusmenu-qt
+        kdelibs akonadi kdepimlibs
+        kde-runtime kde-workspace kde-baseapps
+        konsole kate kdeplasma-addons
+        phonon-gstreamer phonon-vlc
+        kdemultimedia kdeartwork kdepim kdeutils kdegraphics kdegames
+        kdetoys kdeedu kdenetwork
+    );
 
-    @build_list = @update_list;
+    whisper "Setting up to build ", join(', ', @defaultModuleList), " by default.";
 
-    whisper "Setting up to build ", join(', ', @build_list), " by default.";
-
-    for my $i (@update_list) {
+    for my $i (@defaultModuleList) {
         my $options_ref = default_module_options($i);
 
         # Apply default option only if option not already set.  If the option
@@ -3264,6 +3281,8 @@ sub setup_default_modules()
 
         Module->push(Module->new($i, 'null'));
     }
+
+    @update_list = @build_list = @defaultModuleList;
 }
 
 # Reads a "line" from a file. This line is stripped of comments and extraneous
