@@ -586,6 +586,8 @@ our %ENV_VARS;
 {
     package Module;
 
+    use Scalar::Util qw(blessed);
+
     my $ModulePhases = [qw/update build test install/];
     my @ModuleList;  # List of modules
 
@@ -631,7 +633,7 @@ our %ENV_VARS;
     {
         my ($self, @phases) = @_;
 
-        if ($self->isa(__PACKAGE__)) {
+        if (blessed($self)) {
             $self->{phases} = [@phases];
         }
         else {
@@ -645,7 +647,7 @@ our %ENV_VARS;
 
         # If already blessed, act like method, otherwise act like static
         # class function.
-        if ($self->isa(__PACKAGE__)) {
+        if (blessed($self)) {
             @{$self->{'phases'}} = grep($_ ne $deadPhase, @{$self->{'phases'}});
         }
         else {
@@ -3558,6 +3560,7 @@ EOF
     # List of new-ed modules to be returned, and possibly actually queued up
     # for update/build.
     my @moduleList;
+    my $selectedRepo;
 
     # Setup default options for each module
     for my $module (@modules) {
@@ -3576,7 +3579,8 @@ EOF
 
         # Fixup for the special repository handling if need be.
         if (exists $optionSet{'repository'}) {
-            set_option($moduleName, 'repository', $optionSet{'repository'} . $module);
+            $selectedRepo = $repoSet->{$optionSet{'repository'}} unless $selectedRepo;
+            set_option($moduleName, 'repository', $selectedRepo . $module);
         }
     }
 
