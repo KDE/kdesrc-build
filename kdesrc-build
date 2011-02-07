@@ -3194,7 +3194,7 @@ sub default_module_options
     my @nonKDEgitModules = qw(
         qt-copy kdesupport dbusmenu-qt
         kdemultimedia kdeartwork kdeutils kdegraphics kdegames
-        kdetoys kdeedu kdenetwork
+        kdetoys kdeedu kdenetwork kdesdk
     );
 
     if (not list_has(@nonKDEgitModules, $module)) {
@@ -5304,15 +5304,15 @@ sub handle_updates
         my $count;
 
         eval {
-            if (module_scm_type($module) eq 'git') {
-                # Handle git module update
-                $count = update_module_git_checkout($module);
-            }
-            elsif (-e "$fullpath/.svn")
+            if (-e "$fullpath/.svn")
             {
                 # Warn user if the current repo URL is different than expected.
                 check_module_validity($module);
                 $count = update_module_path($module, @options);
+            }
+            elsif (module_scm_type($module) eq 'git') {
+                # Handle git module update
+                $count = update_module_git_checkout($module);
             }
             else
             {
