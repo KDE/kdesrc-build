@@ -655,6 +655,19 @@ our %ENV_VARS;
         }
     }
 
+    sub moduleSet
+    {
+        my ($self) = @_;
+        return $self->{'module-set'} if exists $self->{'module-set'};
+        return '';
+    }
+
+    sub setModuleSet
+    {
+        my ($self, $moduleSetName) = @_;
+        $self->{'module-set'} = $moduleSetName;
+    }
+
     sub moduleList
     {
         my $self = shift;
@@ -3505,6 +3518,7 @@ sub ensure_projects_xml_present
 sub parse_moduleset
 {
     my $fh = shift;
+    my $moduleSetName = shift || '';
     my $repoSet = get_option('global', 'git-repository-base');
     my @modules;
     my @xmlModules;
@@ -3567,7 +3581,9 @@ EOF
         my $moduleName = $module;
         $moduleName =~ s/\.git$//; # Remove trailing .git for module name
 
-        push @moduleList, Module->new($moduleName);
+        my $newModule = Module->new($moduleName);
+        $newModule->setModuleSet($moduleSetName);
+        push @moduleList, $newModule;
 
         if (not defined $package_opts{$moduleName})
         {
@@ -3587,7 +3603,9 @@ EOF
     # Extraction of relevant XML modules to be handled immediately after
     # this phase of execution.
     for my $xmlModule (@xmlModules) {
-        push @moduleList, Module->new($xmlModule, 'proj');
+        my $newModule = Module->new($xmlModule, 'proj');
+        $newModule->setModuleSet($moduleSetName);
+        push @moduleList, $newModule;
         push @modules, $xmlModule;
     }
 
@@ -3625,6 +3643,35 @@ sub expandXMLModules
     };
 
     return map { &$filter($_) } (@modules);
+}
+
+# This subroutine takes a reference to the current module list (specifically a
+# list of Module objects), and takes a reference to the list of Module objects
+# read in from the config file.
+#
+# For each module in the first list, it is checked to see if options have been
+# read in for it, and if so it is left alone.
+#
+# If the module does not have any options for it, it is assumed that the user
+# might mean a named module set (i.e. the module is the name of a module-set),
+# and /if/ any of the Modules in the second list are recorded as having come
+# from a module set matching the name of the current module, it is used
+# instead.
+#
+# The processed module list is the return value.
+sub expandModuleSets
+{
+    my ($buildModuleList, $knownModules) = @_;
+
+    my $filter = sub {
+        my $setName = $_->{name};
+        return $_ if exists $package_opts{$setName};
+        my @modulesInSet = grep { $_->moduleSet() eq $setName } (@$knownModules);
+
+        return @modulesInSet;
+    };
+
+    return map { &$filter } (@$buildModuleList);
 }
 
 # This subroutine reads in the settings from the user's configuration
@@ -3723,14 +3770,18 @@ EOM
 
         if (not $modulename)
         {
-            if (not /^module-set\s*$/) {
+            my $moduleSetRE = qr/^module-set\s*([-\/\.\w]+)?\s*$/;
+            ($modulename) = m/$moduleSetRE/;
+
+            # modulename may be blank -- use the regex directly to match
+            if (not /$moduleSetRE/) {
                 error "Invalid configuration file $rcfile!";
                 error "Expecting a start of module section at r[b[line $.].";
                 die make_exception('Config', 'Ungrouped/Unknown option');
             }
 
             # A moduleset can give us more than one module to add.
-            push @module_list, parse_moduleset(\*CONFIG);
+            push @module_list, parse_moduleset(\*CONFIG, $modulename);
         }
         else {
             parse_module(\*CONFIG, $modulename);
@@ -7641,7 +7692,14 @@ eval
 
     my $commandLineModules = scalar @modules;
 
-    @modules = @optionModules unless $commandLineModules;
+    # Allow named module-sets to be given on the command line.
+    if ($commandLineModules) {
+        @modules = expandModuleSets(\@modules, \@optionModules);
+    }
+    else {
+        @modules = @optionModules;
+    }
+
     @modules = expandXMLModules(@modules);
 
     # If modules were on the command line then they are effectively forced to
