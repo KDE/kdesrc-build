@@ -1127,6 +1127,21 @@ sub get_option
     return ${$globalOpts}{$option};
 }
 
+# Like get_option, but returns the requested option for a given module with no
+# fallbacks to global options, no overrides, etc. Basically goes directly into
+# package_opts.
+sub get_module_option
+{
+    my ($module, $option) = @_;
+
+    if (not exists $package_opts{$module} || not exists $package_opts{$module}->{$option})
+    {
+        return undef;
+    }
+
+    return $package_opts{$module}->{$option};
+}
+
 # Returns a Perl object worth "die"ing for. (i.e. can be given to the die
 # function and handled appropriately later with an eval). The returned
 # reference will be an instance of BuildException. The actual exception type is
@@ -1163,8 +1178,31 @@ sub module_scm_type
 {
     my $module = shift;
 
+    # Look for specific setting of repository and svn-server. If both
+    # is set it's a bug, if one is set, that's the type (because the user
+    # says so...). Don't use get_option() as it will try to fallback to
+    # global options.
+
+    my $svn_status = get_module_option($module, 'svn-server');
+    my $git_status = get_module_option($module, 'repository');
+
+    if ($svn_status && $git_status) {
+        error <<EOF;
+You have specified both y[b[svn-server] and y[b[repository] options for the
+b[$module] module in $rcfile.
+
+You should only specify one or the other -- a module cannot be both types
+ - svn-server uses Subversion.
+ - repository uses git.
+EOF
+        die("Aborting");
+    }
+
+    return 'svn' if $svn_status;
+
     # If it needs a repo it's git. Everything else is svn for now.
-    return 'git' if get_option($module, 'repository');
+    return 'git' if $git_status;
+
     return 'svn';
 }
 
