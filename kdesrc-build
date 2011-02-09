@@ -3551,6 +3551,9 @@ sub parse_moduleset
 
             push @xmlModules, @xmlModuleNames;
         }
+        elsif ($option eq 'set-env') {
+            handle_set_env(\%optionSet, $option, $value);
+        }
         else {
             $optionSet{$option} = $value;
         }
@@ -3606,6 +3609,15 @@ EOF
         my $newModule = Module->new($xmlModule, 'proj');
         $newModule->setModuleSet($moduleSetName);
         push @moduleList, $newModule;
+
+        if (not defined $package_opts{$xmlModule})
+        {
+            $package_opts{$xmlModule} = default_module_options($xmlModule);
+        }
+
+        # Dump all options into the existing option hash.
+        @{$package_opts{$xmlModule}}{keys %optionSet} = values %optionSet;
+
         push @modules, $xmlModule;
     }
 
