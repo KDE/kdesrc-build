@@ -228,7 +228,9 @@ module dbusmenu-git
 end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
-module kdelibs
+module-set
+    use-modules kdelibs
+    repository kde-git
 # KDE 4 uses CMake, if you need to pass options to the cmake command, use this
 # option:
 #	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
@@ -240,16 +242,13 @@ end module
 # akonadi is required for kdepimlibs,
 # kdepimlibs contains required PIM (mail, instant messenger, etc.) basics
 # that are needed by some other KDE modules.  Should be built after kdelibs
+# kde-runtime includes required programs
+# kde-workspace contains the workspace, i.e. the desktop.
+# kde-baseapps includes apps such as Konqueror, Dolphin.
 module-set
-    use-modules akonadi kdepimlibs
+    use-modules akonadi kdepimlibs konsole kde-baseapps kde-workspace kde-runtime
     repository kde-git
 end module-set
-
-# kdebase contains useful general-purpose programs, normally people would
-# expect a usable desktop to have these.  Includes required programs and
-# libraries in runtime/, and Konqueror, Dolphin, and Plasma.
-module kdebase
-end module
 
 # kdemultimedia contains JuK, noatun, Kaboodle, and other KDE multimedia
 # applications.  It does not include amarok, which is in extragear/multimedia
