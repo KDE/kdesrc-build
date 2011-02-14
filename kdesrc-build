@@ -6,7 +6,7 @@
 # Please also see the documentation that should be included with this program,
 # from the kdesdk/doc/scripts/kdesrc-build directory.
 #
-# Copyright © 2003 - 2010 Michael Pyne. <mpyne@kde.org>
+# Copyright © 2003 - 2011 Michael Pyne. <mpyne@kde.org>
 # Home page: http://kdesrc-build.kde.org/
 #
 # You may use, alter, and redistribute this software under the terms
@@ -18,6 +18,7 @@
 use strict;
 use warnings;
 use Fcntl;    # For sysopen constants
+use Carp;
 use POSIX qw(strftime :sys_wait_h);
 use File::Find; # For our lndir reimplementation.
 use File::Basename;
@@ -45,6 +46,7 @@ use constant {
     # We use a named remote to make some git commands work that don't accept the
     # full path.
     GIT_REMOTE_ALIAS => '__kdesvn-build-remote', # Historical name
+    KDE_PROJECT_ID   => 'kde-projects',          # git-repository-base for kde_projects.xml
 };
 
 {
@@ -432,6 +434,250 @@ our %ENV_VARS;
     }
 }
 
+# kde_projects.xml module-handling code.
+# The core of this was graciously contributed by Allen Winter, and then
+# touched-up and kdesrc-build'ed by myself -mpyne.
+{
+    package KDEXMLReader;
+    use XML::Parser;
+
+    my @nameStack = ();        # Used to assign full names to modules.
+    my %xmlGroupingIds;        # XML tags which group repositories.
+    my @modules;               # Result list
+    my $curRepository;         # ref to hash table when we are in a repo
+    my $trackingReposFlag = 0; # >0 if we should be tracking for repo elements.
+    my $inRepo = 0;            # >0 if we are actually in a repo element.
+    my $repoFound = 0;         # If we've already found the repo we need.
+    my $searchProject = '';    # Project we're looking for.
+
+    # Note on searchProject: A /-separated path is fine, in which case we look
+    # for the right-most part of the full path which matches all of searchProject.
+    # e.g. kde/kdebase/kde-runtime would be matched searchProject of either
+    # "kdebase/kde-runtime" or simply "kde-runtime".
+    sub getModulesForProject
+    {
+        # These are the elements that can have <repo> under them AFAICS, and
+        # participate in module naming. e.g. kde/calligra or
+        # extragear/utils/kdesrc-build
+        @xmlGroupingIds{qw/component module project/} = 1;
+
+        my ($class, $proj) = @_;
+
+        $searchProject = $proj;
+        @modules = ();
+        @nameStack = ();
+        $inRepo = 0;
+        $trackingReposFlag = 0;
+        $curRepository = undef;
+
+        my $parser = XML::Parser->new(
+            Handlers =>
+                {
+                    Start => \&xmlTagStart,
+                    End => \&xmlTagEnd,
+                    Char => \&xmlCharData,
+                },
+        );
+
+        my $srcdir = main::get_source_dir();
+        my $result = $parser->parsefile("$srcdir/kde_projects.xml");
+        return @modules;
+    }
+
+    sub xmlTagStart
+    {
+        my ($expat, $element, %attrs) = @_;
+
+        # In order to ensure that repos which are recursively under this node are
+        # actually handled, we increment this flag if it's already >0 (which means
+        # we're actively tracking repos for some given module).
+        # xmlTagEnd will then decrement the flag so we eventually stop tracking
+        # repos once we've fully recursively handled the node we cared about.
+        if ($trackingReposFlag > 0) {
+            ++$trackingReposFlag;
+        }
+
+        if (exists $xmlGroupingIds{$element}) {
+            push @nameStack, $attrs{'identifier'};
+
+            # If we're not tracking something, see if we should be. The logic is
+            # fairly long-winded but essentially just breaks searchProject into
+            # its components and compares it item-for-item to the end of our name
+            # stack.
+            if ($trackingReposFlag <= 0) {
+                my @searchParts = split(m{/}, $searchProject);
+                if (scalar @nameStack >= scalar @searchParts) {
+                    my @candidateArray = @nameStack[-(scalar @searchParts)..-1];
+                    die "candidate vs. search array mismatch" if $#candidateArray != $#searchParts;
+
+                    $trackingReposFlag = 1;
+                    for (my $i = 0; $i < scalar @searchParts; ++$i) {
+                        $trackingReposFlag &&= $searchParts[$i] eq $candidateArray[$i];
+                    }
+
+                    # Reset our found flag if we're looking for another repo
+                    $repoFound = 0 if $trackingReposFlag > 0;
+                }
+            }
+        }
+
+        # Checking that we haven't already found a repo helps us out in
+        # situations where a supermodule has its own repo, -OR- you could build
+        # it in submodules. We won't typically want to do both, so prefer
+        # supermodules this way. (e.g. Calligra and its Krita submodules)
+        if ($element eq 'repo' &&     # Found a repo
+            $trackingReposFlag > 0 && # When we were looking for one
+            ($trackingReposFlag <= $repoFound || $repoFound == 0))
+                # (That isn't a direct child of an existing repo)
+        {
+            die "We are already tracking a repository" if $inRepo > 0;
+            $inRepo = 1;
+            $repoFound = $trackingReposFlag;
+            $curRepository = {
+                'fullName' => join('/', @nameStack),
+                'repo' => '',
+                'name' => $nameStack[-1],
+                'active' => 'false',
+            }; # Repo/Active to be added by char handler.
+        }
+
+        # Character data is integrated by the char handler. To avoid having it dump
+        # all willy-nilly into our dict, we leave a flag for what the resultant key
+        # should be.
+        if ($element eq 'active' && $inRepo) {
+            $curRepository->{'needs'} = 'active';
+        }
+
+        if ($element eq 'url' && $inRepo && $attrs{'protocol'} eq 'git') {
+            $curRepository->{'needs'} = 'repo';
+        }
+    }
+
+    sub xmlTagEnd
+    {
+        my ($expat, $element) = @_;
+
+        if (exists $xmlGroupingIds{$element}) {
+            pop @nameStack;
+        }
+
+        if ($element eq 'repo' && $inRepo) {
+            $inRepo = 0;
+            push @modules, $curRepository;
+            $curRepository = undef;
+        }
+
+        # See xmlTagStart above for an explanation.
+        --$trackingReposFlag;
+    }
+
+    sub xmlCharData
+    {
+        my ($expat, $utf8Data) = @_;
+
+        if ($curRepository && defined $curRepository->{'needs'}) {
+            $curRepository->{$curRepository->{'needs'}} = $utf8Data;
+            delete $curRepository->{'needs'};
+        }
+    }
+
+    1;
+}
+
+{
+    package Module;
+
+    use Scalar::Util qw(blessed);
+
+    my $ModulePhases = [qw/update build test install/];
+    my @ModuleList;  # List of modules
+
+    # Alias the main package's debug to our package.
+    *debug = \&main::debug;
+
+    sub new
+    {
+        my ($class, $name, $type) = @_;
+        die "Empty Module constructed" unless $name;
+
+        my $module = {
+            name => $name,
+            type => $type || 'null',
+            # Weird [@$foo] forces a copy of underlying list.
+            phases => [@$ModulePhases],
+        };
+
+        return bless $module, $class;
+    }
+
+    sub push
+    {
+        my ($self, $module) = @_;
+        Carp::confess("No module to push") unless $module;
+
+        if (grep ($_->{name} eq $module->{name}, @ModuleList)) {
+            debug( "Skipping duplicate module $module->{name}");
+        }
+        else {
+            debug("Adding $module->{name} to module list");
+            push @ModuleList, $module;
+        }
+    }
+
+    sub phases
+    {
+        my ($self) = shift;
+        return @$ModulePhases;
+    }
+
+    sub setPhases
+    {
+        my ($self, @phases) = @_;
+
+        if (blessed($self)) {
+            $self->{phases} = [@phases];
+        }
+        else {
+            $ModulePhases = [@phases]; # Doesn't affect already created modules.
+        }
+    }
+
+    sub filterOutPhase
+    {
+        my ($self, $deadPhase) = @_;
+
+        # If already blessed, act like method, otherwise act like static
+        # class function.
+        if (blessed($self)) {
+            @{$self->{'phases'}} = grep($_ ne $deadPhase, @{$self->{'phases'}});
+        }
+        else {
+            @$ModulePhases = grep($_ ne $deadPhase, @$ModulePhases);
+        }
+    }
+
+    sub moduleSet
+    {
+        my ($self) = @_;
+        return $self->{'module-set'} if exists $self->{'module-set'};
+        return '';
+    }
+
+    sub setModuleSet
+    {
+        my ($self, $moduleSetName) = @_;
+        $self->{'module-set'} = $moduleSetName;
+    }
+
+    sub moduleList
+    {
+        my $self = shift;
+        return @ModuleList;
+    }
+
+    1;
+}
+
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
 
@@ -440,6 +686,20 @@ my %ignore_list;  # List of packages to refuse to include in the build list.
 # necessarily a horrible way to go, I just chose to do it this way.
 my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
+
+# Each module in the above list is of the form: { name => 'user-set-name',
+# phases => [ qw/update build test install/ ], type => qw/svn git proj null/ #
+# Only one of these }
+#
+# Where 'phases' can have at most one of each entry in the list above. Each
+# phase has the obvious meaning, except purge is run at the end to possibly
+# free up disk space.
+#
+# 'type' is the module type (as determined by heuristics, or directly by the
+# user via svn-server or repository). If 'proj', the module can be converted to
+# an equivalent 'git' module type by doing some processing of the
+# kde_projects.xml file. 'null' is only used at e.g. the command line where the
+# module type may not be known yet.
 
 # Dictionary of lists of failed modules, keyed by the name of the operation
 # that caused the failure (e.g. build).  Note that output_failed_module_lists
@@ -2982,18 +3242,6 @@ sub default_module_options
         },
     );
 
-    # Most KDE modules seem to be moving to git, but some remain in svn.
-    my @nonKDEgitModules = qw(
-        qt-copy kdesupport dbusmenu-qt
-        kdemultimedia kdeartwork kdeutils kdegraphics kdegames
-        kdetoys kdeedu kdenetwork kdeadmin kdeaccessibility
-        kdesdk kdereview
-    );
-
-    if (not list_has(@nonKDEgitModules, $module) and not has_base_module($module)) {
-        $options{'repository'} = "git://anongit.kde.org/$module";
-    }
-
     # Hack to support default "tags" instead of default branches for kdesupport.
     if ($branch =~ /^tags\//)
     {
@@ -3089,9 +3337,9 @@ sub setup_default_modules()
                 $package_opts{$i}{$key} = $options_ref->{$key};
             }
         }
-    }
 
-    @update_list = @build_list = @defaultModuleList;
+        Module->push(Module->new($i, 'null'));
+    }
 }
 
 # Reads a "line" from a file. This line is stripped of comments and extraneous
@@ -3253,6 +3501,42 @@ EOF
     }
 }
 
+# Tries to download the kde_projects.xml file needed to make XML module support
+# work. Only tries once per script run. If it does succeed, the result is saved
+# to $srcdir/kde_projects.xml
+#
+# Returns 0 if the file could not be downloaded, 1 otherwise.
+sub ensure_projects_xml_present
+{
+    my $srcdir = get_source_dir();
+
+    my $cached_status = get_option('global', '#cached_project_xml_check');
+    if (defined $cached_status && $cached_status eq 'failed') {
+        die "Attempted to find projects.xml after it already failed";
+    }
+
+    return $cached_status if $cached_status;
+
+    # Not previously attempted, let's make a try.
+    super_mkdir($srcdir) unless -d "$srcdir";
+    my $file = "$srcdir/kde_projects.xml";
+    my $host = "projects.kde.org";
+    my $path = "/kde_projects.xml";
+    my $redirections = { };
+
+    my $result = 1;
+    if (!pretending) {
+        $result = download_http_file($host, $path, $file, $redirections);
+    }
+
+    set_option('global', '#cached_project_xml_check',
+        $result ? 'success' : 'failed');
+
+    if (!$result) {
+        die "Unable to download kde_projects.xml for the use-xml-module option!";
+    }
+}
+
 # Reads in a "moduleset".
 #
 # First parameter is the filehandle to the config file to read from.
@@ -3262,6 +3546,7 @@ EOF
 sub parse_moduleset
 {
     my $fh = shift;
+    my $moduleSetName = shift || '';
     my $repoSet = get_option('global', 'git-repository-base');
     my @modules;
     my %optionSet; # We read all options, and apply them to all modules
@@ -3281,53 +3566,164 @@ sub parse_moduleset
                 die make_exception('Config', 'Invalid use-modules');
             }
         }
+        # TODO: Compat hack, to be removed later.
+        elsif ($option eq 'use-xml-modules') {
+            die make_exception('Config', <<EOF);
+Sorry, the use-xml-modules options has been deleted. It should be replaced in
+your config by:
+
+    repository kde-projects
+
+and the use-xml-modules converted to the existing use-modules as normal.
+e.g.
+module-set
+    use-xml-modules kdepim-runtime kdepim
+end module-set
+
+becomes
+
+module-set
+    repository kde-projects
+    use-modules kdepim-runtime kdepim
+end module-set
+EOF
+        }
+        elsif ($option eq 'set-env') {
+            handle_set_env(\%optionSet, $option, $value);
+        }
         else {
             $optionSet{$option} = $value;
         }
     }
 
-    if (not scalar @modules) {
-        warning "No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]";
-        warning "You should use the g[b[use-modules] option to make the module-set useful.";
+    # Check before we start looping whether the user did something silly.
+    if (exists $optionSet{'repository'} &&
+        ($optionSet{'repository'} ne KDE_PROJECT_ID) &&
+        not exists $repoSet->{$optionSet{'repository'}})
+    {
+        my $projectID = KDE_PROJECT_ID;
+        my $moduleSetId = "module-set";
+        $moduleSetId = "module-set ($moduleSetName)" if $moduleSetName;
+
+        error <<EOF;
+There is no repository assigned to y[b[$optionSet{repository}] when assigning a
+$moduleSetId on line $startLine of $rcfile.
+
+These repositories are defined by g[b[git-repository-base] in the global
+section of $rcfile.
+Make sure you spelled your repository name right!
+
+If you are trying to pull the module information from the KDE
+http://projects.kde.org/ website, please use b[$projectID] for the value of
+the b[repository] option.
+EOF
+
+        die make_exception('Config', 'Unknown repository base');
     }
 
+    my @moduleList; # module names converted to Module objects.
+    my $selectedRepo;
+    my $usingXML = (exists $optionSet{'repository'}) &&
+                    $optionSet{'repository'} eq KDE_PROJECT_ID;
+
     # Setup default options for each module
+    # Extraction of relevant XML modules will be handled immediately after
+    # this phase of execution.
     for my $module (@modules) {
         my $moduleName = $module;
-        $moduleName =~ s/\.git$//; # Remove trailing .git for module name
+        my $moduleType;
+
+        # Remove trailing .git for module name
+        $moduleName =~ s/\.git$// unless $usingXML;
+
+        $moduleType = 'proj' if $usingXML;
+
+        my $newModule = Module->new($moduleName, $moduleType);
+        $newModule->setModuleSet($moduleSetName);
+        push @moduleList, $newModule;
 
         if (not defined $package_opts{$moduleName})
         {
             $package_opts{$moduleName} = default_module_options($moduleName);
         }
 
-        # Apply all options in the module set to this virtual module.
-        # At this point it's possible to override repository after we just
-        # set it, but let's not announce that too loudly...
-        for my $option (keys %optionSet) {
-            my $value = $optionSet{$option};
+        # Dump all options into the existing option hash.
+        @{$package_opts{$moduleName}}{keys %optionSet} = values %optionSet;
 
-            if ($option eq 'repository') {
-                if (not exists $repoSet->{$value}) {
-                    error <<EOF;
-There is no repository assigned to y[b[$value] when assigning a moduleset on
-line $startLine of $rcfile.
-
-These repositories are defined by g[b[git-repository-base] in the global
-section of $rcfile. Make sure you spelled your repository name right!
-EOF
-
-                    die make_exception('Config', 'Unknown repository base');
-                }
-
-                $value = $repoSet->{$value} . $module;
-            }
-
-            set_option($moduleName, $option, $value);
+        # Fixup for the special repository handling if need be.
+        if (!$usingXML && exists $optionSet{'repository'}) {
+            $selectedRepo = $repoSet->{$optionSet{'repository'}} unless $selectedRepo;
+            set_option($moduleName, 'repository', $selectedRepo . $module);
         }
     }
 
-    return @modules;
+    if (not scalar @moduleList) {
+        warning "No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]";
+        warning "You should use the g[b[use-modules] option to make the module-set useful.";
+    }
+
+    return @moduleList;
+}
+
+# Goes through the provided modules that have the 'proj' type (i.e. XML
+# projects.kde.org database) and expands the proj-types into their equivalent
+# git modules, and returns the fully expanded list. Non-proj modules are
+# included in the sequence they were originally.
+sub expandXMLModules
+{
+    my @modules = @_;
+
+    # Using a sub allows me to use the 'return' keyword.
+    my $filter = sub {
+        return $_ if $_->{'type'} ne 'proj';
+        my $name = $_->{'name'};
+        my @xmlResults = grep {
+            $_->{'active'} ne 'false'
+        } (KDEXMLReader->getModulesForProject($name));
+
+        # Setup module options
+        foreach my $xml (@xmlResults) {
+            clone_options($name, $xml->{'name'});
+            set_option($xml->{'name'}, 'repository', $xml->{'repo'});
+        }
+
+        return map { Module->new($_->{'name'}, 'git') } (@xmlResults);
+    };
+
+    return map { &$filter($_) } (@modules);
+}
+
+# This subroutine takes a reference to the current module list (specifically a
+# list of Module objects), and takes a reference to the list of Module objects
+# read in from the config file.
+#
+# For each module in the first list, it is checked to see if options have been
+# read in for it, and if so it is left alone.
+#
+# If the module does not have any options for it, it is assumed that the user
+# might mean a named module set (i.e. the module is the name of a module-set),
+# and /if/ any of the Modules in the second list are recorded as having come
+# from a module set matching the name of the current module, it is used
+# instead.
+#
+# The processed module list is the return value.
+sub expandModuleSets
+{
+    my ($buildModuleList, $knownModules) = @_;
+
+    my $filter = sub {
+        my $setName = $_->{name};
+        return $_ if exists $package_opts{$setName};
+        my @modulesInSet = grep { $_->moduleSet() eq $setName } (@$knownModules);
+
+        if (not @modulesInSet) {
+            die make_exception('Runtime', "Unknown module or module-set: $setName");
+        }
+
+        return @modulesInSet;
+    };
+
+    return map { &$filter } (@$buildModuleList);
 }
 
 # This subroutine reads in the settings from the user's configuration
@@ -3337,6 +3733,8 @@ sub read_options
     # The options are stored in the file $rcfile
     my $success = 0;
     my $global_opts = $package_opts{'global'};
+    my @module_list;
+
     for my $file (@rcfiles)
     {
         if (open CONFIG, "<$file")
@@ -3419,45 +3817,31 @@ EOM
         s/^\s*//;          # Remove leading whitespace
         next if (/^\s*$/); # Skip blank lines
 
-        my @addedModules = ();
-
         # Get modulename (has dash, dots, slashes, or letters/numbers)
         ($modulename) = /^module\s+([-\/\.\w]+)\s*$/;
 
         if (not $modulename)
         {
-            if (not /^module-set\s*$/) {
+            my $moduleSetRE = qr/^module-set\s*([-\/\.\w]+)?\s*$/;
+            ($modulename) = m/$moduleSetRE/;
+
+            # modulename may be blank -- use the regex directly to match
+            if (not /$moduleSetRE/) {
                 error "Invalid configuration file $rcfile!";
                 error "Expecting a start of module section at r[b[line $.].";
                 die make_exception('Config', 'Ungrouped/Unknown option');
             }
 
             # A moduleset can give us more than one module to add.
-            @addedModules = parse_moduleset(\*CONFIG);
+            push @module_list, parse_moduleset(\*CONFIG, $modulename);
         }
         else {
             parse_module(\*CONFIG, $modulename);
-            push @addedModules, $modulename;
+            push @module_list, Module->new($modulename);
         }
 
         # Don't build default modules if user has their own wishes.
-        if ($using_default)
-        {
-            $using_default = 0;
-            @update_list = @build_list = ( );
-        }
-
-        # Don't re-add duplicated modules (it may be possible to see a module
-        # declaration for a module already seen in a module-set)
-        @addedModules = grep { not exists $readModules{$_} } (@addedModules);
-
-        # Done reading options, add this module(s) to the update lists
-        push (@update_list, @addedModules);
-        push (@build_list, @addedModules);
-
-        # Add an entry for each module that has been read in so we don't
-        # add it later to update/build list.
-        @readModules{@addedModules} = 1;
+        $using_default = 0;
     }
 
     close CONFIG;
@@ -3466,12 +3850,18 @@ EOM
     # to update or build, based on the --ignore-modules option already present
     # on the command line. manual-update and manual-build are also relevant,
     # but handled in get_build_list or get_update_list.
-    @update_list = grep { not exists $ignore_list{$_} } (@update_list);
-    @build_list = grep { not exists $ignore_list{$_} } (@build_list);
+    @module_list = grep {
+        not exists $ignore_list{$_->{name}}
+    } (@module_list);
 
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
-    setup_default_modules() if $using_default;
+    if ($using_default) {
+        setup_default_modules();
+        return ();
+    }
+
+    return @module_list;
 }
 
 # Subroutine to check if the given module needs special treatment to support
@@ -4057,7 +4447,7 @@ in .kdesrc-buildrc will be used.  If you DO specify a module name, then
 your settings will still be read, but the script will try to build/install
 the modules in the order given on the command line.
 
-Copyright (c) 2003 - 2009 $author
+Copyright (c) 2003 - 2011 $author
 The script is distributed under the terms of the GNU General Public License
 v2, and includes ABSOLUTELY NO WARRANTY!!!
 
@@ -4133,11 +4523,15 @@ DONE
 
             /^--install$/ && do {
                 $run_mode = 'install';
+                Module->setPhases('install');
+
                 last SWITCH;
             };
 
             /^--uninstall$/ && do {
                 $run_mode = 'uninstall';
+                Module->setPhases('uninstall');
+
                 last SWITCH;
             };
 
@@ -4151,11 +4545,13 @@ DONE
 
             /^--no-(src|svn)$/ && do {
                 set_option('global', '#no-svn', 1);
+                Module->filterOutPhase('update');
                 last SWITCH;
             };
 
             /^--no-install$/ && do {
                 set_option('global', '#install-after-build', 0);
+                Module->filterOutPhase('install');
                 last SWITCH;
             };
 
@@ -4207,6 +4603,7 @@ DONE
 
             /^--no-build$/ && do {
                 set_option('global', '#manual-build', 1);
+                Module->filterOutPhase('build');
                 last SWITCH;
             };
 
@@ -4224,6 +4621,7 @@ DONE
             # script may interpret the two differently, so get ready now.
             /^--(src|svn)-only$/ && do {      # Identically to --no-build
                 set_option('global', '#manual-build', 1);
+                Module->setPhases('update');
                 last SWITCH;
             };
 
@@ -4231,6 +4629,8 @@ DONE
             /^--build-only$/ && do {
                 set_option('global', '#no-svn', 1);
                 set_option('global', '#install-after-build', 0);
+
+                Module->setPhases('build');
                 last SWITCH;
             };
 
@@ -4373,14 +4773,17 @@ DONE
         }
     }
 
-    @ARGV = @argv;
-
     # Don't go async if only performing one phase.  It (should) work but why
     # risk it?
-    if(get_option('global', 'manual-build') or get_option('global', 'no-svn'))
+    if (scalar Module->phases() == 1)
     {
         set_option('global', '#async', 0);
     }
+
+    @ARGV = @argv;
+
+    # @ARGV should contain all the modules we'll be using.
+    return map { Module->new($_) } (@ARGV);
 }
 
 # Installs the given subroutine as a signal handler for a set of signals which
@@ -4506,23 +4909,32 @@ sub close_lock
     unlink $lockfile;
 }
 
-# Subroutine to get the list of KDE modules to update.  Returned
-# as a list.  Parse the command-line arguments first.
-sub get_update_list
+sub updateModulePhases
 {
-    return @ARGV unless $#ARGV == -1;
+    my @modules = @_;
 
-    # l10n module has different names for KDE 3 and KDE 4.
-    my $l10n = 'l10n-kde4';
+    whisper "Filtering out module phases.";
+    for my $module (@modules) {
+        my $name = $module->{name};
 
-    if (get_option('global', 'kde-languages') and not get_option($l10n, 'manual-update'))
-    {
-        push @update_list, $l10n; # Add l10n module to potential update list.
+        if (get_option($name, 'manual-update') ||
+            get_option($name, 'no-svn') || get_option($name, 'no-src'))
+        {
+            $module->setPhases();
+            next;
+        }
+
+        if (get_option($name, 'manual-build')) {
+            $module->filterOutPhase('build');
+            $module->filterOutPhase('test');
+            $module->filterOutPhase('install');
+        }
+
+        $module->filterOutPhase('install') unless get_option($name, 'install-after-build');
+        $module->filterOutPhase('test') unless get_option($name, 'run-tests');
     }
 
-    return grep {
-        not get_option($_, 'manual-update')
-    } (@update_list);
+    return @modules;
 }
 
 # Subroutine to get the list of KDE modules to build.  Returned
@@ -4995,15 +5407,15 @@ sub handle_updates
         my $count;
 
         eval {
-            if (module_scm_type($module) eq 'git') {
-                # Handle git module update
-                $count = update_module_git_checkout($module);
-            }
-            elsif (-e "$fullpath/.svn")
+            if (-e "$fullpath/.svn")
             {
                 # Warn user if the current repo URL is different than expected.
                 check_module_validity($module);
                 $count = update_module_path($module, @options);
+            }
+            elsif (module_scm_type($module) eq 'git') {
+                # Handle git module update
+                $count = update_module_git_checkout($module);
             }
             else
             {
@@ -7297,8 +7709,20 @@ eval
     # Note: Don't change the order around unless you're sure of what you're
     # doing.
     set_debug_colors();  # Default to colorized output if sending to TTY
-    process_arguments(); # Process --help, --install, etc. first.
-    read_options();      # If we're still here, read the options
+    my @modules = process_arguments(); # Process --help, --install, etc. first.
+
+    # Change name and type of command line entries beginning with + to force
+    # them to be XML project modules.
+    foreach (@modules) {
+        if (substr($_->{name}, 0, 1) eq '+') {
+            debug "Forcing $_->{name} to be an XML module";
+            $_->{type} = 'proj';
+            substr($_->{name}, 0, 1) = ''; # Remove first char
+        }
+    }
+
+    my @optionModules = read_options();      # If we're still here, read the options
+
     update_module_environment('global'); # Initialize global env vars.
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
@@ -7309,14 +7733,35 @@ eval
         execute_command_line_program();
     }
 
+    if (get_option('global', 'kde-languages'))
+    {
+        # Just set some options to init defaults.
+        set_option('l10n-kde4', 'install-after-build', 1);
+    }
+
     setup_operating_environment(); # i.e. niceness, ulimits, etc.
     setup_logging_subsystem(); # Setup logging directories.
 
-    if (get_option('global', 'kde-languages'))
-    {
-        # Just set some optionsto init defaults.
-        set_option('l10n-kde4', 'install-after-build', 1);
+    my $commandLineModules = scalar @modules;
+
+    # Allow named module-sets to be given on the command line.
+    if ($commandLineModules) {
+        @modules = expandModuleSets(\@modules, \@optionModules);
     }
+    else {
+        @modules = @optionModules;
+    }
+
+    @modules = expandXMLModules(@modules);
+
+    # If modules were on the command line then they are effectively forced to
+    # process unless overridden by command line options as well. If phases
+    # *were* overridden on the command line, then no update pass is required
+    # (all modules already have correct phases)
+    @modules = updateModulePhases(@modules) unless $commandLineModules;
+
+    # Add to global module list now that we've filtered everything.
+    Module->push($_) foreach @modules;
 
     dump_options() if debugging;
 };
@@ -7374,8 +7819,10 @@ eval
     eval { plugin_setup_default_modules(\@update_list, \@build_list, \%package_opts); };
     $@ = ''; # Clear errors that result when not using Coverity plugin.
 
-    @update_list = get_update_list();
-    @build_list = get_build_list();
+    @update_list = grep { list_has (@{$_->{phases}}, 'update') } (Module::moduleList());
+    @update_list = map { $_->{name} } (@update_list);
+    @build_list = grep { list_has (@{$_->{phases}}, 'build') } (Module::moduleList());
+    @build_list = map { $_->{name} } (@build_list);
 
     debug "Update list is ", join (', ', @update_list);
     debug "Build list is ", join (', ', @build_list);
