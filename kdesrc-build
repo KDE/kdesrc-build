@@ -3716,6 +3716,10 @@ sub expandModuleSets
         return $_ if exists $package_opts{$setName};
         my @modulesInSet = grep { $_->moduleSet() eq $setName } (@$knownModules);
 
+        if (not @modulesInSet) {
+            die make_exception('Runtime', "Unknown module or module-set: $setName");
+        }
+
         return @modulesInSet;
     };
 
