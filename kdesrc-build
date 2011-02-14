@@ -3566,6 +3566,28 @@ sub parse_moduleset
                 die make_exception('Config', 'Invalid use-modules');
             }
         }
+        # TODO: Compat hack, to be removed later.
+        elsif ($option eq 'use-xml-modules') {
+            die make_exception('Config', <<EOF);
+Sorry, the use-xml-modules options has been deleted. It should be replaced in
+your config by:
+
+    repository kde-projects
+
+and the use-xml-modules converted to the existing use-modules as normal.
+e.g.
+module-set
+    use-xml-modules kdepim-runtime kdepim
+end module-set
+
+becomes
+
+module-set
+    repository kde-projects
+    use-modules kdepim-runtime kdepim
+end module-set
+EOF
+        }
         elsif ($option eq 'set-env') {
             handle_set_env(\%optionSet, $option, $value);
         }
