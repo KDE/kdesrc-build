@@ -1,4 +1,13 @@
 #!/usr/bin/perl
+# Test suite for kdesrc-build. If you encounter tests that fail on your
+# correctly-configured system please let myself or the kde-buildsystem mailing
+# list know so I can fix and/or workaround. -mpyne
+#
+# Copyright © 2008 - 2011 Michael Pyne. <mpyne@kde.org>
+# Home page: http://kdesrc-build.kde.org/
+#
+# You may use, alter, and redistribute this software under the terms
+# of the GNU General Public License, v2 (or any later version).
 
 use strict;
 use warnings;
