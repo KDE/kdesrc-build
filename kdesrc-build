@@ -3841,7 +3841,7 @@ EOM
     # All modules and their options have been read, filter out modules not
     # to update or build, based on the --ignore-modules option already present
     # on the command line. manual-update and manual-build are also relevant,
-    # but handled in get_build_list or get_update_list.
+    # but handled in updateModulePhases.
     @module_list = grep {
         not exists $ignore_list{$_->{name}}
     } (@module_list);
@@ -4925,91 +4925,6 @@ sub updateModulePhases
     }
 
     return @modules;
-}
-
-# Subroutine to get the list of KDE modules to build.  Returned
-# as a list.  A module will not be built if manual-build is set
-# in the module's options.  The command-line arguments should have been
-# parsed first.
-#
-# This subroutine will handle the --resume-from and --resume-after options.
-sub get_build_list
-{
-    my $resume_point = get_option('global', '#resume-from');
-    my $resume_point_after = get_option('global', '#resume-after');
-
-    # Set resume_point.
-    if ($resume_point_after)
-    {
-        if ($resume_point)
-        {
-            # Whoops, can't enable both
-            error <<EOF;
-You specified both r[b[--resume-from] and r[b[--resume-after] but you can only
-use one.
-EOF
-
-            die make_exception('Runtime',
-                "Both --resume-after and --resume-from specified.");
-        }
-
-        $resume_point = $resume_point_after;
-    }
-
-    # l10n module has different names for KDE 3 and KDE 4.
-    my $l10n = 'l10n-kde4';
-
-    # Add l10n to build list if needed.
-    if (get_option('global', 'kde-languages') and not get_option($l10n, 'manual-build'))
-    {
-        push @build_list, $l10n;
-    }
-
-    # We check explicitly for sticky options here since they can only be
-    # set from the command line.
-    if (get_option('global', '#manual-build'))
-    {
-        if ($resume_point)
-        {
-            my $option = '--resume-from';
-            $option = '--resume-after' if get_option('global', '#resume-after');
-
-            warning "I'm confused, you enabled y[--no-build] and y[$option].";
-            warning "Skipping the build process.";
-        }
-
-        return ();
-    }
-
-    if ($resume_point)
-    {
-        # Pop stuff off of the list until we hit the resume point.
-        while (scalar @build_list > 0)
-        {
-            last if $build_list[0] eq $resume_point;
-            shift @build_list;
-        }
-
-        # One further for the --resume-after case.
-        if ($resume_point_after)
-        {
-            shift @build_list;
-        }
-
-        if (not @build_list)
-        {
-            warning "Can't resume from y[$resume_point], it wasn't going to be built!";
-        }
-
-        return @build_list;
-    }
-
-    return @ARGV unless $#ARGV == -1;
-
-    return grep {
-        not get_option($_, 'manual-update') and
-        not get_option($_, 'manual-build')
-    } (@build_list);
 }
 
 # Used to sort module names.  'global' always starts first, modules with /
@@ -7223,6 +7138,73 @@ sub munge_lists
     }
 }
 
+# This subroutine is used in order to apply any module-specific filtering that
+# is necessary after reading command line and rc-file options. (This is as
+# opposed to phase filters, which leave each module as-is but change the phases
+# they operate part of, this function could remove a module entirely from the
+# build).
+#
+# Famously used for --resume-from and --resume-after, but more could be added
+# in theory.
+#
+# Requires a list of "Module" type objects, and returns the list with filters
+# applied. Right now the return list will be a subset of the given list, but
+# it's best not to rely on that long-term.
+sub applyModuleFilters
+{
+    my @moduleList = @_;
+
+    if (!get_option('global', 'resume-from') && !get_option('global', 'resume-after'))
+    {
+        debug "No --resume-from or --resume-after seems present.";
+        return @moduleList;
+    }
+
+    if (get_option('global', 'resume-from') && get_option('global', 'resume-after'))
+    {
+        # This one's an error.
+        error <<EOF;
+You specified both r[b[--resume-from] and r[b[--resume-after] but you can only
+use one.
+EOF
+
+        die make_exception('Runtime',
+            "Both --resume-after and --resume-from specified.");
+    }
+
+    my $resumePoint = get_option('global', 'resume-from') ||
+                      get_option('global', 'resume-after');
+
+    debug "Looking for $resumePoint for --resume-* option";
+
+    # || 0 is a hack to force Boolean context.
+    my $filterInclusive = get_option('global', 'resume-from') || 0;
+    my $found = 0;
+
+    # If we already found our resume point, include this module. If this module
+    # *is* the resume point, include it if filterInclusive is true, otherwise
+    # just flag it. Module sets complicate the logic a bit, but it's basically
+    # just harder in the --resume-after case where we have to leave that module
+    # set before we can allow modules through the filter.
+    my $filterTest = sub {
+        if ($found) {
+            return $filterInclusive || $_->moduleSet() ne $resumePoint;
+        }
+        $found = $_->{'name'} eq $resumePoint || $_->moduleSet() eq $resumePoint;
+        return $found && $filterInclusive;
+    };
+
+    my @resultList = grep { &$filterTest } (@moduleList);
+
+    if (!@resultList && @moduleList) {
+        # Lost all modules somehow.
+        die make_exception('Runtime', "Unknown resume point $resumePoint " .
+                "when handling --resume-from or --resume-after.");
+    }
+
+    return @resultList;
+}
+
 # Subroutine to try an intelligently determine what caused the module to fail
 # to build/update/whatever.  The first parameter is the name of the module,
 # and the return value is the best guess at the error.  If no error is detected
@@ -7729,12 +7711,18 @@ eval
 
     # Allow named module-sets to be given on the command line.
     if ($commandLineModules) {
+        # Filter --resume-foo first so entire module-sets can be skipped.
+        @modules = applyModuleFilters(@modules);
         @modules = expandModuleSets(\@modules, \@optionModules);
     }
     else {
         @modules = @optionModules;
     }
 
+    # Filter --resume-foo options. This might be a second pass, but that should
+    # be OK since there's nothing different going on from the first pass in that
+    # event.
+    @modules = applyModuleFilters(@modules);
     @modules = expandXMLModules(@modules);
 
     # If modules were on the command line then they are effectively forced to
