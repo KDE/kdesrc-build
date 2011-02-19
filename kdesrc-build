@@ -590,6 +590,7 @@ our %ENV_VARS;
     use Scalar::Util qw(blessed);
 
     my $ModulePhases = [qw/update build test install/];
+    my $ModuleSource = 'config';
     my @ModuleList;  # List of modules
 
     # Alias the main package's debug to our package.
@@ -667,6 +668,18 @@ our %ENV_VARS;
     {
         my ($self, $moduleSetName) = @_;
         $self->{'module-set'} = $moduleSetName;
+    }
+
+    sub setModuleSource
+    {
+        my $source = shift;
+        $ModuleSource = $source;
+    }
+
+    sub moduleSource
+    {
+        # Should be 'config' or 'cmdline';
+        return $ModuleSource;
     }
 
     sub moduleList
@@ -3920,20 +3933,6 @@ sub setup_operating_environment
             warning " b[y[*] Unable to lower I/O priority, continuing...";
         }
     }
-}
-
-# Subroutine to get a list of modules to uninstall, by using the command line
-# if present (returned in reverse order to fool our uninstall routine), or
-# the build list filtered by those modules actually installed (not in reverse
-# order).
-sub get_uninstall_list
-{
-    # Reversed since the user typed it in, to fool handle_uninstall
-    return reverse @ARGV if (scalar @ARGV);
-
-    return grep {
-        defined get_persistent_option($_, 'last-install-rev')
-    } (@build_list);
 }
 
 # Print out an error message, and a list of modules that match that error
@@ -7674,9 +7673,11 @@ eval
         # Filter --resume-foo first so entire module-sets can be skipped.
         @modules = applyModuleFilters(@modules);
         @modules = expandModuleSets(\@modules, \@optionModules);
+        Module::setModuleSource('cmdline');
     }
     else {
         @modules = @optionModules;
+        Module::setModuleSource('config');
     }
 
     # Filter --resume-foo options. This might be a second pass, but that should
@@ -7808,7 +7809,14 @@ eval
     {
         # Use build list since that's likely what the user has recently built
         # and installed.
-        $result = handle_uninstall (get_uninstall_list());
+        my @uninstallList = grep {
+            list_has (@{$_->{phases}}, 'uninstall')
+        } (Module::moduleList());
+
+        # More compat hacks.
+        @uninstallList = map { $_->{name} } @uninstallList;
+
+        $result = handle_uninstall (@uninstallList);
     }
 
     cleanup_log_directory() if get_option('global', 'purge-old-logs');
