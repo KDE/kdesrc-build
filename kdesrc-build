@@ -3936,46 +3936,6 @@ sub get_uninstall_list
     } (@build_list);
 }
 
-# Subroutine to get a list of modules to install, either from the command line
-# if it's not empty, or based on the list of modules successfully built.
-sub get_install_list
-{
-    my @install_list;
-
-    if ($#ARGV > -1)
-    {
-        @install_list = @ARGV;
-        @ARGV = ();
-    }
-    else
-    {
-        # Get list of built items from $logdir/latest/build-status
-        my $logdir = get_subdir_path('global', 'log-dir');
-
-        if (not open BUILTLIST, "<$logdir/latest/build-status")
-        {
-            error "Can't determine what modules have built.  You must";
-            error "specify explicitly on the command line what modules to build.";
-            die make_exception('Runtime', 'No modules can be installed, none were built.');
-        }
-
-        while (<BUILTLIST>)
-        {
-            chomp;
-            if (/Succeeded/)
-            {
-                # Clip to everything before the first colon.
-                my $module = (split(/:/))[0];
-                push @install_list, $module;
-            }
-        }
-
-        close BUILTLIST;
-    }
-
-    return @install_list;
-}
-
 # Print out an error message, and a list of modules that match that error
 # message.  It will also display the log file name if one can be determined.
 # The message will be displayed all in uppercase, with PACKAGES prepended, so
@@ -7835,7 +7795,14 @@ eval
     elsif ($run_mode eq 'install')
     {
         # Installation mode
-        $result = handle_install (get_install_list());
+        my @installList = grep {
+            list_has (@{$_->{phases}}, 'install')
+        } (Module::moduleList());
+
+        # Compat hack
+        @installList = map { $_->{name} } @installList;
+
+        $result = handle_install (@installList);
     }
     elsif ($run_mode eq 'uninstall')
     {
