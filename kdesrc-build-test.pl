@@ -177,8 +177,8 @@ module-set
     repository test
 end module-set
 
-module-set
-    use-modules kdesrc-build
+module-set set1
+    use-modules kdesrc-build kde-runtime
     repository kde-projects
 end module-set
 
@@ -193,6 +193,29 @@ my @conf_modules = read_options($fh);
 is(get_option('qt-copy', 'configure-flags'), '-fast', 'read_options/parse_module');
 is(get_option('kdelibs', 'repository'), 'kde:kdelibs', 'git-repository-base');
 
-my @ConfModules = map { Module->new($_) }(qw/kdelibs kdesrc-build qt-copy/);
+my @ConfModules = map { Module->new($_) }(qw/kdelibs kdesrc-build kde-runtime qt-copy/);
 $ConfModules[1] = Module->new('kdesrc-build', 'proj'); # This should be a kde_projects.xml
+$ConfModules[2] = Module->new('kde-runtime', 'proj');  # This should be a kde_projects.xml
+$ConfModules[1]->setModuleSet('set1');
+$ConfModules[2]->setModuleSet('set1');
 is_deeply(\@conf_modules, \@ConfModules, 'read_options module reading');
+
+# Test resume-from options
+set_option('global', 'resume-from', 'kdesrc-build');
+my @filtered_modules = applyModuleFilters(@conf_modules);
+is_deeply(\@filtered_modules, [@ConfModules[1..$#ConfModules]], 'resume-from under module-set');
+
+set_option('global', 'resume-from', 'kde-runtime');
+@filtered_modules = applyModuleFilters(@conf_modules);
+is_deeply(\@filtered_modules, [@ConfModules[2..$#ConfModules]], 'resume-from under module-set, not first module in set');
+
+set_option('global', 'resume-from', 'set1');
+@filtered_modules = applyModuleFilters(@conf_modules);
+is_deeply(\@filtered_modules, [@ConfModules[1..$#ConfModules]], 'resume-from a module-set');
+
+set_option('global', 'resume-after', 'set1');
+# Avoid exception from setting both resume-after and resume-from, although it
+# would be good to ensure that happens too!
+delete $package_opts{'global'}->{'resume-from'};
+@filtered_modules = applyModuleFilters(@conf_modules);
+is_deeply(\@filtered_modules, [@ConfModules[3..$#ConfModules]], 'resume-after a module-set');
