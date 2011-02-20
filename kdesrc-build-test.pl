@@ -156,13 +156,47 @@ is(svn_module_url('test'), 'svn://ann', 'testing process_arguments module option
 is(scalar @modules, 0, 'testing process_arguments return value for no passed module names');
 
 @modules = qw/qt-copy kdelibs kdebase/;
+my @defaultPhases = Module->phases();
 my @Modules = map { Module->new($_) } (@modules);
+
+# Ensure functions like updateModulePhases doesn't change the objects we pass in.
+my @backupModuleCopy = @{Storable::dclone(\@Modules)};
+
+# Should be no change if there are no manual-update, no-src, etc. in the rc file
+# so force one of those on.
+set_option('kdelibs', 'no-build', 1);
+my @phaseFilteredModules = updateModulePhases(@Modules);
+is_deeply(\@Modules, \@backupModuleCopy, 'Ensure objects not modified through references to them');
+delete $package_opts{'kdelibs'}->{'manual-update'};
+
+# Now test --no-src/--no-build/etc.
 is_deeply([process_arguments(@modules)], \@Modules, 'testing process_arguments return value for passed module names');
 
 $_->filterOutPhase('update') foreach @Modules;
 is_deeply([process_arguments(@modules, '--no-src')], \@Modules, 'testing --no-src phase updating');
 
+# Reset Module package's default phases
+Module->setPhases(@defaultPhases);
+Module->filterOutPhase('test'); # This would change based on run-tests
+
+# Reported by Kurt Hindenburg (IIRC). Passing --no-src would also disable the
+# build (in updateModulesPhases) because of the global '#no-src' being set in
+# process_arguments.
+my @temp_modules = process_arguments(@modules, '--no-src');
+# There should be no module-specific no-src/no-build/manual-update/etc. set.
+is_deeply([updateModulePhases(@temp_modules)], \@temp_modules, 'updateModulePhases only for modules');
+
+Module->setPhases(@defaultPhases);
+@Modules = map { Module->new($_) } (@modules);
 $_->filterOutPhase('build') foreach @Modules;
+
+# Test only --no-build
+is_deeply([process_arguments(@modules, '--no-build')], \@Modules, 'testing --no-build phase updating');
+
+# Reset Module package's default phases
+Module->setPhases(@defaultPhases);
+
+$_->filterOutPhase('update') foreach @Modules;
 is_deeply([process_arguments(@modules, '--no-build', '--no-src')], \@Modules, 'testing --no-src and --no-build phase updating');
 
 # Reset
