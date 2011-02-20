@@ -4342,14 +4342,19 @@ sub clone_options
     }
 }
 
-# Subroutine to process the command line arguments.  Any arguments so
-# processed will be removed from @ARGV.
-# The arguments are generally documented in doc.html now.
+# Subroutine to process the command line arguments, which should be passed as
+# a list. The list of module names passed on the command line will be returned,
+# other options are generally entered into the 'global' option set.
+# NOTE: One exception to the return value is that if --run is passed, the list
+# of options to pass to the new program is returned instead (you can tell by
+# evaluating the '#start-program' option.
 # NOTE: Don't call finish() from this routine, the lock hasn't been obtained.
 # NOTE: The options have not been loaded yet either.  Any option which
 # requires more than rudimentary processing should set a flag for later work.
 sub process_arguments
 {
+    my @savedOptions = @_; # Used for --debug
+    my @options = @_;
     my $arg;
     my $version = "kdesrc-build $versionNum";
     my $author = <<DONE;
@@ -4361,10 +4366,9 @@ Many people have contributed code, bugfixes, and documentation.
 Please report bugs using the KDE Bugzilla, at http://bugs.kde.org/
 DONE
 
-    my @argv;
-    my @saved_opts = @ARGV; # Save options for debugging purposes.
+    my @enteredModules;
 
-    while ($_ = shift @ARGV)
+    while ($_ = shift @options)
     {
         SWITCH: {
             /^(--version)$/      && do { print "$version\n"; exit; };
@@ -4533,7 +4537,7 @@ DONE
 
             /^--debug$/ && do {
                 set_option('global', '#debug-level', DEBUG);
-                debug "Commandline was: ", join(', ', @saved_opts);
+                debug "Commandline was: ", join(', ', @savedOptions);
                 last SWITCH;
             };
 
@@ -4588,11 +4592,11 @@ DONE
             # Start up a program with the environment variables as
             # read from the config file.
             /^--run=?/ && do {
-                my $program = extract_option_value_required($_, @ARGV);
+                my $program = extract_option_value_required($_, @options);
                 set_option('global', '#start-program', $program);
 
                 # Save remaining command line options to pass to the program.
-                return;
+                return @options;
             };
 
             /^--build-system-only$/ && do {
@@ -4601,14 +4605,14 @@ DONE
             };
 
             /^--rc-file=?/ && do {
-                my $rcfile = extract_option_value_required($_, @ARGV);
+                my $rcfile = extract_option_value_required($_, @options);
                 @rcfiles = ( $rcfile );
 
                 last SWITCH;
             };
 
             /^--prefix=?/ && do {
-                my $prefix = extract_option_value_required($_, @ARGV);
+                my $prefix = extract_option_value_required($_, @options);
 
                 set_option('global', '#kdedir', $prefix);
                 set_option('global', '#reconfigure', 1);
@@ -4617,7 +4621,7 @@ DONE
             };
 
             /^--nice=?/ && do {
-                my $niceness = extract_option_value_required($_, @ARGV);
+                my $niceness = extract_option_value_required($_, @options);
 
                 set_option('global', '#niceness', $niceness);
                 last SWITCH;
@@ -4627,13 +4631,13 @@ DONE
                 # We need to keep read_options() from adding these modules to
                 # the build list, taken care of by ignore_list.  We then need
                 # to remove the modules from the command line, taken care of
-                # by the @ARGV = () statement;
-                my @options = ();
-                foreach (@ARGV)
+                # by the @options = () statement;
+                my @innerOptions = ();
+                foreach (@options)
                 {
                     if (/^-/)
                     {
-                        push @options, $_;
+                        push @innerOptions, $_;
                     }
                     else
                     {
@@ -4641,10 +4645,10 @@ DONE
 
                         # the pattern match doesn't work with $_, alias it.
                         my $module = $_;
-                        @argv = grep (!/^$module$/, @argv);
+                        @enteredModules = grep (!/^$module$/, @enteredModules);
                     }
                 }
-                @ARGV = @options;
+                @options = @innerOptions;
 
                 last SWITCH;
             };
@@ -4662,21 +4666,21 @@ DONE
             };
 
             /^(--revision|-r)=?/ && do {
-                my $revision = extract_option_value_required($_, @ARGV);
+                my $revision = extract_option_value_required($_, @options);
                 set_option('global', '#revision', $revision);
 
                 last SWITCH;
             };
 
             /^--resume-from=?/ && do {
-                $_ = extract_option_value_required($_, @ARGV);
+                $_ = extract_option_value_required($_, @options);
                 set_option('global', '#resume-from', $_);
 
                 last SWITCH;
             };
 
             /^--resume-after=?/ && do {
-                $_ = extract_option_value_required($_, @ARGV);
+                $_ = extract_option_value_required($_, @options);
                 set_option('global', '#resume-after', $_);
 
                 last SWITCH;
@@ -4685,7 +4689,7 @@ DONE
             /^--/ && do {
                 # First let's see if they're trying to override a global option.
                 my ($option) = /^--([-\w\d\/]+)/;
-                my $value = extract_option_value($_, @ARGV);
+                my $value = extract_option_value($_, @options);
 
                 if (exists $package_opts{'global'}{$option})
                 {
@@ -4718,7 +4722,7 @@ DONE
 
             # Strip trailing slashes.
             s/\/*$//;
-            push @argv, $_; # Reconstruct correct @ARGV
+            push @enteredModules, $_; # Reconstruct correct @options
         }
     }
 
@@ -4729,10 +4733,7 @@ DONE
         set_option('global', '#async', 0);
     }
 
-    @ARGV = @argv;
-
-    # @ARGV should contain all the modules we'll be using.
-    return map { Module->new($_) } (@ARGV);
+    return map { Module->new($_) } (@enteredModules);
 }
 
 # Installs the given subroutine as a signal handler for a set of signals which
@@ -7332,9 +7333,12 @@ EOF
 # difference is that the environment variables should be as set in kdesrc-build
 # instead of as read from .bashrc and friends.
 #
-# Meant to implement the --shell command line option.
-sub execute_command_line_program()
+# You should pass in the options to run the program with as a list.
+#
+# Meant to implement the --run command line option.
+sub execute_command_line_program
 {
+    my @args = @_;
     my $program = get_option('global', '#start-program');
 
     if (not $program)
@@ -7349,11 +7353,11 @@ sub execute_command_line_program()
         exit 1;
     }
 
-    debug "Executing b[r[$program] ", join(' ', @ARGV);
+    debug "Executing b[r[$program] ", join(' ', @args);
 
     exit 0 if pretending;
 
-    exec $program, @ARGV or do {
+    exec $program, @args or do {
         # If we get to here, that sucks, but don't continue.
         error "Error executing $program: $!";
         exit 1;
@@ -7633,7 +7637,7 @@ eval
     # Note: Don't change the order around unless you're sure of what you're
     # doing.
     set_debug_colors();  # Default to colorized output if sending to TTY
-    my @modules = process_arguments(); # Process --help, --install, etc. first.
+    my @modules = process_arguments(@ARGV); # Process --help, --install, etc. first.
 
     # Change name and type of command line entries beginning with + to force
     # them to be XML project modules.
@@ -7654,7 +7658,8 @@ eval
 
     if (get_option('global', '#start-program'))
     {
-        execute_command_line_program();
+        # @modules is the command line arguments to pass in this case.
+        execute_command_line_program(@modules);
     }
 
     if (get_option('global', 'kde-languages'))
