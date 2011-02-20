@@ -4517,13 +4517,11 @@ DONE
             };
 
             /^--no-(src|svn)$/ && do {
-                set_option('global', '#no-svn', 1);
                 Module->filterOutPhase('update');
                 last SWITCH;
             };
 
             /^--no-install$/ && do {
-                set_option('global', '#install-after-build', 0);
                 Module->filterOutPhase('install');
                 last SWITCH;
             };
@@ -4575,7 +4573,6 @@ DONE
             };
 
             /^--no-build$/ && do {
-                set_option('global', '#manual-build', 1);
                 Module->filterOutPhase('build');
                 last SWITCH;
             };
@@ -4593,16 +4590,12 @@ DONE
             # Although equivalent to --no-build at this point, someday the
             # script may interpret the two differently, so get ready now.
             /^--(src|svn)-only$/ && do {      # Identically to --no-build
-                set_option('global', '#manual-build', 1);
                 Module->setPhases('update');
                 last SWITCH;
             };
 
             # Don't run source updates or install
             /^--build-only$/ && do {
-                set_option('global', '#no-svn', 1);
-                set_option('global', '#install-after-build', 0);
-
                 Module->setPhases('build');
                 last SWITCH;
             };
