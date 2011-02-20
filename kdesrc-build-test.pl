@@ -15,8 +15,9 @@ use warnings;
 package test; # Tells kdesrc-build not to run
 require 'kdesrc-build';
 
-# Must come after require kdesrc-build
-use Test::More qw(no_plan);
+# Must come after require kdesrc-build. note will interfere with our debugging
+# function, and we don't use it in the test harness anyways.
+use Test::More 'no_plan', import => ['!note'];
 
 # From kdesrc-build
 our %package_opts;
