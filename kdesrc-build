@@ -25,6 +25,7 @@ use File::Basename;
 use File::Spec;
 use File::Glob ':glob';
 use Sys::Hostname;
+use Storable 'dclone';
 use IO::Handle;
 use IO::File;
 use IPC::Open3;
@@ -4872,7 +4873,7 @@ sub close_lock
 
 sub updateModulePhases
 {
-    my @modules = @_;
+    my @modules = @{dclone(\@_)};
 
     whisper "Filtering out module phases.";
     for my $module (@modules) {
