@@ -163,3 +163,35 @@ is_deeply([process_arguments(@modules, '--no-src')], \@Modules, 'testing --no-sr
 
 $_->filterOutPhase('build') foreach @Modules;
 is_deeply([process_arguments(@modules, '--no-build', '--no-src')], \@Modules, 'testing --no-src and --no-build phase updating');
+
+# Reset
+delete @package_opts{grep { $_ ne 'global' } keys %package_opts};
+my $conf = <<EOF;
+global
+    git-repository-base test kde:
+end global
+
+module-set
+    use-modules kdelibs
+    repository test
+end module-set
+
+module-set
+    use-modules kdesrc-build
+    repository kde-projects
+end module-set
+
+module qt-copy
+    configure-flags -fast
+end module
+EOF
+open my $fh, '<', \$conf;
+
+# Read in new options
+my @conf_modules = read_options($fh);
+is(get_option('qt-copy', 'configure-flags'), '-fast', 'read_options/parse_module');
+is(get_option('kdelibs', 'repository'), 'kde:kdelibs', 'git-repository-base');
+
+my @ConfModules = map { Module->new($_) }(qw/kdelibs kdesrc-build qt-copy/);
+$ConfModules[1] = Module->new('kdesrc-build', 'proj'); # This should be a kde_projects.xml
+is_deeply(\@conf_modules, \@ConfModules, 'read_options module reading');
