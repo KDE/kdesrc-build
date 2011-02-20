@@ -6800,8 +6800,10 @@ sub check_module_validity
     my $module = shift;
     my $source_dir = get_fullpath($module, 'source');
     my $module_expected_url = svn_module_url($module);
-
     my $module_actual_url = get_repo_url($module);
+
+    $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
+    $module_actual_url   =~ s{/+$}{}; # Remove trailing slashes
 
     eval { plugin_check_module_validity($module, $module_actual_url, $module_expected_url); };
 
