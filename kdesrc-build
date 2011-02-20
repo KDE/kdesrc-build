@@ -7816,6 +7816,12 @@ eval
         # More compat hacks.
         @uninstallList = map { $_->{name} } @uninstallList;
 
+        # Make handle_uninstall handle in right order (it reverses the order
+        # so that the first module uninstalled is the last one installed).
+        if (Module::moduleSource() eq 'cmdline') {
+            @uninstallList = reverse @uninstallList;
+        }
+
         $result = handle_uninstall (@uninstallList);
     }
 
