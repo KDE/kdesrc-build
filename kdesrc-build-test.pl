@@ -149,3 +149,17 @@ is($ENV_VARS{'MOIN'}, '2', 'setting module set-env for modules');
 like(svn_module_url('test'), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer module specific to global');
 set_option('test', 'override-url', 'svn://annono');
 is(svn_module_url('test'), 'svn://annono', 'testing override-url');
+
+my @modules = process_arguments('--test,override-url=svn://ann');
+is(svn_module_url('test'), 'svn://ann', 'testing process_arguments module options');
+is(scalar @modules, 0, 'testing process_arguments return value for no passed module names');
+
+@modules = qw/qt-copy kdelibs kdebase/;
+my @Modules = map { Module->new($_) } (@modules);
+is_deeply([process_arguments(@modules)], \@Modules, 'testing process_arguments return value for passed module names');
+
+$_->filterOutPhase('update') foreach @Modules;
+is_deeply([process_arguments(@modules, '--no-src')], \@Modules, 'testing --no-src phase updating');
+
+$_->filterOutPhase('build') foreach @Modules;
+is_deeply([process_arguments(@modules, '--no-build', '--no-src')], \@Modules, 'testing --no-src and --no-build phase updating');
