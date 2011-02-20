@@ -3731,14 +3731,20 @@ sub expandModuleSets
     return map { &$filter } (@$buildModuleList);
 }
 
-# This subroutine reads in the settings from the user's configuration
-# file.
-sub read_options
+# Searches for the appropriate rc file to use. The user may specify one
+# using --rc-file, or otherwise the current directory is searched for
+# "kdesrc-buildrc", or ~/.kdesrc-buildrc is used. Currently evil hacks are
+# used for further fallbacks, but don't count on that staying that way.
+# (The global @rcfiles list is used to search for the appropriate file)
+#
+# If --rc-file was specified but that file couldn't be found, an exception
+# is raised.
+#
+# The global $rcfile variable is set based on the file actually found.
+sub find_rcfile
 {
     # The options are stored in the file $rcfile
     my $success = 0;
-    my $global_opts = $package_opts{'global'};
-    my @module_list;
 
     for my $file (@rcfiles)
     {
@@ -3749,6 +3755,7 @@ sub read_options
             # rel2abs used since path for rcfile is used later in execution
             # when the cwd may have changed so we need to expand path here.
             $rcfile = File::Spec->rel2abs($file);
+            close CONFIG; # Actually read it later.
             last;
         }
     }
@@ -3779,11 +3786,21 @@ EOM
         setup_default_modules();
         return;
     }
+}
 
+# This subroutine reads in the settings from the user's configuration
+# file. The filehandle to read from should be passed in as the first
+# parameter. The filehandle should be something that the <> operator works
+# on, usually some subclass of IO::Handle.
+sub read_options
+{
+    my $fh = shift;
+    my $global_opts = $package_opts{'global'};
+    my @module_list;
     my ($option, $modulename, %readModules);
 
     # Read in global settings
-    while (<CONFIG>)
+    while (<$fh>)
     {
         s/#.*$//;       # Remove comments
         s/^\s*//;       # Remove leading whitespace
@@ -3799,7 +3816,7 @@ EOM
         }
 
         # Now read in each global option
-        parse_module(\*CONFIG, 'global');
+        parse_module($fh, 'global');
         last;
     }
 
@@ -3810,13 +3827,13 @@ EOM
         info "We're being run by coverity. ignoring non global options in the";
         info "config file";
 
-        close CONFIG;
+        close $fh;
         setup_default_modules();
         return;
     }
 
     # Now read in module settings
-    while (<CONFIG>)
+    while (<$fh>)
     {
         s/#.*$//;          # Remove comments
         s/^\s*//;          # Remove leading whitespace
@@ -3838,10 +3855,10 @@ EOM
             }
 
             # A moduleset can give us more than one module to add.
-            push @module_list, parse_moduleset(\*CONFIG, $modulename);
+            push @module_list, parse_moduleset($fh, $modulename);
         }
         else {
-            parse_module(\*CONFIG, $modulename);
+            parse_module($fh, $modulename);
             push @module_list, Module->new($modulename);
         }
 
@@ -3849,7 +3866,7 @@ EOM
         $using_default = 0;
     }
 
-    close CONFIG;
+    close $fh;
 
     # All modules and their options have been read, filter out modules not
     # to update or build, based on the --ignore-modules option already present
@@ -7649,9 +7666,17 @@ eval
         }
     }
 
-    my @optionModules = read_options();      # If we're still here, read the options
+    find_rcfile(); # Setup which file we're to read from.
+    my $fh;
+    my $data = ''; # TODO: Point this to a sane default
 
-    update_module_environment('global'); # Initialize global env vars.
+    open ($fh, '<', $rcfile)
+        or open ($fh, '<', \$data)
+        or die make_exception('Runtime', 'Unable to open config file (even a null one).');
+
+    my @optionModules = read_options($fh); # If we're still here, read the options
+
+    update_module_environment('global');   # Initialize global env vars.
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
