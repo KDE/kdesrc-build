@@ -2025,10 +2025,16 @@ sub get_git_branch
 # Returns the current sha1 of the given git "commit-ish".
 sub git_commit_id
 {
+    my $module = shift;
     my $commit = shift;
     $commit = 'HEAD' unless $commit;
 
-    my $id = `git rev-parse $commit` or die "Can't parse git commit $commit";
+    my $gitdir = get_fullpath($module, 'source-dir') . '/.git';
+
+    # Note that the --git-dir must come before the git command itself.
+    my ($id, undef) = slurp_program_output(
+        qw/git --git-dir/, $gitdir, 'rev-parse', $commit,
+    );
     chomp $id;
 
     return $id;
@@ -2390,7 +2396,7 @@ sub git_update_module
     p_chdir($srcdir);
 
     note "Updating g[$module]";
-    my $start_commit = git_commit_id();
+    my $start_commit = git_commit_id($module);
 
     # Search for an existing remote name first. If none, add our alias.
     my @remoteNames = git_get_best_remote_names($cur_repo);
@@ -2462,7 +2468,7 @@ sub git_update_module
     # With all remote branches fetched, and the checkout of our desired branch
     # completed, we can now use git pull to complete the changes.
     if (git_stash_and_update($module)) {
-        my $end_commit = git_commit_id();
+        my $end_commit = git_commit_id($module);
         return count_command_output('git', 'rev-list', "$start_commit..$end_commit");
     }
     else {
@@ -4323,11 +4329,29 @@ sub get_svn_info
 # given Subversion repository, or undef if there was an error.
 #
 # First parameter is the name of the module to examine.
-sub current_module_revision
+sub current_module_svn_revision
 {
     my $module = shift;
 
     return get_svn_info($module, 'Revision');
+}
+
+# Returns a string containing the current on-disk revision identifier, or
+# undef if there was an error, for any of the support module scm types.
+#
+# First parameter is the name of the module to examine.
+sub current_module_revision
+{
+    my $module = shift;
+
+    if (module_scm_type($module) eq 'svn') {
+        return current_module_svn_revision($module);
+    }
+    elsif (module_scm_type($module) eq 'git') {
+        return git_commit_id($module);
+    }
+
+    return undef;
 }
 
 # Subroutine to recursively deep copy (from a completely independent clone)
@@ -6305,7 +6329,7 @@ sub run_tests
 sub module_is_migrated
 {
     my $module = shift;
-    my $rev = current_module_revision($module) || 0;
+    my $rev = current_module_svn_revision($module) || 0;
     my $srcdir = get_fullpath($module, 'source');
 
     # TODO Add other ways of auto-guessing that a migration to git.kde.org has
