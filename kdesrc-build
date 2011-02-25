@@ -4592,6 +4592,11 @@ DONE
             # script may interpret the two differently, so get ready now.
             /^--(src|svn)-only$/ && do {      # Identically to --no-build
                 Module->setPhases('update');
+
+                # We have an auto-switching function that we only want to run
+                # if --src-only was passed to the command line, so we still
+                # need to set a flag for it.
+                set_option('global', '#allow-auto-repo-move', 1);
                 last SWITCH;
             };
 
@@ -6821,7 +6826,7 @@ sub check_module_validity
     if ($module_actual_url ne $module_expected_url)
     {
         # Check if the --svn-only flag was passed.
-        if (get_option('global', '#manual-build') and not
+        if (get_option('global', '#allow-auto-repo-move') and not
             module_base_path_changed($module))
         {
             note "g[$module] is checked out from a different location than expected.";
