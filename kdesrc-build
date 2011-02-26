@@ -3701,6 +3701,10 @@ sub expandXMLModules
     # Using a sub allows me to use the 'return' keyword.
     my $filter = sub {
         return $_ if $_->{'type'} ne 'proj';
+
+        ensure_projects_xml_present() or
+            die "kde-projects repository information could not be downloaded: $!.";
+
         my $name = $_->{'name'};
         my @xmlResults = grep {
             $_->{'active'} ne 'false'
