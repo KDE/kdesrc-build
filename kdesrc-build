@@ -3525,7 +3525,7 @@ sub ensure_projects_xml_present
 
     my $cached_status = get_option('global', '#cached_project_xml_check');
     if (defined $cached_status && $cached_status eq 'failed') {
-        die "Attempted to find projects.xml after it already failed";
+        die make_exception('Internal', "Attempted to find projects.xml after it already failed");
     }
 
     return $cached_status if $cached_status;
@@ -3539,14 +3539,24 @@ sub ensure_projects_xml_present
 
     my $result = 1;
     if (!pretending) {
+        info " * Downloading projects.kde.org project database...";
         $result = download_http_file($host, $path, $file, $redirections);
+    }
+    elsif (! -e $file) {
+        note " y[*] b[ACTUALLY downloading projects.kde.org project database to make the rest]";
+        note " y[*] b[of the --pretend output make sense.]";
+        $result = download_http_file($host, $path, $file, $redirections);
+    }
+    else {
+        info " * y[Using existing projects.kde.org project database], output may change";
+        info " * when database is updated next.";
     }
 
     set_option('global', '#cached_project_xml_check',
         $result ? 'success' : 'failed');
 
     if (!$result) {
-        die "Unable to download kde_projects.xml for the kde-projects repository!";
+        die make_exception('Runtime', "Unable to download kde_projects.xml for the kde-projects repository!");
     }
 
     return $result;
