@@ -674,19 +674,20 @@ our %ENV_VARS;
 
     sub setModuleSource
     {
-        my $source = shift;
+        my ($class, $source) = @_;
         $ModuleSource = $source;
     }
 
     sub moduleSource
     {
+        my $class = shift;
         # Should be 'config' or 'cmdline';
         return $ModuleSource;
     }
 
     sub moduleList
     {
-        my $self = shift;
+        my ($self) = @_;
         return @ModuleList;
     }
 
@@ -7745,11 +7746,11 @@ eval
         # Filter --resume-foo first so entire module-sets can be skipped.
         @modules = applyModuleFilters(@modules);
         @modules = expandModuleSets(\@modules, \@optionModules);
-        Module::setModuleSource('cmdline');
+        Module->setModuleSource('cmdline');
     }
     else {
         @modules = @optionModules;
-        Module::setModuleSource('config');
+        Module->setModuleSource('config');
     }
 
     # Filter --resume-foo options. This might be a second pass, but that should
@@ -7823,9 +7824,9 @@ eval
     eval { plugin_setup_default_modules(\@update_list, \@build_list, \%package_opts); };
     $@ = ''; # Clear errors that result when not using Coverity plugin.
 
-    @update_list = grep { list_has (@{$_->{phases}}, 'update') } (Module::moduleList());
+    @update_list = grep { list_has (@{$_->{phases}}, 'update') } (Module->moduleList());
     @update_list = map { $_->{name} } (@update_list);
-    @build_list = grep { list_has (@{$_->{phases}}, 'build') } (Module::moduleList());
+    @build_list = grep { list_has (@{$_->{phases}}, 'build') } (Module->moduleList());
     @build_list = map { $_->{name} } (@build_list);
 
     debug "Update list is ", join (', ', @update_list);
@@ -7870,7 +7871,7 @@ eval
         # Installation mode
         my @installList = grep {
             list_has (@{$_->{phases}}, 'install')
-        } (Module::moduleList());
+        } (Module->moduleList());
 
         # Compat hack
         @installList = map { $_->{name} } @installList;
@@ -7883,14 +7884,14 @@ eval
         # and installed.
         my @uninstallList = grep {
             list_has (@{$_->{phases}}, 'uninstall')
-        } (Module::moduleList());
+        } (Module->moduleList());
 
         # More compat hacks.
         @uninstallList = map { $_->{name} } @uninstallList;
 
         # Make handle_uninstall handle in right order (it reverses the order
         # so that the first module uninstalled is the last one installed).
-        if (Module::moduleSource() eq 'cmdline') {
+        if (Module->moduleSource() eq 'cmdline') {
             @uninstallList = reverse @uninstallList;
         }
 
