@@ -275,8 +275,13 @@ set_option('global', 'resume-from', 'set1');
 is_deeply(\@filtered_modules, [@ConfModules[1..$#ConfModules]], 'resume-from a module-set');
 
 set_option('global', 'resume-after', 'set1');
-# Avoid exception from setting both resume-after and resume-from, although it
-# would be good to ensure that happens too!
+# Setting both resume-from and resume-after should raise an exception.
+$@ = '';
+eval {
+    @filtered_modules = applyModuleFilters(@conf_modules);
+};
+isa_ok($@, 'BuildException', 'resume-{from,after} combine for exception');
+
 delete $package_opts{'global'}->{'resume-from'};
 @filtered_modules = applyModuleFilters(@conf_modules);
 is_deeply(\@filtered_modules, [@ConfModules[3..$#ConfModules]], 'resume-after a module-set');
