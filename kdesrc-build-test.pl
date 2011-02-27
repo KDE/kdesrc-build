@@ -18,10 +18,17 @@ require 'kdesrc-build';
 # Must come after require kdesrc-build. note will interfere with our debugging
 # function, and we don't use it in the test harness anyways.
 use Test::More 'no_plan', import => ['!note'];
+use File::Temp 'tempdir';
 
 # From kdesrc-build
 our %package_opts;
 our %ENV_VARS;
+
+# Base directory name to use for any needed filesystem tests.
+my $testSourceDirName =
+    tempdir('kdesrc-build-test-XXXXXX',
+            TMPDIR => 1,   # Force creation under the temporary directory.
+            CLEANUP => 1); # Delete temp directory when done.
 
 my %more_package_opts = (
   'qt-copy' => {
@@ -65,11 +72,15 @@ set_option('global', 'cmake-options', '-DCMAKE_BUILD_TYPE=RelWithDebInfo');
 set_option('global', 'svn-server', 'svn+ssh://svn.kde.org/home/kde');
 set_option('global', 'configure-flags', '-fast -dbus');
 set_option('global', '#configure-flags', '-fast -dbus');
-set_option('global', 'source-dir', '/kdesvn/src');
+set_option('global', 'source-dir', '~/' . "kdesrc-build-unused");
 set_option('global', '#unused', '1');
 set_option('global', 'branch', '4.3');
 
 # Commence testing proper
+is(get_source_dir(), $ENV{HOME} . "/kdesrc-build-unused", 'Correct tilde-expansion for source-dir');
+
+# We know tilde-expansion works for source-dir, reset to our temp dir.
+set_option('global', 'source-dir', $testSourceDirName);
 is(get_option('qt-copy', 'cxxflags'), '-pipe -march=i386', 'qt-copy cxxflags handling');
 is(get_option('qt-copy', 'configure-flags'), '-fast', 'qt-copy configure-flags handling');
 is(get_option('kdelibs', 'unused'), 1, 'Test normal sticky option');
@@ -88,7 +99,19 @@ set_option('kdelibs', 'tag', '');
 like(handle_branch_tag_option('kdelibs', 'branches'), qr(/branches/KDE/4.2/kdelibs$), 'KDE module branch');
 
 set_option('kdesupport', 'branch', 'trunk');
-is(svn_module_url('kdesupport'), 'svn+ssh://svn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
+set_option('kdesupport', 'svn-server', 'svn://anonsvn.kde.org/home/kde');
+# Ensure svn info exists in our source dir. This requires actually accessing
+# anonsvn, so use --depth empty and --ignore-externals to minimize load on
+# server.
+my @svnArgs = (
+    qw{svn co
+    --depth empty
+    --ignore-externals
+    svn://anonsvn.kde.org/home/kde/trunk/kdesupport},
+    "$testSourceDirName/kdesupport");
+is(system(@svnArgs), 0, "Make empty subversion checkout.") or BAIL_OUT('Missing svn checkout capability?');
+
+is(svn_module_url('kdesupport'), 'svn://anonsvn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
 
 # Issue reported by dfaure 2011-02-06, where the kdesupport-branch was not being
 # obeyed when global-branch was set to 4.6, so somehow kdesrc-build wanted a
@@ -96,11 +119,11 @@ is(svn_module_url('kdesupport'), 'svn+ssh://svn.kde.org/home/kde/trunk/kdesuppor
 set_option('kdesupport', 'branch', 'master');
 set_option('kdesupport', 'prefix', '/d/kde/inst/kdesupport-for-4.6');
 set_option('global', 'branch', '4.6');
-is(svn_module_url('kdesupport'), 'svn+ssh://svn.kde.org/home/kde/branches/kdesupport/master', 'kdesupport-for-$foo with local branch override');
+is(svn_module_url('kdesupport'), 'svn://anonsvn.kde.org/home/kde/branches/kdesupport/master', 'kdesupport-for-$foo with local branch override');
 
 set_option('kdesupport', 'tag', 'kdesupport-for-4.2');
 like(handle_branch_tag_option('kdesupport', 'tags'), qr(/tags/kdesupport-for-4.2$), 'non-KDE module tag (no name appended)');
-is(svn_module_url('kdesupport'), 'svn+ssh://svn.kde.org/home/kde/tags/kdesupport-for-4.2', 'non-KDE module tag (no name; entire URL)');
+is(svn_module_url('kdesupport'), 'svn://anonsvn.kde.org/home/kde/tags/kdesupport-for-4.2', 'non-KDE module tag (no name; entire URL)');
 
 set_option('phonon', 'branch', '4.2');
 is(svn_module_url('phonon'), 'svn+ssh://svn.kde.org/home/kde/branches/phonon/4.2', 'non-KDE module branch (no name appended)');
@@ -117,12 +140,16 @@ is_deeply([ split_quoted_on_whitespace(' a=b g f') ], \@result1, 'split_quoted_o
 is_deeply([ split_quoted_on_whitespace('a=b g f ') ], \@result1, 'split_quoted_on_whitespace space no quotes, trailing whitespace');
 is_deeply([ split_quoted_on_whitespace(' a=b g f ') ], \@result1, 'split_quoted_on_whitespace space no quotes, leading and trailing whitespace');
 
-like(get_svn_info('kdesupport', 'URL'), qr/svn\.kde\.org/, 'svn-info output (url)');
+like(get_svn_info('kdesupport', 'URL'), qr/anonsvn\.kde\.org/, 'svn-info output (url)');
 like(get_svn_info('kdesupport', 'Revision'), qr/^\d+$/, 'svn-info output (revision)');
 
 # Test get_subdir_path
-is(get_subdir_path('kdelibs', 'build-dir'), "/kdesvn/src/build", 'build-dir subdir path rel');
-is(get_subdir_path('kdelibs', 'log-dir'), "/kdesvn/src/log", 'log-dir subdir path rel');
+is(get_subdir_path('kdelibs', 'build-dir'),
+    "$testSourceDirName/build",
+    'build-dir subdir path rel');
+is(get_subdir_path('kdelibs', 'log-dir'),
+    "$testSourceDirName/log",
+    'log-dir subdir path rel');
 set_option('kdelibs', 'build-dir', '/tmp');
 is(get_subdir_path('kdelibs', 'build-dir'), "/tmp", 'build-dir subdir path abs');
 set_option('kdelibs', 'build-dir', '~/tmp/build');
@@ -253,3 +280,12 @@ set_option('global', 'resume-after', 'set1');
 delete $package_opts{'global'}->{'resume-from'};
 @filtered_modules = applyModuleFilters(@conf_modules);
 is_deeply(\@filtered_modules, [@ConfModules[3..$#ConfModules]], 'resume-after a module-set');
+
+# Test sub directory creation.
+ok(! -d "$testSourceDirName/build", 'Ensure build dir does not exist');
+isnt(super_mkdir("$testSourceDirName/build"), 0, 'Make temp build directory');
+ok(-d "$testSourceDirName/build", 'Double-check temp build dir created');
+
+# svn cd'ed on us, switch to a known directory to avoid errors unlinking the
+# temporary directory.
+chdir('/');
