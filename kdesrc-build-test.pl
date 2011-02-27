@@ -164,9 +164,9 @@ is(get_subdir_path('kdelibs', 'build-dir'), "$ENV{HOME}/tmp/build", 'build-dir s
 print "Creating log directory:\n";
 setup_logging_subsystem();
 my $logdir = get_log_dir('playground/libs');
-ok(log_command('playground/libs', 'touch', ['touch', '/tmp/tmp.tmp']) == 0, 'creating temp file');
-ok(-e "$ENV{HOME}/kde4/log/latest/playground/libs/touch.log", 'correct playground/libs log path');
-unlink('/tmp/tmp.tmp');
+
+ok(log_command('playground/libs', 'touch', ['touch', "$testSourceDirName/touched"]) == 0, 'creating temp file');
+ok(-e "$testSourceDirName/log/latest/playground/libs/touch.log", 'correct playground/libs log path');
 
 # Trunk and non-trunk l10n
 is(svn_module_url('l10n-kde4'), 'svn+ssh://svn.kde.org/home/kde/branches/stable/l10n-kde4', 'stable l10n path');
