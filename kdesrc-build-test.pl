@@ -109,7 +109,8 @@ my @svnArgs = (
     --ignore-externals
     svn://anonsvn.kde.org/home/kde/trunk/kdesupport},
     "$testSourceDirName/kdesupport");
-is(system(@svnArgs), 0, "Make empty subversion checkout.") or BAIL_OUT('Missing svn checkout capability?');
+
+my $svnAvail = is(system(@svnArgs), 0, "Make empty subversion checkout.");
 
 is(svn_module_url('kdesupport'), 'svn://anonsvn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
 
@@ -140,8 +141,12 @@ is_deeply([ split_quoted_on_whitespace(' a=b g f') ], \@result1, 'split_quoted_o
 is_deeply([ split_quoted_on_whitespace('a=b g f ') ], \@result1, 'split_quoted_on_whitespace space no quotes, trailing whitespace');
 is_deeply([ split_quoted_on_whitespace(' a=b g f ') ], \@result1, 'split_quoted_on_whitespace space no quotes, leading and trailing whitespace');
 
-like(get_svn_info('kdesupport', 'URL'), qr/anonsvn\.kde\.org/, 'svn-info output (url)');
-like(get_svn_info('kdesupport', 'Revision'), qr/^\d+$/, 'svn-info output (revision)');
+SKIP: {
+    skip "svn not available or network was down", 2 unless $svnAvail;
+
+    like(get_svn_info('kdesupport', 'URL'), qr/anonsvn\.kde\.org/, 'svn-info output (url)');
+    like(get_svn_info('kdesupport', 'Revision'), qr/^\d+$/, 'svn-info output (revision)');
+}
 
 # Test get_subdir_path
 is(get_subdir_path('kdelibs', 'build-dir'),
