@@ -110,7 +110,12 @@ my @svnArgs = (
     svn://anonsvn.kde.org/home/kde/trunk/kdesupport},
     "$testSourceDirName/kdesupport");
 
-my $svnAvail = is(system(@svnArgs), 0, "Make empty subversion checkout.");
+my $svnAvail = defined path_to_prog('svn');
+
+SKIP: {
+    skip 'svn not installed', 1 unless $svnAvail;
+    $svnAvail = is(system(@svnArgs), 0, "Make empty subversion checkout.");
+}
 
 is(svn_module_url('kdesupport'), 'svn://anonsvn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
 
