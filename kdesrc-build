@@ -6049,6 +6049,12 @@ sub setup_build_system
     # unnecessary.  (re)configuration is always done if the 'reconfigure' option is true.
     if (not $uses_cmake)
     {
+        if (! -e "$srcdir/configure")
+        {
+            error "\tUnknown build system for y[$module] (is it supposed to be built at all?)";
+            return 0;
+        }
+
         # configure the module (sh script return value semantics)
         if (safe_configure ($module))
         {
