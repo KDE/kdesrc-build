@@ -3702,8 +3702,12 @@ sub expandXMLModules
 {
     my @modules = @_;
 
+    debug "Expanding XML modules in " . join(', ', map { $_->{name} } @modules);
+
     # Using a sub allows me to use the 'return' keyword.
     my $filter = sub {
+        debug "$_->{name} is not XML-based" unless $_->{type} eq 'proj';
+
         return $_ if $_->{'type'} ne 'proj';
 
         ensure_projects_xml_present() or
@@ -3716,6 +3720,8 @@ sub expandXMLModules
 
         # Setup module options
         foreach my $xml (@xmlResults) {
+            debug "Module $name from module-set has XML module $xml->{name}";
+            debug "\twith repository b[$xml->{repo}]";
             clone_options($name, $xml->{'name'});
             set_option($xml->{'name'}, 'repository', $xml->{'repo'});
         }
@@ -7746,6 +7752,13 @@ eval
 
     # Allow named module-sets to be given on the command line.
     if ($commandLineModules) {
+        # Copy Module objects from the ones created by read_options
+        # since their module-type will actually be set.
+        foreach my $module (@modules) {
+            my ($optionModule) = grep {$_->{name} eq $module->{name}} @optionModules;
+            $module = $optionModule if defined $optionModule;
+        }
+
         # Filter --resume-foo first so entire module-sets can be skipped.
         @modules = applyModuleFilters(@modules);
         @modules = expandModuleSets(\@modules, \@optionModules);
