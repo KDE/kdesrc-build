@@ -148,7 +148,7 @@ module <replaceable>qt-copy</replaceable>
     # Options removed for brevity
 end module
 
-module-set # Note there's no name for this (or any) set
+module-set <replaceable>kde-support-libs</replaceable>
     <option><link linkend="conf-repository">repository</link></option> <replaceable>kde-git</replaceable>
     <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>automoc</replaceable> <replaceable>attica</replaceable> <replaceable>akonadi</replaceable>
 end module-set
@@ -169,11 +169,113 @@ module name.</para>
 <para>In addition, other options can be passed in a module set, which are
 copied to every new module that is created this way. By using module-set it is
 possible to quickly declare many Git modules that are all based on the same
-repository URL.</para>
+repository URL. In addition, since &kdesrc-build; 1.13, it is possible to
+give module-sets a name (as shown in the example), which allows you to quickly
+refer to the entire group of modules from the command line.</para>
+
+<note><para>Module sets are used in supporting module downloads from
+the &kde; <ulink url="https://projects.kde.org/">projects.kde.org</ulink>
+module database. See also <xref linkend="kde-projects-module-sets"/>.
+</para></note>
 
 <para>Module sets use the options <simplelist><member><link
 linkend="conf-git-repository-base">git-repository-base</link></member>
 <member><link
 linkend="conf-use-modules">use-modules</link></member></simplelist></para>
 </sect2>
+
+<sect2 id="kde-projects-module-sets">
+<title>Automatically finding modules from the official &kde; module
+database</title>
+
+<para>With the migration of &kde; source code to be hosted on git.kde.org,
+there has been an explosive growth in the number of modules (for instance,
+a single Subversion module called <literal>kdegraphics</literal> becomes
+16 different Git modules).</para>
+
+<para>This was done mostly because each Git module contains the entire project
+history (this is actually less wasteful of disk space than it sounds for the
+vast majority of &kde; repositories as &git; is highly efficient at storing
+repositories).</para>
+
+<para>&kde; allows for grouping Git repositories into collections
+of related modules (e.g. kdegraphics). These modules can themselves be grouped
+(e.g. &kde; Software Compilation). Git doesn't recognize these groupings, but
+&kdesrc-build; can be configured to handle these groups.</para>
+
+<para>The way this is done is by using <link linkend="module-sets">module
+sets</link>. Instead of using a specific <literal>git://</literal> repository,
+or a repository name created by <link
+linkend="conf-git-repository-base">git-repository-base</link>, a special
+repository name, <quote><literal>kde-projects</literal></quote> is used.</para>
+
+<para>&kdesrc-build; will recognize that the <literal>kde-projects</literal>
+repository requires special handling, and adjust the build process
+appropriately.  Among other things, &kdesrc-build; will:</para>
+
+<itemizedlist>
+
+<listitem><para>Download the latest module database from <ulink
+url="https://projects.kde.org/">projects.kde.org</ulink>.</para></listitem>
+
+<listitem><para>Try to find a module with the name given in the module set's
+<option>use-modules</option> setting.</para></listitem>
+
+<listitem><para>For every module that is found, &kdesrc-build; will see if a
+repository setting exists for that module in the database. If there is a
+repository, &kdesrc-build; will automatically use that to download or update
+the source code. If there is no repository, &kdesrc-build; treats that module
+like a group, and tries to include all &git; source repositories that it finds
+in that group.</para></listitem>
+
+</itemizedlist>
+
+<note><para>In the current database, some module groups not only have a
+collection of modules, but they <emphasis>also</emphasis> declare their own
+&git; repository. In these situations &kdesrc-build; will currently prefer the
+group's &git; repository instead of including the childrens' repositories.
+</para></note>
+
+<para>The following example shows how to use the &kde; module database to
+install the Phonon multimedia library.</para>
+
+<informalexample>
+<programlisting>
+module-set <replaceable>media-support</replaceable>
+    # This option must be kde-projects to use the module database.
+    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
+
+    # This option chooses what modules to look for in the database.
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>phonon</replaceable> <replaceable>phonon-gstreamer</replaceable> <replaceable>phonon-vlc</replaceable>
+end module-set
+</programlisting>
+</informalexample>
+
+<para>The following example is perhaps more realistic, and shows a feature only
+available with the &kde; module database: Building all of the &kde; Extragear
+with only a single declaration (32 individual applications/libraries as of this
+writing).</para>
+
+<important><para>Some things to keep in mind: This represents a significant
+amount of disk space and build time, not to mention network traffic. You
+probably don't actually want to build the entire Extragear suite at once.
+In addition, at this point &kdesrc-build; builds modules in the order they are
+given in the database, but this is not necessarily the proper order after all
+inter-module dependencies are accounted for, which may cause build failures.
+</para></important>
+
+<informalexample>
+<programlisting>
+module-set <replaceable>never-try-this</replaceable>
+    # This option must be kde-projects to use the module database.
+    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
+
+    # This option chooses what modules to look for in the database.
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>extragear</replaceable>
+end module-set
+</programlisting>
+</informalexample>
+
+</sect2>
+
 </sect1>
