@@ -209,20 +209,16 @@ the <ulink url="http://techbase.kde.org/">KDE TechBase</ulink>.
 depending on what version of &kde; 4 you are building, see TechBase for
 specifics.</para></listitem>
 
-<listitem><para>Also needed is the &subversion; client program, including
-support for Secure HTTP (https). To ensure needed support, you can run
-<userinput><command>svn <option>--version</option></command></userinput>.  If
-the output says that it handles the https scheme (for write access to
-svn.kde.org) or svn scheme (for readonly access to anonsvn.kde.org) then you
-should be set to go.</para></listitem>
+<listitem><para>Also needed is the &subversion; client program.  You can check
+if you have it by running <userinput><command>svn
+<option>--version</option></command></userinput>.  </para></listitem>
 
-<listitem><para>If you are building &Qt; or any of the various &kde; modules
-that are available from <ulink url="http://gitorious.org/">Gitorious</ulink>
-(for &Qt;) or &kde;'s <ulink url="http://projects.kde.org/">git-based
-projects</ulink> then you will need the <ulink url="http://gitscm.org/">Git
-source control manager</ulink> installed as well.</para></listitem>
+<listitem><para>You will also need the <ulink url="http://gitscm.org/">Git
+source control manager</ulink> installed as well, for &kde;'s <ulink
+url="http://projects.kde.org/">git-based projects.</ulink>
+.</para></listitem>
 
-<listitem><para>You will need a C++ development environment. GCC 4.1 or
+<listitem><para>You will need a C++ development environment. GCC 4.2 or
 later is recommended.</para></listitem>
 
 </itemizedlist>
@@ -843,18 +839,29 @@ to your &kdesrc-build; &kde;.</para>
 <itemizedlist>
 
 <listitem><para>
-Supports <link linkend="changing-verbosity">output message levels</link>
-ranging from being very quiet to a full debug level.
+You can <quote>pretend</quote> to do the operations. If you pass
+<option>--pretend</option> or <option>-p</option> on the
+command line, the script will give a verbose description of the commands
+it is about to execute, without actually executing it.
+
+<tip><para>For an even more verbose description of what &kdesrc-build; is
+doing, try using the <option>--debug</option> option.
+</para></tip>
+
 </para></listitem>
 
 <listitem><para>
-&kdesrc-build; can, with the assistance of the <ulink
-url="http://kdesrc-build.kde.org/">&kdesrc-build; website</ulink> and the
-&kde; FTP server (FTP since &kdesrc-build; 1.4), allow for speedy checkouts of
-some modules. If the module you are checking out has already been packaged at
-the website, then &kdesrc-build; will download the snapshot and prepare it for
-use on your computer.
+&kdesrc-build; can (with the assistance of the &kde; FTP server) allow for
+speedy checkouts of
+some Subversion modules. If the module you are checking out has already been
+packaged at the website, then &kdesrc-build; will download the snapshot and
+prepare it for use on your computer.
 </para>
+
+<tip><para>There is generally no need for any special preparation to perform
+the initial checkout of a Git module, as the entire Git repository must be
+downloaded anyways, so it is easy for the server to determine what to
+send.</para></tip>
 
 <para>This is faster for you, and helps to ease the load on the kde.org
 anonymous &subversion; servers.</para>
@@ -867,13 +874,15 @@ version 1.6)
 </para></listitem>
 
 <listitem><para>
-Has excellent support for the <link linkend="using-qt-copy">qt-copy module</link>,
-including optionally applying bugfix and optimization patches to the qt-copy
-module.
-</para></listitem>
+Excellent support for building the &Qt; library,
+including optionally applying &kde;-recommended bugfix and optimization patches
+to the module.
 
-<listitem><para>
-&kdesrc-build; has <link linkend="kdesrc-build-color">colorized output</link>.
+<note><para>For historical reasons, the &kdesrc-build; module used to build
+&Qt; should be called <literal>qt-copy</literal>. See also <xref
+linkend="using-qt-copy"/>.
+</para></note>
+
 </para></listitem>
 
 <listitem><para>
@@ -912,21 +921,10 @@ large module.
 </para></listitem>
 
 <listitem><para>
-The initial download of some modules can be accelerated by &kdesrc-build;,
-which will (if available) automatically download a module snapshot from the
-&kde; mirrors and use that to setup the initial checkout. This saves time
-and bandwidth for both your system and the &kde; servers.
-</para></listitem>
-
-<listitem><para>
 For developers: &kdesrc-build; will <link linkend="ssh-agent-reminder">remind
 you</link> if you use svn+ssh:// but <application>ssh-agent</application> is
 not running, as this will lead to repeated password requests from
 &ssh;.
-</para></listitem>
-
-<listitem><para>
-Can <link linkend="email-reports">e-mail reports</link> of errors to a user.
 </para></listitem>
 
 <listitem><para>
@@ -953,13 +951,8 @@ working.
 </para></listitem>
 
 <listitem><para>
-Has support for using &kde;'s &subversion; <link linkend="using-branches">tags and
+Has support for using &kde;'s <link linkend="using-branches">tags and
 branches</link>.
-</para></listitem>
-
-<listitem><para>
-&kdesrc-build; will use a set of techniques to <link linkend="building-successfully">try
-and guarantee</link> a successful build.
 </para></listitem>
 
 <listitem><para>
@@ -981,13 +974,8 @@ process so you know after the fact how long it took.
 </para></listitem>
 
 <listitem><para>
-Automatically tries to rebuild modules that were using incremental
-make, which is prone to failure after certain kinds of commits.
-</para></listitem>
-
-<listitem><para>
 Comes built-in with a sane set of default options appropriate for building
-a base &kde; single-user installation from the anonymous &subversion; repository.
+a base &kde; single-user installation from the anonymous source repositories.
 </para></listitem>
 
 <listitem><para>
@@ -1008,9 +996,7 @@ you can specify options to apply to individual modules as well.
 </para></listitem>
 
 <listitem><para>
-Since the autotools sometimes get out of sync with changes to the
-source tree, you can force a rebuild of a module by creating a file called
-.refresh-me in the build directory of the module in question, or by running
+Forced full rebuilds, by running
 &kdesrc-build; with the <option>--refresh-build</option> option.
 </para></listitem>
 
@@ -1027,30 +1013,9 @@ always point to the most recent log entry in the log directory.
 </para></listitem>
 
 <listitem><para>
-If you are using a user build of &kde; instead of a system build (for which
-you must be root to install), you can use the script to install for you. I
-haven not audited this code, and it makes ample use of the <function>system()</function>
-call, so I would not recommend running it as root at this point.
-</para></listitem>
-
-<listitem><para>
-You can use <link linkend="conf-make-install-prefix">make-install-prefix</link> to
-prefix the <userinput><command>make</command> <option>install</option></userinput> command line with a separate command, which is useful for &sudo;.
-</para></listitem>
-
-<listitem><para>
 You can check out only a portion of a &kde; &subversion; module. For example,
 you could check out only the <application>taglib</application> from
-<application>kdesupport</application>, or only <application>K3B</application> from
-<application>extragear/multimedia</application>. The script will automatically pull in
-<application>kde-common</application> if necessary to make the build work.
-</para></listitem>
-
-<listitem><para>
-You can <quote>pretend</quote> to do the operations. If you pass
-<option>--pretend</option> or <option>-p</option> on the
-command line, the script will give a very verbose description of the commands
-it is about to execute, without actually executing it.
+<application>kdesupport</application>.
 </para></listitem>
 
 </itemizedlist>
@@ -1284,8 +1249,8 @@ may use the tilde (~) for any paths you add using this option.</para>
 <entry>Module setting overrides global</entry>
 <entry><para>Set this option to checkout from a branch of &kde; instead of the
 default of <replaceable>trunk</replaceable>, where &kde; development occurs.
-For instance, to checkout &kde; 4.5 branch, you would set this option to
-<replaceable>4.5</replaceable>.</para>
+For instance, to checkout &kde; 4.6 branch, you would set this option to
+<replaceable>4.6</replaceable>.</para>
 <para>If &kdesrc-build; fails to properly download a branch with this option, you
 may have to manually specify the &url; to download from using the <link
 linkend="conf-module-base-path">module-base-path</link> or <link
@@ -2435,10 +2400,6 @@ option to
 <para>In both cases, the branch option should be set to <userinput>master</userinput> (unless you'd
 like to build a different branch).</para>
 
-<note><para>In some cases the underlying source control software is unable to
-work when run from &kdesrc-build;, but will still work fine when run from the
-command prompt. This bug is still under investigation.</para></note>
-
 </sect2>
 
 <sect2 id="kdesrc-build-std-flags">
@@ -2627,7 +2588,7 @@ option for a module, which will specify a list of directories to download.
 <tip><para>
 If you do not already know what to download from a module, it may be a good idea
 to browse the &subversion; layout for a module first, using
-<ulink url="http://websvn.kde.org/branches/KDE/4.5/">WebSVN</ulink>.
+<ulink url="http://websvn.kde.org/branches/KDE/4.6/">WebSVN</ulink>.
 </para></tip>
 
 <informalexample>
@@ -2749,21 +2710,21 @@ and &kdesrc-build; will try to determine the appropriate location within the
 well.</para>
 
 <informalexample>
-<para>To download kdelibs from &kde; 4.5 (which is simply known as the 4.5 branch):
+<para>To download kdelibs from &kde; 4.6 (which is simply known as the 4.6 branch):
 </para>
 
 <screen>
 module kdelibs
-  branch <replaceable>4.5</replaceable>
+  branch <replaceable>4.6</replaceable>
   # other options...
 end module
 </screen>
 
-<para>Or, to download kdemultimedia as it was released with &kde; 4.5.1:</para>
+<para>Or, to download kdemultimedia as it was released with &kde; 4.6.1:</para>
 
 <screen>
 module kdemultimedia
-  tag <replaceable>4.5.1</replaceable>
+  tag <replaceable>4.6.1</replaceable>
   # other options...
 end module
 </screen>
@@ -3112,46 +3073,6 @@ command line, or by setting the &colorful-output; option in the <link linkend="c
 <screen>
 global
   colorful-output false
-end global
-</screen>
-</informalexample>
-
-</sect2>
-
-<sect2 id="email-reports">
-<title>E-mailing build failure reports</title>
-<para>&kdesrc-build; can send a e-mail report to an e-mail address of your
-choice when a module fails to build for whatever reason. The way it works
-is that you choose an e-mail address that &kdesrc-build; will send from,
-and an e-mail address to notify when there is an error.</para>
-
-<para>&kdesrc-build; will then, at the end of a complete run, construct an
-e-mail if there were any modules that failed to build. The e-mail will contain
-an abbreviated failure log for each module. Only one e-mail is sent for a
-run, even if 15 modules failed to build.
-</para>
-
-<para>This feature is not enabled by default. To enable it, you need to set
-both the &email-address; and &email-on-compile-error; options. <option>email-address</option>
-controls the address &kdesrc-build; sends from, and <option>email-on-compile-error</option>
-controls where to send the e-mail message to.
-</para>
-
-<tip>
-<para>&kdesrc-build; uses the Perl-standard Mail::Mailer module to send e-mail.
-It is included with Perl 5.8, and is installable with Perl 5.6. Mail::Mailer
-supports <application>Sendmail</application> (including <application>Sendmail</application>-compatible
-e-mail clients), native <acronym>SMTP</acronym> transport, and <application>qmail</application>.
-</para>
-</tip>
-
-<informalexample>
-<para>Sending email from foo@example.com to bar@example.com on a build failure:</para>
-
-<screen>
-global
-  email-address          foo@example.com    # From: address for any kdesrc-build e-mail
-  email-on-compile-error bar@example.com    # To: address for build failure e-mail
 end global
 </screen>
 </informalexample>
