@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# This is a very simple script to build the documentation used on the
+# kdesrc-build.kde.org website. The /common files themselves came from
+# kdelibs/doc/common IIRC
+#
+# By Michael Pyne <mpyne@kde.org>
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+# OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+PATH_TO_DOCS="/kdesvn/src/kdesrc-build/doc/index.docbook"
+COMMON_FILES="'common/'" # The single quotes are exceedingly important
+
+# The kdelibs install process installs support files for DocBook handling to
+# the ksgmltools2 application data dir. A kdelibs checkout is not sufficient
+# since some of the xsl files are input to a CMake script which converts them
+# to final form.
+DATA_DIR=$(kde4-config --install data)
+DOC_SRCDIR="$DATA_DIR/ksgmltools2"
+XSLT="$DOC_SRCDIR/customization/kde-chunk-online.xsl"
+
+# We need to run this from right directory, i.e. the directory we want generated
+# output to go to (www/kdesrc-build/documentation)
+meinproc4 --srcdir $DOC_SRCDIR \
+          --param kde.common="$COMMON_FILES" \
+          --stylesheet $XSLT \
+          $PATH_TO_DOCS
