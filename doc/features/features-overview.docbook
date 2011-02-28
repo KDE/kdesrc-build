@@ -8,18 +8,29 @@
 <itemizedlist>
 
 <listitem><para>
-Supports <link linkend="changing-verbosity">output message levels</link>
-ranging from being very quiet to a full debug level.
+You can <quote>pretend</quote> to do the operations. If you pass
+<option>--pretend</option> or <option>-p</option> on the
+command line, the script will give a verbose description of the commands
+it is about to execute, without actually executing it.
+
+<tip><para>For an even more verbose description of what &kdesrc-build; is
+doing, try using the <option>--debug</option> option.
+</para></tip>
+
 </para></listitem>
 
 <listitem><para>
-&kdesrc-build; can, with the assistance of the <ulink
-url="http://kdesrc-build.kde.org/">&kdesrc-build; website</ulink> and the
-&kde; FTP server (FTP since &kdesrc-build; 1.4), allow for speedy checkouts of
-some modules. If the module you are checking out has already been packaged at
-the website, then &kdesrc-build; will download the snapshot and prepare it for
-use on your computer.
+&kdesrc-build; can (with the assistance of the &kde; FTP server) allow for
+speedy checkouts of
+some Subversion modules. If the module you are checking out has already been
+packaged at the website, then &kdesrc-build; will download the snapshot and
+prepare it for use on your computer.
 </para>
+
+<tip><para>There is generally no need for any special preparation to perform
+the initial checkout of a Git module, as the entire Git repository must be
+downloaded anyways, so it is easy for the server to determine what to
+send.</para></tip>
 
 <para>This is faster for you, and helps to ease the load on the kde.org
 anonymous &subversion; servers.</para>
@@ -32,13 +43,15 @@ version 1.6)
 </para></listitem>
 
 <listitem><para>
-Has excellent support for the <link linkend="using-qt-copy">qt-copy module</link>,
-including optionally applying bugfix and optimization patches to the qt-copy
-module.
-</para></listitem>
+Excellent support for building the &Qt; library,
+including optionally applying &kde;-recommended bugfix and optimization patches
+to the module.
 
-<listitem><para>
-&kdesrc-build; has <link linkend="kdesrc-build-color">colorized output</link>.
+<note><para>For historical reasons, the &kdesrc-build; module used to build
+&Qt; should be called <literal>qt-copy</literal>. See also <xref
+linkend="using-qt-copy"/>.
+</para></note>
+
 </para></listitem>
 
 <listitem><para>
@@ -77,21 +90,10 @@ large module.
 </para></listitem>
 
 <listitem><para>
-The initial download of some modules can be accelerated by &kdesrc-build;,
-which will (if available) automatically download a module snapshot from the
-&kde; mirrors and use that to setup the initial checkout. This saves time
-and bandwidth for both your system and the &kde; servers.
-</para></listitem>
-
-<listitem><para>
 For developers: &kdesrc-build; will <link linkend="ssh-agent-reminder">remind
 you</link> if you use svn+ssh:// but <application>ssh-agent</application> is
 not running, as this will lead to repeated password requests from
 &ssh;.
-</para></listitem>
-
-<listitem><para>
-Can <link linkend="email-reports">e-mail reports</link> of errors to a user.
 </para></listitem>
 
 <listitem><para>
@@ -118,13 +120,8 @@ working.
 </para></listitem>
 
 <listitem><para>
-Has support for using &kde;'s &subversion; <link linkend="using-branches">tags and
+Has support for using &kde;'s <link linkend="using-branches">tags and
 branches</link>.
-</para></listitem>
-
-<listitem><para>
-&kdesrc-build; will use a set of techniques to <link linkend="building-successfully">try
-and guarantee</link> a successful build.
 </para></listitem>
 
 <listitem><para>
@@ -146,13 +143,8 @@ process so you know after the fact how long it took.
 </para></listitem>
 
 <listitem><para>
-Automatically tries to rebuild modules that were using incremental
-make, which is prone to failure after certain kinds of commits.
-</para></listitem>
-
-<listitem><para>
 Comes built-in with a sane set of default options appropriate for building
-a base &kde; single-user installation from the anonymous &subversion; repository.
+a base &kde; single-user installation from the anonymous source repositories.
 </para></listitem>
 
 <listitem><para>
@@ -173,9 +165,7 @@ you can specify options to apply to individual modules as well.
 </para></listitem>
 
 <listitem><para>
-Since the autotools sometimes get out of sync with changes to the
-source tree, you can force a rebuild of a module by creating a file called
-.refresh-me in the build directory of the module in question, or by running
+Forced full rebuilds, by running
 &kdesrc-build; with the <option>--refresh-build</option> option.
 </para></listitem>
 
@@ -192,30 +182,9 @@ always point to the most recent log entry in the log directory.
 </para></listitem>
 
 <listitem><para>
-If you are using a user build of &kde; instead of a system build (for which
-you must be root to install), you can use the script to install for you. I
-haven not audited this code, and it makes ample use of the <function>system()</function>
-call, so I would not recommend running it as root at this point.
-</para></listitem>
-
-<listitem><para>
-You can use <link linkend="conf-make-install-prefix">make-install-prefix</link> to
-prefix the <userinput><command>make</command> <option>install</option></userinput> command line with a separate command, which is useful for &sudo;.
-</para></listitem>
-
-<listitem><para>
 You can check out only a portion of a &kde; &subversion; module. For example,
 you could check out only the <application>taglib</application> from
-<application>kdesupport</application>, or only <application>K3B</application> from
-<application>extragear/multimedia</application>. The script will automatically pull in
-<application>kde-common</application> if necessary to make the build work.
-</para></listitem>
-
-<listitem><para>
-You can <quote>pretend</quote> to do the operations. If you pass
-<option>--pretend</option> or <option>-p</option> on the
-command line, the script will give a very verbose description of the commands
-it is about to execute, without actually executing it.
+<application>kdesupport</application>.
 </para></listitem>
 
 </itemizedlist>
