@@ -164,6 +164,7 @@ set_option('kdelibs', 'build-dir', '/tmp');
 is(get_subdir_path('kdelibs', 'build-dir'), "/tmp", 'build-dir subdir path abs');
 set_option('kdelibs', 'build-dir', '~/tmp/build');
 is(get_subdir_path('kdelibs', 'build-dir'), "$ENV{HOME}/tmp/build", 'build-dir subdir path abs');
+is(get_build_dir('kdelibs'), "$ENV{HOME}/tmp/build", 'get_build_dir tilde-expansion');
 
 # correct log dir
 print "Creating log directory:\n";
@@ -172,6 +173,10 @@ my $logdir = get_log_dir('playground/libs');
 
 ok(log_command('playground/libs', 'touch', ['touch', "$testSourceDirName/touched"]) == 0, 'creating temp file');
 ok(-e "$testSourceDirName/log/latest/playground/libs/touch.log", 'correct playground/libs log path');
+
+set_option('kdelibs', 'log-dir', '~/kdesrc-build-log');
+my $isoDate = strftime("%F", localtime); # ISO 8601 date per setup_logging_subsystem
+is(get_log_dir('kdelibs'), "$ENV{HOME}/kdesrc-build-log/$isoDate-01/kdelibs", 'get_log_dir tilde expansion');
 
 # Trunk and non-trunk l10n
 is(svn_module_url('l10n-kde4'), 'svn+ssh://svn.kde.org/home/kde/branches/stable/l10n-kde4', 'stable l10n path');
