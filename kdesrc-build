@@ -746,10 +746,6 @@ my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
 
 # Subroutine definitions
 
-# I swear Perl must be the only language where the docs tell you to use a
-# constant that you'll never find exported without some module from CPAN.
-use constant PRIO_PROCESS => 0;
-
 # I'm lazy and would rather write in shorthand for the colors.  This sub
 # allows me to do so. Put it right up top to stifle Perl warnings.
 sub clr($)
@@ -3974,7 +3970,7 @@ sub set_debug_colors
 sub setup_operating_environment
 {
     # Set the process priority
-    setpriority PRIO_PROCESS, 0, get_option('global', 'niceness');
+    POSIX::nice(get_option('global', 'niceness'));
 
     # Set the IO priority if available.
     if(get_option('global', 'use-idle-io-priority')) {
