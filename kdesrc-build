@@ -33,6 +33,7 @@ use Errno qw(:POSIX);
 use Data::Dumper;
 use 5.008_000; # Require Perl 5.8.0
 
+# global variables {{{1
 # Debugging level constants.
 use constant {
     DEBUG   => 0,
@@ -50,6 +51,7 @@ use constant {
     KDE_PROJECT_ID   => 'kde-projects',          # git-repository-base for kde_projects.xml
 };
 
+# package IPC {{{2
 {
     # Separate package for namespacing.
     package IPC;
@@ -69,6 +71,7 @@ use constant {
         MODULE_CONFLICT => 8,
     };
 }
+# }}}
 
 my $versionNum = '1.13';
 
@@ -146,6 +149,56 @@ our %package_opts = (
 # Don't use this except via setenv(), resetenv(), and log_command().
 our %ENV_VARS;
 
+# This is a hash since Perl doesn't have a "in" keyword.
+my %ignore_list;  # List of packages to refuse to include in the build list.
+
+# update and build are lists since they support an ordering, which can't be
+# guaranteed using a hash unless I want a custom sort function (which isn't
+# necessarily a horrible way to go, I just chose to do it this way.
+my @update_list;  # List of modules to update/checkout.
+my @build_list;   # List of modules to build.
+
+# Each module in the above list is of the form:
+# {
+#   name => 'user-set-name',
+#   phases => [ qw/update build test install/ ],
+#   type => qw/svn git proj null/ # Only one of these
+# }
+#
+# Where 'phases' can have at most one of each entry in the list above. Each
+# phase has the obvious meaning, except purge is run at the end to possibly
+# free up disk space.
+#
+# 'type' is the module type (as determined by heuristics, or directly by the
+# user via svn-server or repository). If 'proj', the module can be converted to
+# an equivalent 'git' module type by doing some processing of the
+# kde_projects.xml file. 'null' is only used at e.g. the command line where the
+# module type may not be known yet.
+
+# Dictionary of lists of failed modules, keyed by the name of the operation
+# that caused the failure (e.g. build).  Note that output_failed_module_lists
+# uses the key name to display text to the user so it should describe the
+# actual category of failure.  You should also add the key name to
+# output_failed_module_lists since it uses its own sorted list.
+my @fail_display_order = qw/build update install uninstall/;
+my %fail_lists = (
+    'build'   => [ ],
+    'install' => [ ],
+    'uninstall'=>[ ],
+    'update'  => [ ],
+);
+
+my $run_mode = 'build'; # Determines if updating, building, installing, etc.
+my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
+my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
+my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc",
+               "./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
+my $rcfile; # the file that was used; set by read_options
+my @screen_log;
+
+# }}}
+
+# package BaseIPC {{{
 # Base class for IPC interaction. Should have most of the functionality, with
 # the actual bits of reading and writing left to subclasses.
 {
@@ -268,7 +321,9 @@ our %ENV_VARS;
         return 0;
     }
 }
+# }}}
 
+# package PipeIPC {{{
 # IPC class that uses pipes for communication.  Basically requires
 # forking two children in order to communicate with.  Assumes that the two
 # children are the update process and a monitor process which keeps the update
@@ -400,7 +455,9 @@ our %ENV_VARS;
         return $self->receiveMessage('fromSvn');
     }
 }
+# }}}
 
+# package NullIPC {{{
 # Dummy IPC module in case SysVIPC doesn't work.
 {
     package NullIPC;
@@ -434,7 +491,9 @@ our %ENV_VARS;
         return shift @{$self->{'msgList'}};
     }
 }
+# }}}
 
+# package KDEXMLReader {{{
 # kde_projects.xml module-handling code.
 # The core of this was graciously contributed by Allen Winter, and then
 # touched-up and kdesrc-build'ed by myself -mpyne.
@@ -584,7 +643,9 @@ our %ENV_VARS;
 
     1;
 }
+# }}}
 
+# package Module {{{
 {
     package Module;
 
@@ -693,54 +754,9 @@ our %ENV_VARS;
 
     1;
 }
+# }}}
 
-# This is a hash since Perl doesn't have a "in" keyword.
-my %ignore_list;  # List of packages to refuse to include in the build list.
-
-# update and build are lists since they support an ordering, which can't be
-# guaranteed using a hash unless I want a custom sort function (which isn't
-# necessarily a horrible way to go, I just chose to do it this way.
-my @update_list;  # List of modules to update/checkout.
-my @build_list;   # List of modules to build.
-
-# Each module in the above list is of the form:
-# {
-#   name => 'user-set-name',
-#   phases => [ qw/update build test install/ ],
-#   type => qw/svn git proj null/ # Only one of these
-# }
-#
-# Where 'phases' can have at most one of each entry in the list above. Each
-# phase has the obvious meaning, except purge is run at the end to possibly
-# free up disk space.
-#
-# 'type' is the module type (as determined by heuristics, or directly by the
-# user via svn-server or repository). If 'proj', the module can be converted to
-# an equivalent 'git' module type by doing some processing of the
-# kde_projects.xml file. 'null' is only used at e.g. the command line where the
-# module type may not be known yet.
-
-# Dictionary of lists of failed modules, keyed by the name of the operation
-# that caused the failure (e.g. build).  Note that output_failed_module_lists
-# uses the key name to display text to the user so it should describe the
-# actual category of failure.  You should also add the key name to
-# output_failed_module_lists since it uses its own sorted list.
-my @fail_display_order = qw/build update install uninstall/;
-my %fail_lists = (
-    'build'   => [ ],
-    'install' => [ ],
-    'uninstall'=>[ ],
-    'update'  => [ ],
-);
-
-my $run_mode = 'build'; # Determines if updating, building, installing, etc.
-my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
-my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
-my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc",
-               "./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
-my $rcfile; # the file that was used; set by read_options
-my @screen_log;
-
+# Debugging routines {{{
 # Colors
 my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
 
@@ -831,6 +847,8 @@ sub pretend(@)
 {
     print_clr @_ if pretending;
 }
+
+# }}}
 
 # Subroutine to handle removing the lock file upon receiving a signal
 sub quit_handler
@@ -7705,6 +7723,7 @@ if (__PACKAGE__ eq 'test')
 # Use some exception handling to avoid ucky error messages
 eval
 {
+    # preinit {{{
     # Note: Don't change the order around unless you're sure of what you're
     # doing.
     set_debug_colors();  # Default to colorized output if sending to TTY
@@ -7787,6 +7806,7 @@ eval
     Module->push($_) foreach @modules;
 
     dump_options() if debugging;
+# }}}
 };
 
 if ($@)
@@ -7816,6 +7836,7 @@ if (not pretending and not get_lock())
 my $result;
 eval
 {
+    # execution phase {{{
     my $time = localtime;
     info "Script started processing at g[$time]" unless pretending;
 
@@ -7925,6 +7946,7 @@ eval
     $color = 'r[' if $result;
 
     info "${color}Script finished processing at g[$time]" unless pretending;
+    # }}}
 };
 
 if ($@)
@@ -7945,4 +7967,4 @@ if ($@)
 
 finish($result);
 
-# vim: set et sw=4 ts=4:
+# vim: set et sw=4 ts=4 fdm=marker:
