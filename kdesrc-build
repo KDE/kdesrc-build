@@ -645,79 +645,185 @@ my @screen_log;
 }
 # }}}
 
-# package Module {{{
+# package ksb::Phases {{{
 {
-    package Module;
+    # Handles the "phases" for kdesrc-build, e.g. a simple list of phases,
+    # and methods to add, clear, or filter out phases.
+    package ksb::Phases;
 
-    use Scalar::Util qw(blessed);
+    # Constructor. Passed in values are the initial phases in this set.
+    sub new
+    {
+        my ($class, @args) = @_;
+        return bless [@args], $class;
+    }
 
-    my $ModulePhases = [qw/update build test install/];
-    my $ModuleSource = 'config';
-    my @ModuleList;  # List of modules
+    # Filters out the given phase from the current list of phases.
+    sub filterOutPhase
+    {
+        my ($self, $phase) = @_;
+        @{$self} = grep { $_ ne $phase } @{$self};
+    }
+
+    # Adds the requested phase to the list of phases to build.
+    sub addPhase
+    {
+        my ($self, $phase) = @_;
+        push @{$self}, $phase unless main::list_has($self, $phase);
+    }
+
+    # Get/sets number of phases depending on whether any are passed in.
+    sub phases
+    {
+        my ($self, @args) = @_;
+        @$self = @args if scalar @args;
+        return @$self;
+    }
+
+    1;
+}
+# }}}
+
+# package ksb::BuildContext {{{
+{
+    # This contains the information needed about the build context, e.g.
+    # list of modules, what phases each module is in, the various options,
+    # etc.
+    package ksb::BuildContext;
+
+    use Carp 'confess';
 
     # Alias the main package's debug to our package.
     *debug = \&main::debug;
 
+    my @DefaultPhases = qw/update build test install/;
+
     sub new
     {
-        my ($class, $name, $type) = @_;
-        die "Empty Module constructed" unless $name;
+        my ($class, @args) = @_;
+
+        my $context = {
+            modules => [],
+            options => \%main::package_opts,
+            phases  => ksb::Phases->new(@DefaultPhases),
+        };
+
+        return bless $context, $class;
+    }
+
+    # Gets the ksb::Phases for this context, and optionally sets it first to
+    # the ksb::Phases passed in.
+    sub phases
+    {
+        my ($self, $phases) = @_;
+
+        if ($phases) {
+            confess("Invalid type, expected Phases")
+                unless $phases->isa('ksb::Phases');
+            $self->{phases} = $phases;
+        }
+        return $self->{phases};
+    }
+
+    sub addModule
+    {
+        my ($self, $module) = @_;
+        Carp::confess("No module to push") unless $module;
+
+        if (::list_has($self->{modules}, $module)) {
+            debug( "Skipping duplicate module $module->{name}");
+        }
+        else {
+            debug("Adding $module->{name} to module list");
+            push @{$self->{modules}}, $module;
+        }
+    }
+
+    sub moduleList
+    {
+        my $self = shift;
+        return $self->{modules};
+    }
+
+    # This subroutine assigns the appropriate options to %package_opts and the
+    # update and build lists to build a default set of modules.
+    #
+    # Note: Call this and you stand the risk of losing the options you're
+    # already set, do this only if you need to setup options for the entire
+    # list of default modules.
+    sub setup_default_modules()
+    {
+        my $self = shift;
+
+        # TODO: Move this to the build-support git repo.
+        my @defaultModuleList = qw(
+            qt-copy automoc cagibi attica soprano polkit-qt-1 phonon
+            strigi kdesupport dbusmenu-qt
+            kdelibs akonadi kdepimlibs
+            kde-runtime kde-workspace kde-baseapps
+            konsole kate kdeplasma-addons
+            phonon-gstreamer phonon-vlc
+            kdemultimedia kdeartwork kdepim kdeutils kdegraphics kdegames
+            kdetoys kdeedu kdenetwork
+        );
+
+        # TODO: Import this from a Debug class
+        main::whisper("Setting up to build ", join(', ', @defaultModuleList), " by default.");
+
+        my $allOptsRef = $self->{options};
+        for my $i (@defaultModuleList) {
+            my $options_ref = main::default_module_options($i);
+
+            # Apply default option only if option not already set.  If the option
+            # is here at this point it's probably user defined on the command line
+            # or setup by kdesrc-build based on an option.
+            for my $key (keys %{$options_ref}) {
+                if (not exists $allOptsRef->{$i}{$key}) {
+                    $allOptsRef->{$i}{$key} = $options_ref->{$key};
+                }
+            }
+
+            $self->addModule(Module->new($self, $i, 'null'));
+        }
+    }
+
+    1;
+}
+# }}}
+
+# package Module {{{
+{
+    package Module;
+
+    use Storable 'dclone';
+    use Carp 'confess';
+
+    my $ModuleSource = 'config';
+
+    sub new
+    {
+        my ($class, $ctx, $name, $type) = @_;
+        confess "Empty Module constructed" unless $name;
+        confess "Invalid context $ctx" unless (ref $ctx && $ctx->isa('ksb::BuildContext'));
+
+        # Clone the passed-in phases so we can be different.
+        my $phases = dclone($ctx->phases());
 
         my $module = {
             name => $name,
             type => $type || 'null',
-            # Weird [@$foo] forces a copy of underlying list.
-            phases => [@$ModulePhases],
+            phases => $phases,
+            context => $ctx,
             'module-set' => '',
         };
 
         return bless $module, $class;
     }
 
-    sub push
-    {
-        my ($self, $module) = @_;
-        Carp::confess("No module to push") unless $module;
-
-        if (grep ($_->{name} eq $module->{name}, @ModuleList)) {
-            debug( "Skipping duplicate module $module->{name}");
-        }
-        else {
-            debug("Adding $module->{name} to module list");
-            push @ModuleList, $module;
-        }
-    }
-
     sub phases
     {
-        my ($self) = shift;
-        return @$ModulePhases;
-    }
-
-    sub setPhases
-    {
-        my ($self, @phases) = @_;
-
-        if (blessed($self)) {
-            $self->{phases} = [@phases];
-        }
-        else {
-            $ModulePhases = [@phases]; # Doesn't affect already created modules.
-        }
-    }
-
-    sub filterOutPhase
-    {
-        my ($self, $deadPhase) = @_;
-
-        # If already blessed, act like method, otherwise act like static
-        # class function.
-        if (blessed($self)) {
-            @{$self->{'phases'}} = grep($_ ne $deadPhase, @{$self->{'phases'}});
-        }
-        else {
-            @$ModulePhases = grep($_ ne $deadPhase, @$ModulePhases);
-        }
+        my $self = shift;
+        return $self->{phases};
     }
 
     sub moduleSet
@@ -744,12 +850,6 @@ my @screen_log;
         my $class = shift;
         # Should be 'config' or 'cmdline';
         return $ModuleSource;
-    }
-
-    sub moduleList
-    {
-        my ($self) = @_;
-        return @ModuleList;
     }
 
     1;
@@ -3335,44 +3435,6 @@ will have a sample configuration file that you can edit to your liking.
 HOME
 }
 
-# This subroutine assigns the appropriate options to %package_opts and the
-# update and build lists to build a default set of modules.
-#
-# Note: Call this and you stand the risk of losing the options you're already
-# set, do this only if you need to setup options for the entire list of
-# default modules.
-sub setup_default_modules()
-{
-    # TODO: Move this to the build-support git repo.
-    my @defaultModuleList = qw(
-        qt-copy automoc cagibi attica soprano polkit-qt-1 phonon
-        strigi kdesupport dbusmenu-qt
-        kdelibs akonadi kdepimlibs
-        kde-runtime kde-workspace kde-baseapps
-        konsole kate kdeplasma-addons
-        phonon-gstreamer phonon-vlc
-        kdemultimedia kdeartwork kdepim kdeutils kdegraphics kdegames
-        kdetoys kdeedu kdenetwork
-    );
-
-    whisper "Setting up to build ", join(', ', @defaultModuleList), " by default.";
-
-    for my $i (@defaultModuleList) {
-        my $options_ref = default_module_options($i);
-
-        # Apply default option only if option not already set.  If the option
-        # is here at this point it's probably user defined on the command line
-        # or setup by kdesrc-build based on an option.
-        for my $key (keys %{$options_ref}) {
-            if (not exists $package_opts{$i}{$key}) {
-                $package_opts{$i}{$key} = $options_ref->{$key};
-            }
-        }
-
-        Module->push(Module->new($i, 'null'));
-    }
-}
-
 # Reads a "line" from a file. This line is stripped of comments and extraneous
 # whitespace. Also, backslash-continued multiple lines are merged into a single
 # line.
@@ -3588,6 +3650,7 @@ sub ensure_projects_xml_present
 # Returns the expanded list of module names to include.
 sub parse_moduleset
 {
+    my $ctx = shift;
     my $fh = shift;
     my $moduleSetName = shift || '';
     my $repoSet = get_option('global', 'git-repository-base');
@@ -3681,7 +3744,7 @@ EOF
 
         $moduleType = 'proj' if $usingXML;
 
-        my $newModule = Module->new($moduleName, $moduleType);
+        my $newModule = Module->new($ctx, $moduleName, $moduleType);
         $newModule->setModuleSet($moduleSetName);
         push @moduleList, $newModule;
 
@@ -3728,6 +3791,8 @@ sub expandXMLModules
             die "kde-projects repository information could not be downloaded: $!.";
 
         my $name = $_->{'name'};
+        my $ctx = $_->{'context'};
+
         my @xmlResults = grep {
             $_->{'active'} ne 'false'
         } (KDEXMLReader->getModulesForProject($name));
@@ -3740,7 +3805,9 @@ sub expandXMLModules
             set_option($xml->{'name'}, 'repository', $xml->{'repo'});
         }
 
-        return map { Module->new($_->{'name'}, 'git') } (@xmlResults);
+        return map {
+            Module->new($ctx, $_->{'name'}, 'git')
+        } (@xmlResults);
     };
 
     return map { &$filter($_) } (@modules);
@@ -3842,6 +3909,7 @@ EOM
 # on, usually some subclass of IO::Handle.
 sub read_options
 {
+    my $ctx = shift;
     my $fh = shift;
     my $global_opts = $package_opts{'global'};
     my @module_list;
@@ -3903,11 +3971,11 @@ sub read_options
             }
 
             # A moduleset can give us more than one module to add.
-            push @module_list, parse_moduleset($fh, $modulename);
+            push @module_list, parse_moduleset($ctx, $fh, $modulename);
         }
         else {
             parse_module($fh, $modulename);
-            push @module_list, Module->new($modulename);
+            push @module_list, Module->new($ctx, $modulename);
         }
 
         # Don't build default modules if user has their own wishes.
@@ -3927,7 +3995,7 @@ sub read_options
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
     if ($using_default) {
-        setup_default_modules();
+        $ctx->setup_default_modules();
         return ();
     }
 
@@ -4436,6 +4504,8 @@ sub clone_options
 # requires more than rudimentary processing should set a flag for later work.
 sub process_arguments
 {
+    my $ctx = shift;
+    my $phases = $ctx->phases();
     my @savedOptions = @_; # Used for --debug
     my @options = @_;
     my $arg;
@@ -4561,14 +4631,14 @@ DONE
 
             /^--install$/ && do {
                 $run_mode = 'install';
-                Module->setPhases('install');
+                $phases->phases('install');
 
                 last SWITCH;
             };
 
             /^--uninstall$/ && do {
                 $run_mode = 'uninstall';
-                Module->setPhases('uninstall');
+                $phases->phases('uninstall');
 
                 last SWITCH;
             };
@@ -4582,12 +4652,12 @@ DONE
             };
 
             /^--no-(src|svn)$/ && do {
-                Module->filterOutPhase('update');
+                $phases->filterOutPhase('update');
                 last SWITCH;
             };
 
             /^--no-install$/ && do {
-                Module->filterOutPhase('install');
+                $phases->filterOutPhase('install');
                 last SWITCH;
             };
 
@@ -4638,7 +4708,7 @@ DONE
             };
 
             /^--no-build$/ && do {
-                Module->filterOutPhase('build');
+                $phases->filterOutPhase('build');
                 last SWITCH;
             };
 
@@ -4655,7 +4725,7 @@ DONE
             # Although equivalent to --no-build at this point, someday the
             # script may interpret the two differently, so get ready now.
             /^--(src|svn)-only$/ && do {      # Identically to --no-build
-                Module->setPhases('update');
+                $phases->setPhases('update');
 
                 # We have an auto-switching function that we only want to run
                 # if --src-only was passed to the command line, so we still
@@ -4666,7 +4736,7 @@ DONE
 
             # Don't run source updates or install
             /^--build-only$/ && do {
-                Module->setPhases('build');
+                $phases->setPhases('build');
                 last SWITCH;
             };
 
@@ -4809,12 +4879,12 @@ DONE
 
     # Don't go async if only performing one phase.  It (should) work but why
     # risk it?
-    if (scalar Module->phases() == 1)
+    if (scalar $phases->phases() == 1)
     {
         set_option('global', '#async', 0);
     }
 
-    return map { Module->new($_) } (@enteredModules);
+    return map { Module->new($ctx, $_) } (@enteredModules);
 }
 
 # Installs the given subroutine as a signal handler for a set of signals which
@@ -4951,18 +5021,18 @@ sub updateModulePhases
         if (get_option($name, 'manual-update') ||
             get_option($name, 'no-svn') || get_option($name, 'no-src'))
         {
-            $module->setPhases();
+            $module->phases()->setPhases();
             next;
         }
 
         if (get_option($name, 'manual-build')) {
-            $module->filterOutPhase('build');
-            $module->filterOutPhase('test');
-            $module->filterOutPhase('install');
+            $module->phases()->filterOutPhase('build');
+            $module->phases()->filterOutPhase('test');
+            $module->phases()->filterOutPhase('install');
         }
 
-        $module->filterOutPhase('install') unless get_option($name, 'install-after-build');
-        $module->filterOutPhase('test') unless get_option($name, 'run-tests');
+        $module->phases()->filterOutPhase('install') unless get_option($name, 'install-after-build');
+        $module->phases()->filterOutPhase('test') unless get_option($name, 'run-tests');
     }
 
     return @modules;
@@ -7720,6 +7790,8 @@ if (__PACKAGE__ eq 'test')
     return 1;
 }
 
+my $ctx;
+
 # Use some exception handling to avoid ucky error messages
 eval
 {
@@ -7727,7 +7799,8 @@ eval
     # Note: Don't change the order around unless you're sure of what you're
     # doing.
     set_debug_colors();  # Default to colorized output if sending to TTY
-    my @modules = process_arguments(@ARGV); # Process --help, --install, etc. first.
+    $ctx = ksb::BuildContext->new();
+    my @modules = process_arguments($ctx, @ARGV); # Process --help, --install, etc. first.
 
     # Change name and type of command line entries beginning with + to force
     # them to be XML project modules.
@@ -7747,7 +7820,8 @@ eval
         or open ($fh, '<', \$data)
         or die make_exception('Runtime', 'Unable to open config file (even a null one).');
 
-    my @optionModules = read_options($fh); # If we're still here, read the options
+    # If we're still here, read the options
+    my @optionModules = read_options($ctx, $fh);
 
     update_module_environment('global');   # Initialize global env vars.
 
@@ -7803,7 +7877,7 @@ eval
     @modules = updateModulePhases(@modules) unless $commandLineModules;
 
     # Add to global module list now that we've filtered everything.
-    Module->push($_) foreach @modules;
+    $ctx->addModule($_) foreach @modules;
 
     dump_options() if debugging;
 # }}}
@@ -7863,9 +7937,10 @@ eval
     eval { plugin_setup_default_modules(\@update_list, \@build_list, \%package_opts); };
     $@ = ''; # Clear errors that result when not using Coverity plugin.
 
-    @update_list = grep { list_has (@{$_->{phases}}, 'update') } (Module->moduleList());
+    my @moduleList = @{$ctx->moduleList()};
+    @update_list = grep { list_has (@{$_->{phases}}, 'update') } (@moduleList);
     @update_list = map { $_->{name} } (@update_list);
-    @build_list = grep { list_has (@{$_->{phases}}, 'build') } (Module->moduleList());
+    @build_list = grep { list_has (@{$_->{phases}}, 'build') } (@moduleList);
     @build_list = map { $_->{name} } (@build_list);
 
     debug "Update list is ", join (', ', @update_list);
@@ -7910,7 +7985,7 @@ eval
         # Installation mode
         my @installList = grep {
             list_has (@{$_->{phases}}, 'install')
-        } (Module->moduleList());
+        } (@moduleList);
 
         # Compat hack
         @installList = map { $_->{name} } @installList;
@@ -7923,7 +7998,7 @@ eval
         # and installed.
         my @uninstallList = grep {
             list_has (@{$_->{phases}}, 'uninstall')
-        } (Module->moduleList());
+        } (@moduleList);
 
         # More compat hacks.
         @uninstallList = map { $_->{name} } @uninstallList;
