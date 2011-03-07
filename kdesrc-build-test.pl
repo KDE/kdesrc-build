@@ -15,6 +15,10 @@ use warnings;
 package test; # Tells kdesrc-build not to run
 require 'kdesrc-build';
 
+# Reset to kdesrc-build's package so we don't have to import symbols back from
+# kdesrc-build.
+package main;
+
 # Must come after require kdesrc-build. note will interfere with our debugging
 # function, and we don't use it in the test harness anyways.
 use Test::More 'no_plan', import => ['!note'];
@@ -307,5 +311,8 @@ isnt(super_mkdir("$testSourceDirName/build"), 0, 'Make temp build directory');
 ok(-d "$testSourceDirName/build", 'Double-check temp build dir created');
 
 # svn cd'ed on us, switch to a known directory to avoid errors unlinking the
-# temporary directory.
-chdir('/');
+# temporary directory. In an "END" block so this should occur even if we
+# exit testing due to failure/exception.
+END {
+    chdir('/');
+}

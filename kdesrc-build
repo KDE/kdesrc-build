@@ -15,6 +15,10 @@
 # Pod documentation: Removed in favor of --help and the index.docbook in the
 # kdesdk/doc/scripts/kdesrc-build directory.
 
+# Force all symbols to be in this package. We can tell if we're being called
+# through require/eval/etc. by using the "caller" function.
+package main;
+
 use strict;
 use warnings;
 use Fcntl;    # For sysopen constants
@@ -7783,7 +7787,7 @@ sub cleanup_log_directory
 
 # Adding in a way to load all the functions without running the program to
 # enable some kind of automated QA testing.
-if (__PACKAGE__ eq 'test')
+if (scalar caller eq 'test')
 {
     print "kdesrc-build being run from testing framework, BRING IT.\n";
     print "kdesrc-build is version $versionNum\n";
