@@ -700,7 +700,7 @@ my @screen_log;
     # Alias the main package's debug to our package.
     *debug = \&main::debug;
 
-    my @DefaultPhases = qw/update build test install/;
+    my @DefaultPhases = qw/update build install/;
 
     sub new
     {
@@ -5036,7 +5036,7 @@ sub updateModulePhases
         }
 
         $module->phases()->filterOutPhase('install') unless get_option($name, 'install-after-build');
-        $module->phases()->filterOutPhase('test') unless get_option($name, 'run-tests');
+        $module->phases()->addPhase('test') if get_option($name, 'run-tests');
     }
 
     return @modules;

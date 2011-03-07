@@ -23,6 +23,7 @@ package main;
 # function, and we don't use it in the test harness anyways.
 use Test::More 'no_plan', import => ['!note'];
 use File::Temp 'tempdir';
+use Storable 'dclone';
 
 # From kdesrc-build
 our %package_opts;
@@ -197,53 +198,70 @@ like(svn_module_url('test'), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer
 set_option('test', 'override-url', 'svn://annono');
 is(svn_module_url('test'), 'svn://annono', 'testing override-url');
 
-my @modules = process_arguments('--test,override-url=svn://ann');
+my $ctx = ksb::BuildContext->new();
+isa_ok($ctx, 'ksb::BuildContext', 'Ensure BuildContext classiness');
+isa_ok($ctx->phases(), 'ksb::Phases', 'Ensure Phases classiness');
+
+my @modules = process_arguments($ctx, '--test,override-url=svn://ann');
 is(svn_module_url('test'), 'svn://ann', 'testing process_arguments module options');
 is(scalar @modules, 0, 'testing process_arguments return value for no passed module names');
 
 @modules = qw/qt-copy kdelibs kdebase/;
-my @defaultPhases = Module->phases();
-my @Modules = map { Module->new($_) } (@modules);
+my @Modules = map { Module->new($ctx, $_) } (@modules);
+my $backupCtx = dclone($ctx);
 
-# Ensure functions like updateModulePhases doesn't change the objects we pass in.
-my @backupModuleCopy = @{Storable::dclone(\@Modules)};
+# Ensure functions like updateModulePhases doesn't change the objects we pass
+# in.
+my $resetContext = sub {
+    $ctx = dclone($backupCtx);
+    # We must re-create modules to have the same context as ctx.
+    @Modules = map { Module->new($ctx, $_) } (@modules);
+};
 
-# Should be no change if there are no manual-update, no-src, etc. in the rc file
-# so force one of those on.
+# Should be no change if there are no manual-update, no-src, etc. in the rc
+# file so force one of those on that way we know updateModulePhases did
+# something.
 set_option('kdelibs', 'no-build', 1);
-my @phaseFilteredModules = updateModulePhases(@Modules);
-is_deeply(\@Modules, \@backupModuleCopy, 'Ensure objects not modified through references to them');
-delete $package_opts{'kdelibs'}->{'manual-update'};
+updateModulePhases(@Modules);
+my $backupModuleCopy = dclone(\@Modules);
+is_deeply(\@Modules, $backupModuleCopy, 'Ensure objects not modified through references to them');
+delete $package_opts{'kdelibs'}->{'no-build'};
 
 # Now test --no-src/--no-build/etc.
-is_deeply([process_arguments(@modules)], \@Modules, 'testing process_arguments return value for passed module names');
+is_deeply([process_arguments($ctx, @modules)], \@Modules, 'testing process_arguments return value for passed module names');
 
-$_->filterOutPhase('update') foreach @Modules;
-is_deeply([process_arguments(@modules, '--no-src')], \@Modules, 'testing --no-src phase updating');
+$_->phases()->filterOutPhase('update') foreach @Modules;
+is_deeply([process_arguments($ctx, @modules, '--no-src')], \@Modules, 'testing --no-src phase updating');
+ok(!list_has([$ctx->phases()->phases()], 'update'), 'Build context also not updating');
 
-# Reset Module package's default phases
-Module->setPhases(@defaultPhases);
-Module->filterOutPhase('test'); # This would change based on run-tests
+&$resetContext();
 
 # Reported by Kurt Hindenburg (IIRC). Passing --no-src would also disable the
 # build (in updateModulesPhases) because of the global '#no-src' being set in
 # process_arguments.
-my @temp_modules = process_arguments(@modules, '--no-src');
+my @temp_modules = process_arguments($ctx, @modules, '--no-src');
 # There should be no module-specific no-src/no-build/manual-update/etc. set.
 is_deeply([updateModulePhases(@temp_modules)], \@temp_modules, 'updateModulePhases only for modules');
 
-Module->setPhases(@defaultPhases);
-@Modules = map { Module->new($_) } (@modules);
-$_->filterOutPhase('build') foreach @Modules;
+&$resetContext();
+
+set_option('kdelibs', 'run-tests', 1);
+$_->phases()->addPhase('test') foreach @Modules;
+is_deeply([updateModulePhases(@Modules)], \@Modules, 'Make sure run-tests is recognized');
+
+&$resetContext();
 
 # Test only --no-build
-is_deeply([process_arguments(@modules, '--no-build')], \@Modules, 'testing --no-build phase updating');
+$_->phases()->filterOutPhase('build') foreach @Modules;
+is_deeply([process_arguments($ctx, @modules, '--no-build')], \@Modules, 'testing --no-build phase updating');
+ok(!list_has([$ctx->phases()->phases()], 'build'), 'Build context also not building');
 
-# Reset Module package's default phases
-Module->setPhases(@defaultPhases);
-
-$_->filterOutPhase('update') foreach @Modules;
-is_deeply([process_arguments(@modules, '--no-build', '--no-src')], \@Modules, 'testing --no-src and --no-build phase updating');
+# Add on --no-src
+$_->phases()->filterOutPhase('update') foreach @Modules;
+is_deeply([process_arguments($ctx, @modules, '--no-build', '--no-src')], \@Modules, 'testing --no-src and --no-build phase updating');
+ok(!list_has([$ctx->phases()->phases()], 'build') &&
+   !list_has([$ctx->phases()->phases()], 'update'),
+       'Build context also not building or updating');
 
 # Reset
 delete @package_opts{grep { $_ ne 'global' } keys %package_opts};
@@ -268,14 +286,16 @@ end module
 EOF
 open my $fh, '<', \$conf;
 
+&$resetContext();
+
 # Read in new options
-my @conf_modules = read_options($fh);
+my @conf_modules = read_options($ctx, $fh);
 is(get_option('qt-copy', 'configure-flags'), '-fast', 'read_options/parse_module');
 is(get_option('kdelibs', 'repository'), 'kde:kdelibs', 'git-repository-base');
 
-my @ConfModules = map { Module->new($_) }(qw/kdelibs kdesrc-build kde-runtime qt-copy/);
-$ConfModules[1] = Module->new('kdesrc-build', 'proj'); # This should be a kde_projects.xml
-$ConfModules[2] = Module->new('kde-runtime', 'proj');  # This should be a kde_projects.xml
+my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt-copy/);
+$ConfModules[1] = Module->new($ctx, 'kdesrc-build', 'proj'); # This should be a kde_projects.xml
+$ConfModules[2] = Module->new($ctx, 'kde-runtime', 'proj');  # This should be a kde_projects.xml
 $ConfModules[1]->setModuleSet('set1');
 $ConfModules[2]->setModuleSet('set1');
 is_deeply(\@conf_modules, \@ConfModules, 'read_options module reading');
