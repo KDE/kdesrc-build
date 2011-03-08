@@ -3610,9 +3610,14 @@ EOF
 # work. Only tries once per script run. If it does succeed, the result is saved
 # to $srcdir/kde_projects.xml
 #
+# Accepts options as a set of key/value pairs (i.e. a standard Perl hash), the
+# only one currently is "force", which if set to anything will unlink the xml
+# file first, even in pretend mode.
+#
 # Returns 0 if the file could not be downloaded, 1 otherwise.
 sub ensure_projects_xml_present
 {
+    my %opts = @_;
     my $srcdir = get_source_dir();
 
     my $cached_status = get_option('global', '#cached_project_xml_check');
@@ -3628,6 +3633,8 @@ sub ensure_projects_xml_present
     my $host = "projects.kde.org";
     my $path = "/kde_projects.xml";
     my $redirections = { };
+
+    unlink $file if exists $opts{force};
 
     my $result = 1;
     if (!pretending) {
@@ -4243,6 +4250,12 @@ sub set_option
     {
         set_debug_colors(); # Update ASAP
     }
+}
+
+sub delete_option
+{
+    my ($module, $option) = @_;
+    delete $package_opts{$module}{$option} if exists $package_opts{$module}{$option};
 }
 
 # Sets a "persistent" option which will be read in for a module when kdesrc-build starts
@@ -7880,7 +7893,15 @@ eval
     # be OK since there's nothing different going on from the first pass in that
     # event.
     @modules = applyModuleFilters(@modules);
-    @modules = expandXMLModules(@modules);
+
+    eval {
+        @modules = expandXMLModules(@modules);
+    } or do {
+        warning "\n b[y[* * *] The KDE module database file appears to be corrupt, re-downloading.\n";
+        delete_option('global', '#cached_project_xml_check');
+        ensure_projects_xml_present(force => 1);
+        @modules = expandXMLModules(@modules);
+    };
 
     # If modules were on the command line then they are effectively forced to
     # process unless overridden by command line options as well. If phases
