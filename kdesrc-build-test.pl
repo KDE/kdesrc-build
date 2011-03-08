@@ -11,6 +11,11 @@
 
 use strict;
 use warnings;
+use Getopt::Long;
+
+# Control whether we actually try to svn checkouts, possibly more later.
+my $fullRun = 0;
+GetOptions("full-run!" => \$fullRun);
 
 package test; # Tells kdesrc-build not to run
 require 'kdesrc-build';
@@ -115,7 +120,7 @@ my @svnArgs = (
     svn://anonsvn.kde.org/home/kde/trunk/kdesupport},
     "$testSourceDirName/kdesupport");
 
-my $svnAvail = defined path_to_prog('svn');
+my $svnAvail = defined path_to_prog('svn') && $fullRun;
 
 SKIP: {
     skip 'svn not installed', 1 unless $svnAvail;
@@ -335,4 +340,8 @@ ok(-d "$testSourceDirName/build", 'Double-check temp build dir created');
 # exit testing due to failure/exception.
 END {
     chdir('/');
+    if (!$fullRun) {
+        print "The full test suite was not run. To do so, " .
+              "pass --full-run when running the tests\n";
+    }
 }
