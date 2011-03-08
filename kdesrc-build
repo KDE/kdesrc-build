@@ -28,6 +28,7 @@ use File::Find; # For our lndir reimplementation.
 use File::Basename;
 use File::Spec;
 use File::Glob ':glob';
+use LWP::UserAgent;
 use Sys::Hostname;
 use Storable 'dclone';
 use IO::Handle;
@@ -1287,27 +1288,6 @@ sub svn_module_url
     return "$svn_server/$modulePath";
 }
 
-# Returns true if the Net::HTTP module is available.
-BEGIN {
-    my $Net_HTTP_available = undef;
-
-    sub has_Net_HTTP
-    {
-        return $Net_HTTP_available if defined $Net_HTTP_available;
-
-        eval {
-            require Net::HTTP;
-            $Net_HTTP_available = 1;
-        } or do {
-            error " y[*] Can't open y[b[Net::HTTP] module, skipping check for module snapshot.";
-            debug "Error was $@";
-            $Net_HTTP_available = 0;
-        };
-
-        return $Net_HTTP_available;
-    }
-}
-
 # Convenience subroutine to return the build directory for a module. Use
 # this instead of get_subdir_path because this special-cases modules for you,
 # (if necessary).
@@ -1691,168 +1671,9 @@ sub get_fullpath
     return $pathinfo{'fullpath'};
 }
 
-# This subroutine downloads the specified file from a host, and saves it to the
-# given filename.
-#
-# First parameter: Hostname of the server (i.e. kdesrc-build.kde.org)
-# Second parameter: Path of the file on the host (i.e. /files/blah.tbz2)
-# Third parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
-# Fourth parameter: Reference to hash used to record if a redirection occurred,
-#                   and how many redirections have already been attempted.
-#                   See download_file()
-# Return value is 0 for failure, non-zero for success.
-sub download_http_file
-{
-    my ($host, $path, $filename, $info) = @_;
-
-    return 0 unless has_Net_HTTP();
-    my $conn = Net::HTTP->new (Host => $host);
-
-    if (not defined $conn)
-    {
-        error "Unable to connect to snapshot host: r[$@]";
-
-        return 0;
-    }
-
-    debug "Checking for $path";
-
-    # Send connection request
-    $conn->write_request('GET' => "$path",
-                         'User-Agent' => "Mozilla/5.0 (compatible; kdesrc-build $versionNum)",
-                         );
-
-    my ($code, $msg, %h) = $conn->read_response_headers();
-
-    # Try to handle redirections.  We handle them all pretty much the same,
-    # i.e. if the Location response is present use that, otherwise error out.
-    while (int $code / 100 == 3)
-    {
-        $info->{'redir_count'}++;
-        $conn->close(); # Error or not, we're done with this connection.
-
-        if (not $h{'Location'})
-        {
-            error "Unable to download file r[$path], ambiguous redirection.";
-            return 0;
-        }
-
-        my $destination = $h{'Location'};
-        $destination =~ s/^Location:\s*//;
-        $info->{'redirection'} = $destination;
-        return 0;
-    }
-
-    if (200 != $code)
-    {
-        error "Unable to download file r[$path]:\n\tr[b[$msg]";
-
-        $conn->close();
-        return 0;
-    }
-
-    open OUTPUT, ">$filename" or do {
-        error "Unable to open output file for r[$path] download.";
-        error "\tMessage: b[r[$@]";
-
-        $conn->close();
-        return 0;
-    };
-
-    # Don't allow partial downloads
-    local $SIG{'INT'} = sub {
-        unlink($filename);
-        close OUTPUT;
-        $conn->close();
-        die make_exception('Runtime', "Interrupted while downloading $filename");
-    };
-
-    my ($buf, $result);
-    while (1)
-    {
-        $result = $conn->read_entity_body($buf, 2048);
-        if (not defined $result)
-        {
-            error "Error downloading from host: r[$!]";
-
-            $conn->close();
-            close OUTPUT;
-            unlink($filename);
-
-            return 0;
-        }
-
-        last unless $result; # Break loop if end-of-data
-        print OUTPUT $buf;   # Print downloaded data to file.
-    }
-
-    close OUTPUT;
-    $conn->close();
-
-    return 1;
-}
-
-# This subroutine downloads the file pointed to by the URL given in the first
-# parameter, saving to the given filename.  (FILENAME, not directory).
-#
-# First parameter: FTP Host. (i.e. ftp.kde.org)
-# Second parameter: Path to file, including file name (i.e. /pub/unstable/foo.tbz2)
-# Third parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
-# Return value is 0 for failure, non-zero for success.
-sub download_ftp_file
-{
-    my ($host, $path, $filename) = @_;
-
-    # Detect Net::FTP.
-    my $ftp;
-    eval {
-        require Net::FTP;
-    } or do {
-        error " y[*] Can't open y[b[Net::FTP] module, skipping check of g[ftp.kde.org].";
-        debug "Error was $@";
-        return 0;
-    };
-
-    $ftp = new Net::FTP($host, Timeout => 30);
-
-    if (not $ftp)
-    {
-        error "Unable to connect to snapshot host $host: r[$@]";
-        return 0;
-    }
-
-    if (not $ftp->login())
-    {
-        error "Connection refused to FTP host r[$host], skipping snapshot.";
-        error "FTP response: $ftp->message";
-        return 0;
-    }
-
-    $ftp->binary(); # Switch to binary mode.
-
-    # Check if file exists.
-    my $size = $ftp->size($path);
-    if (not $size or $size <= 0)
-    {
-        $ftp->quit();
-        return 0;
-    }
-
-    if (not defined $ftp->get($path, $filename))
-    {
-        # Download failed.
-        error "Unable to download snapshot from r[$host].";
-        return 0;
-    }
-
-    $ftp->quit();
-    return 1;
-}
-
 # This subroutine downloads the file pointed to by the URL given in the first
 # parameter, saving to the given filename.  (FILENAME, not directory). HTTP
-# and FTP are supported, depending on if the required Net::HTTP and Net::FTP
-# modules are available.
+# and FTP are supported, but this functionality requires libwww-perl
 #
 # First parameter: URL of link to download (i.e. http://kdesrc-build.kde.org/foo.tbz2)
 # Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
@@ -1868,51 +1689,18 @@ sub download_file
         return 1;
     }
 
-    my ($protocol, $host, $path);
-    my $info = { 'redir_count' => 0, 'redirection' => '' };
+    my $ua = LWP::UserAgent->new(timeout => 30);
 
-    while ($info->{'redir_count'} < 5)
-    {
-        ($protocol, $host, $path) = ($url =~ m{^([^:]+)://([^/]+)(/.*)$});
-        if (not defined $url or not defined $host or not defined $path)
-        {
-            error "Trying to download file from invalid URL: r[$url]";
-            return 0;
-        }
+    # Trailing space adds the appropriate LWP info since the resolver is not
+    # my custom coding anymore.
+    $ua->agent("kdesrc-build $versionNum ");
 
-        $info->{'redirection'} = '';
+    whisper "Downloading g[$filename] from g[$url]";
+    my $response = $ua->get($url, ':content_file' => $filename);
+    return 1 if $response->is_success;
 
-        # Not sure if https works but no harm in letting it try.
-        if ($protocol =~ /^https?$/)
-        {
-            whisper "Downloading g[$path] from g[$url]";
-            my $result = download_http_file($host, $path, $filename, $info);
-
-            if (not $result and $info->{'redirection'})
-            {
-                # Try again at new URL.
-                $url = $info->{'redirection'};
-                whisper "Redirecting to y[$url]";
-                next;
-            }
-            else
-            {
-                return $result;
-            }
-        }
-        elsif ($protocol eq 'ftp')
-        {
-            whisper "Downloading g[$path] from g[$url]";
-            return download_ftp_file($host, $path, $filename);
-        }
-        else
-        {
-            error "Trying to download file ($url), but";
-            error "\tthe r[$protocol] protocol is unsupported.";
-            return 0;
-        }
-    }
-
+    error "Failed to download y[b[$url] to b[$filename]";
+    error "Result was: y[b[$response->status_line]";
     return 0;
 }
 
@@ -1953,7 +1741,7 @@ sub install_module_snapshot
 
     my ($filename, $url, $dirName);
 
-    # If a trunk module, try to obtain from KDE FTP first.
+    # If a trunk module, try to obtain from KDE mirrors first.
     return 0 if ($branch ne 'trunk');
 
     $filename = "$moduleName-svn.tar.bz2";
@@ -3636,21 +3424,19 @@ sub ensure_projects_xml_present
     # Not previously attempted, let's make a try.
     super_mkdir($srcdir) unless -d "$srcdir";
     my $file = "$srcdir/kde_projects.xml";
-    my $host = "projects.kde.org";
-    my $path = "/kde_projects.xml";
-    my $redirections = { };
+    my $url = "http://projects.kde.org/kde_projects.xml";
 
     unlink $file if exists $opts{force};
 
     my $result = 1;
     if (!pretending) {
         info " * Downloading projects.kde.org project database...";
-        $result = download_http_file($host, $path, $file, $redirections);
+        $result = download_file($url, $file);
     }
     elsif (! -e $file) {
         note " y[*] b[ACTUALLY downloading projects.kde.org project database to make the rest]";
         note " y[*] b[of the --pretend output make sense.]";
-        $result = download_http_file($host, $path, $file, $redirections);
+        $result = download_file($url, $file);
     }
     else {
         info " * y[Using existing projects.kde.org project database], output may change";
