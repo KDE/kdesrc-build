@@ -1753,6 +1753,14 @@ sub download_http_file
         return 0;
     };
 
+    # Don't allow partial downloads
+    local $SIG{'INT'} = sub {
+        unlink($filename);
+        close OUTPUT;
+        $conn->close();
+        die make_exception('Runtime', "Interrupted while downloading $filename");
+    };
+
     my ($buf, $result);
     while (1)
     {
@@ -1763,7 +1771,7 @@ sub download_http_file
 
             $conn->close();
             close OUTPUT;
-            safe_unlink($filename);
+            unlink($filename);
 
             return 0;
         }
