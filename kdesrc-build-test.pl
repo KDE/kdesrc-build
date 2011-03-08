@@ -231,7 +231,7 @@ set_option('kdelibs', 'no-build', 1);
 updateModulePhases(@Modules);
 my $backupModuleCopy = dclone(\@Modules);
 is_deeply(\@Modules, $backupModuleCopy, 'Ensure objects not modified through references to them');
-delete $package_opts{'kdelibs'}->{'no-build'};
+delete_option('kdelibs', 'no-build');
 
 # Now test --no-src/--no-build/etc.
 is_deeply([process_arguments($ctx, @modules)], \@Modules, 'testing process_arguments return value for passed module names');
@@ -328,7 +328,7 @@ eval {
 };
 isa_ok($@, 'BuildException', 'resume-{from,after} combine for exception');
 
-delete $package_opts{'global'}->{'resume-from'};
+delete_option ('global', 'resume-from');
 @filtered_modules = applyModuleFilters(@conf_modules);
 is_deeply(\@filtered_modules, [@ConfModules[3..$#ConfModules]], 'resume-after a module-set');
 
