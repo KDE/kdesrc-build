@@ -214,6 +214,7 @@ is(scalar @modules, 0, 'testing process_arguments return value for no passed mod
 @modules = qw/qt-copy kdelibs kdebase/;
 my @Modules = map { Module->new($ctx, $_) } (@modules);
 my $backupCtx = dclone($ctx);
+my $backupOptions = dclone(\%package_opts);
 
 # Ensure functions like updateModulePhases doesn't change the objects we pass
 # in.
@@ -269,7 +270,8 @@ ok(!list_has([$ctx->phases()->phases()], 'build') &&
        'Build context also not building or updating');
 
 # Reset
-delete @package_opts{grep { $_ ne 'global' } keys %package_opts};
+%package_opts = %{dclone($backupOptions)};
+
 my $conf = <<EOF;
 global
     git-repository-base test kde:
