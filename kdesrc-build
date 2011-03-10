@@ -684,6 +684,12 @@ my @screen_log;
         return @$self;
     }
 
+    sub clear
+    {
+        my $self = shift;
+        splice @$self;
+    }
+
     1;
 }
 # }}}
@@ -4750,7 +4756,7 @@ DONE
             # Although equivalent to --no-build at this point, someday the
             # script may interpret the two differently, so get ready now.
             /^--(src|svn)-only$/ && do {      # Identically to --no-build
-                $phases->setPhases('update');
+                $phases->phases('update');
 
                 # We have an auto-switching function that we only want to run
                 # if --src-only was passed to the command line, so we still
@@ -4761,7 +4767,7 @@ DONE
 
             # Don't run source updates or install
             /^--build-only$/ && do {
-                $phases->setPhases('build');
+                $phases->phases('build');
                 last SWITCH;
             };
 
@@ -5046,7 +5052,7 @@ sub updateModulePhases
         if (get_option($name, 'manual-update') ||
             get_option($name, 'no-svn') || get_option($name, 'no-src'))
         {
-            $module->phases()->setPhases();
+            $module->phases()->clear();
             next;
         }
 
