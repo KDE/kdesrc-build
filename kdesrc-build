@@ -4298,21 +4298,7 @@ sub clone_options
 
     return if exists $package_opts{$b};
 
-    $package_opts{$b} = { 'set-env' => { } };
-
-    # set-env is special because it itself holds another reference.  All the
-    # others can be copies.
-    for my $key (keys %{$package_opts{$a}})
-    {
-        next if $key eq 'set-env';
-        $package_opts{$b}{$key} = $package_opts{$a}{$key};
-    }
-
-    # Handle set-env options.
-    for my $key (keys %{$package_opts{$a}{'set-env'}})
-    {
-        $package_opts{$b}{'set-env'}{$key} = $package_opts{$a}{'set-env'}{$key};
-    }
+    $package_opts{$b} = dclone($package_opts{$a});
 }
 
 # Subroutine to process the command line arguments, which should be passed as
