@@ -2099,6 +2099,9 @@ sub git_get_best_remote_names
         $remoteName =~ s/^remote\.//;
         $remoteName =~ s/\.url$//; # Extract the cruft
 
+        $url =~ s,^kde:,git://anongit.kde.org/,;
+        #info "\tgit_get_best_remote_names($repoUrl) - $remoteName = $url";
+
         # Skip other remotes
         next if $url ne $repoUrl;
 
@@ -2106,6 +2109,7 @@ sub git_get_best_remote_names
         next if $remoteName !~ /^[\w-]*$/;
 
         # A winner is this one.
+        #info "\tWinner: $remoteName";
         push @results, $remoteName;
     }
 
