@@ -2024,6 +2024,16 @@ sub git_clone_module
     my $result = log_command($module, 'git-clone', ['git', 'clone', @args]);
     if ($result == 0) {
         set_persistent_option($module, 'git-cloned-repository', $git_repo);
+
+        my $branch = get_git_branch($module);
+
+        # Switch immediately to user-requested branch now.
+        if ($branch ne 'master') {
+            info "\tSwitching to branch g[$branch]";
+            p_chdir($srcdir);
+            $result = log_command($module, 'git-checkout',
+                ['git', 'checkout', '-b', "origin-$branch", "origin/$branch"]);
+        }
     }
 
     return ($result == 0);
