@@ -867,93 +867,6 @@ my @screen_log;
 }
 # }}}
 
-# package RecursiveFH {{{
-{
-    package RecursiveFH;
-
-    # Alias the global make_exception into this package.
-    *make_exception = *main::make_exception;
-
-    sub new
-    {
-        my ($class) = @_;
-        my $data = {
-            'filehandles' => [],    # Stack of filehandles to read
-            'current'     => undef, # Current filehandle to read
-        };
-
-        return bless $data, $class;
-    }
-
-    sub addFilehandle
-    {
-        my ($self, $fh) = @_;
-        push @{$self->{filehandles}}, $fh;
-        $self->{current} = $fh;
-    }
-
-    # Reads the next line of input and returns it.
-    # If a line of the form "include foo" is read, this function automatically
-    # opens the given file and starts reading from it instead. The original
-    # file is not read again until the entire included file has been read. This
-    # works recursively as necessary.
-    #
-    # No further modification is performed to returned lines.
-    #
-    # undef is returned on end-of-file (but only of the initial filehandle, not
-    # included files from there)
-    sub readLine
-    {
-        my $self = shift;
-        my $fh = $self->{current};
-
-        # Sanity check since different methods might try to read same file reader
-        return undef unless defined $fh;
-
-        my $line = readline($fh);
-
-        if (not defined $line) {
-            my $oldFh = pop @{$self->{filehandles}};
-            close $oldFh;
-
-            # If last file, return undef
-            $self->{current} = undef;
-            return undef if scalar @{$self->{filehandles}} == 0;
-
-            # Else, use last filehandle (top of the stack)
-            $self->{current} = ${$self->{filehandles}}[-1];
-            return $self->readLine();
-        }
-        elsif ($line =~ /^\s*include\s+\S/) {
-            # Include found, extract file name and open file.
-            chomp $line;
-            my ($filename) = ($line =~ /^\s*include\s+(.+)$/);
-
-            if (not defined $filename || !$filename) {
-                die make_exception('Config',
-                    "Unable to handle file include on line $., '$line'");
-            }
-
-            my $newFh;
-            $filename =~ s/^~\//$ENV{HOME}\//; # Tilde-expand
-
-            open ($newFh, '<', $filename) or
-                die make_exception('Config',
-                    "Unable to open file $filename which was included from line $.");
-
-            push @{$self->{filehandles}}, $newFh;
-            $self->{current} = $newFh;
-            return $self->readLine();
-        }
-        else {
-            return $line;
-        }
-    }
-
-    1;
-}
-# }}}
-
 # Debugging routines {{{
 # Colors
 my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
@@ -3440,7 +3353,7 @@ sub split_option_value
 # 'module' if we should expect an end module statement.
 sub parse_module
 {
-    my ($fileReader, $module) = @_;
+    my ($fh, $module) = @_;
     $module = 'global' unless $module;
 
     # Setup default options in case user specifies only module name to get it
@@ -3451,7 +3364,7 @@ sub parse_module
     }
 
     # Read in each option
-    while (read_line($fileReader->readLine()))
+    while (read_line($fh))
     {
         if($module eq 'global')
         {
@@ -3564,14 +3477,14 @@ sub ensure_projects_xml_present
 sub parse_moduleset
 {
     my $ctx = shift;
-    my $fileReader = shift;
+    my $fh = shift;
     my $moduleSetName = shift || '';
     my $repoSet = get_option('global', 'git-repository-base');
     my @modules;
     my %optionSet; # We read all options, and apply them to all modules
     my $startLine = $.; # For later error messages
 
-    while(read_line($fileReader->readLine())) {
+    while(read_line($fh)) {
         last if /^end\s+module(-?set)?$/;
 
         my ($option, $value) = split_option_value($_);
@@ -3828,11 +3741,8 @@ sub read_options
     my @module_list;
     my ($option, $modulename, %readModules);
 
-    my $fileReader = RecursiveFH->new();
-    $fileReader->addFilehandle($fh);
-
     # Read in global settings
-    while ($fileReader->readLine())
+    while (<$fh>)
     {
         s/#.*$//;       # Remove comments
         s/^\s*//;       # Remove leading whitespace
@@ -3848,7 +3758,7 @@ sub read_options
         }
 
         # Now read in each global option
-        parse_module($fileReader, 'global');
+        parse_module($fh, 'global');
         last;
     }
 
@@ -3865,7 +3775,7 @@ sub read_options
     }
 
     # Now read in module settings
-    while ($fileReader->readLine())
+    while (<$fh>)
     {
         s/#.*$//;          # Remove comments
         s/^\s*//;          # Remove leading whitespace
@@ -3887,16 +3797,18 @@ sub read_options
             }
 
             # A moduleset can give us more than one module to add.
-            push @module_list, parse_moduleset($ctx, $fileReader, $modulename);
+            push @module_list, parse_moduleset($ctx, $fh, $modulename);
         }
         else {
-            parse_module($fileReader, $modulename);
+            parse_module($fh, $modulename);
             push @module_list, Module->new($ctx, $modulename);
         }
 
         # Don't build default modules if user has their own wishes.
         $using_default = 0;
     }
+
+    close $fh;
 
     # All modules and their options have been read, filter out modules not
     # to update or build, based on the --ignore-modules option already present
