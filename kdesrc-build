@@ -867,6 +867,116 @@ my @screen_log;
 }
 # }}}
 
+# package RecursiveFH {{{
+{
+    package RecursiveFH;
+
+    # Alias the global make_exception into this package.
+    *make_exception = *main::make_exception;
+
+    sub new
+    {
+        my ($class) = @_;
+        my $data = {
+            'filehandles' => [],    # Stack of filehandles to read
+            'current'     => undef, # Current filehandle to read
+        };
+
+        return bless($data, $class);
+    }
+
+    sub addFilehandle
+    {
+        my ($self, $fh) = @_;
+        push @{$self->{filehandles}}, $fh;
+        $self->setCurrentFilehandle($fh);
+    }
+
+    sub popFilehandle
+    {
+        my $self = shift;
+        my $result = pop @{$self->{filehandles}};
+        my $newFh = scalar @{$self->{filehandles}} ? ${$self->{filehandles}}[-1]
+                                                   : undef;
+        $self->setCurrentFilehandle($newFh);
+        return $result;
+    }
+
+    sub currentFilehandle
+    {
+        my $self = shift;
+        return $self->{current};
+    }
+
+    sub setCurrentFilehandle
+    {
+        my $self = shift;
+        $self->{current} = shift;
+    }
+
+    # Reads the next line of input and returns it.
+    # If a line of the form "include foo" is read, this function automatically
+    # opens the given file and starts reading from it instead. The original
+    # file is not read again until the entire included file has been read. This
+    # works recursively as necessary.
+    #
+    # No further modification is performed to returned lines.
+    #
+    # undef is returned on end-of-file (but only of the initial filehandle, not
+    # included files from there)
+    sub readLine
+    {
+        my $self = shift;
+
+        # Starts a loop so we can use evil things like "redo"
+        READLINE: {
+            my $line;
+            my $fh = $self->currentFilehandle();
+
+            # Sanity check since different methods might try to read same file reader
+            return undef unless defined $fh;
+
+            if (eof($fh) || !defined($line = <$fh>)) {
+                my $oldFh = $self->popFilehandle();
+                close $oldFh;
+
+                my $fh = $self->currentFilehandle();
+
+                return undef if !defined($fh);
+
+                redo READLINE;
+            }
+            elsif ($line =~ /^\s*include\s+\S/) {
+                # Include found, extract file name and open file.
+                chomp $line;
+                my ($filename) = ($line =~ /^\s*include\s+(.+)$/);
+
+                if (not defined $filename || !$filename) {
+                    die make_exception('Config',
+                        "Unable to handle file include on line $., '$line'");
+                }
+
+                my $newFh;
+                $filename =~ s/^~\//$ENV{HOME}\//; # Tilde-expand
+
+                open ($newFh, '<', $filename) or
+                    die make_exception('Config',
+                        "Unable to open file $filename which was included from line $.");
+
+                $self->addFilehandle($newFh);
+
+                redo READLINE;
+            }
+            else {
+                return $line;
+            }
+        }
+    }
+
+    1;
+}
+# }}}
+
 # Debugging routines {{{
 # Colors
 my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
@@ -3262,19 +3372,19 @@ HOME
 #
 # First parameter is the reference to the filehandle to read from.
 # Returns the text of the line.
-sub read_line
+sub readNextLogicalLine
 {
-    my $fh = shift;
+    my $fileReader = shift;
 
-    while(<$fh>) {
+    while($_ = $fileReader->readLine()) {
         # Remove trailing newline
         chomp;
 
         # Replace \ followed by optional space at EOL and try again.
         if(s/\\\s*$//)
         {
-            $_ .= <$fh>;
-            redo unless eof($fh);
+            $_ .= $fileReader->readLine();
+            redo;
         }
 
         s/#.*$//;        # Remove comments
@@ -3353,7 +3463,7 @@ sub split_option_value
 # 'module' if we should expect an end module statement.
 sub parse_module
 {
-    my ($fh, $module) = @_;
+    my ($fileReader, $module) = @_;
     $module = 'global' unless $module;
 
     # Setup default options in case user specifies only module name to get it
@@ -3364,7 +3474,7 @@ sub parse_module
     }
 
     # Read in each option
-    while (read_line($fh))
+    while ($_ = readNextLogicalLine($fileReader))
     {
         if($module eq 'global')
         {
@@ -3477,14 +3587,14 @@ sub ensure_projects_xml_present
 sub parse_moduleset
 {
     my $ctx = shift;
-    my $fh = shift;
+    my $fileReader = shift;
     my $moduleSetName = shift || '';
     my $repoSet = get_option('global', 'git-repository-base');
     my @modules;
     my %optionSet; # We read all options, and apply them to all modules
     my $startLine = $.; # For later error messages
 
-    while(read_line($fh)) {
+    while($_ = readNextLogicalLine($fileReader)) {
         last if /^end\s+module(-?set)?$/;
 
         my ($option, $value) = split_option_value($_);
@@ -3741,8 +3851,11 @@ sub read_options
     my @module_list;
     my ($option, $modulename, %readModules);
 
+    my $fileReader = RecursiveFH->new();
+    $fileReader->addFilehandle($fh);
+
     # Read in global settings
-    while (<$fh>)
+    while ($_ = $fileReader->readLine())
     {
         s/#.*$//;       # Remove comments
         s/^\s*//;       # Remove leading whitespace
@@ -3758,7 +3871,7 @@ sub read_options
         }
 
         # Now read in each global option
-        parse_module($fh, 'global');
+        parse_module($fileReader, 'global');
         last;
     }
 
@@ -3775,7 +3888,7 @@ sub read_options
     }
 
     # Now read in module settings
-    while (<$fh>)
+    while ($_ = $fileReader->readLine())
     {
         s/#.*$//;          # Remove comments
         s/^\s*//;          # Remove leading whitespace
@@ -3797,18 +3910,16 @@ sub read_options
             }
 
             # A moduleset can give us more than one module to add.
-            push @module_list, parse_moduleset($ctx, $fh, $modulename);
+            push @module_list, parse_moduleset($ctx, $fileReader, $modulename);
         }
         else {
-            parse_module($fh, $modulename);
+            parse_module($fileReader, $modulename);
             push @module_list, Module->new($ctx, $modulename);
         }
 
         # Don't build default modules if user has their own wishes.
         $using_default = 0;
     }
-
-    close $fh;
 
     # All modules and their options have been read, filter out modules not
     # to update or build, based on the --ignore-modules option already present
