@@ -39,15 +39,6 @@ use Data::Dumper;
 use 5.008_000; # Require Perl 5.8.0
 
 # global variables {{{1
-# Debugging level constants.
-use constant {
-    DEBUG   => 0,
-    WHISPER => 1,
-    INFO    => 2,
-    NOTE    => 3,
-    WARNING => 4,
-    ERROR   => 5,
-};
 
 use constant {
     # We use a named remote to make some git commands work that don't accept the
@@ -99,7 +90,7 @@ our %package_opts = (
     "colorful-output"     => 1, # Use color by default.
     "cxxflags"            => "-pipe",
     "debug"               => "",
-    "debug-level"         => INFO,
+    "debug-level"         => 2,  # Really ksb::Debug::INFO
     "dest-dir"            => '${MODULE}', # single quotes used on purpose!
     "disable-agent-check" => 0,   # If true we don't check on ssh-agent
     "disable-snapshot"    => 0,   # If true, don't check for module snapshots.
@@ -199,7 +190,186 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc",
                "./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
 my $rcfile; # the file that was used; set by read_options
-my @screen_log;
+
+# }}}
+
+# package ksb::Debug {{{
+{
+    package ksb::Debug;
+
+    # Debugging level constants.
+    use constant {
+        DEBUG   => 0,
+        WHISPER => 1,
+        INFO    => 2,
+        NOTE    => 3,
+        WARNING => 4,
+        ERROR   => 5,
+    };
+
+    my $screenLog;   # Filehandle pointing to the "build log".
+    my $isPretending = 0;
+    my $debugLevel = INFO;
+
+    # Colors
+    my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
+
+    # Subroutine definitions
+
+    sub import
+    {
+        my $pkg = shift;
+        my $caller = caller;
+        my @exports = qw(debug pretending debugging whisper
+                         note info warning error pretend clr);
+
+        # This loop is only slightly "magical". Basically to import functions
+        # into a different package in Perl, we can use something like:
+        # *PACKAGE::FUNCTION = \&SOURCE_PACKAGE::FUNCTION;
+        # where the *PACKAGE modifies the symbol table for that package.
+        #
+        # The extra part, which requires using eval, is to predeclare the
+        # subroutine with a prototype first.
+        # "sub foo($old_prototype);"
+
+        for my $fn (@exports) {
+            my $prototype = prototype($fn);
+            eval "sub ${caller}::${fn}(${prototype});\n" .
+                 "*${caller}::${fn} = \\&${pkg}::${fn};";
+        }
+    }
+
+    # I'm lazy and would rather write in shorthand for the colors.  This sub
+    # allows me to do so.
+    sub clr($)
+    {
+        my $str = shift;
+
+        $str =~ s/g\[/$GREEN/g;
+        $str =~ s/]/$NORMAL/g;
+        $str =~ s/y\[/$YELLOW/g;
+        $str =~ s/r\[/$RED/g;
+        $str =~ s/b\[/$BOLD/g;
+
+        return $str;
+    }
+
+    # Subroutine which returns true if pretend mode is on.  Uses the prototype
+    # feature so you don't need the parentheses to use it.
+    sub pretending()
+    {
+        return $isPretending;
+    }
+
+    sub setPretending
+    {
+        $isPretending = shift;
+    }
+
+    sub setColorfulOutput
+    {
+        my $useColor = shift;
+
+        if ($useColor) {
+            $RED = "\e[31m";
+            $GREEN = "\e[32m";
+            $YELLOW = "\e[33m";
+            $NORMAL = "\e[0m";
+            $BOLD = "\e[1m";
+        }
+        else {
+            ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
+        }
+    }
+
+    # Subroutine which returns true if debug mode is on.  Uses the prototype
+    # feature so you don't need the parentheses to use it.
+    sub debugging()
+    {
+        return $debugLevel <= DEBUG;
+    }
+
+    sub setDebugLevel
+    {
+        $debugLevel = shift;
+    }
+
+    sub setLogFile
+    {
+        my $fileName = shift;
+
+        return if pretending();
+        open ($screenLog, '>', $fileName) or error ("Unable to open log file $fileName!");
+    }
+
+    # The next few subroutines are used to print output at different importance
+    # levels to allow for e.g. quiet switches, or verbose switches.  The levels are,
+    # from least to most important:
+    # debug, whisper, info (default), note (quiet), warning (very-quiet), and error.
+    #
+    # You can also use the pretend output subroutine, which is emitted if, and only
+    # if pretend mode is enabled.
+    #
+    # clr is automatically run on the input for all of those functions.
+    # Also, the terminal color is automatically reset to normal as well so you don't
+    # need to manually add the ] to reset.
+
+    # Subroutine used to actually display the data, calls clr on each entry first.
+    sub print_clr(@)
+    {
+        print clr($_) foreach (@_);
+        print clr("]\n");
+
+        if (defined $screenLog) {
+            my @savedColors = ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD);
+            # Remove color but still extract codes
+            ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
+
+            print ($screenLog clr($_)) foreach (@_);
+            print ($screenLog "\n");
+
+            ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = @savedColors;
+        }
+    }
+
+    sub debug(@)
+    {
+        print_clr(@_) if debugging;
+    }
+
+    sub whisper(@)
+    {
+        print_clr(@_) if $debugLevel <= WHISPER;
+    }
+
+    sub info(@)
+    {
+        print_clr(@_) if $debugLevel <= INFO;
+    }
+
+    sub note(@)
+    {
+        print_clr(@_) if $debugLevel <= NOTE;
+    }
+
+    sub warning(@)
+    {
+        print_clr(@_) if $debugLevel <= WARNING;
+    }
+
+    sub error(@)
+    {
+        print STDERR (clr $_) foreach (@_);
+        print STDERR (clr "]\n");
+    }
+
+    sub pretend(@)
+    {
+        print_clr(@_) if pretending;
+    }
+
+    1;
+}
 
 # }}}
 
@@ -704,8 +874,9 @@ my @screen_log;
 
     use Carp 'confess';
 
-    # Alias the main package's debug to our package.
-    *debug = \&main::debug;
+    # This is the second-half of "use Foo". The first-half is "require Foo" but
+    # we already have ksb::Debug loaded above.
+    ksb::Debug->import();
 
     my @DefaultPhases = qw/update build install/;
 
@@ -742,7 +913,7 @@ my @screen_log;
         Carp::confess("No module to push") unless $module;
 
         if (::list_has($self->{modules}, $module)) {
-            debug( "Skipping duplicate module $module->{name}");
+            debug("Skipping duplicate module $module->{name}");
         }
         else {
             debug("Adding $module->{name} to module list");
@@ -778,8 +949,7 @@ my @screen_log;
             kdetoys kdeedu kdenetwork
         );
 
-        # TODO: Import this from a Debug class
-        main::whisper("Setting up to build ", join(', ', @defaultModuleList), " by default.");
+        whisper("Setting up to build ", join(', ', @defaultModuleList), " by default.");
 
         my $allOptsRef = $self->{options};
         for my $i (@defaultModuleList) {
@@ -977,99 +1147,14 @@ my @screen_log;
 }
 # }}}
 
-# Debugging routines {{{
-# Colors
-my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
-
-# Subroutine definitions
-
-# I'm lazy and would rather write in shorthand for the colors.  This sub
-# allows me to do so. Put it right up top to stifle Perl warnings.
-sub clr($)
-{
-    my $str = shift;
-
-    $str =~ s/g\[/$GREEN/g;
-    $str =~ s/]/$NORMAL/g;
-    $str =~ s/y\[/$YELLOW/g;
-    $str =~ s/r\[/$RED/g;
-    $str =~ s/b\[/$BOLD/g;
-
-    return $str;
+# Global import for debugging routines. This must be a BEGIN block only because
+# for a long time I abused the Perl subroutine prototype feature to allow not
+# putting parentheses around subs like pretending or info, which would not even
+# parse correctly if the customized import routine were not allowed to run
+# first and insert prototypes in addition to the method names.
+BEGIN {
+    ksb::Debug->import();
 }
-
-# Subroutine which returns true if pretend mode is on.  Uses the prototype
-# feature so you don't need the parentheses to use it.
-sub pretending()
-{
-    return get_option('global', 'pretend');
-}
-
-# Subroutine which returns true if debug mode is on.  Uses the prototype
-# feature so you don't need the parentheses to use it.
-sub debugging()
-{
-    return get_option('global', 'debug-level') <= DEBUG;
-}
-
-# The next few subroutines are used to print output at different importance
-# levels to allow for e.g. quiet switches, or verbose switches.  The levels are,
-# from least to most important:
-# debug, whisper, info (default), note (quiet), warning (very-quiet), and error.
-#
-# You can also use the pretend output subroutine, which is emitted if, and only
-# if pretend mode is enabled.
-#
-# clr is automatically run on the input for all of those functions.
-# Also, the terminal color is automatically reset to normal as well so you don't
-# need to manually add the ] to reset.
-
-# Subroutine used to actually display the data, calls clr on each entry first.
-sub print_clr(@)
-{
-    print clr $_ foreach (@_);
-    print clr "]\n";
-
-    push(@screen_log, join("\n", @_));
-}
-
-sub debug(@)
-{
-    print_clr @_ if debugging;
-}
-
-sub whisper(@)
-{
-    print_clr @_ if get_option('global', 'debug-level') <= WHISPER;
-}
-
-sub info(@)
-{
-    print_clr @_ if get_option('global', 'debug-level') <= INFO;
-}
-
-sub note(@)
-{
-    print_clr @_ if get_option('global', 'debug-level') <= NOTE;
-}
-
-sub warning(@)
-{
-    print_clr @_ if get_option('global', 'debug-level') <= WARNING;
-}
-
-sub error(@)
-{
-    print STDERR (clr $_) foreach (@_);
-    print STDERR (clr "]\n");
-}
-
-sub pretend(@)
-{
-    print_clr @_ if pretending;
-}
-
-# }}}
 
 # Subroutine to handle removing the lock file upon receiving a signal
 sub quit_handler
@@ -1451,6 +1536,9 @@ sub setup_logging_subsystem
 
     $LOG_DATE = $date;
     $BUILD_ID = $min_build_id;
+
+    my $buildLog = get_log_dir('global') . '/build-log';
+    ksb::Debug::setLogFile($buildLog);
 }
 
 # Convienience subroutine to return the log directory for a module.
@@ -2855,7 +2943,7 @@ sub log_command
         if($command[0] eq 'kdesrc-build')
         {
             # No colors!
-            ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
+            ksb::Debug::setColorfulOutput(0);
             debug "Calling $command[1]";
 
             my $cmd = $command[1];
@@ -3976,18 +4064,7 @@ sub setup_module_environment
 # no return value.
 sub set_debug_colors
 {
-    if(-t STDOUT and get_option('global', 'colorful-output'))
-    {
-        $RED = "\e[31m";
-        $GREEN = "\e[32m";
-        $YELLOW = "\e[33m";
-        $NORMAL = "\e[0m";
-        $BOLD = "\e[1m";
-    }
-    else
-    {
-        ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
-    }
+    ksb::Debug::setColorfulOutput(-t STDOUT && get_option('global', 'colorful-output'));
 }
 
 sub setup_operating_environment
@@ -4167,6 +4244,14 @@ sub set_option
     if ($option eq 'colorful-output')
     {
         set_debug_colors(); # Update ASAP
+    }
+    elsif ($option =~ /^#?debug-level$/)
+    {
+        ksb::Debug::setDebugLevel($value);
+    }
+    elsif ($option =~ /^#?pretend$/)
+    {
+        ksb::Debug::setPretending($value);
     }
 }
 
@@ -4601,22 +4686,22 @@ DONE
             };
 
             /^(-v)|(--verbose)$/ && do {
-                set_option('global', '#debug-level', WHISPER);
+                set_option('global', '#debug-level', ksb::Debug::WHISPER);
                 last SWITCH;
             };
 
             /^(-q)|(--quiet)$/ && do {
-                set_option('global', '#debug-level', NOTE);
+                set_option('global', '#debug-level', ksb::Debug::NOTE);
                 last SWITCH;
             };
 
             /^--really-quiet$/ && do {
-                set_option('global', '#debug-level', WARNING);
+                set_option('global', '#debug-level', ksb::Debug::WARNING);
                 last SWITCH;
             };
 
             /^--debug$/ && do {
-                set_option('global', '#debug-level', DEBUG);
+                set_option('global', '#debug-level', ksb::Debug::DEBUG);
                 debug "Commandline was: ", join(', ', @savedOptions);
                 last SWITCH;
             };
@@ -5270,7 +5355,7 @@ sub handle_updates
     # different mode.
     if ($ipc->supportsConcurrency() and not get_option('global', '#debug-level'))
     {
-        set_option('global', '#debug-level', WARNING);
+        set_option('global', '#debug-level', ksb::Debug::WARNING);
     }
 
     note "<<<  Updating Source Directories  >>>";
@@ -6824,11 +6909,6 @@ sub finish
     exit $exitcode if pretending; # Abort early when pretending.
 
     close_lock();
-
-    open(LOG, ">>$logdir/build-log");
-    local $, = "\n"; # Change item separator to newline for output.
-    print LOG @screen_log;
-    close(LOG);
 
     eval { plugin_finish($logdir); };
 
