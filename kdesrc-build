@@ -373,6 +373,46 @@ my $rcfile; # the file that was used; set by read_options
 
 # }}}
 
+# package ksb::Util {{{
+{
+    package ksb::Util;
+
+    sub import
+    {
+        my $pkg = shift;
+        my $caller = caller;
+        my @exports = qw(list_has);
+
+        # This loop is only slightly "magical". Basically to import functions
+        # into a different package in Perl, we can use something like:
+        # *PACKAGE::FUNCTION = \&SOURCE_PACKAGE::FUNCTION;
+        # where the *PACKAGE modifies the symbol table for that package.
+        #
+        # The extra part, which requires using eval, is to predeclare the
+        # subroutine with a prototype first.
+        # "sub foo($old_prototype);"
+
+        for my $fn (@exports) {
+            my $prototype = prototype($fn);
+            eval "sub ${caller}::${fn}(${prototype});\n" .
+                 "*${caller}::${fn} = \\&${pkg}::${fn};";
+        }
+    }
+
+    # Function to work around a Perl language limitation.
+    # First parameter is the list to search.
+    # Second parameter is the value to search for.
+    # Returns true if the value is in the list
+    sub list_has(\@$)
+    {
+        my ($list_ref, $value) = @_;
+        return scalar grep ($_ eq $value, @{$list_ref});
+    }
+
+    1;
+}
+# }}}
+
 # package BaseIPC {{{
 # Base class for IPC interaction. Should have most of the functionality, with
 # the actual bits of reading and writing left to subclasses.
@@ -826,6 +866,8 @@ my $rcfile; # the file that was used; set by read_options
     # and methods to add, clear, or filter out phases.
     package ksb::Phases;
 
+    ksb::Util->import();
+
     # Constructor. Passed in values are the initial phases in this set.
     sub new
     {
@@ -844,7 +886,7 @@ my $rcfile; # the file that was used; set by read_options
     sub addPhase
     {
         my ($self, $phase) = @_;
-        push @{$self}, $phase unless main::list_has($self, $phase);
+        push @{$self}, $phase unless list_has($self, $phase);
     }
 
     # Get/sets number of phases depending on whether any are passed in.
@@ -877,6 +919,8 @@ my $rcfile; # the file that was used; set by read_options
     # This is the second-half of "use Foo". The first-half is "require Foo" but
     # we already have ksb::Debug loaded above.
     ksb::Debug->import();
+
+    ksb::Util->import();
 
     my @DefaultPhases = qw/update build install/;
 
@@ -912,7 +956,7 @@ my $rcfile; # the file that was used; set by read_options
         my ($self, $module) = @_;
         Carp::confess("No module to push") unless $module;
 
-        if (::list_has($self->{modules}, $module)) {
+        if (list_has($self->{modules}, $module)) {
             debug("Skipping duplicate module $module->{name}");
         }
         else {
@@ -1154,6 +1198,7 @@ my $rcfile; # the file that was used; set by read_options
 # first and insert prototypes in addition to the method names.
 BEGIN {
     ksb::Debug->import();
+    ksb::Util->import();
 }
 
 # Subroutine to handle removing the lock file upon receiving a signal
@@ -1317,16 +1362,6 @@ sub get_source_dir
     $module = 'global' unless defined $module;
 
     return get_subdir_path ($module, 'source-dir');
-}
-
-# Function to work around a Perl language limitation.
-# First parameter is the list to search.
-# Second parameter is the value to search for.
-# Returns true if the value is in the list
-sub list_has(\@$)
-{
-    my ($list_ref, $value) = @_;
-    return scalar grep ($_ eq $value, @{$list_ref});
 }
 
 # Subroutine to return the branch prefix. i.e. the part before the branch name
