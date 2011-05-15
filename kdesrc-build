@@ -377,6 +377,8 @@ my $rcfile; # the file that was used; set by read_options
 {
     package ksb::Util;
 
+    use Carp;
+
     sub import
     {
         my $pkg = shift;
@@ -405,6 +407,7 @@ my $rcfile; # the file that was used; set by read_options
     # Returns true if the value is in the list
     sub list_has(\@$)
     {
+        confess "Invalid first param to list_has" unless ref $_[0] eq ref [];
         my ($list_ref, $value) = @_;
         return scalar grep ($_ eq $value, @{$list_ref});
     }
