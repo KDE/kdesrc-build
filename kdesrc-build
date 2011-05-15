@@ -974,6 +974,13 @@ my $rcfile; # the file that was used; set by read_options
         return $self->{modules};
     }
 
+    sub modulesInPhase
+    {
+        my ($self, $phase) = @_;
+        my @list = grep { list_has([$_->phases()->phases()], $phase) } (@{$self->moduleList()});
+        return @list;
+    }
+
     # This subroutine assigns the appropriate options to %package_opts and the
     # update and build lists to build a default set of modules.
     #
@@ -7993,9 +8000,9 @@ eval
     $@ = ''; # Clear errors that result when not using Coverity plugin.
 
     my @moduleList = @{$ctx->moduleList()};
-    @update_list = grep { list_has (@{$_->{phases}}, 'update') } (@moduleList);
+    @update_list = $ctx->modulesInPhase('update');
     @update_list = map { $_->{name} } (@update_list);
-    @build_list = grep { list_has (@{$_->{phases}}, 'build') } (@moduleList);
+    @build_list = $ctx->modulesInPhase('build');
     @build_list = map { $_->{name} } (@build_list);
 
     debug "Update list is ", join (', ', @update_list);
