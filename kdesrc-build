@@ -8079,17 +8079,17 @@ eval
     # }}}
 };
 
-if ($@)
+if (my $err = $@)
 {
     # We encountered an error.
-    if ($@->isa('BuildException')) {
-        print "\tCaught exception: ", $@->{'message'}, "\n";
+    if ($err->isa('BuildException')) {
+        print "\tCaught exception: ", $err->{'message'}, "\n";
         print "\n\tAborting.\n";
     }
     else {
         print "Encountered an error in the execution of the script.\n";
-        print "The error reported was $@\n";
         print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
+        print "The error reported was $err\n";
     }
 
     $result = 99;
