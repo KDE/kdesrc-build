@@ -960,10 +960,10 @@ my $rcfile; # the file that was used; set by read_options
         Carp::confess("No module to push") unless $module;
 
         if (list_has($self->{modules}, $module)) {
-            debug("Skipping duplicate module $module->{name}");
+            debug("Skipping duplicate module ", $module->name());
         }
         else {
-            debug("Adding $module->{name} to module list");
+            debug("Adding ", $module->name(), " to module list");
             push @{$self->{modules}}, $module;
         }
     }
@@ -1085,6 +1085,12 @@ my $rcfile; # the file that was used; set by read_options
         my $class = shift;
         # Should be 'config' or 'cmdline';
         return $ModuleSource;
+    }
+
+    sub name
+    {
+        my $self = shift;
+        return $self->{name};
     }
 
     1;
@@ -3840,18 +3846,18 @@ sub expandXMLModules
 {
     my @modules = @_;
 
-    debug "Expanding XML modules in " . join(', ', map { $_->{name} } @modules);
+    debug "Expanding XML modules in " . join(', ', map { $_->name() } @modules);
 
     # Using a sub allows me to use the 'return' keyword.
     my $filter = sub {
-        debug "$_->{name} is not XML-based" unless $_->{type} eq 'proj';
+        debug $_->name(), " is not XML-based" unless $_->{type} eq 'proj';
 
         return $_ if $_->{'type'} ne 'proj';
 
         ensure_projects_xml_present() or
             die "kde-projects repository information could not be downloaded: $!.";
 
-        my $name = $_->{'name'};
+        my $name = $_->name();
         my $ctx = $_->{'context'};
 
         my @xmlResults = grep {
@@ -3860,7 +3866,7 @@ sub expandXMLModules
 
         # Setup module options
         foreach my $xml (@xmlResults) {
-            debug "Module $name from module-set has XML module $xml->{name}";
+            debug "Module $name from module-set has XML module $xml->name()";
             debug "\twith repository b[$xml->{repo}]";
             clone_options($name, $xml->{'name'});
             set_option($xml->{'name'}, 'repository', $xml->{'repo'});
@@ -3893,7 +3899,7 @@ sub expandModuleSets
     my ($buildModuleList, $knownModules) = @_;
 
     my $filter = sub {
-        my $setName = $_->{name};
+        my $setName = $_->name();
         return $_ if exists $package_opts{$setName};
         my @modulesInSet = grep { $_->moduleSet() eq $setName } (@$knownModules);
 
@@ -4051,7 +4057,7 @@ sub read_options
     # on the command line. manual-update and manual-build are also relevant,
     # but handled in updateModulePhases.
     @module_list = grep {
-        not exists $ignore_list{$_->{name}}
+        not exists $ignore_list{$_->name()}
     } (@module_list);
 
     # If the user doesn't ask to build any modules, build a default set.
@@ -5067,7 +5073,7 @@ sub updateModulePhases
 
     whisper "Filtering out module phases.";
     for my $module (@modules) {
-        my $name = $module->{name};
+        my $name = $module->name();
 
         if (get_option($name, 'manual-update') ||
             get_option($name, 'no-svn') || get_option($name, 'no-src'))
@@ -7846,7 +7852,7 @@ eval
     # them to be XML project modules.
     foreach (@modules) {
         if (substr($_->{name}, 0, 1) eq '+') {
-            debug "Forcing $_->{name} to be an XML module";
+            debug "Forcing ", $_->name(), " to be an XML module";
             $_->{type} = 'proj';
             substr($_->{name}, 0, 1) = ''; # Remove first char
         }
@@ -7890,7 +7896,7 @@ eval
         # Copy Module objects from the ones created by read_options
         # since their module-type will actually be set.
         foreach my $module (@modules) {
-            my ($optionModule) = grep {$_->{name} eq $module->{name}} @optionModules;
+            my ($optionModule) = grep {$_->name() eq $module->name()} @optionModules;
             $module = $optionModule if defined $optionModule;
         }
 
@@ -7987,9 +7993,9 @@ eval
 
     my @moduleList = @{$ctx->moduleList()};
     @update_list = $ctx->modulesInPhase('update');
-    @update_list = map { $_->{name} } (@update_list);
+    @update_list = map { $_->name() } (@update_list);
     @build_list = $ctx->modulesInPhase('build');
-    @build_list = map { $_->{name} } (@build_list);
+    @build_list = map { $_->name() } (@build_list);
 
     debug "Update list is ", join (', ', @update_list);
     debug "Build list is ", join (', ', @build_list);
@@ -8034,7 +8040,7 @@ eval
         my @installList = $ctx->modulesInPhase('install');
 
         # Compat hack
-        @installList = map { $_->{name} } @installList;
+        @installList = map { $_->name() } @installList;
 
         $result = handle_install (@installList);
     }
@@ -8043,7 +8049,7 @@ eval
         my @uninstallList = $ctx->modulesInPhase('uninstall');
 
         # More compat hacks.
-        @uninstallList = map { $_->{name} } @uninstallList;
+        @uninstallList = map { $_->name() } @uninstallList;
 
         # Make handle_uninstall handle in right order (it reverses the order
         # so that the first module uninstalled is the last one installed).
