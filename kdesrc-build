@@ -8045,9 +8045,7 @@ eval
     elsif ($run_mode eq 'install')
     {
         # Installation mode
-        my @installList = grep {
-            list_has (@{$_->{phases}}, 'install')
-        } (@moduleList);
+        my @installList = $ctx->modulesInPhase('install');
 
         # Compat hack
         @installList = map { $_->{name} } @installList;
@@ -8056,11 +8054,7 @@ eval
     }
     elsif ($run_mode eq 'uninstall')
     {
-        # Use build list since that's likely what the user has recently built
-        # and installed.
-        my @uninstallList = grep {
-            list_has (@{$_->{phases}}, 'uninstall')
-        } (@moduleList);
+        my @uninstallList = $ctx->modulesInPhase('uninstall');
 
         # More compat hacks.
         @uninstallList = map { $_->{name} } @uninstallList;
