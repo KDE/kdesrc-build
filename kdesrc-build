@@ -1175,7 +1175,7 @@ my $rcfile; # the file that was used; set by read_options
                 chomp $line;
                 my ($filename) = ($line =~ /^\s*include\s+(.+)$/);
 
-                if (not defined $filename || !$filename) {
+                if (!$filename) {
                     die make_exception('Config',
                         "Unable to handle file include on line $., '$line'");
                 }
@@ -1740,9 +1740,7 @@ sub get_option
 
     # Everything else overrides the global, unless of course it's not set.
     # If we're reading for global options, we're pretty much done.
-    return $$ref{$option} if defined $$ref{$option};
-
-    return ${$globalOpts}{$option};
+    return $$ref{$option} // ${$globalOpts}{$option};
 }
 
 # Like get_option, but returns the requested option for a given module with no
@@ -2957,7 +2955,7 @@ sub log_command
         whisper "Environment altered for child";
         $ENV{$_} = $ENV_VARS{$_} foreach keys %ENV_VARS;
 
-        if (not defined $logdir or not -e $logdir)
+        if (not $logdir or not -e $logdir)
         {
             # Error creating directory for some reason.
             error "\tLogging to std out due to failure creating log dir.";
@@ -3601,10 +3599,7 @@ sub parse_module
 
     # Setup default options in case user specifies only module name to get it
     # to build.
-    if (not defined $package_opts{$module})
-    {
-        $package_opts{$module} = default_module_options($module);
-    }
+    $package_opts{$module} //= default_module_options($module);
 
     # Read in each option
     while ($_ = readNextLogicalLine($fileReader))
@@ -3817,10 +3812,7 @@ EOF
         $newModule->setModuleSet($moduleSetName);
         push @moduleList, $newModule;
 
-        if (not defined $package_opts{$moduleName})
-        {
-            $package_opts{$moduleName} = default_module_options($moduleName);
-        }
+        $package_opts{$moduleName} //= default_module_options($moduleName);
 
         # Dump all options into the existing option hash.
         @{$package_opts{$moduleName}}{keys %optionSet} = values %optionSet;
@@ -5517,7 +5509,7 @@ sub handle_updates
             my $message;
             if (not defined $count)
             {
-                $message = clr "b[y[Unknown changes]." if not defined $count;
+                $message = clr "b[y[Unknown changes].";
                 $ipc->notifyUpdateSuccess($module, $message);
             }
             elsif ($count)
@@ -6737,10 +6729,7 @@ EOF
         # If using IPC, read in the contents of the message buffer, and wait
         # for completion of the svn update if necessary.
 
-        if (not defined $svn_status{$module})
-        {
-            $svn_status{$module} = 0;
-        }
+        $svn_status{$module} //= 0; # Default svn status if not defined.
 
         while(list_has(@update_list, $module) and not $svn_status{$module})
         {
@@ -6748,7 +6737,7 @@ EOF
             info "\tWaiting for source code update.";
 
             my $ipcType = $ipc->receiveIPCMessage(\$buffer);
-            if (not defined $ipcType or not $ipcType)
+            if (!$ipcType)
             {
                 error " b[r[***] $module: IPC failure during source update: r[b[$!]";
                 return 1;
@@ -7387,10 +7376,7 @@ sub whats_the_module_error
     my $module = shift;
     my $file = get_option($module, '#error-log-file');
 
-    if (not defined $file or not $file)
-    {
-        return "No logfile for module $module.\n";
-    }
+    return "No logfile for module $module.\n" unless $file;
 
     open ERRORFILE, "<$file" or return "Can't open logfile $file.\n";
 
