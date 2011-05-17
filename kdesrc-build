@@ -1031,6 +1031,9 @@ my $rcfile; # the file that was used; set by read_options
 
     use Storable 'dclone';
     use Carp 'confess';
+    use overload
+        '""' => 'toString' # Add stringify operator.
+        ;
 
     my $ModuleSource = 'config';
 
@@ -1096,6 +1099,12 @@ my $rcfile; # the file that was used; set by read_options
     {
         my $self = shift;
         return $self->{type};
+    }
+
+    sub toString
+    {
+        my $self = shift;
+        return $self->name();
     }
 
     1;
