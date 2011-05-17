@@ -7858,16 +7858,16 @@ eval
 # }}}
 };
 
-if ($@)
+if (my $err = $@)
 {
-    if (ref $@ && $@->isa('BuildException')) {
-        print $@->{'exception_type'}, " error: ", $@->{'message'}, "\n";
+    if (ref $err && $err->isa('BuildException')) {
+        print $err->{'exception_type'}, " error: ", $err->{'message'}, "\n";
         print "\tCan't continue, so stopping now.\n";
     }
     else {
         # We encountered an error.
         print "Encountered an error in the execution of the script.\n";
-        print "The error reported was $@\n";
+        print "The error reported was $err\n";
         print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
     }
 
@@ -7974,7 +7974,7 @@ eval
 if (my $err = $@)
 {
     # We encountered an error.
-    if ($err->isa('BuildException')) {
+    if (ref $err && $err->isa('BuildException')) {
         print "\tCaught exception: ", $err->{'message'}, "\n";
         print "\n\tAborting.\n";
     }
