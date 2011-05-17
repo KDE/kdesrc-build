@@ -151,7 +151,6 @@ my %ignore_list;  # List of packages to refuse to include in the build list.
 # update and build are lists since they support an ordering, which can't be
 # guaranteed using a hash unless I want a custom sort function (which isn't
 # necessarily a horrible way to go, I just chose to do it this way.
-my @update_list;  # List of modules to update/checkout.
 my @build_list;   # List of modules to build.
 
 # Each module in the above list is of the form:
@@ -1091,6 +1090,12 @@ my $rcfile; # the file that was used; set by read_options
     {
         my $self = shift;
         return $self->{name};
+    }
+
+    sub type
+    {
+        my $self = shift;
+        return $self->{type};
     }
 
     1;
@@ -2765,8 +2770,6 @@ sub update_module_path
 
     p_chdir ($fullpath);
 
-    eval { plugin_update_module_path($module); };
-
     push @args, ('svn', 'up', '--non-interactive');
     push @args, '-N' if scalar @path;
 
@@ -4169,8 +4172,10 @@ sub output_failed_module_list($@)
 # This subroutine reads the fail_lists dictionary to automatically call
 # output_failed_module_list for all the module failures in one function
 # call.
-sub output_failed_module_lists()
+sub output_failed_module_lists
 {
+    my $ctx = shift;
+
     for my $type (@fail_display_order)
     {
         my @failures = @{$fail_lists{$type}};
@@ -4186,10 +4191,12 @@ sub output_failed_module_lists()
     };
 
     my @super_fail = grep { &{$persistent_opt}($_) }(keys %package_opts);
+    my @updatedModules = map { $_->name() } ($ctx->modulesInPhase('update'));
+    my @builtModules = map { $_->name() } ($ctx->modulesInPhase('build'));
 
     # Only show packages we're actually updating/building
     @super_fail = grep {
-        list_has(@update_list, $_) or list_has(@build_list, $_)
+        list_has(@updatedModules, $_) || list_has(@builtModules, $_)
     } (@super_fail);
 
     if (@super_fail)
@@ -5289,19 +5296,21 @@ sub split_url
 # be controlled with the disable-agent-check parameter.
 sub check_for_ssh_agent
 {
+    my $ctx = shift;
+
     # Don't bother with all this if the user isn't even using SSH.
     return 1 if pretending;
 
     my @svnServers = grep {
-        module_scm_type($_) eq 'svn';
-    } (@update_list);
+        $_->type() eq 'svn'
+    } ($ctx->modulesInPhase('update'));
 
     my @gitServers = grep {
-        module_scm_type($_) eq 'git';
-    } (@update_list);
+        $_->type() eq 'git'
+    } ($ctx->modulesInPhase('update'));
 
     my @sshServers = grep {
-        my ($proto, $host) = split_url(get_option($_, 'svn-server'));
+        my ($proto, $host) = split_url(get_option($_->name(), 'svn-server'));
 
         # Check if ssh is explicitly used in the proto, or if the host is the
         # developer main svn.
@@ -5310,7 +5319,7 @@ sub check_for_ssh_agent
 
     push @sshServers, grep {
         # Check for git+ssh:// or git@git.kde.org:/path/etc.
-        my $repo = get_option($_, 'repository');
+        my $repo = get_option($_->name(), 'repository');
         ($repo =~ /^git\+ssh:\/\//) || ($repo =~ /^[a-zA-Z0-9_.]+@.*:\//);
     } @gitServers;
 
@@ -5366,17 +5375,18 @@ EOF
 #
 # The $ipc variable contains an object that is responsible for communicating
 # the status of building the modules.  This function must account for every
-# module in @update_list to $ipc before returning.
+# module in $ctx's update phase to $ipc before returning.
 #
 # Returns 0 on success, non-zero on error.
 sub handle_updates
 {
-    my $ipc = shift;
+    my ($ipc, $ctx) = @_;
     my $kdesrc = get_source_dir();
     my $hadError = 0;
+    my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
 
     # No reason to print out the text if we're not doing anything.
-    if (scalar @update_list == 0)
+    if (!@update_list)
     {
         $ipc->sendIPCMessage(IPC::ALL_UPDATING, "update-list-empty");
         return 0;
@@ -5388,7 +5398,7 @@ sub handle_updates
         return 0;
     }
 
-    if (not check_for_ssh_agent())
+    if (not check_for_ssh_agent($ctx))
     {
         $ipc->sendIPCMessage(IPC::ALL_FAILURE, "ssh-failure");
         return 1;
@@ -6673,9 +6683,10 @@ sub filter_l10n_module_list
 # Returns 0 for success, non-zero for failure.
 sub handle_build
 {
+    my ($ipc, $ctx) = @_;
     my @build_done;
-    my $ipc = shift;
     my @modules = grep (!/^(KDE\/)?kde-common$/, @build_list);
+    my @update_list = grep { $_->name() } ($ctx->modulesInPhase('update'));
     my $result;
 
     # No reason to print building messages if we're not building.
@@ -6950,8 +6961,6 @@ sub finish
 
     close_lock();
 
-    eval { plugin_finish($logdir); };
-
     note "Your logs are saved in y[$logdir]";
     exit $exitcode;
 }
@@ -6998,19 +7007,6 @@ sub check_module_validity
 
     $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
     $module_actual_url   =~ s{/+$}{}; # Remove trailing slashes
-
-    eval { plugin_check_module_validity($module, $module_actual_url, $module_expected_url); };
-
-    if (exists $ENV{'COVERITY_RUN'} and $module_actual_url ne $module_expected_url)
-    {
-        warning "Something is wrong with your $module. Let's see if we can correct it. ";
-        warning "kdesrc-build expects:        y[$module_expected_url]";
-        warning "The module is actually from: y[$module_actual_url]";
-
-        system("svn status --no-ignore | grep '^[I?]' | cut -b8- | xargs rm -rf");
-        log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
-        return;
-    }
 
     if ($module_actual_url ne $module_expected_url)
     {
@@ -7229,81 +7225,6 @@ sub handle_uninstall
     }
 
     return $result;
-}
-# This subroutine goes and makes sure that any entries in the update and build
-# lists that have a directory separator are faked into using the checkout-only
-# feature.  This doesn't really work for install mode though.
-sub munge_lists
-{
-    debug "Munging update and build list";
-    my %module_cleared = ();
-
-    for my $list_ref ( ( \@update_list, \@build_list) ) {
-        my @temp;
-
-        while ($_ = shift @$list_ref) {
-            # Split at directory separators.
-            my ($modulename, @dirs) = split(/\//);
-
-            # Convert l10n alias to actual module.
-            if ($modulename eq 'l10n') {
-                $modulename = 'l10n-kde4';
-                $_ = $modulename;
-            }
-
-            # For these modules, the first part of the directory separator
-            # actually belongs with the module name.
-            if (has_base_module($modulename))
-            {
-                # extragear and playground both have support now for building
-                # the entire cluster of modules with one make command.
-                if (scalar @dirs == 0)
-                {
-                    whisper "Building all of g[$modulename]."
-                }
-
-                $modulename .= "/" . shift @dirs unless scalar @dirs == 0;
-            }
-
-            if (scalar @dirs > 0)
-            {
-                # Only build the specified subdirs
-                if (not exists $module_cleared{$modulename})
-                {
-                    debug "Clearing checkout-only option for $modulename.";
-
-                    $module_cleared{$modulename} = 1;
-                    set_option($modulename, 'checkout-only', '');
-                }
-
-                # The user has included a directory separator in the module name, so
-                # let's fake the svn partial checkout
-                $_ = $modulename;
-
-                my $checkout_str = join ("/", @dirs);
-
-                debug "Adding $checkout_str to checkout-only for $_";
-
-                if (get_option($_, 'checkout-only') !~ /$checkout_str/)
-                {
-                    $package_opts{$_}{'checkout-only'} .= " $checkout_str";
-                }
-                else
-                {
-                    debug "\tOption was already present.";
-                }
-            }
-            else
-            {
-                debug "Skipping $_ in munge process.";
-            }
-
-            # Don't add the modulename to the list twice.
-            push @temp, $_ if not list_has(@temp, $_);
-        }
-
-        @$list_ref = @temp;
-    }
 }
 
 # This subroutine is used in order to apply any module-specific filtering that
@@ -7713,13 +7634,13 @@ sub handle_async_build
     # hold status updates from the svn process so that the svn updates may
     # happen without waiting for us to be ready to read.
 
-    my $ipc = shift;
+    my ($ipc, $ctx) = @_;
 
     my $svnPid = fork;
     if ($svnPid == 0)
     { # child
         $ipc->setUpdater();
-        exit handle_updates ($ipc);
+        exit handle_updates ($ipc, $ctx);
     }
 
     # Parent
@@ -7732,7 +7653,7 @@ sub handle_async_build
 
     # Still the parent, let's do the build.
     $ipc->setBuilder();
-    my $result = handle_build ($ipc);
+    my $result = handle_build ($ipc, $ctx);
 
     # Exit code is in $?.
     waitpid ($svnPid, 0);
@@ -7972,30 +7893,8 @@ eval
     # successful svn update or build.
     read_persistent_options();
 
-    # Coverity doesn't respond to email as often as we'd like, but we can
-    # usually work around that here.
-    if (exists $ENV{'COVERITY_RUN'} )
-    {
-        info "Fixing the Build by downloading the Coverity Patch Script.";
-        if (-e "$0-coverity") {
-            open(C, "< $0-coverity") or die;
-        } else {
-            open(C, "-|", "svn", "cat",
-                "svn://anonsvn.kde.org/home/kde/trunk/KDE/kdesdk/scripts/kdesrc-build-coverity");
-        }
-        my @plugin = <C>;
-        close(C);
-        eval "@plugin" or die;
-    }
-
-    eval { plugin_setup_default_modules(\@update_list, \@build_list, \%package_opts); };
-    $@ = ''; # Clear errors that result when not using Coverity plugin.
-
-    my @moduleList = @{$ctx->moduleList()};
-    @update_list = $ctx->modulesInPhase('update');
-    @update_list = map { $_->name() } (@update_list);
-    @build_list = $ctx->modulesInPhase('build');
-    @build_list = map { $_->name() } (@build_list);
+    my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
+    @build_list = map { $_->name() } ($ctx->modulesInPhase('build'));
 
     debug "Update list is ", join (', ', @update_list);
     debug "Build list is ", join (', ', @build_list);
@@ -8004,7 +7903,7 @@ eval
     # the command-line option shortcut to where you can enter e.g.
     # kdelibs/khtml, and the script will only try to update that part of
     # the module.  This also updates for the l10n module (kde-languages option)
-    munge_lists();
+    # munge_lists(); # TODO: Unbreak my munge, say you'll work again.
 
     if ($run_mode eq 'build')
     {
@@ -8026,12 +7925,12 @@ eval
             $ipc = new NullIPC;
             whisper "Using no IPC mechanism\n";
 
-            $result = handle_updates ($ipc);
-            $result = handle_build ($ipc) || $result;
+            $result = handle_updates ($ipc, $ctx);
+            $result = handle_build ($ipc, $ctx) || $result;
         }
         else
         {
-            $result = handle_async_build ($ipc);
+            $result = handle_async_build ($ipc, $ctx);
         }
     }
     elsif ($run_mode eq 'install')
@@ -8061,7 +7960,7 @@ eval
     }
 
     cleanup_log_directory() if get_option('global', 'purge-old-logs');
-    output_failed_module_lists();
+    output_failed_module_lists($ctx);
     email_error_report();
 
     $time = localtime;
