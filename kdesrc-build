@@ -1017,7 +1017,7 @@ my $rcfile; # the file that was used; set by read_options
                 }
             }
 
-            $self->addModule(Module->new($self, $i, 'null'));
+            $self->addModule(Module->new($self, $i));
         }
     }
 
@@ -1098,6 +1098,10 @@ my $rcfile; # the file that was used; set by read_options
     sub type
     {
         my $self = shift;
+
+        # If not already set, guess based on options set.
+        $self->{type} //= main::module_scm_type($self->name());
+
         return $self->{type};
     }
 
