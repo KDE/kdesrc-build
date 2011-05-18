@@ -1107,6 +1107,15 @@ my $rcfile; # the file that was used; set by read_options
         return $self->name();
     }
 
+    sub getOption
+    {
+        my ($self, $key) = @_;
+
+        # For now this is just a wrapper against main::get_option, but will
+        # be expanded/refactored later to be a proper polymorphic getter.
+        return main::get_option($self->name(), $key);
+    }
+
     1;
 }
 # }}}
@@ -5395,7 +5404,7 @@ sub handle_updates
     my ($ipc, $ctx) = @_;
     my $kdesrc = get_source_dir();
     my $hadError = 0;
-    my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
+    my @update_list = $ctx->modulesInPhase('update');
 
     # No reason to print out the text if we're not doing anything.
     if (!@update_list)
@@ -5438,7 +5447,7 @@ sub handle_updates
 
     # Make sure KDE's SSL signature is present since --non-interactive is
     # passed to svn.
-    if (grep { module_scm_type($_) eq 'svn' } @update_list) {
+    if (grep { $_->type() eq 'svn' } @update_list) {
         install_missing_ssl_signature();
     }
 
@@ -5449,38 +5458,33 @@ sub handle_updates
 
     foreach my $module (@update_list)
     {
-        $module = $l10n if $module eq 'l10n'; # Correct internal name.
+        my $moduleName = $module->name();
+        $moduleName = $l10n if $moduleName eq 'l10n'; # Correct internal name.
 
-        check_for_module_config ($module);
+        check_for_module_config ($moduleName);
 
-        my $module_src_dir = get_source_dir($module);
+        my $module_src_dir = get_source_dir($moduleName);
         if ($kdesrc ne $module_src_dir)
         {
             # This module has a different source directory, ensure it exists.
             if (not super_mkdir($module_src_dir))
             {
                 error "Unable to create separate source directory for r[$module]";
-                $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $module);
+                $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $moduleName);
                 next;
             }
         }
 
-        if(get_option($module, 'no-svn'))
-        {
-            $ipc->sendIPCMessage(IPC::MODULE_SKIPPED, $module);
-            next;
-        }
+        my @options = split(' ', $module->getOption('checkout-only'));
 
-        my @options = split(' ', get_option($module, 'checkout-only'));
-
-        # Use kde-langauges option if this isn't set on command line.
-        if ($module eq $l10n and not scalar @options)
+        # Use kde-languages option if this isn't set on command line.
+        if ($moduleName eq $l10n and not scalar @options)
         {
             push @options, split(' ', get_option('global', 'kde-languages'));
         }
 
         # Make sure each submodule of l10n has their own options hash.
-        if ($module eq $l10n)
+        if ($moduleName eq $l10n)
         {
             # Ensure that scripts is pulled in for the update process (not req'd
             # for build or install)
@@ -5492,23 +5496,23 @@ sub handle_updates
             }
         }
 
-        my $fullpath = get_fullpath($module, 'source');
+        my $fullpath = get_fullpath($moduleName, 'source');
         my $count;
 
         eval {
             if (-e "$fullpath/.svn")
             {
                 # Warn user if the current repo URL is different than expected.
-                check_module_validity($module);
-                $count = update_module_path($module, @options);
+                check_module_validity($moduleName);
+                $count = update_module_path($moduleName, @options);
             }
-            elsif (module_scm_type($module) eq 'git') {
+            elsif ($module->type() eq 'git') {
                 # Handle git module update
-                $count = update_module_git_checkout($module);
+                $count = update_module_git_checkout($moduleName);
             }
             else
             {
-                $count = checkout_module_path($module, @options);
+                $count = checkout_module_path($moduleName, @options);
             }
         };
 
@@ -5521,9 +5525,9 @@ sub handle_updates
             error "Error updating r[$module], removing from list of packages to build.";
             error " > y[$@]";
 
-            my $reason = get_option($module, '#update-error');
+            my $reason = $module->getOption('#update-error');
             $reason = IPC::MODULE_FAILURE unless $reason; # Default error code
-            dont_build ($module, $ipc, $reason); # Sends IPC message.
+            dont_build ($moduleName, $ipc, $reason); # Sends IPC message.
             $hadError = 1;
         }
         else
@@ -5532,19 +5536,19 @@ sub handle_updates
             if (not defined $count)
             {
                 $message = clr "b[y[Unknown changes].";
-                $ipc->notifyUpdateSuccess($module, $message);
+                $ipc->notifyUpdateSuccess($moduleName, $message);
             }
             elsif ($count)
             {
                 $message = "1 file affected." if $count == 1;
                 $message = "$count files affected." if $count != 1;
-                $ipc->notifyUpdateSuccess($module, $message);
+                $ipc->notifyUpdateSuccess($moduleName, $message);
             }
             else
             {
                 whisper "This module will not be built. Nothing updated.";
                 $message = "0 files affected.";
-                dont_build($module, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
+                dont_build($moduleName, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
             }
 
             # We doing e.g. --src-only, the build phase that normally outputs
