@@ -7772,6 +7772,14 @@ if (defined caller && caller eq 'test')
 }
 
 my $ctx;
+my @atexit_subs;
+
+END {
+    # Basically used to call the finish() handler but only when appropriate.
+    foreach my $sub (@atexit_subs) {
+        &$sub();
+    }
+}
 
 # Use some exception handling to avoid ucky error messages
 eval
@@ -7869,36 +7877,18 @@ eval
     $ctx->addModule($_) foreach @modules;
 
     dump_options() if debugging;
-# }}}
-};
 
-if (my $err = $@)
-{
-    if (ref $err && $err->isa('BuildException')) {
-        print $err->{'exception_type'}, " error: ", $err->{'message'}, "\n";
-        print "\tCan't continue, so stopping now.\n";
+    if (!pretending() && !get_lock())
+    {
+        print "$0 is already running!\n";
+        exit 0; # Don't finish(), it's not our lockfile!!
     }
-    else {
-        # We encountered an error.
-        print "Encountered an error in the execution of the script.\n";
-        print "The error reported was $err\n";
-        print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
+    else
+    {
+        push @atexit_subs, sub { finish(99) };
     }
+    # }}}
 
-    # Don't finish, because we haven't attained the lock yet.
-    exit 99;
-}
-
-if (not pretending and not get_lock())
-{
-    print "$0 is already running!\n";
-    exit 0; # Don't finish(), it's not our lockfile!!
-}
-
-# Now use an exception trapping loop that calls finish().
-my $result;
-eval
-{
     # execution phase {{{
     my $time = localtime;
     info "Script started processing at g[$time]" unless pretending;
@@ -7907,6 +7897,7 @@ eval
     # successful svn update or build.
     read_persistent_options();
 
+    my $result;
     my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
     @build_list = map { $_->name() } ($ctx->modulesInPhase('build'));
 
@@ -7982,25 +7973,25 @@ eval
     $color = 'r[' if $result;
 
     info "${color}Script finished processing at g[$time]" unless pretending;
+    finish($result);
+
     # }}}
 };
 
 if (my $err = $@)
 {
-    # We encountered an error.
     if (ref $err && $err->isa('BuildException')) {
-        print "\tCaught exception: ", $err->{'message'}, "\n";
-        print "\n\tAborting.\n";
+        print $err->{'exception_type'}, " error: ", $err->{'message'}, "\n";
+        print "\tCan't continue, so stopping now.\n";
     }
     else {
+        # We encountered an error.
         print "Encountered an error in the execution of the script.\n";
-        print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
         print "The error reported was $err\n";
+        print "Please submit a bug against kdesrc-build on http://bugs.kde.org/\n";
     }
 
-    $result = 99;
+    exit 99;
 }
-
-finish($result);
 
 # vim: set et sw=4 ts=4 fdm=marker:
