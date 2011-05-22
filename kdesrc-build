@@ -1032,7 +1032,8 @@ my $rcfile; # the file that was used; set by read_options
     use Storable 'dclone';
     use Carp 'confess';
     use overload
-        '""' => 'toString' # Add stringify operator.
+        '""' => 'toString', # Add stringify operator.
+        '<=>' => 'compare',
         ;
 
     my $ModuleSource = 'config';
@@ -1109,6 +1110,12 @@ my $rcfile; # the file that was used; set by read_options
     {
         my $self = shift;
         return $self->name();
+    }
+
+    sub compare
+    {
+        my ($self, $other) = @_;
+        return $self->name() cmp $other->name();
     }
 
     sub getOption
@@ -6647,22 +6654,24 @@ sub build_module
 # used exclusively from the configuration file).
 sub filter_l10n_module_list
 {
-    my @modules = @_;
+    my ($ctx, @modules) = @_;
     my $l10n = 'l10n-kde4';
 
+    confess "$ctx is not a BuildContext" unless ref $ctx and $ctx->isa('ksb::BuildContext');
+
     # Only filter if 'l10n' is actually present in list.
-    my @matches = grep {$_ eq $l10n or $_ eq 'l10n'} @modules;
+    my @matches = grep {$_->name() =~ /^(?:$l10n|l10n)$/} @modules;
     my $subdirs;
 
     return @modules if not scalar @matches;
 
     for my $match (@matches)
     {
-        @modules = grep {$_ ne $match} @modules; # Remove all instances of l10n
+        @modules = grep {$_ != $match} @modules; # Remove all instances of l10n
 
         # Grab first matching sub directory options, depending on if the user
-        # used l10n or the full l10n-kde{3,4} module name on the command line.
-        $subdirs = get_option($match, 'checkout-only') if not $subdirs;
+        # used l10n or the full l10n-kde4 module name on the command line.
+        $subdirs = $match->getOption('checkout-only') if not $subdirs;
     }
 
     # Still no subdirs?  Use kde-langauges.
@@ -6670,7 +6679,9 @@ sub filter_l10n_module_list
 
     for my $dir (split (' ', $subdirs))
     {
-        push @modules, "$l10n/$dir";
+        my $newModule = Module->new($ctx, "$l10n/$dir");
+        $ctx->addModule($newModule);
+        push @modules, $newModule;
 
         # Give language its own options in %package_opts.
         clone_options($l10n, "$l10n/$dir");
@@ -6699,7 +6710,7 @@ sub handle_build
 {
     my ($ipc, $ctx) = @_;
     my @build_done;
-    my @modules = grep (!/^(KDE\/)?kde-common$/, @build_list);
+    my @modules = grep ($_->name() !~ /^(KDE\/)?kde-common$/, $ctx->modulesInPhase('build'));
     my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
     my $result;
 
@@ -6760,9 +6771,9 @@ EOF
         # If using IPC, read in the contents of the message buffer, and wait
         # for completion of the svn update if necessary.
 
-        $svn_status{$module} //= 0; # Default svn status if not defined.
+        $svn_status{$moduleName} //= 0; # Default svn status if not defined.
 
-        while(list_has(@update_list, $module) and not $svn_status{$module})
+        while(list_has(@update_list, $moduleName) and not $svn_status{$moduleName})
         {
             my $buffer;
             info "\tWaiting for source code update.";
@@ -6778,10 +6789,10 @@ EOF
 
             if($ipcType == IPC::MODULE_SUCCESS)
             {
-                my ($module, $msg) = split(/,/, $buffer);
-                $svn_status{$module} = 'success';
+                my ($moduleName, $msg) = split(/,/, $buffer);
+                $svn_status{$moduleName} = 'success';
 
-                note "\tSource update complete for g[$module]: $msg";
+                note "\tSource update complete for g[$moduleName]: $msg";
             }
             elsif($ipcType == IPC::MODULE_SKIPPED)
             {
@@ -6811,7 +6822,7 @@ EOF
             {
                 # Properly account for users manually doing --refresh-build or
                 # using .refresh-me.
-                if (needs_refreshed($module))
+                if (needs_refreshed($moduleName))
                 {
                     $svn_status{$buffer} = 'success';
                     note "\tNo source update, but g[$module] meets other building criteria.";
@@ -6823,7 +6834,7 @@ EOF
             }
         }
 
-        next if $svn_status{$module} eq 'failed';
+        next if $svn_status{$moduleName} eq 'failed';
 
         # The update process will send an IPC response for 'l10n-kde4', so we
         # must wait until after that response is received before filtering our
@@ -6833,32 +6844,34 @@ EOF
         # only checks for modules that were in @update_list. The extra modules
         # added are *not* in @update_list, and so we don't expect IPC output
         # for them.
-        if ($module eq 'l10n-kde4') {
-            @modules = filter_l10n_module_list('l10n-kde4', @modules);
+        if ($moduleName eq 'l10n-kde4') {
+            # We've already pulled the module from @modules, make sure to pass
+            # it back in to be filtered properly.
+            @modules = filter_l10n_module_list($ctx, $module, @modules);
             next;
         }
 
         # Skip actually building a module if the user has selected to skip
         # builds when the source code was not actually updated. But, don't skip
         # if we didn't successfully build last time.
-        if (!get_option($module, 'build-when-unchanged') &&
-            $svn_status{$module} eq 'skipped' &&
-            get_persistent_option($module, 'failure-count') == 0)
+        if (!$module->getOption('build-when-unchanged') &&
+            $svn_status{$moduleName} eq 'skipped' &&
+            get_persistent_option($moduleName, 'failure-count') == 0)
         {
             note "\tSkipping g[$module], its source code has not changed.";
             $i++;
             next;
         }
 
-        if (build_module ($module))
+        if (build_module ($moduleName))
         {
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
-            set_persistent_option($module, 'last-build-rev', current_module_revision($module));
-            set_persistent_option($module, 'failure-count', 0);
+            set_persistent_option($moduleName, 'last-build-rev', current_module_revision($moduleName));
+            set_persistent_option($moduleName, 'failure-count', 0);
 
             info "\tOverall time for g[$module] was g[$elapsed].";
-            push @build_done, $module;
+            push @build_done, $moduleName;
         }
         else
         {
@@ -6866,17 +6879,17 @@ EOF
             print STATUS_FILE "$module: Failed after $elapsed.\n" if $outfile;
 
             info "\tOverall time for r[$module] was g[$elapsed].";
-            push @{$fail_lists{'build'}}, $module;
+            push @{$fail_lists{'build'}}, $moduleName;
 
             # Increment failed count to track when to start bugging the
             # user to fix stuff.
 
-            my $fail_count = get_persistent_option($module, 'failure-count');
+            my $fail_count = get_persistent_option($moduleName, 'failure-count');
             $fail_count = 0 unless defined $fail_count;
             ++$fail_count;
-            set_persistent_option($module, 'failure-count', $fail_count);
+            set_persistent_option($moduleName, 'failure-count', $fail_count);
 
-            if (get_option($module, 'stop-on-failure'))
+            if ($module->getOption('stop-on-failure'))
             {
                 note "\n$module didn't build, stopping here.";
                 return 1; # Error
@@ -7105,7 +7118,8 @@ sub filter_non_installable_modules
 # Return value is a shell-style success code (0 == success)
 sub handle_install
 {
-    my @modules = filter_l10n_module_list(@_);
+    my @modules = @_;
+#    my @modules = filter_l10n_module_list(@_);
     @modules = filter_non_installable_modules(@modules);
     my $result = 0;
 
@@ -7194,7 +7208,8 @@ sub handle_install
 # Return value is a shell-style success code (0 == success)
 sub handle_uninstall
 {
-    my @modules = filter_l10n_module_list(@_);
+    my @modules = @_;
+#    my @modules = filter_l10n_module_list(@_);
     @modules = filter_non_installable_modules(@modules);
     my $result = 0;
 
