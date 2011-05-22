@@ -6764,7 +6764,16 @@ EOF
 
     while (my $module = shift @modules)
     {
-        note "Building g[$module] ($i/$num_modules)";
+        my $moduleSet = $module->moduleSet();
+        my $moduleName = $module->name();
+
+        if ($moduleSet) {
+            note "Building g[$module] from g[$moduleSet] ($i/$num_modules)";
+        }
+        else {
+            note "Building g[$module] ($i/$num_modules)";
+        }
+
         resetenv(); # Resets the list of env vars to change
         my $start_time = time;
 
