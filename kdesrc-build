@@ -6168,15 +6168,16 @@ sub clean_build_system
 # on failure.
 sub setup_build_system
 {
-    my $module = shift;
-    my $srcdir = get_fullpath($module, 'source');
-    my $builddir = get_fullpath($module, 'build');
-    my $uses_cmake = module_uses_cmake($module);
+    my $module = assert_isa(shift, 'Module');
+    my $moduleName = $module->name();
+    my $srcdir = get_fullpath($moduleName, 'source');
+    my $builddir = get_fullpath($moduleName, 'build');
+    my $uses_cmake = module_uses_cmake($moduleName);
 
     # As a special case to the normal instances where we will rebuild a module,
     # also force a rebuild if we're using CMake but the current build directory
     # is unsermake-based.  libtool is only used by autotools/unsermake.
-    if (needs_refreshed($module) or ($uses_cmake and -e "$builddir/libtool"))
+    if (needs_refreshed($moduleName) or ($uses_cmake and -e "$builddir/libtool"))
     {
         # The build system needs created, either because it doesn't exist, or
         # because the user has asked that it be completely rebuilt.
@@ -6189,8 +6190,8 @@ sub setup_build_system
 
         # Check to see if we're actually supposed to go through the cleaning
         # process.
-        if (not get_option($module, '#cancel-clean') and
-            not clean_build_system($module))
+        if (not $module->getOption('#cancel-clean') and
+            not clean_build_system($moduleName))
         {
             warning "\tUnable to clean r[$module]!";
             return 0;
@@ -6199,30 +6200,30 @@ sub setup_build_system
 
     # Symlink source directory to build directory if module doesn't support
     # srcdir != builddir.
-    if (module_needs_builddir_help($module))
+    if (module_needs_builddir_help($moduleName))
     {
         whisper "\tFaking builddir for g[$module]";
-        if (not prepare_fake_builddir($module))
+        if (not prepare_fake_builddir($moduleName))
         {
             error "Error creating r[$module] build system!";
             return 0;
         }
     }
 
-    my $confpath = module_needs_builddir_help($module) ? $builddir : $srcdir;
+    my $confpath = module_needs_builddir_help($moduleName) ? $builddir : $srcdir;
 
     # The l10n-kde4 module requires some initial build system setup unlike
     # every other CMake module.  We can tell if it has been setup because then
     # its builddir will have a CMakeLists.txt
-    if ($module =~ /^l10n-kde4\/?/)
+    if ($moduleName =~ /^l10n-kde4\/?/)
     {
-        if (safe_create_build_system ($module))
+        if (safe_create_build_system ($moduleName))
         {
             error "\tUnable to create configure system from checkout.";
             return 0;
         }
 
-        set_option($module, '#reconfigure', 1); # Force reconfigure of the module
+        set_option($moduleName, '#reconfigure', 1); # Force reconfigure of the module
     }
 
     if (not -e "$builddir" and not super_mkdir("$builddir"))
@@ -6247,7 +6248,7 @@ sub setup_build_system
         }
 
         # configure the module (sh script return value semantics)
-        if (safe_configure ($module))
+        if (safe_configure ($moduleName))
         {
             error "\tUnable to configure r[$module]!";
             return 0;
@@ -6257,7 +6258,7 @@ sub setup_build_system
     {
         # Use cmake to create the build directory (sh script return value
         # semantics).
-        if (safe_run_cmake ($module))
+        if (safe_run_cmake ($moduleName))
         {
             error "\tUnable to configure r[$module] with CMake!";
             return 0;
@@ -6358,8 +6359,8 @@ sub update_module_environment
 # Returns boolean true on success, boolean false on failure.
 sub setup_build_directory
 {
-    my $module = shift;
-    my $builddir = get_build_dir($module);
+    my $module = assert_isa(shift, 'Module');
+    my $builddir = get_build_dir($module->name());
 
     if (not -e "$builddir")
     {
@@ -6547,45 +6548,6 @@ sub run_tests
     return 1;
 }
 
-# Returns true if the given module appears to be a Subversion module which has
-# migrated to git.
-sub module_is_migrated
-{
-    my $module = shift;
-    my $rev = current_module_svn_revision($module) || 0;
-    my $srcdir = get_fullpath($module, 'source');
-
-    # TODO Add other ways of auto-guessing that a migration to git.kde.org has
-    # occurred, such as kde_projects.xml
-    if ($rev > 0 && -f "$srcdir/MIGRATED") {
-        note <<EOF;
- y[b[***]
-The y[b[$module] module appears to have been converted to a git.kde.org
-project.  This module b[can no longer be built], but the new git.kde.org
-module can be.  To do this:
-
-  1) Convert the b[$module] module in your configuration file
-     ($rcfile).
-     This is usually as easy as adding a line such as
-
-        repository git://anongit.kde.org/$module
-
-     to the existing module options. The git:// URL above is just a guess, you
-     should check the $srcdir directory for a README file,
-     MIGRATED file, etc. to point you to where the git module resides. You
-     can also check https://projects.kde.org/
-
-  2) Delete the module source directory at b[$srcdir] after making sure
-     there's no changes you want to keep. kdesrc-build does not do this for
-     you since you may have files or changes you want to keep.
-
-  3) Run b[kdesrc-build $module] to checkout and build the module using git
-     instead of Subversion.
-EOF
-        return 1;
-    }
-}
-
 # Subroutine to build a given module.  The module to build is the first
 # parameter.  The second and third paramaters is the ordinal number of the
 # module being built (1 == first module, 2 == second, etc.), and the total
@@ -6594,16 +6556,14 @@ EOF
 # Returns boolean false on failure, boolean true on success.
 sub build_module
 {
-    my $module = shift;
-    my $builddir = get_fullpath($module, 'build');
+    my $module = assert_isa(shift, 'Module');
+    my $moduleName = $module->name();
+    my $builddir = get_fullpath($moduleName, 'build');
 
     # Do some tests to make sure we're ready to build.
-    check_for_module_config($module);
+    check_for_module_config($moduleName);
 
-    # Make sure this module isn't migrated to git
-    return 0 if module_is_migrated($module);
-
-    update_module_environment($module);
+    update_module_environment($moduleName);
 
     my $log_filter = sub {
         return unless defined $_;
@@ -6613,9 +6573,9 @@ sub build_module
     };
 
     # Use log_command as the check so that an error file gets created.
-    if ((module_scm_type($module) eq 'svn') &&
-        0 != log_command($module, 'conflict-check',
-                         ['kdesrc-build', 'module_has_conflict', $module], $log_filter)
+    if (($module->type() eq 'svn') &&
+        0 != log_command($moduleName, 'conflict-check',
+                         ['kdesrc-build', 'module_has_conflict', $moduleName], $log_filter)
        )
     {
         return 0;
@@ -6625,9 +6585,9 @@ sub build_module
 
     return 0 if not setup_build_directory($module);
     return 0 if not setup_build_system($module);
-    return 1 if (get_option ($module, 'build-system-only'));
+    return 1 if $module->getOption('build-system-only');
 
-    if (safe_make ($module))
+    if (safe_make ($moduleName))
     {
         # Build failed
 
@@ -6643,14 +6603,16 @@ sub build_module
         my $elapsed = prettify_seconds (time - $start_time);
         info "\tBuild succeeded after g[$elapsed].";
 
-        if (get_option($module, 'run-tests'))
+        # TODO: This should be a simple phase to run.
+        if ($module->getOption('run-tests'))
         {
-            run_tests($module); # Don't fail if this fails... yet
+            run_tests($moduleName); # Don't fail if this fails... yet
         }
 
-        if (get_option($module, 'install-after-build'))
+        # TODO: Likewise this should be a phase to run.
+        if ($module->getOption('install-after-build'))
         {
-            handle_install($module);
+            handle_install($moduleName);
         }
         else
         {
@@ -6891,7 +6853,7 @@ EOF
             next;
         }
 
-        if (build_module ($moduleName))
+        if (build_module ($module))
         {
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
