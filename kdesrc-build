@@ -382,7 +382,7 @@ my $rcfile; # the file that was used; set by read_options
     {
         my $pkg = shift;
         my $caller = caller;
-        my @exports = qw(list_has);
+        my @exports = qw(list_has make_exception assert_isa);
 
         # This loop is only slightly "magical". Basically to import functions
         # into a different package in Perl, we can use something like:
@@ -395,8 +395,13 @@ my $rcfile; # the file that was used; set by read_options
 
         for my $fn (@exports) {
             my $prototype = prototype($fn);
-            eval "sub ${caller}::${fn}(${prototype});\n" .
-                 "*${caller}::${fn} = \\&${pkg}::${fn};";
+            if ($prototype) {
+                eval "sub ${caller}::${fn}(${prototype});\n" .
+                     "*${caller}::${fn} = \\&${pkg}::${fn};";
+            }
+            else {
+                eval "*${caller}::${fn} = \\&${pkg}::${fn};";
+            }
         }
     }
 
@@ -409,6 +414,46 @@ my $rcfile; # the file that was used; set by read_options
         confess "Invalid first param to list_has" unless ref $_[0] eq ref [];
         my ($list_ref, $value) = @_;
         return scalar grep ("$_" eq "$value", @{$list_ref});
+    }
+
+    # Returns a Perl object worth "die"ing for. (i.e. can be given to the die
+    # function and handled appropriately later with an eval). The returned
+    # reference will be an instance of BuildException. The actual exception
+    # type is passed in as the first parameter (as a string), and can be
+    # retrieved from the object later using the 'exception_type' key, and the
+    # message is returned as 'message'
+    #
+    # First parameter: Exception type. Recommended are one of: Config, Internal
+    # (for logic errors), Runtime (other runtime errors which are not logic
+    # bugs in kdesrc-build), or just leave blank for 'Exception'.
+    # Second parameter: Message to show to user
+    # Return: Reference to the exception object suitable for giving to "die"
+    sub make_exception
+    {
+        my $exception_type = shift // 'Exception';
+        my $message = shift;
+
+        return bless({
+            'exception_type' => $exception_type,
+            'message'        => $message
+        }, 'BuildException');
+    }
+
+    # Throws an exception if the first parameter is not an object at all, or if
+    # it is not an object of the type given by the second parameter (which
+    # should be a string of the class name. There is no return value;
+    sub assert_isa
+    {
+        my ($obj, $class) = @_;
+
+        if (!ref $obj || !$obj->isa($class)) {
+            # Carp doesn't support exception objects, so raise the error
+            # message and grab the string for the stack trace, then re-raise
+            # inside the object.
+            local $Carp::CarpLevel = 1; # Skip this upcoming eval
+            eval { confess "$obj is not of type $class" };
+            die(make_exception('Internal', $@));
+        }
     }
 
     1;
@@ -1796,34 +1841,6 @@ sub get_module_option
     }
 
     return $package_opts{$module}->{$option};
-}
-
-# Returns a Perl object worth "die"ing for. (i.e. can be given to the die
-# function and handled appropriately later with an eval). The returned
-# reference will be an instance of BuildException. The actual exception type is
-# passed in as the first parameter (as a string), and can be retrieved from the
-# object later using the 'exception_type' key, and the message is returned as
-# 'message'
-#
-# First parameter: Exception type
-# Second parameter: Message to show to user
-# Return: Reference to the exception object suitable for giving to "die"
-sub make_exception
-{
-    my $exception_type = shift;
-    my $message = shift;
-
-    $exception_type = 'Exception' unless defined $exception_type;
-
-    my $obj = eval {
-        package BuildException;
-        my $new_obj = {'exception_type' => $exception_type,
-                       'message'        => $message };
-        bless($new_obj);
-        return $new_obj;
-    };
-
-    return $obj;
 }
 
 # Returns a string describing the scm platform of the given module.
@@ -6657,7 +6674,7 @@ sub filter_l10n_module_list
     my ($ctx, @modules) = @_;
     my $l10n = 'l10n-kde4';
 
-    confess "$ctx is not a BuildContext" unless ref $ctx and $ctx->isa('ksb::BuildContext');
+    assert_isa($ctx, 'ksb::BuildContext');
 
     # Only filter if 'l10n' is actually present in list.
     my @matches = grep {$_->name() =~ /^(?:$l10n|l10n)$/} @modules;
