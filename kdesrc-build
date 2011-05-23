@@ -381,7 +381,7 @@ my $rcfile; # the file that was used; set by read_options
     {
         my $pkg = shift;
         my $caller = caller;
-        my @exports = qw(list_has make_exception assert_isa);
+        my @exports = qw(list_has make_exception assert_isa assert_in);
 
         # This loop is only slightly "magical". Basically to import functions
         # into a different package in Perl, we can use something like:
@@ -438,6 +438,17 @@ my $rcfile; # the file that was used; set by read_options
         }, 'BuildException');
     }
 
+    # Used in the assert methods
+    sub fail_assertion
+    {
+        # Carp doesn't support exception objects, so raise the error
+        # message and grab the string for the stack trace, then re-raise
+        # inside the object.
+        local $Carp::CarpLevel = 2; # Skip this upcoming eval and this method.
+        eval { confess ($_[0]) };
+        die(make_exception('Internal', $@));
+    }
+
     # Throws an exception if the first parameter is not an object at all, or if
     # it is not an object of the type given by the second parameter (which
     # should be a string of the class name. There is no return value;
@@ -446,15 +457,23 @@ my $rcfile; # the file that was used; set by read_options
         my ($obj, $class) = @_;
 
         if (!ref $obj || !$obj->isa($class)) {
-            # Carp doesn't support exception objects, so raise the error
-            # message and grab the string for the stack trace, then re-raise
-            # inside the object.
-            local $Carp::CarpLevel = 1; # Skip this upcoming eval
-            eval { confess "$obj is not of type $class" };
-            die(make_exception('Internal', $@));
+            fail_assertion("$obj is not of type $class");
         }
 
         return $obj;
+    }
+
+    # Throws an exception if the first parameter is not included in the
+    # provided list of possible alternatives.
+    sub assert_in($@)
+    {
+        my ($val, $listRef) = @_;
+
+        if (!list_has(@{$listRef}, $val)) {
+            fail_assertion("$val is not a permissible value for its argument");
+        }
+
+        return $val;
     }
 
     1;
@@ -1082,6 +1101,8 @@ my $rcfile; # the file that was used; set by read_options
         '<=>' => 'compare',
         ;
 
+    ksb::Util->import();
+
     my $ModuleSource = 'config';
 
     sub new
@@ -1171,6 +1192,17 @@ my $rcfile; # the file that was used; set by read_options
         # For now this is just a wrapper against main::get_option, but will
         # be expanded/refactored later to be a proper polymorphic getter.
         return main::get_option($self->name(), $key);
+    }
+
+    # Returns the path to the desired directory type (source or build),
+    # including the module destination directory itself.
+    sub fullpath
+    {
+        my ($self, $type) = @_;
+        assert_in($type, [qw/build source/]);
+
+        my %pathinfo = main::get_module_path_dir($self->name(), $type);
+        return $pathinfo{'fullpath'};
     }
 
     1;
@@ -5288,7 +5320,7 @@ sub handle_updates
             }
         }
 
-        my $fullpath = get_fullpath($moduleName, 'source');
+        my $fullpath = $module->fullpath('source');
         my $count;
 
         eval {
@@ -5932,8 +5964,8 @@ sub setup_build_system
 {
     my $module = assert_isa(shift, 'Module');
     my $moduleName = $module->name();
-    my $srcdir = get_fullpath($moduleName, 'source');
-    my $builddir = get_fullpath($moduleName, 'build');
+    my $srcdir = $module->fullpath('source');
+    my $builddir = $module->fullpath('build');
     my $uses_cmake = module_uses_cmake($moduleName);
 
     # As a special case to the normal instances where we will rebuild a module,
@@ -6320,7 +6352,7 @@ sub build_module
 {
     my $module = assert_isa(shift, 'Module');
     my $moduleName = $module->name();
-    my $builddir = get_fullpath($moduleName, 'build');
+    my $builddir = $module->fullpath('build');
 
     # Do some tests to make sure we're ready to build.
     check_for_module_config($moduleName);
