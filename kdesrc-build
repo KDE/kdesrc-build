@@ -1173,6 +1173,12 @@ my $rcfile; # the file that was used; set by read_options
         return $self->{type};
     }
 
+    sub buildContext
+    {
+        my $self = shift;
+        return $self->{context};
+    }
+
     sub toString
     {
         my $self = shift;
@@ -2913,8 +2919,7 @@ sub set_error_logfile
 # log_command() (described here as well), except that the callback argument is
 # not used.
 #
-# First parameter is the name of the module being built (for logging purposes
-#   and such).
+# First parameter is the Module being built (for logging purposes and such).
 # Second parameter is the name of the log file to use (relative to the log
 #   directory).
 # Third parameter is a reference to an array with the command and its
@@ -2924,6 +2929,7 @@ sub set_error_logfile
 sub run_make_command
 {
     my ($module, $filename, $argRef) = @_;
+    assert_isa($module, 'Module');
 
     debug "run_make_command: $module, ", join(', ', @{$argRef});
 
@@ -2931,9 +2937,9 @@ sub run_make_command
     # 1. Not using CMake (i.e. Qt)
     # 2. If we're not printing to a terminal.
     # 3. When we're debugging (we'd interfere with debugging output).
-    if ((!module_uses_cmake($module)) or not -t STDERR or debugging)
+    if ((!module_uses_cmake($module->name())) or not -t STDERR or debugging)
     {
-        return log_command($module, $filename, $argRef);
+        return log_command($module->name(), $filename, $argRef);
     }
 
     # Setup callback function for use by log_command.
@@ -2970,7 +2976,7 @@ sub run_make_command
         }
     };
 
-    return log_command($module, $filename, $argRef, $log_command_callback);
+    return log_command($module->name(), $filename, $argRef, $log_command_callback);
 }
 
 # Subroutine to determine if the given subdirectory of a module can actually be
@@ -2979,9 +2985,9 @@ sub run_make_command
 sub is_subdir_buildable
 {
     my ($module, $dir) = @_;
+    assert_isa($module, 'Module');
 
-    return 0 if $dir eq 'kalyptus' and $module eq 'kdebindings';
-    return 0 if $dir eq 'scripts' and ($module eq 'l10n-kde4');
+    return 0 if ($dir eq 'scripts' && ($module->name() =~ '^l10n-kde4'));
     return 1;
 }
 
@@ -3068,20 +3074,22 @@ sub safe_rmtree
 
 # Subroutine to run the make command with the arguments given by the passed
 # list.  The first argument of the list given must be the module that we're
-# making.
+# making (which itself must be a Module object, not merely the name).
 #
 # Returns 0 on success, non-zero on failure (shell script style)
 sub safe_make (@)
 {
     my ($module, @args) = @_;
-    my $logdir = get_log_dir($module);
-    my $checkout_dirs = get_option($module, "checkout-only");
+    assert_isa($module, 'Module');
+
+    my $logdir = get_log_dir($module->name());
+    my $checkout_dirs = $module->getOption("checkout-only");
     my @dirs = split(' ', $checkout_dirs);
     my $install_mode = (scalar @args > 0) && ($args[0] =~ /^(un)?install$/);
     my $uninstalling = $install_mode && $args[0] eq 'uninstall';
 
     my $make;
-    my $opts = get_option($module, 'make-options');
+    my $opts = $module->getOption('make-options');
 
     # Non Linux systems can sometimes fail to build when GNU Make would work,
     # so prefer GNU Make if present, otherwise try regular make.  Also, convert
@@ -3119,7 +3127,7 @@ sub safe_make (@)
     {
         $description = clr "g[$module]";
 
-        my @install_cmd = split(' ', get_option ($module, 'make-install-prefix'));
+        my @install_cmd = split(' ', $module->getOption('make-install-prefix'));
         if (@install_cmd)
         {
             # Add -S option if we're running sudo and it's not already
@@ -3178,7 +3186,7 @@ sub safe_make (@)
             }
         }
 
-        my $builddir = get_fullpath($module, 'build') . "/$subdir";
+        my $builddir = $module->fullpath('build') . "/$subdir";
         $builddir =~ s/\/*$//; # Remove trailing /
 
         p_chdir ($builddir);
@@ -3711,7 +3719,7 @@ sub expandXMLModules
             die "kde-projects repository information could not be downloaded: $!.";
 
         my $name = $_->name();
-        my $ctx = $_->{'context'};
+        my $ctx = $_->buildContext();
 
         my @xmlResults = grep {
             $_->{'active'} ne 'false'
@@ -5955,21 +5963,12 @@ sub setup_build_system
     my $moduleName = $module->name();
     my $srcdir = $module->fullpath('source');
     my $builddir = $module->fullpath('build');
-    my $uses_cmake = module_uses_cmake($moduleName);
 
-    # As a special case to the normal instances where we will rebuild a module,
-    # also force a rebuild if we're using CMake but the current build directory
-    # is unsermake-based.  libtool is only used by autotools/unsermake.
-    if (needs_refreshed($moduleName) or ($uses_cmake and -e "$builddir/libtool"))
+    if (needs_refreshed($moduleName))
     {
         # The build system needs created, either because it doesn't exist, or
         # because the user has asked that it be completely rebuilt.
         info "\tPreparing build system for y[$module].";
-
-        if ($uses_cmake and -e "$builddir/libtool")
-        {
-            info "\t\ty[Rebuild forced] due to switch of build system to CMake.";
-        }
 
         # Check to see if we're actually supposed to go through the cleaning
         # process.
@@ -6022,7 +6021,7 @@ sub setup_build_system
 
     # Appropriate configure function will skip automatically if configuration is
     # unnecessary.  (re)configuration is always done if the 'reconfigure' option is true.
-    if (not $uses_cmake)
+    if (module_uses_cmake($moduleName))
     {
         if (! -e "$srcdir/configure")
         {
@@ -6370,7 +6369,7 @@ sub build_module
     return 0 if not setup_build_system($module);
     return 1 if $module->getOption('build-system-only');
 
-    if (safe_make ($moduleName))
+    if (safe_make ($module))
     {
         # Build failed
 
@@ -6395,7 +6394,8 @@ sub build_module
         # TODO: Likewise this should be a phase to run.
         if ($module->getOption('install-after-build'))
         {
-            handle_install($moduleName);
+            my $ctx = $module->buildContext();
+            handle_install($ctx, $module);
         }
         else
         {
@@ -6822,7 +6822,7 @@ sub filter_non_installable_modules
     my @excluded_modules = qw/kde-common/;
     push @excluded_modules, 'qt-copy' unless qt_copy_needs_installed();
 
-    return grep {!list_has(@excluded_modules, $_)} (@_);
+    return grep {!list_has(@excluded_modules, $_->name())} (@_);
 }
 
 # Subroutine to handle the installation process.  Simply calls
@@ -6831,18 +6831,26 @@ sub filter_non_installable_modules
 # Return value is a shell-style success code (0 == success)
 sub handle_install
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my @modules = @_;
-#    my @modules = filter_l10n_module_list(@_);
+
+    # Check all modules passed.
+    map { assert_isa($_, 'Module') } @modules;
+
+    @modules = filter_l10n_module_list($ctx, @modules);
     @modules = filter_non_installable_modules(@modules);
+
     my $result = 0;
 
     for my $module (@modules)
     {
         resetenv();
-        update_module_environment ($module);
-        check_for_module_config ($module);
+        my $moduleName = $module->name();
 
-        my $builddir = get_fullpath ($module, 'build');
+        update_module_environment ($moduleName);
+        check_for_module_config ($moduleName);
+
+        my $builddir = $module->fullpath('build');
 
         if (not pretending and not -e "$builddir/Makefile")
         {
@@ -6853,8 +6861,8 @@ sub handle_install
 
         # We can optionally uninstall prior to installing
         # to weed out old unused files.
-        if (get_option ($module, 'use-clean-install') &&
-            get_persistent_option ($module, 'last-install-rev') &&
+        if ($module->getOption('use-clean-install') &&
+            get_persistent_option ($moduleName, 'last-install-rev') &&
             safe_make ($module, 'uninstall'))
         {
             warning "\tUnable to uninstall r[$module] before installing the new build.";
@@ -6868,9 +6876,9 @@ sub handle_install
         {
             error "\tUnable to install r[$module]!";
             $result = 1;
-            push @{$fail_lists{'install'}}, $module;
+            push @{$fail_lists{'install'}}, $moduleName;
 
-            if (get_option($module, 'stop-on-failure'))
+            if ($module->getOption('stop-on-failure'))
             {
                 note "y[Stopping here].";
                 return 1; # Error
@@ -6885,16 +6893,16 @@ sub handle_install
 
         next if $result != 0; # Don't delete anything if the build failed.
 
-        set_persistent_option($module, 'last-install-rev', current_module_revision($module));
+        set_persistent_option($moduleName, 'last-install-rev', current_module_revision($moduleName));
 
-        my $remove_setting = get_option($module, 'remove-after-install');
+        my $remove_setting = $module->getOption('remove-after-install');
 
         # Possibly remove the srcdir and builddir after install for users with
         # a little bit of HD space.
         if($remove_setting eq 'all')
         {
             # Remove srcdir
-            my $srcdir = get_fullpath($module, 'source');
+            my $srcdir = $module->fullpath('source');
             note "\tRemoving b[r[$module source].";
             safe_rmtree($srcdir);
         }
@@ -6921,18 +6929,24 @@ sub handle_install
 # Return value is a shell-style success code (0 == success)
 sub handle_uninstall
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my @modules = @_;
-#    my @modules = filter_l10n_module_list(@_);
+
+    # Check all modules passed.
+    map { assert_isa($_, 'Module') } @modules;
+
+    @modules = filter_l10n_module_list($ctx, @modules);
     @modules = filter_non_installable_modules(@modules);
     my $result = 0;
 
     for my $module (reverse @modules)
     {
         resetenv();
-        update_module_environment ($module);
-        check_for_module_config ($module);
+        my $moduleName = $module->name();
+        update_module_environment ($moduleName);
+        check_for_module_config ($moduleName);
 
-        my $builddir = get_fullpath ($module, 'build');
+        my $builddir = $module->fullpath('build');
 
         if (not pretending and not -e "$builddir/Makefile")
         {
@@ -6948,9 +6962,9 @@ sub handle_uninstall
         {
             error "\tUnable to uninstall r[$module]!";
             $result = 1;
-            push @{$fail_lists{'uninstall'}}, $module;
+            push @{$fail_lists{'uninstall'}}, $moduleName;
 
-            if (get_option($module, 'stop-on-failure'))
+            if ($module->getOption('stop-on-failure'))
             {
                 note "y[Stopping here].";
                 return 1; # Error
@@ -6962,8 +6976,6 @@ sub handle_uninstall
             pretend "\tWould have uninstalled g[$module]";
             next;
         }
-
-        next if $result != 0; # Don't delete anything if the build failed.
     }
 
     return $result;
@@ -7671,17 +7683,11 @@ eval
         # Installation mode
         my @installList = $ctx->modulesInPhase('install');
 
-        # Compat hack
-        @installList = map { $_->name() } @installList;
-
-        $result = handle_install (@installList);
+        $result = handle_install ($ctx, @installList);
     }
     elsif ($run_mode eq 'uninstall')
     {
         my @uninstallList = $ctx->modulesInPhase('uninstall');
-
-        # More compat hacks.
-        @uninstallList = map { $_->name() } @uninstallList;
 
         # Make handle_uninstall handle in right order (it reverses the order
         # so that the first module uninstalled is the last one installed).
@@ -7689,7 +7695,7 @@ eval
             @uninstallList = reverse @uninstallList;
         }
 
-        $result = handle_uninstall (@uninstallList);
+        $result = handle_uninstall ($ctx, @uninstallList);
     }
 
     cleanup_log_directory() if get_option('global', 'purge-old-logs');
