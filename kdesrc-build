@@ -6776,35 +6776,9 @@ sub finish
     exit $exitcode;
 }
 
-# Subroutine to determine the current repository URL for the given module.
-sub get_repo_url
-{
-    my $module = shift;
-    return get_svn_info($module, 'URL');
-}
-
 # module-base-path handling changed with kdesvn-build 1.8.  This function
 # returns true for a given module if it looks like it is checked out with
 # module-base-path from an older version of kdesvn-build.
-sub module_base_path_changed
-{
-    my $module = shift;
-
-    if (get_option($module, 'module-base-path'))
-    {
-        # If the on disk URL ends in module name but module-base-path doesn't
-        # then this is probably the problem due to the version change.
-        my $modulename = moduleBaseName($module);
-        if (get_option($module, 'module-base-path') !~ /\/$modulename$/ &&
-            get_repo_url($module) =~ /\/$modulename$/)
-        {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 # Subroutine to determine whether or not the given module has the correct
 # URL.  If not, a warning is printed out.
 # First parameter: module to check.
@@ -6814,24 +6788,13 @@ sub check_module_validity
     my $module = shift;
     my $source_dir = get_fullpath($module, 'source');
     my $module_expected_url = svn_module_url($module);
-    my $module_actual_url = get_repo_url($module);
+    my $module_actual_url = get_svn_info($module, 'URL');
 
     $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
     $module_actual_url   =~ s{/+$}{}; # Remove trailing slashes
 
     if ($module_actual_url ne $module_expected_url)
     {
-        # Check if the --svn-only flag was passed.
-        if (get_option('global', '#allow-auto-repo-move') and not
-            module_base_path_changed($module))
-        {
-            note "g[$module] is checked out from a different location than expected.";
-            note "Attempting to correct";
-
-            log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
-            return;
-        }
-
         warning <<EOF;
  y[!!]
  y[!!] g[$module] seems to be checked out from somewhere other than expected.
@@ -6849,29 +6812,6 @@ If the module is fine, please update your configuration file.
 If you use kdesrc-build with --src-only it will try switching for you (might not work
 correctly).
 EOF
-        if (module_base_path_changed($module))
-        {
-            my $basePath = get_option($module, 'module-base-path');
-            warning <<EOF;
- y[*] r[*] y[*] NOTE: This warning is probably due to a change in the handling of the
- y[module-base-path] option in kdesrc-build 1.8.  You must now add the module
- name to the end for some modules (this change was required because some KDE
- modules no longer end in the module name).
-
- For instance, if you previously had:
- module $module
-   module-base-path $basePath
- # ...
- end module
-
- you now want:
-
- module $module
-   module-base-path ${basePath}g[b[/$module]
- # ...
- end module
-EOF
-        }
     }
 }
 
