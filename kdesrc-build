@@ -5411,20 +5411,12 @@ sub get_list_digest
 # containing all of the configure flags to apply
 sub safe_configure
 {
-    my $module = shift;
-    my $srcdir = get_fullpath($module, 'source');
+    my $module = assert_isa(shift, 'Module');
+    my $srcdir = $module->fullpath('source');
     my $script = "$srcdir/configure";
 
-    my @commands = split (/\s+/, get_option($module, 'configure-flags'));
-    push @commands, '-confirm-license', '-opensource';
-
-    # Get the user's CXXFLAGS
-    my $cxxflags = get_option ($module, 'cxxflags');
-    setenv ('CXXFLAGS', $cxxflags);
-    setenv ('DO_NOT_COMPILE', get_option ($module, 'do-not-compile'));
-
-    # This is only run for qt-copy, so let's verify that.
-    if ($module ne 'qt-copy') {
+    # This is only currently run for qt-copy, so let's verify that.
+    if ($module->name() ne 'qt-copy') {
         error <<EOF;
 r[b[ *] kdesrc-build assumes that only Qt would be compiled using a configure
 r[b[ *] script, but we're trying to configure r[b[$module].  Please report a
@@ -5433,7 +5425,14 @@ EOF
         return 1;
     }
 
-    my $prefix = get_option($module, 'qtdir');
+    my @commands = split (/\s+/, $module->getOption('configure-flags'));
+    push @commands, '-confirm-license', '-opensource';
+
+    # Get the user's CXXFLAGS
+    my $cxxflags = $module->getOption('cxxflags');
+    setenv ('CXXFLAGS', $cxxflags);
+
+    my $prefix = $module->getOption('qtdir');
 
     # Some users have added -prefix manually to their flags, they
     # probably shouldn't anymore. :)
@@ -5451,25 +5450,15 @@ EOF
 
     push @commands, "-prefix", $prefix;
 
-    # We're special casing these modules because we're using the lndir
-    # hack for them.
-    if (module_needs_builddir_help($module))
-    {
-        $script = get_fullpath($module, 'build') . "/configure";
-    }
-
     # We use a special script for qt-copy to auto-accept the license, it is created
     # just before running it (see below).
-    my $qtdir = get_fullpath('qt-copy', 'source');
-    my $builddir = get_fullpath($module, 'build');
+    my $builddir = $module->fullpath('build');
+    my $old_flags = get_persistent_option($module->name(), 'last-configure-flags') || '';
 
-    $script = "$qtdir/configure" if $module eq 'qt-copy';
     unshift @commands, $script;
 
-    my $old_flags = get_persistent_option($module, 'last-configure-flags') || '';
-
     if((get_list_digest(@commands) ne $old_flags) or
-       (get_option($module, 'reconfigure')) or
+       ($module->getOption('reconfigure')) or
        (not -e "$builddir/Makefile")
       )
     {
@@ -5477,8 +5466,8 @@ EOF
 
         info "\tRunning g[configure]...";
 
-        set_persistent_option($module, 'last-configure-flags', get_list_digest(@commands));
-        return log_command($module, "configure", \@commands);
+        set_persistent_option($module->name(), 'last-configure-flags', get_list_digest(@commands));
+        return log_command($module->name(), "configure", \@commands);
     }
 
     # Skip execution of configure.
@@ -6042,7 +6031,7 @@ sub setup_build_system
         }
 
         # configure the module (sh script return value semantics)
-        if (safe_configure ($moduleName))
+        if (safe_configure ($module))
         {
             error "\tUnable to configure r[$module]!";
             return 0;
