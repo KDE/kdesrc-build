@@ -93,7 +93,6 @@ our %package_opts = (
     "debug-level"         => 2,  # Really ksb::Debug::INFO
     "dest-dir"            => '${MODULE}', # single quotes used on purpose!
     "disable-agent-check" => 0,   # If true we don't check on ssh-agent
-    "disable-snapshot"    => 0,   # If true, don't check for module snapshots.
     "do-not-compile"      => "",
     "email-address"       => "",
     "email-on-compile-error" => "",
@@ -2004,223 +2003,6 @@ sub download_file
     return 0;
 }
 
-# This subroutine is used to try and download a Subversion checkout snapshot
-# for a given module.  Modules that have branches or tags associated with them
-# are not attempted.
-#
-# If available the snapshot is downloaded and installed into the normal
-# location for a kdesrc-build source checkout and already switched into the
-# correct svn-server setting.
-#
-# The first parameter is the module to download.
-# Return value is boolean true if successful, false otherwise.
-sub install_module_snapshot
-{
-    my $module = shift;
-
-    whisper "Finding snapshot for g[$module]";
-
-    # Don't bother with snapshot if the user has their own URL picked out.
-    if (get_option($module, 'override-url') or
-        get_option($module, 'module-base-path') or
-        module_scm_type($module) eq 'git')
-    {
-        return 0;
-    }
-
-    my $moduleName = moduleBaseName($module); # KDE/kdelibs -> kdelibs
-
-    # The branch for the module is the tag option if specified, otherwise the
-    # branch option if specified.  Otherwise the default branch for the
-    # module is selected (usually trunk, perhaps 4.3)
-    my $branch = get_option($module, 'tag');
-
-    # FIXME: This is broken for kdesupport (since it is default tags) but should magically
-    # work since there will be no snapshot available.
-    $branch = get_svn_branch($module) if not $branch;
-
-    my ($filename, $url, $dirName);
-
-    # If a trunk module, try to obtain from KDE mirrors first.
-    return 0 if ($branch ne 'trunk');
-
-    $filename = "$moduleName-svn.tar.bz2";
-    $filename =~ tr{/}{-}; # Substitute - for /
-    $dirName = $moduleName;
-
-    if ($filename =~ /^(playground|extragear)-/)
-    {
-        $filename = "kde$filename"; # Conform to snapshot naming convention
-        $dirName = "kde$moduleName";
-        $dirName =~ s{/}{-}; # Substitute here too.
-    }
-
-    $url = "http://download.kde.org/download.php?url=unstable/snapshots/$filename";
-
-    return download_module_snapshot($module, $filename, $url, $dirName);
-}
-
-# This subroutine tries to download a Subversion checkout snapshot of a given
-# module (and it actually handles the downloading).  If the download succeeds,
-# this function will automatically arrange the extracted module to fit the
-# normal kdesrc-build source layout, and take the necessary steps to restore
-# the snapshot to a state as if it had just been checked out from Subversion.
-#
-# The finalized Subversion checked will then have svn up run in order to
-# complete the checkout.
-#
-# If a failure occurs, the function will try to clean up after itself.  So,
-# no snapshot tarball or module directory should be present if 0 is returned.
-#
-# The first parameter is the module to download.
-# The second parameter is the filename to use.
-# The third parameter is the URL to download.
-# The fourth parameter is the final directory name from the extracted tarball.
-#
-# Return value is boolean true if successful, false otherwise.
-sub download_module_snapshot
-{
-    my ($module, $filename, $url, $dirName) = @_;
-    my %pathinfo = get_module_path_dir($module, 'source');
-
-    # We are in either the source directory or $srcdir/KDE so moduleBaseName
-    # is always the right directory name.
-
-    if (pretending)
-    {
-        pretend "Would have tried downloaded snapshot for g[$module], from";
-        pretend "\tb[g[$url]";
-        return 0; # Assume failure since pretending.
-    }
-
-    info "Downloading snapshot for g[$module]";
-
-    if (not download_file($url, $filename))
-    {
-        error "Unable to download snapshot for module r[$module]";
-        return 0;
-    }
-
-    info "\tDownload complete for g[$module], completing snapshot.";
-
-    # Now extract the newly downloaded file. First decompress it. (Don't
-    # use the j flag as it doesn't appear to be portable.
-    my $result = safe_system('bunzip2', $filename);
-    if($result) { # failure
-        error "Unable to decompress snapshot for r[$module]: $!";
-
-        # Clean up the probably defective snapshot.
-        safe_unlink($filename);
-
-        return 0;
-    }
-
-    # The file doesn't end in .bz2 anymore.
-    $filename =~ s/\.bz2$//;
-
-    # Extract the file.
-    $result = safe_system("tar", "xf", $filename);
-    my $savedError = $!; # Make sure safe_unlink doesn't overwrite.
-
-    # Snapshot file is no longer necessary.
-    safe_unlink($filename);
-
-    if($result) { # failure
-        error "Unable to extract snapshot for r[$module]: $savedError";
-
-        # Remove any created portions of the module tree.
-        safe_rmtree($dirName);
-
-        return 0;
-    }
-
-    whisper "\tExtracted directory for g[$module]";
-
-    # The extracted directory is possibly of a weird form, move it to the
-    # correct name (just $pathinfo{'module'});
-    if($dirName ne $pathinfo{'module'} and not safe_rename($dirName, $pathinfo{'module'})) {
-        error "Unable to move directory for r[$module] into place: r[$!]";
-
-        # Remove any created portions of the module tree.
-        safe_rmtree($dirName);
-        safe_rmtree($pathinfo{'module'});
-
-        return 0;
-    }
-
-    whisper "\tg[$module] snapshot is in place.";
-
-    # Module in place, now prepare it for checkout.
-    p_chdir($pathinfo{'module'});
-
-    # Switch svn host to proper host.
-    my $svnHost = get_option($module, 'svn-server');
-    my $curSvnHost = get_repo_url($module);
-    $curSvnHost =~ s/\/home\/kde.*$/\/home\/kde/; # Remove stuff after /home/kde
-
-    info "\tFinalizing Subversion information for g[$module]";
-
-    # Set svn snapshot to update from the correct svn host instead of the default
-    # anonsvn (if different).
-    if($svnHost ne $curSvnHost)
-    {
-        $result = log_command($module, 'svn-snapshot-switch',
-            ['svn', 'switch', '--relocate', $curSvnHost, $svnHost]);
-
-        if($result)
-        {
-            error "Unable to switch snapshot Subversion source to the KDE Subversion server!";
-            error "\tr[$!]";
-
-            # Remove any created portions of the module tree.
-            p_chdir($pathinfo{'path'});
-            safe_rmtree($pathinfo{'module'});
-
-            return 0;
-        }
-    }
-    else
-    {
-        debug "Skipping svn switch step, it is unnecessary.";
-    }
-
-    whisper "\tRestoring module file layout to normal.";
-
-    # Finally, restore the file structure.
-    $result = log_command($module, 'svn-restore-checkout',
-        [ 'svn', 'revert', '-R', '.' ]);
-
-    if($result)
-    {
-        error "Unable to restore standard Subversion layout!";
-
-        # Remove any created portions of the module tree.
-        p_chdir($pathinfo{'path'});
-        safe_rmtree($pathinfo{'module'});
-
-        return 0;
-    }
-
-    info "Snapshot checkout complete, g[$module] at snapshot's revision.";
-    info "\nCompleting checkout by updating g[$module]";
-
-    $result = log_command($module, 'svn-first-up', ['svn', 'up']);
-    if($result)
-    {
-        error "Unable to update module r[$module] to latest code.  The module";
-        error "is correctly checked-out however, so it may be possible to try";
-        error "again later.";
-
-        # Don't delete anything here, we're close enough to being good that
-        # kdesrc-build should be able to fix this later.
-        return 1;
-    }
-
-    info "Checkout complete for g[$module]!";
-
-    return 1;
-}
-
 # This subroutine is responsible for stripping the KDE/ part from the beginning
 # of modules that were entered by the user like "KDE/kdelibs" instead of the
 # normal "kdelibs".  That way you can search for kdelibs without having to
@@ -2769,18 +2551,6 @@ sub checkout_module_path
     }
 
     p_chdir ($pathinfo{'path'});
-
-    # First let's see if we have a snapshot checkout available.  If so, it
-    # would probably be quicker to use it.
-    if (not scalar @path and not get_option($module, 'disable-snapshot'))
-    {
-        if(install_module_snapshot($module))
-        {
-            whisper "Snapshot checkout successful!";
-            # Success, no need to continue on this route.
-            return undef;
-        }
-    }
 
     my $svn_url = svn_module_url($module);
     my $modulename = $pathinfo{'module'}; # i.e. kdelibs for KDE/kdelibs as $module
@@ -4752,14 +4522,6 @@ DONE
                 $run_mode = 'uninstall';
                 $phases->phases('uninstall');
 
-                last SWITCH;
-            };
-
-            # Option exists for debugging.  This disables downloading of
-            # snapshots from kdesrc-build.kde.org (kdesrc-build won't even
-            # check if it's possible).
-            /^--no-snapshots$/ && do {
-                set_option('global', '#disable-snapshot', 1);
                 last SWITCH;
             };
 
