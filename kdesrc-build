@@ -2933,12 +2933,6 @@ sub log_command
 
     debug "log_command(): Module $module, Command: ", join(' ', @command);
 
-    if (pretending)
-    {
-        pretend "\tWould have run g['", join ("' '", @command), "'";
-        return 0;
-    }
-
     # Fork a child, with its stdout connected to CHILD.
     $pid = open(CHILD, '-|');
     if ($pid)
@@ -2953,6 +2947,7 @@ sub log_command
             }
             else
             {
+                chomp $_;
                 debug $_;
             }
         }
@@ -2974,8 +2969,16 @@ sub log_command
         # Child
 
         # Apply altered environment variables.
-        whisper "Environment altered for child";
-        $ENV{$_} = $ENV_VARS{$_} foreach keys %ENV_VARS;
+        while (my ($key, $value) = each %ENV_VARS) {
+            $ENV{$key} = $value;
+            debug "\tSetting environment variable g[$key] to g[b[$value]";
+        }
+
+        if (pretending)
+        {
+            pretend "\tWould have run g['", join ("' '", @command), "'";
+            exit 0;
+        }
 
         if (not $logdir or not -e $logdir)
         {
@@ -3483,7 +3486,7 @@ sub setenv
 
     return unless $val;
 
-    debug "\tWould have set g[$var]=y[$val]." if pretending;
+    debug "\tMarking g[$var] to be set to y[$val].";
 
     $ENV_VARS{$var} = $val;
 }
@@ -6252,7 +6255,7 @@ sub setup_build_system
 sub prepend_environment_path
 {
     my $envName = shift;
-    my @curPaths = split(':', $ENV{$envName}) if defined $ENV{$envName};
+    my @curPaths = split(':', $ENV_VARS{$envName} // $ENV{$envName} // '');
 
     # Filter out entries to add that are already in the environment from the
     # system.
