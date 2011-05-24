@@ -1959,7 +1959,7 @@ sub download_file
     return 1 if $response->is_success;
 
     error "Failed to download y[b[$url] to b[$filename]";
-    error "Result was: y[b[$response->status_line]";
+    error "Result was: y[b[" . $response->status_line . "]";
     return 0;
 }
 
@@ -3676,29 +3676,26 @@ EOF
 # work. Only tries once per script run. If it does succeed, the result is saved
 # to $srcdir/kde_projects.xml
 #
-# Accepts options as a set of key/value pairs (i.e. a standard Perl hash), the
-# only one currently is "force", which if set to anything will unlink the xml
-# file first, even in pretend mode.
-#
 # Returns 0 if the file could not be downloaded, 1 otherwise.
 sub ensure_projects_xml_present
 {
-    my %opts = @_;
     my $srcdir = get_source_dir();
+    my $file = "$srcdir/kde_projects.xml";
+    state $cachedSuccess;
 
-    my $cached_status = get_option('global', '#cached_project_xml_check');
-    if (defined $cached_status && $cached_status eq 'failed') {
+    # See if we've already tried to download. If we ever try to download for
+    # real, we end up unlinking the file if it didn't successfully complete the
+    # download, so we shouldn't have to worry about a corrupt XML file hanging
+    # out for all time.
+    if (defined $cachedSuccess && !$cachedSuccess) {
         die make_exception('Internal', "Attempted to find projects.xml after it already failed");
     }
 
-    return $cached_status if $cached_status;
+    return 1 if $cachedSuccess;
 
     # Not previously attempted, let's make a try.
     super_mkdir($srcdir) unless -d "$srcdir";
-    my $file = "$srcdir/kde_projects.xml";
     my $url = "http://projects.kde.org/kde_projects.xml";
-
-    unlink $file if exists $opts{force};
 
     my $result = 1;
     if (!pretending) {
@@ -3715,10 +3712,10 @@ sub ensure_projects_xml_present
         info " * when database is updated next.";
     }
 
-    set_option('global', '#cached_project_xml_check',
-        $result ? 'success' : 'failed');
+    $cachedSuccess = $result;
 
     if (!$result) {
+        unlink $file if -e $file;
         die make_exception('Runtime', "Unable to download kde_projects.xml for the kde-projects repository!");
     }
 
@@ -7849,10 +7846,7 @@ eval
     eval {
         @modules = expandXMLModules(@modules);
     } or do {
-        warning "\n b[y[* * *] The KDE module database file appears to be corrupt, re-downloading.\n";
-        delete_option('global', '#cached_project_xml_check');
-        ensure_projects_xml_present(force => 1);
-        @modules = expandXMLModules(@modules);
+        warning " y[b[*] Unable to download KDE project database, will attempt to continue without.\n";
     };
 
     # If modules were on the command line then they are effectively forced to
