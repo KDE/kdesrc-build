@@ -11,6 +11,7 @@
 
 use strict;
 use warnings;
+use 5.010;
 use Getopt::Long;
 
 # Control whether we actually try to svn checkouts, possibly more later.
@@ -73,6 +74,8 @@ my %more_package_opts = (
 for my $key (keys %more_package_opts) {
     $package_opts{$key} = $more_package_opts{$key};
 }
+
+eval {
 
 # If using set-env, it is handled by the handle_set_env routine, so the
 # value should be the space separated VAR and VALUE.
@@ -336,6 +339,19 @@ is_deeply(\@filtered_modules, [@ConfModules[3..$#ConfModules]], 'resume-after a 
 ok(! -d "$testSourceDirName/build", 'Ensure build dir does not exist');
 isnt(super_mkdir("$testSourceDirName/build"), 0, 'Make temp build directory');
 ok(-d "$testSourceDirName/build", 'Double-check temp build dir created');
+
+}; # eval
+
+if (my $err = $@) {
+    if (ref $err && $err->isa('BuildException')) {
+        say "Test suite failed after kdesrc-build threw the following exception:";
+        say "$@->{message}";
+        fail();
+    }
+    else {
+        die; # Re-throw
+    }
+}
 
 # svn cd'ed on us, switch to a known directory to avoid errors unlinking the
 # temporary directory. In an "END" block so this should occur even if we
