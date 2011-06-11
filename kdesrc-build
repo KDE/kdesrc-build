@@ -94,8 +94,6 @@ our %package_opts = (
     "dest-dir"            => '${MODULE}', # single quotes used on purpose!
     "disable-agent-check" => 0,   # If true we don't check on ssh-agent
     "do-not-compile"      => "",
-    "email-address"       => "",
-    "email-on-compile-error" => "",
     "git-repository-base" => {}, # Base path template for use multiple times.
     "use-modules"         => "",
     "install-after-build" => 1,  # Default to true
@@ -7129,86 +7127,6 @@ sub whats_the_module_error
     return $output;
 }
 
-# Subroutine to get the e-mail address to send e-mail from.
-# It is pulled from the global email-address option by default.
-# The first parameter is a default e-mail address to use (may be left off, in
-# which case this function will create a default of its own if necessary.)
-sub get_email_address
-{
-    my $email = get_option('global', 'email-address');
-    my $default = shift;
-
-    # Use user's value if set.
-    return $email if $email;
-
-    # Let's use the provided default if set.
-    return $default if $default;
-
-    # Let's make a default of our own.  It's likely to suck, so oh well.
-    my $username = getpwuid($>);
-    my $hostname = hostname; # From Sys::Hostname
-
-    debug "User has no email address, using $username\@$hostname";
-
-    return "$username\@$hostname";
-}
-
-# Subroutine to look through the various failed lists, and send an email to the
-# given email address with a description of the failures.  If the user has
-# selected no email address the subroutine does nothing.
-sub email_error_report
-{
-    my $email_addy = get_option('global', 'email-on-compile-error');
-    my $from_addy = get_email_address($email_addy);
-
-    return unless $email_addy;
-
-    # Initial e-mail header.
-    my $email_body = <<EOF;
-The following errors were detected in the kdesrc-build run just completed.
-
-EOF
-
-    # Loop through modules trying to find out what caused the errors.
-    my $had_error = 0;
-    for my $type (@fail_display_order)
-    {
-        for my $module (@{$fail_lists{$type}})
-        {
-            $email_body .= "$module failed to $type:\n";
-            $email_body .= "-------------------------------\n\n";
-            $email_body .= whats_the_module_error($module);
-            $email_body .= "-------------------------------\n\n";
-
-            $had_error = 1;
-        }
-    }
-
-    return unless $had_error;
-
-    # Detect Mail::Mailer.
-    my $mailer;
-    eval {
-        require Mail::Mailer;
-
-        $mailer = new Mail::Mailer;
-    } or do {
-        error " y[*] Can't open y[b[Mail::Mailer] module, so e-mailing is disabled.";
-        debug "Error was $@";
-        return;
-    };
-
-    # Sendeth the email.
-    $mailer->open({
-        'From'    => $from_addy,
-        'To'      => $email_addy,
-        'Subject' => 'KDE build compile error',
-    });
-
-    print $mailer $email_body;
-    $mailer->close;
-}
-
 # Exits out of kdesrc-build, executing the user's preferred shell instead.  The
 # difference is that the environment variables should be as set in kdesrc-build
 # instead of as read from .bashrc and friends.
@@ -7700,7 +7618,6 @@ eval
 
     cleanup_log_directory() if get_option('global', 'purge-old-logs');
     output_failed_module_lists($ctx);
-    email_error_report();
 
     $time = localtime;
     my $color = '';
