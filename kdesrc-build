@@ -802,7 +802,7 @@ my $rcfile; # the file that was used; set by read_options
         # extragear/utils/kdesrc-build
         @xmlGroupingIds{qw/component module project/} = 1;
 
-        my ($class, $proj) = @_;
+        my ($class, $proj, $srcdir) = @_;
 
         $searchProject = $proj;
         @modules = ();
@@ -820,7 +820,6 @@ my $rcfile; # the file that was used; set by read_options
                 },
         );
 
-        my $srcdir = main::get_source_dir();
         my $result = $parser->parsefile("$srcdir/kde_projects.xml");
         return @modules;
     }
@@ -3719,10 +3718,11 @@ sub expandXMLModules
 
         my $name = $_->name();
         my $ctx = $_->buildContext();
+        my $srcdir = get_source_dir($ctx->globalModule());
 
         my @xmlResults = grep {
             $_->{'active'} ne 'false'
-        } (KDEXMLReader->getModulesForProject($name));
+        } (KDEXMLReader->getModulesForProject($name, $srcdir));
 
         # Setup module options
         foreach my $xml (@xmlResults) {
