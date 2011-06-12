@@ -374,6 +374,7 @@ my $rcfile; # the file that was used; set by read_options
     package ksb::Util;
 
     use Carp;
+    use Scalar::Util qw(blessed);
 
     sub import
     {
@@ -454,7 +455,7 @@ my $rcfile; # the file that was used; set by read_options
     {
         my ($obj, $class) = @_;
 
-        if (!ref $obj || !$obj->isa($class)) {
+        if (!blessed($obj) || !$obj->isa($class)) {
             fail_assertion("$obj is not of type $class");
         }
 
