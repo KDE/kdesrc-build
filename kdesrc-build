@@ -1245,6 +1245,22 @@ my $rcfile; # the file that was used; set by read_options
         return $pathinfo{'fullpath'};
     }
 
+    # Returns true if the module should have make install run in order to be
+    # used, or false if installation is not required or possible.
+    sub needsInstalled
+    {
+        my $self = shift;
+
+        return 0 if $self->name() eq 'kde-common'; # Vestigial but possible.
+
+        # Don't install Qt if QTDIR == builddir
+        if ($self->name() eq 'qt-copy') {
+            return $self->getOption('qtdir') ne $self->fullpath('build');
+        }
+
+        return 1;
+    }
+
     1;
 }
 # }}}
@@ -6829,27 +6845,6 @@ EOF
     }
 }
 
-# Check if qt-copy 4 requires make install.
-#
-# This returns true unless the QTDIR is the same as the Qt 4 srcdir.
-sub qt_copy_needs_installed
-{
-    my $builddir = get_fullpath('qt-copy', 'build');
-    my $prefix = get_option('global', 'qtdir');
-    return 0 if $builddir eq $prefix;
-    return 1;
-}
-
-# Returns the given list of modules, excluding those that can not be
-# installed or uninstalled.
-sub filter_non_installable_modules
-{
-    my @excluded_modules = qw/kde-common/;
-    push @excluded_modules, 'qt-copy' unless qt_copy_needs_installed();
-
-    return grep {!list_has(@excluded_modules, $_->name())} (@_);
-}
-
 # Subroutine to handle the installation process.  Simply calls
 # 'make install' in the build directory.
 #
@@ -6863,7 +6858,7 @@ sub handle_install
     map { assert_isa($_, 'Module') } @modules;
 
     @modules = filter_l10n_module_list($ctx, @modules);
-    @modules = filter_non_installable_modules(@modules);
+    @modules = grep { $_->needsInstalled() } (@modules);
 
     my $result = 0;
 
@@ -6961,7 +6956,7 @@ sub handle_uninstall
     map { assert_isa($_, 'Module') } @modules;
 
     @modules = filter_l10n_module_list($ctx, @modules);
-    @modules = filter_non_installable_modules(@modules);
+    @modules = grep { $_->needsInstalled() } (@modules);
     my $result = 0;
 
     for my $module (reverse @modules)
