@@ -999,7 +999,14 @@ my $rcfile; # the file that was used; set by read_options
             phases  => ksb::Phases->new(@DefaultPhases),
         };
 
-        return bless $context, $class;
+        # We've turned context into an object, now add a default module.
+        bless $context, $class;
+
+        my $global = Module->new($context, 'global');
+        $global->phases()->clear(); # Ensure it's never built/updated/etc.
+        $context->{'globalModule'} = $global;
+
+        return $context;
     }
 
     # Gets the ksb::Phases for this context, and optionally sets it first to
@@ -1034,6 +1041,15 @@ my $rcfile; # the file that was used; set by read_options
     {
         my $self = shift;
         return $self->{modules};
+    }
+
+    # Returns the Module that can be used for global option lookup, that way
+    # underlying code doesn't have to worry about whether they have a
+    # BuildContext or a Module option to read.
+    sub globalModule
+    {
+        my $self = shift;
+        return $self->{globalModule};
     }
 
     sub modulesInPhase
