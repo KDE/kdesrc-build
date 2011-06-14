@@ -1059,6 +1059,26 @@ my $rcfile; # the file that was used; set by read_options
         return @list;
     }
 
+    # Searches for a module with a name that matches the provided parameter,
+    # and returns its Module object. Returns undef if no match was found.
+    # As a special-case, returns the globalModule if the name passed is
+    # 'global'.
+    sub lookupModule
+    {
+        my ($self, $moduleName) = @_;
+
+        return $self->globalModule() if $moduleName eq 'global';
+
+        my @options = grep { $_->name() eq $moduleName } (@{$self->moduleList()});
+        return undef unless @options;
+
+        if (scalar @options > 1) {
+            die make_exception('Internal', 'Detected 2 or more kdelibs Module objects');
+        }
+
+        return $options[0];
+    }
+
     # This subroutine assigns the appropriate options to %package_opts and the
     # update and build lists to build a default set of modules.
     #
