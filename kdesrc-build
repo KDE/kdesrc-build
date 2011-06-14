@@ -1225,13 +1225,16 @@ my $rcfile; # the file that was used; set by read_options
         return $self->name() cmp $other->name();
     }
 
+    # Returns the configured value for a given option. See main::get_option
+    # for now.
     sub getOption
     {
-        my ($self, $key) = @_;
+        my ($self, $key, $levelLimit) = @_;
+        $levelLimit //= 'allow-inherit';
 
         # For now this is just a wrapper against main::get_option, but will
         # be expanded/refactored later to be a proper polymorphic getter.
-        return main::get_option($self->name(), $key);
+        return main::get_option($self->name(), $key, $levelLimit);
     }
 
     # Returns the path to the desired directory type (source or build),
@@ -1912,21 +1915,6 @@ sub get_option
     return $$ref{$option} // ${$globalOpts}{$option};
 }
 
-# Like get_option, but returns the requested option for a given module with no
-# fallbacks to global options, no overrides, etc. Basically goes directly into
-# package_opts.
-sub get_module_option
-{
-    my ($module, $option) = @_;
-
-    if (not exists $package_opts{$module} || not exists $package_opts{$module}->{$option})
-    {
-        return undef;
-    }
-
-    return $package_opts{$module}->{$option};
-}
-
 # Returns a string describing the scm platform of the given module.
 #
 # First parameter: Module to get scm type of.
@@ -1940,8 +1928,8 @@ sub module_scm_type
     # says so...). Don't use get_option() as it will try to fallback to
     # global options.
 
-    my $svn_status = get_module_option($module, 'svn-server');
-    my $git_status = get_module_option($module, 'repository');
+    my $svn_status = get_option($module, 'svn-server', 'module');
+    my $git_status = get_option($module, 'repository', 'module');
 
     if ($svn_status && $git_status) {
         error <<EOF;
