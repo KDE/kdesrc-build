@@ -7562,7 +7562,8 @@ eval
     }
     else
     {
-        push @atexit_subs, sub { finish($ctx, 99) };
+        my $curPid = $$;
+        push @atexit_subs, sub { finish($ctx, 99) if $$ == $curPid };
     }
     # }}}
 
