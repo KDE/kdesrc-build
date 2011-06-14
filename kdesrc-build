@@ -1385,13 +1385,6 @@ BEGIN {
     ksb::Util->import();
 }
 
-# Subroutine to handle removing the lock file upon receiving a signal
-sub quit_handler
-{
-    note "Signal received, terminating.";
-    finish(5);
-}
-
 # Subroutine that returns the path of a file used to output the results of the
 # build process.  It accepts one parameter, which changes the kind of file
 # returned.  If the parameter is set to 'existing', then the file returned is
@@ -4874,7 +4867,10 @@ sub get_lock
     # Install signal handlers to ensure that the lockfile gets closed.
     # There is a race condition here, but at worst we have a stale lock
     # file, so I'm not *too* concerned.
-    install_signal_handler(\&quit_handler);
+    install_signal_handler(sub {
+        note "Signal received, terminating.";
+        finish($ctx, 5);
+    });
 
     # Note that we can use color codes at this point since get_lock is called
     # after read_options (which sets up the color).
@@ -6792,6 +6788,7 @@ EOF
 # as an exit code to use
 sub finish
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $exitcode = shift;
     my $logdir = get_log_dir('global');
     $exitcode = 0 unless $exitcode;
@@ -7565,7 +7562,7 @@ eval
     }
     else
     {
-        push @atexit_subs, sub { finish(99) };
+        push @atexit_subs, sub { finish($ctx, 99) };
     }
     # }}}
 
@@ -7646,7 +7643,7 @@ eval
     $color = 'r[' if $result;
 
     info "${color}Script finished processing at g[$time]" unless pretending;
-    finish($result);
+    finish($ctx, $result);
 
     # }}}
 };
