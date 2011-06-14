@@ -4955,30 +4955,26 @@ sub close_lock
 
 sub updateModulePhases
 {
-    my @modules = @{dclone(\@_)};
-
     whisper "Filtering out module phases.";
-    for my $module (@modules) {
-        my $name = $module->name();
-
-        if (get_option($name, 'manual-update') ||
-            get_option($name, 'no-svn') || get_option($name, 'no-src'))
+    for my $module (@_) {
+        if ($module->getOption('manual-update') ||
+            $module->getOption('no-svn') || $module->getOption('no-src'))
         {
             $module->phases()->clear();
             next;
         }
 
-        if (get_option($name, 'manual-build')) {
+        if ($module->getOption('manual-build')) {
             $module->phases()->filterOutPhase('build');
             $module->phases()->filterOutPhase('test');
             $module->phases()->filterOutPhase('install');
         }
 
-        $module->phases()->filterOutPhase('install') unless get_option($name, 'install-after-build');
-        $module->phases()->addPhase('test') if get_option($name, 'run-tests');
+        $module->phases()->filterOutPhase('install') unless $module->getOption('install-after-build');
+        $module->phases()->addPhase('test') if $module->getOption('run-tests');
     }
 
-    return @modules;
+    return @_;
 }
 
 # Used to sort module names.  'global' always starts first, modules with /
