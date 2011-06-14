@@ -1241,7 +1241,7 @@ my $rcfile; # the file that was used; set by read_options
         my ($self, $type) = @_;
         assert_in($type, [qw/build source/]);
 
-        my %pathinfo = main::get_module_path_dir($self->name(), $type);
+        my %pathinfo = main::get_module_path_dir($self, $type);
         return $pathinfo{'fullpath'};
     }
 
@@ -1394,6 +1394,7 @@ BEGIN {
 # All files will be stored in the log directory.
 sub get_output_file
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $logdir;
     my $mode;
     $mode = shift or $mode = '';
@@ -1408,7 +1409,7 @@ sub get_output_file
         # name from a known file or location.  Since the latter option is much
         # easier, that's what I'm going with.  Note that this depends on the
         # latest symlink being in place.
-        $logdir = get_subdir_path ('global', 'log-dir');
+        $logdir = get_subdir_path ($ctx->globalModule(), 'log-dir');
         $fname = "$logdir/latest/build-status";
 
         debug "Old build status file is $fname";
@@ -1422,7 +1423,7 @@ sub get_output_file
 
     # This call must follow the test above, because it changes the 'latest'
     # symlink leading to failures later.
-    $logdir = get_log_dir('global');
+    $logdir = get_log_dir($ctx->globalModule());
 
     $fname = "$logdir/build-status";
     debug "Build status file is $fname";
@@ -1465,9 +1466,9 @@ sub split_quoted_on_whitespace($)
 # parameter is the option key (e.g. build-dir or log-dir).
 sub get_subdir_path
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $option = shift;
-    my $dir = get_option($module, $option);
+    my $dir = $module->getOption($option);
 
     # If build-dir starts with a slash, it is an absolute path.
     return $dir if $dir =~ /^\//;
@@ -1480,7 +1481,7 @@ sub get_subdir_path
     else
     {
         # Relative directory, tack it on to the end of $kdesrcdir.
-        my $kdesrcdir = get_option($module, 'source-dir');
+        my $kdesrcdir = $module->getOption('source-dir');
         $dir = "$kdesrcdir/$dir";
     }
 
@@ -1495,10 +1496,11 @@ sub get_subdir_path
 # The first parameter should be the module name.
 sub get_dest_dir
 {
-    my $module = shift;
-    my $dest_dir = get_option($module, 'dest-dir');
+    my $module = assert_isa(shift, 'Module');
+    my $moduleName = $module->name();
+    my $dest_dir = $module->getOption('dest-dir');
 
-    $dest_dir =~ s/(\${MODULE})|(\$MODULE\b)/$module/g;
+    $dest_dir =~ s/(\${MODULE})|(\$MODULE\b)/$moduleName/g;
 
     return $dest_dir;
 }
@@ -1512,19 +1514,19 @@ sub get_dest_dir
 #         False (0, undef) if user does not want cmake or no CMake support is detected.
 sub module_uses_cmake
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
 
-    my $srcdir = get_fullpath($module, 'source');
+    my $srcdir = $module->fullpath('source');
     return 1 if -e "$srcdir/CMakeLists.txt";
 
     # Kind of a hack but it beats inventing a sequence of checks that happens
     # to get it right: just hardcode in the module that is the exception to the
     # rule.
 
-    return 1 if $module =~ /^l10n-kde4\/?/;
+    return 1 if $module->name() =~ /^l10n-kde4\/?/;
 
     # No CMakeLists?  Expected for qt-copy
-    return 0 if $module eq 'qt-copy';
+    return 0 if $module->name() eq 'qt-copy';
 
     # No CMakeLists.txt found, if the directory existed don't use CMake,
     # otherwise assume we are using CMake for now.
@@ -1535,9 +1537,7 @@ sub module_uses_cmake
 # Convenience subroutine to get the source root dir.
 sub get_source_dir
 {
-    my $module = shift;
-    $module = 'global' unless defined $module;
-
+    my $module = assert_isa(shift, 'Module');
     return get_subdir_path ($module, 'source-dir');
 }
 
@@ -1704,7 +1704,7 @@ sub svn_module_url
 # so be sure to add on the module name if needed.
 sub get_build_dir
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
 
     return get_subdir_path($module, 'build-dir');
 }
@@ -1713,11 +1713,12 @@ sub get_build_dir
 # by the different modules in the script.
 sub get_all_log_directories
 {
-    my @module_list = keys %package_opts;
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my @module_list = @{$ctx->moduleList()};
     my %log_dict;
 
     # A hash is used to track directories to avoid duplicate entries.
-    unshift @module_list, "global";
+    unshift @module_list, $ctx->globalModule();
     $log_dict{get_subdir_path($_, 'log-dir')} = 1 foreach @module_list;
 
     debug "Log directories are ", join (", ", keys %log_dict);
@@ -1732,9 +1733,10 @@ sub get_all_log_directories
 # $LOG_DATE for use by the logging subroutines.
 sub setup_logging_subsystem
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $min_build_id = "00";
     my $date = strftime "%F", localtime; # ISO 8601 date
-    my @log_dirs = get_all_log_directories();
+    my @log_dirs = get_all_log_directories($ctx);
 
     for (@log_dirs)
     {
@@ -1749,7 +1751,7 @@ sub setup_logging_subsystem
     $LOG_DATE = $date;
     $BUILD_ID = $min_build_id;
 
-    my $buildLog = get_log_dir('global') . '/build-log';
+    my $buildLog = get_log_dir($ctx->globalModule()) . '/build-log';
     ksb::Debug::setLogFile($buildLog);
 }
 
@@ -1759,11 +1761,11 @@ sub setup_logging_subsystem
 # Returns undef on an error, or the name of the directory otherwise.
 sub get_log_dir
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $logbase = get_subdir_path($module, 'log-dir');
     my $logpath = "$logbase/$LOG_DATE-$BUILD_ID/$module";
 
-    $logpath = "$logbase/$LOG_DATE-$BUILD_ID" if $module eq 'global';
+    $logpath = "$logbase/$LOG_DATE-$BUILD_ID" if $module->name() eq 'global';
 
     return $logpath if pretending;
 
@@ -1776,7 +1778,7 @@ sub get_log_dir
     }
 
     # Don't mess with Texas^H^H^H^H^Hsymlinks for 'global'
-    return $logpath if $module eq 'global';
+    return $logpath if $module->name() eq 'global';
 
     # Add a symlink to the latest run for this module.  Previous kdesrc-build
     # releases would use /latest as a symlink, but this made it hard to find
@@ -1800,20 +1802,20 @@ sub get_log_dir
     }
 
     # Handle stuff like playground/utils or KDE/kdelibs
-    my ($moduleName, $modulePath) = fileparse($module);
+    my ($moduleName, $modulePath) = fileparse($module->name());
 
     # Setup directory path we need to create.
     my $latestPath = "$logbase/latest";
 
     # If we have a path separator we need to adjust and create dirs and stuff
-    if ($module =~ /\//)
+    if ($module->name() =~ /\//)
     {
         $latestPath .= "/$modulePath";
         super_mkdir($latestPath);
     }
     else
     {
-        $moduleName = $module; # This just makes later stuff easier
+        $moduleName = $module->name(); # This just makes later stuff easier
     }
 
     my $symlinkTarget = "$logbase/$LOG_DATE-$BUILD_ID/$module";
@@ -1973,7 +1975,7 @@ EOF
 # be determined.
 sub update_module_subdirectories
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $numChanged = 0;
 
     # If we have elements in @path, download them now
@@ -2023,7 +2025,7 @@ sub has_base_module
 # Second parameter is either source or build.
 sub get_module_path_dir
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $type = shift;
     my $destdir = get_dest_dir($module);
     my $srcbase = get_source_dir($module);
@@ -2041,14 +2043,6 @@ sub get_module_path_dir
     $result{'fullpath'} = "$result{path}/$result{module}";
 
     return %result;
-}
-
-sub get_fullpath
-{
-    my ($module, $type) = @_;
-    my %pathinfo = get_module_path_dir($module, $type);
-
-    return $pathinfo{'fullpath'};
 }
 
 # This subroutine downloads the file pointed to by the URL given in the first
@@ -2106,11 +2100,11 @@ sub get_git_branch
 # Returns the current sha1 of the given git "commit-ish".
 sub git_commit_id
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $commit = shift;
     $commit = 'HEAD' unless $commit;
 
-    my $gitdir = get_fullpath($module, 'source') . '/.git';
+    my $gitdir = $module->fullpath('source') . '/.git';
 
     # Note that the --git-dir must come before the git command itself.
     my ($id, undef) = slurp_program_output(
@@ -2166,23 +2160,23 @@ sub get_svn_branch
 # Returns boolean true if successful, false otherwise.
 sub git_clone_module
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $git_repo = shift;
-    my $srcdir = get_fullpath($module, 'source');
+    my $srcdir = $module->fullpath('source');
     my @args = ('--', $git_repo, $srcdir);
 
     # The -v forces progress output from git, which seems to work around either
     # a gitorious.org bug causing timeout errors after cloning large
     # repositories (such as qt-copy...)
-    unshift (@args, '-v') if $module eq 'qt-copy';
+    unshift (@args, '-v') if $module->name() eq 'qt-copy';
 
     note "Cloning g[$module]";
 
     my $result = log_command($module, 'git-clone', ['git', 'clone', @args]);
     if ($result == 0) {
-        set_persistent_option($module, 'git-cloned-repository', $git_repo);
+        set_persistent_option($module->name(), 'git-cloned-repository', $git_repo);
 
-        my $branch = get_git_branch($module);
+        my $branch = get_git_branch($module->name());
 
         # Switch immediately to user-requested branch now.
         if ($branch ne 'master') {
@@ -2394,7 +2388,7 @@ sub git_get_remote_branchname
 # exceptions being thrown however.
 sub git_stash_and_update
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $date = strftime ("%F-%R", gmtime()); # ISO Date, hh:mm time
 
     # To find out if we should stash, we just use git diff --quiet, twice to
@@ -2481,11 +2475,11 @@ EOF
 # returned only via exceptions because of this.
 sub git_update_module
 {
-    my $module = shift;
-    my $srcdir = get_fullpath($module, 'source');
-    my $old_repo = get_persistent_option($module, 'git-cloned-repository');
-    my $cur_repo = get_option($module, 'repository');
-    my $branch = get_git_branch($module);
+    my $module = assert_isa(shift, 'Module');
+    my $srcdir = $module->fullpath('source');
+    my $old_repo = get_persistent_option($module->name(), 'git-cloned-repository');
+    my $cur_repo = $module->getOption('repository');
+    my $branch = get_git_branch($module->name());
     my $remoteName = GIT_REMOTE_ALIAS;
     my $result;
 
@@ -2524,7 +2518,7 @@ sub git_update_module
         note " y[b[*]\tAttempting to perform the switch";
 
         # Update what we think is the current repository on-disk.
-        set_persistent_option($module, 'git-cloned-repository', $cur_repo);
+        set_persistent_option($module->name(), 'git-cloned-repository', $cur_repo);
     }
 
     # Download updated objects
@@ -2541,10 +2535,10 @@ sub git_update_module
     # to find a matching SHA1. Any local branches that are found must also be
     # remote-tracking. If this is all true we just re-use that branch,
     # otherwise we create our own remote-tracking branch.
-    my $branchName = git_get_remote_branchname($module, \@remoteNames, $branch);
+    my $branchName = git_get_remote_branchname($module->name(), \@remoteNames, $branch);
 
     if (not $branchName) {
-        my $newName = git_make_branchname($module, \@remoteNames, $branch);
+        my $newName = git_make_branchname($module->name(), \@remoteNames, $branch);
         whisper "\tUpdating g[$module] with new remote-tracking branch y[$newName]";
         if (0 != log_command($module, 'git-checkout-branch',
                       ['git', 'checkout', '-b', $newName, "$remoteName/$branch"]))
@@ -2581,15 +2575,15 @@ sub git_update_module
 # Returns the number of files updated (actually it just returns 0 now, but maybe someday)
 sub update_module_git_checkout
 {
-    my $module = shift;
-    my $srcdir = get_fullpath($module, 'source');
+    my $module = assert_isa(shift, 'Module');
+    my $srcdir = $module->fullpath('source');
 
     if (-e $srcdir) {
         # Note that this function will throw an exception on failure.
         return git_update_module($module);
     }
     else {
-        my $git_repo = get_option($module, 'repository');
+        my $git_repo = $module->getOption('repository');
 
         if (not $git_repo) {
             die "Unable to checkout $module, you must specify a repository to use.";
@@ -2617,6 +2611,7 @@ sub update_module_git_checkout
 sub checkout_module_path
 {
     my ($module, @path) = @_;
+    assert_isa($module, 'Module');
     my %pathinfo = get_module_path_dir($module, 'source');
     my @args;
 
@@ -2627,7 +2622,7 @@ sub checkout_module_path
 
     p_chdir ($pathinfo{'path'});
 
-    my $svn_url = svn_module_url($module);
+    my $svn_url = svn_module_url($module->name());
     my $modulename = $pathinfo{'module'}; # i.e. kdelibs for KDE/kdelibs as $module
 
     push @args, ('svn', 'co', '--non-interactive');
@@ -2658,7 +2653,8 @@ sub checkout_module_path
 sub update_module_path
 {
     my ($module, @path) = @_;
-    my $fullpath = get_fullpath($module, 'source');
+    assert_isa($module, 'Module');
+    my $fullpath = $module->fullpath('source');
     my @args;
 
     p_chdir ($fullpath);
@@ -2784,7 +2780,7 @@ END
 # Subroutine to run a command, optionally filtering on the output of the child
 # command.
 #
-# First parameter is the name of the module being built (for logging purposes
+# First parameter is the module object being built (for logging purposes
 #   and such).
 # Second parameter is the name of the log file to use (relative to the log
 #   directory).
@@ -2807,6 +2803,7 @@ END
 sub log_command
 {
     my ($module, $filename, $argRef, $callbackRef) = @_;
+    assert_isa($module, 'Module');
     my $pid;
     my @command = @{$argRef};
     my $logdir = get_log_dir($module);
@@ -2882,7 +2879,9 @@ sub log_command
         # don't redirect stderr in that case.
         # In the case of qt-copy, we forced on progress output so let's leave
         # that interactive to keep the logs sane.
-        open (STDERR, ">&STDOUT") unless $command[0] eq 'svn' || $module eq 'qt-copy';
+        if($command[0] ne 'svn' && $module->name() ne 'qt-copy') {
+            open (STDERR, ">&STDOUT");
+        }
 
         # Call internal function, name given by $command[1]
         if($command[0] eq 'kdesrc-build')
@@ -2895,7 +2894,7 @@ sub log_command
             splice (@command, 0, 2); # Remove first two elements.
 
             no strict 'refs'; # Disable restriction on symbolic subroutines.
-            if (not &{$cmd}(@command)) # Call sub
+            if (! &{$cmd}(@command)) # Call sub
             {
                 exit EINVAL;
             }
@@ -2929,12 +2928,14 @@ EOF
 # Second parameter is the filename in the log directory of the error log.
 sub set_error_logfile
 {
-    my ($module, $logfile) = @_;
-    my $logdir = get_log_dir($module);
+    my $module = assert_isa(shift, 'Module');
+    my $logfile = shift;
 
     return unless $logfile;
 
-    set_option($module, '#error-log-file', "$logdir/$logfile");
+    my $logdir = get_log_dir($module);
+
+    set_option($module->name(), '#error-log-file', "$logdir/$logfile");
     debug "Logfile for $module is $logfile";
 
     # Setup symlink in the module log directory pointing to the appropriate
@@ -2974,9 +2975,9 @@ sub run_make_command
     # 1. Not using CMake (i.e. Qt)
     # 2. If we're not printing to a terminal.
     # 3. When we're debugging (we'd interfere with debugging output).
-    if ((!module_uses_cmake($module->name())) or not -t STDERR or debugging)
+    if ((!module_uses_cmake($module)) or not -t STDERR or debugging)
     {
-        return log_command($module->name(), $filename, $argRef);
+        return log_command($module, $filename, $argRef);
     }
 
     # Setup callback function for use by log_command.
@@ -3013,7 +3014,7 @@ sub run_make_command
         }
     };
 
-    return log_command($module->name(), $filename, $argRef, $log_command_callback);
+    return log_command($module, $filename, $argRef, $log_command_callback);
 }
 
 # Subroutine to determine if the given subdirectory of a module can actually be
@@ -3119,7 +3120,7 @@ sub safe_make (@)
     my ($module, @args) = @_;
     assert_isa($module, 'Module');
 
-    my $logdir = get_log_dir($module->name());
+    my $logdir = get_log_dir($module);
     my $checkout_dirs = $module->getOption("checkout-only");
     my @dirs = split(' ', $checkout_dirs);
     my $install_mode = (scalar @args > 0) && ($args[0] =~ /^(un)?install$/);
@@ -3568,8 +3569,9 @@ EOF
 # Returns 0 if the file could not be downloaded, 1 otherwise.
 sub ensure_projects_xml_present
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my %opts = @_;
-    my $srcdir = get_source_dir();
+    my $srcdir = get_source_dir($ctx->globalModule());
 
     my $cached_status = get_option('global', '#cached_project_xml_check');
     if (defined $cached_status && $cached_status eq 'failed') {
@@ -3742,6 +3744,7 @@ EOF
 # included in the sequence they were originally.
 sub expandXMLModules
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my @modules = @_;
 
     debug "Expanding XML modules in " . join(', ', map { $_->name() } @modules);
@@ -3752,7 +3755,7 @@ sub expandXMLModules
 
         return $_ if $_->type() ne 'proj';
 
-        ensure_projects_xml_present() or
+        ensure_projects_xml_present($ctx) or
             die "kde-projects repository information could not be downloaded: $!.";
 
         my $name = $_->name();
@@ -3975,16 +3978,10 @@ sub read_options
 # as well.
 sub module_needs_builddir_help
 {
-    my $module = shift;
-    my @module_help_list = qw/kdebindings/;
+    my $module = assert_isa(shift, 'Module');
 
     # l10n/lang needs help.
-    return 1 if ($module =~ /^l10n-kde4\/?/);
-
-    # Other CMake-using modules are fine.
-    return 0 if module_uses_cmake($module);
-
-    return list_has(@module_help_list, $module);
+    return 1 if ($module->name() =~ /^l10n-kde4\/?/);
 }
 
 # This subroutine reads the set-env option for a given module and initializes
@@ -4031,7 +4028,9 @@ sub setup_operating_environment
 # packages failed at doing.
 sub output_failed_module_list($@)
 {
-    my ($message, @fail_list) = @_;
+    my ($ctx, $message, @fail_list) = @_;
+    assert_isa($ctx, 'ksb::BuildContext');
+
     $message = uc $message; # Be annoying
 
     debug "Message is $message";
@@ -4052,7 +4051,8 @@ sub output_failed_module_list($@)
             # one place it should be though, take advantage of side-effect of log_command()
             # to find it.
             if (not $logfile) {
-                my $logdir = get_log_dir($_) . "/error.log";
+                my $realModule = $ctx->lookupModule($_);
+                my $logdir = get_log_dir($realModule) . "/error.log";
                 $logfile = $logdir if -e $logdir;
             }
 
@@ -4075,7 +4075,7 @@ sub output_failed_module_lists
     for my $type (@fail_display_order)
     {
         my @failures = @{$fail_lists{$type}};
-        output_failed_module_list("failed to $type", @failures);
+        output_failed_module_list($ctx, "failed to $type", @failures);
     }
 
     # See if any modules fail continuously and warn specifically for them.
@@ -4370,9 +4370,9 @@ sub slurp_git_config_output
 # Returns the string value of the parameter or undef if an error occurred.
 sub get_svn_info
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $param = shift;
-    my $srcdir = get_fullpath($module, 'source');
+    my $srcdir = $module->fullpath('source');
     my $result; # Predeclare to outscope upcoming eval
 
     # Search each line of output, ignore stderr.
@@ -4413,7 +4413,7 @@ sub get_svn_info
 # First parameter is the name of the module to examine.
 sub current_module_svn_revision
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
 
     return get_svn_info($module, 'Revision');
 }
@@ -4424,12 +4424,12 @@ sub current_module_svn_revision
 # First parameter is the name of the module to examine.
 sub current_module_revision
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
 
-    if (module_scm_type($module) eq 'svn') {
+    if ($module->type() eq 'svn') {
         return current_module_svn_revision($module);
     }
-    elsif (module_scm_type($module) eq 'git') {
+    elsif ($module->type() eq 'git') {
         return git_commit_id($module);
     }
 
@@ -4859,6 +4859,7 @@ sub install_signal_handler
 # handling separate tasks.
 sub get_lock
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $lockfile = "$ENV{HOME}/.kdesrc-lock";
     $! = 0; # Force reset to non-error status
     sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
@@ -5271,7 +5272,7 @@ EOF
 sub handle_updates
 {
     my ($ipc, $ctx) = @_;
-    my $kdesrc = get_source_dir();
+    my $kdesrc = get_source_dir($ctx->globalModule());
     my $hadError = 0;
     my @update_list = $ctx->modulesInPhase('update');
 
@@ -5332,7 +5333,7 @@ sub handle_updates
 
         check_for_module_config ($moduleName);
 
-        my $module_src_dir = get_source_dir($moduleName);
+        my $module_src_dir = get_source_dir($module);
         if ($kdesrc ne $module_src_dir)
         {
             # This module has a different source directory, ensure it exists.
@@ -5372,16 +5373,16 @@ sub handle_updates
             if (-e "$fullpath/.svn")
             {
                 # Warn user if the current repo URL is different than expected.
-                check_module_validity($moduleName);
-                $count = update_module_path($moduleName, @options);
+                check_module_validity($module);
+                $count = update_module_path($module, @options);
             }
             elsif ($module->type() eq 'git') {
                 # Handle git module update
-                $count = update_module_git_checkout($moduleName);
+                $count = update_module_git_checkout($module);
             }
             else
             {
-                $count = checkout_module_path($moduleName, @options);
+                $count = checkout_module_path($module, @options);
             }
         };
 
@@ -5512,7 +5513,7 @@ EOF
         info "\tRunning g[configure]...";
 
         set_persistent_option($module->name(), 'last-configure-flags', get_list_digest(@commands));
-        return log_command($module->name(), "configure", \@commands);
+        return log_command($module, "configure", \@commands);
     }
 
     # Skip execution of configure.
@@ -5527,35 +5528,35 @@ EOF
 # 0 for success, non-zero for failure.
 sub safe_run_cmake
 {
-    my $module = shift;
-    my $srcdir = get_fullpath($module, 'source');
-    my @commands = split_quoted_on_whitespace (get_option($module, 'cmake-options'));
+    my $module = assert_isa(shift, 'Module');
+    my $srcdir = $module->fullpath('source');
+    my @commands = split_quoted_on_whitespace ($module->getOption('cmake-options'));
 
     # grep out empty fields
     @commands = grep {!/^\s*$/} @commands;
 
     # Add -DBUILD_foo=OFF options for the directories in do-not-compile.
     # This will only work if the CMakeLists.txt file uses macro_optional_add_subdirectory()
-    my @masked_directories = split(' ', get_option($module, 'do-not-compile'));
+    my @masked_directories = split(' ', $module->getOption('do-not-compile'));
     push @commands, "-DBUILD_$_=OFF" foreach @masked_directories;
 
     # Get the user's CXXFLAGS, use them if specified and not already given
     # on the command line.
-    my $cxxflags = get_option ($module, 'cxxflags');
+    my $cxxflags = $module->getOption('cxxflags');
     if ($cxxflags and not grep { /^-DCMAKE_CXX_FLAGS(:\w+)?=/ } @commands)
     {
         push @commands, "-DCMAKE_CXX_FLAGS:STRING=$cxxflags";
     }
 
-    my $prefix = get_option ($module, 'prefix');
+    my $prefix = $module->getOption('prefix');
 
     # If still no prefix, use KDEDIR
-    $prefix = get_option($module, 'kdedir') unless $prefix;
+    $prefix = $module->getOption('kdedir') unless $prefix;
 
     push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
 
-    if (get_option($module, 'run-tests') and
-        not grep { /^\s*-DKDE4_BUILD_TESTS(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
+    if ($module->getOption('run-tests') &&
+        !grep { /^\s*-DKDE4_BUILD_TESTS(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
        )
     {
         whisper "Enabling tests";
@@ -5566,28 +5567,29 @@ sub safe_run_cmake
             push @commands, "-DPHONON_BUILD_TESTS:BOOL=ON";
         }
     }
-    if (get_option($module, 'run-tests') eq 'upload')
+
+    if ($module->getOption('run-tests') eq 'upload')
     {
         whisper "Enabling upload of test results";
         push @commands, "-DBUILD_experimental:BOOL=ON";
     }
 
-
     # For l10n-kde4, we must run cmake to search in the (fake) build dir.  There
     # is no srcdir != builddir (but we do simulate it).
-    if ($module =~ /^l10n-kde4\/?/)
+    if ($module->name() =~ /^l10n-kde4\/?/)
     {
         $srcdir = ".";
     }
 
     unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
 
-    my $old_options = get_persistent_option($module, 'last-cmake-options') || '';
-    my $builddir = get_fullpath($module, 'build');
+    my $old_options =
+        get_persistent_option($module->name(), 'last-cmake-options') || '';
+    my $builddir = $module->fullpath('build');
 
-    if (($old_options ne get_list_digest(@commands)) or
-        get_option($module, 'reconfigure') or
-        not -e "$builddir/CMakeCache.txt" # File should exist only on successful cmake run
+    if (($old_options ne get_list_digest(@commands)) ||
+        $module->getOption('reconfigure') ||
+        ! -e "$builddir/CMakeCache.txt" # File should exist only on successful cmake run
        )
     {
         info "\tRunning g[cmake]...";
@@ -5596,7 +5598,7 @@ sub safe_run_cmake
         safe_unlink "$srcdir/CMakeCache.txt"   if -e "$srcdir/CMakeCache.txt";
         safe_unlink "$builddir/CMakeCache.txt" if -e "$builddir/CMakeCache.txt";
 
-        set_persistent_option($module, 'last-cmake-options', get_list_digest(@commands));
+        set_persistent_option($module->name(), 'last-cmake-options', get_list_digest(@commands));
         return log_command($module, "cmake", \@commands);
     }
 
@@ -5707,9 +5709,9 @@ sub safe_lndir
 # will automatically be ignored.
 sub prepare_fake_builddir
 {
-    my $module = shift;
-    my $builddir = get_fullpath($module, 'build');
-    my $srcdir = get_fullpath($module, 'source');
+    my $module = assert_isa(shift, 'Module');
+    my $builddir = $module->fullpath('build');
+    my $srcdir = $module->fullpath('source');
 
     # List reference, not a real list.  The initial kdesrc-build does *NOT*
     # fork another kdesrc-build using exec, see sub log_command() for more
@@ -5736,9 +5738,9 @@ sub prepare_fake_builddir
 # downloaded.
 sub safe_create_build_system
 {
-    my $module = shift;
-    my $srcdir = get_fullpath($module, 'source');
-    my $builddir = get_fullpath($module, 'build');
+    my $module = assert_isa(shift, 'Module');
+    my $srcdir = $module->fullpath('source');
+    my $builddir = $module->fullpath('build');
     my $uses_cmake = module_uses_cmake($module);
 
     whisper "\tCMake support for $module: ", $uses_cmake ? "Yes" : "No";
@@ -5753,20 +5755,20 @@ sub safe_create_build_system
     # before they can be built, so don't abort out for that module.
     if ($uses_cmake)
     {
-        return 0 unless $module =~ /^l10n-kde4\/?/; # Done.
+        return 0 unless $module->name() =~ /^l10n-kde4\/?/; # Done.
     }
 
     # Setup in the build directory.
     p_chdir ($builddir);
 
     # Verify we're building what we expect.
-    if ($module !~ /^l10n-kde4\//) {
+    if ($module->name() !~ /^l10n-kde4\//) {
         error " r[b[*] kdesrc-build only expects to need to create a build system for l10n";
         error " r[b[*] modules, but was asked to do so for r[b[$module] -- aborting.";
         return 1;
     }
 
-    my ($lang) = ($module =~ /^l10n-kde4\/(.*)$/);
+    my ($lang) = ($module->name() =~ /^l10n-kde4\/(.*)$/);
     my $cmd_ref = [ './scripts/autogen.sh', $lang ];
 
     # autogen.sh must be run from one level below for some reason.
@@ -5786,23 +5788,23 @@ sub safe_create_build_system
 # If so, it returns boolean true.
 sub needs_refreshed
 {
-    my $module = shift;
-    my $builddir = get_fullpath($module, 'build');
+    my $module = assert_isa(shift, 'Module');
+    my $builddir = $module->fullpath('build');
     my $conf_file_key = "Makefile"; # File that exists after configure is run
 
     if (debugging)
     {
         debug "Build directory not setup for $module." if not -e "$builddir";
         debug ".refresh-me exists for $module." if -e "$builddir/.refresh-me";
-        debug "refresh-build option set for $module." if get_option($module, 'refresh-build');
+        debug "refresh-build option set for $module." if $module->getOption('refresh-build');
         debug "Can't find configure key file for $module." if not -e "$builddir/$conf_file_key";
-        debug "l10n always needs autogen.sh run" if $module =~ /^l10n-kde4/;
+        debug "l10n always needs autogen.sh run" if $module->name() =~ /^l10n-kde4/;
     }
 
     return 1 if ((not -e "$builddir") ||
         (-e "$builddir/.refresh-me") ||
-        get_option($module, "refresh-build") ||
-        $module =~ /^l10n-kde4/ ||
+        $module->getOption("refresh-build") ||
+        $module->name() =~ /^l10n-kde4/ ||
         (not -e "$builddir/$conf_file_key"));
 
     return 0;
@@ -5814,7 +5816,7 @@ sub needs_refreshed
 #
 # This function will throw an exception in the event of a build failure.
 #
-# First parameter is the module we're building.
+# First parameter is the Module object we're building.
 # Second parameter is the filename to use for the log file.
 # Third parameter is a reference to a list, which is the command ('svn') and all
 #       of its arguments.
@@ -5822,9 +5824,10 @@ sub needs_refreshed
 sub run_svn
 {
     my ($module, $logfilename, $arg_ref) = @_;
+    assert_isa($module, 'Module');
     my $conflict = 0;
 
-    my $revision = get_option($module, 'revision');
+    my $revision = $module->getOption('revision');
     if ($revision ne '0')
     {
         my @tmp = @{$arg_ref};
@@ -5873,7 +5876,7 @@ sub run_svn
 
         # If in async this only affects the update process, we need to IPC it
         # to the build process.
-        set_option($module, '#update-error', IPC::MODULE_CONFLICT);
+        set_option($module->name(), '#update-error', IPC::MODULE_CONFLICT);
         die "Source conflicts exist in $module";
     }
 
@@ -5948,9 +5951,9 @@ sub prune_under_directory
 # 0 for failure, non-zero for success.
 sub clean_build_system
 {
-    my $module = shift;
-    my $moduledir = get_fullpath($module, 'source');
-    my $builddir = get_fullpath($module, 'build');
+    my $module = assert_isa(shift, 'Module');
+    my $moduledir = $module->fullpath('source');
+    my $builddir = $module->fullpath('build');
 
     if (pretending)
     {
@@ -5982,7 +5985,7 @@ sub clean_build_system
         info "\tOld build system cleaned, starting new build system.";
     }
     # or create the directory
-    elsif (not super_mkdir ("$builddir"))
+    elsif (not super_mkdir ($builddir))
     {
         error "\tUnable to create directory r[$builddir].";
         return 0;
@@ -6001,7 +6004,7 @@ sub setup_build_system
     my $srcdir = $module->fullpath('source');
     my $builddir = $module->fullpath('build');
 
-    if (needs_refreshed($moduleName))
+    if (needs_refreshed($module))
     {
         # The build system needs created, either because it doesn't exist, or
         # because the user has asked that it be completely rebuilt.
@@ -6010,7 +6013,7 @@ sub setup_build_system
         # Check to see if we're actually supposed to go through the cleaning
         # process.
         if (not $module->getOption('#cancel-clean') and
-            not clean_build_system($moduleName))
+            not clean_build_system($module))
         {
             warning "\tUnable to clean r[$module]!";
             return 0;
@@ -6019,24 +6022,24 @@ sub setup_build_system
 
     # Symlink source directory to build directory if module doesn't support
     # srcdir != builddir.
-    if (module_needs_builddir_help($moduleName))
+    if (module_needs_builddir_help($module))
     {
         whisper "\tFaking builddir for g[$module]";
-        if (not prepare_fake_builddir($moduleName))
+        if (!prepare_fake_builddir($module))
         {
             error "Error creating r[$module] build system!";
             return 0;
         }
     }
 
-    my $confpath = module_needs_builddir_help($moduleName) ? $builddir : $srcdir;
+    my $confpath = module_needs_builddir_help($module) ? $builddir : $srcdir;
 
     # The l10n-kde4 module requires some initial build system setup unlike
     # every other CMake module.  We can tell if it has been setup because then
     # its builddir will have a CMakeLists.txt
     if ($moduleName =~ /^l10n-kde4\/?/)
     {
-        if (safe_create_build_system ($moduleName))
+        if (safe_create_build_system ($module))
         {
             error "\tUnable to create configure system from checkout.";
             return 0;
@@ -6058,7 +6061,7 @@ sub setup_build_system
 
     # Appropriate configure function will skip automatically if configuration is
     # unnecessary.  (re)configuration is always done if the 'reconfigure' option is true.
-    if (!module_uses_cmake($moduleName))
+    if (!module_uses_cmake($module))
     {
         if (! -e "$srcdir/configure")
         {
@@ -6077,7 +6080,7 @@ sub setup_build_system
     {
         # Use cmake to create the build directory (sh script return value
         # semantics).
-        if (safe_run_cmake ($moduleName))
+        if (safe_run_cmake ($module))
         {
             error "\tUnable to configure r[$module] with CMake!";
             return 0;
@@ -6123,10 +6126,10 @@ sub prepend_environment_path
 # the module to set the environment for
 sub update_module_environment
 {
-    my $module = shift;
-    my $kdedir = get_option ($module, 'kdedir');
-    my $qtdir = get_option ($module, 'qtdir');
-    my $prefix = get_option ($module, 'prefix');
+    my $module = assert_isa(shift, 'Module');
+    my $kdedir = $module->getOption('kdedir');
+    my $qtdir = $module->getOption('qtdir');
+    my $prefix = $module->getOption('prefix');
 
     $prefix = $kdedir unless $prefix;
 
@@ -6138,10 +6141,10 @@ sub update_module_environment
     prepend_environment_path('PKG_CONFIG_PATH', @pkg_config_dirs);
 
     # Likewise, add standard directories that should be in LD_LIBRARY_PATH.
-    my @ld_dirs = ("$kdedir/lib", "$qtdir/lib", get_option($module, 'libpath'));
+    my @ld_dirs = ("$kdedir/lib", "$qtdir/lib", $module->getOption('libpath'));
     prepend_environment_path('LD_LIBRARY_PATH', @ld_dirs);
 
-    my @path = ("$kdedir/bin", "$qtdir/bin", get_option ($module, 'binpath'));
+    my @path = ("$kdedir/bin", "$qtdir/bin", $module->getOption('binpath'));
 
     if (module_uses_cmake($module))
     {
@@ -6157,9 +6160,13 @@ sub update_module_environment
     setenv ('QTDIR', $qtdir);
 
     # If the module isn't kdelibs, also append kdelibs's KDEDIR setting.
-    if ($module ne 'kdelibs')
+    if ($module->name() ne 'kdelibs')
     {
-        my $kdelibsDir = get_option('kdelibs', 'kdedir');
+        my $ctx = $module->buildContext();
+        my $kdelibsModule = $ctx->lookupModule('kdelibs');
+        my $kdelibsDir;
+        $kdelibsDir = $kdelibsModule->getOption('kdedir') if $kdelibsModule;
+
         if ($kdelibsDir and $kdelibsDir ne $kdedir) {
             whisper "Module $module uses different KDEDIR than kdelibs, including kdelibs as well.";
             $kdedir .= ":$kdelibsDir"
@@ -6169,7 +6176,7 @@ sub update_module_environment
     setenv ('KDEDIRS', $kdedir);
 
     # Read in user environment defines
-    setup_module_environment ($module) unless $module eq 'global';
+    setup_module_environment ($module->name()) unless $module->name() eq 'global';
 }
 
 # Subroutine to make sure the build directory for a module is setup.
@@ -6179,7 +6186,7 @@ sub update_module_environment
 sub setup_build_directory
 {
     my $module = assert_isa(shift, 'Module');
-    my $builddir = get_build_dir($module->name());
+    my $builddir = get_build_dir($module);
 
     if (not -e "$builddir")
     {
@@ -6247,11 +6254,11 @@ sub prettify_seconds
 # Returns 0 if a conflict exists, non-zero otherwise.
 sub module_has_conflict
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
 
-    my $srcdir = get_fullpath($module, 'source');
+    my $srcdir = $module->fullpath('source');
 
-    if (get_option($module, 'no-svn'))
+    if ($module->getOption('no-svn'))
     {
         whisper "\tSource code conflict check skipped.";
         return 1;
@@ -6287,7 +6294,7 @@ at $srcdir
 that interfere with a change introduced in the source repository.
 EOF
 
-            error <<EOF if $module eq 'qt-copy';
+            error <<EOF if $module->name() eq 'qt-copy';
 This module can experience this problem due to the apply_patches script
 sometimes.
 EOF
@@ -6322,9 +6329,9 @@ EOF
 #   error running tests.
 sub run_tests
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
 
-    if (not module_uses_cmake($module)) {
+    if (!module_uses_cmake($module)) {
         warning "Cannot run test suite for r[$module] as it does not use CMake";
         return 1; # But return true anyways
     }
@@ -6336,7 +6343,7 @@ sub run_tests
     # CMake :)
 
     my $make_target = 'test';
-    if (get_option($module, 'run-tests') eq 'upload') {
+    if ($module->getOption('run-tests') eq 'upload') {
         $make_target = 'Experimental';
     }
 
@@ -6382,7 +6389,7 @@ sub build_module
     # Do some tests to make sure we're ready to build.
     check_for_module_config($moduleName);
 
-    update_module_environment($moduleName);
+    update_module_environment($module);
 
     my $log_filter = sub {
         return unless defined $_;
@@ -6393,8 +6400,8 @@ sub build_module
 
     # Use log_command as the check so that an error file gets created.
     if (($module->type() eq 'svn') &&
-        0 != log_command($moduleName, 'conflict-check',
-                         ['kdesrc-build', 'module_has_conflict', $moduleName], $log_filter)
+        0 != log_command($module, 'conflict-check',
+                         ['kdesrc-build', 'module_has_conflict', $module], $log_filter)
        )
     {
         return 0;
@@ -6425,7 +6432,7 @@ sub build_module
         # TODO: This should be a simple phase to run.
         if ($module->getOption('run-tests'))
         {
-            run_tests($moduleName); # Don't fail if this fails... yet
+            run_tests($module); # Don't fail if this fails... yet
         }
 
         # TODO: Likewise this should be a phase to run.
@@ -6488,9 +6495,6 @@ sub filter_l10n_module_list
         clone_options($l10n, "$l10n/$dir");
     }
 
-    # Make sure the /scripts directory is available in the build dir.
-    prepare_fake_builddir("$l10n/scripts");
-
     return @modules;
 }
 
@@ -6550,7 +6554,7 @@ sub handle_build
 
     if (not pretending)
     {
-        $outfile = get_output_file();
+        $outfile = get_output_file($ctx);
         open STATUS_FILE, ">$outfile" or do {
             error <<EOF;
 	Unable to open output status file r[b[$outfile]
@@ -6632,7 +6636,7 @@ EOF
             {
                 # Properly account for users manually doing --refresh-build or
                 # using .refresh-me.
-                if (needs_refreshed($moduleName))
+                if (needs_refreshed($module))
                 {
                     $svn_status{$buffer} = 'success';
                     note "\tNo source update, but g[$module] meets other building criteria.";
@@ -6677,7 +6681,7 @@ EOF
         {
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
-            set_persistent_option($moduleName, 'last-build-rev', current_module_revision($moduleName));
+            set_persistent_option($moduleName, 'last-build-rev', current_module_revision($module));
             set_persistent_option($moduleName, 'failure-count', 0);
 
             info "\tOverall time for g[$module] was g[$elapsed].";
@@ -6725,7 +6729,7 @@ EOF
         close STATUS_FILE;
 
         # Update the symlink in latest to point to this file.
-        my $logdir = get_subdir_path('global', 'log-dir');
+        my $logdir = get_subdir_path($ctx->globalModule(), 'log-dir');
         if (-l "$logdir/latest/build-status") {
             safe_unlink("$logdir/latest/build-status");
         }
@@ -6738,7 +6742,7 @@ EOF
     if (not pretending)
     {
         # Print out results, and output to a file
-        my $kdesrc = get_source_dir();
+        my $kdesrc = get_source_dir($ctx->globalModule());
         open BUILT_LIST, ">$kdesrc/successfully-built";
         foreach my $module (@build_done)
         {
@@ -6790,7 +6794,7 @@ sub finish
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $exitcode = shift;
-    my $logdir = get_log_dir('global');
+    my $logdir = get_log_dir($ctx->globalModule());
     $exitcode = 0 unless $exitcode;
 
     write_persistent_options();
@@ -6812,9 +6816,9 @@ sub finish
 # Return: Nothing.
 sub check_module_validity
 {
-    my $module = shift;
-    my $source_dir = get_fullpath($module, 'source');
-    my $module_expected_url = svn_module_url($module);
+    my $module = assert_isa(shift, 'Module');
+    my $source_dir = $module->fullpath('source');
+    my $module_expected_url = svn_module_url($module->name());
     my $module_actual_url = get_svn_info($module, 'URL');
 
     $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
@@ -6864,7 +6868,7 @@ sub handle_install
         resetenv();
         my $moduleName = $module->name();
 
-        update_module_environment ($moduleName);
+        update_module_environment ($module);
         check_for_module_config ($moduleName);
 
         my $builddir = $module->fullpath('build');
@@ -6910,7 +6914,7 @@ sub handle_install
 
         next if $result != 0; # Don't delete anything if the build failed.
 
-        set_persistent_option($moduleName, 'last-install-rev', current_module_revision($moduleName));
+        set_persistent_option($moduleName, 'last-install-rev', current_module_revision($module));
 
         my $remove_setting = $module->getOption('remove-after-install');
 
@@ -6960,7 +6964,7 @@ sub handle_uninstall
     {
         resetenv();
         my $moduleName = $module->name();
-        update_module_environment ($moduleName);
+        update_module_environment ($module);
         check_for_module_config ($moduleName);
 
         my $builddir = $module->fullpath('build');
@@ -7413,7 +7417,8 @@ sub needed_module_logs
 # directories not referenced by $log_dir/latest somehow are made to go away.
 sub cleanup_log_directory
 {
-    my $logdir = get_subdir_path('global', 'log-dir');
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $logdir = get_subdir_path($ctx->globalModule(), 'log-dir');
 
     # This glob relies on the date being in the specific format YYYY-MM-DD-ID
     my @dirs = bsd_glob("$logdir/????-??-??-??/", GLOB_NOSORT);
@@ -7489,8 +7494,6 @@ eval
     # If we're still here, read the options
     my @optionModules = read_options($ctx, $fh);
 
-    update_module_environment('global');   # Initialize global env vars.
-
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
 
@@ -7507,7 +7510,7 @@ eval
     }
 
     setup_operating_environment(); # i.e. niceness, ulimits, etc.
-    setup_logging_subsystem(); # Setup logging directories.
+    setup_logging_subsystem($ctx); # Setup logging directories.
 
     my $commandLineModules = scalar @modules;
 
@@ -7536,12 +7539,12 @@ eval
     @modules = applyModuleFilters(@modules);
 
     eval {
-        @modules = expandXMLModules(@modules);
+        @modules = expandXMLModules($ctx, @modules);
     } or do {
         warning "\n b[y[* * *] The KDE module database file appears to be corrupt, re-downloading.\n";
         delete_option('global', '#cached_project_xml_check');
-        ensure_projects_xml_present(force => 1);
-        @modules = expandXMLModules(@modules);
+        ensure_projects_xml_present($ctx, force => 1);
+        @modules = expandXMLModules($ctx, @modules);
     };
 
     # If modules were on the command line then they are effectively forced to
@@ -7555,7 +7558,7 @@ eval
 
     dump_options() if debugging;
 
-    if (!pretending() && !get_lock())
+    if (!pretending() && !get_lock($ctx))
     {
         print "$0 is already running!\n";
         exit 0; # Don't finish(), it's not our lockfile!!
@@ -7636,7 +7639,7 @@ eval
         $result = handle_uninstall ($ctx, @uninstallList);
     }
 
-    cleanup_log_directory() if get_option('global', 'purge-old-logs');
+    cleanup_log_directory($ctx) if get_option('global', 'purge-old-logs');
     output_failed_module_lists($ctx);
 
     $time = localtime;
