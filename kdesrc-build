@@ -26,7 +26,6 @@ use Carp;
 use POSIX qw(strftime :sys_wait_h);
 use File::Find; # For our lndir reimplementation.
 use File::Basename;
-use File::Spec;
 use File::Glob ':glob';
 use LWP::UserAgent;
 use Sys::Hostname;
@@ -183,9 +182,6 @@ my %fail_lists = (
 my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
-my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc",
-               "./kdesvn-buildrc", "$ENV{HOME}/.kdesvn-buildrc");
-my $rcfile; # the file that was used; set by read_options
 
 # }}}
 
@@ -988,6 +984,7 @@ my $rcfile; # the file that was used; set by read_options
     ksb::Util->import();
 
     my @DefaultPhases = qw/update build install/;
+    my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
 
     sub new
     {
@@ -997,6 +994,8 @@ my $rcfile; # the file that was used; set by read_options
             modules => [],
             options => \%main::package_opts,
             phases  => ksb::Phases->new(@DefaultPhases),
+            rcFiles => [@rcfiles],
+            rcFile  => undef,
         };
 
         # We've turned context into an object, now add a default module.
@@ -1041,6 +1040,98 @@ my $rcfile; # the file that was used; set by read_options
     {
         my $self = shift;
         return $self->{modules};
+    }
+
+    # Returns rc file in use. Call loadRcFile first.
+    sub rcFile
+    {
+        my $self = shift;
+        return $self->{rcFile};
+    }
+
+    # Forces the rc file to be read from to be that given by the first
+    # parameter.
+    sub setRcFile
+    {
+        my ($self, $file) = @_;
+        $self->{rcFiles} = [$file];
+        $self->{rcFile} = undef;
+    }
+
+    # Returns an open filehandle to the user's chosen rc file.  Use setRcFile
+    # to choose a file to load before calling this function, otherwise
+    # loadRcFile will search the default search path.  After this function is
+    # called, rcFile() can be used to determine which file was loaded.
+    #
+    # If unable to find or open the rc file an exception is raised. Empty rc
+    # files are supported however.
+    #
+    # TODO: Support a fallback default rc file.
+    sub loadRcFile
+    {
+        my $self = shift;
+        my @rcFiles = @{$self->{rcFiles}};
+        my $fh;
+
+        for my $file (@rcFiles)
+        {
+            if (open ($fh, '<', "$file"))
+            {
+                $self->{rcFile} = $file;
+                return $fh;
+            }
+        }
+
+        # If still here, no luck.
+        if (scalar @rcFiles == 1)
+        {
+            # This can only happen if the user uses --rc-file, so if we fail to
+            # load the file, we need to fail to load at all.
+            my $failedFile = $rcFiles[0];
+
+            error (<<EOM);
+Unable to open config file $failedFile
+
+Script stopping here since you specified --rc-file on the command line to
+load $failedFile manually.  If you wish to run the script with no configuration
+file, leave the --rc-file option out of the command line.
+
+If you want to force an empty rc file, use --rc-file /dev/null
+
+EOM
+            die make_exception('Runtime', "Missing $failedFile");
+        }
+
+        # Set rcfile to something so the user knows what file to edit to
+        # get what they want to work.
+        $self->{rcFile} = '~/.kdesrc-buildrc';
+        $self->whineForMissingConfig();
+        $self->setup_default_modules();
+
+        my $data = ''; # TODO: Point to sane default.
+        open ($fh, '<', \$data);
+        return $fh;
+    }
+
+    sub whineForMissingConfig
+    {
+        my $self = shift;
+        my $searched = join ("\n    ", @{$self->{rcFiles}});
+        my $homepage = "http://kdesrc-build.kde.org/";
+
+        note (<<"HOME");
+    Unable to open configuration file!
+    We looked for:
+        $searched
+
+    kdesrc-build will continue using a default set of options.  These options may
+    not apply to you, so feel free to visit the kdesrc-build homepage
+
+    b[g[$homepage]
+
+    and access the kdesrc-build documentation.  Also the latest release package
+    will have a sample configuration file that you can edit to your liking.
+HOME
     }
 
     # Returns the Module that can be used for global option lookup, that way
@@ -1135,6 +1226,7 @@ my $rcfile; # the file that was used; set by read_options
         '<=>' => 'compare',
         ;
 
+    ksb::Debug->import();
     ksb::Util->import();
 
     my $ModuleSource = 'config';
@@ -1197,13 +1289,37 @@ my $rcfile; # the file that was used; set by read_options
         return $self->{name};
     }
 
+    # Returns a string describing the scm platform of the given module.
+    # Return value: 'git' or 'svn' at this point, as appropriate.
     sub type
     {
         my $self = shift;
 
-        # If not already set, guess based on options set.
-        $self->{type} //= main::module_scm_type($self->name());
+        return $self->{type} if $self->{type};
 
+        # Look for specific setting of repository and svn-server. If both is
+        # set it's a bug, if one is set, that's the type (because the user says
+        # so...). Don't use getOption($key) as it will try to fallback to
+        # global options.
+
+        my $svn_status = $self->getOption('svn-server', 'module');
+        my $git_status = $self->getOption('repository', 'module');
+        my $rcfile = $self->buildContext()->rcFile();
+
+        if ($svn_status && $git_status) {
+            error (<<EOF);
+You have specified both y[b[svn-server] and y[b[repository] options for the
+b[$self] module in $rcfile.
+
+You should only specify one or the other -- a module cannot be both types
+ - svn-server uses Subversion.
+ - repository uses git.
+EOF
+            die (make_exception('Config', 'svn-server and repository both set'));
+        }
+
+        # If it needs a repo it's git. Everything else is svn for now.
+        $self->{type} = $git_status ? 'git' : 'svn';
         return $self->{type};
     }
 
@@ -1901,42 +2017,6 @@ sub get_option
     # Everything else overrides the global, unless of course it's not set.
     # If we're reading for global options, we're pretty much done.
     return $$ref{$option} // ${$globalOpts}{$option};
-}
-
-# Returns a string describing the scm platform of the given module.
-#
-# First parameter: Module to get scm type of.
-# Returns: 'git' or 'svn' at this point.
-sub module_scm_type
-{
-    my $module = shift;
-
-    # Look for specific setting of repository and svn-server. If both
-    # is set it's a bug, if one is set, that's the type (because the user
-    # says so...). Don't use get_option() as it will try to fallback to
-    # global options.
-
-    my $svn_status = get_option($module, 'svn-server', 'module');
-    my $git_status = get_option($module, 'repository', 'module');
-
-    if ($svn_status && $git_status) {
-        error <<EOF;
-You have specified both y[b[svn-server] and y[b[repository] options for the
-b[$module] module in $rcfile.
-
-You should only specify one or the other -- a module cannot be both types
- - svn-server uses Subversion.
- - repository uses git.
-EOF
-        die("Aborting");
-    }
-
-    return 'svn' if $svn_status;
-
-    # If it needs a repo it's git. Everything else is svn for now.
-    return 'git' if $git_status;
-
-    return 'svn';
 }
 
 # Subroutine used to handle the checkout-only option.  It handles
@@ -3246,30 +3326,6 @@ sub resetenv
     %ENV_VARS = ();
 }
 
-# Display a message to the user regarding their relative lack of
-# ~/.kdesrc-buildrc, and point them to some help.  We will continue using a
-# default set of options.
-sub no_config_whine
-{
-    my $searched = join("\n    ", @rcfiles);
-    my $homepage = "http://kdesrc-build.kde.org/";
-
-    note <<"HOME";
-Unable to open configuration file!
-We looked for:
-    $searched
-
-kdesrc-build will continue using a default set of options.  These options may
-not apply to you, so feel free to visit the kdesrc-build homepage
-
-b[g[$homepage]
-
-and access the kdesrc-build documentation.  Also the latest release package
-will have a sample configuration file that you can edit to your liking.
-
-HOME
-}
-
 # Reads a "line" from a file. This line is stripped of comments and extraneous
 # whitespace. Also, backslash-continued multiple lines are merged into a single
 # line.
@@ -3367,8 +3423,10 @@ sub split_option_value
 # 'module' if we should expect an end module statement.
 sub parse_module
 {
-    my ($fileReader, $module) = @_;
+    my ($ctx, $fileReader, $module) = @_;
+    assert_isa($ctx, 'ksb::BuildContext');
     $module = 'global' unless $module;
+    my $rcfile = $ctx->rcFile();
 
     # Setup default options in case user specifies only module name to get it
     # to build.
@@ -3488,10 +3546,11 @@ sub ensure_projects_xml_present
 # Returns the expanded list of module names to include.
 sub parse_moduleset
 {
-    my $ctx = shift;
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fileReader = shift;
     my $moduleSetName = shift || '';
     my $repoSet = get_option('global', 'git-repository-base');
+    my $rcfile = $ctx->rcFile();
     my @modules;
     my %optionSet; # We read all options, and apply them to all modules
     my $startLine = $.; # For later error messages
@@ -3683,73 +3742,17 @@ sub expandModuleSets
     return map { &$filter } (@$buildModuleList);
 }
 
-# Searches for the appropriate rc file to use. The user may specify one
-# using --rc-file, or otherwise the current directory is searched for
-# "kdesrc-buildrc", or ~/.kdesrc-buildrc is used. Currently evil hacks are
-# used for further fallbacks, but don't count on that staying that way.
-# (The global @rcfiles list is used to search for the appropriate file)
-#
-# If --rc-file was specified but that file couldn't be found, an exception
-# is raised.
-#
-# The global $rcfile variable is set based on the file actually found.
-sub find_rcfile
-{
-    # The options are stored in the file $rcfile
-    my $success = 0;
-
-    for my $file (@rcfiles)
-    {
-        if (open CONFIG, "<$file")
-        {
-            $success = 1;
-
-            # rel2abs used since path for rcfile is used later in execution
-            # when the cwd may have changed so we need to expand path here.
-            $rcfile = File::Spec->rel2abs($file);
-            close CONFIG; # Actually read it later.
-            last;
-        }
-    }
-
-    if (not $success)
-    {
-        if(scalar @rcfiles == 1)
-        {
-            # This can only happen if the user uses --rc-file, if we fail to
-            # load the file, we need to fail to load.
-            error <<EOM;
-Unable to open config file $rcfiles[0]
-
-Script stopping here since you specified --rc-file on the command line to
-load $rcfiles[0] manually.  If you wish to run the script with no configuration
-file, leave the --rc-file option out of the command line.
-
-If you want to force an empty rc file, use --rc-file /dev/null
-
-EOM
-            die make_exception('Runtime', "Missing $rcfiles[0]");
-        }
-
-        # Set rcfile to something so the user knows what file to edit to
-        # get what they want to work.
-        $rcfile = '~/.kdesrc-buildrc';
-        no_config_whine();
-        setup_default_modules();
-        return;
-    }
-}
-
 # This subroutine reads in the settings from the user's configuration
 # file. The filehandle to read from should be passed in as the first
 # parameter. The filehandle should be something that the <> operator works
 # on, usually some subclass of IO::Handle.
 sub read_options
 {
-    my $ctx = shift;
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fh = shift;
     my $global_opts = $package_opts{'global'};
     my @module_list;
+    my $rcfile = $ctx->rcFile();
     my ($option, $modulename, %readModules);
 
     my $fileReader = RecursiveFH->new();
@@ -3772,7 +3775,7 @@ sub read_options
         }
 
         # Now read in each global option
-        parse_module($fileReader, 'global');
+        parse_module($ctx, $fileReader, 'global');
         last;
     }
 
@@ -3784,7 +3787,7 @@ sub read_options
         info "config file";
 
         close $fh;
-        setup_default_modules();
+        $ctx->setup_default_modules();
         return;
     }
 
@@ -3814,7 +3817,7 @@ sub read_options
             push @module_list, parse_moduleset($ctx, $fileReader, $modulename);
         }
         else {
-            parse_module($fileReader, $modulename);
+            parse_module($ctx, $fileReader, $modulename);
             push @module_list, Module->new($ctx, $modulename);
         }
 
@@ -4123,8 +4126,10 @@ sub get_persistent_option
 # The directory used is the same directory that contains the rc file in use.
 sub write_persistent_options
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     return if pretending;
 
+    my $rcfile = $ctx->rcFile();
     my $dir = dirname($rcfile ? $rcfile : "");
     my $fh = IO::File->new("> $dir/.kdesrc-build-data");
 
@@ -4158,6 +4163,8 @@ sub write_persistent_options
 # The directory used is the same directory that contains the rc file in use.
 sub read_persistent_options
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $rcfile = $ctx->rcFile();
     my $dir = dirname($rcfile ? $rcfile : "");
     my $fh = IO::File->new("<$dir/.kdesrc-build-data");
 
@@ -4577,7 +4584,7 @@ DONE
 
             /^--rc-file=?/ && do {
                 my $rcfile = extract_option_value_required($_, @options);
-                @rcfiles = ( $rcfile );
+                $ctx->setRcFile($rcfile);
 
                 last SWITCH;
             };
@@ -4977,7 +4984,7 @@ sub split_url
 # be controlled with the disable-agent-check parameter.
 sub check_for_ssh_agent
 {
-    my $ctx = shift;
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
 
     # Don't bother with all this if the user isn't even using SSH.
     return 1 if pretending;
@@ -5038,6 +5045,8 @@ EOF
         my $result = system('ssh-add');
         if ($result) # Run this code for both death-by-signal and nonzero return
         {
+            my $rcfile = $ctx->rcFile();
+
             print "\nUnable to add SSH identity, aborting.\n";
             print "If you don't want kdesrc-build to check in the future,\n";
             print clr "Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n";
@@ -6559,7 +6568,7 @@ sub finish
     my $logdir = get_log_dir($ctx->globalModule());
     $exitcode = 0 unless $exitcode;
 
-    write_persistent_options();
+    write_persistent_options($ctx);
 
     exit $exitcode if pretending; # Abort early when pretending.
 
@@ -7162,16 +7171,11 @@ eval
         }
     }
 
-    find_rcfile(); # Setup which file we're to read from.
-    my $fh;
-    my $data = ''; # TODO: Point this to a sane default
-
-    open ($fh, '<', $rcfile)
-        or open ($fh, '<', \$data)
-        or die make_exception('Runtime', 'Unable to open config file (even a null one).');
+    my $fh = $ctx->loadRcFile();
 
     # If we're still here, read the options
     my @optionModules = read_options($ctx, $fh);
+    close $fh;
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
@@ -7262,7 +7266,7 @@ eval
 
     # Read in persistent data for i.e. tracking the revision of the last
     # successful svn update or build.
-    read_persistent_options();
+    read_persistent_options($ctx);
 
     my $result;
     my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
