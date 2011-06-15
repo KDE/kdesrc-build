@@ -4874,67 +4874,6 @@ sub updateModulePhases
     return @_;
 }
 
-# Used to sort module names.  'global' always starts first, modules with /
-# sort last.
-sub module_sort
-{
-    # This is always true.
-    return 0 if $a eq $b;
-
-    # Look for global modules.
-    return -1 if $a eq 'global';
-    return 1 if $b eq 'global';
-
-    # If both have /, use a normal sort.
-    return $a cmp $b if $a =~ /\// and $b =~ /\//;
-
-    # If left has slash, it's < $b (and vice versa)
-    return 1 if $a =~ /\//;
-    return -1 if $b =~ /\//;
-
-    # Normal sort.
-    return $a cmp $b;
-}
-
-# Helper subroutine for debugging purposes.  Dumps all of the
-# options which have been read in to %package_opts.
-sub dump_options
-{
-    my ($item, $ref_item, $ref);
-    my @keys = sort module_sort keys %package_opts;
-    my $c; # $c is a color variable to be used with clr()
-
-    # Now dump the options for each module
-    foreach $item (@keys)
-    {
-        debug "\nOptions for module g[$item]:";
-        my $ref = $package_opts{$item};
-
-        foreach $ref_item (sort keys %{$package_opts{$item}})
-        {
-            # Put the first bracket in here, otherwise it breaks on some
-            # Perl systems.
-            $c = $ref_item =~ /^#/ ? 'r[' : 'g[';
-
-            if($ref_item !~ /^#?set-env$/)
-            {
-                next unless defined $$ref{$ref_item};
-                debug "  ${c}$ref_item] is \"y[", $$ref{$ref_item}, clr ']"';
-            }
-            else
-            {
-                # Dump the environment variables that will be set.
-                my $setref = $$ref{$ref_item};
-
-                foreach my $envitem (keys %{$setref})
-                {
-                    debug "  Set env variable ${c}$envitem] to y[", $$setref{$envitem};
-                }
-            }
-        }
-    }
-}
-
 # Subroutine to rename the given file if global-pretend isn't set.
 sub safe_rename($$)
 {
@@ -7359,7 +7298,14 @@ eval
     # Add to global module list now that we've filtered everything.
     $ctx->addModule($_) foreach @modules;
 
-    dump_options() if debugging;
+    if (debugging()) {
+        local $Data::Dumper::Indent = 1;
+        local $Data::Dumper::Sortkeys = 1;
+
+        # This method call dumps the first list with the variables named by the
+        # second list.
+        print Data::Dumper->Dump([\%package_opts], [qw(Options_Set)]);
+    }
 
     if (!pretending() && !get_lock($ctx))
     {
