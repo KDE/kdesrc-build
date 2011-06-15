@@ -2149,22 +2149,6 @@ sub git_clone_module
     return ($result == 0);
 }
 
-# Returns boolean true if the git checkout for the current source directory
-# contains a specified branch name. No processing of the branch name is
-# performed, so if you need to check for a remote head, use something like
-# "refs/remotes/$remote/$branch".
-#
-# First parameter is the branch name.
-sub git_has_branch
-{
-    my $branch = shift;
-
-    # system() is used instead of safe_system since we'd like pretend output
-    # to reflect reality.
-    my $result = system(qw(git show-ref --verify --quiet), $branch);
-    return ($result == 0);
-}
-
 # Returns true if the git module in the current directory has a remote of the
 # name given by the first parameter.
 sub git_has_remote
@@ -4872,20 +4856,6 @@ sub updateModulePhases
     }
 
     return @_;
-}
-
-# Subroutine to rename the given file if global-pretend isn't set.
-sub safe_rename($$)
-{
-    my ($from, $to) = @_;
-
-    if (pretending)
-    {
-        pretend "\tWould have renamed '$from' to '$to'.";
-        return 1; # Return true
-    }
-
-    return rename($from, $to);
 }
 
 # Subroutine to unlink the given symlink if global-pretend isn't set.
