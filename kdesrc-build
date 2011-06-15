@@ -4934,7 +4934,7 @@ sub super_mkdir
 # No return value;
 sub dont_build
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $ipc = shift;
     my $reason = shift;
 
@@ -4942,23 +4942,23 @@ sub dont_build
 
     if ($ipc)
     {
-        $ipc->sendIPCMessage($reason, $module);
+        $ipc->sendIPCMessage($reason, $module->name());
     }
     else
     {
         # Weed out matches of the module name
-        @build_list = grep (!/^$module$/, @build_list);
+        $module->phases()->filterOutPhase('build');
 
-        if (get_option($module, '#conflict-found'))
+        if ($module->getOption('#conflict-found'))
         {
             # Record now for posterity
-            set_persistent_option($module, "conflicts-present", 1);
+            set_persistent_option($module->name(), "conflicts-present", 1);
         }
     }
 
     if ($reason != IPC::MODULE_UPTODATE)
     {
-        push @{$fail_lists{'update'}}, $module;
+        push @{$fail_lists{'update'}}, $module->name();
     }
 }
 
@@ -5190,7 +5190,7 @@ sub handle_updates
 
             my $reason = $module->getOption('#update-error');
             $reason = IPC::MODULE_FAILURE unless $reason; # Default error code
-            dont_build ($moduleName, $ipc, $reason); # Sends IPC message.
+            dont_build ($module, $ipc, $reason); # Sends IPC message.
             $hadError = 1;
         }
         else
@@ -5211,7 +5211,7 @@ sub handle_updates
             {
                 whisper "This module will not be built. Nothing updated.";
                 $message = "0 files affected.";
-                dont_build($moduleName, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
+                dont_build($module, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
             }
 
             # We doing e.g. --src-only, the build phase that normally outputs
