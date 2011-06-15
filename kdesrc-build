@@ -4991,7 +4991,7 @@ sub check_for_ssh_agent
     } ($ctx->modulesInPhase('update'));
 
     my @sshServers = grep {
-        my ($proto, $host) = split_url(get_option($_->name(), 'svn-server'));
+        my ($proto, $host) = split_url($_->getOption('svn-server'));
 
         # Check if ssh is explicitly used in the proto, or if the host is the
         # developer main svn.
@@ -5000,12 +5000,12 @@ sub check_for_ssh_agent
 
     push @sshServers, grep {
         # Check for git+ssh:// or git@git.kde.org:/path/etc.
-        my $repo = get_option($_->name(), 'repository');
+        my $repo = $_->getOption('repository');
         ($repo =~ /^git\+ssh:\/\//) || ($repo =~ /^[a-zA-Z0-9_.]+@.*:\//);
     } @gitServers;
 
     whisper "\tChecking for SSH Agent" if (scalar @sshServers);
-    return 1 if (not @sshServers) or get_option('global', 'disable-agent-check');
+    return 1 if (not @sshServers) or $ctx->globalModule()->getOption('disable-agent-check');
 
     # We're using ssh to download, see if ssh-agent is running.
     return 1 unless exists $ENV{'SSH_AGENT_PID'};
