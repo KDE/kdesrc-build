@@ -1547,7 +1547,7 @@ sub get_source_dir
 # Subroutine to return the branch prefix. i.e. the part before the branch name
 # and module name.
 #
-# The first parameter is the module in question.
+# The first parameter is the module name in question.
 # The second parameter should be 'branches' if we're dealing with a branch or
 #     'tags' if we're dealing with a tag.
 #
@@ -1555,7 +1555,7 @@ sub get_source_dir
 #     'kdevelop' => 'branches/kdevelop'
 sub branch_prefix
 {
-    my $module = shift;
+    my $moduleName = shift;
     my $type = shift;
 
     # These modules seem to have their own subdir in /tags.
@@ -1569,21 +1569,21 @@ sub branch_prefix
 
     # If the user already has the module in the form KDE/foo, it's already
     # done.
-    return "$type/KDE" if $module =~ /^KDE\//;
+    return "$type/KDE" if $moduleName =~ /^KDE\//;
 
     # KDE proper modules seem to use this pattern.
-    return "$type/KDE" if list_has(@kde_module_list, $module);
+    return "$type/KDE" if list_has(@kde_module_list, $moduleName);
 
     # KDE extragear / playground modules use this pattern
-    return "$type" if has_base_module($module);
+    return "$type" if has_base_module($moduleName);
 
     # If we doing a tag just return 'tags' because the next part is the actual
     # tag name, which is added by the caller, unless the module has its own
     # subdirectory in /tags.
-    return "$type" if $type eq 'tags' and not list_has(@tag_components, $module);
+    return "$type" if $type eq 'tags' and not list_has(@tag_components, $moduleName);
 
     # Everything else.
-    return "$type/$module";
+    return "$type/$moduleName";
 }
 
 # Subroutine to return a module URL for a module using the 'branch' option.
@@ -1591,31 +1591,29 @@ sub branch_prefix
 # Second parameter is the type ('tags' or 'branches')
 sub handle_branch_tag_option
 {
-    my ($module, $type) = @_;
-    my $svn_server = get_option($module, 'svn-server');
-    my $branch = branch_prefix($module, $type);
-    my $branchname = get_option($module, 'tag');
-
-    if($type eq 'branches')
-    {
-        $branchname = get_option($module, 'branch');
-    }
+    my $module = assert_isa(shift, 'Module');
+    my $type = shift;
+    my $branch = branch_prefix($module->name(), $type);
+    my $svn_server = $module->getOption('svn-server');
+    my $branchname = $module->getOption($type eq 'branches' ? 'branch' : 'tag');
 
     # qt-copy is referred to as qt in svn when dealing with branches and tags.
-    $branch = branch_prefix('qt', $type) if $module eq 'qt-copy';
+    $branch = branch_prefix('qt', $type) if $module->name() eq 'qt-copy';
 
     # Remove trailing slashes.
     $svn_server =~ s/\/*$//;
 
     # Remove KDE/ prefix for module name.
-    $module = moduleBaseName($module);
+    my $moduleName = moduleBaseName($module->name());
 
     # KDE modules have a different module naming scheme than the rest it seems.
-    return "$svn_server/$branch/$branchname/$module" if $branch =~ /\/KDE\/?$/;
+    return "$svn_server/$branch/$branchname/$moduleName" if $branch =~ /\/KDE\/?$/;
 
-    # Non-trunk translations happen in a single branch. Assume all non-trunk global
-    # branches are intended for the stable translations.
-    return "$svn_server/branches/stable/$module" if ($module =~ /^l10n-kde4\/?/ && $branch ne 'trunk');
+    # Non-trunk translations happen in a single branch. Assume all non-trunk
+    # global branches are intended for the stable translations.
+    if ($moduleName =~ /^l10n-kde4\/?/ && $branch ne 'trunk') {
+        return "$svn_server/branches/stable/$moduleName";
+    }
 
     # Otherwise don't append the module name by default since it makes more
     # sense to branch this way in many situations (i.e. kdesupport tags, phonon)
@@ -1631,22 +1629,22 @@ sub handle_branch_tag_option
 #    is preferred.
 sub svn_module_url
 {
-    my $module = shift;
-    my $svn_server = get_option($module, 'svn-server');
+    my $module = assert_isa(shift, 'Module');
+    my $svn_server = $module->getOption('svn-server');
     my $modulePath;
 
     foreach my $levelLimit ('module', 'allow-inherit') {
-        $modulePath = get_option($module, 'module-base-path', $levelLimit);
+        $modulePath = $module->getOption('module-base-path', $levelLimit);
 
         # Allow user to override normal processing of the module in a few ways,
         # to make it easier to still be able to use kdesrc-build even when I
         # can't be there to manually update every little special case.
-        if(get_option($module, 'override-url', $levelLimit))
+        if($module->getOption('override-url', $levelLimit))
         {
-            return get_option($module, 'override-url', $levelLimit);
+            return $module->getOption('override-url', $levelLimit);
         }
 
-        if(get_option($module, 'tag', $levelLimit))
+        if($module->getOption('tag', $levelLimit))
         {
             return handle_branch_tag_option($module, 'tags');
         }
@@ -1654,7 +1652,7 @@ sub svn_module_url
         # Note we check for 'trunk', not default_module_branch().  We handle 'trunk' in the
         # rest of the code path, any branch (even if default) should be handled in
         # handle_branch_tag_option().
-        my $branch = get_option($module, 'branch', $levelLimit);
+        my $branch = $module->getOption('branch', $levelLimit);
         if($branch and $branch ne 'trunk')
         {
             return handle_branch_tag_option($module, 'branches');
@@ -1662,20 +1660,20 @@ sub svn_module_url
 
         # We can't use get_option($module) after this if we have to trim the module
         # name.
-        $module = moduleBaseName($module);
+        my $moduleName = moduleBaseName($module->name());
 
         # The following modules are in /trunk, not /trunk/KDE.  There are others,
         # but these are the important ones.
         my @non_trunk_modules = qw(extragear kdesupport koffice icecream kde-common
             playground qt-copy KDE kdereview www l10n-kde4);
 
-        my $module_root = $module;
+        my $module_root = $moduleName;
         $module_root =~ s/\/.*//; # Remove everything after the first slash
 
         if (not $modulePath and $levelLimit eq 'allow-inherit')
         {
-            $modulePath = "trunk/KDE/$module";
-            $modulePath = "trunk/$module" if list_has(@non_trunk_modules, $module_root);
+            $modulePath = "trunk/KDE/$moduleName";
+            $modulePath = "trunk/$moduleName" if list_has(@non_trunk_modules, $module_root);
             $modulePath =~ s/^\/*//; # Eliminate / at beginning of string.
             $modulePath =~ s/\/*$//; # Likewise at the end.
         }
@@ -1980,9 +1978,9 @@ sub update_module_subdirectories
 # don't necessary meet this criteria (e.g. kdereview is a module itself).
 sub has_base_module
 {
-    my $module = shift;
+    my $moduleName = shift;
 
-    return $module =~ /^(extragear|playground|KDE)(\/[^\/]+)?$/;
+    return $moduleName =~ /^(extragear|playground|KDE)(\/[^\/]+)?$/;
 }
 
 # Subroutine to return the directory that a module will be stored in.
@@ -2603,7 +2601,7 @@ sub checkout_module_path
 
     p_chdir ($pathinfo{'path'});
 
-    my $svn_url = svn_module_url($module->name());
+    my $svn_url = svn_module_url($module);
     my $modulename = $pathinfo{'module'}; # i.e. kdelibs for KDE/kdelibs as $module
 
     push @args, ('svn', 'co', '--non-interactive');
@@ -6799,7 +6797,7 @@ sub check_module_validity
 {
     my $module = assert_isa(shift, 'Module');
     my $source_dir = $module->fullpath('source');
-    my $module_expected_url = svn_module_url($module->name());
+    my $module_expected_url = svn_module_url($module);
     my $module_actual_url = get_svn_info($module, 'URL');
 
     $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
