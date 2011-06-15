@@ -1649,9 +1649,6 @@ sub svn_module_url
             return handle_branch_tag_option($module, 'tags');
         }
 
-        # Note we check for 'trunk', not default_module_branch().  We handle 'trunk' in the
-        # rest of the code path, any branch (even if default) should be handled in
-        # handle_branch_tag_option().
         my $branch = $module->getOption('branch', $levelLimit);
         if($branch and $branch ne 'trunk')
         {
@@ -2110,23 +2107,6 @@ sub count_command_output
     $count++ while(<$fh>);
     close $fh;
     return $count;
-}
-
-# Returns the first valid value among the following (for the given module,
-# assumed to be a Subversion module):
-# 1. User's selected branch option
-# 2. Default branch option (if non-empty)
-# 3. 'trunk'
-#
-# First parameter is the module name.
-sub get_svn_branch
-{
-    my $module = shift;
-    my $branch = get_option($module, 'branch');
-    $branch = default_module_branch($module) unless $branch;
-    $branch = 'trunk' unless $branch;
-
-    return $branch;
 }
 
 # Perform a git clone to checkout the latest branch of a given git module
@@ -3215,73 +3195,6 @@ sub safe_make (@)
     return 0;
 }
 
-# This function returns the default branch for a given module.  Use this function whenever
-# you have to deal with checking whether the user is using the default branch.
-#
-# If the branch option is set globally then that value is used to come up with an
-# appropriate default (usually will be the same as the branch option but not always).
-#
-# This function may be called while parsing options for non-global modules, so
-# it can only call get_option() for 'global' entries.
-#
-# First parameter: module to get default branch of.
-# Returns: branch name. e.g. 'trunk', '4.3', 'work/make-it-cool'
-sub default_module_branch
-{
-    # Add the appropriate branch to this hash for stable modules.  Any module not listed
-    # here will default to global{'branch'}.
-    # tags/ is special as a returned module prefix as it is converted to be a
-    # tag internally instead of a branch.
-    my %branched_modules_exceptions = (
-        # Don't integrate these kdesupport tags with the code near the end of this
-        # function as the naming conventions are actually slightly different.
-        '4.0' => {
-            'kdesupport' => 'tags/kdesupport-for-4.1/kdesupport', # See below.
-            'phonon'     => '4.2',   # Weird, I know.
-        },
-        '4.1' => {
-            'kdesupport' => 'tags/kdesupport-for-4.1/kdesupport',
-            'phonon'     => '4.2',   # Weird, I know.
-        },
-        '4.2' => {
-            'kdesupport' => 'tags/kdesupport-for-4.2/kdesupport',
-        },
-        '4.3' => {
-            'kdesupport' => 'tags/kdesupport-for-4.3/kdesupport',
-        },
-        '4.4' => {
-            'kdesupport' => 'tags/kdesupport-for-4.4/kdesupport',
-        },
-        '4.5' => {
-            'kdesupport' => 'tags/kdesupport-for-4.5/kdesupport',
-        },
-    );
-
-    # qr() compiles a regex for use in later matching.
-    my @unbranched_modules = ( qr(^extragear/), qr(^playground/), qr(^kdereview$) );
-
-    my $module = shift;
-    my $branch = get_option('global', 'branch');
-
-    # Using git? Default to master for now.
-    return 'master' if module_scm_type($module) eq 'git';
-
-    # If the module doesn't normally get branched there's not much we can do, so we'll just
-    # return the default. (We search against regexps instead of module names here)
-    if (scalar grep { $module =~ $_ } @unbranched_modules)
-    {
-        return '';
-    }
-
-    # Some modules have a different branch name for a given KDE version, handle that.
-    if (exists $branched_modules_exceptions{$branch}->{$module})
-    {
-        return $branched_modules_exceptions{$branch}->{$module};
-    }
-
-    return $branch;
-}
-
 # Given a module name, this subroutine returns a hash with the default module
 # options for the module.
 #
@@ -3294,8 +3207,7 @@ sub default_module_branch
 # for assignment to %package_opts.
 sub default_module_options
 {
-    my $module = shift;
-    my $branch = default_module_branch($module);
+    my $moduleName = shift;
     my %options = (
         'set-env' => { },
     );
@@ -3311,7 +3223,7 @@ sub default_module_options
             'cmake-options' => '-DSTRIGI_SYNC_SUBMODULES=TRUE',
             'reconfigure'   => 'true',
         },
-        'kdesupport' => {
+        'taglib' => {
             'cmake-options' => '-DWITH_ASF=TRUE -DWITH_MP4=TRUE',
         },
         'dbusmenu-qt' => {
@@ -3319,18 +3231,11 @@ sub default_module_options
         },
     );
 
-    # Hack to support default "tags" instead of default branches for kdesupport.
-    if ($branch =~ /^tags\//)
-    {
-        $branch =~ s/^tags\///; # Strip tags/
-        $options{'tag'} = $branch;
-    }
-
-    # If no specific module options just return the default
-    return \%options unless exists $module_options{$module};
+    # If no specific moduleName options just return the default
+    return \%options unless exists $module_options{$moduleName};
 
     # Otherwise merge in options (uses Perl hash slice)
-    my $this_module_options = $module_options{$module};
+    my $this_module_options = $module_options{$moduleName};
     @options{keys %{$this_module_options}} = values %{$this_module_options};
 
     return \%options;
