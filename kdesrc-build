@@ -5124,8 +5124,6 @@ sub handle_updates
         my $moduleName = $module->name();
         $moduleName = $l10n if $moduleName eq 'l10n'; # Correct internal name.
 
-        check_for_module_config ($moduleName);
-
         my $module_src_dir = get_source_dir($module);
         if ($kdesrc ne $module_src_dir)
         {
@@ -6179,9 +6177,6 @@ sub build_module
     my $moduleName = $module->name();
     my $builddir = $module->fullpath('build');
 
-    # Do some tests to make sure we're ready to build.
-    check_for_module_config($moduleName);
-
     update_module_environment($module);
 
     my $log_filter = sub {
@@ -6554,32 +6549,6 @@ EOF
     return scalar @{$fail_lists{'build'}} or grep (/failed/, values %svn_status);
 }
 
-# Subroutine checks to see if a module is present in the config file, and
-# warns if it is not.  It does this by checking whether it has any options set,
-# and if not, will set a default value for the options.
-# First parameter: name of module to check.
-sub check_for_module_config
-{
-    my $module = shift;
-
-    if (not exists $package_opts{$module})
-    {
-        warning <<EOF;
- b[y[*]
- b[y[*] Unknown module y[$module], configure it in $rcfile.
- b[y[*]
-EOF
-        $package_opts{$module} = default_module_options($module);
-    }
-
-    # This can happen if there *is* a config specified but the user
-    # did not specify a repository option.  We can't default it in
-    # global because once KDE switches the default would be wrong.
-    if ($module eq 'qt-copy' and not get_option($module, 'repository')) {
-        set_option($module, 'repository', 'git://gitorious.org/qt/qt.git');
-    }
-}
-
 # Subroutine to exit the script cleanly, including removing any
 # lock files created.  If a parameter is passed, it is interpreted
 # as an exit code to use
@@ -6662,7 +6631,6 @@ sub handle_install
         my $moduleName = $module->name();
 
         update_module_environment ($module);
-        check_for_module_config ($moduleName);
 
         my $builddir = $module->fullpath('build');
 
@@ -6758,7 +6726,6 @@ sub handle_uninstall
         resetenv();
         my $moduleName = $module->name();
         update_module_environment ($module);
-        check_for_module_config ($moduleName);
 
         my $builddir = $module->fullpath('build');
 
