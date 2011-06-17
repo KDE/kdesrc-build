@@ -2134,10 +2134,10 @@ sub download_file
 # strip KDE/ everywhere.
 sub moduleBaseName
 {
-    my $module = shift;
-    $module =~ s/^KDE\///;
+    my $moduleName = shift;
+    $moduleName =~ s/^KDE\///;
 
-    return $module;
+    return $moduleName;
 }
 
 # Returns the user-selected branch for the given module, or 'master' if no
@@ -2146,8 +2146,8 @@ sub moduleBaseName
 # First parameter is the module name.
 sub get_git_branch
 {
-    my $module = shift;
-    my $branch = get_option($module, 'branch');
+    my $module = assert_isa(shift, 'Module');
+    my $branch = $module->getOption('branch');
 
     $branch = 'master' unless $branch;
     return $branch;
@@ -2215,7 +2215,7 @@ sub git_clone_module
     if ($result == 0) {
         set_persistent_option($module->name(), 'git-cloned-repository', $git_repo);
 
-        my $branch = get_git_branch($module->name());
+        my $branch = get_git_branch($module);
 
         # Switch immediately to user-requested branch now.
         if ($branch ne 'master') {
@@ -2323,7 +2323,7 @@ sub git_get_best_remote_names
 # Don't call this function unless you've already checked that a suitable
 # remote-tracking branch doesn't exist.
 #
-# First parameter: The module being worked on.
+# First parameter: The Module being worked on.
 # Second parameter: A *reference* to a list of remote names (all pointing to
 #                   the same repository) which are valid.
 # Third parameter: The name of the remote head we need to make a branch name
@@ -2332,7 +2332,7 @@ sub git_get_best_remote_names
 # name can be generated.
 sub git_make_branchname
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my $remoteNamesRef = shift;
     my $branch = shift;
     my $chosenName;
@@ -2348,22 +2348,23 @@ sub git_make_branchname
     return "origin-$branch";
 }
 
-# This subroutine finds an existing remote-tracking branch name for the given repository's
-# named remote. For instance if the user was using the local remote-tracking branch
-# called 'qt-stable' to track kde-qt's master branch, this subroutine would return the
-# branchname 'qt-stable' when passed kde-qt and 'master'.
+# This subroutine finds an existing remote-tracking branch name for the given
+# repository's named remote. For instance if the user was using the local
+# remote-tracking branch called 'qt-stable' to track kde-qt's master branch,
+# this subroutine would return the branchname 'qt-stable' when passed kde-qt
+# and 'master'.
 #
-# First parameter: The module we are working on.
-# Second parameter: A *reference* to a list of remote names to check against.
+# The current directory must be the source directory of the git module.
+#
+# First parameter : A *reference* to a list of remote names to check against.
 #                   It is important that this list all really point against the
 #                   same repository URL however. (See
 #                   git_get_best_remote_names)
-# Third parameter: The remote head name to find a local branch for.
+# Second parameter: The remote head name to find a local branch for.
 # Returns: Empty string if no match is found, or the name of the local remote-tracking
 #          branch if one exists.
 sub git_get_remote_branchname
 {
-    my $module = shift;
     my $remoteNamesRef = shift;
     my $branchName = shift;
 
@@ -2502,7 +2503,7 @@ sub git_update_module
     my $srcdir = $module->fullpath('source');
     my $old_repo = get_persistent_option($module->name(), 'git-cloned-repository');
     my $cur_repo = $module->getOption('repository');
-    my $branch = get_git_branch($module->name());
+    my $branch = get_git_branch($module);
     my $remoteName = GIT_REMOTE_ALIAS;
     my $result;
 
@@ -2558,10 +2559,10 @@ sub git_update_module
     # to find a matching SHA1. Any local branches that are found must also be
     # remote-tracking. If this is all true we just re-use that branch,
     # otherwise we create our own remote-tracking branch.
-    my $branchName = git_get_remote_branchname($module->name(), \@remoteNames, $branch);
+    my $branchName = git_get_remote_branchname(\@remoteNames, $branch);
 
     if (not $branchName) {
-        my $newName = git_make_branchname($module->name(), \@remoteNames, $branch);
+        my $newName = git_make_branchname($module, \@remoteNames, $branch);
         whisper "\tUpdating g[$module] with new remote-tracking branch y[$newName]";
         if (0 != log_command($module, 'git-checkout-branch',
                       ['git', 'checkout', '-b', $newName, "$remoteName/$branch"]))
@@ -3859,11 +3860,11 @@ sub module_needs_builddir_help
 # the environment based on that setting.
 sub setup_module_environment
 {
-    my $module = shift;
+    my $module = assert_isa(shift, 'Module');
     my ($key, $value);
 
     # Let's see if the user has set env vars to be set.
-    my $env_hash_ref = get_option($module, 'set-env');
+    my $env_hash_ref = $module->getOption('set-env');
     while (($key, $value) = each %{$env_hash_ref})
     {
         setenv($key, $value);
@@ -5934,7 +5935,7 @@ sub update_module_environment
     $prefix = $kdedir unless $prefix;
 
     # Add global set-envs
-    setup_module_environment ('global');
+    setup_module_environment ($module->buildContext()->globalModule());
 
     # Add some standard directories for pkg-config support.  Include env settings.
     my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
@@ -5976,7 +5977,7 @@ sub update_module_environment
     setenv ('KDEDIRS', $kdedir);
 
     # Read in user environment defines
-    setup_module_environment ($module->name()) unless $module->name() eq 'global';
+    setup_module_environment ($module) unless $module->name() eq 'global';
 }
 
 # Subroutine to make sure the build directory for a module is setup.
