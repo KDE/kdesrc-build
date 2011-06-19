@@ -3433,31 +3433,23 @@ sub split_option_value
 # 'module' if we should expect an end module statement.
 sub parse_module
 {
-    my ($ctx, $fileReader, $module) = @_;
+    my ($ctx, $fileReader, $moduleName) = @_;
     assert_isa($ctx, 'ksb::BuildContext');
-    $module = 'global' unless $module;
-    my $rcfile = $ctx->rcFile();
 
-    # Setup default options in case user specifies only module name to get it
-    # to build.
-    $package_opts{$module} //= default_module_options($module);
+    my $rcfile = $ctx->rcFile();
+    my $module = $moduleName eq 'global' ? $ctx : Module->new($ctx, $moduleName);
+    my $endWord = $moduleName eq 'global' ? 'global' : 'module';
+    my $endRE = qr/^end\s+$endWord/;
 
     # Read in each option
     while ($_ = readNextLogicalLine($fileReader))
     {
-        if($module eq 'global')
-        {
-            last if /^end\s+global/; # Stop
-        }
-        else
-        {
-            last if /^end\s+module/; # Stop
-        }
+        last if m/$endRE/;
 
         # Sanity check, make sure the section is correctly terminated
         if(/^(module\s|module$)/)
         {
-            error "Invalid configuration file $rcfile at line $.\nAdd an 'end module' before " .
+            error "Invalid configuration file $rcfile at line $.\nAdd an 'end $endWord' before " .
                   "starting a new module.\n";
             die make_exception('Config', "Invalid $rcfile");
         }
@@ -3465,22 +3457,23 @@ sub parse_module
         my ($option, $value) = split_option_value($_);
 
         # Handle special options.
-        if ($module eq 'global' && $option eq 'git-repository-base') {
+        if ($moduleName eq 'global' && $option eq 'git-repository-base') {
             # This will be a hash reference instead of a scalar
             my ($repo, $url) = ($value =~ /^([a-zA-Z0-9_-]+)\s+(.+)$/);
-            $value = get_option('global', $option) || { };
+            $value = $ctx->getOption($option) || { };
 
             if (!$repo || !$url) {
                 error <<"EOF";
 The y[git-repository-base] option at y[b[$rcfile:$.]
 requires a repository name and URL.
 
-e.g. git-repository base kde git://anongit.kde.org/
+e.g. git-repository base y[b[kde] g[b[git://anongit.kde.org/]
 
 Use this in a "module-set" group:
 
 e.g.
-module-set kde
+module-set kdesupport-set
+  repository y[b[kde]
   use-modules automoc akonadi soprano attica
 end module-set
 EOF
@@ -3490,8 +3483,10 @@ EOF
             $value->{$repo} = $url;
         }
 
-        set_option($module, $option, $value);
+        set_option($moduleName, $option, $value);
     }
+
+    return $module;
 }
 
 # Tries to download the kde_projects.xml file needed to make XML module support
@@ -3784,7 +3779,7 @@ sub read_options
             die make_exception('Config', 'Missing global section');
         }
 
-        # Now read in each global option
+        # Now read in each global option.
         parse_module($ctx, $fileReader, 'global');
         last;
     }
@@ -3827,8 +3822,7 @@ sub read_options
             push @module_list, parse_moduleset($ctx, $fileReader, $modulename);
         }
         else {
-            parse_module($ctx, $fileReader, $modulename);
-            push @module_list, Module->new($ctx, $modulename);
+            push @module_list, parse_module($ctx, $fileReader, $modulename);
         }
 
         # Don't build default modules if user has their own wishes.
