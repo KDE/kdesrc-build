@@ -977,6 +977,10 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 
     use Carp 'confess';
 
+    # We derive from Module so that BuildContext acts like the 'global'
+    # Module, with some extra functionality.
+    our @ISA = qw(Module);
+
     # This is the second-half of "use Foo". The first-half is "require Foo" but
     # we already have ksb::Debug loaded above.
     ksb::Debug->import();
@@ -990,22 +994,25 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
     {
         my ($class, @args) = @_;
 
-        my $context = {
+        # It is very important to use the Module:: syntax instead of Module->,
+        # otherwise you can't pass $class and have it used as the classname.
+        my $self = Module::new($class, undef, 'global');
+        my %newOpts = (
             modules => [],
             options => \%main::package_opts,
+            # This one replaces Module::{phases}
             phases  => ksb::Phases->new(@DefaultPhases),
             rcFiles => [@rcfiles],
             rcFile  => undef,
-        };
+        );
 
-        # We've turned context into an object, now add a default module.
-        bless $context, $class;
+        # Merge all new options into our self-hash.
+        @{$self}{keys %newOpts} = values %newOpts;
 
-        my $global = Module->new($context, 'global');
-        $global->phases()->clear(); # Ensure it's never built/updated/etc.
-        $context->{'globalModule'} = $global;
+        assert_isa($self, 'Module');
+        assert_isa($self, 'ksb::BuildContext');
 
-        return $context;
+        return $self;
     }
 
     # Gets the ksb::Phases for this context, and optionally sets it first to
@@ -1134,15 +1141,6 @@ EOM
 HOME
     }
 
-    # Returns the Module that can be used for global option lookup, that way
-    # underlying code doesn't have to worry about whether they have a
-    # BuildContext or a Module option to read.
-    sub globalModule
-    {
-        my $self = shift;
-        return $self->{globalModule};
-    }
-
     sub modulesInPhase
     {
         my ($self, $phase) = @_;
@@ -1152,13 +1150,14 @@ HOME
 
     # Searches for a module with a name that matches the provided parameter,
     # and returns its Module object. Returns undef if no match was found.
-    # As a special-case, returns the globalModule if the name passed is
-    # 'global'.
+    # As a special-case, returns the BuildContext itself if the name passed is
+    # 'global', since the BuildContext also is a (in the "is-a" OOP sense)
+    # Module, specifically the 'global' one.
     sub lookupModule
     {
         my ($self, $moduleName) = @_;
 
-        return $self->globalModule() if $moduleName eq 'global';
+        return $self if $moduleName eq 'global';
 
         my @options = grep { $_->name() eq $moduleName } (@{$self->moduleList()});
         return undef unless @options;
@@ -1221,6 +1220,7 @@ HOME
 
     use Storable 'dclone';
     use Carp 'confess';
+    use Scalar::Util 'blessed';
     use overload
         '""' => 'toString', # Add stringify operator.
         '<=>' => 'compare',
@@ -1234,17 +1234,26 @@ HOME
     sub new
     {
         my ($class, $ctx, $name, $type) = @_;
+
         confess "Empty Module constructed" unless $name;
-        confess "Invalid context $ctx" unless (ref $ctx && $ctx->isa('ksb::BuildContext'));
+
+        # If building a BuildContext instead of a Module, then the context
+        # can't have been setup yet...
+        my $contextClass = 'ksb::BuildContext';
+        if ($class ne $contextClass &&
+            (!blessed($ctx) || !$ctx->isa($contextClass)))
+        {
+            confess "Invalid context $ctx";
+        }
 
         # Clone the passed-in phases so we can be different.
-        my $phases = dclone($ctx->phases());
+        my $phases = dclone($ctx->phases()) if $class eq 'Module';
 
         my $module = {
-            name => $name,
-            type => $type,
-            phases => $phases,
-            context => $ctx,
+            name         => $name,
+            type         => $type,
+            phases       => $phases,
+            context      => $ctx,
             'module-set' => '',
         };
 
@@ -1528,7 +1537,7 @@ sub get_output_file
         # name from a known file or location.  Since the latter option is much
         # easier, that's what I'm going with.  Note that this depends on the
         # latest symlink being in place.
-        $logdir = get_subdir_path ($ctx->globalModule(), 'log-dir');
+        $logdir = get_subdir_path ($ctx, 'log-dir');
         $fname = "$logdir/latest/build-status";
 
         debug "Old build status file is $fname";
@@ -1542,7 +1551,7 @@ sub get_output_file
 
     # This call must follow the test above, because it changes the 'latest'
     # symlink leading to failures later.
-    $logdir = get_log_dir($ctx->globalModule());
+    $logdir = get_log_dir($ctx);
 
     $fname = "$logdir/build-status";
     debug "Build status file is $fname";
@@ -1825,7 +1834,7 @@ sub get_all_log_directories
     my %log_dict;
 
     # A hash is used to track directories to avoid duplicate entries.
-    unshift @module_list, $ctx->globalModule();
+    unshift @module_list, $ctx;
     $log_dict{get_subdir_path($_, 'log-dir')} = 1 foreach @module_list;
 
     debug "Log directories are ", join (", ", keys %log_dict);
@@ -1858,7 +1867,7 @@ sub setup_logging_subsystem
     $LOG_DATE = $date;
     $BUILD_ID = $min_build_id;
 
-    my $buildLog = get_log_dir($ctx->globalModule()) . '/build-log';
+    my $buildLog = get_log_dir($ctx) . '/build-log';
     ksb::Debug::setLogFile($buildLog);
 }
 
@@ -3498,7 +3507,7 @@ sub ensure_projects_xml_present
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my %opts = @_;
-    my $srcdir = get_source_dir($ctx->globalModule());
+    my $srcdir = get_source_dir($ctx);
 
     my $cached_status = get_option('global', '#cached_project_xml_check');
     if (defined $cached_status && $cached_status eq 'failed') {
@@ -3688,7 +3697,7 @@ sub expandXMLModules
 
         my $name = $_->name();
         my $ctx = $_->buildContext();
-        my $srcdir = get_source_dir($ctx->globalModule());
+        my $srcdir = get_source_dir($ctx);
 
         my @xmlResults = grep {
             $_->{'active'} ne 'false'
@@ -5013,7 +5022,7 @@ sub check_for_ssh_agent
     } @gitServers;
 
     whisper "\tChecking for SSH Agent" if (scalar @sshServers);
-    return 1 if (not @sshServers) or $ctx->globalModule()->getOption('disable-agent-check');
+    return 1 if (not @sshServers) or $ctx->getOption('disable-agent-check');
 
     # We're using ssh to download, see if ssh-agent is running.
     return 1 unless exists $ENV{'SSH_AGENT_PID'};
@@ -5075,7 +5084,7 @@ EOF
 sub handle_updates
 {
     my ($ipc, $ctx) = @_;
-    my $kdesrc = get_source_dir($ctx->globalModule());
+    my $kdesrc = get_source_dir($ctx);
     my $hadError = 0;
     my @update_list = $ctx->modulesInPhase('update');
 
@@ -5935,7 +5944,7 @@ sub update_module_environment
     $prefix = $kdedir unless $prefix;
 
     # Add global set-envs
-    setup_module_environment ($module->buildContext()->globalModule());
+    setup_module_environment ($module->buildContext());
 
     # Add some standard directories for pkg-config support.  Include env settings.
     my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
@@ -6527,7 +6536,7 @@ EOF
         close STATUS_FILE;
 
         # Update the symlink in latest to point to this file.
-        my $logdir = get_subdir_path($ctx->globalModule(), 'log-dir');
+        my $logdir = get_subdir_path($ctx, 'log-dir');
         if (-l "$logdir/latest/build-status") {
             safe_unlink("$logdir/latest/build-status");
         }
@@ -6540,7 +6549,7 @@ EOF
     if (not pretending)
     {
         # Print out results, and output to a file
-        my $kdesrc = get_source_dir($ctx->globalModule());
+        my $kdesrc = get_source_dir($ctx);
         open BUILT_LIST, ">$kdesrc/successfully-built";
         foreach my $module (@build_done)
         {
@@ -6566,7 +6575,7 @@ sub finish
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $exitcode = shift;
-    my $logdir = get_log_dir($ctx->globalModule());
+    my $logdir = get_log_dir($ctx);
     $exitcode = 0 unless $exitcode;
 
     write_persistent_options($ctx);
@@ -7107,7 +7116,7 @@ sub needed_module_logs
 sub cleanup_log_directory
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $logdir = get_subdir_path($ctx->globalModule(), 'log-dir');
+    my $logdir = get_subdir_path($ctx, 'log-dir');
 
     # This glob relies on the date being in the specific format YYYY-MM-DD-ID
     my @dirs = bsd_glob("$logdir/????-??-??-??/", GLOB_NOSORT);
