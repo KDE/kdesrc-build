@@ -7230,15 +7230,7 @@ eval
     # be OK since there's nothing different going on from the first pass in that
     # event.
     @modules = applyModuleFilters(@modules);
-
-    eval {
-        @modules = expandXMLModules($ctx, @modules);
-    } or do {
-        warning "\n b[y[* * *] The KDE module database file appears to be corrupt, re-downloading.\n";
-        delete_option('global', '#cached_project_xml_check');
-        ensure_projects_xml_present($ctx, force => 1);
-        @modules = expandXMLModules($ctx, @modules);
-    };
+    @modules = expandXMLModules($ctx, @modules);
 
     # If modules were on the command line then they are effectively forced to
     # process unless overridden by command line options as well. If phases
