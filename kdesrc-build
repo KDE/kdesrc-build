@@ -1362,6 +1362,29 @@ EOF
         return main::get_option($self->name(), $key, $levelLimit);
     }
 
+    # Returns true if (and only if) the given option key value is set as an
+    # option for this module, even if the corresponding value is empty or
+    # undefined. In other words it is a way to see if the name of the key is
+    # recognized in some fashion.
+    #
+    # First parameter: Key to lookup.
+    # Returns: True if the option is set, false otherwise.
+    sub hasOption
+    {
+        my ($self, $key) = @_;
+        my $name = $self->name();
+
+        return exists $main::package_opts{$name}{$key};
+    }
+
+    # Sets the option refered to by the first parameter (a string) to the
+    # scalar (e.g. references are OK too) value given as the second paramter.
+    sub setOption
+    {
+        my ($self, $key, $value) = @_;
+        main::set_option($self->name(), $key, $value);
+    }
+
     # Returns the path to the desired directory type (source or build),
     # including the module destination directory itself.
     sub fullpath
@@ -3755,7 +3778,6 @@ sub read_options
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fh = shift;
-    my $global_opts = $package_opts{'global'};
     my @module_list;
     my $rcfile = $ctx->rcFile();
     my ($option, $modulename, %readModules);
@@ -4343,7 +4365,8 @@ sub clone_options
 # requires more than rudimentary processing should set a flag for later work.
 sub process_arguments
 {
-    my $ctx = shift;
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $pendingOptions = shift;
     my $phases = $ctx->phases();
     my @savedOptions = @_; # Used for --debug
     my @options = @_;
@@ -4493,48 +4516,48 @@ DONE
             };
 
             /^--(force-build)|(no-build-when-unchanged)$/ && do {
-                set_option('global', '#build-when-unchanged', 1);
+                $ctx->setOption('#build-when-unchanged', 1);
                 last SWITCH;
             };
 
             /^--purge-old-logs=?/ && do {
-                set_option('global', '#purge-old-logs', 1);
+                $ctx->setOption('#purge-old-logs', 1);
                 last SWITCH;
             };
 
             /^(-v)|(--verbose)$/ && do {
-                set_option('global', '#debug-level', ksb::Debug::WHISPER);
+                $ctx->setOption('#debug-level', ksb::Debug::WHISPER);
                 last SWITCH;
             };
 
             /^(-q)|(--quiet)$/ && do {
-                set_option('global', '#debug-level', ksb::Debug::NOTE);
+                $ctx->setOption('#debug-level', ksb::Debug::NOTE);
                 last SWITCH;
             };
 
             /^--really-quiet$/ && do {
-                set_option('global', '#debug-level', ksb::Debug::WARNING);
+                $ctx->setOption('#debug-level', ksb::Debug::WARNING);
                 last SWITCH;
             };
 
             /^--debug$/ && do {
-                set_option('global', '#debug-level', ksb::Debug::DEBUG);
+                $ctx->setOption('#debug-level', ksb::Debug::DEBUG);
                 debug "Commandline was: ", join(', ', @savedOptions);
                 last SWITCH;
             };
 
             /^--reconfigure$/ && do {
-                set_option('global', '#reconfigure', 1);
+                $ctx->setOption('#reconfigure', 1);
                 last SWITCH;
             };
 
             /^--color$/ && do {
-                set_option('global', '#colorful-output', 1);
+                $ctx->setOption('#colorful-output', 1);
                 last SWITCH;
             };
 
             /^--no-color$/ && do {
-                set_option('global', '#colorful-output', 0);
+                $ctx->setOption('#colorful-output', 0);
                 last SWITCH;
             };
 
@@ -4544,12 +4567,12 @@ DONE
             };
 
             /^--async$/ && do {
-                set_option('global', '#async', 1);
+                $ctx->setOption('#async', 1);
                 last SWITCH;
             };
 
             /^--no-async$/ && do {
-                set_option('global', '#async', 0);
+                $ctx->setOption('#async', 0);
                 last SWITCH;
             };
 
@@ -4561,7 +4584,7 @@ DONE
                 # We have an auto-switching function that we only want to run
                 # if --src-only was passed to the command line, so we still
                 # need to set a flag for it.
-                set_option('global', '#allow-auto-repo-move', 1);
+                $ctx->setOption('#allow-auto-repo-move', 1);
                 last SWITCH;
             };
 
@@ -4575,14 +4598,14 @@ DONE
             # read from the config file.
             /^--run=?/ && do {
                 my $program = extract_option_value_required($_, @options);
-                set_option('global', '#start-program', $program);
+                $ctx->setOption('#start-program', $program);
 
                 # Save remaining command line options to pass to the program.
                 return @options;
             };
 
             /^--build-system-only$/ && do {
-                set_option('global', '#build-system-only', 1);
+                $ctx->setOption('#build-system-only', 1);
                 last SWITCH;
             };
 
@@ -4596,8 +4619,8 @@ DONE
             /^--prefix=?/ && do {
                 my $prefix = extract_option_value_required($_, @options);
 
-                set_option('global', '#kdedir', $prefix);
-                set_option('global', '#reconfigure', 1);
+                $ctx->setOption('#kdedir', $prefix);
+                $ctx->setOption('#reconfigure', 1);
 
                 last SWITCH;
             };
@@ -4605,7 +4628,7 @@ DONE
             /^--nice=?/ && do {
                 my $niceness = extract_option_value_required($_, @options);
 
-                set_option('global', '#niceness', $niceness);
+                $ctx->setOption('#niceness', $niceness);
                 last SWITCH;
             };
 
@@ -4636,34 +4659,34 @@ DONE
             };
 
             /^(--dry-run)|(--pretend)|(-p)$/ && do {
-                set_option('global', '#pretend', 1);
+                $ctx->setOption('#pretend', 1);
                 # Simulate the build process too.
-                set_option('global', '#build-when-unchanged', 1);
+                $ctx->setOption('#build-when-unchanged', 1);
                 last SWITCH;
             };
 
             /^--refresh-build$/ && do {
-                set_option('global', '#refresh-build', 1);
+                $ctx->setOption('#refresh-build', 1);
                 last SWITCH;
             };
 
             /^(--revision|-r)=?/ && do {
                 my $revision = extract_option_value_required($_, @options);
-                set_option('global', '#revision', $revision);
+                $ctx->setOption('#revision', $revision);
 
                 last SWITCH;
             };
 
             /^--resume-from=?/ && do {
                 $_ = extract_option_value_required($_, @options);
-                set_option('global', '#resume-from', $_);
+                $ctx->setOption('#resume-from', $_);
 
                 last SWITCH;
             };
 
             /^--resume-after=?/ && do {
                 $_ = extract_option_value_required($_, @options);
-                set_option('global', '#resume-after', $_);
+                $ctx->setOption('#resume-after', $_);
 
                 last SWITCH;
             };
@@ -4673,10 +4696,9 @@ DONE
                 my ($option) = /^--([-\w\d\/]+)/;
                 my $value = extract_option_value($_, @options);
 
-                if (exists $package_opts{'global'}{$option})
+                if ($ctx->hasOption($option))
                 {
-                    # Global option
-                    set_option('global', "#$option", $value);
+                    $ctx->setOption("#$option", $value);
                 }
                 else
                 {
@@ -4691,10 +4713,7 @@ DONE
                         exit 8;
                     }
 
-                    # TODO: In pathological situations this may cause an
-                    # inaccurate collection of options for this module due to
-                    # the default options not being set correctly.
-                    set_option($module, "#$option", $value);
+                    ${$pendingOptions}{$module}{"#$option"} = $value;
                 }
 
                 last SWITCH;
@@ -4712,7 +4731,7 @@ DONE
     # risk it?
     if (scalar $phases->phases() == 1)
     {
-        set_option('global', '#async', 0);
+        $ctx->setOption('#async', 0);
     }
 
     return map { Module->new($ctx, $_) } (@enteredModules);
@@ -7163,7 +7182,10 @@ eval
     # doing.
     set_debug_colors();  # Default to colorized output if sending to TTY
     $ctx = ksb::BuildContext->new();
-    my @modules = process_arguments($ctx, @ARGV); # Process --help, --install, etc. first.
+    my $pendingOptions = { };
+
+    # Process --help, --install, etc. first.
+    my @modules = process_arguments($ctx, $pendingOptions, @ARGV);
 
     # Change name and type of command line entries beginning with + to force
     # them to be XML project modules.
@@ -7180,6 +7202,23 @@ eval
     # If we're still here, read the options
     my @optionModules = read_options($ctx, $fh);
     close $fh;
+
+    # Modify the options read from the rc-file to have the pending changes from
+    # the command line.
+    foreach my $pendingModule (keys %{$pendingOptions}) {
+        my $options = ${$pendingOptions}{$pendingModule};
+        my ($module) = grep { $pendingModule eq $_->name() } (@optionModules);
+
+        if (!$module) {
+            warning ("Tried to set options for unknown module b[y[$pendingModule]");
+            next;
+        }
+
+        while (my ($key, $value) = each %{$options}) {
+            debug "Setting pending option $key to $value for $pendingModule";
+            $module->setOption($key, $value);
+        }
+    }
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
