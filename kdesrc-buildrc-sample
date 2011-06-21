@@ -174,9 +174,9 @@ end module
 # Often the distribution provides this package, but if not you can uncomment
 # this module.
 
-#module shared-desktop-ontologies
-#    repository git://oscaf.git.sourceforge.net/gitroot/oscaf/shared-desktop-ontologies
-#end module
+module shared-desktop-ontologies
+    repository git://oscaf.git.sourceforge.net/gitroot/oscaf/shared-desktop-ontologies
+end module
 
 # Next is shown a "module-set", which is a grouping of modules that has special
 # handling of the "repository" option (the module name is automatically added
@@ -220,15 +220,8 @@ module-set
     repository kde-git
 end module-set
 
-# kdesupport contains taglib and QCA. taglib is required for JuK, amarok, and the meta info
-# reader for music files in Konqueror.
+# kdesupport contains QCA, oxygen icons, and a few other small things.
 module kdesupport
-# To get the necessary kdesupport stuff for KDE-4.5, use:
-#	tag kdesupport-for-4.5/kdesupport
-
-#	Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE (for taglib) is required to allow Amarok
-#	(defined below, near the end of this file) to build.
-	cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE
 end module
 
 # Support for notification area menus via the DBusMenu protocol
@@ -238,9 +231,12 @@ module dbusmenu-git
 end module
 
 # TagLib used to be in kdesupport and is used by JuK and Amarok for
-# parsing audio metadata.
+# parsing audio metadata. It is required for JuK, amarok.
 module taglib
     repository git://github.com/taglib/taglib.git
+      # Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE (for taglib) is required to allow Amarok
+      # (defined below, near the end of this file) to build.
+    cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE
 end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
