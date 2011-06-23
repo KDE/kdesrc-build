@@ -1381,8 +1381,10 @@ EOF
     # scalar (e.g. references are OK too) value given as the second paramter.
     sub setOption
     {
-        my ($self, $key, $value) = @_;
-        main::set_option($self->name(), $key, $value);
+        my ($self, %options) = @_;
+        while (my ($key, $value) = each %options) {
+            main::set_option($self->name(), $key, $value);
+        }
     }
 
     # Clones the options from the given Module (as handled by
@@ -3311,8 +3313,7 @@ sub safe_make (@)
 #
 # First parameter is the module to get options for.
 #
-# Return is a hash reference containing the default module options, suitable
-# for assignment to %package_opts.
+# Return is a hash reference containing the default module options.
 sub default_module_options
 {
     my $moduleName = shift;
@@ -3608,28 +3609,6 @@ sub parse_moduleset
                 die make_exception('Config', 'Invalid use-modules');
             }
         }
-        # TODO: Compat hack, to be removed later.
-        elsif ($option eq 'use-xml-modules') {
-            die make_exception('Config', <<EOF);
-Sorry, the use-xml-modules options has been deleted. It should be replaced in
-your config by:
-
-    repository kde-projects
-
-and the use-xml-modules converted to the existing use-modules as normal.
-e.g.
-module-set
-    use-xml-modules kdepim-runtime kdepim
-end module-set
-
-becomes
-
-module-set
-    repository kde-projects
-    use-modules kdepim-runtime kdepim
-end module-set
-EOF
-        }
         elsif ($option eq 'set-env') {
             handle_set_env(\%optionSet, $option, $value);
         }
@@ -3684,10 +3663,8 @@ EOF
         $newModule->setModuleSet($moduleSetName);
         push @moduleList, $newModule;
 
-        $package_opts{$moduleName} //= default_module_options($moduleName);
-
-        # Dump all options into the existing option hash.
-        @{$package_opts{$moduleName}}{keys %optionSet} = values %optionSet;
+        # Dump all options into the existing Module's options.
+        $newModule->setOption(%optionSet);
 
         # Fixup for the special repository handling if need be.
         if (!$usingXML && exists $optionSet{'repository'}) {
@@ -3769,10 +3746,14 @@ sub expandModuleSets
 
     my $filter = sub {
         my $setName = $_->name();
-        return $_ if exists $package_opts{$setName};
+        # If the module name matches a read-in Module, then it's not a set.
+        return $_ if grep { $setName eq $_->name() } (@$knownModules);
+
+        # Otherwise assume it's a set, replace this with all sub-modules in that
+        # module set.
         my @modulesInSet = grep { $_->moduleSet() eq $setName } (@$knownModules);
 
-        if (not @modulesInSet) {
+        if (!@modulesInSet) {
             die make_exception('Runtime', "Unknown module or module-set: $setName");
         }
 
@@ -7259,13 +7240,13 @@ eval
     # Add to global module list now that we've filtered everything.
     $ctx->addModule($_) foreach @modules;
 
-    if (debugging()) {
+    if (exists $ENV{KDESRC_BUILD_DUMP_CONTEXT}) {
         local $Data::Dumper::Indent = 1;
         local $Data::Dumper::Sortkeys = 1;
 
         # This method call dumps the first list with the variables named by the
         # second list.
-        print Data::Dumper->Dump([\%package_opts], [qw(Options_Set)]);
+        print Data::Dumper->Dump([$ctx], [qw(ctx)]);
     }
 
     if (!pretending() && !get_lock($ctx))
