@@ -1385,6 +1385,17 @@ EOF
         main::set_option($self->name(), $key, $value);
     }
 
+    # Clones the options from the given Module (as handled by
+    # hasOption/setOption/getOption). Options on this module will then be able
+    # to be set independently from the other module.
+    sub cloneOptionsFrom
+    {
+        my $self = shift;
+        my $other = assert_isa(shift, 'Module');
+
+        $main::package_opts{$self->name()} = dclone($main::package_opts{$other->name()});
+    }
+
     # Returns the path to the desired directory type (source or build),
     # including the module destination directory itself.
     sub fullpath
@@ -3702,36 +3713,37 @@ sub expandXMLModules
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my @modules = @_;
 
-    debug "Expanding XML modules in " . join(', ', map { $_->name() } @modules);
-
     # Using a sub allows me to use the 'return' keyword.
     my $filter = sub {
-        debug $_->name(), " is not XML-based" unless $_->type() eq 'proj';
+        my $moduleSet = shift;
 
-        return $_ if $_->type() ne 'proj';
+        # Only attempt to expand out XML-based modules.
+        return $moduleSet if $moduleSet->type() ne 'proj';
 
         ensure_projects_xml_present($ctx) or
             die "kde-projects repository information could not be downloaded: $!.";
 
-        my $name = $_->name();
-        my $ctx = $_->buildContext();
+        my $name = $moduleSet->name();
         my $srcdir = get_source_dir($ctx);
 
+        # It's possible to match modules which are marked as inactive on
+        # projects.kde.org, elide those.
         my @xmlResults = grep {
             $_->{'active'} ne 'false'
         } (KDEXMLReader->getModulesForProject($name, $srcdir));
 
-        # Setup module options
-        foreach my $xml (@xmlResults) {
-            debug "Module $name from module-set has XML module $xml->name()";
-            debug "\twith repository b[$xml->{repo}]";
-            clone_options($name, $xml->{'name'});
-            set_option($xml->{'name'}, 'repository', $xml->{'repo'});
-        }
+        # Setup module options. This alters the results in @xmlResults.
+        foreach (@xmlResults) {
+            my $repo = $_->{'repo'};
+            my $subModuleName = $_->{'name'};
 
-        return map {
-            Module->new($ctx, $_->{'name'}, 'git')
-        } (@xmlResults);
+            # This alters the item we were looking at.
+            $_ = Module->new($ctx, $subModuleName, 'git');
+            $_->cloneOptionsFrom($moduleSet);
+            $_->setOption('repository', $repo);
+        };
+
+        return @xmlResults;
     };
 
     return map { &$filter($_) } (@modules);
@@ -4335,23 +4347,6 @@ sub current_module_revision
     }
 
     return undef;
-}
-
-# Subroutine to recursively deep copy (from a completely independent clone)
-# of the modules given for module A (first parameter) to module B (second
-# parameter).
-#
-# If options are already set for B, the function returns immediately to
-# avoid overwriting already set options.
-#
-# No return value.
-sub clone_options
-{
-    my ($a, $b) = @_;
-
-    return if exists $package_opts{$b};
-
-    $package_opts{$b} = dclone($package_opts{$a});
 }
 
 # Subroutine to process the command line arguments, which should be passed as
@@ -5176,18 +5171,9 @@ sub handle_updates
             push @options, split(' ', get_option('global', 'kde-languages'));
         }
 
-        # Make sure each submodule of l10n has their own options hash.
-        if ($moduleName eq $l10n)
-        {
-            # Ensure that scripts is pulled in for the update process (not req'd
-            # for build or install)
-            push @options, 'scripts';
-
-            for my $lang (@options)
-            {
-                clone_options($l10n, "$l10n/$lang");
-            }
-        }
+        # Ensure that scripts is pulled in for the update process (not req'd
+        # for build or install) for l10n module.
+        push @options, 'scripts' if ($moduleName eq $l10n);
 
         my $fullpath = $module->fullpath('source');
         my $count;
@@ -6304,15 +6290,14 @@ sub filter_l10n_module_list
 
     # Still no subdirs?  Use kde-langauges.
     $subdirs = get_option('global', 'kde-languages') if not $subdirs;
+    my $l10nModule = $ctx->lookupModule($l10n);
 
     for my $dir (split (' ', $subdirs))
     {
         my $newModule = Module->new($ctx, "$l10n/$dir");
+        $newModule->cloneOptionsFrom($l10nModule);
         $ctx->addModule($newModule);
         push @modules, $newModule;
-
-        # Give language its own options in %package_opts.
-        clone_options($l10n, "$l10n/$dir");
     }
 
     return @modules;
