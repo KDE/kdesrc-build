@@ -166,19 +166,6 @@ my @build_list;   # List of modules to build.
 # kde_projects.xml file. 'null' is only used at e.g. the command line where the
 # module type may not be known yet.
 
-# Dictionary of lists of failed modules, keyed by the name of the operation
-# that caused the failure (e.g. build).  Note that output_failed_module_lists
-# uses the key name to display text to the user so it should describe the
-# actual category of failure.  You should also add the key name to
-# output_failed_module_lists since it uses its own sorted list.
-my @fail_display_order = qw/build update install uninstall/;
-my %fail_lists = (
-    'build'   => [ ],
-    'install' => [ ],
-    'uninstall'=>[ ],
-    'update'  => [ ],
-);
-
 my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
 my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
@@ -1002,6 +989,10 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
             options => \%main::package_opts,
             # This one replaces Module::{phases}
             phases  => ksb::Phases->new(@DefaultPhases),
+            errors  => {
+                # Phase names from phases map to a references to a list of failed Modules
+                # from that phase.
+            },
             rcFiles => [@rcfiles],
             rcFile  => undef,
         );
@@ -1208,6 +1199,27 @@ HOME
 
             $self->addModule(Module->new($self, $i));
         }
+    }
+
+    sub markModulePhaseFailed
+    {
+        my ($self, $phase, $module) = @_;
+        assert_isa($module, 'Module');
+
+        # Make a default empty list if we haven't already marked a module in this phase as
+        # failed.
+        $self->{errors}{$phase} //= [ ];
+        push @{$self->{errors}{$phase}}, $module;
+    }
+
+    # Returns a list (i.e. not a reference to, but a real list) of Modules that failed to
+    # complete the given phase.
+    sub failedModulesInPhase
+    {
+        my ($self, $phase) = @_;
+
+        # The || [] expands an empty array if we had no failures in the given phase.
+        return @{$self->{errors}{$phase} || []};
     }
 
     1;
@@ -3916,7 +3928,7 @@ sub setup_operating_environment
 # The message will be displayed all in uppercase, with PACKAGES prepended, so
 # all you have to do is give a descriptive message of what this list of
 # packages failed at doing.
-sub output_failed_module_list($@)
+sub output_failed_module_list
 {
     my ($ctx, $message, @fail_list) = @_;
     assert_isa($ctx, 'ksb::BuildContext');
@@ -3933,24 +3945,23 @@ sub output_failed_module_list($@)
 
         warning "\nr[b[<<<  PACKAGES $message  >>>]";
 
-        for (@fail_list)
+        for my $module (@fail_list)
         {
-            $logfile = get_option($_, '#error-log-file');
+            $logfile = $module->getOption('#error-log-file');
 
             # async updates may cause us not to have a error log file stored.  There's only
             # one place it should be though, take advantage of side-effect of log_command()
             # to find it.
             if (not $logfile) {
-                my $realModule = $ctx->lookupModule($_);
-                my $logdir = get_log_dir($realModule) . "/error.log";
+                my $logdir = get_log_dir($module) . "/error.log";
                 $logfile = $logdir if -e $logdir;
             }
 
             $logfile = "No log file" unless $logfile;
             $logfile =~ s|$homedir|~|;
 
-            warning "r[$_]" if pretending;
-            warning "r[$_] - g[$logfile]" if not pretending;
+            warning "r[$module]" if pretending;
+            warning "r[$module] - g[$logfile]" if not pretending;
         }
     }
 }
@@ -3960,12 +3971,14 @@ sub output_failed_module_list($@)
 # call.
 sub output_failed_module_lists
 {
-    my $ctx = shift;
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
 
-    for my $type (@fail_display_order)
+    # This list should correspond to the possible phase names (although
+    # it doesn't yet since the old code didn't, TODO)
+    for my $phase ($ctx->phases()->phases())
     {
-        my @failures = @{$fail_lists{$type}};
-        output_failed_module_list($ctx, "failed to $type", @failures);
+        my @failures = $ctx->failedModulesInPhase($phase);
+        output_failed_module_list($ctx, "failed to $phase", @failures);
     }
 
     # See if any modules fail continuously and warn specifically for them.
@@ -4941,6 +4954,7 @@ sub super_mkdir
 sub dont_build
 {
     my $module = assert_isa(shift, 'Module');
+    my $ctx = assert_isa($module->buildContext(), 'ksb::BuildContext');
     my $ipc = shift;
     my $reason = shift;
 
@@ -4964,7 +4978,7 @@ sub dont_build
 
     if ($reason != IPC::MODULE_UPTODATE)
     {
-        push @{$fail_lists{'update'}}, $module->name();
+        $ctx->markModulePhaseFailed('update', $module);
     }
 }
 
@@ -6303,7 +6317,7 @@ sub handle_build
     my @build_done;
     my @modules = grep ($_->name() !~ /^(KDE\/)?kde-common$/, $ctx->modulesInPhase('build'));
     my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
-    my $result;
+    my $result = 0;
 
     # No reason to print building messages if we're not building.
     return 0 if scalar @modules == 0;
@@ -6402,7 +6416,9 @@ EOF
             elsif($ipcType == IPC::MODULE_FAILURE or $ipcType == IPC::MODULE_CONFLICT)
             {
                 $svn_status{$buffer} = 'failed';
-                push @{$fail_lists{'update'}}, $buffer;
+                $ctx->markModulePhaseFailed('update', $module);
+                print STATUS_FILE "$module: Failed on update.\n";
+                $result = 1;
                 error "\tUnable to update r[$buffer], build canceled.";
 
                 # Increment failed count to track when to start bugging the
@@ -6479,7 +6495,8 @@ EOF
             print STATUS_FILE "$module: Failed after $elapsed.\n" if $outfile;
 
             info "\tOverall time for r[$module] was g[$elapsed].";
-            push @{$fail_lists{'build'}}, $moduleName;
+            $ctx->markModulePhaseFailed('build', $module);
+            $result = 1;
 
             # Increment failed count to track when to start bugging the
             # user to fix stuff.
@@ -6507,11 +6524,6 @@ EOF
     # in the build-status file as well.
     if ($outfile)
     {
-        for my $failure (@{$fail_lists{'update'}})
-        {
-            print STATUS_FILE "$failure: Failed on update.\n";
-        }
-
         close STATUS_FILE;
 
         # Update the symlink in latest to point to this file.
@@ -6544,7 +6556,7 @@ EOF
     }
 
     info " "; # Add newline for aesthetics if not in quiet mode.
-    return scalar @{$fail_lists{'build'}} or grep (/failed/, values %svn_status);
+    return $result;
 }
 
 # Subroutine to exit the script cleanly, including removing any
@@ -6656,7 +6668,7 @@ sub handle_install
         {
             error "\tUnable to install r[$module]!";
             $result = 1;
-            push @{$fail_lists{'install'}}, $moduleName;
+            $ctx->markModulePhaseFailed('install', $module);
 
             if ($module->getOption('stop-on-failure'))
             {
@@ -6741,7 +6753,7 @@ sub handle_uninstall
         {
             error "\tUnable to uninstall r[$module]!";
             $result = 1;
-            push @{$fail_lists{'uninstall'}}, $moduleName;
+            $ctx->markModulePhaseFailed('uninstall', $module);
 
             if ($module->getOption('stop-on-failure'))
             {
