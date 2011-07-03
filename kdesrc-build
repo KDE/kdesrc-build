@@ -144,11 +144,6 @@ our %ENV_VARS;
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
 
-# update and build are lists since they support an ordering, which can't be
-# guaranteed using a hash unless I want a custom sort function (which isn't
-# necessarily a horrible way to go, I just chose to do it this way.
-my @build_list;   # List of modules to build.
-
 # Each module in the above list is of the form:
 # {
 #   name => 'user-set-name',
@@ -7283,7 +7278,7 @@ eval
 
     my $result;
     my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
-    @build_list = map { $_->name() } ($ctx->modulesInPhase('build'));
+    my @build_list = map { $_->name() } ($ctx->modulesInPhase('build'));
 
     debug "Update list is ", join (', ', @update_list);
     debug "Build list is ", join (', ', @build_list);
