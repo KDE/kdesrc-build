@@ -242,6 +242,9 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 
     sub setColorfulOutput
     {
+        # No colors unless output to a tty.
+        return unless -t STDOUT;
+
         my $useColor = shift;
 
         if ($useColor) {
@@ -387,9 +390,10 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
     # Returns true if the value is in the list
     sub list_has(\@$)
     {
-        confess "Invalid first param to list_has" unless ref $_[0] eq ref [];
-        my ($list_ref, $value) = @_;
-        return scalar grep ("$_" eq "$value", @{$list_ref});
+        my $value = pop;
+        # Expand list references if present, otherwise use all params.
+        my @list = scalar @_ == 1 ? @{$_[0]} : @_;
+        return scalar grep { "$_" eq "$value" } (@list);
     }
 
     # Returns a Perl object worth "die"ing for. (i.e. can be given to the die
@@ -981,7 +985,8 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
         my $self = Module::new($class, undef, 'global');
         my %newOpts = (
             modules => [],
-            options => \%main::package_opts,
+            context => $self, # Fix link to buildContext (i.e. $self)
+            build_options => \%main::package_opts,
             # This one replaces Module::{phases}
             phases  => ksb::Phases->new(@DefaultPhases),
             errors  => {
@@ -994,6 +999,7 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 
         # Merge all new options into our self-hash.
         @{$self}{keys %newOpts} = values %newOpts;
+        $self->{options} = $self->{build_options}{global};
 
         assert_isa($self, 'Module');
         assert_isa($self, 'ksb::BuildContext');
@@ -1033,6 +1039,22 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
     {
         my $self = shift;
         return $self->{modules};
+    }
+
+    sub setupOperatingEnvironment
+    {
+        my $self = shift;
+        # Set the process priority
+        POSIX::nice(int $self->getOption('niceness'));
+
+        # Set the IO priority if available.
+        if ($self->getOption('use-idle-io-priority')) {
+            # -p $$ is our PID, -c3 is idle priority
+            # 0 return value means success
+            if (safe_system('ionice', '-c3', '-p', $$) != 0) {
+                warning (" b[y[*] Unable to lower I/O priority, continuing...");
+            }
+        }
     }
 
     # Returns rc file in use. Call loadRcFile first.
@@ -1179,7 +1201,7 @@ HOME
 
         whisper("Setting up to build ", join(', ', @defaultModuleList), " by default.");
 
-        my $allOptsRef = $self->{options};
+        my $allOptsRef = $self->{build_options};
         for my $i (@defaultModuleList) {
             my $options_ref = main::default_module_options($i);
 
@@ -1215,6 +1237,55 @@ HOME
 
         # The || [] expands an empty array if we had no failures in the given phase.
         return @{$self->{errors}{$phase} || []};
+    }
+
+    # Returns true if the build context has overridden the value of the given module
+    # option key. Use getOption (on this object!) to get what the value actually is.
+    sub hasStickyOption
+    {
+        my ($self, $key) = @_;
+        $key =~ s/^#//; # Remove sticky marker.
+
+        return 1 if list_has([qw/pretend disable-agent-check/], $key);
+        return $self->hasOption("#$key");
+    }
+
+    # OVERRIDE: Returns one of the following:
+    # 1. The sticky option overriding the option name given.
+    # 2. The value of the option name given.
+    # 3. The empty string (this function never returns undef).
+    #
+    # The first matching option is returned. See Module::getOption, which is
+    # typically what you should be using.
+    sub getOption
+    {
+        my ($self, $key) = @_;
+
+        foreach ("$key", $key) {
+            return $self->{options}{$_} if exists $self->{options}{$_};
+        }
+
+        return '';
+    }
+
+    # OVERRIDE: Overrides Module::setOption to handle some global-only options.
+    sub setOption
+    {
+        my ($self, %options) = @_;
+
+        # Actually set options.
+        $self->SUPER::setOption(%options);
+
+        # Automatically respond to various global option changes.
+        while (my ($key, $value) = each %options) {
+            my $normalizedKey = $key;
+            $normalizedKey =~ s/^#//; # Remove sticky key modifier.
+            given ($normalizedKey) {
+                when ('colorful-output') { ksb::Debug::setColorfulOutput($value); }
+                when ('debug-level')     { ksb::Debug::setDebugLevel($value); }
+                when ('pretend')         { ksb::Debug::setPretending($value); }
+            }
+        }
     }
 
     1;
@@ -1256,11 +1327,18 @@ HOME
         # Clone the passed-in phases so we can be different.
         my $phases = dclone($ctx->phases()) if $class eq 'Module';
 
+        # Use a sub-hash of the context's build options so that all
+        # global/module options are still in the same spot. The options might
+        # already be set by read_options, but in case they're not we assign { }
+        # if not already defined.
+        $ctx->{build_options}{$name} //= { };
+
         my $module = {
             name         => $name,
             type         => $type,
             phases       => $phases,
             context      => $ctx,
+            options      => $ctx->{build_options}{$name},
             'module-set' => '',
         };
 
@@ -1357,16 +1435,57 @@ EOF
         return $self->name() cmp $other->name();
     }
 
-    # Returns the configured value for a given option. See main::get_option
-    # for now.
+    # This subroutine returns an option value for a given module.  Some globals
+    # can't be overridden by a module's choice (but see 2nd parameter below).
+    # If so, the module's choice will be ignored, and a warning will be issued.
+    #
+    # Option names are case-sensitive!
+    #
+    # Some options (e.g. cmake-options, configure-flags) have the global value
+    # and then the module's own value appended together. To get the actual
+    # module setting you must use the level limit parameter set to 'module'.
+    #
+    # Likewise, some qt-copy options do not obey the previous proviso since Qt
+    # options are not likely to agree nicely with generic KDE buildsystem
+    # options.
+    #
+    # 1st parameter: Name of option
+    # 2nd parameter: Level limit (optional). If not present, then the value
+    # 'allow-inherit' is used. Options:
+    #   - allow-inherit: Module is used if present (with exceptions), otherwise
+    #     global is used.
+    #   - module: Only module is used (if you want only global then use the
+    #     buildContext) NOTE: This overrides global "sticky" options as well!
     sub getOption
     {
         my ($self, $key, $levelLimit) = @_;
+        my $ctx = $self->buildContext();
+        assert_isa($ctx, 'ksb::BuildContext');
         $levelLimit //= 'allow-inherit';
 
-        # For now this is just a wrapper against main::get_option, but will
-        # be expanded/refactored later to be a proper polymorphic getter.
-        return main::get_option($self->name(), $key, $levelLimit);
+        # Some global options would probably make no sense applied to qt-copy.
+        my @qtCopyOverrides = qw(branch configure-flags tag cxxflags);
+        if ($self->name() eq 'qt-copy' && list_has(@qtCopyOverrides, $key)) {
+            $levelLimit = 'module';
+        }
+
+        assert_in($levelLimit, [qw(allow-inherit module)]);
+
+        # If module-only, check that first.
+        return $self->{options}{$key} if $levelLimit eq 'module';
+
+        # Some global options always override module options.
+        return $ctx->getOption($key) if $ctx->hasStickyOption($key);
+
+        # Some options append to the global (e.g. conf flags)
+        my @confFlags = qw(cmake-options configure-flags cxxflags);
+        if (list_has(@confFlags, $key) && $ctx->hasOption($key)) {
+            return $ctx->getOption($key) . " " . ($self->{options}{$key} || '');
+        }
+
+        # Everything else overrides the global option, unless it's simply not
+        # set at all.
+        return $self->{options}{$key} // $ctx->getOption($key);
     }
 
     # Returns true if (and only if) the given option key value is set as an
@@ -1390,7 +1509,10 @@ EOF
     {
         my ($self, %options) = @_;
         while (my ($key, $value) = each %options) {
-            main::set_option($self->name(), $key, $value);
+            return if main::handle_set_env($self->{options}, $key, $value);
+
+            debug ("  Setting $self,$key = $value");
+            $self->{options}{$key} = $value;
         }
     }
 
@@ -1823,8 +1945,6 @@ sub svn_module_url
             return handle_branch_tag_option($module, 'branches');
         }
 
-        # We can't use get_option($module) after this if we have to trim the module
-        # name.
         my $moduleName = moduleBaseName($module->name());
 
         # The following modules are in /trunk, not /trunk/KDE.  There are others,
@@ -1992,83 +2112,6 @@ sub get_log_dir
     }
 
     return $logpath;
-}
-
-# This subroutine returns an option value for a given module.  Some
-# globals can't be overridden by a module's choice.  If so, the
-# module's choice will be ignored, and a warning will be issued.
-#
-# Option names are case-sensitive!
-#
-# First parameter: Name of module
-# Second paramenter: Name of option
-# Third parameter: Level limit (optional). If not present, then the value
-# 'allow-inherit' is used. Options:
-#   - allow-inherit: Module is used if present (with exceptions), otherwise
-#     global is used.
-#   - module: Only module is used (if you want only global then use a module of 'global')
-sub get_option
-{
-    my $module = shift;
-    my $option = shift;
-    my $levelLimit = shift;
-    my $globalOpts = $package_opts{'global'};
-    my @lockedOpts = qw(pretend disable-agent-check);
-
-    # Default value
-    $levelLimit = 'allow-inherit' unless defined $levelLimit;
-
-    # These options can't override globals
-    if (list_has(@lockedOpts, $option) or $module eq 'global')
-    {
-        return ${$globalOpts}{"#$option"} if exists ${$globalOpts}{"#$option"};
-        return ${$globalOpts}{$option};
-    }
-
-    # Some global options would probably make no sense applied to qt-copy.
-    my @qtCopyOverrides = qw(branch configure-flags tag);
-    $levelLimit = 'module' if ($module eq 'qt-copy' && list_has(@qtCopyOverrides, $option));
-
-    # Ensure levelLimit is not broken
-    my @validLevelLimits = qw(allow-inherit module);
-    if (not list_has(@validLevelLimits, $levelLimit))
-    {
-        die "Invalid level limit $levelLimit passed to get_option";
-    }
-
-    my $ref = $package_opts{$module};
-
-    # Check for a sticky option
-    return $$ref{"#$option"} if exists $$ref{"#$option"};
-
-    # If we are limited to module options then find it and return it
-    return $$ref{$option} if $levelLimit eq 'module';
-
-    # Otherwise, keep going in order of precedence
-    return ${$globalOpts}{"#$option"} if defined ${$globalOpts}{"#$option"};
-
-    # No sticky options left.
-    # cmake options and CXXFLAGS are appended to the global option
-    if ($module ne 'qt-copy' && ($option eq 'cxxflags' || $option eq 'cmake-options'))
-    {
-        my $value = ${$globalOpts}{$option};
-
-        if(defined $$ref{$option})
-        {
-            my $modvalue = $$ref{$option};
-            $value .= " $modvalue";
-        }
-
-        return $value;
-    }
-
-    # qt-copy should already have default options set, no need to check
-    # specifically for it.  We still may need to prevent returning a set global
-    # option when the default is unset.
-
-    # Everything else overrides the global, unless of course it's not set.
-    # If we're reading for global options, we're pretty much done.
-    return $$ref{$option} // ${$globalOpts}{$option};
 }
 
 # Subroutine used to handle the checkout-only option.  It handles
@@ -3011,7 +3054,7 @@ sub set_error_logfile
 
     my $logdir = get_log_dir($module);
 
-    set_option($module->name(), '#error-log-file', "$logdir/$logfile");
+    $module->setOption('#error-log-file', "$logdir/$logfile");
     debug "Logfile for $module is $logfile";
 
     # Setup symlink in the module log directory pointing to the appropriate
@@ -3417,6 +3460,7 @@ sub readNextLogicalLine
 # Return value is (optionname, option-value)
 sub split_option_value
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $input = shift;
     my $optionRE = qr/\$\{([a-zA-Z0-9-]+)\}/;
 
@@ -3444,14 +3488,9 @@ sub split_option_value
     my ($sub_var_name) = ($value =~ $optionRE);
     while ($sub_var_name)
     {
-        my $sub_var_value = get_option('global', $sub_var_name);
-
-        if(not $sub_var_value)
-        {
-            my $line_no = $.;
-            warning " *\n * WARNING: $sub_var_name is not set at line y[$line_no]\n *";
-
-            $sub_var_value = '';
+        my $sub_var_value = $ctx->getOption($sub_var_name) || '';
+        if(!$ctx->hasOption($sub_var_value)) {
+            warning " *\n * WARNING: $sub_var_name is not set at line y[$.]\n *";
         }
 
         debug "Substituting \${$sub_var_name} with $sub_var_value";
@@ -3496,7 +3535,7 @@ sub parse_module
             die make_exception('Config', "Invalid $rcfile");
         }
 
-        my ($option, $value) = split_option_value($_);
+        my ($option, $value) = split_option_value($ctx, $_);
 
         # Handle special options.
         if ($moduleName eq 'global' && $option eq 'git-repository-base') {
@@ -3525,7 +3564,7 @@ EOF
             $value->{$repo} = $url;
         }
 
-        set_option($moduleName, $option, $value);
+        $module->setOption($option, $value);
     }
 
     return $module;
@@ -3546,7 +3585,7 @@ sub ensure_projects_xml_present
     my %opts = @_;
     my $srcdir = get_source_dir($ctx);
 
-    my $cached_status = get_option('global', '#cached_project_xml_check');
+    my $cached_status = $ctx->getOption('#cached_project_xml_check');
     if (defined $cached_status && $cached_status eq 'failed') {
         die make_exception('Internal', "Attempted to find projects.xml after it already failed");
     }
@@ -3575,8 +3614,7 @@ sub ensure_projects_xml_present
         info " * when database is updated next.";
     }
 
-    set_option('global', '#cached_project_xml_check',
-        $result ? 'success' : 'failed');
+    $ctx->setOption('#cached_project_xml_check', $result ? 'success' : 'failed');
 
     if (!$result) {
         die make_exception('Runtime', "Unable to download kde_projects.xml for the kde-projects repository!");
@@ -3596,7 +3634,7 @@ sub parse_moduleset
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fileReader = shift;
     my $moduleSetName = shift || '';
-    my $repoSet = get_option('global', 'git-repository-base');
+    my $repoSet = $ctx->getOption('git-repository-base');
     my $rcfile = $ctx->rcFile();
     my @modules;
     my %optionSet; # We read all options, and apply them to all modules
@@ -3605,7 +3643,7 @@ sub parse_moduleset
     while($_ = readNextLogicalLine($fileReader)) {
         last if /^end\s+module(-?set)?$/;
 
-        my ($option, $value) = split_option_value($_);
+        my ($option, $value) = split_option_value($ctx, $_);
 
         if ($option eq 'use-modules') {
             @modules = split(' ', $value);
@@ -3676,7 +3714,7 @@ EOF
         # Fixup for the special repository handling if need be.
         if (!$usingXML && exists $optionSet{'repository'}) {
             $selectedRepo = $repoSet->{$optionSet{'repository'}} unless $selectedRepo;
-            set_option($moduleName, 'repository', $selectedRepo . $module);
+            $newModule->setOption('repository', $selectedRepo . $moduleName);
         }
     }
 
@@ -3896,28 +3934,6 @@ sub setup_module_environment
     }
 }
 
-# Sets our debugging color aliases for use at the terminal. No parameters,
-# no return value.
-sub set_debug_colors
-{
-    ksb::Debug::setColorfulOutput(-t STDOUT && get_option('global', 'colorful-output'));
-}
-
-sub setup_operating_environment
-{
-    # Set the process priority
-    POSIX::nice(get_option('global', 'niceness'));
-
-    # Set the IO priority if available.
-    if(get_option('global', 'use-idle-io-priority')) {
-        # -p $$ is our PID, -c3 is idle priority
-        # 0 return value means success
-        if(safe_system('ionice', '-c3', '-p', $$) != 0) {
-            warning " b[y[*] Unable to lower I/O priority, continuing...";
-        }
-    }
-}
-
 # Print out an error message, and a list of modules that match that error
 # message.  It will also display the log file name if one can be determined.
 # The message will be displayed all in uppercase, with PACKAGES prepended, so
@@ -4051,42 +4067,6 @@ sub handle_set_env
     return 1;
 }
 
-# Sets the option for the given module to the given value.  If the data for the
-# module doesn't exist yet, it will be defined starting with a default value.
-# First parameter: module to set option for (or 'global')
-# Second parameter: option name (Preceded by # for a sticky option)
-# Third parameter: option value
-# Return value is void
-sub set_option
-{
-    my ($module, $option, $value) = @_;
-
-    # Set module options.  To see where the warning is not a bug, go to
-    # read_options() where the module-specific options are set.
-    if (not exists $package_opts{$module})
-    {
-        $package_opts{$module} = default_module_options($module);
-    }
-
-    return if handle_set_env($package_opts{$module}, $option, $value);
-
-    debug "  Setting $module,$option = $value";
-    $package_opts{$module}{$option} = $value;
-
-    if ($option eq 'colorful-output')
-    {
-        set_debug_colors(); # Update ASAP
-    }
-    elsif ($option =~ /^#?debug-level$/)
-    {
-        ksb::Debug::setDebugLevel($value);
-    }
-    elsif ($option =~ /^#?pretend$/)
-    {
-        ksb::Debug::setPretending($value);
-    }
-}
-
 sub delete_option
 {
     my ($module, $option) = @_;
@@ -4117,7 +4097,7 @@ sub set_persistent_option
 # undef if there is no value stored.
 #
 # First parameter is the module to get the option for, or 'global' if not for a module.
-#     Note that unlike set_option/get_option, no inheritance is done at this point so if
+#     Note that unlike setOption/getOption, no inheritance is done at this point so if
 #     an option is present globally but not for a module you must check both if that's what
 #     you want.
 # Second parameter is the name of the value to retrieve (i.e. the key)
@@ -5089,9 +5069,9 @@ sub handle_updates
 
     # Be much quieter if operating multiprocess and the user has not chosen a
     # different mode.
-    if ($ipc->supportsConcurrency() and not get_option('global', '#debug-level'))
+    if ($ipc->supportsConcurrency() && !$ctx->getOption('#debug-level'))
     {
-        set_option('global', '#debug-level', ksb::Debug::WARNING);
+        $ctx->setOption('#debug-level', ksb::Debug::WARNING);
     }
 
     note "<<<  Updating Source Directories  >>>";
@@ -5146,7 +5126,7 @@ sub handle_updates
         # Use kde-languages option if this isn't set on command line.
         if ($moduleName eq $l10n and not scalar @options)
         {
-            push @options, split(' ', get_option('global', 'kde-languages'));
+            push @options, split(' ', $ctx->getOption('kde-languages'));
         }
 
         # Ensure that scripts is pulled in for the update process (not req'd
@@ -5663,7 +5643,7 @@ sub run_svn
 
         # If in async this only affects the update process, we need to IPC it
         # to the build process.
-        set_option($module->name(), '#update-error', IPC::MODULE_CONFLICT);
+        $module->setOption('#update-error', IPC::MODULE_CONFLICT);
         die "Source conflicts exist in $module";
     }
 
@@ -5832,7 +5812,7 @@ sub setup_build_system
             return 0;
         }
 
-        set_option($moduleName, '#reconfigure', 1); # Force reconfigure of the module
+        $module->setOption('#reconfigure', 1); # Force reconfigure of the module
     }
 
     if (not -e "$builddir" and not super_mkdir("$builddir"))
@@ -6267,7 +6247,7 @@ sub filter_l10n_module_list
     }
 
     # Still no subdirs?  Use kde-langauges.
-    $subdirs = get_option('global', 'kde-languages') if not $subdirs;
+    $subdirs = $ctx->getOption('kde-languages') if not $subdirs;
     my $l10nModule = $ctx->lookupModule($l10n);
 
     for my $dir (split (' ', $subdirs))
@@ -6769,15 +6749,16 @@ sub handle_uninstall
 # it's best not to rely on that long-term.
 sub applyModuleFilters
 {
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my @moduleList = @_;
 
-    if (!get_option('global', 'resume-from') && !get_option('global', 'resume-after'))
+    if (!$ctx->getOption('resume-from') && !$ctx->getOption('resume-after'))
     {
         debug "No --resume-from or --resume-after seems present.";
         return @moduleList;
     }
 
-    if (get_option('global', 'resume-from') && get_option('global', 'resume-after'))
+    if ($ctx->getOption('resume-from') && $ctx->getOption('resume-after'))
     {
         # This one's an error.
         error <<EOF;
@@ -6789,13 +6770,13 @@ EOF
             "Both --resume-after and --resume-from specified.");
     }
 
-    my $resumePoint = get_option('global', 'resume-from') ||
-                      get_option('global', 'resume-after');
+    my $resumePoint = $ctx->getOption('resume-from') ||
+                      $ctx->getOption('resume-after');
 
     debug "Looking for $resumePoint for --resume-* option";
 
     # || 0 is a hack to force Boolean context.
-    my $filterInclusive = get_option('global', 'resume-from') || 0;
+    my $filterInclusive = $ctx->getOption('resume-from') || 0;
     my $found = 0;
 
     # If we already found our resume point, include this module. If this module
@@ -6831,16 +6812,15 @@ EOF
 # Meant to implement the --run command line option.
 sub execute_command_line_program
 {
-    my @args = @_;
-    my $program = get_option('global', '#start-program');
+    my ($program, @args) = @_;
 
-    if (not $program)
+    if (!$program)
     {
         error "You need to specify a program with the --run option.";
         exit 1; # Can't use finish here.
     }
 
-    if (($< != $>) and ($> == 0))
+    if (($< != $>) && ($> == 0))
     {
         error "kdesrc-build will not run a program as root unless you really are root.";
         exit 1;
@@ -7141,7 +7121,9 @@ eval
     # preinit {{{
     # Note: Don't change the order around unless you're sure of what you're
     # doing.
-    set_debug_colors();  # Default to colorized output if sending to TTY
+
+    # Default to colorized output if sending to TTY
+    ksb::Debug::setColorfulOutput(-t STDOUT);
     $ctx = ksb::BuildContext->new();
     my $pendingOptions = { };
 
@@ -7184,19 +7166,13 @@ eval
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
 
-    if (get_option('global', '#start-program'))
+    if (my $prog = $ctx->getOption('#start-program'))
     {
         # @modules is the command line arguments to pass in this case.
-        execute_command_line_program(@modules);
+        execute_command_line_program($prog, @modules);
     }
 
-    if (get_option('global', 'kde-languages'))
-    {
-        # Just set some options to init defaults.
-        set_option('l10n-kde4', 'install-after-build', 1);
-    }
-
-    setup_operating_environment(); # i.e. niceness, ulimits, etc.
+    $ctx->setupOperatingEnvironment(); # i.e. niceness, ulimits, etc.
     setup_logging_subsystem($ctx); # Setup logging directories.
 
     my $commandLineModules = scalar @modules;
@@ -7211,7 +7187,7 @@ eval
         }
 
         # Filter --resume-foo first so entire module-sets can be skipped.
-        @modules = applyModuleFilters(@modules);
+        @modules = applyModuleFilters($ctx, @modules);
         @modules = expandModuleSets(\@modules, \@optionModules);
         Module->setModuleSource('cmdline');
     }
@@ -7223,7 +7199,7 @@ eval
     # Filter --resume-foo options. This might be a second pass, but that should
     # be OK since there's nothing different going on from the first pass in that
     # event.
-    @modules = applyModuleFilters(@modules);
+    @modules = applyModuleFilters($ctx, @modules);
     @modules = expandXMLModules($ctx, @modules);
 
     # If modules were on the command line then they are effectively forced to
@@ -7287,12 +7263,12 @@ eval
         # NullIPC, even if the SysVIPC ctor fails.
         my $ipc = 0;
 
-        if(not exists $ENV{'COVERITY_RUN'} and get_option('global', 'async'))
+        if (!exists $ENV{'COVERITY_RUN'} && $ctx->getOption('async'))
         {
             $ipc = new PipeIPC;
         }
 
-        if (not $ipc)
+        if (!$ipc)
         {
             $ipc = new NullIPC;
             whisper "Using no IPC mechanism\n";
@@ -7325,7 +7301,7 @@ eval
         $result = handle_uninstall ($ctx, @uninstallList);
     }
 
-    cleanup_log_directory($ctx) if get_option('global', 'purge-old-logs');
+    cleanup_log_directory($ctx) if $ctx->getOption('purge-old-logs');
     output_failed_module_lists($ctx);
 
     $time = localtime;
