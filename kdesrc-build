@@ -3977,21 +3977,9 @@ sub output_failed_module_lists
     }
 
     # See if any modules fail continuously and warn specifically for them.
-    my $persistent_opt = sub {
-        my $mod = shift;
-
-        return ((exists $package_opts{$mod}{'persistent-options'}{'failure-count'}) and
-            (int $package_opts{$mod}{'persistent-options'}{'failure-count'} > 3));
-    };
-
-    my @super_fail = grep { &{$persistent_opt}($_) }(keys %package_opts);
-    my @updatedModules = map { $_->name() } ($ctx->modulesInPhase('update'));
-    my @builtModules = map { $_->name() } ($ctx->modulesInPhase('build'));
-
-    # Only show packages we're actually updating/building
-    @super_fail = grep {
-        list_has(@updatedModules, $_) || list_has(@builtModules, $_)
-    } (@super_fail);
+    my @super_fail = grep {
+        (get_persistent_option($_->name(), 'failure-count') // 0) > 3
+    } (@{$ctx->moduleList()});
 
     if (@super_fail)
     {
