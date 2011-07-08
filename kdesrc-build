@@ -45,7 +45,31 @@ use constant {
     KDE_PROJECT_ID   => 'kde-projects',          # git-repository-base for kde_projects.xml
 };
 
-# package IPC {{{2
+my $versionNum = '1.13';
+
+# This hash is used to store environment variables to be used on the next
+# execution of log_command().  This is done so that we don't have to fork new
+# processes just to change values in the environment.
+#
+# Previously we simply saved %ENV in a temp hash, but that broke on some systems.
+# Then we used 'local %ENV' to push/pop the environment from a stack but it only
+# really worked on the developer's system. :(
+#
+# Now we save environment variables to set right after forking...
+#
+# Don't use this except via setenv(), resetenv(), and log_command().
+our %ENV_VARS;
+
+# This is a hash since Perl doesn't have a "in" keyword.
+my %ignore_list;  # List of packages to refuse to include in the build list.
+
+my $run_mode = 'build'; # Determines if updating, building, installing, etc.
+my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
+my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
+
+# }}}
+
+# package IPC {{{
 {
     # Separate package for namespacing.
     package IPC;
@@ -65,105 +89,6 @@ use constant {
         MODULE_CONFLICT => 8,
     };
 }
-# }}}
-
-my $versionNum = '1.13';
-
-# Some global variables
-# Remember kids, global variables are evil!  I only get to do this
-# because I'm an adult and you're not! :-P
-# Options that start with a # will replace values with the same name,
-# if the option is actually set.
-our %package_opts = (
-  'global' => {
-    "async"               => 1,
-    "binpath"             => '',
-    "build-when-unchanged"=> 1, # Safe default
-    "branch"              => "",
-    "build-dir"           => "build",
-    "build-system-only"   => "",
-    "checkout-only"       => "",
-    "cmake-options"       => "",
-    "configure-flags"     => "",
-    "colorful-output"     => 1, # Use color by default.
-    "cxxflags"            => "-pipe",
-    "debug"               => "",
-    "debug-level"         => 2,  # Really ksb::Debug::INFO
-    "dest-dir"            => '${MODULE}', # single quotes used on purpose!
-    "disable-agent-check" => 0,   # If true we don't check on ssh-agent
-    "do-not-compile"      => "",
-    "git-repository-base" => {}, # Base path template for use multiple times.
-    "use-modules"         => "",
-    "install-after-build" => 1,  # Default to true
-    "kdedir"              => "$ENV{HOME}/kde",
-    "kde-languages"       => "",
-    "libpath"             => "",
-    "log-dir"             => "log",
-    "make-install-prefix" => "",  # Some people need sudo
-    "make-options"        => "-j2",
-    "manual-build"        => "",
-    "manual-update"       => "",
-    "module-base-path"    => "",  # Used for tags and branches
-    "niceness"            => "10",
-    "no-svn"              => "",
-    "override-url"        => "",
-    "prefix"              => "", # Override installation prefix.
-    "pretend"             => "",
-    "purge-old-logs"      => 0,
-    "qtdir"               => "$ENV{HOME}/kdesrc/build/qt-copy",
-    "reconfigure"         => "",
-    "refresh-build"       => "",
-    "remove-after-install"=> "none", # { none, builddir, all }
-    "repository"          => '',     # module's git repo
-    "revision"            => 0,
-    "run-tests"           => 0,  # 1 = make test, upload = make Experimental
-    "set-env"             => { }, # Hash of environment vars to set
-    "source-dir"          => "$ENV{HOME}/kdesrc",
-    "stop-on-failure"     => "",
-    "svn-server"          => "svn://anonsvn.kde.org/home/kde",
-    "tag"                 => "",
-    "use-clean-install"   => 0,
-    "use-idle-io-priority"=> 0,
-  }
-);
-
-# This hash is used to store environment variables to be used on the next
-# execution of log_command().  This is done so that we don't have to fork new
-# processes just to change values in the environment.
-#
-# Previously we simply saved %ENV in a temp hash, but that broke on some systems.
-# Then we used 'local %ENV' to push/pop the environment from a stack but it only
-# really worked on the developer's system. :(
-#
-# Now we save environment variables to set right after forking...
-#
-# Don't use this except via setenv(), resetenv(), and log_command().
-our %ENV_VARS;
-
-# This is a hash since Perl doesn't have a "in" keyword.
-my %ignore_list;  # List of packages to refuse to include in the build list.
-
-# Each module in the above list is of the form:
-# {
-#   name => 'user-set-name',
-#   phases => [ qw/update build test install/ ],
-#   type => qw/svn git proj null/ # Only one of these
-# }
-#
-# Where 'phases' can have at most one of each entry in the list above. Each
-# phase has the obvious meaning, except purge is run at the end to possibly
-# free up disk space.
-#
-# 'type' is the module type (as determined by heuristics, or directly by the
-# user via svn-server or repository). If 'proj', the module can be converted to
-# an equivalent 'git' module type by doing some processing of the
-# kde_projects.xml file. 'null' is only used at e.g. the command line where the
-# module type may not be known yet.
-
-my $run_mode = 'build'; # Determines if updating, building, installing, etc.
-my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
-my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
-
 # }}}
 
 # package ksb::Debug {{{
@@ -977,6 +902,59 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
     my @DefaultPhases = qw/update build install/;
     my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
 
+    # defaultGlobalOptions {{{2
+    my %defaultGlobalOptions = (
+        "async"                => 1,
+        "binpath"              => '',
+        "build-when-unchanged" => 1, # Safe default
+        "branch"               => "",
+        "build-dir"            => "build",
+        "build-system-only"    => "",
+        "checkout-only"        => "",
+        "cmake-options"        => "",
+        "configure-flags"      => "",
+        "colorful-output"      => 1, # Use color by default.
+        "cxxflags"             => "-pipe",
+        "debug"                => "",
+        "debug-level"          => ksb::Debug::INFO,
+        "dest-dir"             => '${MODULE}', # single quotes used on purpose!
+        "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
+        "do-not-compile"       => "",
+        "git-repository-base"  => {}, # Base path template for use multiple times.
+        "use-modules"          => "",
+        "install-after-build"  => 1,  # Default to true
+        "kdedir"               => "$ENV{HOME}/kde",
+        "kde-languages"        => "",
+        "libpath"              => "",
+        "log-dir"              => "log",
+        "make-install-prefix"  => "",  # Some people need sudo
+        "make-options"         => "-j2",
+        "manual-build"         => "",
+        "manual-update"        => "",
+        "module-base-path"     => "",  # Used for tags and branches
+        "niceness"             => "10",
+        "no-svn"               => "",
+        "override-url"         => "",
+        "prefix"               => "", # Override installation prefix.
+        "pretend"              => "",
+        "purge-old-logs"       => 0,
+        "qtdir"                => "$ENV{HOME}/kdesrc/build/qt-copy",
+        "reconfigure"          => "",
+        "refresh-build"        => "",
+        "remove-after-install" => "none", # { none, builddir, all }
+        "repository"           => '',     # module's git repo
+        "revision"             => 0,
+        "run-tests"            => 0,  # 1 = make test, upload = make Experimental
+        "set-env"              => { }, # Hash of environment vars to set
+        "source-dir"           => "$ENV{HOME}/kdesrc",
+        "stop-on-failure"      => "",
+        "svn-server"           => "svn://anonsvn.kde.org/home/kde",
+        "tag"                  => "",
+        "use-clean-install"    => 0,
+        "use-idle-io-priority" => 0,
+    );
+    # }}} 1
+
     sub new
     {
         my ($class, @args) = @_;
@@ -987,7 +965,10 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
         my %newOpts = (
             modules => [],
             context => $self, # Fix link to buildContext (i.e. $self)
-            build_options => \%main::package_opts,
+            build_options => {
+                global => \%defaultGlobalOptions,
+                # Module options are stored under here as well, keyed by module->name()
+            },
             # This one replaces Module::{phases}
             phases  => ksb::Phases->new(@DefaultPhases),
             errors  => {
@@ -1178,8 +1159,9 @@ HOME
         return $options[0];
     }
 
-    # This subroutine assigns the appropriate options to %package_opts and the
-    # update and build lists to build a default set of modules.
+    # This subroutine setups a default set of modules to be updated and built,
+    # and handles setting up their initial options (also just chosen by
+    # default).
     #
     # Note: Call this and you stand the risk of losing the options you're
     # already set, do this only if you need to setup options for the entire
@@ -1314,7 +1296,7 @@ HOME
 
         # $persistent_data should be Perl code which, when evaluated will give us
         # a hash called persistent_options which we can then merge into our
-        # package_opts.
+        # persistent options.
 
         my $persistent_options;
 
