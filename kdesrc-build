@@ -25,6 +25,7 @@ use Fcntl;    # For sysopen constants
 use Carp;
 use POSIX qw(strftime :sys_wait_h);
 use File::Find; # For our lndir reimplementation.
+use File::Path qw(make_path remove_tree);
 use File::Glob ':glob';
 use File::Basename; # fileparse
 use LWP::UserAgent;
@@ -4875,31 +4876,18 @@ sub p_chdir($)
 
 # Helper subroutine to create a directory, including any parent
 # directories that may also need created.
-# Returns 0 on failure, non-zero on success
+# Throws an exception on failure. See File::Path.
 sub super_mkdir
 {
     my $pathname = shift;
-    my $temp;
-    my @parts = split (/\//, $pathname);
 
-    if (pretending)
-    {
+    if (pretending) {
         pretend "\tWould have created g[$pathname]";
         return 1;
     }
-
-    foreach (@parts)
-    {
-        $temp .= "$_/";
-
-        next if -e $temp;
-
-        # Check again if the directory does not exist before failing, since this
-        # function may be run concurrently in different processes.
-        return 0 if not mkdir ($temp) and not -e $temp;
+    else {
+        make_path($pathname);
     }
-
-    return 1;
 }
 
 # Subroutine to remove a package from the package build list.  This
@@ -5663,41 +5651,8 @@ sub prune_under_directory
     my $dir = shift;
 
     print "starting delete of $dir\n";
-
-    # This closure subroutine will be called for every file/directory.
-    # It will be called in a postorder traversal (i.e. parent processed after
-    # all the children).
-    my $wanted = sub {
-        my $name = $File::Find::name;
-
-        # Don't delete the parent directory, just everything under.
-        return if ($name eq $dir);
-
-        lstat ($name); # stats the actual symlink.  Called now for caching.
-
-        if (not -l _ and -d _)
-        {
-            # Remove directory.
-            debug "Removing directory $name";
-            if (not pretending)
-            {
-                rmdir ($name) or die "Couldn't delete $name!: $!";
-            }
-        }
-        else
-        {
-            # Remove file/symlink/etc.
-            debug "Removing file $name";
-            if (not pretending)
-            {
-                unlink ($name) or die "Couldn't delete $name!: $!";
-            }
-        }
-    };
-
-    # Call recursive find.
     eval {
-        finddepth ($wanted, $dir);
+        remove_tree($dir, { keep_root => 1 });
     };
 
     if ($@)
