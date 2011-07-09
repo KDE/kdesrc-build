@@ -65,8 +65,6 @@ our %ENV_VARS;
 my %ignore_list;  # List of packages to refuse to include in the build list.
 
 my $run_mode = 'build'; # Determines if updating, building, installing, etc.
-my $BUILD_ID;     # Used by logging subsystem to create a unique log dir.
-my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
 
 # }}}
 
@@ -889,6 +887,7 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
     use Carp 'confess';
     use File::Basename; # dirname
     use IO::File;
+    use POSIX qw(strftime);
 
     # We derive from Module so that BuildContext acts like the 'global'
     # Module, with some extra functionality.
@@ -976,6 +975,12 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
                 # Phase names from phases map to a references to a list of failed Modules
                 # from that phase.
             },
+            logPaths=> {
+                # Holds a hash table of log path bases as expanded by
+                # get_subdir_path (e.g. [source-dir]/log) to the actual log dir
+                # *this run*, with the date and unique id added. You must still
+                # add the module name to use.
+            },
             rcFiles => [@rcfiles],
             rcFile  => undef,
         );
@@ -1038,6 +1043,72 @@ my $LOG_DATE;     # Used by logging subsystem to create logs in same dir.
                 warning (" b[y[*] Unable to lower I/O priority, continuing...");
             }
         }
+
+        # Get ready for logged output.
+        ksb::Debug::setLogFile($self->getLogDirFor($self) . '/build-log');
+    }
+
+    # This subroutine accepts a Module parameter, and returns the log directory
+    # for it. You can also pass a BuildContext (including this one) to get the
+    # default log directory.
+    #
+    # As part of setting up what path to use for the log directory, the
+    # 'latest' symlink will also be setup to point to the returned log
+    # directory.
+    sub getLogDirFor
+    {
+        my ($self, $module) = @_;
+
+        my $baseLogPath = main::get_subdir_path($module, 'log-dir');
+        my $logDir;
+
+        if (!exists $self->{logPaths}{$baseLogPath}) {
+            # No log dir made for this base, do so now.
+            my $id = '01';
+            my $date = strftime "%F", localtime; # ISO 8601 date
+            $id++ while -e "$baseLogPath/$date-$id";
+            $self->{logPaths}{$baseLogPath} = "$baseLogPath/$date-$id";
+        }
+
+        $logDir = $self->{logPaths}{$baseLogPath};
+        return $logDir if pretending();
+
+        main::super_mkdir($logDir) unless -e $logDir;
+
+        # No symlink munging or module-name-adding is needed for the default
+        # log dir.
+        return $logDir if $module->isa('ksb::BuildContext');
+
+        # Add a symlink to the latest run for this module.  'latest' itself is
+        # a directory under the default log directory that holds module
+        # symlinks, pointing to the last log directory run for that module.  We
+        # do need to be careful of modules that have multiple directory names
+        # though (like extragear/foo).
+
+        my $latestPath = "$baseLogPath/latest";
+
+        # Handle stuff like playground/utils or KDE/kdelibs
+        my ($moduleName, $modulePath) = fileparse($module->name());
+        $latestPath .= "/$modulePath" if $module->name() =~ m(/);
+
+        main::super_mkdir($latestPath);
+
+        my $symlinkTarget = "$logDir/$moduleName";
+        my $symlink = "$latestPath/$moduleName";
+
+        if (-l $symlink and readlink($symlink) ne $symlinkTarget)
+        {
+            unlink($symlink);
+            symlink($symlinkTarget, $symlink);
+        }
+        elsif(not -e $symlink)
+        {
+            # Create symlink initially if we've never done it before.
+            symlink($symlinkTarget, $symlink);
+        }
+
+        main::super_mkdir($symlinkTarget);
+        return $symlinkTarget;
     }
 
     # Returns rc file in use. Call loadRcFile first.
@@ -1524,6 +1595,17 @@ EOF
         return $self->{context};
     }
 
+    # Returns the path to the log directory used during this run for this
+    # Module.
+    #
+    # In addition it handles the 'latest' symlink to allow for ease of access
+    # to the log directory afterwards.
+    sub getLogDir
+    {
+        my ($self) = @_;
+        return $self->buildContext()->getLogDirFor($self);
+    }
+
     sub toString
     {
         my $self = shift;
@@ -1802,52 +1884,6 @@ BEGIN {
     ksb::Util->import();
 }
 
-# Subroutine that returns the path of a file used to output the results of the
-# build process.  It accepts one parameter, which changes the kind of file
-# returned.  If the parameter is set to 'existing', then the file returned is
-# the latest file that exists, or undef if no log has been created yet.    All
-# other values will return the name if a file that does not yet exist.
-#
-# All files will be stored in the log directory.
-sub get_output_file
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $logdir;
-    my $mode;
-    $mode = shift or $mode = '';
-    my $fname;
-
-    debug "get_output_file in mode $mode";
-
-    if ($mode eq 'existing')
-    {
-        # There's two ways of finding the old file.  Searching backwards with
-        # valid combinations of the date and build id, or just reading in the
-        # name from a known file or location.  Since the latter option is much
-        # easier, that's what I'm going with.  Note that this depends on the
-        # latest symlink being in place.
-        $logdir = get_subdir_path ($ctx, 'log-dir');
-        $fname = "$logdir/latest/build-status";
-
-        debug "Old build status file is $fname";
-
-        # The _ at the end returns the cached file stats to avoid multiple
-        # stat() calls.
-        return "" if not -e $fname or not -r _;
-
-        return $fname;
-    }
-
-    # This call must follow the test above, because it changes the 'latest'
-    # symlink leading to failures later.
-    $logdir = get_log_dir($ctx);
-
-    $fname = "$logdir/build-status";
-    debug "Build status file is $fname";
-
-    return $fname;
-}
-
 # This subroutine acts like split(' ', $_) except that double-quoted strings are not split in
 # the process.  Patch provided by Alain Boyer (alainboyer@gmail.com) based on a posting at
 # http://www.perlmonks.org/?node_id=212174.  Converted to an extended RE for readability by
@@ -2110,132 +2146,6 @@ sub get_build_dir
     my $module = assert_isa(shift, 'Module');
 
     return get_subdir_path($module, 'build-dir');
-}
-
-# Subroutine to return a list of the different log directories that are used
-# by the different modules in the script.
-sub get_all_log_directories
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my @module_list = @{$ctx->moduleList()};
-    my %log_dict;
-
-    # A hash is used to track directories to avoid duplicate entries.
-    unshift @module_list, $ctx;
-    $log_dict{get_subdir_path($_, 'log-dir')} = 1 foreach @module_list;
-
-    debug "Log directories are ", join (", ", keys %log_dict);
-    return keys %log_dict;
-}
-
-# Subroutine to determine the build id for this invocation of the script.  The
-# idea of a build id is that we want to be able to run the script more than
-# once in a day and still retain each set of logs.  So if we run the script
-# more than once in a day, we need to increment the build id so we have a
-# unique value.  This subroutine sets the global variable $BUILD_ID and
-# $LOG_DATE for use by the logging subroutines.
-sub setup_logging_subsystem
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $min_build_id = "00";
-    my $date = strftime "%F", localtime; # ISO 8601 date
-    my @log_dirs = get_all_log_directories($ctx);
-
-    for (@log_dirs)
-    {
-        my $id = "01";
-        $id++ while -e "$_/$date-$id";
-
-        # We need to use a string comparison operator to keep
-        # the magic in the ++ operator.
-        $min_build_id = $id if $id gt $min_build_id;
-    }
-
-    $LOG_DATE = $date;
-    $BUILD_ID = $min_build_id;
-
-    my $buildLog = get_log_dir($ctx) . '/build-log';
-    ksb::Debug::setLogFile($buildLog);
-}
-
-# Convienience subroutine to return the log directory for a module.
-# It also creates the directory and manages the 'latest' symlink.
-#
-# Returns undef on an error, or the name of the directory otherwise.
-sub get_log_dir
-{
-    my $module = assert_isa(shift, 'Module');
-    my $logbase = get_subdir_path($module, 'log-dir');
-    my $logpath = "$logbase/$LOG_DATE-$BUILD_ID/$module";
-
-    $logpath = "$logbase/$LOG_DATE-$BUILD_ID" if $module->name() eq 'global';
-
-    return $logpath if pretending;
-
-    debug "Log directory for $module is $logpath";
-
-    if (not -e $logpath and not super_mkdir($logpath))
-    {
-        error "Unable to create log directory r[$logpath]";
-        return undef;
-    }
-
-    # Don't mess with Texas^H^H^H^H^Hsymlinks for 'global'
-    return $logpath if $module->name() eq 'global';
-
-    # Add a symlink to the latest run for this module.  Previous kdesrc-build
-    # releases would use /latest as a symlink, but this made it hard to find
-    # the last run on e.g.  kdebindings if you built kdebase alone last time.
-    # So now latest is a directory that holds module symlinks.  We do need to
-    # be careful of modules that have multiple directory names though (like
-    # extragear/foo).
-
-    # This operation should be atomic in async mode since the update thread
-    # should create the log dir before it is needed by the build thread (which
-    # will not have to unlink/symlink).
-    if (-l "$logbase/latest")
-    {
-        # Remove old-style symlink
-        unlink("$logbase/latest");
-    }
-
-    if (not -e "$logbase/latest")
-    {
-        mkdir("$logbase/latest");
-    }
-
-    # Handle stuff like playground/utils or KDE/kdelibs
-    my ($moduleName, $modulePath) = fileparse($module->name());
-
-    # Setup directory path we need to create.
-    my $latestPath = "$logbase/latest";
-
-    # If we have a path separator we need to adjust and create dirs and stuff
-    if ($module->name() =~ /\//)
-    {
-        $latestPath .= "/$modulePath";
-        super_mkdir($latestPath);
-    }
-    else
-    {
-        $moduleName = $module->name(); # This just makes later stuff easier
-    }
-
-    my $symlinkTarget = "$logbase/$LOG_DATE-$BUILD_ID/$module";
-    my $symlink = "$latestPath/$moduleName";
-
-    if (-l $symlink and readlink($symlink) ne $symlinkTarget)
-    {
-        unlink($symlink);
-        symlink($symlinkTarget, $symlink);
-    }
-    elsif(not -e $symlink)
-    {
-        # Create symlink initially if we've never done it before.
-        symlink($symlinkTarget, $symlink);
-    }
-
-    return $logpath;
 }
 
 # Subroutine used to handle the checkout-only option.  It handles
@@ -3049,7 +2959,7 @@ sub log_command
     assert_isa($module, 'Module');
     my $pid;
     my @command = @{$argRef};
-    my $logdir = get_log_dir($module);
+    my $logdir = $module->getLogDir();
 
     debug "log_command(): Module $module, Command: ", join(' ', @command);
 
@@ -3176,7 +3086,7 @@ sub set_error_logfile
 
     return unless $logfile;
 
-    my $logdir = get_log_dir($module);
+    my $logdir = $module->getLogDir();
 
     $module->setOption('#error-log-file', "$logdir/$logfile");
     debug "Logfile for $module is $logfile";
@@ -3363,7 +3273,7 @@ sub safe_make (@)
     my ($module, @args) = @_;
     assert_isa($module, 'Module');
 
-    my $logdir = get_log_dir($module);
+    my $logdir = $module->getLogDir();
     my $checkout_dirs = $module->getOption("checkout-only");
     my @dirs = split(' ', $checkout_dirs);
     my $install_mode = (scalar @args > 0) && ($args[0] =~ /^(un)?install$/);
@@ -4088,7 +3998,7 @@ sub output_failed_module_list
             # one place it should be though, take advantage of side-effect of log_command()
             # to find it.
             if (not $logfile) {
-                my $logdir = get_log_dir($module) . "/error.log";
+                my $logdir = $module->getLogDir() . "/error.log";
                 $logfile = $logdir if -e $logdir;
             }
 
@@ -4435,8 +4345,6 @@ module, so you may be able to view the documentation using KHelpCenter or
 Konqueror at help:/kdesrc-build
 DONE
                 # We haven't done any locking... no need to finish()
-                #  Avoids log-dir errors due to having not performed.
-                #  read_options() and setup_logging_subsystem().
                 exit 0;
             };
 
@@ -5597,7 +5505,7 @@ sub run_svn
     # Exception handling. Scary!
     die "Error updating $module: $!" unless $result == 0;
 
-    my $logdir = get_log_dir($module);
+    my $logdir = $module->getLogDir();
     $logfilename = "$logdir/$logfilename.log";
 
     # We need to open the file and try to determine what the Subversion process
@@ -6068,7 +5976,7 @@ sub run_tests
     # Step 2: Run the tests.
     my $result = log_command($module, 'test-results', [ 'make', $make_target ]);
     if ($result != 0) {
-        my $logdir = get_log_dir($module);
+        my $logdir = $module->getLogDir();
         my $logfile = "$logdir/test-results.log";
         my $numTests = -1;
         # Extract the number of failed tests
@@ -6268,7 +6176,7 @@ sub handle_build
 
     if (not pretending)
     {
-        $outfile = get_output_file($ctx);
+        $outfile = $ctx->getLogDir() . '/build-status';
         open STATUS_FILE, ">$outfile" or do {
             error <<EOF;
 	Unable to open output status file r[b[$outfile]
@@ -6432,8 +6340,6 @@ EOF
         print "\n"; # Space things out
     }
 
-    # If we have packages that failed to update we should probably mention them
-    # in the build-status file as well.
     if ($outfile)
     {
         close STATUS_FILE;
@@ -6477,9 +6383,7 @@ EOF
 sub finish
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $exitcode = shift;
-    my $logdir = get_log_dir($ctx);
-    $exitcode = 0 unless $exitcode;
+    my $exitcode = shift // 0;
 
     $ctx->storePersistentOptions();
 
@@ -6487,7 +6391,9 @@ sub finish
 
     close_lock();
 
+    my $logdir = $ctx->getLogDir();
     note "Your logs are saved in y[$logdir]";
+
     exit $exitcode;
 }
 
@@ -7122,7 +7028,6 @@ eval
     }
 
     $ctx->setupOperatingEnvironment(); # i.e. niceness, ulimits, etc.
-    setup_logging_subsystem($ctx); # Setup logging directories.
 
     my $commandLineModules = scalar @modules;
 
