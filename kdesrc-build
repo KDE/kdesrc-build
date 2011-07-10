@@ -1699,6 +1699,13 @@ EOF
         }
     }
 
+    # Simply removes the given option and its value, if present
+    sub deleteOption
+    {
+        my ($self, $key) = @_;
+        delete $self->{options}{$key} if exists $self->{options}{$key};
+    }
+
     # Gets persistent options set for this module. First parameter is the name
     # of the option to lookup. Undef is returned if the option is not set,
     # although even if the option is set, the value returned might be empty.
@@ -4215,13 +4222,13 @@ sub current_module_revision
 
 # Subroutine to process the command line arguments, which should be passed as
 # a list. The list of module names passed on the command line will be returned,
-# other options are generally entered into the 'global' option set.
+# In addition, a second parameter should be passed, a reference to a hash that
+# will hold options that cannot be set until the rc-file is read.
+#
 # NOTE: One exception to the return value is that if --run is passed, the list
 # of options to pass to the new program is returned instead (you can tell by
 # evaluating the '#start-program' option.
 # NOTE: Don't call finish() from this routine, the lock hasn't been obtained.
-# NOTE: The options have not been loaded yet either.  Any option which
-# requires more than rudimentary processing should set a flag for later work.
 sub process_arguments
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
@@ -4570,7 +4577,7 @@ DONE
                         exit 8;
                     }
 
-                    ${$pendingOptions}{$module}{"#$option"} = $value;
+                    ${$pendingOptions}{$module}{"$option"} = $value;
                 }
 
                 last SWITCH;

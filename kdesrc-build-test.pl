@@ -13,6 +13,8 @@ use strict;
 use warnings;
 use 5.010;
 use Getopt::Long;
+use Scalar::Util qw(blessed);
+use Storable qw(freeze);
 
 # Control whether we actually try to svn checkouts, possibly more later.
 my $fullRun = 0;
@@ -32,7 +34,6 @@ use File::Temp 'tempdir';
 use Storable 'dclone';
 
 # From kdesrc-build
-our %package_opts;
 our %ENV_VARS;
 
 # Base directory name to use for any needed filesystem tests.
@@ -41,7 +42,11 @@ my $testSourceDirName =
             TMPDIR => 1,   # Force creation under the temporary directory.
             CLEANUP => 1); # Delete temp directory when done.
 
-my %more_package_opts = (
+my $ctx = ksb::BuildContext->new();
+isa_ok($ctx, 'ksb::BuildContext', 'Ensure BuildContext classiness');
+isa_ok($ctx->phases(), 'ksb::Phases', 'Ensure Phases classiness');
+
+my %moreOptions = (
   'qt-copy' => {
       'cxxflags' => '-pipe -march=i386',
       'configure-flags' => '-fast',
@@ -71,48 +76,56 @@ my %more_package_opts = (
   },
 );
 
-for my $key (keys %more_package_opts) {
-    $package_opts{$key} = $more_package_opts{$key};
+for my $key (keys %moreOptions) {
+    ${$ctx->{build_options}}{$key} = $moreOptions{$key};
 }
 
 eval {
 
 # If using set-env, it is handled by the handle_set_env routine, so the
 # value should be the space separated VAR and VALUE.
-set_option('global', 'set-env', 'TESTY_MCTEST yes');
-set_option('global', 'cxxflags', '-g -O0');
-set_option('global', 'cmake-options', '-DCMAKE_BUILD_TYPE=RelWithDebInfo');
-set_option('global', 'svn-server', 'svn+ssh://svn.kde.org/home/kde');
-set_option('global', 'configure-flags', '-fast -dbus');
-set_option('global', '#configure-flags', '-fast -dbus');
-set_option('global', 'source-dir', '~/' . "kdesrc-build-unused");
-set_option('global', '#unused', '1');
-set_option('global', 'branch', '4.3');
+$ctx->setOption('set-env', 'TESTY_MCTEST yes');
+$ctx->setOption('cxxflags', '-g -O0');
+$ctx->setOption('cmake-options', '-DCMAKE_BUILD_TYPE=RelWithDebInfo');
+$ctx->setOption('svn-server', 'svn+ssh://svn.kde.org/home/kde');
+$ctx->setOption('configure-flags', '-fast -dbus');
+$ctx->setOption('#configure-flags', '-fast -dbus');
+$ctx->setOption('source-dir', '~/' . "kdesrc-build-unused");
+$ctx->setOption('#unused', '1');
+$ctx->setOption('branch', '4.3');
 
 # Commence testing proper
-is(get_source_dir(), $ENV{HOME} . "/kdesrc-build-unused", 'Correct tilde-expansion for source-dir');
+is(get_source_dir($ctx), $ENV{HOME} . "/kdesrc-build-unused", 'Correct tilde-expansion for source-dir');
 
 # We know tilde-expansion works for source-dir, reset to our temp dir.
-set_option('global', 'source-dir', $testSourceDirName);
-is(get_option('qt-copy', 'cxxflags'), '-pipe -march=i386', 'qt-copy cxxflags handling');
-is(get_option('qt-copy', 'configure-flags'), '-fast', 'qt-copy configure-flags handling');
-is(get_option('kdelibs', 'unused'), 1, 'Test normal sticky option');
-like(get_option('kdelibs', 'cmake-options'), qr/^-DCMAKE_BUILD_TYPE=RelWithDebInfo/, 'kdelibs cmake-options appending');
-like(get_option('kdelibs', 'cmake-options'), qr/-DTEST=TRUE$/, 'kdelibs options appending');
-is(get_option('test', 'branch', 'module'), undef, 'get_option limit to module level');
+$ctx->setOption('source-dir', $testSourceDirName);
 
-set_option('kdelibs', 'branch', 'trunk');
-is(svn_module_url('kdelibs'), 'svn+ssh://svn.kde.org/home/kde/trunk/KDE/kdelibs', 'KDE module trunk');
+my ($qtModule, $kdelibsModule, $testModule, $kdesupportModule, $phononModule)
+    = map {
+        Module->new($ctx, $_);
+    } (qw/qt-copy kdelibs test kdesupport phonon/);
 
-set_option('kdelibs', 'tag', '4.1.3');
-set_option('kdelibs', 'branch', '4.2');
-like(handle_branch_tag_option('kdelibs', 'tags'), qr(/tags/KDE/4.1.3/kdelibs$), 'KDE module tag preferred to branch');
+like($kdelibsModule->getLogDir(), qr{^$testSourceDirName/log}, 'correct log dir for test run');
+is($qtModule->getOption('cxxflags'), '-pipe -march=i386', 'qt-copy cxxflags handling');
+is($qtModule->getOption('configure-flags'), '-fast', 'qt-copy configure-flags handling');
+is($kdelibsModule->getOption('unused'), 1, 'Test normal sticky option');
+like($kdelibsModule->getOption('cmake-options'), qr/^-DCMAKE_BUILD_TYPE=RelWithDebInfo/, 'kdelibs cmake-options appending');
+like($kdelibsModule->getOption('cmake-options'), qr/-DTEST=TRUE$/, 'kdelibs options appending');
+is($testModule->getOption('branch', 'module'), undef, 'get_option limit to module level');
 
-set_option('kdelibs', 'tag', '');
-like(handle_branch_tag_option('kdelibs', 'branches'), qr(/branches/KDE/4.2/kdelibs$), 'KDE module branch');
+$kdelibsModule->setOption('branch', 'trunk');
+is(svn_module_url($kdelibsModule), 'svn+ssh://svn.kde.org/home/kde/trunk/KDE/kdelibs', 'KDE module trunk');
 
-set_option('kdesupport', 'branch', 'trunk');
-set_option('kdesupport', 'svn-server', 'svn://anonsvn.kde.org/home/kde');
+$kdelibsModule->setOption('tag', '4.1.3');
+$kdelibsModule->setOption('branch', '4.2');
+like(handle_branch_tag_option($kdelibsModule, 'tags'), qr(/tags/KDE/4\.1\.3/kdelibs$), 'KDE module tag preferred to branch');
+
+$kdelibsModule->setOption('tag', '');
+like(handle_branch_tag_option($kdelibsModule, 'branches'), qr(/branches/KDE/4.2/kdelibs$), 'KDE module branch');
+
+$kdesupportModule->setOption('branch', 'trunk');
+$kdesupportModule->setOption('svn-server', 'svn://anonsvn.kde.org/home/kde');
+
 # Ensure svn info exists in our source dir. This requires actually accessing
 # anonsvn, so use --depth empty and --ignore-externals to minimize load on
 # server.
@@ -130,26 +143,26 @@ SKIP: {
     $svnAvail = is(system(@svnArgs), 0, "Make empty subversion checkout.");
 }
 
-is(svn_module_url('kdesupport'), 'svn://anonsvn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
+is(svn_module_url($kdesupportModule), 'svn://anonsvn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
 
 # Issue reported by dfaure 2011-02-06, where the kdesupport-branch was not being
 # obeyed when global-branch was set to 4.6, so somehow kdesrc-build wanted a
 # mystical kdesupport-from-4.6 branch
-set_option('kdesupport', 'branch', 'master');
-set_option('kdesupport', 'prefix', '/d/kde/inst/kdesupport-for-4.6');
-set_option('global', 'branch', '4.6');
-is(svn_module_url('kdesupport'), 'svn://anonsvn.kde.org/home/kde/branches/kdesupport/master', 'kdesupport-for-$foo with local branch override');
+$kdesupportModule->setOption('branch', 'master');
+$kdesupportModule->setOption('prefix', '/d/kde/inst/kdesupport-for-4.6');
+$ctx->setOption('branch', '4.6');
+is(svn_module_url($kdesupportModule), 'svn://anonsvn.kde.org/home/kde/branches/kdesupport/master', 'kdesupport-for-$foo with local branch override');
 
-set_option('kdesupport', 'tag', 'kdesupport-for-4.2');
-like(handle_branch_tag_option('kdesupport', 'tags'), qr(/tags/kdesupport-for-4.2$), 'non-KDE module tag (no name appended)');
-is(svn_module_url('kdesupport'), 'svn://anonsvn.kde.org/home/kde/tags/kdesupport-for-4.2', 'non-KDE module tag (no name; entire URL)');
+$kdesupportModule->setOption('tag', 'kdesupport-for-4.2');
+like(handle_branch_tag_option($kdesupportModule, 'tags'), qr(/tags/kdesupport-for-4.2$), 'non-KDE module tag (no name appended)');
+is(svn_module_url($kdesupportModule), 'svn://anonsvn.kde.org/home/kde/tags/kdesupport-for-4.2', 'non-KDE module tag (no name; entire URL)');
 
-set_option('phonon', 'branch', '4.2');
-is(svn_module_url('phonon'), 'svn+ssh://svn.kde.org/home/kde/branches/phonon/4.2', 'non-KDE module branch (no name appended)');
+$phononModule->setOption('branch', '4.2');
+is(svn_module_url($phononModule), 'svn+ssh://svn.kde.org/home/kde/branches/phonon/4.2', 'non-KDE module branch (no name appended)');
 
-set_option('phonon', 'branch', '');
-set_option('phonon', 'module-base-path', 'tags/phonon/4.2');
-is(svn_module_url('phonon'), 'svn+ssh://svn.kde.org/home/kde/tags/phonon/4.2', 'module-base-path');
+$phononModule->setOption('branch', '');
+$phononModule->setOption('module-base-path', 'tags/phonon/4.2');
+is(svn_module_url($phononModule), 'svn+ssh://svn.kde.org/home/kde/tags/phonon/4.2', 'module-base-path');
 
 my @result1 = qw/a=b g f/;
 my @quoted_result = ('a=b g f', 'e', 'c=d', 'bless');
@@ -162,62 +175,54 @@ is_deeply([ split_quoted_on_whitespace(' a=b g f ') ], \@result1, 'split_quoted_
 SKIP: {
     skip "svn not available or network was down", 2 unless $svnAvail;
 
-    like(get_svn_info('kdesupport', 'URL'), qr/anonsvn\.kde\.org/, 'svn-info output (url)');
-    like(get_svn_info('kdesupport', 'Revision'), qr/^\d+$/, 'svn-info output (revision)');
+    like(get_svn_info($kdesupportModule, 'URL'), qr/anonsvn\.kde\.org/, 'svn-info output (url)');
+    like(get_svn_info($kdesupportModule, 'Revision'), qr/^\d+$/, 'svn-info output (revision)');
 }
 
 # Test get_subdir_path
-is(get_subdir_path('kdelibs', 'build-dir'),
+is(get_subdir_path($kdelibsModule, 'build-dir'),
     "$testSourceDirName/build",
     'build-dir subdir path rel');
-is(get_subdir_path('kdelibs', 'log-dir'),
+is(get_subdir_path($kdelibsModule, 'log-dir'),
     "$testSourceDirName/log",
     'log-dir subdir path rel');
-set_option('kdelibs', 'build-dir', '/tmp');
-is(get_subdir_path('kdelibs', 'build-dir'), "/tmp", 'build-dir subdir path abs');
-set_option('kdelibs', 'build-dir', '~/tmp/build');
-is(get_subdir_path('kdelibs', 'build-dir'), "$ENV{HOME}/tmp/build", 'build-dir subdir path abs');
-is(get_build_dir('kdelibs'), "$ENV{HOME}/tmp/build", 'get_build_dir tilde-expansion');
+$kdelibsModule->setOption('build-dir', '/tmp');
+is(get_subdir_path($kdelibsModule, 'build-dir'), "/tmp", 'build-dir subdir path abs');
+$kdelibsModule->setOption('build-dir', '~/tmp/build');
+is(get_subdir_path($kdelibsModule, 'build-dir'), "$ENV{HOME}/tmp/build", 'build-dir subdir path abs');
+is(get_build_dir($kdelibsModule), "$ENV{HOME}/tmp/build", 'get_build_dir tilde-expansion');
 
-# correct log dir
-print "Creating log directory:\n";
-setup_logging_subsystem();
-my $logdir = get_log_dir('playground/libs');
+# correct log dir for modules with a / in the name
+my $playLibsModule = Module->new($ctx, 'playground/libs');
+my $logdir = $playLibsModule->getLogDir();
 
-ok(log_command('playground/libs', 'touch', ['touch', "$testSourceDirName/touched"]) == 0, 'creating temp file');
+ok(log_command($playLibsModule, 'touch', ['touch', "$testSourceDirName/touched"]) == 0, 'creating temp file');
 ok(-e "$testSourceDirName/log/latest/playground/libs/touch.log", 'correct playground/libs log path');
 
-set_option('kdelibs', 'log-dir', '~/kdesrc-build-log');
-my $isoDate = strftime("%F", localtime); # ISO 8601 date per setup_logging_subsystem
-is(get_log_dir('kdelibs'), "$ENV{HOME}/kdesrc-build-log/$isoDate-01/kdelibs", 'get_log_dir tilde expansion');
+#$kdelibsModule->setOption('log-dir', '~/kdesrc-build-log');
+#my $isoDate = strftime("%F", localtime); # ISO 8601 date per setup_logging_subsystem
+#is($kdelibsModule->getLogDir(), "$ENV{HOME}/kdesrc-build-log/$isoDate-01/kdelibs", 'getLogDir tilde expansion');
 
-# Trunk and non-trunk l10n
-is(svn_module_url('l10n-kde4'), 'svn+ssh://svn.kde.org/home/kde/branches/stable/l10n-kde4', 'stable l10n path');
-set_option('global', 'branch', 'trunk');
-is(svn_module_url('l10n-kde4'), 'svn+ssh://svn.kde.org/home/kde/trunk/l10n-kde4', 'trunk l10n path');
-
-is(get_source_dir('test'), "$ENV{HOME}/testsrc", 'separate source-dir for modules');
-update_module_environment('test');
+is(get_source_dir($testModule), "$ENV{HOME}/testsrc", 'separate source-dir for modules');
+update_module_environment($testModule);
 is($ENV_VARS{'TESTY_MCTEST'}, 'yes', 'setting global set-env for modules');
 is($ENV_VARS{'MOIN'}, '2', 'setting module set-env for modules');
 
 # Ensure svn URL hierarchy is correct
-like(svn_module_url('test'), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer module specific to global');
-set_option('test', 'override-url', 'svn://annono');
-is(svn_module_url('test'), 'svn://annono', 'testing override-url');
+like(svn_module_url($testModule), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer module specific to global');
+$testModule->setOption('override-url', 'svn://annono');
+is(svn_module_url($testModule), 'svn://annono', 'testing override-url');
 
-my $ctx = ksb::BuildContext->new();
-isa_ok($ctx, 'ksb::BuildContext', 'Ensure BuildContext classiness');
-isa_ok($ctx->phases(), 'ksb::Phases', 'Ensure Phases classiness');
-
-my @modules = process_arguments($ctx, '--test,override-url=svn://ann');
-is(svn_module_url('test'), 'svn://ann', 'testing process_arguments module options');
+my $pendingOptions = { };
+my @modules = process_arguments($ctx, $pendingOptions, '--test,override-url=svn://ann');
+is($pendingOptions->{test}{'override-url'}, 'svn://ann', 'testing process_arguments module options');
 is(scalar @modules, 0, 'testing process_arguments return value for no passed module names');
 
 @modules = qw/qt-copy kdelibs kdebase/;
+my $kdebaseModule;
+$ctx = ksb::BuildContext->new();
 my @Modules = map { Module->new($ctx, $_) } (@modules);
 my $backupCtx = dclone($ctx);
-my $backupOptions = dclone(\%package_opts);
 
 # Ensure functions like updateModulePhases doesn't change the objects we pass
 # in.
@@ -225,22 +230,23 @@ my $resetContext = sub {
     $ctx = dclone($backupCtx);
     # We must re-create modules to have the same context as ctx.
     @Modules = map { Module->new($ctx, $_) } (@modules);
+    ($qtModule, $kdelibsModule, $kdebaseModule) = @Modules;
 };
 
 # Should be no change if there are no manual-update, no-src, etc. in the rc
 # file so force one of those on that way we know updateModulePhases did
 # something.
-set_option('kdelibs', 'no-build', 1);
-updateModulePhases(@Modules);
+$kdelibsModule->setOption('no-build', 1);
 my $backupModuleCopy = dclone(\@Modules);
+updateModulePhases(@Modules);
 is_deeply(\@Modules, $backupModuleCopy, 'Ensure objects not modified through references to them');
-delete_option('kdelibs', 'no-build');
+$kdelibsModule->deleteOption('no-build');
 
 # Now test --no-src/--no-build/etc.
-is_deeply([process_arguments($ctx, @modules)], \@Modules, 'testing process_arguments return value for passed module names');
+is_deeply([process_arguments($ctx, {}, @modules)], \@Modules, 'testing process_arguments return value for passed module names');
 
 $_->phases()->filterOutPhase('update') foreach @Modules;
-is_deeply([process_arguments($ctx, @modules, '--no-src')], \@Modules, 'testing --no-src phase updating');
+is_deeply([process_arguments($ctx, {}, @modules, '--no-src')], \@Modules, 'testing --no-src phase updating');
 ok(!list_has([$ctx->phases()->phases()], 'update'), 'Build context also not updating');
 
 &$resetContext();
@@ -248,32 +254,47 @@ ok(!list_has([$ctx->phases()->phases()], 'update'), 'Build context also not upda
 # Reported by Kurt Hindenburg (IIRC). Passing --no-src would also disable the
 # build (in updateModulesPhases) because of the global '#no-src' being set in
 # process_arguments.
-my @temp_modules = process_arguments($ctx, @modules, '--no-src');
+my @temp_modules = process_arguments($ctx, {}, @modules, '--no-src');
 # There should be no module-specific no-src/no-build/manual-update/etc. set.
 is_deeply([updateModulePhases(@temp_modules)], \@temp_modules, 'updateModulePhases only for modules');
 
 &$resetContext();
 
-set_option('kdelibs', 'run-tests', 1);
-$_->phases()->addPhase('test') foreach @Modules;
-is_deeply([updateModulePhases(@Modules)], \@Modules, 'Make sure run-tests is recognized');
+$kdelibsModule->setOption('run-tests', 1);
+my $newModules = dclone(\@Modules);
+
+# is_deeply does not work under blessed references i.e. it will not verify
+# the contents of blessed array references are actually equal, which causes
+# some tests to spuriously pass in my experience :(
+# Instead we compare the canonical in-memory representations of data structures
+# which should have identical contents. This means we should use ok() instead
+# of is() since we don't want the expected value dumped to tty.
+$Storable::canonical = 1;
+is(freeze($newModules), freeze(\@Modules), 'identical objects are identical');
+
+$newModules->[1]->phases()->addPhase('test'); # kdelibs
+ok(freeze([updateModulePhases(@Modules)]) eq freeze($newModules), 'Make sure run-tests is recognized for a module');
+
+ok(!$kdebaseModule->getOption('run-tests'), 'run-tests not set for kdebase');
+$newModules->[2]->phases()->addPhase('test'); # kdebase
+ok(freeze([updateModulePhases(@Modules)]) ne freeze($newModules), 'Make sure run-tests is recognized only for its module');
 
 &$resetContext();
 
 # Test only --no-build
 $_->phases()->filterOutPhase('build') foreach @Modules;
-is_deeply([process_arguments($ctx, @modules, '--no-build')], \@Modules, 'testing --no-build phase updating');
+ok(freeze([process_arguments($ctx, {}, @modules, '--no-build')])
+    eq freeze(\@Modules), 'testing --no-build phase updating');
 ok(!list_has([$ctx->phases()->phases()], 'build'), 'Build context also not building');
 
 # Add on --no-src
 $_->phases()->filterOutPhase('update') foreach @Modules;
-is_deeply([process_arguments($ctx, @modules, '--no-build', '--no-src')], \@Modules, 'testing --no-src and --no-build phase updating');
+ok(freeze([process_arguments($ctx, {}, @modules, '--no-build', '--no-src')])
+    eq freeze(\@Modules), 'testing --no-src and --no-build phase updating');
+
 ok(!list_has([$ctx->phases()->phases()], 'build') &&
    !list_has([$ctx->phases()->phases()], 'update'),
        'Build context also not building or updating');
-
-# Reset
-%package_opts = %{dclone($backupOptions)};
 
 my $conf = <<EOF;
 global
@@ -300,39 +321,42 @@ open my $fh, '<', \$conf;
 
 # Read in new options
 my @conf_modules = read_options($ctx, $fh);
-is(get_option('qt-copy', 'configure-flags'), '-fast', 'read_options/parse_module');
-is(get_option('kdelibs', 'repository'), 'kde:kdelibs', 'git-repository-base');
+# qt-copy
+is($conf_modules[3]->getOption('configure-flags'), '-fast', 'read_options/parse_module');
+
+# kdelibs
+is($conf_modules[0]->getOption('repository'), 'kde:kdelibs', 'git-repository-base');
 
 my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt-copy/);
 $ConfModules[1] = Module->new($ctx, 'kdesrc-build', 'proj'); # This should be a kde_projects.xml
 $ConfModules[2] = Module->new($ctx, 'kde-runtime', 'proj');  # This should be a kde_projects.xml
 $ConfModules[1]->setModuleSet('set1');
 $ConfModules[2]->setModuleSet('set1');
-is_deeply(\@conf_modules, \@ConfModules, 'read_options module reading');
+ok(freeze(\@conf_modules) eq freeze(\@ConfModules), 'read_options module reading');
 
 # Test resume-from options
-set_option('global', 'resume-from', 'kdesrc-build');
-my @filtered_modules = applyModuleFilters(@conf_modules);
+$ctx->setOption('resume-from', 'kdesrc-build');
+my @filtered_modules = applyModuleFilters($ctx, @conf_modules);
 is_deeply(\@filtered_modules, [@ConfModules[1..$#ConfModules]], 'resume-from under module-set');
 
-set_option('global', 'resume-from', 'kde-runtime');
-@filtered_modules = applyModuleFilters(@conf_modules);
+$ctx->setOption('resume-from', 'kde-runtime');
+@filtered_modules = applyModuleFilters($ctx, @conf_modules);
 is_deeply(\@filtered_modules, [@ConfModules[2..$#ConfModules]], 'resume-from under module-set, not first module in set');
 
-set_option('global', 'resume-from', 'set1');
-@filtered_modules = applyModuleFilters(@conf_modules);
+$ctx->setOption('resume-from', 'set1');
+@filtered_modules = applyModuleFilters($ctx, @conf_modules);
 is_deeply(\@filtered_modules, [@ConfModules[1..$#ConfModules]], 'resume-from a module-set');
 
-set_option('global', 'resume-after', 'set1');
+$ctx->setOption('resume-after', 'set1');
 # Setting both resume-from and resume-after should raise an exception.
 $@ = '';
 eval {
-    @filtered_modules = applyModuleFilters(@conf_modules);
+    @filtered_modules = applyModuleFilters($ctx, @conf_modules);
 };
 isa_ok($@, 'BuildException', 'resume-{from,after} combine for exception');
 
-delete_option ('global', 'resume-from');
-@filtered_modules = applyModuleFilters(@conf_modules);
+$ctx->deleteOption('resume-from');
+@filtered_modules = applyModuleFilters($ctx, @conf_modules);
 is_deeply(\@filtered_modules, [@ConfModules[3..$#ConfModules]], 'resume-after a module-set');
 
 # Test sub directory creation.
@@ -343,7 +367,7 @@ ok(-d "$testSourceDirName/build", 'Double-check temp build dir created');
 }; # eval
 
 if (my $err = $@) {
-    if (ref $err && $err->isa('BuildException')) {
+    if (blessed ($err) && $err->isa('BuildException')) {
         say "Test suite failed after kdesrc-build threw the following exception:";
         say "$@->{message}";
         fail();
