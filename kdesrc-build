@@ -3874,6 +3874,16 @@ sub expandXMLModules
             $_->{'active'} ne 'false'
         } (KDEXMLReader->getModulesForProject($name));
 
+        if (!@xmlResults) {
+            warning " y[b[*] Module y[$name] is apparently XML-based, but contains no\n",
+                "active modules to build!";
+            my $count = KDEXMLReader->getModulesForProject($name);
+            if ($count > 0) {
+                warning "\tAlthough no active modules are available, there were\n",
+                    "\t$count inactive modules. Perhaps the git modules are not ready?";
+            }
+        }
+
         # Setup module options
         foreach my $xml (@xmlResults) {
             debug "Module $name from module-set has XML module $xml->name()";
