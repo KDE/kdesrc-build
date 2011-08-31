@@ -1,0 +1,349 @@
+#!/usr/bin/env perl
+
+use strict;
+use 5.010;
+use IO::Pipe;
+
+sub runDialogExecutable
+{
+    my (@args) = @_;
+
+    # Allow for 2 more file descriptors (on top of the normally allowed 0, 1,
+    # 2) to survive the upcoming exec
+    # See "SYSTEM_FD_MAX" in perldoc:perlvar
+    $^F = 4;
+
+    my $pipe = new IO::Pipe;
+    my $pid;
+
+    if ($pid = fork()) {
+        # Parent
+        $pipe->reader();
+
+        my $output = <$pipe>;
+
+        waitpid $pid, 0;
+        my $result = ($? >> 8);
+        $pipe->close();
+
+        # dialog uses -1 as an exit code, Perl gets just the standard 8 bits
+        # the rest of UNIX uses...
+        die "Canceled the dialog" if $result == 255;
+        return $output || $result;
+    }
+    elsif (defined $pid) {
+        # Child
+        $pipe->writer();
+        my $outputFd = $pipe->fileno();
+
+        print "Using fd $outputFd";
+        exec ('dialog', '--output-fd', $outputFd,
+                        '--backtitle', 'kdesrc-build setup',
+                        @args);
+    }
+    else {
+        die "Unable to fork? $!";
+    }
+}
+
+sub getUserInput
+{
+    my $prompt = shift;
+    my $default = shift;
+
+    my @args = qw/--inputbox 8 50/;
+    splice @args, 1, 0, $prompt;
+    push @args, $default if $default;
+
+    return runDialogExecutable(@args);
+}
+
+sub getMenuOption
+{
+    my ($prompt, @opts) = @_;
+    @opts = @{$opts[0]} if ref $opts[0] eq 'ARRAY';
+
+    my @args = qw/--menu 20 70 18/;
+    splice @args, 1, 0, $prompt;
+
+    while(my ($k, $v) = splice (@opts, 0, 2)) {
+        push @args, $k, $v;
+    }
+
+    return runDialogExecutable(@args);
+}
+
+sub showInfo
+{
+    my $message = shift;
+    my @args = qw/--msgbox 20 62/;
+    splice @args, 1, 0, $message;
+
+    return runDialogExecutable(@args);
+}
+
+sub getYesNoAnswer
+{
+    my $prompt = shift;
+    my @args = qw/--yesno 8 55/;
+    splice @args, 1, 0, $prompt;
+
+    return runDialogExecutable(@args) == 0;
+}
+
+sub getDirectory
+{
+    my $dir = shift;
+    my @args = qw/--dselect 20 70/;
+    splice @args, 1, 0, $dir;
+
+    return runDialogExecutable(@args);
+}
+
+sub getListOptions
+{
+    my ($prompt, $opts, $enabled) = @_;
+    die "\$opts not a hash ref" unless (ref $opts eq 'ARRAY');
+    die "\$enabled not a hash ref" unless (ref $enabled eq 'HASH');
+
+    my @args = qw/--checklist 20 70 18/;
+    splice @args, 1, 0, $prompt;
+    splice @args, 0, 0, qw/--output-separator ,/;
+
+    while (my ($k, $v) = splice(@{$opts}, 0, 2)) {
+        push (@args, $k, $v, (exists ${$enabled}{$k} ? 'on' : 'off'));
+    }
+
+    my $output = runDialogExecutable(@args);
+
+    # Filter out empty results, remove quotes.
+    return map { m/^"(.*)"$/ } (grep { length $_ } (split(/,/, $output)));
+}
+
+showInfo(<<EOF);
+This program sets up a base kdesrc-build configuration to
+use.
+
+It can be modified as you wish later. Before the form is
+presented, you will be asked if you would like an
+explanation of the kdesrc-build file layout.  It is
+recommended to read this if you are not already familiar
+with building software.
+EOF
+
+if (getYesNoAnswer('See the tutorial?')) {
+    showInfo(<<EOF);
+kdesrc-build must download source code from the KDE
+repositories.  This source code is then compiled, in the
+"build directory". Once complete, this compiled code is
+installed to its final location, the "install directory".
+
+This program will only configure the install location, but
+all directories are configurable.
+
+The space requirements vary, but typically the build
+directory will require 3-5 times as much space as the
+corresponding source directory. The space required of
+installed software will be less than the build directory.
+EOF
+}
+
+my $dev = getYesNoAnswer('Do you already have commit ' .
+    'access to the KDE repositories?');
+
+if ($dev) {
+    $dev = getUserInput("What is your KDE identity username (for SVN access)?");
+}
+
+my $plan = getMenuOption('What do you intend to build with kdesrc-build?',
+    [
+        mod => 'Just simple applications or modules',
+        kde => '"Bleeding-edge" KDE software, using system libraries',
+        all => '"Bleeding-edge" KDE and Qt software',
+    ]);
+my $installDir = getMenuOption('Where do you want to install the software?',
+    [
+        home => "$ENV{HOME}/kde4 (default)",
+        custom => "Custom location, chosen next screen",
+    ]);
+
+if ($installDir eq 'custom') {
+    $installDir = getDirectory('/usr/local/kde4');
+}
+else {
+    $installDir = "~/kde4";
+}
+
+my @chosenModules = getListOptions(
+    "Which major module groups do you want to build?",
+    [
+        qt => 'The Qt library',
+        framework => 'KDE Framework libraries/runtime (required)',
+        workspace => 'KDE Plasma Desktop and workspace',
+        base => 'Essential KDE applications',
+        pim => 'Personal Information Management software',
+    ],
+    {
+        framework => 1,
+        workspace => 1,
+        base => 1,
+    },
+);
+
+my $numCpus = getUserInput(
+    'How many CPU cores do you wish to use for building?', '2');
+
+open my $output, '>', '/tmp/kdesrc-buildrc' or die "$!";
+
+print $output <<EOF;
+# Autogenerated by kdesrc-build-setup. You may modify this file if desired.
+global
+
+EOF
+
+if (grep { /^qt$/ } @chosenModules) {
+    print $output <<EOF;
+    # The path to your Qt installation.
+    qtdir ~/qt4
+
+EOF
+}
+
+print $output <<EOF;
+    # KDE install directory
+    kdedir $installDir
+
+    # Directory for downloaded source code
+    source-dir ~/kdesrc
+
+    # Directory to build KDE into before installing
+    build-dir build
+
+    # Use multiple cores for building. Other options to GNU make may also be
+    # set.
+    make-options -j$numCpus
+
+EOF
+
+if ($dev) {
+    print $output <<EOF;
+    # Login to use for SVN. Anonymous SVN can be used by just deleting this
+    # line.
+    svn-server svn+ssh://$dev\@svn.kde.org/home/kde
+
+EOF
+}
+
+print $output <<EOF;
+end global
+
+EOF
+
+if (grep /^qt$/, @chosenModules) {
+    print $output <<EOF;
+module qt-copy
+    configure-flags -fast -debug -system-zlib -system-libpng -system-libjpeg \
+                    -dbus -webkit -nomake examples -nomake demos
+
+    # KDE's very slightly modified Qt is used by default. To use standard Qt
+    # as provided by Nokia, comment the following line and uncomment the next
+    # repository line.
+    repository git://anongit.kde.org/qt-kde
+
+    # Nokia's Qt. Note that gitorious has had known issues checking out large
+    # git modules such as Qt. If there are failures try using KDE's qt-kde.
+    # repository git://gitorious.org/qt/qt.git
+end module
+
+EOF
+}
+
+if (grep /^framework$/, @chosenModules) {
+    print $output <<EOF;
+# These encompass modules that are not directly a part of KDE proper but are
+# required or highly recommended for the KDE framework and are developed in
+# the KDE source repository.
+module-set framework-support
+    repository kde-projects
+
+    use-modules automoc cagibi attica soprano phonon polkit-qt-1
+end module-set
+
+# Phonon provides the KDE multimedia layer. It requires an appropriate backend
+# to be installed to actually implement multimedia.
+module-set framework-phonon
+    repository kde-projects
+
+    use-modules phonon phonon-gstreamer phonon-vlc
+end module-set
+
+# Strigi provides file analysis tools for extracting information from files
+# (e.g. music length, picture size, etc.) It is split into several submodules
+# so do not alter the order in the use-modules below.
+module-set strigi
+    repository kde-projects
+
+    use-modules strigi/libstreams strigi/libstreamanalyzer strigi/strigiutils \
+                strigi/strigidaemon strigi/strigiclient
+end module-set
+
+# dbusmenu is needed to support new-style Plasma system tray icons and support
+# in the Unity shell.
+module dbusmenu-qt
+    repository git://gitorious.org/dbusmenu/dbusmenu-qt.git
+end module
+
+# Base KDE framework libraries and the required runtime programs.
+module-set framework
+    repository kde-projects
+
+    use-modules kdelibs kde-runtime
+end module-set
+
+EOF
+}
+
+# We'll check for pim again later.
+if (grep /^pim$/, @chosenModules) {
+    print $output <<EOF;
+module-set pimlibs
+    repository kde-projects
+
+    use-modules akonadi kdepimlibs
+end module-set
+
+EOF
+}
+
+if (grep /^workspace$/, @chosenModules) {
+    print $output <<EOF;
+module-set workspace
+    repository kde-projects
+
+    use-modules kde-workspace kdeplasma-addons
+end module-set
+
+EOF
+}
+
+if (grep /^base$/, @chosenModules) {
+    print $output <<EOF;
+module-set base
+    repository kde-projects
+
+    use-modules kate konsole kde-baseapps
+end module-set
+
+EOF
+}
+
+if (grep /^pim$/, @chosenModules) {
+    print $output <<EOF;
+module-set pim
+    repository kde-projects
+
+    use-modules kdepim-runtime kdepim
+end module-set
+
+EOF
+}
