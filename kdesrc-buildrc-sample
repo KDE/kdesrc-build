@@ -2,6 +2,10 @@
 #
 # To use this sample configuration file, copy it to ~/.kdesrc-buildrc, and then
 # edit it to suit your desires.
+#
+# Also see the included kdesrc-build-setup script, which will ask some
+# questions and then generate a config. You can still refer to this file for
+# additions.
 
 # Global settings go in this section.  They apply to every module unless
 # overridden later.
@@ -18,12 +22,6 @@ global
 # make-install-prefix option.
 #	kdedir ~/kde
 #
-# You can overwrite the installation directory for a given module using
-# the per-module "prefix" option. Note that when doing this you need to
-# set KDEDIRS, PATH and LD_LIBRARY_PATH to point to both directories,
-# and that you should use separate test users or KDEHOME values to separate
-# the ksycoca databases. Only set prefix if you know what you're doing.
-
 # This is the Qt installation to use for building/using KDE. The default is
 # to build Qt (see the qt-copy module below). If you wish to use your system's
 # installed Qt (assuming it is recent enough!) then you can set this to the
@@ -40,23 +38,12 @@ global
 # but also see the qt-copy and kdesupport modules below, which have special
 # requirements
 
-# To use a single git repository to download multiple KDE source modules, you
-# can define a "base repository", which you can use later with a "module-set"
-# grouping and the "use-modules" option. This sets up the "kde-git" git
-# repository, you can change the URL if you are a developer.
-	git-repository-base kde-git git://anongit.kde.org/
-#	git-repository-base kde-git git@git.kde.org: # Developers
-#	git-repository-base kde-git kde:   # Developers with prefix defined in ~/.gitconfig
-
-# This is the Subversion server to download the rest of the KDE sources from.  Developers:
-# Don't forget to add your username to the URL if necessary!
+# This is the Subversion server to download the rest of the KDE sources from.
+# Developers: Don't forget to add your username to the URL if necessary!
 #	svn-server svn://anonsvn.kde.org/home/kde
 
 # cmake-options controls the compilation options for building KDE 4 modules.
 # These options apply to all KDE modules unless otherwise specified.
-# NOTE: If you want the cxxflags option below to work (advanced users only)
-# then make sure to set the "-DCMAKE_BUILD_TYPE=none" here, or in the specific
-# module's cmake-options
 #
 # Also see http://techbase.kde.org/Development/Tutorials/CMake#Command_Line_Variables
 #	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
@@ -91,45 +78,19 @@ global
 #	 make-install-prefix sudo -S
 
 # purge-old-logs controls whether old log files should be removed after the
-# latest build finishes. Set to true to enable it.
+# latest build finishes. Set to false to disable it.
 #	 purge-old-logs false
-
-# binpath controls the value of the PATH environment variable during
-# compilation.  If you have unusual tools that need to be in the path to build
-# KDE, add them here.  KDE's and Qt's programs are automatically added.
-# If you leave this option blank, it will default to the PATH that kdesrc-build had
-# when it was started.
-#	binpath /bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
-#	binpath /usr/lib/ccache/bin:/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
-
-# This directory is where everything gets built before it is installed.  By
-# default it is relative to the value for source-dir.  You can specify an
-# absolute path if you'd like (begin the path with a slash).
-#	build-dir build
-
-# These are the compilation flags to use by default when compiling KDE.
-# gcc supports a -march option in order to generate specific code for pentium4, athlon-xp,
-# etc.  See the gcc man page for more information.
-#
-# NOTE: For KDE 4 these flags are only applied if you set the CMAKE_BUILD_TYPE setting
-# to "none" (see the cmake-options setting)
-#	cxxflags -pipe -march=native # Don't use native with distributed build
-
-# You can use the set-env option to add values to the build environment.
-#	set-env LDFLAGS -Wl,-O1   # Optimize the linker, takes longer.
-
-# If you use software which requires pkg-config, and you need to add entries
-# to your pkg-config path, you can also use set-env for that.  Some broken
-# systems require you to set this to find e.g. glib.
-#	set-env PKG_CONFIG_PATH /opt/gnome/lib/pkgconfig
 end global
 
-# qt-copy is a copy of Nokia's Qt, optionally with some bugfixes and
-# optimizations added.  It is the easiest way to get Qt if you don't already
-# have it (and you don't want to use your distro's tools to install it.)
+# qt-copy is the name of the module used to build Nokia's Qt toolkit, which is
+# required for KDE. It is sometimes required to use the latest Qt available
+# to build KDE. 2 versions are supported by kdesrc-build:
+# 1. Nokia's Qt with no modifications.
+# 2. A KDE copy with some very minor bugfixes and optimizations that have not
+#    been accepted into Qt yet.
 #
-# Note that this module uses the "git" source control tool instead of
-# Subversion, so read carefully the comments below. ;)
+# The Qt buildsystem is different from that used by KDE modules, and so
+# settings from the global section will not apply to qt-copy.
 module qt-copy
 # Configure flags. See README.kde-qt for the official recommended ones, which
 # may become inconsistent with these sample flags.
@@ -148,24 +109,17 @@ module qt-copy
 
 #	make-options -j2
 
-#	Default Qt repository -- Use this if you want Nokia's official Qt
-#	without any KDE fixes or extensions.
-#	repository git://gitorious.org/qt/qt.git
-#
-#	KDE's (slightly) modified Qt repository.  This includes various
-#	optimizations and bugfixes and is generally what KDE developers use.
-#	This is recommended in most cases.  If you used to use the old
-#	"apply-patches" option, this is the git equivalent.
-	repository git://anongit.kde.org/qt-kde
+# The kde: prefix here will be expanded by kdesrc-build to the correct URL
+	repository kde:qt
 
 # If you use the branch option up in the "global" section to set a
 # default KDE version, you should manually choose a branch here for Qt.
 # You can see the available branches by looking first on gitorious.org,
 # or by using "git branch -r" from the qt-copy source directory.
 #
-# The "master" branch is the best choice for both kde-qt and official Qt if
-# you have no preference.
-	branch master
+# Note that Nokia's own Qt repository does not recommend using the master
+# branch anymore. The Qt repository may be splitting in the future as well.
+	branch 4.8
 end module
 
 # shared-desktop-ontologies is part of Nepomuk, and is basically a small set
@@ -193,32 +147,46 @@ end module
 #
 # Example:
 module-set
+    # Special handling occurs with this option when used in module-set so you
+    # don't have to re-type repository names.
+    repository kde-projects
+
     # automoc is essential for building KDE's CMake-based modules, and so should be first
     # in this module set (but after Qt, if you're using qt-copy)
-    # Phonon is the KDE multimedia layer, which is occasionally synced to Qt.
-    use-modules automoc cagibi attica soprano polkit-qt-1 phonon
+    use-modules automoc cagibi attica soprano polkit-qt-1
 
-    # Special handling occurs with this option when used in module-set so you don't
-    # have to re-type repository names.
-    repository kde-git
-
-    # Other options are simply passed to each defined module. For example if you
-    # uncomment the next line, then the "Debug" build type will be used for every
-    # module in this set, which makes modules optimized but still debuggable.
+    # Other options are simply passed to each defined module. For example if
+    # you uncomment the next line, then the "Debug" build type will be used for
+    # every module in this set, which makes modules optimized but still
+    # debuggable.
     # cmake-options -DCMAKE_BUILD_TYPE=Debug
 end module-set
 
-# This set includes the modules required for the "strigi" file analyzer, used to extract
-# information contained in various file types for Dolphin previews, Nepomuk tagging, etc.
-# Because of the way the strigi git module is setup, CMake *must* be run in order to
-# complete the source code update. This is handled by the "reconfigure" option. In addition,
-# a special option to CMake is required to get the strigi build system to complete the
-# update.
-module-set
-    use-modules strigi
-    cmake-options -DSTRIGI_SYNC_SUBMODULES=TRUE
-    reconfigure true # CMake needs to always be run to finish the update.
-    repository kde-git
+# Phonon is the KDE multimedia layer, which is occasionally synced to Qt.
+# It is required for the KDE libraries, and a specific backend for your system
+# is also required. For Linux users, this means either phonon-gstreamer or
+# phonon-vlc
+module-set phonon
+    repository kde-projects
+
+    # We avoid using just "phonon" as kdesrc-build will include all submodules
+    # that have phonon as part of their path. (i.e. it means phonon/*), but we
+    # don't want all the phonon backends.
+    use-modules phonon/phonon phonon-gstreamer # or you can try phonon-vlc
+end module-set
+
+# This set includes the modules required for the "strigi" file analyzer, used
+# to extract information contained in various file types for Dolphin previews,
+# Nepomuk tagging, etc.
+module-set strigi
+    repository kde-projects
+
+    # The full use-modules seen here is required so that kdesrc-build doesn't
+    # try to build strigi/strigi, which will try to build the other 5
+    # submodules. In addition this builds in the right order.
+    use-modules strigi/libstreams strigi/libstreamanalyzer \
+                strigi/strigiutils strigi/strigidaemon \
+                strigi/strigiclient
 end module-set
 
 # kdesupport contains QCA, oxygen icons, and a few other small things.
@@ -231,39 +199,40 @@ module dbusmenu-git
     repository git://gitorious.org/dbusmenu/dbusmenu-qt.git
 end module
 
-# TagLib used to be in kdesupport and is used by JuK and Amarok for
-# parsing audio metadata. It is required for JuK, amarok.
+# TagLib used to be in kdesupport and is used by JuK and Amarok for parsing
+# audio metadata. It is required for JuK, amarok (though typically the
+# system-provided taglib will suffice).
 module taglib
     repository git://github.com/taglib/taglib.git
-      # Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE (for taglib) is required to allow Amarok
-      # (defined below, near the end of this file) to build.
+
+    # Note: -DWITH_ASF=TRUE and -DWITH_MP4=TRUE (for taglib) is required to
+    # allow Amarok (defined below, near the end of this file) to build.
     cmake-options -DWITH_ASF=TRUE -DWITH_MP4=TRUE
 end module
 
 # kdelibs are the base KDE libraries needed by all KDE applications.
+# kde-runtime contains applications that are required for the operation of
+# some base KDE libraries.
 module-set
-    use-modules kdelibs
-    repository kde-git
+    repository kde-projects
+    use-modules kdelibs kde-runtime
+
 # KDE 4 uses CMake, if you need to pass options to the cmake command, use this
 # option:
 #	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
-
-# If you're a programmer you may want to build the API docs.  There is a
-# separate script in kdesdk/scripts to do that for you however.
 end module-set
 
-# akonadi is required for kdepimlibs,
-# kdepimlibs contains required PIM (mail, instant messenger, etc.) basics
-# that are needed by some other KDE modules.  Should be built after kdelibs
-# kde-runtime includes required programs
-# kde-workspace contains the workspace, i.e. the desktop.
-# kde-baseapps includes apps such as Konqueror, Dolphin.
+# The next module-set completes a base workspace. kdepimlibs should be compiled
+# before the workspace and Plasma addons are compiled, and kdepimlibs itself
+# requires akonadi.
+# From there kde-workspace contains programs like Plasma Desktop and the KWin
+# window manager, kde-baseapps contains core applications, and I also add
+# konsole and kate since they are also very useful in general.
 module-set
-    use-modules akonadi kdepimlibs konsole \
-                kate kde-baseapps kde-workspace kde-runtime \
-                phonon-gstreamer # or you can try phonon-vlc
+    repository kde-projects
 
-    repository kde-git
+    use-modules akonadi kdepimlibs kde-workspace \
+                kate kde-baseapps konsole
 end module-set
 
 # KDE/kde-wallpapers contains all wallpapers for your desktop
@@ -271,7 +240,7 @@ module kde-wallpapers
 end module
 
 # kdemultimedia contains JuK, Dragon Player and other KDE multimedia
-# applications.  It does not include amarok, which is in extragear/multimedia
+# applications.  It does not include amarok, which is in git.kde.org
 module kdemultimedia
 end module
 
@@ -279,9 +248,9 @@ end module
 module kdegames
 end module
 
-# kdesdk is a useful module for software developers.  It is where kdesrc-build
-# is developed, in addition to other handy scripts for KDE and general software
-# developers.  Programmers *need* this module for kcachegrind
+# kdesdk is a useful module for software developers. Programmers *need* this
+# module for kcachegrind, but in addition there are several useful
+# documentation kioslave formatters for use in konqueror.
 module kdesdk
 end module
 
@@ -291,10 +260,12 @@ module kdenetwork
 end module
 
 # kdepim contains KMail, Kontact, KOrganizer, and other insanely useful
-# programs that help you keep track of things. It consists of two core components,
-# kdepim-runtime, and kdepim itself, which both depend on kdepimlibs.
+# programs that help you keep track of things. It consists of two core
+# components, kdepim-runtime, and kdepim itself, which both depend on
+# kdepimlibs.
 module-set
-    repository kde-git
+    repository kde-projects
+
     use-modules kdepim-runtime kdepim
 end module-set
 
@@ -310,21 +281,11 @@ end module-set
 #module kdeartwork
 #end module
 
-
-# kdebindings is useful for software developers, and for those who wish to run
-# some KDE programs that don't use C++.
-#module kdebindings
-
-# kdebindings will probably need to use the following option to install
-# successfully due to necessary integration with the program interpreters.  You
-# must configure the sudo program first to allow for passwordless operation.
-#	make-install-prefix sudo -S
-#end module
-
 # kdeutils has miscellaneous programs which can be useful.  You probably won't
 # die if you remove this from the config file though.
 module-set kdeutils
     repository kde-projects
+
     use-modules kdeutils
 end module-set
 
@@ -336,7 +297,11 @@ end module-set
 # into many more modules.
 module-set kdegraphics
     repository kde-projects
-    use-modules libksane libkexiv2 libkdcraw libkipi kruler gwenview ksnapshot kolourpaint ksaneplugin svgpart kcolorchooser kgamma kdegraphics-strigi-analyzer kdegraphics-thumbnailers kamera okular mobipocket
+
+    # Until kdesrc-build supports dependency handling, you should specify
+    # submodules that should be built in order specifically, and then the
+    # parent module, which will build any remaining submodules.
+    use-modules kde/kdegraphics/libs kde/kdegraphics
 end module-set
 
 # Contains nifty diversions of time, which generally aren't games.
@@ -356,13 +321,14 @@ module-set kdeedu
 
     # Until kdesrc-build supports dependency handling, you should specify
     # submodules that should be built in order specifically, and then the
-    # parent module, which will build and remaining submodules.
+    # parent module, which will build any remaining submodules.
     use-modules kde/kdeedu/libkdeedu kde/kdeedu
 end module-set
 
 # Extra collection of useful plasma applets, runners, data engines, etc.
 module-set
-    repository kde-git
+    repository kde-projects
+
     use-modules kdeplasma-addons
 end module-set
 
@@ -376,7 +342,7 @@ end module-set
 # kdewebdev
 #module-set
 #    use-modules kdevplatform
-#    repository kde-git
+#    repository kde-projects
 #end module-set
 
 ## The KDevelop IDE, useful for developing all kinds of programs.  If you don't
@@ -384,52 +350,38 @@ end module-set
 # your configuration.
 #module-set
 #    use-modules kdevelop
-#    repository kde-git
+#    repository kde-projects
 #end module-set
 
 # Modules in extragear and playground can also be added.
 #
 # To see what you can find in the various modules, browse
 # http://websvn.kde.org/trunk/extragear and
-# http://websvn.kde.org/trunk/playground
+# http://websvn.kde.org/trunk/playground,
+# and https://projects.kde.org/projects/kde/extragear (for git modules)
 
-# Amarok is a KDE application that uses the "git" source control system, like
-# Nokia Qt does.  It used to be in extragear/multimedia.  If you want to
-# build and install amarok, simply uncomment this module
-#   NOTE: Ensure you've enabled ASF and MP4 support above in kdesupport. (If
-#   you build the kdesupport/taglib module by itself, then make sure you've
-#   enabled this support for taglib).
+# Amarok is a KDE multimedia application extraordinaire.
+# If you want to build and install amarok, simply uncomment this module
+#   NOTE: Ensure you've enabled ASF and MP4 support above in taglib. (If you
+#   build the taglib module by itself instead of using your distro's taglib,
+#   then make sure you've enabled this support for taglib).
 #module amarok
-#	Read-only access
-#	repository git://git.kde.org/amarok.git
+#   repository kde-projects
 #
-#	Read-write access. See
-#	http://techbase.kde.org/Getting_Started/Sources/Amarok_Git_Tutorial
-#	for a good intro tutorial for developers.
-#	repository git@git.kde.org:amarok.git
+#   use-modules amarok
 #end module
 
 # --- The K3B cd/dvd/etc. burner.
 #module-set
+#    repository kde-projects
+#
 #    use-modules k3b
-#    repository kde-git
 #end module-set
 
-# Includes various media players.
-#module extragear/multimedia
-#end module
-
-# Includes various photo management applications, scanner frontends, etc.
-#module extragear/graphics
-#end module
-
-# KTorrent, Konversation, some Kopete plugins, Choqok, etc.
-#module extragear/network
-#end module
-
-# Calligra
+# Calligra Office Suite
 #module-set
 #    repository kde-projects
+#
 #    use-modules calligra
 #end module-set
 
