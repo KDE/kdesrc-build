@@ -1964,14 +1964,17 @@ sub get_subdir_path
 # relative to the src/build dir.  The user may use the '$MODULE' or '${MODULE}'
 # sequences, which will be replaced by the name of the module in question.
 #
-# The first parameter should be the module name.
+# The first parameter should be the Module.
+# The second parameter is optional, but if provided will be used as the base
+#     path to replace $MODULE entries in dest-dir.
 sub get_dest_dir
 {
     my $module = assert_isa(shift, 'Module');
-    my $moduleName = $module->name();
     my $dest_dir = $module->getOption('dest-dir');
+    my $basePath = shift // $module->getOption('#xml-full-path');
+    $basePath ||= $module->name(); # Default if not provided in XML
 
-    $dest_dir =~ s/(\${MODULE})|(\$MODULE\b)/$moduleName/g;
+    $dest_dir =~ s/(\${MODULE})|(\$MODULE\b)/$basePath/g;
 
     return $dest_dir;
 }
@@ -3898,14 +3901,15 @@ sub expandXMLModules
 
         # Setup module options. This alters the results in @xmlResults.
         foreach (@xmlResults) {
-            my $repo = $_->{'repo'};
-            my $subModuleName = $_->{'name'};
-            my $tarball = $_->{'tarball'};
+            my $result = $_;
 
             # This alters the item we were looking at.
-            $_ = Module->new($ctx, $subModuleName, 'git');
+            $_ = Module->new($ctx, $result->{'name'}, 'git');
             $_->cloneOptionsFrom($moduleSet);
-            $_->setOption('repository', $repo);
+            $_->setOption('repository', $result->{'repo'});
+            $_->setOption('#xml-full-path', $result->{'fullName'});
+
+            my $tarball = $result->{'tarball'};
             $_->setOption('#snapshot-tarball', $tarball) if $tarball;
         };
 
