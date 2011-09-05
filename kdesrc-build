@@ -2210,6 +2210,29 @@ sub has_base_module
     return $moduleName =~ /^(extragear|playground|KDE)(\/[^\/]+)?$/;
 }
 
+# Moves the directory given by the first parameter to be at the directory given
+# by the second parameter, but only if the first exists and the second doesn't.
+# The use case is to automatically migrate source and build directories from
+# the change in dest-dir handling for XML-based modules.
+sub moveOldDirectories
+{
+    my ($oldDir, $newDir) = @_;
+    state $pretendedMoves = { };
+
+    # All this pretended move stuff is just to avoid tons of debug output
+    # if run in pretend mode while still showing the message the first time.
+    $pretendedMoves->{$oldDir} //= { };
+    if ($pretendedMoves->{$oldDir}->{$newDir} && -e $oldDir && ! -e $newDir) {
+        info "\tMoving old kdesrc-build directory at\n\t\tb[$oldDir] to\n\t\tb[$newDir]";
+
+        $pretendedMoves->{$oldDir}->{$newDir} = 1 if pretending;
+        safe_system('mv', $oldDir, $newDir) == 0 or
+            die "Unable to move directory $oldDir to $newDir";
+    }
+
+    return 1;
+}
+
 # Subroutine to return the directory that a module will be stored in.
 # NOTE: The return value is a hash. The key 'module' will return the final
 # module name, the key 'path' will return the full path to the module. The
@@ -2247,6 +2270,15 @@ sub get_module_path_dir
     $result{'module'} = pop @parts;
     $result{'path'} = join('/', @parts);
     $result{'fullpath'} = "$result{path}/$result{module}";
+
+    my $compatDestDir = get_dest_dir($module, $module->name());
+
+    # kdesrc-build 1.14 changed the source directory layout to be more
+    # compatible with the sharply-growing number of modules.
+    if ("$srcbase/$compatDestDir" ne $combined) {
+        super_mkdir($result{'path'});
+        moveOldDirectories("$srcbase/$compatDestDir", $combined);
+    }
 
     return %result;
 }
