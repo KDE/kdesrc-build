@@ -29,6 +29,7 @@ use File::Path qw(make_path remove_tree);
 use File::Glob ':glob';
 use File::Basename; # fileparse
 use LWP::UserAgent;
+use URI; # For git-clone snapshot support
 use Sys::Hostname;
 use Storable 'dclone';
 use IO::Handle;
@@ -783,7 +784,8 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
                 'repo' => '',
                 'name' => $nameStack[-1],
                 'active' => 'false',
-            }; # Repo/Active to be added by char handler.
+                'tarball' => '',
+            }; # Repo/Active/tarball to be added by char handler.
         }
 
         # Character data is integrated by the char handler. To avoid having it dump
@@ -795,6 +797,10 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
         if ($element eq 'url' && $inRepo && $attrs{'protocol'} eq 'git') {
             $curRepository->{'needs'} = 'repo';
+        }
+
+        if ($element eq 'url' && $inRepo && $attrs{'protocol'} eq 'tarball') {
+            $curRepository->{'needs'} = 'tarball';
         }
     }
 
@@ -2325,6 +2331,81 @@ sub count_command_output
     return $count;
 }
 
+# Attempts to download and install a git snapshot for the given Module. This
+# requires the module to have the '#snapshot-tarball' option set, normally
+# done after KDEXMLReader is used to parse the projects.kde.org XML database.
+# This function should be called with the current directory set to the be
+# the source directory.
+#
+# After installing the tarball, an immediate git pull will be run to put the
+# module up-to-date. The branch is not updated however!
+#
+# The user can cause this function to fail by setting the disable-snapshots
+# option for the module (either at the command line or in the rc file).
+#
+# First and only parameter is the Module to install the snapshot for.
+#
+# Returns boolean true on success, false otherwise.
+sub installGitSnapshot
+{
+    my $module = assert_isa(shift, 'Module');
+    my $tarball = $module->getOption('#snapshot-tarball');
+
+    return 0 if $module->getOption('disable-snapshots');
+    return 0 unless $tarball;
+
+    if (pretending) {
+        pretend "Would have downloaded snapshot for g[$module], from";
+        pretend "\tb[g[$tarball]";
+        return 1;
+    }
+
+    info "\tDownloading git snapshot for g[$module]";
+
+    my $filename = basename(URI->new($tarball)->path());
+    if (!download_file($tarball, $filename)) {
+        error "Unable to download snapshot for module r[$module]";
+        return 0;
+    }
+
+    info "\tDownload complete, preparing module source code";
+
+    # It would be possible to use Archive::Tar, but it's apparently fairly
+    # slow. In addition we need to use -C and --strip-components (which are
+    # also supported in BSD tar, perhaps not Solaris) to ensure it's extracted
+    # in a known location. Since we're using "sufficiently good" tar programs
+    # we can take advantage of their auto-decompression.
+    my $sourceDir = $module->fullpath('source');
+    super_mkdir($sourceDir);
+
+    my $result = safe_system(qw(tar --strip-components 1 -C),
+                          $sourceDir, '-xf', $filename);
+    my $savedError = $!; # Avoid interference from safe_unlink
+    safe_unlink ($filename);
+
+    if ($result) {
+        error "Unable to extract snapshot for r[b[$module]: $savedError";
+        safe_rmtree($sourceDir);
+        return 0;
+    }
+
+    whisper "\tg[$module] snapshot is in place";
+
+    # Complete the preparation by running the initrepo.sh script
+    p_chdir($sourceDir);
+    $result = log_command($module, 'init-git-repo', ['./initrepo.sh']);
+
+    if ($result) {
+        error "Snapshot for r[$module] extracted successfully, but failed to complete initrepo.sh";
+        safe_rmtree($sourceDir);
+        return 0;
+    }
+
+    info "\tGit snapshot installed, now bringing up to date.";
+    $result = log_command($module, 'init-git-pull', ['git', 'pull']);
+    return ($result == 0);
+}
+
 # Perform a git clone to checkout the latest branch of a given git module
 #
 # Afterwards a special remote name is setup for later usage
@@ -2347,7 +2428,11 @@ sub git_clone_module
 
     note "Cloning g[$module]";
 
-    my $result = log_command($module, 'git-clone', ['git', 'clone', @args]);
+    # Invert the result of installGitSnapshot to get a shell-style return code
+    # like those returned by log_command. Likewise the normal || must be a &&
+    my $result = (!installGitSnapshot($module)) &&
+                 log_command($module, 'git-clone', ['git', 'clone', @args]);
+
     if ($result == 0) {
         $module->setPersistentOption('git-cloned-repository', $git_repo);
 
@@ -3810,11 +3895,13 @@ sub expandXMLModules
         foreach (@xmlResults) {
             my $repo = $_->{'repo'};
             my $subModuleName = $_->{'name'};
+            my $tarball = $_->{'tarball'};
 
             # This alters the item we were looking at.
             $_ = Module->new($ctx, $subModuleName, 'git');
             $_->cloneOptionsFrom($moduleSet);
             $_->setOption('repository', $repo);
+            $_->setOption('#snapshot-tarball', $tarball) if $tarball;
         };
 
         return @xmlResults;
@@ -4377,6 +4464,11 @@ DONE
                 $run_mode = 'uninstall';
                 $phases->phases('uninstall');
 
+                last SWITCH;
+            };
+
+            /^--no-snapshots$/ && do {
+                $ctx->setOption('#disable-snapshot', 1);
                 last SWITCH;
             };
 
