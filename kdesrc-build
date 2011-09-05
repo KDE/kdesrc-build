@@ -5915,28 +5915,6 @@ sub update_module_environment
     setup_module_environment ($module) unless $module->name() eq 'global';
 }
 
-# Subroutine to make sure the build directory for a module is setup.
-# The module to setup is the first parameter.
-#
-# Returns boolean true on success, boolean false on failure.
-sub setup_build_directory
-{
-    my $module = assert_isa(shift, 'Module');
-    my $builddir = get_build_dir($module);
-
-    if (not -e "$builddir")
-    {
-        whisper "\ty[$builddir] doesn't exist, creating.";
-        if (not super_mkdir ("$builddir"))
-        {
-            error "\tUnable to create r[$builddir]!";
-            return 0;
-        }
-    }
-
-    return 1;
-}
-
 # Subroutine to return a string suitable for displaying an elapsed time, (like
 # a stopwatch) would.  The first parameter is the number of seconds elapsed.
 sub prettify_seconds
@@ -6014,6 +5992,7 @@ sub module_has_conflict
     if (0 == $pid)
     {
         close STDERR; # No broken pipe warnings
+        $ENV{'LC_ALL'} = 'C'; # Force untranslated output
         exec (qw/svn --non-interactive st/, $srcdir) ||
             die "Cannot execute 'svn' program: $!";
         # Not reached
@@ -6084,6 +6063,9 @@ sub run_tests
     }
 
     # Step 2: Run the tests.
+    # We scrape the output of the commands, so force the locale to be
+    # untranslated.
+    local $ENV{'LC_ALL'} = 'C';
     my $result = log_command($module, 'test-results', [ 'make', $make_target ]);
     if ($result != 0) {
         my $logdir = $module->getLogDir();
@@ -6142,7 +6124,6 @@ sub build_module
 
     my $start_time = time;
 
-    return 0 if not setup_build_directory($module);
     return 0 if not setup_build_system($module);
     return 1 if $module->getOption('build-system-only');
 
