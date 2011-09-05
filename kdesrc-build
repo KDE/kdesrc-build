@@ -758,7 +758,12 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
                     $trackingReposFlag = 1;
                     for (my $i = 0; $i < scalar @searchParts; ++$i) {
-                        $trackingReposFlag &&= $searchParts[$i] eq $candidateArray[$i];
+                        if (($searchParts[$i] ne $candidateArray[$i]) &&
+                            ($searchParts[$i] ne '*'))
+                        {
+                            $trackingReposFlag = 0;
+                            last;
+                        }
                     }
 
                     # Reset our found flag if we're looking for another repo
