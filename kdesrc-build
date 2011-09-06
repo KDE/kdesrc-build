@@ -7069,6 +7069,8 @@ sub cleanup_log_directory
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $logdir = get_subdir_path($ctx, 'log-dir');
 
+    return 0 if ! -e "$logdir/latest"; # Could happen for error on first run...
+
     # This glob relies on the date being in the specific format YYYY-MM-DD-ID
     my @dirs = bsd_glob("$logdir/????-??-??-??/", GLOB_NOSORT);
     my @needed = needed_module_logs("$logdir/latest");
