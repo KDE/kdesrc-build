@@ -4944,9 +4944,14 @@ sub p_chdir($)
 sub super_mkdir
 {
     my $pathname = shift;
+    state %createdPaths;
 
     if (pretending) {
-        pretend "\tWould have created g[$pathname]";
+        if (!exists $createdPaths{$pathname}) {
+            pretend "\tWould have created g[$pathname]";
+        }
+
+        $createdPaths{$pathname} = 1;
         return 1;
     }
     else {
