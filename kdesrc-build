@@ -5087,6 +5087,48 @@ EOF
     return 1;
 }
 
+# Subroutine to add the 'kde:' alias to the user's git config if it's not
+# already set.
+sub verifyGitConfig
+{
+    my $configOutput = `git config --global --get url.git://anongit.kde.org/.insteadOf kde:`;
+
+    # 0 means no error, 1 means no such section exists -- which is OK
+    if ((my $errNum = $? >> 8) >= 2) {
+        my $error;
+        given ($errNum) {
+            $error = 'Invalid config file (~/.gitconfig)' when 3;
+            $error = 'Could not write to ~/.gitconfig' when 4;
+            $error = 'HOME environment variable is not set (?)' when 128;
+            $error = "Code $errNum"; # default
+        }
+        error " r[*] Unable to run b[git] command:\n\t$error";
+        return 0;
+    }
+
+    # If we make it here, I'm just going to assume git works from here on out
+    # on this simple task.
+    if ($configOutput !~ /^kde:\s*$/) {
+        info "\tAdding git download kde: alias";
+        my $result = safe_system(
+            qw(git config --global --add url.git://anongit.kde.org/.insteadOf kde:)
+        ) >> 8;
+        return 0 if $result != 0;
+    }
+
+    $configOutput = `git config --global --get url.git\@git.kde.org:.pushInsteadOf kde:`;
+
+    if ($configOutput !~ /^kde:\s*$/) {
+        info "\tAdding git upload kde: alias";
+        my $result = safe_system(
+            qw(git config --global --add url.git@git.kde.org:.pushInsteadOf kde:)
+        ) >> 8;
+        return 0 if $result != 0;
+    }
+
+    return 1;
+}
+
 # Subroutine to update a list of modules.  The first
 # parameter is a reference of a list of the modules to update.
 # If the module has not already been checkout out, this subroutine
@@ -5125,6 +5167,10 @@ sub handle_updates
     if ($ipc->supportsConcurrency() && !$ctx->getOption('#debug-level'))
     {
         $ctx->setOption('#debug-level', ksb::Debug::WARNING);
+    }
+
+    if (grep { $_->type() eq 'git' } @update_list) {
+        verifyGitConfig();
     }
 
     note "<<<  Updating Source Directories  >>>";
