@@ -3130,6 +3130,9 @@ sub log_command
     {
         # Child
 
+        # Avoid calling close subroutines in more than one routine.
+        @main::atexit_subs = ();
+
         # Apply altered environment variables.
         while (my ($key, $value) = each %ENV_VARS) {
             $ENV{$key} = $value;
@@ -4781,6 +4784,7 @@ sub get_lock
     # file, so I'm not *too* concerned.
     install_signal_handler(sub {
         note "Signal received, terminating.";
+        @main::atexit_subs = (); # Remove their finish, doin' it manually
         finish($ctx, 5);
     });
 
@@ -6088,7 +6092,11 @@ sub module_has_conflict
 
     if (0 == $pid)
     {
+        # Avoid calling close subroutines in more than one routine.
+        @main::atexit_subs = ();
+
         close STDERR; # No broken pipe warnings
+
         $ENV{'LC_ALL'} = 'C'; # Force untranslated output
         exec (qw/svn --non-interactive st/, $srcdir) ||
             die "Cannot execute 'svn' program: $!";
@@ -7030,6 +7038,8 @@ sub handle_async_build
     if ($svnPid == 0)
     { # child
         $ipc->setUpdater();
+        # Avoid calling close subroutines in more than one routine.
+        @main::atexit_subs = ();
         exit handle_updates ($ipc, $ctx);
     }
 
@@ -7038,6 +7048,8 @@ sub handle_async_build
     if ($monPid == 0)
     { # monitor
         $ipc->setMonitor();
+        # Avoid calling close subroutines in more than one routine.
+        @main::atexit_subs = ();
         exit handle_monitoring ($ipc);
     }
 
@@ -7151,7 +7163,7 @@ if (defined caller && caller eq 'test')
 }
 
 my $ctx;
-my @atexit_subs;
+our @atexit_subs;
 
 END {
     # Basically used to call the finish() handler but only when appropriate.
