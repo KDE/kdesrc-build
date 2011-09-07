@@ -2018,6 +2018,103 @@ removing the effect of this option.
 <chapter id="cmdline">
 <title>Command Line Options and Environment Variables</title>
 
+<sect1 id="cmdline-usage">
+<title>Command Line Usage</title>
+
+<para>&kdesrc-build; is designed to be run as follows:</para>
+
+<cmdsynopsis>
+<command>kdesrc-build</command>
+<arg rep="repeat"><replaceable>--options</replaceable></arg>
+<arg rep="repeat"><replaceable>modules to build</replaceable></arg>
+</cmdsynopsis>
+
+<para>If no modules to build are specified on the command line, then
+kdesrc-build will build all modules defined in its configuration file, in the
+order listed in that file (although this can be modified by various
+configuration file options).</para>
+
+<sect2 id="cmdline-usage-options">
+<title>Commonly used command line options</title>
+
+<para>The full list of command line options is given in <xref
+linkend="supported-cmdline-params"/>. The most-commonly used options
+include:</para>
+
+<variablelist>
+  <varlistentry>
+    <term><option>--pretend</option> (or <option>-p</option>)</term>
+    <listitem><para>This option causes &kdesrc-build; to indicate what actions
+    it would take, without actually really implementing them. This can be
+    useful to make sure that the modules you think you are building will
+    actually get built.</para></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term><option>--refresh-build</option></term>
+    <listitem><para>This option forces &kdesrc-build; to build the given
+    modules from an absolutely fresh start point. Any existing build directory
+    for that module is removed and it is rebuilt. This option is useful if you
+    have errors building a module, and sometimes is required when &Qt; or &kde;
+    libraries change.</para></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term><option>--no-src</option></term>
+    <listitem><para>This option skips the source update process. You might use
+    it if you have very recently updated the source code (perhaps you did it
+    manually or recently ran &kdesrc-build;) but still want to rebuild some
+    modules.</para></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term><option>--no-build</option></term>
+    <listitem><para>This option is similar to <option>--no-src</option> above,
+    but this time the build process is skipped.</para></listitem>
+  </varlistentry>
+</variablelist>
+
+</sect2>
+
+<sect2 id="cmdline-usage-modules">
+<title>Specifying modules to build</title>
+
+<para>In general, specifying modules to build is as simple as passing their
+module name as you defined it in the configuration file. You can also pass
+modules that are part of a module set, either as named on <link
+linkend="conf-use-modules">use-modules</link>, or the name of the entire module
+set itself, if you have given it a name.</para>
+
+<para>In the specific case of module sets based against the <link
+linkend="kde-projects-module-sets">KDE project database</link>, &kdesrc-build;
+will expand module name components to determine the exact module you
+want. For example, &kdesrc-build;'s KDE project entry locates the project in
+<literal>extragear/utils/kdesrc-build</literal>. You could specify any
+of the following to build &kdesrc-build;:</para>
+
+<informalexample>
+<screen>
+<prompt>&percnt;</prompt> <command>kdesrc-build</command> <option><replaceable>+extragear/utils/kdesrc-build</replaceable></option>
+<prompt>&percnt;</prompt> <command>kdesrc-build</command> <option><replaceable>+utils/kdesrc-build</replaceable></option>
+<prompt>&percnt;</prompt> <command>kdesrc-build</command> <option><replaceable>+kdesrc-build</replaceable></option>
+</screen>
+</informalexample>
+
+<note><para>The commands in the previous example preceded the module-name with
+a <symbol>+</symbol>. This forces the module name to be interpreted as a module
+from the KDE project database, even if that module hasn't been defined in your
+configuration file.
+</para></note>
+
+<para>Be careful about specifying very generic projects (e.g.
+<literal>extragear/utils</literal> by itself), as this can lead to a large
+amount of modules being built. You should use the <option>--pretend</option>
+option before building a new module set to ensure it is only building the
+modules you want.</para>
+
+</sect2>
+</sect1>
+
 <sect1 id="supported-envvars">
 <title>Supported Environment Variables</title>
 
