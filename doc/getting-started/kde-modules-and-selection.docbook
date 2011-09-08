@@ -246,35 +246,54 @@ module-set <replaceable>media-support</replaceable>
     <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
 
     # This option chooses what modules to look for in the database.
-    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>phonon</replaceable> <replaceable>phonon-gstreamer</replaceable> <replaceable>phonon-vlc</replaceable>
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>phonon/phonon</replaceable> <replaceable>phonon-gstreamer</replaceable> <replaceable>phonon-vlc</replaceable>
 end module-set
 </programlisting>
 </informalexample>
 
-<para>The following example is perhaps more realistic, and shows a feature only
-available with the &kde; module database: Building all of the &kde; Extragear
-with only a single declaration (32 individual applications/libraries as of this
-writing).</para>
+<tip><para><literal>phonon/phonon</literal> is used since (with the current
+project database) &kdesrc-build; would otherwise have to decide between the
+group of projects called <quote>phonon</quote> or the individual project named
+<quote>phonon</quote>. Currently &kdesrc-build; would pick the former, which
+would build many more backends than needed.</para></tip>
 
-<important><para>Some things to keep in mind: This represents a significant
-amount of disk space and build time, not to mention network traffic. You
-probably don't actually want to build the entire Extragear suite at once.
-In addition, at this point &kdesrc-build; builds modules in the order they are
-given in the database, but this is not necessarily the proper order after all
-inter-module dependencies are accounted for, which may cause build failures.
-</para></important>
+<para>The following example is perhaps more realistic, and shows a feature only
+available with the &kde; module database: Building all of the &kde; graphics
+applications with only a single declaration.</para>
 
 <informalexample>
 <programlisting>
-module-set <replaceable>never-try-this</replaceable>
+module-set <replaceable>kdegraphics</replaceable>
     # This option must be kde-projects to use the module database.
     <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
 
     # This option chooses what modules to look for in the database.
-    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>extragear</replaceable>
+    <option><link linkend="conf-use-modules">use-modules</link></option> <literal>kdegraphics/libs</literal> <literal>kdegraphics/*</literal>
 end module-set
 </programlisting>
 </informalexample>
+
+<para>There are two important abilities demonstrated here:</para>
+
+<orderedlist>
+
+<listitem><para>&kdesrc-build; allows you to specify modules that are
+descendents of a given module, without building the parent module, by using the
+syntax <userinput><replaceable>module-name</replaceable>/*</userinput>. It is
+actually required in this case since the base module, kdegraphics, is marked as
+inactive so that it is not accidentally built along with its children modules.
+Specifying the descendent modules allows &kdesrc-build; to skip around the
+disabled module.
+</para></listitem>
+
+<listitem><para>&kdesrc-build; will also not add a given module to the build
+list more than once. This allows us to manually set
+<literal>kdegraphics/libs</literal> to build first, before the rest of
+<literal>kdegraphics</literal>, without trying to build
+<literal>kdegraphics/libs</literal> twice. This is required at this point
+because &kdesrc-build; will not perform dependency handling.
+</para></listitem>
+</orderedlist>
 
 </sect2>
 
