@@ -1238,8 +1238,15 @@ To use the script, you must have a file in your home directory called
 like to download and build.
 </para>
 
+<sect2 id="kdesrc-buildrc-layout">
+<title>Layout of the configuration file</title>
+
+<sect3 id="kdesrc-buildrc-layout-global">
+<title>Global configuration</title>
+
 <para>
-It starts with the global options, specified like the following:
+The configuration file starts with the global options, specified like the
+following:
 </para>
 
 <programlisting>
@@ -1249,23 +1256,90 @@ global
 end global
 </programlisting>
 
+</sect3>
+<sect3 id="kdesrc-buildrc-layout-modules">
+<title>Module configuration</title>
+
 <para>
-It is then followed by one or more module sections, specified like the
-following:
+It is then followed by one or more module sections, specified in one of the
+following two forms:
 </para>
 
+<itemizedlist>
+<listitem>
 <programlisting>
 module <replaceable>module-name</replaceable>
 <replaceable>option-name option-value</replaceable>
 <replaceable>[...]</replaceable>
 end module
 </programlisting>
+</listitem>
+
+<listitem>
+<programlisting>
+module-set <replaceable>module-set-name</replaceable>
+  repository <userinput>kde-projects</userinput> or <userinput><replaceable>git://host.org/path/to/repo.git</replaceable></userinput>
+  use-modules <replaceable>module-names</replaceable>
+
+# Other options may also be set
+<replaceable>option-name option-value</replaceable>
+<replaceable>[...]</replaceable>
+end module-set
+</programlisting>
+</listitem>
+</itemizedlist>
+
+<important><para>Note that the second form, module sets, <emphasis>only works
+for Git-based modules</emphasis>.</para></important>
 
 <para>
-<replaceable>module-name</replaceable> must be a module from the &kde; &subversion; repository (for
-example, kdelibs or kdebase). Some options override global options, some
-add to global options, and some global options simply cannot be overridden.
+For Subversion modules, <replaceable>module-name</replaceable> must be a module
+from the &kde; &subversion; repository (for example, kdeartwork or
+kde-wallpapers), although it is possible to get around this if you manually
+specify the &subversion; URL.
 </para>
+
+<para>
+For Git modules, the module name can be essentially whatever you'd like, as
+long as it does not duplicate any other module name in the configuration. Keep
+in mind the source and build directory layout will be based on the module name
+if you do not use the <link linkend="conf-dest-dir">dest-dir</link> option.
+</para>
+
+<para>However, for Git <emphasis>module sets</emphasis> the
+<replaceable>module-names</replaceable> must correspond with actual git modules
+in the chosen <option>repository</option>. See <link
+linkend="conf-git-repository-base">git-repository-base</link> or <link
+linkend="conf-use-modules">use-modules</link> for more information.
+</para>
+
+</sect3>
+</sect2>
+
+<sect2 id="kdesrc-buildrc-including">
+<title>Including other configuration files</title>
+
+<para>
+Within the configuration file, you may reference other files by using the
+<literal>include</literal> keyword with a file, which will act as if the file
+referenced had been inserted into the configuration file at that point.
+</para>
+
+<informalexample><para>For example, you could have something like this:</para>
+<programlisting>
+global
+    include <replaceable>~/common-kdesrc-build-options</replaceable>
+
+    # Insert specific options here.
+
+end global
+</programlisting>
+</informalexample>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-common">
+<title>Commonly used configuration options</title>
 
 <para>
 The following is a list of commonly-used options. Click on the
@@ -1274,20 +1348,16 @@ option to find out more about it. To see the full list of options, see
 </para>
 
 <itemizedlist>
-<listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of /trunk.</para></listitem>
-<listitem><para><link linkend="conf-build-dir">build-dir</link>, to set the directory to build in.</para></listitem>
 <listitem><para><link linkend="conf-cmake-options">cmake-options</link> to define what flags to configure a module with using &cmake;.</para></listitem>
-<listitem><para><link linkend="conf-configure-flags">configure-flags</link> to define what flags to configure a module with.</para></listitem>
-<listitem><para><link linkend="conf-cxxflags">cxxflags</link> to define the <envar>CXXFLAGS</envar> variable.</para></listitem>
+<listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of /trunk (for &subversion;) or <literal>master</literal> (for Git).</para></listitem>
+<listitem><para><link linkend="conf-configure-flags">configure-flags</link> to define what flags to configure &Qt; with.</para></listitem>
 <listitem><para><link linkend="conf-kdedir">kdedir</link>, to set the directory to install &kde; to.</para></listitem>
-<listitem><para><link linkend="conf-kde-languages">kde-languages</link>, to set the translation packages to download and install.</para></listitem>
-<listitem><para><link linkend="conf-make-options">make-options</link>, to pass options to the &make; program.</para></listitem>
+<listitem><para><link linkend="conf-make-options">make-options</link>, to pass options to the &make; program (such as number of CPUs to use).</para></listitem>
 <listitem><para><link linkend="conf-qtdir">qtdir</link>, to set the path to &Qt;.</para></listitem>
-<listitem><para><link linkend="conf-set-env">set-env</link>, to set an environment variable.</para></listitem>
 <listitem><para><link linkend="conf-source-dir">source-dir</link>, to change where to download the source code to.</para></listitem>
-<listitem><para><link linkend="conf-svn-server">svn-server</link>, to change the server the sources are downloaded from.</para></listitem>
 </itemizedlist>
 
+</sect2>
 </sect1>
 <sect1 id="conf-options-table">
 <title>Table of available configuration options</title>
