@@ -4404,98 +4404,68 @@ DONE
             /^(-h)|(--?help)$/   && do {
                 print <<DONE;
 $version
+http://kdesrc-build.kde.org/
 
-This script automates the download, build, and install process for KDE (using
-the latest source code).
+This script automates the download, build, and install process for KDE software
+using the latest available source code.
 
-It is recommended that you first setup a .kdesrc-buildrc file in your home
-directory.  Please visit http://kdesrc-build.kde.org/ for
-information on how to write the file, or consult the sample file which should
-have been included with this program.  If you don't setup a .kdesrc-buildrc,
-a default set of options will be used, which a few modules to be built by
-default.
-
-After setting up .kdesrc-buildrc, you can run this program from either the
-command-line or from cron.  It will automatically download the modules from the
-source repository, create the build system, and configure and make the modules
-you tell it to.  If you\'d like, you can use this program to install KDE as
-well, if you\'re building KDE for a single user.  Note that kdesrc-build will
-try by default to install the modules.
+You should first setup a configuration file (~/.kdesrc-buildrc). You can do
+this by running the kdesrc-build-setup program, which should be included with
+this one.  You can also copy the kdesrc-buildrc-sample file (which should be
+included) to ~/.kdesrc-buildrc.
 
 Basic synopsis, after setting up .kdesrc-buildrc:
-\$ kdesrc-build [module names] (Download, build, and install KDE)
+\$ $0 [--options] [module names]
 
-If you don\'t specify any particular module names, then your settings
-in .kdesrc-buildrc will be used.  If you DO specify a module name, then
-your settings will still be read, but the script will try to build/install
-the modules in the order given on the command line.
+The module names can be either the name of an individual module (as set in your
+configuration with a module declaration, or a use-modules declaration), or of a
+module set (as set with a module-set declaration).
+
+If you don\'t specify any particular module names, then every module you have
+listed in your configuration will be built, in the order listed.
 
 Copyright (c) 2003 - 2011 $author
 The script is distributed under the terms of the GNU General Public License
 v2, and includes ABSOLUTELY NO WARRANTY!!!
 
 Options:
-    --no-svn             Skip contacting the source server.
-    --no-src
+    --no-src             Skip contacting the source server.
     --no-build           Skip the build process.
     --no-install         Don't automatically install after build.
 
-    --svn-only           Only update the source code (Identical to --no-build
+    --src-only           Only update the source code (Identical to --no-build
                          at this point).
-    --src-only
     --build-only         Build only, don't perform updates or install.
 
-    --pretend (or -p)    Don't actually contact the source server, run make,
-                         or create/delete files and directories.  Instead,
-                         output what the script would have done.
-    --quiet (or -q)      Be less descriptive of the build process, without
-                         printing each little substep kdesrc-build is
-                         performing.
-    --really-quiet       Only warnings and errors will be displayed.
-    --verbose (or -v)    Be *very* descriptive of the build process.  Only
-                         --debug outputs more.
-    --debug              Activates debug mode.
-    --color
-    --no-color           Add (or remove) color from the output.
-
     --rc-file=<filename> Read configuration from filename instead of default.
-    --nice=<value>       Allows you to run the script with a lower priority
-                         The default value is 10 (lower priority by 10 steps).
-    --prefix=/kde/path   This option is a shortcut to change the setting for
-                         kdedir from the command line.  It implies
-                         --reconfigure.
 
     --resume-from=<pkg>  Starts building from the given package, without
                          performing the source update.
     --resume-after=<pkg> Starts building after the given package, without
                          performing the source update.
-    --revision (or -r)=<rev> Forces update to revision <rev> from Subversion.
 
-    --refresh-build      Start the build from scratch.
     --reconfigure        Run CMake/configure again, but don't clean the build
                          directory.
     --build-system-only  Create the build infrastructure, but don't actually
                          perform the build.
-    --run=<program>      Runs the given program in the same environment
-                         kdesrc-build runs in.
-    --install            Try to install the packages passed on the command
-                         line, or all packages in ~/.kdesrc-buildrc that don't
-                         have manual-build set.  Building and source
-                         updates are not performed.
 
     --<option>=          Any unrecognized options are added to the global
                          configuration, overriding any value that may exist.
     --<module>,<option>= Likewise, this allows you to override any module
                          specific option from the command line.
 
+    --pretend (or -p)    Don't actually contact the source server, run make,
+                         or create/delete files and directories.  Instead,
+                         output what the script would have done.
+    --refresh-build      Start the build from scratch.
+
     --help               You\'re reading it. :-)
-    --author             Output the author(s)\'s name.
     --version            Output the program version.
 
 You can get more help by going online to http://kdesrc-build.kde.org/ to view
-the online documentation.  The documentation is installed with the kdesdk
-module, so you may be able to view the documentation using KHelpCenter or
-Konqueror at help:/kdesrc-build
+the online documentation.  If you have installed kdesrc-build you may also be
+able to view the documentation using KHelpCenter or Konqueror at the URL
+help:/kdesrc-build
 DONE
                 # We haven't done any locking... no need to finish()
                 exit 0;
