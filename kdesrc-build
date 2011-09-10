@@ -4041,16 +4041,6 @@ sub read_options
 
     my $using_default = 1;
 
-    if (exists $ENV{"COVERITY_RUN"}) {
-
-        info "We're being run by coverity. ignoring non global options in the";
-        info "config file";
-
-        close $fh;
-        $ctx->setup_default_modules();
-        return;
-    }
-
     # Now read in module settings
     while ($_ = $fileReader->readLine())
     {
@@ -7293,11 +7283,10 @@ eval
 
         # What we're going to do is fork another child to perform the svn
         # updates while we build.  Setup for this first by initializing some
-        # shared memory.  In case of Coverity, set this to 0 that way we get
-        # NullIPC, even if the SysVIPC ctor fails.
+        # shared memory.
         my $ipc = 0;
 
-        if (!exists $ENV{'COVERITY_RUN'} && $ctx->getOption('async'))
+        if ($ctx->getOption('async'))
         {
             $ipc = new PipeIPC;
         }
