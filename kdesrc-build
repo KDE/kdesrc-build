@@ -1710,7 +1710,13 @@ EOF
     {
         my ($self, %options) = @_;
         while (my ($key, $value) = each %options) {
-            return if main::handle_set_env($self->{options}, $key, $value);
+            # ref($value) checks if value is already a reference (i.e. a hashref)
+            # which means we should just copy it over, as all handle_set_env does
+            # is convert the string to the right hashref.
+            if (!ref($value) && main::handle_set_env($self->{options}, $key, $value))
+            {
+                return
+            }
 
             debug ("  Setting $self,$key = $value");
             $self->{options}{$key} = $value;
@@ -4246,8 +4252,8 @@ sub handle_set_env
 
     my ($var, @values) = split(' ', $value);
 
-    $$href{$option} = ( ) unless exists $$href{$option};
-    $$href{$option}{$var} = join(' ', @values);
+    ${$href}{$option} //= { };
+    ${$href}{$option}->{$var} = join(' ', @values);
 
     return 1;
 }
