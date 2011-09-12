@@ -1,0 +1,934 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE refentry PUBLIC "-//KDE//DTD DocBook XML V4.2-Based Variant V1.1//EN" "dtd/kdex.dtd" [
+<!ENTITY % English "INCLUDE">
+]>
+
+<refentry lang="&language;">
+<refentryinfo>
+<title>&kde; User's Manual</title>
+<author>
+    <personname><firstname>Michael</firstname><surname>Pyne</surname></personname>
+    <email>mpyne@kde.org</email>
+</author>
+<date>2011-09-10</date>
+</refentryinfo>
+
+<refmeta>
+<refentrytitle><command>kdesrc-build</command></refentrytitle>
+<manvolnum>1</manvolnum>
+<refmiscinfo class="version">1.14</refmiscinfo>
+</refmeta>
+
+<refnamediv>
+    <refname><command>kdesrc-build</command></refname>
+    <refpurpose>Downloads, builds and installs &kde; software.</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv id="_synopsis">
+<cmdsynopsis>
+<command>kdesrc-build</command>
+<arg rep="repeat"><replaceable>OPTIONS</replaceable></arg>
+<arg rep="repeat"><replaceable>Module name | Module set name</replaceable></arg>
+</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+<title>DESCRIPTION</title>
+
+<para>The <command>kdesrc-build</command> command is used in order to build
+&kde; software directly from its source repositories. It can download from
+Subversion or Git repositories, interfaces with the &kde; project database, and
+supports controlling which options are passed to <command>make</command>(1) and
+<command>cmake</command>(1). The operation of <command>kdesrc-build</command>
+is driven by a configuration file, typically
+<filename>~/.kdesrc-buildrc</filename>.</para>
+
+<para>The <replaceable>module name</replaceable> or <replaceable>module set
+name</replaceable> as given on the command line should be as those names were
+defined in the configuration file (either in a <symbol>module</symbol>
+definition or <option>use-modules</option> declaration, or in a
+<option>module-set</option> definition). In addition, it can be the name of a
+&kde; module listed in the &kde; project database (and you can precede the
+module name with <symbol>+</symbol> to force this.</para>
+
+<para><command>kdesrc-build</command> is designed to be able to be completely
+headless (however, see <emphasis role="strong">ENVIRONMENT</emphasis>), and so
+typically ignores its input completely. Command output is logged instead of
+being shown on the kdesrc-build output.</para>
+
+<para>Modules are built one after the other. If a module fails to update then
+it is not built. <command>kdesrc-build</command> will not abort just because of
+a module failure, instead it will keep trying to update and build subsequent
+modules. By default, <command>kdesrc-build</command> will commence building a
+module as soon as the source code update is complete for that module, even if
+other updates are occurring concurrently.</para>
+
+<para>At the end <command>kdesrc-build</command> will show which modules failed
+to build, and where the logs were kept for that build run.</para> </refsect1>
+
+<refsect1>
+<title>OPTIONS</title>
+
+<para><emphasis role="strong">NOTE</emphasis>: Some options have short forms,
+but the <command>kdesrc-build</command> option parser does not support
+combining short options into one at this point. (E.g. running
+<option>kdesrc-build -pv</option> would not be the same as
+<option>kdesrc-build --pretend --verbose</option>.</para>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<option>-h, --help</option>
+</term>
+
+<listitem>
+<para>
+    Shows a brief synopsis and frequently-used command line options.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>-p, --pretend</option>
+</term>
+
+<listitem>
+<para>
+    Operate in a "dry run" mode. No network accesses are made, no log files are
+    created, no modules are built, and no other permanent changes to disk are
+    made. One <emphasis>important exception</emphasis> is that if you try to
+    build a module that comes from the &kde; project database, and the
+    database hasn't been downloaded yet, the database will be downloaded
+    since the pretend-mode output may change significantly based on the
+    database results.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--install</option>
+</term>
+
+<listitem>
+<para>
+    Skips the update and build phase and immediately attempts to install the
+    modules given.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--uninstall</option>
+</term>
+
+<listitem>
+<para>
+    Skips the update and build phase and immediately attempts to uninstall the
+    modules given. <emphasis role="strong">NOTE</emphasis>: This is only
+    supported for buildsystems that supports the <command>make
+    uninstall</command> command (e.g. &kde; CMake-based).
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--no-src</option>
+</term>
+
+<listitem>
+<para>
+    Skips the source update phase. Other phases are included as normal.
+    <option>--no-svn</option> is a deprecated alias for this option and will be
+    removed in a future release.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--no-install</option>
+</term>
+
+<listitem>
+<para>
+    Skips the install phase from the build. Other phases are included as
+    normal.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--no-build</option>
+</term>
+
+<listitem>
+<para>
+    Skips the build phase for the build. Internally the install phase depends
+    on the build phase completing so this is effectively equivalent to
+    <option>--src-only</option>, but the semantics may change in the future
+    (e.g. when test suites are moved into their own phase).
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--no-tests</option>
+</term>
+
+<listitem>
+<para>
+    Disables running the test suite for CMake-based modules. To be fully
+    effective this requires re-running CMake, which can be forced by using the
+    <option>--reconfigure</option> or <option>--refresh-build</option> options.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--src-only</option>
+</term>
+
+<listitem>
+<para>
+    Only performs the source update phase, does not build or install.
+    <option>--svn-only</option> is a deprecated alias for this option and will
+    be removed in a future release.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--build-only</option>
+</term>
+
+<listitem>
+<para>
+    Forces the build process to be performed without updating source code
+    first. In addition, installation is not performed. (Testing is still
+    performed if applicable, but this will change in a future release)
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--refresh-build</option>
+</term>
+
+<listitem>
+<para>
+    Removes the build directory for a module before the build phase starts.
+    This has the desired side effect of forcing <command>kdesrc-build</command> to re-configure
+    the module and build it from a "pristine" state with no existing temporary
+    or intermediate output files. Use this option if you have problems getting
+    a module to build but realize it will take longer (possibly much longer)
+    for the build to complete as a result. When in doubt use this option for
+    the entire <command>kdesrc-build</command> run.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--reconfigure</option>
+</term>
+
+<listitem>
+<para>
+    Force CMake to be re-run, but without deleting the build directory.
+    Usually you actually want <option>--refresh-build</option>, but if you are
+    100% sure your change to <option>cmake-options</option> will not
+    invalidate your current intermediate output then this can save some time.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--build-system-only</option>
+</term>
+
+<listitem>
+<para>
+    Interrupts the build process for each module built: The build process
+    consists of normal setup up to and including running
+    <command>cmake</command> or <command>configure</command> (as appropriate),
+    but <command>make</command> is not run and no installation
+    is attempted. This is mostly only useful to get things like
+    <command>configure --help</command> and <command>cmake-gui</command> to
+    work. Normally you want <option>--reconfigure</option> or
+    <option>--refresh-build</option>.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--resume-from=<replaceable>foo</replaceable></option>
+</term>
+
+<listitem>
+<para>
+    Use this option to skip module processing until the module
+    <replaceable>foo</replaceable> is encountered.
+    <replaceable>foo</replaceable> and all subsequent modules will be processed
+    normally as if they had been specified on the command line. If you use this
+    option because of a build failure you may want to consider using
+    <option>--no-src</option> in addition to skip the resultant source update
+    phase.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--resume-after=<replaceable>foo</replaceable></option>
+</term>
+
+<listitem>
+<para>
+    This is just like <option>--resume-from</option>, except that the module
+    <replaceable>foo</replaceable> is <emphasis>not</emphasis> included in the
+    list of modules to consider. You might use this if you've manually
+    built/installed foo after fixing the build and just want to resume from
+    there.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--ignore-modules</option>
+</term>
+
+<listitem>
+<para>
+    Forces <emphasis role="strong">ALL</emphasis> modules that follow this
+    option to be excluded from consideration by
+    <command>kdesrc-build</command>. This might be useful if you know you want
+    to process all modules except for specific exceptions.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--rc-file=<replaceable>foo</replaceable></option>
+</term>
+
+<listitem>
+<para>
+    Use the given file, <replaceable>foo</replaceable>, for the configuration
+    instead of <filename>~/.kdesrc-buildrc</filename> or
+    <filename>./kdesrc-buildrc</filename>. The file can be empty, but must
+    exist.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--prefix=<replaceable>foo</replaceable></option>
+</term>
+
+<listitem>
+<para>
+    Overrides the <option>kdedir</option> setting to be
+    <replaceable>foo</replaceable> for this run. In addition, implies
+    <option>--reconfigure</option>. It <emphasis>does not</emphasis> actually
+    perform the action you would think it does (overriding the
+    <option>prefix</option> option to change where modules are installed),
+    although by default modules are installed to the <option>kdedir</option>
+    setting if <option>prefix</option> is not set.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--nice=<replaceable>foo</replaceable></option>
+</term>
+
+<listitem>
+<para>
+    Changes the CPU priority given to <command>kdesrc-build</command> (and all
+    processes used by <command>kdesrc-build</command> e.g.
+    <command>make</command>(1)). <replaceable>foo</replaceable> should be an
+    integer number between -20 and 19. Positive values are "nicer" to the rest
+    of the system (i.e.  lower priority).
+</para>
+
+<para>
+    Note that the possible priorities available on your system may be different
+    than listed here, see <command>nice</command>(2) for more information. Note
+    also that this only changes <emphasis>CPU</emphasis> priority, often you
+    want to change <emphasis>I/O</emphasis> priority on systems where that is
+    supported. There is no command-line option for I/O priority adjustment, but
+    there is a configuration file option: <option>use-idle-io-priority</option>
+    (although like all options, there is a generic way to set this from the
+    command line).
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--run=<replaceable>foo</replaceable></option>
+</term>
+
+<listitem>
+<para>
+    Runs the program named by <replaceable>foo</replaceable> using
+    <command>kdesrc-build</command>'s normal build environment. All command
+    line arguments present after this option are passed to
+    <replaceable>foo</replaceable> as it is run.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--color</option>
+</term>
+
+<listitem>
+<para>
+    Enables "colorful output". (Enabled by default).
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--no-color</option>
+</term>
+
+<listitem>
+<para>
+    Disables "colorful output". This can be made permanent by setting the
+    <option>colorful-output</option> option to false (or 0) in your
+    configuration file.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--async</option>
+</term>
+
+<listitem>
+<para>
+    Have <command>kdesrc-build</command> start the build process for a module
+    as soon as the source code has finished downloading. Without this option
+    <command>kdesrc-build</command> performs all source updates at once and
+    only then starts with the build process. This option is enabled by default.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--no-async</option>
+</term>
+
+<listitem>
+<para>
+    Disables asynchronous building of modules. See <option>--async</option> for
+    a more detailed description. Note that <command>kdesrc-build</command>'s
+    output will be slightly different in this mode.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>-v, --verbose</option>
+</term>
+
+<listitem>
+<para>
+    Increases the level of verbosity of <command>kdesrc-build</command> output
+    (which is already fairly verbose!)
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>-q, --quiet</option>
+</term>
+
+<listitem>
+<para>
+    Makes <command>kdesrc-build</command> less noisy. Only important messages
+    are shown.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--really-quiet</option>
+</term>
+
+<listitem>
+<para>
+    Makes <command>kdesrc-build</command> even less noisy. Only warnings/errors
+    are shown.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--debug</option>
+</term>
+
+<listitem>
+<para>
+    This will fill your terminal with descriptions and debugging output,
+    usually unintelligible, describing what <command>kdesrc-build</command> is
+    doing (and thinks it should be doing). The flag is included since the
+    output may sometimes prove useful for debugging.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--force-build</option>
+</term>
+
+<listitem>
+<para>
+    Normally when <command>kdesrc-build</command> notices that there is no
+    source update on a module which was previously successfully installed, it
+    does not attempt to build or install that module. You can pass this flag to
+    disable that behavior and always run <command>make</command>.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--no-snapshots</option>
+</term>
+
+<listitem>
+<para>
+    Normally <command>kdesrc-build</command> supports using source repository
+    tarball snapshots to reduce load on &kde; infrastructure for git clones for
+    some &kde; modules.  Passing this option disables this feature.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--<replaceable>foo</replaceable>=<replaceable>bar</replaceable></option>
+</term>
+
+<listitem>
+<para>
+    Any option not listed above is checked to see if it matches the list of
+    possible configuration file options. If so, the configuration file option
+    <option>foo</option> is temporarily set to <option>bar</option> for the
+    duration of this run.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--<replaceable>module</replaceable>,<replaceable>foo</replaceable>=<replaceable>bar</replaceable></option>
+</term>
+
+<listitem>
+<para>
+    Like above, but option <option>foo</option> is only set to
+    <option>bar</option> for the module <option>module</option>.  This does not
+    work for module sets yet, you must repeat this for each module you want to
+    be affected. (Of course, you could simply edit your configuration file...)
+</para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title>EXIT STATUS</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<emphasis role="strong">0</emphasis>
+</term>
+
+<listitem>
+<para>
+    Success
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong">1</emphasis>
+</term>
+
+<listitem>
+<para>
+    Normally this means some part of the update, build or install process
+    failed, but is also used for any abnormal program end not otherwise covered
+    below.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong">5</emphasis>
+</term>
+
+<listitem>
+<para>
+    A signal was received that killed <command>kdesrc-build</command>, but it
+    attempted to perform normal closedown.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong">8</emphasis>
+</term>
+
+<listitem>
+<para>
+    Unknown option was passed on the command line.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong">99</emphasis>
+</term>
+
+<listitem>
+<para>
+    An exception was raised that forced <command>kdesrc-build</command> to
+    abort early.
+</para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title>ENVIRONMENT</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<envar>HOME</envar>
+</term>
+
+<listitem>
+<para>
+    Used for tilde-expansion of file names, and is the default base for the
+    source, build, and installation directories.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar>PATH</envar>
+</term>
+
+<listitem>
+<para>
+    This environment variable controls the default search path for executables.
+    You can use the <option>binpath</option> configuration file option to add
+    to this variable (e.g. for running from <command>cron</command>(8)).
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar>LC_</envar>*
+</term>
+
+<listitem>
+<para>
+    Environment variables starting with LC_ control the locale used by
+    <command>kdesrc-build</command>. Although <command>kdesrc-build</command>
+    is still not localizable at this point, many of the commands it uses are.
+    <command>kdesrc-build</command> normally sets <envar>LC_ALL</envar>=C for
+    commands that its must examine the output of but you can manually do this
+    as well. If setting <envar>LC_ALL</envar>=C fixes a
+    <command>kdesrc-build</command> problem please submit a bug report.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar>SSH_AGENT_PID</envar>
+</term>
+
+<listitem>
+<para>
+    This environment variable is checked to see if
+    <command>ssh-agent</command>(1) is running, but only if
+    <command>kdesrc-build</command> determines that you are checking out a
+    module that requires an SSH login (but you should know this as no module
+    requires this by default).
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar>KDESRC_BUILD_USE_TTY</envar>
+</term>
+
+<listitem>
+<para>
+    If set, this variable forces <command>kdesrc-build</command> not to close
+    its input while executing system processes. Normally
+    <command>kdesrc-build</command> closes <symbol>stdin</symbol> since the
+    <symbol>stdout</symbol> and <symbol>stderr</symbol> for its child processes
+    are redirected and therefore the user would never see an input prompt
+    anyways.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar>KDESRC_BUILD_DUMP_CONTEXT</envar>
+</term>
+
+<listitem>
+<para>
+    If set, this variable prints out a description of its "build context" just
+    after reading options and command line arguments and determining which
+    modules to build. You pretty much never want to set this.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+others
+</term>
+
+<listitem>
+<para>
+    Many programs are used by <command>kdesrc-build</command> in the course of
+    its execution, including <command>svn</command>(1),
+    <command>git</command>(1), <command>make</command>(1), and
+    <command>cmake</command>(1). Each of these programs may have their own
+    response to environment variables being set.
+    <command>kdesrc-build</command> will pass environment variables that are
+    set when it is run onto these processes. You can ensure certain environment
+    variables (e.g.  <envar>CC</envar> or <envar>CXX</envar>) are set by using
+    the <option>set-env</option> configuration file option.
+</para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title>FILES</title>
+
+<para><filename>~/.kdesrc-buildrc</filename> - Default global configuration
+file.</para>
+
+<para><filename>./kdesrc-buildrc</filename> - If this file (note there is no
+leading period (.) this time) is found in the <emphasis role="strong">current
+directory</emphasis> when kdesrc-build is run, this file will be used for the
+configuration instead of <filename>~/.kdesrc-buildrc</filename>.</para>
+
+<para><filename>~/.kdesrc-build-data</filename> -
+<command>kdesrc-build</command> uses this file to store persistent data (such
+as last CMake options used, last revision successfully installed, etc.). It can
+be safely deleted.</para>
+
+</refsect1>
+
+<refsect1>
+<title>BUGS</title>
+
+<para>See <ulink url="http://bugs.kde.org/">http://bugs.kde.org/</ulink>. Be
+sure to search against the <command>kdesrc-build</command> product.</para>
+
+</refsect1>
+
+<refsect1>
+<title>EXAMPLE</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+$ <userinput><command>kdesrc-build</command></userinput>
+</term>
+
+<listitem>
+<para>
+    Downloads, builds and installs all modules listed in the configuration
+    file, in the order defined therein.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+$ <userinput><command>kdesrc-build</command> <option>--pretend</option></userinput>
+</term>
+
+<listitem>
+<para>
+    Same as above, except no permanent actions are taken (specifically no log
+    files are created, downloads performed, build processes run, etc.).
+    <emphasis role="strong">EXCEPTION</emphasis>: If you are trying to build a
+    module defined in the &kde; project database, and the database has not been
+    downloaded yet, <command>kdesrc-build</command> will download the database
+    since this can significantly affect the final build order.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+$ <userinput><command>kdesrc-build</command> <option>--no-src</option> <option>--refresh-build</option> <symbol>kdebase</symbol></userinput>
+</term>
+
+<listitem>
+<para>
+    Deletes the build directory for the <emphasis>kdebase</emphasis> module set
+    (<option>--refresh-build</option>) and then starts the build process again
+    without updating the source code in-between.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+$ <userinput><command>kdesrc-build</command> <option>--rc-file</option> <filename>/dev/null</filename> <option>--pretend</option></userinput>
+</term>
+
+<listitem>
+<para>
+    Forces <command>kdesrc-build</command> to read an empty configuration file
+    and simulate the resultant build process. This shows what would happen by
+    default with no configuration file, without an error message about a
+    missing configuration file.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+$ <userinput><command>kdesrc-build</command> <symbol>+kdebase/kde-baseapps</symbol></userinput>
+</term>
+
+<listitem>
+<para>
+    Downloads, builds and installs the <symbol>kde-baseapps</symbol> module
+    from the &kde; project database. Since the module name is preceded by a
+    <symbol>+</symbol> it is assumed to defined in the &kde; project
+    database even if this hasn't been specifically configured in the
+    configuration file.
+</para>
+<para>
+    The <symbol>kdebase/</symbol> portion forces
+    <command>kdesrc-build</command> to ignore any <symbol>kde-baseapps</symbol>
+    modules that are not children of the <symbol>kdebase</symbol> supermodule
+    in the project database (although it is contrived for this example).
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+$ <userinput><command>kdesrc-build</command> <option>--refresh-build</option> <option>--cmake-options=<replaceable>"-DCMAKE_BUILD_TYPE=Debug"</replaceable></option></userinput>
+</term>
+
+<listitem>
+<para>
+    Downloads, builds and installs all modules defined in the configuration
+    file but overrides the <symbol>cmake-options</symbol> option to have
+    the value given on the command line for this run only. Any further
+    <command>kdesrc-build</command> runs will use the
+    <symbol>cmake-options</symbol> given in the configuration file.
+</para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title>SEE ALSO</title>
+
+<para>build-tool - A program by Michael Jansen which can build &kde; software
+based on included recipes.</para>
+
+</refsect1>
+
+<refsect1>
+<title>RESOURCES</title>
+
+<para>Main web site: <ulink
+url="http://kdesrc-build.kde.org/">http://kdesrc-build.kde.org/</ulink></para>
+
+<para>Documentation: <ulink
+url="http://kdesrc-build.kde.org/documentation/">http://kdesrc-build.kde.org/documentation/</ulink></para>
+
+<para>Setup script: <command>kdesrc-build-setup</command></para>
+
+</refsect1>
+
+<refsect1>
+<title>COPYING</title>
+
+<para>Copyright (C) 2003-2011 Michael Pyne.</para>
+
+<para>This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or \(at your option) any
+later version.</para>
+
+<para>This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+details.</para>
+
+<para>You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc., 51
+Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA</para>
+
+</refsect1>
+
+</refentry>
