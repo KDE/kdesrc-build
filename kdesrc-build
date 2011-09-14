@@ -5071,17 +5071,18 @@ EOF
 # already set.
 sub verifyGitConfig
 {
-    my $configOutput = `git config --global --get url.git://anongit.kde.org/.insteadOf kde:`;
+    my $configOutput = `git config --global --get url.git://anongit.kde.org/.insteadOf kde: 2>/dev/null`;
 
     # 0 means no error, 1 means no such section exists -- which is OK
     if ((my $errNum = $? >> 8) >= 2) {
-        my $error;
-        given ($errNum) {
-            $error = 'Invalid config file (~/.gitconfig)' when 3;
-            $error = 'Could not write to ~/.gitconfig' when 4;
-            $error = 'HOME environment variable is not set (?)' when 128;
-            $error = "Code $errNum"; # default
-        }
+        my $error = "Code $errNum";
+        my %errors = (
+            3   => 'Invalid config file (~/.gitconfig)',
+            4   => 'Could not write to ~/.gitconfig',
+            128 => 'HOME environment variable is not set (?)',
+        );
+
+        $error = $errors{$errNum} if exists $errors{$errNum};
         error " r[*] Unable to run b[git] command:\n\t$error";
         return 0;
     }
@@ -5096,7 +5097,7 @@ sub verifyGitConfig
         return 0 if $result != 0;
     }
 
-    $configOutput = `git config --global --get url.git\@git.kde.org:.pushInsteadOf kde:`;
+    $configOutput = `git config --global --get url.git\@git.kde.org:.pushInsteadOf kde: 2>/dev/null`;
 
     if ($configOutput !~ /^kde:\s*$/) {
         info "\tAdding git upload kde: alias";
