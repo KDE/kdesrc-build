@@ -4936,6 +4936,7 @@ sub super_mkdir
     }
     else {
         make_path($pathname);
+        return (-e $pathname) ? 1 : 0;
     }
 }
 
@@ -5195,7 +5196,7 @@ sub handle_updates
             # This module has a different source directory, ensure it exists.
             if (not super_mkdir($module_src_dir))
             {
-                error "Unable to create separate source directory for r[$module]";
+                error "Unable to create separate source directory for r[$module]: $module_src_dir";
                 $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $moduleName);
                 next;
             }
