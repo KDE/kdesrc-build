@@ -2416,6 +2416,9 @@ sub installGitSnapshot
     info "\tDownloading git snapshot for g[$module]";
 
     my $filename = basename(URI->new($tarball)->path());
+    my $tmpdir = File::Spec->tmpdir() // "/tmp";
+    $filename = "$tmpdir/$filename"; # Make absolute
+
     if (!download_file($tarball, $filename)) {
         error "Unable to download snapshot for module r[$module]";
         return 0;
