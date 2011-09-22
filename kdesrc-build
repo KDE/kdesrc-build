@@ -2905,11 +2905,46 @@ sub update_module_git_checkout
     my $module = assert_isa(shift, 'Module');
     my $srcdir = $module->fullpath('source');
 
-    if (-e $srcdir) {
+    if (-d "$srcdir/.git") {
         # Note that this function will throw an exception on failure.
         return git_update_module($module);
     }
     else {
+        # Check if an existing source directory is there somehow.
+        if (-e "$srcdir") {
+            if ($module->getOption('#delete-my-patches')) {
+                warning "\tRemoving conflicting source directory ",
+                        "as allowed by --delete-my-patches";
+                warning "\tRemoving b[$srcdir]";
+                safe_rmtree($srcdir) or do {
+                    die "Unable to delete r[b[$srcdir]!";
+                };
+            }
+            else {
+                error <<EOF;
+The source directory for b[$module] does not exist. kdesrc-build would download
+it, except there is already a file or directory present in the desired source
+directory:
+\ty[b[$srcdir]
+
+Please either remove the source directory yourself and re-run this script, or
+pass the b[--delete-my-patches] option to kdesrc-build and kdesrc-build will
+try to do so for you.
+
+DO NOT FORGET TO VERIFY THERE ARE NO UNCOMMITTED CHANGES OR OTHER VALUABLE
+FILES IN THE DIRECTORY.
+
+EOF
+
+                if (-e "$srcdir/.svn") {
+                    error "svn status of $srcdir:";
+                    system('svn', 'st', '--non-interactive', $srcdir);
+                }
+
+                die ('Conflicting source-dir present');
+            }
+        }
+
         my $git_repo = $module->getOption('repository');
 
         if (not $git_repo) {
