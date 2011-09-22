@@ -942,6 +942,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         "cxxflags"             => "-pipe",
         "debug"                => "",
         "debug-level"          => ksb::Debug::INFO,
+        "delete-my-patches"    => 0, # Should only be set from cmdline
         "dest-dir"             => '${MODULE}', # single quotes used on purpose!
         "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
         "do-not-compile"       => "",
@@ -4714,7 +4715,9 @@ DONE
             /^--/ && do {
                 # First let's see if they're trying to override a global option.
                 my ($option) = /^--([-\w\d\/]+)/;
-                my $value = extract_option_value($_, @options);
+
+                # If no value, give a "true" option by default
+                my $value = extract_option_value($_, @options) // 1;
 
                 if ($ctx->hasOption($option))
                 {
