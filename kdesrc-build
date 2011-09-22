@@ -4726,6 +4726,11 @@ DONE
                 last SWITCH;
             };
 
+            /^--delete-my-patches$/ && do {
+                $ctx->setOption('#delete-my-patches', 1);
+                last SWITCH;
+            };
+
             /^(--revision|-r)=?/ && do {
                 my $revision = extract_option_value_required($_, @options);
                 $ctx->setOption('#revision', $revision);
@@ -4750,9 +4755,7 @@ DONE
             /^--/ && do {
                 # First let's see if they're trying to override a global option.
                 my ($option) = /^--([-\w\d\/]+)/;
-
-                # If no value, give a "true" option by default
-                my $value = extract_option_value($_, @options) // 1;
+                my $value = extract_option_value($_, @options);
 
                 if ($ctx->hasOption($option))
                 {
