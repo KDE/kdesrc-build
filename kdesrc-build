@@ -4014,11 +4014,15 @@ sub expandXMLModules
         # Setup module options. This alters the results in @xmlResults.
         foreach (@xmlResults) {
             my $result = $_;
+            my $repo = $result->{'repo'};
+
+            # Prefer kde: alias to normal clone URL.
+            $repo =~ s(^git://anongit\.kde\.org/)(kde:);
 
             # This alters the item we were looking at.
             $_ = Module->new($ctx, $result->{'name'}, 'git');
             $_->cloneOptionsFrom($moduleSet);
-            $_->setOption('repository', $result->{'repo'});
+            $_->setOption('repository', $repo);
             $_->setOption('#xml-full-path', $result->{'fullName'});
 
             my $tarball = $result->{'tarball'};
