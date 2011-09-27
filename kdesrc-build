@@ -807,11 +807,14 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             }; # Repo/Active/tarball to be added by char handler.
         }
 
-        # Character data is integrated by the char handler. To avoid having it dump
-        # all willy-nilly into our dict, we leave a flag for what the resultant key
-        # should be.
+        # Character data is integrated by the char handler. To avoid having it
+        # dump all willy-nilly into our dict, we leave a flag for what the
+        # resultant key should be.
         if ($element eq 'active' && $inRepo) {
             $curRepository->{'needs'} = 'active';
+
+            # Unset our default value since one is present in the XML
+            $curRepository->{'active'} = '';
         }
 
         if ($element eq 'url' && $inRepo && $attrs{'protocol'} eq 'git') {
@@ -831,6 +834,11 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             pop @nameStack;
         }
 
+        # If gathering data for char handler, stop now.
+        if ($inRepo && defined $curRepository->{'needs'}) {
+            delete $curRepository->{'needs'};
+        }
+
         if ($element eq 'repo' && $inRepo) {
             $inRepo = 0;
             push @modules, $curRepository;
@@ -845,9 +853,11 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     {
         my ($expat, $utf8Data) = @_;
 
+        # The XML::Parser manpage makes it clear that the char handler can be
+        # called consecutive times with data for the same tag, so we use the
+        # append operator and then clear our flag in xmlTagEnd.
         if ($curRepository && defined $curRepository->{'needs'}) {
-            $curRepository->{$curRepository->{'needs'}} = $utf8Data;
-            delete $curRepository->{'needs'};
+            $curRepository->{$curRepository->{'needs'}} .= $utf8Data;
         }
     }
 
