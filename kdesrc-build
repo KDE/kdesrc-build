@@ -2483,6 +2483,15 @@ sub installGitSnapshot
         return 0;
     }
 
+    whisper "\tConverting to kde:-style URL";
+    $result = log_command($module, 'fixup-git-remote',
+        ['git', 'remote', 'set-url', 'origin', "kde:$module"]);
+
+    if ($result) {
+        warning "\tUnable to convert origin URL to kde:-style URL. Things should";
+        warning "\tstill work, you may have to adjust push URL manually.";
+    }
+
     info "\tGit snapshot installed, now bringing up to date.";
     $result = log_command($module, 'init-git-pull', ['git', 'pull']);
     return ($result == 0);
