@@ -37,7 +37,7 @@ use strict;
 use warnings;
 use Fcntl;    # For sysopen constants
 use Carp;
-use POSIX qw(strftime :sys_wait_h);
+use POSIX qw(strftime :sys_wait_h _exit);
 use File::Find; # For our lndir reimplementation.
 use File::Path qw(make_path remove_tree);
 use File::Glob ':glob';
@@ -3215,10 +3215,8 @@ sub log_command
     }
     else
     {
-        # Child
-
-        # Avoid calling close subroutines in more than one routine.
-        @main::atexit_subs = ();
+        # Child. Note here that we need to avoid running our exit cleanup
+        # handlers in here. For that we need POSIX::_exit.
 
         # Apply altered environment variables.
         while (my ($key, $value) = each %ENV_VARS) {
@@ -3229,7 +3227,7 @@ sub log_command
         if (pretending)
         {
             pretend "\tWould have run g['", join ("' '", @command), "'";
-            exit 0;
+            POSIX::_exit(0);
         }
 
         if (not $logdir or not -e $logdir)
@@ -3274,10 +3272,10 @@ sub log_command
             no strict 'refs'; # Disable restriction on symbolic subroutines.
             if (! &{$cmd}(@command)) # Call sub
             {
-                exit EINVAL;
+                POSIX::_exit (EINVAL);
             }
 
-            exit 0; # Exit child process successfully.
+            POSIX::_exit (0); # Exit child process successfully.
         }
 
         # Don't leave empty output files, give an indication of the particular
@@ -3295,7 +3293,7 @@ Please check your binpath setting (it controls the PATH used by kdesrc-build).
 Currently it is set to g[$ENV{PATH}].
 EOF
             # Don't use return, this is the child still!
-            exit 1;
+            POSIX::_exit (1);
         };
     }
 }
@@ -6642,11 +6640,15 @@ sub finish
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $exitcode = shift // 0;
 
-    $ctx->storePersistentOptions();
-
-    exit $exitcode if pretending; # Abort early when pretending.
+    @main::atexit_subs = ();
+    if (pretending || $main::basePid != $$) {
+        # Abort early if pretending or if we're not the same process
+        # that was started by the user (e.g. async mode, forked pipe-opens
+        exit $exitcode;
+    }
 
     close_lock();
+    $ctx->storePersistentOptions();
 
     my $logdir = $ctx->getLogDir();
     note "Your logs are saved in y[$logdir]";
@@ -7100,8 +7102,7 @@ sub handle_async_build
     { # child
         $ipc->setUpdater();
         # Avoid calling close subroutines in more than one routine.
-        @main::atexit_subs = ();
-        exit handle_updates ($ipc, $ctx);
+        POSIX::_exit (handle_updates ($ipc, $ctx));
     }
 
     # Parent
@@ -7110,8 +7111,7 @@ sub handle_async_build
     { # monitor
         $ipc->setMonitor();
         # Avoid calling close subroutines in more than one routine.
-        @main::atexit_subs = ();
-        exit handle_monitoring ($ipc);
+        POSIX::_exit (handle_monitoring ($ipc));
     }
 
     # Still the parent, let's do the build.
@@ -7225,6 +7225,7 @@ if (defined caller && caller eq 'test')
 
 my $ctx;
 our @atexit_subs;
+our $basePid = $$; # Only run exit handlers from the process with the PID we started with.
 
 END {
     # Basically used to call the finish() handler but only when appropriate.
