@@ -2581,7 +2581,6 @@ sub git_has_remote
 sub git_get_best_remote_names
 {
     my $repoUrl = shift;
-    $repoUrl =~ s,^kde:,git://anongit.kde.org/,;
     my @outputs;
 
     # The Repo URL isn't much good, let's find a remote name to use it with.
@@ -2606,9 +2605,6 @@ sub git_get_best_remote_names
         $remoteName =~ s/^remote\.//;
         $remoteName =~ s/\.url$//; # Extract the cruft
 
-        $url =~ s,^kde:,git://anongit.kde.org/,;
-        #info "\tgit_get_best_remote_names($repoUrl) - $remoteName = $url";
-
         # Skip other remotes
         next if $url ne $repoUrl;
 
@@ -2616,14 +2612,7 @@ sub git_get_best_remote_names
         next if $remoteName !~ /^[\w-]*$/;
 
         # A winner is this one.
-        #info "\tWinner: $remoteName";
         push @results, $remoteName;
-    }
-
-    # If we have more than one matching remote, make sure our ugly internal remote name
-    # is removed.
-    if (scalar @results > 1) {
-        @results = grep { $_ ne GIT_REMOTE_ALIAS } (@results);
     }
 
     return @results;
