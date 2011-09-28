@@ -42,6 +42,7 @@ use File::Find; # For our lndir reimplementation.
 use File::Path qw(make_path remove_tree);
 use File::Glob ':glob';
 use File::Basename; # fileparse
+use File::Spec;     # tmpdir, rel2abs
 use LWP::UserAgent;
 use URI; # For git-clone snapshot support
 use Sys::Hostname;
@@ -1182,7 +1183,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         {
             if (open ($fh, '<', "$file"))
             {
-                $self->{rcFile} = $file;
+                $self->{rcFile} = File::Spec->rel2abs($file);
                 return $fh;
             }
         }
