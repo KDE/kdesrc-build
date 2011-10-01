@@ -3855,7 +3855,11 @@ sub ensure_projects_xml_present
     my $url = "http://projects.kde.org/kde_projects.xml";
 
     my $result = 1;
-    if (!pretending) {
+
+    # Must use ->phases() directly to tell if we will be updating since
+    # modules are not all processed until after this function is called...
+    my $updating = grep { /^update$/ } (@{$ctx->phases()});
+    if (!pretending && $updating) {
         info " * Downloading projects.kde.org project database...";
         $result = download_file($url, $file);
     }
