@@ -44,7 +44,7 @@ my $testSourceDirName =
 
 my $ctx = ksb::BuildContext->new();
 isa_ok($ctx, 'ksb::BuildContext', 'Ensure BuildContext classiness');
-isa_ok($ctx->phases(), 'ksb::Phases', 'Ensure Phases classiness');
+isa_ok($ctx->phases(), 'ksb::PhaseList', 'Ensure PhaseList classiness');
 
 my %moreOptions = (
   'qt-copy' => {

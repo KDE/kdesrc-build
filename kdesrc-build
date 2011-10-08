@@ -866,11 +866,11 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 }
 # }}}
 
-# package ksb::Phases {{{
+# package ksb::PhaseList {{{
 {
     # Handles the "phases" for kdesrc-build, e.g. a simple list of phases,
     # and methods to add, clear, or filter out phases.
-    package ksb::Phases;
+    package ksb::PhaseList;
 
     ksb::Util->import();
 
@@ -1007,7 +1007,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
                 # Module options are stored under here as well, keyed by module->name()
             },
             # This one replaces Module::{phases}
-            phases  => ksb::Phases->new(@DefaultPhases),
+            phases  => ksb::PhaseList->new(@DefaultPhases),
             errors  => {
                 # Phase names from phases map to a references to a list of failed Modules
                 # from that phase.
@@ -1032,15 +1032,15 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         return $self;
     }
 
-    # Gets the ksb::Phases for this context, and optionally sets it first to
-    # the ksb::Phases passed in.
+    # Gets the ksb::PhaseList for this context, and optionally sets it first to
+    # the ksb::PhaseList passed in.
     sub phases
     {
         my ($self, $phases) = @_;
 
         if ($phases) {
-            confess("Invalid type, expected Phases")
-                unless $phases->isa('ksb::Phases');
+            confess("Invalid type, expected PhaseList")
+                unless $phases->isa('ksb::PhaseList');
             $self->{phases} = $phases;
         }
         return $self->{phases};
