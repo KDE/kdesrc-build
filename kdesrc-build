@@ -1519,7 +1519,7 @@ HOME
 
     sub new
     {
-        my ($class, $ctx, $name, $type) = @_;
+        my ($class, $ctx, $name) = @_;
 
         confess "Empty Module constructed" unless $name;
 
@@ -1543,7 +1543,7 @@ HOME
 
         my $module = {
             name         => $name,
-            type         => $type,
+            scm_type     => undef,
             phases       => $phases,
             context      => $ctx,
             options      => $ctx->{build_options}{$name},
@@ -1634,11 +1634,11 @@ HOME
 
     # Returns a string describing the scm platform of the given module.
     # Return value: 'git' or 'svn' at this point, as appropriate.
-    sub type
+    sub scmType
     {
         my $self = shift;
 
-        return $self->{type} if $self->{type};
+        return $self->{scm_type} if $self->{scm_type};
 
         # Look for specific setting of repository and svn-server. If both is
         # set it's a bug, if one is set, that's the type (because the user says
@@ -1662,8 +1662,14 @@ EOF
         }
 
         # If it needs a repo it's git. Everything else is svn for now.
-        $self->{type} = $git_status ? 'git' : 'svn';
-        return $self->{type};
+        $self->{scm_type} = $git_status ? 'git' : 'svn';
+        return $self->{scm_type};
+    }
+
+    sub setScmType
+    {
+        my ($self, $scmType) = @_;
+        $self->{scm_type} = $scmType;
     }
 
     sub buildContext
@@ -1735,7 +1741,7 @@ EOF
         my $count;
 
         eval {
-            if ($self->type() eq 'git') {
+            if ($self->scmType() eq 'git') {
                 # Handle git module update
                 $count = main::update_module_git_checkout($self);
             }
@@ -4057,15 +4063,13 @@ EOF
     # this phase of execution.
     for my $module (@modules) {
         my $moduleName = $module;
-        my $moduleType;
 
         # Remove trailing .git for module name
         $moduleName =~ s/\.git$// unless $usingXML;
 
-        $moduleType = 'proj' if $usingXML;
-
-        my $newModule = Module->new($ctx, $moduleName, $moduleType);
+        my $newModule = Module->new($ctx, $moduleName);
         $newModule->setModuleSet($moduleSetName);
+        $newModule->setScmType($usingXML ? 'proj' : undef);
         push @moduleList, $newModule;
 
         # Dump all options into the existing Module's options.
@@ -4100,7 +4104,7 @@ sub expandXMLModules
         my $moduleSet = shift;
 
         # Only attempt to expand out XML-based modules.
-        return $moduleSet if $moduleSet->type() ne 'proj';
+        return $moduleSet if $moduleSet->scmType() ne 'proj';
 
         ensure_projects_xml_present($ctx) or
             die "kde-projects repository information could not be downloaded: $!.";
@@ -4133,7 +4137,8 @@ sub expandXMLModules
             $repo =~ s(^git://anongit\.kde\.org/)(kde:);
 
             # This alters the item we were looking at.
-            $_ = Module->new($ctx, $result->{'name'}, 'git');
+            $_ = Module->new($ctx, $result->{'name'});
+            $_->setScmType('git');
             $_->cloneOptionsFrom($moduleSet);
             $_->setOption('repository', $repo);
             $_->setOption('#xml-full-path', $result->{'fullName'});
@@ -4174,7 +4179,7 @@ sub expandModuleSets
 
         # XML module can only happen if forced by user on command line, allow
         # it.
-        return $_ if $_->type() eq 'proj';
+        return $_ if $_->scmType() eq 'proj';
 
         # Otherwise assume it's a set, replace this with all sub-modules in that
         # module set.
@@ -4541,10 +4546,10 @@ sub current_module_revision
 {
     my $module = assert_isa(shift, 'Module');
 
-    if ($module->type() eq 'svn') {
+    if ($module->scmType() eq 'svn') {
         return current_module_svn_revision($module);
     }
-    elsif ($module->type() eq 'git') {
+    elsif ($module->scmType() eq 'git') {
         return git_commit_id($module);
     }
 
@@ -5186,11 +5191,11 @@ sub check_for_ssh_agent
     return 1 if pretending;
 
     my @svnServers = grep {
-        $_->type() eq 'svn'
+        $_->scmType() eq 'svn'
     } ($ctx->modulesInPhase('update'));
 
     my @gitServers = grep {
-        $_->type() eq 'git'
+        $_->scmType() eq 'git'
     } ($ctx->modulesInPhase('update'));
 
     my @sshServers = grep {
@@ -5336,7 +5341,7 @@ sub handle_updates
         $ctx->setOption('#debug-level', ksb::Debug::WARNING);
     }
 
-    if (grep { $_->type() eq 'git' } @update_list) {
+    if (grep { $_->scmType() eq 'git' } @update_list) {
         verifyGitConfig();
     }
 
@@ -5361,7 +5366,7 @@ sub handle_updates
 
     # Make sure KDE's SSL signature is present since --non-interactive is
     # passed to svn.
-    if (grep { $_->type() eq 'svn' } @update_list) {
+    if (grep { $_->scmType() eq 'svn' } @update_list) {
         install_missing_ssl_signature();
     }
 
@@ -6290,7 +6295,7 @@ sub build_module
     };
 
     # Use log_command as the check so that an error file gets created.
-    if (($module->type() eq 'svn') &&
+    if (($module->scmType() eq 'svn') &&
         0 != log_command($module, 'conflict-check',
                          ['kdesrc-build', 'module_has_conflict', $module], $log_filter)
        )
@@ -7266,7 +7271,7 @@ eval
     foreach (@modules) {
         if (substr($_->{name}, 0, 1) eq '+') {
             debug "Forcing ", $_->name(), " to be an XML module";
-            $_->{type} = 'proj';
+            $_->setScmType('proj');
             substr($_->{name}, 0, 1) = ''; # Remove first char
         }
     }

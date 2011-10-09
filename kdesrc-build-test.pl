@@ -327,10 +327,12 @@ is($conf_modules[3]->getOption('configure-flags'), '-fast', 'read_options/parse_
 is($conf_modules[0]->getOption('repository'), 'kde:kdelibs', 'git-repository-base');
 
 my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt-copy/);
-$ConfModules[1] = Module->new($ctx, 'kdesrc-build', 'proj'); # This should be a kde_projects.xml
-$ConfModules[2] = Module->new($ctx, 'kde-runtime', 'proj');  # This should be a kde_projects.xml
+$ConfModules[1] = Module->new($ctx, 'kdesrc-build'); # This should be a kde_projects.xml
+$ConfModules[2] = Module->new($ctx, 'kde-runtime');  # This should be a kde_projects.xml
 $ConfModules[1]->setModuleSet('set1');
+$ConfModules[1]->setScmType('proj');
 $ConfModules[2]->setModuleSet('set1');
+$ConfModules[2]->setScmType('proj');
 ok(freeze(\@conf_modules) eq freeze(\@ConfModules), 'read_options module reading');
 
 # Test resume-from options
