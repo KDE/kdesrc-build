@@ -95,7 +95,7 @@ $ctx->setOption('#unused', '1');
 $ctx->setOption('branch', '4.3');
 
 # Commence testing proper
-is(get_source_dir($ctx), $ENV{HOME} . "/kdesrc-build-unused", 'Correct tilde-expansion for source-dir');
+is($ctx->getSourceDir(), $ENV{HOME} . "/kdesrc-build-unused", 'Correct tilde-expansion for source-dir');
 
 # We know tilde-expansion works for source-dir, reset to our temp dir.
 $ctx->setOption('source-dir', $testSourceDirName);
@@ -180,17 +180,16 @@ SKIP: {
 }
 
 # Test get_subdir_path
-is(get_subdir_path($kdelibsModule, 'build-dir'),
+is($kdelibsModule->getSubdirPath('build-dir'),
     "$testSourceDirName/build",
     'build-dir subdir path rel');
-is(get_subdir_path($kdelibsModule, 'log-dir'),
+is($kdelibsModule->getSubdirPath('log-dir'),
     "$testSourceDirName/log",
     'log-dir subdir path rel');
 $kdelibsModule->setOption('build-dir', '/tmp');
-is(get_subdir_path($kdelibsModule, 'build-dir'), "/tmp", 'build-dir subdir path abs');
+is($kdelibsModule->getSubdirPath('build-dir'), "/tmp", 'build-dir subdir path abs');
 $kdelibsModule->setOption('build-dir', '~/tmp/build');
-is(get_subdir_path($kdelibsModule, 'build-dir'), "$ENV{HOME}/tmp/build", 'build-dir subdir path abs');
-is(get_build_dir($kdelibsModule), "$ENV{HOME}/tmp/build", 'get_build_dir tilde-expansion');
+is($kdelibsModule->getSubdirPath('build-dir'), "$ENV{HOME}/tmp/build", 'build-dir subdir path abs and tilde expansion');
 
 # correct log dir for modules with a / in the name
 my $playLibsModule = Module->new($ctx, 'playground/libs');
@@ -203,7 +202,7 @@ ok(-e "$testSourceDirName/log/latest/playground/libs/touch.log", 'correct playgr
 #my $isoDate = strftime("%F", localtime); # ISO 8601 date per setup_logging_subsystem
 #is($kdelibsModule->getLogDir(), "$ENV{HOME}/kdesrc-build-log/$isoDate-01/kdelibs", 'getLogDir tilde expansion');
 
-is(get_source_dir($testModule), "$ENV{HOME}/testsrc", 'separate source-dir for modules');
+is($testModule->getSourceDir(), "$ENV{HOME}/testsrc", 'separate source-dir for modules');
 update_module_environment($testModule);
 is($ENV_VARS{'TESTY_MCTEST'}, 'yes', 'setting global set-env for modules');
 is($ENV_VARS{'MOIN'}, '2', 'setting module set-env for modules');

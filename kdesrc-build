@@ -1014,7 +1014,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             },
             logPaths=> {
                 # Holds a hash table of log path bases as expanded by
-                # get_subdir_path (e.g. [source-dir]/log) to the actual log dir
+                # getSubdirPath (e.g. [source-dir]/log) to the actual log dir
                 # *this run*, with the date and unique id added. You must still
                 # add the module name to use.
             },
@@ -1096,7 +1096,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     {
         my ($self, $module) = @_;
 
-        my $baseLogPath = main::get_subdir_path($module, 'log-dir');
+        my $baseLogPath = $module->getSubdirPath('log-dir');
         my $logDir;
 
         if (!exists $self->{logPaths}{$baseLogPath}) {
@@ -1585,6 +1585,42 @@ HOME
         return $ModuleSource;
     }
 
+    # Subroutine to retrieve a subdirectory path with tilde-expansion and
+    # relative path handling.
+    # The parameter is the option key (e.g. build-dir or log-dir) to read and
+    # interpret.
+    sub getSubdirPath
+    {
+        my ($self, $subdirOption) = @_;
+        my $dir = $self->getOption($subdirOption);
+
+        # If build-dir starts with a slash, it is an absolute path.
+        return $dir if $dir =~ /^\//;
+
+        # If it starts with a tilde, expand it out.
+        if ($dir =~ /^~/)
+        {
+            $dir =~ s/^~/$ENV{'HOME'}/;
+        }
+        else
+        {
+            # Relative directory, tack it on to the end of $kdesrcdir.
+            my $kdesrcdir = $self->getOption('source-dir');
+            $dir = "$kdesrcdir/$dir";
+        }
+
+        return $dir;
+    }
+
+    # Do note that this returns the *base* path to the source directory,
+    # without the module name or kde_projects stuff appended. If you want that
+    # use subroutine fullpath().
+    sub getSourceDir
+    {
+        my $self = shift;
+        return $self->getSubdirPath('source-dir');
+    }
+
     sub name
     {
         my $self = shift;
@@ -1664,8 +1700,8 @@ EOF
         my $moduleName = $self->name();
         $moduleName = 'l10n-kde4' if $moduleName eq 'l10n'; # Correct internal name.
 
-        my $module_src_dir = main::get_source_dir($self);
-        my $kdesrc = main::get_source_dir($ctx);
+        my $module_src_dir = $self->getSourceDir();
+        my $kdesrc = $ctx->getSourceDir();
 
         if ($kdesrc ne $module_src_dir)
         {
@@ -2070,33 +2106,6 @@ sub split_quoted_on_whitespace($)
     return @words;
 }
 
-# Subroutine to retrieve a subdirectory path for the given module.
-# First parameter is the name of the module, and the second
-# parameter is the option key (e.g. build-dir or log-dir).
-sub get_subdir_path
-{
-    my $module = assert_isa(shift, 'Module');
-    my $option = shift;
-    my $dir = $module->getOption($option);
-
-    # If build-dir starts with a slash, it is an absolute path.
-    return $dir if $dir =~ /^\//;
-
-    # If it starts with a tilde, expand it out.
-    if ($dir =~ /^~/)
-    {
-        $dir =~ s/^~/$ENV{'HOME'}/;
-    }
-    else
-    {
-        # Relative directory, tack it on to the end of $kdesrcdir.
-        my $kdesrcdir = $module->getOption('source-dir');
-        $dir = "$kdesrcdir/$dir";
-    }
-
-    return $dir;
-}
-
 # Subroutine to return the name of the destination directory for the checkout
 # and build routines.  Based on the dest-dir option.  The return value will be
 # relative to the src/build dir.  The user may use the '$MODULE' or '${MODULE}'
@@ -2144,13 +2153,6 @@ sub module_uses_cmake
     # otherwise assume we are using CMake for now.
 
     return not -e $srcdir;
-}
-
-# Convenience subroutine to get the source root dir.
-sub get_source_dir
-{
-    my $module = assert_isa(shift, 'Module');
-    return get_subdir_path ($module, 'source-dir');
 }
 
 # Subroutine to return the branch prefix. i.e. the part before the branch name
@@ -2293,20 +2295,6 @@ sub svn_module_url
     return "$svn_server/$modulePath";
 }
 
-# Convenience subroutine to return the build directory for a module. Use
-# this instead of get_subdir_path because this special-cases modules for you,
-# (if necessary).
-#
-# The returned value does not include the module name at the end (as the build
-# path on disk doesn't always use the module name given in the .kdesrc-buildrc),
-# so be sure to add on the module name if needed.
-sub get_build_dir
-{
-    my $module = assert_isa(shift, 'Module');
-
-    return get_subdir_path($module, 'build-dir');
-}
-
 # Subroutine used to handle the checkout-only option.  It handles
 # updating subdirectories of an already-checked-out module.
 #
@@ -2395,8 +2383,8 @@ sub get_module_path_dir
     my $module = assert_isa(shift, 'Module');
     my $type = shift;
     my $destdir = get_dest_dir($module);
-    my $srcbase = get_source_dir($module);
-    $srcbase = get_build_dir($module) if $type eq 'build';
+    my $srcbase = $module->getSourceDir();
+    $srcbase = $module->getSubdirPath('build-dir') if $type eq 'build';
 
     my $combined = "$srcbase/$destdir";
 
@@ -3943,7 +3931,7 @@ EOF
 sub ensure_projects_xml_present
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $srcdir = get_source_dir($ctx);
+    my $srcdir = $ctx->getSourceDir();
     my $file = "$srcdir/kde_projects.xml";
     state $cachedSuccess;
 
@@ -4113,7 +4101,7 @@ sub expandXMLModules
             die "kde-projects repository information could not be downloaded: $!.";
 
         my $name = $moduleSet->name();
-        my $srcdir = get_source_dir($ctx);
+        my $srcdir = $ctx->getSourceDir();
 
         # It's possible to match modules which are marked as inactive on
         # projects.kde.org, elide those.
@@ -5320,7 +5308,7 @@ sub verifyGitConfig
 sub handle_updates
 {
     my ($ipc, $ctx) = @_;
-    my $kdesrc = get_source_dir($ctx);
+    my $kdesrc = $ctx->getSourceDir();
     my @update_list = $ctx->modulesInPhase('update');
 
     # No reason to print out the text if we're not doing anything.
@@ -6619,7 +6607,7 @@ EOF
         close STATUS_FILE;
 
         # Update the symlink in latest to point to this file.
-        my $logdir = get_subdir_path($ctx, 'log-dir');
+        my $logdir = $ctx->getSubdirPath('log-dir');
         if (-l "$logdir/latest/build-status") {
             safe_unlink("$logdir/latest/build-status");
         }
@@ -6632,7 +6620,7 @@ EOF
     if (not pretending)
     {
         # Print out results, and output to a file
-        my $kdesrc = get_source_dir($ctx);
+        my $kdesrc = $ctx->getSourceDir();
         open BUILT_LIST, ">$kdesrc/successfully-built";
         foreach my $module (@build_done)
         {
@@ -7205,7 +7193,7 @@ sub needed_module_logs
 sub cleanup_log_directory
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $logdir = get_subdir_path($ctx, 'log-dir');
+    my $logdir = $ctx->getSubdirPath('log-dir');
 
     return 0 if ! -e "$logdir/latest"; # Could happen for error on first run...
 
