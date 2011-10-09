@@ -1654,6 +1654,113 @@ EOF
         return $self->name() cmp $other->name();
     }
 
+    sub update
+    {
+        my ($self, $ipc, $ctx) = @_;
+
+        # Calculate l10n module name. The logic is duplicated on purpose with
+        # filter_l10n_module_list because we have to handle the $l10n/scripts
+        # directory specially (just on update).
+        my $moduleName = $self->name();
+        $moduleName = 'l10n-kde4' if $moduleName eq 'l10n'; # Correct internal name.
+
+        my $module_src_dir = main::get_source_dir($self);
+        my $kdesrc = main::get_source_dir($ctx);
+
+        if ($kdesrc ne $module_src_dir)
+        {
+            # This module has a different source directory, ensure it exists.
+            if (!main::super_mkdir($module_src_dir))
+            {
+                error ("Unable to create separate source directory for r[$self]: $module_src_dir");
+                $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $moduleName);
+                next;
+            }
+        }
+
+        my @options = split(' ', $self->getOption('checkout-only'));
+
+        # Use kde-languages option if this isn't set on command line.
+        if ($moduleName eq 'l10n-kde4' && !@options)
+        {
+            push @options, split(' ', $ctx->getOption('kde-languages'));
+        }
+
+        # Ensure that scripts is pulled in for the update process (not req'd
+        # for build or install) for l10n module.
+        push @options, 'scripts' if ($moduleName eq 'l10n-kde4');
+
+        my $fullpath = $self->fullpath('source');
+        my $count;
+
+        eval {
+            if ($self->type() eq 'git') {
+                # Handle git module update
+                $count = main::update_module_git_checkout($self);
+            }
+            elsif (-e "$fullpath/.svn")
+            {
+                # Warn user if the current repo URL is different than expected.
+                main::check_module_validity($self);
+                $count = main::update_module_path($self, @options);
+            }
+            else
+            {
+                $count = main::checkout_module_path($self, @options);
+            }
+        };
+
+        my $returnValue;
+
+        if ($@)
+        {
+            if (ref $@ && $@->isa('BuildException')) {
+                $@ = $@->{'message'};
+            }
+
+            error ("Error updating r[$self], removing from list of packages to build.");
+            error (" > y[$@]");
+
+            my $reason = $self->getOption('#update-error');
+            $reason = IPC::MODULE_FAILURE unless $reason; # Default error code
+            main::dont_build ($self, $ipc, $reason); # Sends IPC message.
+            $returnValue = 0;
+        }
+        else
+        {
+            my $message;
+            if (not defined $count)
+            {
+                $message = clr ("b[y[Unknown changes].");
+                $ipc->notifyUpdateSuccess($moduleName, $message);
+            }
+            elsif ($count)
+            {
+                $message = "1 file affected." if $count == 1;
+                $message = "$count files affected." if $count != 1;
+                $ipc->notifyUpdateSuccess($moduleName, $message);
+            }
+            else
+            {
+                whisper ("This module will not be built. Nothing updated.");
+                $message = "0 files affected.";
+                main::dont_build($self, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
+            }
+
+            # We doing e.g. --src-only, the build phase that normally outputs
+            # number of files updated doesn't get run, so manually mention it
+            # here.
+            if (!$ipc->supportsConcurrency()) {
+                info ("\t$self update complete, $message");
+            }
+
+            $returnValue = 1;
+        }
+
+        info (""); # Print empty line.
+        return $returnValue;
+    }
+
     # This subroutine returns an option value for a given module.  Some globals
     # can't be overridden by a module's choice (but see 2nd parameter below).
     # If so, the module's choice will be ignored, and a warning will be issued.
@@ -5214,7 +5321,6 @@ sub handle_updates
 {
     my ($ipc, $ctx) = @_;
     my $kdesrc = get_source_dir($ctx);
-    my $hadError = 0;
     my @update_list = $ctx->modulesInPhase('update');
 
     # No reason to print out the text if we're not doing anything.
@@ -5266,104 +5372,12 @@ sub handle_updates
         install_missing_ssl_signature();
     }
 
-    # Calculate l10n module name. The logic is duplicated on purpose with
-    # filter_l10n_module_list because we have to handle the $l10n/scripts
-    # directory specially (just on update).
-    my $l10n = 'l10n-kde4';
-
+    my $hadError = 0;
     foreach my $module (@update_list)
     {
-        my $moduleName = $module->name();
-        $moduleName = $l10n if $moduleName eq 'l10n'; # Correct internal name.
-
-        my $module_src_dir = get_source_dir($module);
-        if ($kdesrc ne $module_src_dir)
-        {
-            # This module has a different source directory, ensure it exists.
-            if (not super_mkdir($module_src_dir))
-            {
-                error "Unable to create separate source directory for r[$module]: $module_src_dir";
-                $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $moduleName);
-                next;
-            }
-        }
-
-        my @options = split(' ', $module->getOption('checkout-only'));
-
-        # Use kde-languages option if this isn't set on command line.
-        if ($moduleName eq $l10n and not scalar @options)
-        {
-            push @options, split(' ', $ctx->getOption('kde-languages'));
-        }
-
-        # Ensure that scripts is pulled in for the update process (not req'd
-        # for build or install) for l10n module.
-        push @options, 'scripts' if ($moduleName eq $l10n);
-
-        my $fullpath = $module->fullpath('source');
-        my $count;
-
-        eval {
-            if ($module->type() eq 'git') {
-                # Handle git module update
-                $count = update_module_git_checkout($module);
-            }
-            elsif (-e "$fullpath/.svn")
-            {
-                # Warn user if the current repo URL is different than expected.
-                check_module_validity($module);
-                $count = update_module_path($module, @options);
-            }
-            else
-            {
-                $count = checkout_module_path($module, @options);
-            }
-        };
-
-        if ($@)
-        {
-            if (ref $@ && $@->isa('BuildException')) {
-                $@ = $@->{'message'};
-            }
-
-            error "Error updating r[$module], removing from list of packages to build.";
-            error " > y[$@]";
-
-            my $reason = $module->getOption('#update-error');
-            $reason = IPC::MODULE_FAILURE unless $reason; # Default error code
-            dont_build ($module, $ipc, $reason); # Sends IPC message.
-            $hadError = 1;
-        }
-        else
-        {
-            my $message;
-            if (not defined $count)
-            {
-                $message = clr "b[y[Unknown changes].";
-                $ipc->notifyUpdateSuccess($moduleName, $message);
-            }
-            elsif ($count)
-            {
-                $message = "1 file affected." if $count == 1;
-                $message = "$count files affected." if $count != 1;
-                $ipc->notifyUpdateSuccess($moduleName, $message);
-            }
-            else
-            {
-                whisper "This module will not be built. Nothing updated.";
-                $message = "0 files affected.";
-                dont_build($module, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
-            }
-
-            # We doing e.g. --src-only, the build phase that normally outputs
-            # number of files updated doesn't get run, so manually mention it
-            # here.
-            if (!$ipc->supportsConcurrency()) {
-                info "\t$module update complete, $message";
-            }
-        }
-
-        info ""; # Print empty line.
+        # Note that this must be in this order to avoid accidentally not
+        # running ->update() from short-circuiting if an error is noted.
+        $hadError = !$module->update($ipc, $ctx) || $hadError;
     }
 
     info "<<<  Update Complete  >>>\n";
