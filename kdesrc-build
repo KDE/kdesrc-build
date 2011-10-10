@@ -1544,6 +1544,7 @@ HOME
         my $module = {
             name         => $name,
             scm_type     => undef,
+            build_type   => undef,
             phases       => $phases,
             context      => $ctx,
             options      => $ctx->{build_options}{$name},
@@ -1670,6 +1671,31 @@ EOF
     {
         my ($self, $scmType) = @_;
         $self->{scm_type} = $scmType;
+    }
+
+    # Current possible build system types:
+    # KDE (i.e. cmake), Qt, l10n (KDE language buildsystem), autotools (either
+    # configure or autogen.sh). A final possibility is 'pendingSource' which
+    # simply means that we don't know yet.
+    #
+    # If the build system type is not set ('pendingSource' counts as being
+    # set!) when this function is called then it will be autodetected if
+    # possible, but note that not all possible types will be detected this way.
+    # If in doubt use setBuildSystemType
+    sub buildSystemType
+    {
+        my $self = shift;
+
+        return $self->{build_type} if $self->{build_type};
+
+        # If it needs a repo it's git. Everything else is svn for now.
+        return $self->{build_type};
+    }
+
+    sub setBuildSystemType
+    {
+        my ($self, $buildType) = @_;
+        $self->{build_type} = $buildType;
     }
 
     sub buildContext
