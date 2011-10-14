@@ -406,6 +406,9 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 {
     package BaseIPC;
 
+    ksb::Util->import(); # make_exception, list_has
+    ksb::Debug->import();
+
     sub new
     {
         my $class = shift;
@@ -413,6 +416,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         # Must bless a hash ref since subclasses expect it.
         my $ref = {};
         $ref->{'residue'} = ''; # Define this for later.
+        $ref->{'updated'} = {}; # Tracks modules we've received status for.
 
         return bless $ref, $class;
     }
@@ -423,6 +427,123 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my ($module, $msg) = @_;
 
         $self->sendIPCMessage(main::IPC::MODULE_SUCCESS, "$module,$msg");
+    }
+
+    # Waits for an update for a module with the given name.
+    # Returns a list containing whether the module was successfully updated,
+    # and any specific string message (e.g. for module update success you get
+    # number of files affected)
+    # Will throw an exception for an IPC failure or if the module should not be
+    # built.
+    sub waitForModule
+    {
+        my ($self, $module) = @_;
+        assert_isa($module, 'Module');
+
+        my $moduleName = $module->name();
+        my $updated = $self->{'updated'};
+        my $message;
+
+        # Wait for for the initial phase to complete, if it hasn't.
+        $self->waitForStreamStart();
+
+        # No update? Just mark as successful
+        if ($self->{'no_update'} || !$module->phases()->has('update')) {
+            $updated->{$moduleName} = 'success';
+            return ('success', 'Skipped');
+        }
+
+        while(! defined $updated->{$moduleName}) {
+            my $buffer;
+            info ("\tWaiting for source code update.");
+
+            my $ipcType = $self->receiveIPCMessage(\$buffer);
+            if (!$ipcType)
+            {
+                die make_exception('Runtime', "IPC failure updating $moduleName: $!");
+            }
+
+            whisper ("\tReceived IPC status message for $buffer: $ipcType");
+
+            given ($ipcType) {
+                when (IPC::MODULE_SUCCESS) {
+                    my ($ipcModuleName, $msg) = split(/,/, $buffer);
+                    $message = $msg;
+                    $updated->{$ipcModuleName} = 'success';
+
+                }
+                when (IPC::MODULE_SKIPPED) {
+                    # The difference between success here and 'skipped' below
+                    # is that success means we should build even though we
+                    # didn't perform an update, while 'skipped' means the
+                    # *build* should be skipped even though there was no
+                    # failure.
+                    $message = 'skipped';
+                    $updated->{$buffer} = 'success';
+                }
+                when (IPC::MODULE_CONFLICT) {
+                    $module->setPersistentOption('conflicts-present', 1);
+                    $message = 'conflicts present';
+                    $updated->{$buffer} = 'failed';
+                }
+                when (IPC::MODULE_FAILURE) {
+                    $message = 'update failed';
+                    $updated->{$buffer} = 'failed';
+                }
+                when (IPC::MODULE_UPTODATE) {
+                    # Properly account for users manually doing --refresh-build or
+                    # using .refresh-me.
+                    $message = 'no files affected';
+                    if (main::needs_refreshed($module))
+                    {
+                        $updated->{$buffer} = 'success';
+                        note ("\tNo source update, but g[$module] meets other building criteria.");
+                    }
+                    else
+                    {
+                        $updated->{$buffer} = 'skipped';
+                    }
+                }
+                default {
+                    die make_exception('Internal', "Unhandled IPC type: $ipcType");
+                }
+            }
+        }
+
+        # Out of while loop, should have a status now.
+        return ($updated->{$moduleName}, $message);
+    }
+
+    # Waits on the IPC connection until one of the ALL_* IPC codes is returned.
+    # If IPC::ALL_SKIPPED is returned then the 'no_update' entry will be set in
+    # $self to flag that you shouldn't wait.
+    # If IPC::ALL_FAILURE is returned then an exception will be thrown due to the
+    # fatal error.
+    # This method can be called multiple times, but only the first time will
+    # result in a wait.
+    sub waitForStreamStart
+    {
+        my $self = shift;
+        state $waited = 0;
+
+        return if $waited;
+
+        my $buffer = '';
+        my $ipcType = $self->receiveIPCMessage(\$buffer);
+        $waited = 1;
+
+        if ($ipcType == IPC::ALL_FAILURE)
+        {
+            die make_exception('Runtime', "Unable to perform source update for any module:\n\t$buffer");
+        }
+        elsif ($ipcType == IPC::ALL_SKIPPED)
+        {
+            $self->{'no_update'} = 1;
+        }
+        elsif ($ipcType != IPC::ALL_UPDATING)
+        {
+            die make_exception('Runtime', "IPC failure while expecting an update status: Incorrect type: $ipcType");
+        }
     }
 
     # Sends an IPC message along with some IPC type information.
@@ -6451,31 +6572,9 @@ sub handle_build
 
     note "<<<  Build Process  >>>";
 
-    # Keeps track of svn status of the modules.
-    my %svn_status = ();
-
     # IPC queue should have a message saying whether or not to bother with the
     # build.
-    {
-        my $buffer = "";
-        my $ipcType = $ipc->receiveIPCMessage(\$buffer);
-
-        if ($ipcType == IPC::ALL_FAILURE)
-        {
-            error " b[r[*] Unable to perform the source update (y[$buffer]), therefore";
-            error " b[r[*] unable to build.";
-            return 1;
-        }
-        elsif ($ipcType == IPC::ALL_SKIPPED)
-        {
-            $svn_status{$_} = 'all-skipped' foreach @update_list;
-        }
-        elsif ($ipcType != IPC::ALL_UPDATING)
-        {
-            error " b[r[***] IPC failure while expecting svn update status, wrong type: r[$ipcType]";
-            return 1;
-        }
-    }
+    $ipc->waitForStreamStart();
 
     my $outfile = undef;
 
@@ -6512,71 +6611,31 @@ EOF
         # If using IPC, read in the contents of the message buffer, and wait
         # for completion of the svn update if necessary.
 
-        $svn_status{$moduleName} //= 0; # Default svn status if not defined.
+        my ($resultStatus, $message) = $ipc->waitForModule($module);
 
-        while(list_has(@update_list, $moduleName) and not $svn_status{$moduleName})
-        {
-            my $buffer;
-            info "\tWaiting for source code update.";
-
-            my $ipcType = $ipc->receiveIPCMessage(\$buffer);
-            if (!$ipcType)
-            {
-                error " b[r[***] $module: IPC failure during source update: r[b[$!]";
-                return 1;
-            }
-
-            whisper "\tReceived IPC status message for $buffer: $ipcType";
-
-            if($ipcType == IPC::MODULE_SUCCESS)
-            {
-                my ($moduleName, $msg) = split(/,/, $buffer);
-                $svn_status{$moduleName} = 'success';
-
-                note "\tSource update complete for g[$moduleName]: $msg";
-            }
-            elsif($ipcType == IPC::MODULE_SKIPPED)
-            {
-                $svn_status{$buffer} = 'success';
-                info "\tNo source update needed for g[$buffer]";
-            }
-            elsif($ipcType == IPC::MODULE_FAILURE or $ipcType == IPC::MODULE_CONFLICT)
-            {
-                $svn_status{$buffer} = 'failed';
+        given ($resultStatus) {
+            when ('failed') {
+                $result = 1;
                 $ctx->markModulePhaseFailed('update', $module);
                 print STATUS_FILE "$module: Failed on update.\n";
-                $result = 1;
-                error "\tUnable to update r[$buffer], build canceled.";
 
                 # Increment failed count to track when to start bugging the
                 # user to fix stuff.
-
                 my $fail_count = $module->getPersistentOption('failure-count') // 0;
                 ++$fail_count;
                 $module->setPersistentOption('failure-count', $fail_count);
 
-                if ($ipcType == IPC::MODULE_CONFLICT)
-                {
-                    $module->setPersistentOption('conflicts-present', 1);
-                }
+                error "\tUnable to update r[$module], build canceled.";
+                next;
             }
-            elsif ($ipcType == IPC::MODULE_UPTODATE)
-            {
-                # Properly account for users manually doing --refresh-build or
-                # using .refresh-me.
-                if (needs_refreshed($module))
-                {
-                    $svn_status{$buffer} = 'success';
-                    note "\tNo source update, but g[$module] meets other building criteria.";
-                }
-                else
-                {
-                    $svn_status{$buffer} = 'skipped';
-                }
+            when ('skipped') {
+                # i.e. build should be skipped.
+                info "\tNo changes to source code.";
+            }
+            when ('success') {
+                note "\tSource update complete for g[$module]: $message";
             }
         }
-
-        next if $svn_status{$moduleName} eq 'failed';
 
         # The update process will send an IPC response for 'l10n-kde4', so we
         # must wait until after that response is received before filtering our
@@ -6597,7 +6656,7 @@ EOF
         # builds when the source code was not actually updated. But, don't skip
         # if we didn't successfully build last time.
         if (!$module->getOption('build-when-unchanged') &&
-            $svn_status{$moduleName} eq 'skipped' &&
+            $resultStatus eq 'skipped' &&
             ($module->getPersistentOption('failure-count') // 0) == 0)
         {
             note "\tSkipping g[$module], its source code has not changed.";
