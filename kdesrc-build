@@ -5387,7 +5387,13 @@ sub check_for_ssh_agent
 
     # The agent is running, but does it have any keys?  We can't be more specific
     # with this check because we don't know what key is required.
-    my $keys = `ssh-add -l 2>/dev/null`;
+    my $keys;
+
+    {
+        local $ENV{'LC_ALL'} = 'C'; # Untranslated output
+        $keys = `ssh-add -l 2>/dev/null`;
+    }
+
     if ($keys =~ /no identities/)
     {
         # Use print so user can't inadvertently keep us quiet about this.
