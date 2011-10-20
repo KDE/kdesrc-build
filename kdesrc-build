@@ -29,6 +29,8 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+# Adding an option? Grep for 'defaultGlobalOptions' --mpyne
+
 # Force all symbols to be in this package. We can tell if we're being called
 # through require/eval/etc. by using the "caller" function.
 package main;
@@ -1112,6 +1114,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         "run-tests"            => 0,  # 1 = make test, upload = make Experimental
         "set-env"              => { }, # Hash of environment vars to set
         "source-dir"           => "$ENV{HOME}/kdesrc",
+        "ssh-identity-file"    => '', # If set, is passed to ssh-add.
         "stop-on-failure"      => "",
         "svn-server"           => "svn://anonsvn.kde.org/home/kde",
         "tag"                  => "",
@@ -5403,7 +5406,11 @@ b[y[*] SSH Agent does not appear to be managing any keys.  This will lead to you
   running g[ssh-add] for you.  Please type your passphrase at the prompt when
   requested, (or simply Ctrl-C to abort the script).
 EOF
-        my $result = system('ssh-add');
+        my @commandLine = ('ssh-add');
+        my $identFile = $ctx->getOption('ssh-identity-file');
+        push (@commandLine, $identFile) if $identFile;
+
+        my $result = system (@commandLine);
         if ($result) # Run this code for both death-by-signal and nonzero return
         {
             my $rcfile = $ctx->rcFile();
