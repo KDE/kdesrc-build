@@ -6670,7 +6670,6 @@ sub handle_build
     my ($ipc, $ctx) = @_;
     my @build_done;
     my @modules = grep ($_->name() !~ /^(KDE\/)?kde-common$/, $ctx->modulesInPhase('build'));
-    my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
     my $result = 0;
 
     # No reason to print building messages if we're not building.
@@ -6741,21 +6740,6 @@ EOF
             when ('success') {
                 note "\tSource update complete for g[$module]: $message";
             }
-        }
-
-        # The update process will send an IPC response for 'l10n-kde4', so we
-        # must wait until after that response is received before filtering our
-        # l10n module into the list of l10n-kde4/{$kde-languages}.
-        # There will be no IPC updates for any l10n modules added from
-        # filter_l10n_module_list, but that is OK, as the reading code above
-        # only checks for modules that were in @update_list. The extra modules
-        # added are *not* in @update_list, and so we don't expect IPC output
-        # for them.
-        if ($moduleName eq 'l10n-kde4') {
-            # We've already pulled the module from @modules, make sure to pass
-            # it back in to be filtered properly.
-            @modules = filter_l10n_module_list($ctx, $module, @modules);
-            next;
         }
 
         # Skip actually building a module if the user has selected to skip
