@@ -7119,10 +7119,11 @@ sub handle_monitoring
     for(;;)
     {
         my $numFound = select($rout = $rin, $wout = $win, undef, undef);
+        my $selectErr = $!;
 
         if ($numFound == -1)
         {
-            error "r[mon]: Monitor IPC error: r[$!]";
+            error "r[mon]: Monitor IPC error: r[$selectErr]";
             return 1;
         }
 
@@ -7147,7 +7148,7 @@ sub handle_monitoring
             }
             else
             {
-                error "r[mon]: Error reading update: r[b[$!]";
+                error "r[mon]: Error reading update: r[b[$selectErr]";
                 return 1;
             }
         }
@@ -7161,19 +7162,21 @@ sub handle_monitoring
             {
                 my ($rout2, $numFound2);
                 $numFound2 = select($rout2 = $rin, undef, undef, undef);
+                $selectErr = $!;
 
-                if ($numFound2 == -1 and $!)
+                if ($numFound2 == -1 and $selectErr)
                 {
-                    error "r[mon]: Monitor IPC error: r[$!]";
+                    error "r[mon]: Monitor IPC error: r[$selectErr]";
                     return 1;
                 }
 
                 # Assume EOF can happen here.
                 my $msg = $ipc->receiveFromUpdater();
-                if (not defined $msg and $!)
+                $selectErr = $!;
+                if (not defined $msg and $selectErr)
                 {
                     error "r[mon]: Monitor IPC error, unexpected disappearance of updater.";
-                    error "r[mon]: Mysterious circumstances: r[b[$!]";
+                    error "r[mon]: Mysterious circumstances: r[b[$selectErr]";
                     return 1;
                 }
 
