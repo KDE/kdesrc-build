@@ -41,7 +41,7 @@ use Fcntl;    # For sysopen constants
 use Carp;
 use POSIX qw(strftime :sys_wait_h _exit);
 use File::Find; # For our lndir reimplementation.
-use File::Path qw(make_path remove_tree);
+use File::Path qw(remove_tree);
 use File::Glob ':glob';
 use File::Basename; # fileparse
 use File::Spec;     # tmpdir, rel2abs
@@ -50,7 +50,6 @@ use URI; # For git-clone snapshot support
 use Sys::Hostname;
 use Storable 'dclone';
 use IO::Handle;
-use IPC::Open3;
 use Errno qw(:POSIX);
 use Data::Dumper;
 use 5.010_000; # Require Perl 5.10.0
@@ -299,12 +298,19 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
     use Carp qw(cluck);
     use Scalar::Util qw(blessed);
+    use File::Path qw(make_path);
+    use IPC::Open3;
+
+    ksb::Debug->import();
 
     sub import
     {
         my $pkg = shift;
         my $caller = caller;
-        my @exports = qw(list_has make_exception assert_isa assert_in);
+        my @exports = qw(list_has make_exception assert_isa assert_in
+                         safe_unlink safe_system p_chdir super_mkdir
+                         slurp_program_output prettify_seconds
+        );
 
         # This loop is only slightly "magical". Basically to import functions
         # into a different package in Perl, we can use something like:
@@ -399,8 +405,140 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         return $val;
     }
 
+    # Subroutine to unlink the given symlink if global-pretend isn't set.
+    sub safe_unlink
+    {
+        if (pretending())
+        {
+            pretend ("\tWould have unlinked ", shift, ".");
+            return 1; # Return true
+        }
+
+        return unlink (shift);
+    }
+
+    # Subroutine to execute the system call on the given list if the pretend
+    # global option is not set.
+    #
+    # Returns the shell error code, so 0 means success, non-zero means failure.
+    sub safe_system(@)
+    {
+        if (!pretending())
+        {
+            whisper ("\tExecuting g['", join("' '", @_), "'");
+            return system (@_) >> 8;
+        }
+
+        pretend ("\tWould have run g['", join("' '", @_), "'");
+        return 0; # Return true
+    }
+
+    # Is exactly like "chdir", but it will also print out a message saying that
+    # we're switching to the directory when debugging.
+    sub p_chdir($)
+    {
+        my $dir = shift;
+        debug ("\tcd g[$dir]\n");
+        chdir $dir;
+    }
+
+    # Helper subroutine to create a directory, including any parent
+    # directories that may also need created.
+    # Throws an exception on failure. See File::Path.
+    sub super_mkdir
+    {
+        my $pathname = shift;
+        state %createdPaths;
+
+        if (pretending()) {
+            if (!exists $createdPaths{$pathname} && ! -e $pathname) {
+                pretend ("\tWould have created g[$pathname]");
+            }
+
+            $createdPaths{$pathname} = 1;
+            return 1;
+        }
+        else {
+            make_path($pathname);
+            return (-e $pathname) ? 1 : 0;
+        }
+    }
+
+    # Returns an array of lines output from a program.  Use this only if you
+    # expect that the output will be short.
+    #
+    # Since there is no way to disambiguate no output from an error, this
+    # function will call die on error, wrap in eval if this bugs you.
+    #
+    # First parameter is the program to run, all remaining arguments are
+    # passed to the program.
+    sub slurp_program_output
+    {
+        my ($program, @args) = @_;
+        my $output;
+
+        debug ("Slurping '$program' '", join("' '", @args), "'");
+        my $pid = open3(0, $output, undef, $program, @args);
+
+        # Just read all the input in so we can safely waitpid the process
+        my @lines = <$output>;
+
+        close $output;
+        waitpid $pid, 0;
+
+        return @lines;
+    }
+
+    # Subroutine to return a string suitable for displaying an elapsed time,
+    # (like a stopwatch) would.  The first parameter is the number of seconds
+    # elapsed.
+    sub prettify_seconds
+    {
+        my $elapsed = $_[0];
+        my $str = "";
+        my ($days,$hours,$minutes,$seconds,$fraction);
+
+        $fraction = int (100 * ($elapsed - int $elapsed));
+        $elapsed = int $elapsed;
+
+        $seconds = $elapsed % 60;
+        $elapsed = int $elapsed / 60;
+
+        $minutes = $elapsed % 60;
+        $elapsed = int $elapsed / 60;
+
+        $hours = $elapsed % 24;
+        $elapsed = int $elapsed / 24;
+
+        $days = $elapsed;
+
+        $seconds = "$seconds.$fraction" if $fraction;
+
+        my @str_list;
+
+        for (qw(days hours minutes seconds))
+        {
+            # Use a symbolic reference without needing to disable strict refs.
+            # I couldn't disable it even if I wanted to because these variables
+            # aren't global or localized global variables.
+            my $value = eval "return \$$_;";
+            my $text = $_;
+            $text =~ s/s$// if $value == 1; # Make singular
+
+            push @str_list, "$value $text" if $value or $_ eq 'seconds';
+        }
+
+        # Add 'and ' in front of last element if there was more than one.
+        push @str_list, ("and " . pop @str_list) if (scalar @str_list > 1);
+
+        $str = join (", ", @str_list);
+
+        return $str;
+    }
+
     1;
 }
+
 # }}}
 
 # package BaseIPC {{{
@@ -4712,31 +4850,6 @@ sub handle_set_env
     return 1;
 }
 
-# Returns an array of lines output from a program.  Use this only if you
-# expect that the output will be short.
-#
-# Since there is no way to disambiguate no output from an error, this
-# function will call die on error, wrap in eval if this bugs you.
-#
-# First parameter is the program to run, all remaining arguments are
-# passed to the program.
-sub slurp_program_output
-{
-    my ($program, @args) = @_;
-    my $output;
-
-    debug "Slurping '$program' '", join("' '", @args), "'";
-    my $pid = open3(0, $output, undef, $program, @args);
-
-    # Just read all the input in so we can safely waitpid the process
-    my @lines = <$output>;
-
-    close $output;
-    waitpid $pid, 0;
-
-    return @lines;
-}
-
 # A simple wrapper that is used to split the output of 'git config --null'
 # correctly. All parameters are then passed to slurp_program_output (so look
 # there for help on usage).
@@ -5322,65 +5435,6 @@ sub updateModulePhases
     return @_;
 }
 
-# Subroutine to unlink the given symlink if global-pretend isn't set.
-sub safe_unlink
-{
-    if (pretending)
-    {
-        pretend "\tWould have unlinked ", shift, ".";
-        return 1; # Return true
-    }
-
-    return unlink (shift);
-}
-
-# Subroutine to execute the system call on the given list if the pretend
-# global option is not set.
-#
-# Returns the shell error code, so 0 means success, non-zero means failure.
-sub safe_system(@)
-{
-    if (not pretending)
-    {
-        whisper "\tExecuting g['", join("' '", @_), "'";
-        return system (@_) >> 8;
-    }
-
-    pretend "\tWould have run g['", join("' '", @_), "'";
-    return 0; # Return true
-}
-
-# Is exactly like "chdir", but it will also print out a message saying that
-# we're switching to the directory when debugging.
-sub p_chdir($)
-{
-    my $dir = shift;
-    debug "\tcd g[$dir]\n";
-    chdir $dir;
-}
-
-# Helper subroutine to create a directory, including any parent
-# directories that may also need created.
-# Throws an exception on failure. See File::Path.
-sub super_mkdir
-{
-    my $pathname = shift;
-    state %createdPaths;
-
-    if (pretending) {
-        if (!exists $createdPaths{$pathname} && ! -e $pathname) {
-            pretend "\tWould have created g[$pathname]";
-        }
-
-        $createdPaths{$pathname} = 1;
-        return 1;
-    }
-    else {
-        make_path($pathname);
-        return (-e $pathname) ? 1 : 0;
-    }
-}
-
 # Subroutine to remove a package from the package build list.  This
 # is for use when you've detected an error that should keep the
 # package from building, but you don't want to abort completely.
@@ -5801,8 +5855,8 @@ sub safe_run_cmake
         info "\tRunning g[cmake]...";
 
         # Remove any stray CMakeCache.txt
-        safe_unlink "$srcdir/CMakeCache.txt"   if -e "$srcdir/CMakeCache.txt";
-        safe_unlink "$builddir/CMakeCache.txt" if -e "$builddir/CMakeCache.txt";
+        safe_unlink ("$srcdir/CMakeCache.txt")   if -e "$srcdir/CMakeCache.txt";
+        safe_unlink ("$builddir/CMakeCache.txt") if -e "$builddir/CMakeCache.txt";
 
         $module->setPersistentOption('last-cmake-options', get_list_digest(@commands));
         return log_command($module, "cmake", \@commands);
@@ -6350,52 +6404,6 @@ sub update_module_environment
 
     # Read in user environment defines
     setup_module_environment ($module) unless $module->name() eq 'global';
-}
-
-# Subroutine to return a string suitable for displaying an elapsed time, (like
-# a stopwatch) would.  The first parameter is the number of seconds elapsed.
-sub prettify_seconds
-{
-    my $elapsed = $_[0];
-    my $str = "";
-    my ($days,$hours,$minutes,$seconds,$fraction);
-
-    $fraction = int (100 * ($elapsed - int $elapsed));
-    $elapsed = int $elapsed;
-
-    $seconds = $elapsed % 60;
-    $elapsed = int $elapsed / 60;
-
-    $minutes = $elapsed % 60;
-    $elapsed = int $elapsed / 60;
-
-    $hours = $elapsed % 24;
-    $elapsed = int $elapsed / 24;
-
-    $days = $elapsed;
-
-    $seconds = "$seconds.$fraction" if $fraction;
-
-    my @str_list;
-
-    for (qw(days hours minutes seconds))
-    {
-        # Use a symbolic reference without needing to disable strict refs.
-        # I couldn't disable it even if I wanted to because these variables
-        # aren't global or localized global variables.
-        my $value = eval "return \$$_;";
-        my $text = $_;
-        $text =~ s/s$// if $value == 1; # Make singular
-
-        push @str_list, "$value $text" if $value or $_ eq 'seconds';
-    }
-
-    # Add 'and ' in front of last element if there was more than one.
-    push @str_list, ("and " . pop @str_list) if (scalar @str_list > 1);
-
-    $str = join (", ", @str_list);
-
-    return $str;
 }
 
 # Subroutine to check for subversion conflicts in a module.  Basically just
