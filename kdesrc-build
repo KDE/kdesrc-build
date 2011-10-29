@@ -1632,6 +1632,108 @@ HOME
 }
 # }}}
 
+# package GitUpdate {{{
+{
+    package GitUpdate;
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    # scm-specific update procedure.
+    # May change the current directory as necessary.
+    # Assumes called as part of a Module (i.e. $self->isa('Module') should be true.
+    sub updateInternal
+    {
+        my $self = assert_isa(shift, 'Module');
+        return main::update_module_git_checkout($self);
+    }
+
+    sub currentRevisionInternal
+    {
+        my $self = assert_isa(shift, 'Module');
+        return main::git_commit_id($self);
+    }
+}
+# }}}
+
+# package SvnUpdate {{{
+{
+    package SvnUpdate;
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    # scm-specific update procedure.
+    # May change the current directory as necessary.
+    # Assumes called as part of a Module (i.e. $self->isa('Module') should be true.
+    sub updateInternal
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $fullpath = $self->fullpath('source');
+        my @options = split(' ', $self->getOption('checkout-only'));
+
+        if (-e "$fullpath/.svn") {
+            main::check_module_validity($self);
+            return main::update_module_path($self, @options);
+        }
+        else {
+            return main::checkout_module_path($self, @options);
+        }
+    }
+
+    sub currentRevisionInternal
+    {
+        my $self = assert_isa(shift, 'Module');
+        return main::current_module_svn_revision($self);
+    }
+}
+# }}}
+
+# package l10nUpdate {{{
+{
+    package l10nUpdate;
+
+    our @ISA = ('SvnUpdate');
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    # scm-specific update procedure.
+    # May change the current directory as necessary.
+    # Assumes called as part of a Module (i.e. $self->isa('Module') should be true.
+    sub updateInternal
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $fullpath = $self->fullpath('source');
+        my @options = split(' ', $self->getOption('checkout-only'));
+
+        # Calculate l10n module name. The logic is duplicated on purpose with
+        # filter_l10n_module_list because we have to handle the $l10n/scripts
+        # directory specially (just on update).
+        my $moduleName = $self->name();
+        $moduleName = 'l10n-kde4' if $moduleName eq 'l10n'; # Correct internal name.
+
+        # Use kde-languages option if this isn't set on command line.
+        if (!@options)
+        {
+            push @options, split(' ', $self->getOption('kde-languages'));
+        }
+
+        # Ensure that scripts is pulled in for the update process (not req'd
+        # for build or install) for l10n module.
+        push @options, 'scripts' if ($moduleName eq 'l10n-kde4');
+
+        if (-e "$fullpath/.svn") {
+            main::check_module_validity($self);
+            return main::update_module_path($self, @options);
+        }
+        else {
+            return main::checkout_module_path($self, @options);
+        }
+    }
+}
+# }}}
+
 # package Module {{{
 {
     package Module;
@@ -1646,6 +1748,9 @@ HOME
 
     ksb::Debug->import();
     ksb::Util->import();
+
+    # We will 'mixin' various backend-specific classes, e.g. GitUpdate or SvnUpdate
+    our @ISA;
 
     my $ModuleSource = 'config';
 
@@ -1799,10 +1904,41 @@ EOF
         return $self->{scm_type};
     }
 
+    sub ensureScmMixinsSetup
+    {
+        my $self = shift;
+        return if $self->can('updateInternal');
+
+        my $type = $self->scmType();
+        given ($type) {
+            when ('svn') {
+                push @ISA, 'SvnUpdate';
+            }
+            when ('git') {
+                push @ISA, 'GitUpdate';
+            }
+            when ('l10n') {
+                push @ISA, 'l10nUpdate';
+            }
+            # TODO: l10n as a separate update type.
+            default {
+                die make_exception('Internal', "Unhandled scm type $type");
+            }
+        }
+    }
+
     sub setScmType
     {
         my ($self, $scmType) = @_;
         $self->{scm_type} = $scmType;
+    }
+
+    sub currentScmRevision
+    {
+        my $self = shift;
+
+        $self->ensureScmMixinsSetup();
+        return $self->currentRevisionInternal();
     }
 
     # Current possible build system types:
@@ -1863,12 +1999,7 @@ EOF
     {
         my ($self, $ipc, $ctx) = @_;
 
-        # Calculate l10n module name. The logic is duplicated on purpose with
-        # filter_l10n_module_list because we have to handle the $l10n/scripts
-        # directory specially (just on update).
         my $moduleName = $self->name();
-        $moduleName = 'l10n-kde4' if $moduleName eq 'l10n'; # Correct internal name.
-
         my $module_src_dir = $self->getSourceDir();
         my $kdesrc = $ctx->getSourceDir();
 
@@ -1883,39 +2014,13 @@ EOF
             }
         }
 
-        my @options = split(' ', $self->getOption('checkout-only'));
-
-        # Use kde-languages option if this isn't set on command line.
-        if ($moduleName eq 'l10n-kde4' && !@options)
-        {
-            push @options, split(' ', $ctx->getOption('kde-languages'));
-        }
-
-        # Ensure that scripts is pulled in for the update process (not req'd
-        # for build or install) for l10n module.
-        push @options, 'scripts' if ($moduleName eq 'l10n-kde4');
-
         my $fullpath = $self->fullpath('source');
         my $count;
-
-        eval {
-            if ($self->scmType() eq 'git') {
-                # Handle git module update
-                $count = main::update_module_git_checkout($self);
-            }
-            elsif (-e "$fullpath/.svn")
-            {
-                # Warn user if the current repo URL is different than expected.
-                main::check_module_validity($self);
-                $count = main::update_module_path($self, @options);
-            }
-            else
-            {
-                $count = main::checkout_module_path($self, @options);
-            }
-        };
-
         my $returnValue;
+
+        $self->ensureScmMixinsSetup();
+
+        eval { $count = $self->updateInternal() };
 
         if ($@)
         {
@@ -4341,6 +4446,9 @@ sub expandModuleSets
         # it.
         return $_ if $_->scmType() eq 'proj';
 
+        # Likewise with l10n module.
+        return $_ if $_->scmType() eq 'l10n';
+
         # Otherwise assume it's a set, replace this with all sub-modules in that
         # module set.
         my @modulesInSet = grep { $_->moduleSet() eq $setName } (@$knownModules);
@@ -4696,24 +4804,6 @@ sub current_module_svn_revision
     my $module = assert_isa(shift, 'Module');
 
     return get_svn_info($module, 'Revision');
-}
-
-# Returns a string containing the current on-disk revision identifier, or
-# undef if there was an error, for any of the support module scm types.
-#
-# First parameter is the name of the module to examine.
-sub current_module_revision
-{
-    my $module = assert_isa(shift, 'Module');
-
-    if ($module->scmType() eq 'svn') {
-        return current_module_svn_revision($module);
-    }
-    elsif ($module->scmType() eq 'git') {
-        return git_commit_id($module);
-    }
-
-    return undef;
 }
 
 # Subroutine to process the command line arguments, which should be passed as
@@ -6684,7 +6774,7 @@ EOF
         {
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
-            $module->setPersistentOption('last-build-rev', current_module_revision($module));
+            $module->setPersistentOption('last-build-rev', $module->currentScmRevision());
             $module->setPersistentOption('failure-count', 0);
 
             info "\tOverall time for g[$module] was g[$elapsed].";
@@ -6887,7 +6977,7 @@ sub handle_install
 
         next if $result != 0; # Don't delete anything if the build failed.
 
-        $module->setPersistentOption('last-install-rev', current_module_revision($module));
+        $module->setPersistentOption('last-install-rev', $module->currentScmRevision());
 
         my $remove_setting = $module->getOption('remove-after-install');
 
@@ -7430,6 +7520,11 @@ eval
         foreach my $module (@modules) {
             my ($optionModule) = grep {$_->name() eq $module->name()} @optionModules;
             $module = $optionModule if defined $optionModule;
+        }
+
+        # Modify l10n module inline, if present.
+        for (@modules) {
+            if ($_->name() eq 'l10n') { $_->setScmType('l10n') }
         }
 
         # Filter --resume-foo first so entire module-sets can be skipped.
