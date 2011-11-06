@@ -2251,7 +2251,7 @@ EOF
     ksb::Util->import();
 
     # We will 'mixin' various backend-specific classes, e.g. GitUpdate or SvnUpdate
-    our @ISA;
+    our @ISA = qw/GenericBuildSystem/;
 
     my $ModuleSource = 'config';
 
@@ -2495,6 +2495,11 @@ EOF
     sub ensureBuildMixinsSetup
     {
         my $self = shift;
+
+        # Remove GenericBuildSystem from ISA to be replaced by something more
+        # specific. Must be done before our check below.
+        @ISA = grep { $_ ne 'GenericBuildSystem' } (@ISA);
+
         return if $self->can('buildInternal');
 
         my $type = $self->buildSystemType();
