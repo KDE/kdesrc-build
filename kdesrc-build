@@ -295,7 +295,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 {
     package ksb::Util;
 
-    use Carp;
+    use Carp qw(cluck);
     use Scalar::Util qw(blessed);
 
     sub import
@@ -354,9 +354,13 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my $exception_type = shift // 'Exception';
         my $message = shift;
 
+        # Remove this subroutine from the backtrace
+        local $Carp::CarpLevel = 1;
+
+        $message = Carp::cluck($message) if $exception_type eq 'Internal';
         return bless({
             'exception_type' => $exception_type,
-            'message'        => $message
+            'message'        => $message,
         }, 'BuildException');
     }
 
