@@ -635,7 +635,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
                     # Properly account for users manually doing --refresh-build or
                     # using .refresh-me.
                     $message = 'no files affected';
-                    if (main::needs_refreshed($module))
+                    if ($module->needsRefreshed())
                     {
                         $updated->{$buffer} = 'success';
                         note ("\tNo source update, but g[$module] meets other building criteria.");
@@ -1884,11 +1884,131 @@ HOME
 }
 # }}}
 
-# package l10nUpdate {{{
+# package GenericBuildSystem {{{
 {
-    package l10nUpdate;
+    package GenericBuildSystem;
 
-    our @ISA = ('SvnUpdate');
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    # Subroutine to determine if a given module needs to have the build system
+    # recreated from scratch.
+    # If so, it returns boolean true.
+    sub needsRefreshed
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $builddir = $self->fullpath('build');
+        my $confFileKey = $self->configuredModuleFileName();
+
+        if (debugging())
+        {
+            debug ("Build directory not setup for $self.") if not -e "$builddir";
+            debug (".refresh-me exists for $self.") if -e "$builddir/.refresh-me";
+            debug ("refresh-build option set for $self.") if $self->getOption('refresh-build');
+            debug ("Can't find configure key file for $self.") if not -e "$builddir/$confFileKey";
+        }
+
+        return 1 if ((not -e "$builddir") ||
+            (-e "$builddir/.refresh-me") ||
+            $self->getOption("refresh-build") ||
+            (not -e "$builddir/$confFileKey"));
+
+        return 0;
+    }
+
+    # Returns true if the module should have make install run in order to be
+    # used, or false if installation is not required or possible.
+    sub needsInstalled
+    {
+        return 1;
+    }
+
+    # Return value style: boolean
+    sub buildInternal
+    {
+        my $self = shift;
+
+        return main::safe_make($self) == 0;
+    }
+
+    # Return value style: boolean
+    sub configureInternal
+    {
+        die make_exception('Internal', 'We were not supposed to get to this point...');
+    }
+
+    # Returns name of file that should exist (relative to the module's build directory)
+    # if the module has been configured.
+    sub configuredModuleFileName
+    {
+        my $self = shift;
+        return 'Makefile';
+    }
+
+    # Subroutine to clean the build system for the given module.  Works by
+    # recursively deleting the directory and then recreating it.
+    # Returns 0 for failure, non-zero for success.
+    sub cleanBuildSystem
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $srcdir = $self->fullpath('source');
+        my $builddir = $self->fullpath('build');
+
+        if (pretending())
+        {
+            pretend ("\tWould have cleaned build system for g[$self]");
+            return 1;
+        }
+
+        # Use an existing directory
+        if (-e $builddir && $builddir ne $srcdir)
+        {
+            info ("\tRemoving files in build directory for g[$self]");
+
+            # This variant of log_command runs the sub prune_under_directory($builddir)
+            # in a forked child, so that we can log its output.
+            if (main::log_command($self, 'clean-builddir', [ 'kdesrc-build', 'prune_under_directory', $builddir ]))
+            {
+                error (" r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.");
+                return 0; # False for this function.
+            }
+
+            # Let users know we're done so they don't wonder why rm -rf is taking so
+            # long and oh yeah, why's my HD so active?...
+            info ("\tOld build system cleaned, starting new build system.");
+        }
+        # or create the directory
+        elsif (!super_mkdir ($builddir))
+        {
+            error ("\tUnable to create directory r[$builddir].");
+            return 0;
+        }
+
+        return 1;
+    }
+
+    # Return convention: boolean
+    sub createBuildSystem
+    {
+        my $self = shift;
+        my $builddir = $self->fullpath('build');
+
+        if (! -e "$builddir" && !super_mkdir("$builddir"))
+        {
+            error ("\tUnable to create build directory for r[$self]!!");
+            return 0;
+        }
+
+        return 1;
+    }
+}
+# }}}
+
+# package l10nSystem {{{
+{
+    package l10nSystem;
+
+    our @ISA = ('SvnUpdate', 'GenericBuildSystem');
 
     ksb::Debug->import();
     ksb::Util->import();
@@ -1925,6 +2045,192 @@ HOME
         else {
             return main::checkout_module_path($self, @options);
         }
+    }
+
+    # Buildsystem support section
+
+    sub needsRefreshed
+    {
+        my $self = shift;
+
+        debug ("l10n always needs autogen.sh run");
+        return 1;
+    }
+
+    # Subroutine to link a source directory into an alternate directory in
+    # order to fake srcdir != builddir for modules that don't natively support
+    # it.  The first parameter is the module to prepare.
+    #
+    # The return value is true (non-zero) if it succeeded, and 0 (false) if it
+    # failed.
+    #
+    # On return from the subroutine the current directory will be in the build
+    # directory, since that's the only directory you should touch from then on.
+    sub prepareFakeBuilddir
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $builddir = $self->fullpath('build');
+        my $srcdir = $self->fullpath('source');
+
+        # List reference, not a real list.  The initial kdesrc-build does *NOT*
+        # fork another kdesrc-build using exec, see sub log_command() for more
+        # info.
+        my $args = [ 'kdesrc-build', 'safe_lndir', $srcdir, $builddir ];
+
+        return (0 != main::log_command ($self, 'create-builddir', $args));
+    }
+
+    # Subroutine to create the build system for a module.  This involves making
+    # sure the directory exists and then running any preparatory steps (like
+    # for l10n modules).  This subroutine assumes that the module is already
+    # downloaded.
+    #
+    # Return convention: boolean (inherited)
+    sub createBuildSystem
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $builddir = $self->fullpath('build');
+
+        if (pretending())
+        {
+            pretend ("\tWould have created g[$self]\'s build system.");
+            return 1;
+        }
+
+        # l10n doesn't support srcdir != builddir, fake it.
+        whisper ("\tFaking builddir for g[$self]");
+        if (!$self->prepareFakeBuilddir())
+        {
+            error ("Error creating r[$self] build system!");
+            return 0;
+        }
+
+        # autogen.sh must be run from one level below for some reason.
+        p_chdir ("$builddir/..");
+
+        my ($lang) = ($self->name() =~ /^l10n-kde4\/(.*)$/);
+        my $cmd_ref = [ './scripts/autogen.sh', $lang ];
+
+        if (main::log_command ($self, "build-system", $cmd_ref))
+        {
+            error ("\tUnable to create build system for r[$self]");
+            return 0;
+        }
+
+        $self->setOption('#reconfigure', 1); # Force reconfigure of the module
+
+        return 1;
+    }
+}
+# }}}
+
+# package KDEBuildSystem {{{
+{
+    package KDEBuildSystem;
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    our @ISA = ('GenericBuildSystem');
+
+    sub needsInstalled
+    {
+        my $self = shift;
+
+        return 0 if $self->name() eq 'kde-common'; # Vestigial
+        return 1;
+    }
+
+    sub configureInternal
+    {
+        my $self = shift;
+
+        # Use cmake to create the build directory (sh script return value
+        # semantics).
+        if (main::safe_run_cmake ($self))
+        {
+            error ("\tUnable to configure r[$self] with CMake!");
+            return 0;
+        }
+
+        return 1;
+    }
+}
+# }}}
+
+# package QtBuildSystem {{{
+{
+    package QtBuildSystem;
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    our @ISA = ('GenericBuildSystem');
+
+    sub needsInstalled
+    {
+        my $self = shift;
+        return $self->getOption('qtdir') ne $self->fullpath('build');
+    }
+
+    # Return value style: boolean
+    sub configureInternal
+    {
+        my $self = shift;
+        my $srcdir = $self->fullpath('source');
+        my $script = "$srcdir/configure";
+
+        if (! -e $script)
+        {
+            error ("\tMissing configure script for r[b[$self]");
+            return 0;
+        }
+
+        my @commands = split (/\s+/, $self->getOption('configure-flags'));
+        push @commands, '-confirm-license', '-opensource';
+
+        # Get the user's CXXFLAGS
+        my $cxxflags = $self->getOption('cxxflags');
+        main::setenv ('CXXFLAGS', $cxxflags);
+
+        my $prefix = $self->getOption('qtdir');
+
+        # Some users have added -prefix manually to their flags, they
+        # probably shouldn't anymore. :)
+
+        if (scalar grep /^-prefix(=.*)?$/, @commands)
+        {
+            warning (<<EOF);
+b[y[*]
+b[y[*] You have the y[-prefix] option selected in your qt-copy configure flags.
+b[y[*] kdesrc-build will correctly add the -prefix option to match your Qt
+b[y[*] directory setting, so you do not need to use -prefix yourself.
+b[y[*]
+EOF
+        }
+
+        push @commands, "-prefix", $prefix;
+        unshift @commands, $script;
+
+        my $builddir = $self->fullpath('build');
+        my $old_flags = $self->getPersistentOption('last-configure-flags') || '';
+        my $cur_flags = main::get_list_digest(@commands);
+
+        if(($cur_flags ne $old_flags) ||
+           ($self->getOption('reconfigure')) ||
+           (! -e "$builddir/Makefile")
+          )
+        {
+            note ("\tb[r[LGPL license selected for Qt].  See $srcdir/LICENSE.LGPL");
+
+            info ("\tRunning g[configure]...");
+
+            $self->setPersistentOption('last-configure-flags', $cur_flags);
+            return log_command($self, "configure", \@commands) == 0;
+        }
+
+        # Skip execution of configure.
+        return 1;
     }
 }
 # }}}
@@ -2113,7 +2419,7 @@ EOF
                 push @ISA, 'GitUpdate';
             }
             when ('l10n') {
-                push @ISA, 'l10nUpdate';
+                push @ISA, 'l10nSystem';
             }
             # TODO: l10n as a separate update type.
             default {
@@ -2149,9 +2455,34 @@ EOF
     {
         my $self = shift;
 
-        return $self->{build_type} if $self->{build_type};
+        if ($self->{build_type} && $self->{build_type} ne 'pendingSource') {
+            return $self->{build_type};
+        }
 
-        # If it needs a repo it's git. Everything else is svn for now.
+        # If not set, let's guess.
+        my $buildType;
+        my $sourceDir = $self->fullpath('source');
+
+        if (($self->getOption('repository') =~ /gitorious\.org\/qt\//) ||
+            ($self->getOption('repository') =~ /^kde:qt$/) ||
+            (-e "$sourceDir/bin/syncqt"))
+        {
+            $buildType = 'Qt';
+        }
+
+        $buildType //= 'KDE' if -e "$sourceDir/CMakeLists.txt";
+
+        if (!$buildType &&
+            (-e "$sourceDir/configure" || -e "$sourceDir/autogen.sh"))
+        {
+            $buildType = 'autotools';
+        }
+
+        $buildType //= 'l10n' if $self->name() eq 'l10n';
+
+        $buildType //= 'pendingSource'; # Nothing detected, mark pending.
+        $self->{build_type} = $buildType;
+
         return $self->{build_type};
     }
 
@@ -2159,6 +2490,131 @@ EOF
     {
         my ($self, $buildType) = @_;
         $self->{build_type} = $buildType;
+    }
+
+    sub ensureBuildMixinsSetup
+    {
+        my $self = shift;
+        return if $self->can('buildInternal');
+
+        my $type = $self->buildSystemType();
+
+        # Possible types are as in the comment to sub buildSystemType
+        given ($type) {
+            when ('KDE') {
+                push @ISA, 'KDEBuildSystem';
+            }
+            when ('Qt') {
+                push @ISA, 'QtBuildSystem';
+            }
+            when ('l10n') {
+                push @ISA, 'l10nSystem';
+            }
+            when ('autotools') {
+                die make_exception('Internal', clr("Build type y[autotools] is unsupported"));
+            }
+            when ('pendingSource') {
+                die make_exception('Runtime', "Unsure of the build system for module $self!");
+            }
+            default {
+                die make_exception('Internal', "Unhandled build system type $type");
+            }
+        }
+    }
+
+    # Subroutine to build this module.
+    # Returns boolean false on failure, boolean true on success.
+    sub build
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $moduleName = $self->name();
+        my $builddir = $self->fullpath('build');
+
+        my $start_time = time;
+
+        $self->ensureBuildMixinsSetup();
+
+        return 0 if !$self->setupBuildSystem();
+        return 1 if $self->getOption('build-system-only');
+
+        if (!$self->buildInternal())
+        {
+            # Build failed
+
+            my $elapsed = prettify_seconds (time - $start_time);
+
+            # Well we tried, but it isn't going to happen.
+            note ("\n\tUnable to build y[$self]!");
+            info ("\tTook g[$elapsed].");
+            return 0;
+        }
+        else
+        {
+            my $elapsed = prettify_seconds (time - $start_time);
+            info ("\tBuild succeeded after g[$elapsed].");
+
+            # TODO: This should be a simple phase to run.
+            if ($self->getOption('run-tests'))
+            {
+                main::run_tests($self); # Don't fail if this fails... yet
+            }
+
+            # TODO: Likewise this should be a phase to run.
+            if ($self->getOption('install-after-build'))
+            {
+                my $ctx = $self->buildContext();
+                main::handle_install($ctx, $self);
+            }
+            else
+            {
+                info ("\tSkipping install for y[$self]");
+            }
+        }
+
+        return 1;
+    }
+
+    # Subroutine to setup the build system in a directory.
+    # Returns boolean true on success, boolean false (0) on failure.
+    sub setupBuildSystem
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $moduleName = $self->name();
+
+        $self->ensureBuildMixinsSetup();
+
+        if ($self->needsRefreshed())
+        {
+            # The build system needs created, either because it doesn't exist, or
+            # because the user has asked that it be completely rebuilt.
+            info ("\tPreparing build system for y[$self].");
+
+            # Check to see if we're actually supposed to go through the
+            # cleaning process.
+            if (!$self->getOption('#cancel-clean') &&
+                !$self->cleanBuildSystem())
+            {
+                warning ("\tUnable to clean r[$self]!");
+                return 0;
+            }
+        }
+
+        if (!$self->createBuildSystem()) {
+            error ("\tError creating r[$self]'s build system!");
+            return 0;
+        }
+
+        # Now we're in the checkout directory
+        # So, switch to the build dir.
+        # builddir is automatically set to the right value for qt-copy
+        p_chdir ($self->fullpath('build'));
+
+        if (!$self->configureInternal()) {
+            error ("\tUnable to configure r[$self] with ${$self->buildSystemType()}");
+            return 0;
+        }
+
+        return 1;
     }
 
     sub buildContext
@@ -2403,22 +2859,6 @@ EOF
 
         my %pathinfo = main::get_module_path_dir($self, $type);
         return $pathinfo{'fullpath'};
-    }
-
-    # Returns true if the module should have make install run in order to be
-    # used, or false if installation is not required or possible.
-    sub needsInstalled
-    {
-        my $self = shift;
-
-        return 0 if $self->name() eq 'kde-common'; # Vestigial but possible.
-
-        # Don't install Qt if QTDIR == builddir
-        if ($self->name() eq 'qt-copy') {
-            return $self->getOption('qtdir') ne $self->fullpath('build');
-        }
-
-        return 1;
     }
 
     1;
@@ -5713,74 +6153,6 @@ sub get_list_digest
     return md5_base64(@_);
 }
 
-# Subroutine to run and log the configure command.  First parameter is the
-# path to the configure script to run, the second parameter is a scalar
-# containing all of the configure flags to apply
-sub safe_configure
-{
-    my $module = assert_isa(shift, 'Module');
-    my $srcdir = $module->fullpath('source');
-    my $script = "$srcdir/configure";
-
-    # This is only currently run for qt-copy, so let's verify that.
-    if ($module->name() ne 'qt-copy') {
-        error <<EOF;
-r[b[ *] kdesrc-build assumes that only Qt would be compiled using a configure
-r[b[ *] script, but we're trying to configure r[b[$module].  Please report a
-r[b[ *] bug at http://bugs.kde.org/ -- Unable to build this module.
-EOF
-        return 1;
-    }
-
-    my @commands = split (/\s+/, $module->getOption('configure-flags'));
-    push @commands, '-confirm-license', '-opensource';
-
-    # Get the user's CXXFLAGS
-    my $cxxflags = $module->getOption('cxxflags');
-    setenv ('CXXFLAGS', $cxxflags);
-
-    my $prefix = $module->getOption('qtdir');
-
-    # Some users have added -prefix manually to their flags, they
-    # probably shouldn't anymore. :)
-
-    if (scalar grep /^-prefix(=.*)?$/, @commands)
-    {
-        warning <<EOF;
-b[y[*]
-b[y[*] You have the y[-prefix] option selected in your qt-copy configure flags.
-b[y[*] kdesrc-build will correctly add the -prefix option to match your Qt
-b[y[*] directory setting, so you do not need to use -prefix yourself.
-b[y[*]
-EOF
-    }
-
-    push @commands, "-prefix", $prefix;
-
-    # We use a special script for qt-copy to auto-accept the license, it is created
-    # just before running it (see below).
-    my $builddir = $module->fullpath('build');
-    my $old_flags = $module->getPersistentOption('last-configure-flags') || '';
-
-    unshift @commands, $script;
-
-    if((get_list_digest(@commands) ne $old_flags) or
-       ($module->getOption('reconfigure')) or
-       (not -e "$builddir/Makefile")
-      )
-    {
-        note "\tb[r[LGPL license selected for Qt].  See $srcdir/LICENSE.LGPL";
-
-        info "\tRunning g[configure]...";
-
-        $module->setPersistentOption('last-configure-flags', get_list_digest(@commands));
-        return log_command($module, "configure", \@commands);
-    }
-
-    # Skip execution of configure.
-    return 0;
-}
-
 # Subroutine to run CMake to create the build directory for a module.
 # CMake is not actually run if pretend mode is enabled.
 #
@@ -5956,121 +6328,6 @@ sub safe_lndir
     return 1;
 }
 
-# Subroutine to link a source directory into an alternate directory in order
-# to fake srcdir != builddir for modules that don't natively support it.
-# The first parameter is the module to prepare.
-#
-# The return value is true (non-zero) if it succeeded, and 0 (false) if it
-# failed.
-#
-# On return from the subroutine the current directory will be in the build
-# directory, since that's the only directory you should touch from then on.
-#
-# You may safely call this subroutine for modules that don't need it, they
-# will automatically be ignored.
-sub prepare_fake_builddir
-{
-    my $module = assert_isa(shift, 'Module');
-    my $builddir = $module->fullpath('build');
-    my $srcdir = $module->fullpath('source');
-
-    # List reference, not a real list.  The initial kdesrc-build does *NOT*
-    # fork another kdesrc-build using exec, see sub log_command() for more
-    # info.
-    my $args = [ 'kdesrc-build', 'safe_lndir', $srcdir, $builddir ];
-
-    # Skip modules that don't need special treatment.
-    return 1 unless module_needs_builddir_help($module);
-
-    # Use an internal routine to complete the directory symlinking (or the
-    # alternate routine in the case of old qt-copy).
-    if (log_command ($module, 'create-builddir', $args))
-    {
-        warning "\tUnable to setup special build system for r[$module].";
-        return 0;
-    }
-
-    return 1; # Success
-}
-
-# Subroutine to create the build system for a module.  This involves making
-# sure the directory exists and then running any preparatory steps (like for
-# l10n modules).  This subroutine assumes that the module is already
-# downloaded.
-sub safe_create_build_system
-{
-    my $module = assert_isa(shift, 'Module');
-    my $srcdir = $module->fullpath('source');
-    my $builddir = $module->fullpath('build');
-    my $uses_cmake = module_uses_cmake($module);
-
-    whisper "\tCMake support for $module: ", $uses_cmake ? "Yes" : "No";
-
-    if (pretending)
-    {
-        pretend "\tWould have created g[$module]\'s build system.";
-        return 0;
-    }
-
-    # KDE 4 l10n modules use CMake but require extra preparation
-    # before they can be built, so don't abort out for that module.
-    if ($uses_cmake)
-    {
-        return 0 unless $module->name() =~ /^l10n-kde4\/?/; # Done.
-    }
-
-    # Setup in the build directory.
-    p_chdir ($builddir);
-
-    # Verify we're building what we expect.
-    if ($module->name() !~ /^l10n-kde4\//) {
-        error " r[b[*] kdesrc-build only expects to need to create a build system for l10n";
-        error " r[b[*] modules, but was asked to do so for r[b[$module] -- aborting.";
-        return 1;
-    }
-
-    my ($lang) = ($module->name() =~ /^l10n-kde4\/(.*)$/);
-    my $cmd_ref = [ './scripts/autogen.sh', $lang ];
-
-    # autogen.sh must be run from one level below for some reason.
-    p_chdir ("../");
-
-    if (log_command ($module, "build-system", $cmd_ref))
-    {
-        error "\tUnable to create build system for r[$module]";
-        return 1;
-    }
-
-    return 0;
-}
-
-# Subroutine to determine if a given module needs to have the build system
-# recreated from scratch.
-# If so, it returns boolean true.
-sub needs_refreshed
-{
-    my $module = assert_isa(shift, 'Module');
-    my $builddir = $module->fullpath('build');
-    my $conf_file_key = "Makefile"; # File that exists after configure is run
-
-    if (debugging)
-    {
-        debug "Build directory not setup for $module." if not -e "$builddir";
-        debug ".refresh-me exists for $module." if -e "$builddir/.refresh-me";
-        debug "refresh-build option set for $module." if $module->getOption('refresh-build');
-        debug "Can't find configure key file for $module." if not -e "$builddir/$conf_file_key";
-        debug "l10n always needs autogen.sh run" if $module->name() =~ /^l10n-kde4/;
-    }
-
-    return 1 if ((not -e "$builddir") ||
-        (-e "$builddir/.refresh-me") ||
-        $module->getOption("refresh-build") ||
-        $module->name() =~ /^l10n-kde4/ ||
-        (not -e "$builddir/$conf_file_key"));
-
-    return 0;
-}
-
 # Run the svn command.  This is a special subroutine so that we can munge the
 # generated output to see what files have been added, and adjust the build
 # according.
@@ -6169,150 +6426,6 @@ sub prune_under_directory
     {
         error "\tUnable to clean r[$dir]:\n\ty[b[$@]";
         return 0;
-    }
-
-    return 1;
-}
-
-# Subroutine to clean the build system for the given module.  Works by
-# recursively deleting the directory and then recreating it.  Returns
-# 0 for failure, non-zero for success.
-sub clean_build_system
-{
-    my $module = assert_isa(shift, 'Module');
-    my $moduledir = $module->fullpath('source');
-    my $builddir = $module->fullpath('build');
-
-    if (pretending)
-    {
-        pretend "\tWould have cleaned build system for g[$module]";
-        return 1;
-    }
-
-    if (not -e $moduledir)
-    {
-        warning "\tUnable to clean build system for r[$module], it's not been checked out!";
-        return 0;
-    }
-
-    # Use an existing directory
-    if (-e "$builddir" && "$builddir" ne "$moduledir")
-    {
-        info "\tRemoving files in build directory for g[$module]";
-
-        # This variant of log_command runs the sub prune_under_directory($builddir)
-        # in a forked child, so that we can log its output.
-        if (log_command($module, 'clean-builddir', [ 'kdesrc-build', 'prune_under_directory', $builddir ]))
-        {
-            error " r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.";
-            return 0; # False for this function.
-        }
-
-        # Let users know we're done so they don't wonder why rm -rf is taking so
-        # long and oh yeah, why's my HD so active?...
-        info "\tOld build system cleaned, starting new build system.";
-    }
-    # or create the directory
-    elsif (not super_mkdir ($builddir))
-    {
-        error "\tUnable to create directory r[$builddir].";
-        return 0;
-    }
-
-    return 1;
-}
-
-# Subroutine to setup the build system in a directory.  The first parameter
-# is the module name.  Returns boolean true on success, boolean false (0)
-# on failure.
-sub setup_build_system
-{
-    my $module = assert_isa(shift, 'Module');
-    my $moduleName = $module->name();
-    my $srcdir = $module->fullpath('source');
-    my $builddir = $module->fullpath('build');
-
-    if (needs_refreshed($module))
-    {
-        # The build system needs created, either because it doesn't exist, or
-        # because the user has asked that it be completely rebuilt.
-        info "\tPreparing build system for y[$module].";
-
-        # Check to see if we're actually supposed to go through the cleaning
-        # process.
-        if (not $module->getOption('#cancel-clean') and
-            not clean_build_system($module))
-        {
-            warning "\tUnable to clean r[$module]!";
-            return 0;
-        }
-    }
-
-    # Symlink source directory to build directory if module doesn't support
-    # srcdir != builddir.
-    if (module_needs_builddir_help($module))
-    {
-        whisper "\tFaking builddir for g[$module]";
-        if (!prepare_fake_builddir($module))
-        {
-            error "Error creating r[$module] build system!";
-            return 0;
-        }
-    }
-
-    my $confpath = module_needs_builddir_help($module) ? $builddir : $srcdir;
-
-    # The l10n-kde4 module requires some initial build system setup unlike
-    # every other CMake module.  We can tell if it has been setup because then
-    # its builddir will have a CMakeLists.txt
-    if ($moduleName =~ /^l10n-kde4\/?/)
-    {
-        if (safe_create_build_system ($module))
-        {
-            error "\tUnable to create configure system from checkout.";
-            return 0;
-        }
-
-        $module->setOption('#reconfigure', 1); # Force reconfigure of the module
-    }
-
-    if (not -e "$builddir" and not super_mkdir("$builddir"))
-    {
-        error "\tUnable to create build directory for r[$module]!!";
-        return 0;
-    }
-
-    # Now we're in the checkout directory
-    # So, switch to the build dir.
-    # builddir is automatically set to the right value for qt-copy
-    p_chdir ($builddir);
-
-    # Appropriate configure function will skip automatically if configuration is
-    # unnecessary.  (re)configuration is always done if the 'reconfigure' option is true.
-    if (!module_uses_cmake($module))
-    {
-        if (! -e "$srcdir/configure")
-        {
-            error "\tUnknown build system for y[$module] (is it supposed to be built at all?)";
-            return 0;
-        }
-
-        # configure the module (sh script return value semantics)
-        if (safe_configure ($module))
-        {
-            error "\tUnable to configure r[$module]!";
-            return 0;
-        }
-    }
-    else
-    {
-        # Use cmake to create the build directory (sh script return value
-        # semantics).
-        if (safe_run_cmake ($module))
-        {
-            error "\tUnable to configure r[$module] with CMake!";
-            return 0;
-        }
     }
 
     return 1;
@@ -6542,62 +6655,6 @@ sub run_tests
     return 1;
 }
 
-# Subroutine to build a given module.  The module to build is the first
-# parameter.  The second and third paramaters is the ordinal number of the
-# module being built (1 == first module, 2 == second, etc.), and the total
-# number of modules being built respectively.
-#
-# Returns boolean false on failure, boolean true on success.
-sub build_module
-{
-    my $module = assert_isa(shift, 'Module');
-    my $moduleName = $module->name();
-    my $builddir = $module->fullpath('build');
-
-    update_module_environment($module);
-
-    my $start_time = time;
-
-    return 0 if not setup_build_system($module);
-    return 1 if $module->getOption('build-system-only');
-
-    if (safe_make ($module))
-    {
-        # Build failed
-
-        my $elapsed = prettify_seconds (time - $start_time);
-
-        # Well we tried, but it isn't going to happen.
-        note "\n\tUnable to build y[$module]!";
-        info "\tTook g[$elapsed].";
-        return 0;
-    }
-    else
-    {
-        my $elapsed = prettify_seconds (time - $start_time);
-        info "\tBuild succeeded after g[$elapsed].";
-
-        # TODO: This should be a simple phase to run.
-        if ($module->getOption('run-tests'))
-        {
-            run_tests($module); # Don't fail if this fails... yet
-        }
-
-        # TODO: Likewise this should be a phase to run.
-        if ($module->getOption('install-after-build'))
-        {
-            my $ctx = $module->buildContext();
-            handle_install($ctx, $module);
-        }
-        else
-        {
-            info "\tSkipping install for y[$module]";
-        }
-    }
-
-    return 1;
-}
-
 # kdesrc-build supports putting the l10n module on the command line, but it is
 # rather weird in that l10n isn't used as a module internally, instead the
 # l10n/$lang are treated for the most part as modules.
@@ -6704,6 +6761,8 @@ EOF
         }
 
         resetenv(); # Resets the list of env vars to change
+        update_module_environment($module);
+
         my $start_time = time;
 
         # If using IPC, read in the contents of the message buffer, and wait
@@ -6747,7 +6806,7 @@ EOF
             next;
         }
 
-        if (build_module ($module))
+        if ($module->build())
         {
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
