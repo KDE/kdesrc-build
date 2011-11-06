@@ -1812,7 +1812,25 @@ HOME
 
         if (-e "$fullpath/.svn") {
             main::check_module_validity($self);
-            return main::update_module_path($self, @options);
+            my $updateCount = main::update_module_path($self, @options);
+
+            my $log_filter = sub {
+                return unless defined $_;
+                print $_ if /^C/;
+                print $_ if /Checking for/;
+                return;
+            };
+
+            # Use log_command as the check so that an error file gets created.
+            if (0 != main::log_command($self, 'conflict-check',
+                                 ['kdesrc-build', 'module_has_conflict', $self],
+                                 $log_filter)
+               )
+            {
+                die " * Conflicts present in module $self";
+            }
+
+            return $updateCount;
         }
         else {
             return main::checkout_module_path($self, @options);
@@ -6537,22 +6555,6 @@ sub build_module
     my $builddir = $module->fullpath('build');
 
     update_module_environment($module);
-
-    my $log_filter = sub {
-        return unless defined $_;
-        print $_ if /^C/;
-        print $_ if /Checking for/;
-        return;
-    };
-
-    # Use log_command as the check so that an error file gets created.
-    if (($module->scmType() eq 'svn') &&
-        0 != log_command($module, 'conflict-check',
-                         ['kdesrc-build', 'module_has_conflict', $module], $log_filter)
-       )
-    {
-        return 0;
-    }
 
     my $start_time = time;
 
