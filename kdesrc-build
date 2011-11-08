@@ -367,12 +367,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     # Used in the assert methods
     sub fail_assertion
     {
-        # Carp doesn't support exception objects, so raise the error
-        # message and grab the string for the stack trace, then re-raise
-        # inside the object.
-        local $Carp::CarpLevel = 2; # Skip this upcoming eval and this method.
-        eval { confess ($_[0]) };
-        die(make_exception('Internal', $@));
+        die (make_exception('Internal', $_[0]));
     }
 
     # Throws an exception if the first parameter is not an object at all, or if
