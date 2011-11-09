@@ -637,7 +637,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
                     # Properly account for users manually doing --refresh-build or
                     # using .refresh-me.
                     $message = 'no files affected';
-                    if ($module->needsRefreshed())
+                    if ($module->buildSystem()->needsRefreshed())
                     {
                         $updated->{$buffer} = 'success';
                         note ("\tNo source update, but g[$module] meets other building criteria.");
@@ -1778,6 +1778,47 @@ HOME
 }
 # }}}
 
+# package UpdateHandler {{{
+{
+    package UpdateHandler;
+
+    sub new
+    {
+        my ($class, $module) = @_;
+
+        return bless { module => $module }, $class;
+    }
+
+    sub name
+    {
+        die ksb::Util::make_exception ('Internal', 'This package should not be used directly.');
+    }
+
+    sub module
+    {
+        my $self = shift;
+        return $self->{module};
+    }
+
+    1;
+}
+# }}}
+
+# package KDEProjectUpdate {{{
+{
+    package KDEProjectUpdate;
+
+    our @ISA = qw(GitUpdate);
+
+    sub name
+    {
+        return 'proj';
+    }
+
+    1;
+}
+# }}}
+
 # package GitUpdate {{{
 {
     package GitUpdate;
@@ -1785,19 +1826,26 @@ HOME
     ksb::Debug->import();
     ksb::Util->import();
 
+    our @ISA = ('UpdateHandler');
+
     # scm-specific update procedure.
     # May change the current directory as necessary.
     # Assumes called as part of a Module (i.e. $self->isa('Module') should be true.
     sub updateInternal
     {
-        my $self = assert_isa(shift, 'Module');
-        return main::update_module_git_checkout($self);
+        my $self = assert_isa(shift, 'GitUpdate');
+        return main::update_module_git_checkout($self->module());
+    }
+
+    sub name
+    {
+        return 'git';
     }
 
     sub currentRevisionInternal
     {
-        my $self = assert_isa(shift, 'Module');
-        return main::git_commit_id($self);
+        my $self = assert_isa(shift, 'GitUpdate');
+        return main::git_commit_id($self->module());
     }
 
     1;
@@ -1811,18 +1859,21 @@ HOME
     ksb::Debug->import();
     ksb::Util->import();
 
+    our @ISA = ('UpdateHandler');
+
     # scm-specific update procedure.
     # May change the current directory as necessary.
     # Assumes called as part of a Module (i.e. $self->isa('Module') should be true.
     sub updateInternal
     {
-        my $self = assert_isa(shift, 'Module');
-        my $fullpath = $self->fullpath('source');
-        my @options = split(' ', $self->getOption('checkout-only'));
+        my $self = assert_isa(shift, 'SvnUpdate');
+        my $module = $self->module();
+        my $fullpath = $module->fullpath('source');
+        my @options = split(' ', $module->getOption('checkout-only'));
 
         if (-e "$fullpath/.svn") {
-            main::check_module_validity($self);
-            my $updateCount = main::update_module_path($self, @options);
+            main::check_module_validity($module);
+            my $updateCount = main::update_module_path($module, @options);
 
             my $log_filter = sub {
                 return unless defined $_;
@@ -1832,24 +1883,29 @@ HOME
             };
 
             # Use log_command as the check so that an error file gets created.
-            if (0 != main::log_command($self, 'conflict-check',
-                                 ['kdesrc-build', 'module_has_conflict', $self],
+            if (0 != main::log_command($module, 'conflict-check',
+                                 ['kdesrc-build', 'module_has_conflict', $module],
                                  $log_filter)
                )
             {
-                die " * Conflicts present in module $self";
+                die " * Conflicts present in module $module";
             }
 
             return $updateCount;
         }
         else {
-            return main::checkout_module_path($self, @options);
+            return main::checkout_module_path($module, @options);
         }
+    }
+
+    sub name
+    {
+        return 'svn';
     }
 
     sub currentRevisionInternal
     {
-        my $self = assert_isa(shift, 'Module');
+        my $self = assert_isa(shift, 'SvnUpdate');
         return $self->svnInfo('Revision');
     }
 
@@ -1860,9 +1916,11 @@ HOME
     # Returns the string value of the parameter or undef if an error occurred.
     sub svnInfo
     {
-        my $self = assert_isa(shift, 'Module');
+        my $self = assert_isa(shift, 'SvnUpdate');
+        my $module = $self->module();
+
         my $param = shift;
-        my $srcdir = $self->fullpath('source');
+        my $srcdir = $module->fullpath('source');
         my $result; # Predeclare to outscope upcoming eval
 
         # Search each line of output, ignore stderr.
@@ -1903,26 +1961,39 @@ HOME
     ksb::Debug->import();
     ksb::Util->import();
 
+    sub new
+    {
+        my ($class, $module) = @_;
+        return bless { module => $module }, $class;
+    }
+
+    sub module
+    {
+        my $self = shift;
+        return $self->{module};
+    }
+
     # Subroutine to determine if a given module needs to have the build system
     # recreated from scratch.
     # If so, it returns boolean true.
     sub needsRefreshed
     {
-        my $self = assert_isa(shift, 'Module');
-        my $builddir = $self->fullpath('build');
+        my $self = assert_isa(shift, 'GenericBuildSystem');
+        my $module = $self->module();
+        my $builddir = $module->fullpath('build');
         my $confFileKey = $self->configuredModuleFileName();
 
         if (debugging())
         {
             debug ("Build directory not setup for $self.") if not -e "$builddir";
             debug (".refresh-me exists for $self.") if -e "$builddir/.refresh-me";
-            debug ("refresh-build option set for $self.") if $self->getOption('refresh-build');
+            debug ("refresh-build option set for $self.") if $module->getOption('refresh-build');
             debug ("Can't find configure key file for $self.") if not -e "$builddir/$confFileKey";
         }
 
         return 1 if ((not -e "$builddir") ||
             (-e "$builddir/.refresh-me") ||
-            $self->getOption("refresh-build") ||
+            $module->getOption("refresh-build") ||
             (not -e "$builddir/$confFileKey"));
 
         return 0;
@@ -1935,17 +2006,27 @@ HOME
         return 1;
     }
 
+    sub name
+    {
+        return 'generic';
+    }
+
     # Return value style: boolean
     sub buildInternal
     {
         my $self = shift;
 
-        return main::safe_make($self) == 0;
+        return main::safe_make($self->module()) == 0;
     }
 
     # Return value style: boolean
     sub configureInternal
     {
+        # It is possible to make it here if there's no source dir and if we're
+        # pretending. If we're not actually pretending then this should be a
+        # bug...
+        return 1 if pretending();
+
         die make_exception('Internal', 'We were not supposed to get to this point...');
     }
 
@@ -1962,24 +2043,25 @@ HOME
     # Returns 0 for failure, non-zero for success.
     sub cleanBuildSystem
     {
-        my $self = assert_isa(shift, 'Module');
-        my $srcdir = $self->fullpath('source');
-        my $builddir = $self->fullpath('build');
+        my $self = assert_isa(shift, 'GenericBuildSystem');
+        my $module = $self->module();
+        my $srcdir = $module->fullpath('source');
+        my $builddir = $module->fullpath('build');
 
         if (pretending())
         {
-            pretend ("\tWould have cleaned build system for g[$self]");
+            pretend ("\tWould have cleaned build system for g[$module]");
             return 1;
         }
 
         # Use an existing directory
         if (-e $builddir && $builddir ne $srcdir)
         {
-            info ("\tRemoving files in build directory for g[$self]");
+            info ("\tRemoving files in build directory for g[$module]");
 
             # This variant of log_command runs the sub prune_under_directory($builddir)
             # in a forked child, so that we can log its output.
-            if (main::log_command($self, 'clean-builddir', [ 'kdesrc-build', 'prune_under_directory', $builddir ]))
+            if (main::log_command($module, 'clean-builddir', [ 'kdesrc-build', 'prune_under_directory', $builddir ]))
             {
                 error (" r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.");
                 return 0; # False for this function.
@@ -2002,12 +2084,13 @@ HOME
     # Return convention: boolean
     sub createBuildSystem
     {
-        my $self = shift;
-        my $builddir = $self->fullpath('build');
+        my $self = assert_isa(shift, 'GenericBuildSystem');
+        my $module = $self->module();
+        my $builddir = $module->fullpath('build');
 
         if (! -e "$builddir" && !super_mkdir("$builddir"))
         {
-            error ("\tUnable to create build directory for r[$self]!!");
+            error ("\tUnable to create build directory for r[$module]!!");
             return 0;
         }
 
@@ -2027,25 +2110,31 @@ HOME
     ksb::Debug->import();
     ksb::Util->import();
 
+    sub new
+    {
+        my ($class, $module) = @_;
+        return bless { module => $module }, $class;
+    }
+
+    sub module
+    {
+        my $self = shift;
+        return $self->{module};
+    }
+
     # scm-specific update procedure.
     # May change the current directory as necessary.
-    # Assumes called as part of a Module (i.e. $self->isa('Module') should be true.
     sub updateInternal
     {
-        my $self = assert_isa(shift, 'Module');
-        my $fullpath = $self->fullpath('source');
-        my @options = split(' ', $self->getOption('checkout-only'));
-
-        # Calculate l10n module name. The logic is duplicated on purpose with
-        # filter_l10n_module_list because we have to handle the $l10n/scripts
-        # directory specially (just on update).
-        my $moduleName = $self->name();
-        $moduleName = 'l10n-kde4' if $moduleName eq 'l10n'; # Correct internal name.
+        my $self = assert_isa(shift, 'UpdateHandler');
+        my $module = $self->module();
+        my $fullpath = $module->fullpath('source');
+        my @options = split(' ', $module->getOption('checkout-only'));
 
         # Use kde-languages option if this isn't set on command line.
         if (!@options)
         {
-            push @options, split(' ', $self->getOption('kde-languages'));
+            push @options, split(' ', $module->getOption('kde-languages'));
         }
 
         # Ensure that scripts is pulled in for the update process (not req'd
@@ -2053,12 +2142,17 @@ HOME
         push @options, 'scripts';
 
         if (-e "$fullpath/.svn") {
-            main::check_module_validity($self);
-            return main::update_module_path($self, @options);
+            main::check_module_validity($module);
+            return main::update_module_path($module, @options);
         }
         else {
-            return main::checkout_module_path($self, @options);
+            return main::checkout_module_path($module, @options);
         }
+    }
+
+    sub name
+    {
+        return 'l10n';
     }
 
     # Buildsystem support section
@@ -2082,16 +2176,17 @@ HOME
     # directory, since that's the only directory you should touch from then on.
     sub prepareFakeBuilddir
     {
-        my $self = assert_isa(shift, 'Module');
-        my $builddir = $self->fullpath('build');
-        my $srcdir = $self->fullpath('source');
+        my $self = assert_isa(shift, 'l10nSystem');
+        my $module = $self->module();
+        my $builddir = $module->fullpath('build');
+        my $srcdir = $module->fullpath('source');
 
         # List reference, not a real list.  The initial kdesrc-build does *NOT*
         # fork another kdesrc-build using exec, see sub log_command() for more
         # info.
         my $args = [ 'kdesrc-build', 'safe_lndir', $srcdir, $builddir ];
 
-        return (0 != main::log_command ($self, 'create-builddir', $args));
+        return (0 != main::log_command ($module, 'create-builddir', $args));
     }
 
     # Subroutine to create the build system for a module.  This involves making
@@ -2102,36 +2197,37 @@ HOME
     # Return convention: boolean (inherited)
     sub createBuildSystem
     {
-        my $self = assert_isa(shift, 'Module');
-        my $builddir = $self->fullpath('build');
+        my $self = assert_isa(shift, 'GenericBuildSystem');
+        my $module = $self->module();
+        my $builddir = $module->fullpath('build');
 
         if (pretending())
         {
-            pretend ("\tWould have created g[$self]\'s build system.");
+            pretend ("\tWould have created g[$module]\'s build system.");
             return 1;
         }
 
         # l10n doesn't support srcdir != builddir, fake it.
-        whisper ("\tFaking builddir for g[$self]");
+        whisper ("\tFaking builddir for g[$module]");
         if (!$self->prepareFakeBuilddir())
         {
-            error ("Error creating r[$self] build system!");
+            error ("Error creating r[$module] build system!");
             return 0;
         }
 
         # autogen.sh must be run from one level below for some reason.
         p_chdir ("$builddir/..");
 
-        my ($lang) = ($self->name() =~ /^l10n-kde4\/(.*)$/);
+        my ($lang) = ($module->name() =~ /^l10n-kde4\/(.*)$/);
         my $cmd_ref = [ './scripts/autogen.sh', $lang ];
 
-        if (main::log_command ($self, "build-system", $cmd_ref))
+        if (main::log_command ($module, "build-system", $cmd_ref))
         {
-            error ("\tUnable to create build system for r[$self]");
+            error ("\tUnable to create build system for r[$module]");
             return 0;
         }
 
-        $self->setOption('#reconfigure', 1); # Force reconfigure of the module
+        $module->setOption('#reconfigure', 1); # Force reconfigure of the module
 
         return 1;
     }
@@ -2157,15 +2253,21 @@ HOME
         return 1;
     }
 
+    sub name
+    {
+        return 'KDE';
+    }
+
     sub configureInternal
     {
-        my $self = shift;
+        my $self = assert_isa(shift, 'KDEBuildSystem');
+        my $module = $self->module();
 
         # Use cmake to create the build directory (sh script return value
         # semantics).
-        if (main::safe_run_cmake ($self))
+        if (main::safe_run_cmake ($module))
         {
-            error ("\tUnable to configure r[$self] with CMake!");
+            error ("\tUnable to configure r[$module] with CMake!");
             return 0;
         }
 
@@ -2187,31 +2289,38 @@ HOME
 
     sub needsInstalled
     {
-        my $self = shift;
-        return $self->getOption('qtdir') ne $self->fullpath('build');
+        my $self = assert_isa(shift, 'QtBuildSystem');
+        my $module = $self->module();
+        return $module->getOption('qtdir') ne $module->fullpath('build');
+    }
+
+    sub name
+    {
+        return 'Qt';
     }
 
     # Return value style: boolean
     sub configureInternal
     {
-        my $self = shift;
-        my $srcdir = $self->fullpath('source');
+        my $self = assert_isa(shift, 'QtBuildSystem');
+        my $module = $self->module();
+        my $srcdir = $module->fullpath('source');
         my $script = "$srcdir/configure";
 
         if (! -e $script)
         {
-            error ("\tMissing configure script for r[b[$self]");
+            error ("\tMissing configure script for r[b[$module]");
             return 0;
         }
 
-        my @commands = split (/\s+/, $self->getOption('configure-flags'));
+        my @commands = split (/\s+/, $module->getOption('configure-flags'));
         push @commands, '-confirm-license', '-opensource';
 
         # Get the user's CXXFLAGS
-        my $cxxflags = $self->getOption('cxxflags');
+        my $cxxflags = $module->getOption('cxxflags');
         main::setenv ('CXXFLAGS', $cxxflags);
 
-        my $prefix = $self->getOption('qtdir');
+        my $prefix = $module->getOption('qtdir');
 
         # Some users have added -prefix manually to their flags, they
         # probably shouldn't anymore. :)
@@ -2230,12 +2339,12 @@ EOF
         push @commands, "-prefix", $prefix;
         unshift @commands, $script;
 
-        my $builddir = $self->fullpath('build');
-        my $old_flags = $self->getPersistentOption('last-configure-flags') || '';
+        my $builddir = $module->fullpath('build');
+        my $old_flags = $module->getPersistentOption('last-configure-flags') || '';
         my $cur_flags = main::get_list_digest(@commands);
 
         if(($cur_flags ne $old_flags) ||
-           ($self->getOption('reconfigure')) ||
+           ($module->getOption('reconfigure')) ||
            (! -e "$builddir/Makefile")
           )
         {
@@ -2243,8 +2352,8 @@ EOF
 
             info ("\tRunning g[configure]...");
 
-            $self->setPersistentOption('last-configure-flags', $cur_flags);
-            return log_command($self, "configure", \@commands) == 0;
+            $module->setPersistentOption('last-configure-flags', $cur_flags);
+            return main::log_command($module, "configure", \@commands) == 0;
         }
 
         # Skip execution of configure.
@@ -2301,8 +2410,8 @@ EOF
 
         my $module = {
             name         => $name,
-            scm_type     => undef,
-            build_type   => undef,
+            scm_obj      => undef,
+            build_obj    => undef,
             phases       => $phases,
             context      => $ctx,
             options      => $ctx->{build_options}{$name},
@@ -2391,13 +2500,11 @@ EOF
         return $self->{name};
     }
 
-    # Returns a string describing the scm platform of the given module.
-    # Return value: 'git' or 'svn' at this point, as appropriate.
-    sub scmType
+    sub scm
     {
         my $self = shift;
 
-        return $self->{scm_type} if $self->{scm_type};
+        return $self->{scm_obj} if $self->{scm_obj};
 
         # Look for specific setting of repository and svn-server. If both is
         # set it's a bug, if one is set, that's the type (because the user says
@@ -2421,45 +2528,85 @@ EOF
         }
 
         # If it needs a repo it's git. Everything else is svn for now.
-        $self->{scm_type} = $git_status ? 'git' : 'svn';
-        return $self->{scm_type};
-    }
+        $self->{scm_obj} =
+            $git_status
+                ? GitUpdate->new($self)
+                : SvnUpdate->new($self);
 
-    sub ensureScmMixinsSetup
-    {
-        my $self = shift;
-        return if $self->can('updateInternal');
-
-        my $type = $self->scmType();
-        given ($type) {
-            when ('svn') {
-                push @ISA, 'SvnUpdate';
-            }
-            when ('git') {
-                push @ISA, 'GitUpdate';
-            }
-            when ('l10n') {
-                push @ISA, 'l10nSystem';
-            }
-            # TODO: l10n as a separate update type.
-            default {
-                die make_exception('Internal', "Unhandled scm type $type");
-            }
-        }
+        return $self->{scm_obj};
     }
 
     sub setScmType
     {
         my ($self, $scmType) = @_;
-        $self->{scm_type} = $scmType;
+
+        my $newType;
+
+        given($scmType) {
+            when('git')  { $newType = GitUpdate->new($self); }
+            when('proj') { $newType = KDEProjectUpdate->new($self); }
+            when('l10n') { $newType = l10nSystem->new($self); }
+            when('svn')  { $newType = SvnUpdate->new($self); }
+            default      { $newType = undef; }
+        }
+
+        $self->{scm_obj} = $newType;
+    }
+
+    # Returns a string describing the scm platform of the given module.
+    # Return value: 'git' or 'svn' at this point, as appropriate.
+    sub scmType
+    {
+        my $self = shift;
+        return $self->scm()->name();
     }
 
     sub currentScmRevision
     {
         my $self = shift;
 
-        $self->ensureScmMixinsSetup();
-        return $self->currentRevisionInternal();
+        return $self->scm()->currentRevisionInternal();
+    }
+
+    sub buildSystem
+    {
+        my $self = shift;
+
+        if ($self->{build_obj} && $self->{build_obj}->name() ne 'generic') {
+            return $self->{build_obj};
+        }
+
+        # If not set, let's guess.
+        my $buildType;
+        my $sourceDir = $self->fullpath('source');
+
+        if (($self->getOption('repository') =~ /gitorious\.org\/qt\//) ||
+            ($self->getOption('repository') =~ /^kde:qt$/) ||
+            (-e "$sourceDir/bin/syncqt"))
+        {
+            $buildType = QtBuildSystem->new($self);
+        }
+
+        if (!$buildType && (-e "$sourceDir/CMakeLists.txt" ||
+                $self->scm()->name() eq 'proj'))
+        {
+            $buildType = KDEBuildSystem->new($self);
+        }
+
+        # 'configure' is a popular fall-back option even for other build
+        # systems so ensure we check last for autotools.
+        if (!$buildType &&
+            (-e "$sourceDir/configure" || -e "$sourceDir/autogen.sh"))
+        {
+            die make_exception('Internal', 'The autotools build system is unsupported');
+        }
+
+        # Don't just assume the build system is KDE-based...
+        $buildType //= GenericBuildSystem->new($self);
+
+        $self->{build_obj} = $buildType;
+
+        return $self->{build_obj};
     }
 
     # Current possible build system types:
@@ -2474,77 +2621,7 @@ EOF
     sub buildSystemType
     {
         my $self = shift;
-
-        if ($self->{build_type} && $self->{build_type} ne 'pendingSource') {
-            return $self->{build_type};
-        }
-
-        # If not set, let's guess.
-        my $buildType;
-        my $sourceDir = $self->fullpath('source');
-
-        if (($self->getOption('repository') =~ /gitorious\.org\/qt\//) ||
-            ($self->getOption('repository') =~ /^kde:qt$/) ||
-            (-e "$sourceDir/bin/syncqt"))
-        {
-            $buildType = 'Qt';
-        }
-
-        $buildType //= 'KDE' if -e "$sourceDir/CMakeLists.txt";
-
-        if (!$buildType &&
-            (-e "$sourceDir/configure" || -e "$sourceDir/autogen.sh"))
-        {
-            $buildType = 'autotools';
-        }
-
-        $buildType //= 'l10n' if $self->name() eq 'l10n';
-
-        $buildType //= 'pendingSource'; # Nothing detected, mark pending.
-        $self->{build_type} = $buildType;
-
-        return $self->{build_type};
-    }
-
-    sub setBuildSystemType
-    {
-        my ($self, $buildType) = @_;
-        $self->{build_type} = $buildType;
-    }
-
-    sub ensureBuildMixinsSetup
-    {
-        my $self = shift;
-
-        # Remove GenericBuildSystem from ISA to be replaced by something more
-        # specific. Must be done before our check below.
-        @ISA = grep { $_ ne 'GenericBuildSystem' } (@ISA);
-
-        return if $self->can('buildInternal');
-
-        my $type = $self->buildSystemType();
-
-        # Possible types are as in the comment to sub buildSystemType
-        given ($type) {
-            when ('KDE') {
-                push @ISA, 'KDEBuildSystem';
-            }
-            when ('Qt') {
-                push @ISA, 'QtBuildSystem';
-            }
-            when ('l10n') {
-                push @ISA, 'l10nSystem';
-            }
-            when ('autotools') {
-                die make_exception('Internal', clr("Build type y[autotools] is unsupported"));
-            }
-            when ('pendingSource') {
-                die make_exception('Runtime', "Unsure of the build system for module $self!");
-            }
-            default {
-                die make_exception('Internal', "Unhandled build system type $type");
-            }
-        }
+        return $self->buildSystem()->name();
     }
 
     # Subroutine to build this module.
@@ -2554,15 +2631,17 @@ EOF
         my $self = assert_isa(shift, 'Module');
         my $moduleName = $self->name();
         my $builddir = $self->fullpath('build');
-
         my $start_time = time;
+        my $buildSystem = $self->buildSystem();
 
-        $self->ensureBuildMixinsSetup();
+        if ($buildSystem->name() eq 'generic' && !pretending()) {
+            die make_exception('Internal', 'Build system determination still pending when build attempted.');
+        }
 
         return 0 if !$self->setupBuildSystem();
         return 1 if $self->getOption('build-system-only');
 
-        if (!$self->buildInternal())
+        if (!$buildSystem->buildInternal())
         {
             # Build failed
 
@@ -2606,9 +2685,14 @@ EOF
         my $self = assert_isa(shift, 'Module');
         my $moduleName = $self->name();
 
-        $self->ensureBuildMixinsSetup();
+        my $buildSystem = $self->buildSystem();
 
-        if ($self->needsRefreshed())
+        if ($buildSystem->name() eq 'generic' && !pretending()) {
+            die make_exception('Internal',
+                'Build system determination still pending when build attempted.');
+        }
+
+        if ($buildSystem->needsRefreshed())
         {
             # The build system needs created, either because it doesn't exist, or
             # because the user has asked that it be completely rebuilt.
@@ -2617,14 +2701,14 @@ EOF
             # Check to see if we're actually supposed to go through the
             # cleaning process.
             if (!$self->getOption('#cancel-clean') &&
-                !$self->cleanBuildSystem())
+                !$buildSystem->cleanBuildSystem())
             {
                 warning ("\tUnable to clean r[$self]!");
                 return 0;
             }
         }
 
-        if (!$self->createBuildSystem()) {
+        if (!$buildSystem->createBuildSystem()) {
             error ("\tError creating r[$self]'s build system!");
             return 0;
         }
@@ -2634,8 +2718,8 @@ EOF
         # builddir is automatically set to the right value for qt-copy
         p_chdir ($self->fullpath('build'));
 
-        if (!$self->configureInternal()) {
-            error ("\tUnable to configure r[$self] with ${$self->buildSystemType()}");
+        if (!$buildSystem->configureInternal()) {
+            error ("\tUnable to configure r[$self] with " . $self->buildSystemType());
             return 0;
         }
 
@@ -2694,9 +2778,7 @@ EOF
         my $count;
         my $returnValue;
 
-        $self->ensureScmMixinsSetup();
-
-        eval { $count = $self->updateInternal() };
+        eval { $count = $self->scm()->updateInternal() };
 
         if ($@)
         {
@@ -4994,7 +5076,7 @@ EOF
 
         my $newModule = Module->new($ctx, $moduleName);
         $newModule->setModuleSet($moduleSetName);
-        $newModule->setScmType($usingXML ? 'proj' : undef);
+        $newModule->setScmType($usingXML ? 'proj' : 'git');
         push @moduleList, $newModule;
 
         # Dump all options into the existing Module's options.
@@ -6944,7 +7026,7 @@ sub check_module_validity
     my $module = assert_isa(shift, 'Module');
     my $source_dir = $module->fullpath('source');
     my $module_expected_url = svn_module_url($module);
-    my $module_actual_url = $module->svnInfo('URL');
+    my $module_actual_url = $module->scm()->svnInfo('URL');
 
     $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
     $module_actual_url   =~ s{/+$}{}; # Remove trailing slashes
@@ -6984,7 +7066,7 @@ sub handle_install
     map { assert_isa($_, 'Module') } @modules;
 
     @modules = filter_l10n_module_list($ctx, @modules);
-    @modules = grep { $_->needsInstalled() } (@modules);
+    @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
 
     my $result = 0;
 
@@ -7081,7 +7163,7 @@ sub handle_uninstall
     map { assert_isa($_, 'Module') } @modules;
 
     @modules = filter_l10n_module_list($ctx, @modules);
-    @modules = grep { $_->needsInstalled() } (@modules);
+    @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
     my $result = 0;
 
     for my $module (reverse @modules)

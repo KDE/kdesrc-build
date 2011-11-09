@@ -326,10 +326,13 @@ is($conf_modules[3]->getOption('configure-flags'), '-fast', 'read_options/parse_
 
 # kdelibs
 is($conf_modules[0]->getOption('repository'), 'kde:kdelibs', 'git-repository-base');
+is($conf_modules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 1)');
 
 my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt-copy/);
 $ConfModules[1] = Module->new($ctx, 'kdesrc-build'); # This should be a kde_projects.xml
 $ConfModules[2] = Module->new($ctx, 'kde-runtime');  # This should be a kde_projects.xml
+
+is($ConfModules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 2)');
 $ConfModules[1]->setModuleSet('set1');
 $ConfModules[1]->setScmType('proj');
 $ConfModules[2]->setModuleSet('set1');
