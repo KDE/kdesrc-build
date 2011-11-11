@@ -1923,12 +1923,16 @@ HOME
         my $srcdir = $module->fullpath('source');
         my $result; # Predeclare to outscope upcoming eval
 
+        if (pretending() && ! -e $srcdir) {
+            return 'Unknown';
+        }
+
         # Search each line of output, ignore stderr.
         # eval since IPC::Open3 uses exceptions.
         eval
         {
             # Need to chdir into the srcdir, in case srcdir is a symlink. svn info /path/to/symlink barfs.
-            p_chdir ($srcdir);
+            p_chdir ($srcdir) or die "Can't change to srcdir for svn info: $!";
 
             local $ENV{'LC_ALL'} = 'C'; # Make the svn output untranslated
 
@@ -2307,7 +2311,7 @@ HOME
         my $srcdir = $module->fullpath('source');
         my $script = "$srcdir/configure";
 
-        if (! -e $script)
+        if (! -e $script && !pretending())
         {
             error ("\tMissing configure script for r[b[$module]");
             return 0;
