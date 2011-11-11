@@ -1822,7 +1822,46 @@ HOME
     sub currentRevisionInternal
     {
         my $self = assert_isa(shift, 'Module');
-        return main::current_module_svn_revision($self);
+        return $self->svnInfo('Revision');
+    }
+
+    # Returns a requested parameter from 'svn info'.
+    #
+    # First parameter is a string with the name of the parameter to retrieve (e.g. URL).
+    #   Each line of output from svn info is searched for the requested string.
+    # Returns the string value of the parameter or undef if an error occurred.
+    sub svnInfo
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $param = shift;
+        my $srcdir = $self->fullpath('source');
+        my $result; # Predeclare to outscope upcoming eval
+
+        # Search each line of output, ignore stderr.
+        # eval since IPC::Open3 uses exceptions.
+        eval
+        {
+            # Need to chdir into the srcdir, in case srcdir is a symlink. svn info /path/to/symlink barfs.
+            p_chdir ($srcdir);
+
+            local $ENV{'LC_ALL'} = 'C'; # Make the svn output untranslated
+
+            my @lines = grep { /^$param:/ } (
+                slurp_program_output('svn', 'info', '--non-interactive', '.')
+            );
+
+            chomp ($result = $lines[0]);
+            $result =~ s/^$param:\s*//;
+        };
+
+        if($@)
+        {
+            error ("Unable to run r[b[svn], is the Subversion program installed?");
+            error (" -- Error was: r[$@]");
+            return undef;
+        }
+
+        return $result;
     }
 }
 # }}}
@@ -4863,62 +4902,6 @@ sub slurp_git_config_output
     return @output;
 }
 
-# Returns a requested parameter from 'svn info' for the given module.
-#
-# First parameter is the module.
-# Second parameter is a string with the name of the parameter to retrieve (i.e. URL).
-#   Each line of output from svn info is searched for the requested string.
-# Returns the string value of the parameter or undef if an error occurred.
-sub get_svn_info
-{
-    my $module = assert_isa(shift, 'Module');
-    my $param = shift;
-    my $srcdir = $module->fullpath('source');
-    my $result; # Predeclare to outscope upcoming eval
-
-    # Search each line of output, ignore stderr.
-    # eval since IPC::Open3 uses exceptions.
-    eval
-    {
-        # Need to chdir into the srcdir, in case srcdir is a symlink. svn info /path/to/symlink barfs.
-        p_chdir ($srcdir);
-        my $output;
-        local $ENV{'LC_ALL'} = 'C'; # Make the svn output untranslated
-        my @lines = slurp_program_output('svn', 'info', '--non-interactive', '.');
-
-        foreach (@lines)
-        {
-            ($result) = m/^$param:\s*(.*)$/;
-
-            if ($result)
-            {
-                chomp $result;
-                last;
-            }
-        }
-    };
-
-    if($@)
-    {
-        error "Unable to run r[b[svn], is the Subversion program installed?";
-        error " -- Error was: r[$@]";
-        return undef;
-    }
-
-    return $result;
-}
-
-# Returns a string containing the current on-disk revision number of the
-# given Subversion repository, or undef if there was an error.
-#
-# First parameter is the name of the module to examine.
-sub current_module_svn_revision
-{
-    my $module = assert_isa(shift, 'Module');
-
-    return get_svn_info($module, 'Revision');
-}
-
 # Subroutine to process the command line arguments, which should be passed as
 # a list. The list of module names passed on the command line will be returned,
 # In addition, a second parameter should be passed, a reference to a hash that
@@ -6875,7 +6858,7 @@ sub check_module_validity
     my $module = assert_isa(shift, 'Module');
     my $source_dir = $module->fullpath('source');
     my $module_expected_url = svn_module_url($module);
-    my $module_actual_url = get_svn_info($module, 'URL');
+    my $module_actual_url = $module->svnInfo('URL');
 
     $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
     $module_actual_url   =~ s{/+$}{}; # Remove trailing slashes

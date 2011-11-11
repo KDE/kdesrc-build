@@ -175,8 +175,9 @@ is_deeply([ split_quoted_on_whitespace(' a=b g f ') ], \@result1, 'split_quoted_
 SKIP: {
     skip "svn not available or network was down", 2 unless $svnAvail;
 
-    like(get_svn_info($kdesupportModule, 'URL'), qr/anonsvn\.kde\.org/, 'svn-info output (url)');
-    like(get_svn_info($kdesupportModule, 'Revision'), qr/^\d+$/, 'svn-info output (revision)');
+    is($kdesupportModule->scmType(), 'svn', 'svn requirement detection');
+    like($kdesupportModule->scm()->svnInfo('URL'), qr/anonsvn\.kde\.org/, 'svn-info output (url)');
+    like($kdesupportModule->scm()->svnInfo('Revision'), qr/^\d+$/, 'svn-info output (revision)');
 }
 
 # Test get_subdir_path
