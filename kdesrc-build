@@ -2972,6 +2972,27 @@ EOF
         return $pathinfo{'fullpath'};
     }
 
+    # Subroutine to return the name of the destination directory for the
+    # checkout and build routines.  Based on the dest-dir option.  The return
+    # value will be relative to the src/build dir.  The user may use the
+    # '$MODULE' or '${MODULE}' sequences, which will be replaced by the name of
+    # the module in question.
+    #
+    # The first parameter is optional, but if provided will be used as the base
+    # path to replace $MODULE entries in dest-dir.
+    sub destDir
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $destDir = $self->getOption('dest-dir');
+        my $basePath = shift // $self->getOption('#xml-full-path');
+        $basePath ||= $self->name(); # Default if not provided in XML
+
+        $destDir =~ s/(\${MODULE})|(\$MODULE\b)/$basePath/g;
+
+        return $destDir;
+    }
+
+
     1;
 }
 # }}}
@@ -3126,26 +3147,6 @@ sub split_quoted_on_whitespace($)
       /xg; # g modifier repeats the match as often as possible to get all matches.
 
     return @words;
-}
-
-# Subroutine to return the name of the destination directory for the checkout
-# and build routines.  Based on the dest-dir option.  The return value will be
-# relative to the src/build dir.  The user may use the '$MODULE' or '${MODULE}'
-# sequences, which will be replaced by the name of the module in question.
-#
-# The first parameter should be the Module.
-# The second parameter is optional, but if provided will be used as the base
-#     path to replace $MODULE entries in dest-dir.
-sub get_dest_dir
-{
-    my $module = assert_isa(shift, 'Module');
-    my $dest_dir = $module->getOption('dest-dir');
-    my $basePath = shift // $module->getOption('#xml-full-path');
-    $basePath ||= $module->name(); # Default if not provided in XML
-
-    $dest_dir =~ s/(\${MODULE})|(\$MODULE\b)/$basePath/g;
-
-    return $dest_dir;
 }
 
 # This function returns true if the give module uses CMake.  If the user has
@@ -3404,7 +3405,7 @@ sub get_module_path_dir
 {
     my $module = assert_isa(shift, 'Module');
     my $type = shift;
-    my $destdir = get_dest_dir($module);
+    my $destdir = $module->destDir();
     my $srcbase = $module->getSourceDir();
     $srcbase = $module->getSubdirPath('build-dir') if $type eq 'build';
 
@@ -3419,7 +3420,7 @@ sub get_module_path_dir
     $result{'path'} = join('/', @parts);
     $result{'fullpath'} = "$result{path}/$result{module}";
 
-    my $compatDestDir = get_dest_dir($module, $module->name());
+    my $compatDestDir = $module->destDir($module->name());
     my $fullCompatPath = "$srcbase/$compatDestDir";
 
     # kdesrc-build 1.14 changed the source directory layout to be more
