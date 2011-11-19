@@ -2020,7 +2020,14 @@ HOME
     {
         my $self = shift;
 
-        return main::safe_make($self->module()) == 0;
+        return main::safe_make($self->module(), {
+            target => undef,
+            message => 'Compiling...',
+            'make-options' => [
+                split(' ', $self->module()->getOption('make-options')),
+            ],
+            logbase => 'build',
+        }) == 0;
     }
 
     # Return value style: boolean
@@ -4606,117 +4613,93 @@ sub safe_rmtree
 }
 
 # Subroutine to run the make command with the arguments given by the passed
-# list.  The first argument of the list given must be the module that we're
-# making (which itself must be a Module object, not merely the name).
+# hash.  In addition to finding the proper make executable, this function
+# handles the step of running make for individual subdirectories (as specified
+# by the checkout-only option to the module).  Due to the various ways make is
+# used by this script, it is required to pass customization options in a hash:
+# {
+#    target         => undef, or a valid make target e.g. 'install',
+#    message        => 'Compiling.../Installing.../etc.'
+#    make-options   => [ list of command line arguments to pass to make. See
+#                        make-options ],
+#    prefix-options => [ list of command line arguments to prefix *before* the
+#                        make command, used for make-install-prefix support for
+#                        e.g. sudo ],
+#    logbase        => 'base-log-filename',
+# }
+#
+# target and message are required. logbase is required if target is left
+# undefined, but otherwise defaults to the same value as target.
+#
+# The first argument should be the Module object to be made.
+# The second argument should be the reference to the hash described above.
 #
 # Returns 0 on success, non-zero on failure (shell script style)
 sub safe_make (@)
 {
-    my ($module, @args) = @_;
+    my ($module, $optsRef) = @_;
     assert_isa($module, 'Module');
-
-    my $logdir = $module->getLogDir();
-    my $checkout_dirs = $module->getOption("checkout-only");
-    my @dirs = split(' ', $checkout_dirs);
-    my $install_mode = (scalar @args > 0) && ($args[0] =~ /^(un)?install$/);
-    my $uninstalling = $install_mode && $args[0] eq 'uninstall';
-
-    my $make;
-    my $opts = $module->getOption('make-options');
 
     # Non Linux systems can sometimes fail to build when GNU Make would work,
     # so prefer GNU Make if present, otherwise try regular make.  Also, convert
     # the path to an absolute path since I've encountered a sudo that is
     # apparently unable to guess.  Maybe it's better that it doesn't guess
     # anyways from a security point-of-view.
-    if(path_to_prog('gmake')) {
-        $make = path_to_prog('gmake');
-    }
-    elsif(path_to_prog('make')) {
-        $make = path_to_prog('make');
-    }
-    else {
+    my $make;
+    if(!($make = path_to_prog('gmake') || path_to_prog('make'))) {
         # Weird, we can't find make, you'd think configure would have
         # noticed...
-        error " r[b[*] Unable to find the g[$make] executable!";
+        error " r[b[*] Unable to find the g[make] executable!";
         return 1;
     }
 
-    # Make it prettier if pretending.
+    # Make it prettier if pretending (Remove leading directories).
     $make =~ s{^/.*/}{} if pretending;
 
-    # Add make-options to the given options, unless we're installing (since
-    # things like parallel build options will break install).
-    if (not $install_mode) {
-        unshift (@args, split(' ', $opts));
-    }
+    # Simplify code by forcing lists to exist.
+    $optsRef->{'prefix-options'} //= [ ];
+    $optsRef->{'make-options'} //= [ ];
 
-    unshift (@args, $make);
+    my @prefixOpts = @{$optsRef->{'prefix-options'}};
 
-    my $description;
-
-    # Check if we're installing or uninstalling
-    if($install_mode)
+    # If using sudo ensure that it doesn't wait on tty, but tries to read from
+    # stdin (which should fail as we redirect that from /dev/null)
+    if (@prefixOpts && $prefixOpts[0] eq 'sudo' && !grep { /^-S$/ } @prefixOpts)
     {
-        $description = clr "g[$module]";
-
-        my @install_cmd = split(' ', $module->getOption('make-install-prefix'));
-        if (@install_cmd)
-        {
-            # Add -S option if we're running sudo and it's not already
-            # present.  This causes sudo to read the password from stdin (and
-            # consequently fail instead of hanging at the terminal).
-            if ($install_cmd[0] eq 'sudo' and not grep (/^-S$/, @install_cmd))
-            {
-                splice (@install_cmd, 1, 0, '-S'); # Add -S right after 'sudo'
-            }
-
-            unshift @args, @install_cmd;
-        }
-
-        if ($uninstalling) {
-            info "\tUninstalling $description.";
-        }
-        else {
-            info "\tInstalling $description.";
-        }
-    }
-    else
-    {
-        info "\tCompiling...";
+        splice (@prefixOpts, 1, 0, '-S'); # Add -S right after 'sudo'
     }
 
+    # Assemble arguments
+    my @args = (@prefixOpts, $make);
+    push @args, $optsRef->{target} if $optsRef->{target};
+    push @args, @{$optsRef->{'make-options'}};
+
+    info ("\t", $optsRef->{message});
+
+    # Here we're attempting to ensure that we either run make in each
+    # subdirectory, *or* for the whole module, but not both.
+    my @dirs = split(' ', $module->getOption("checkout-only"));
     push (@dirs, "") if scalar @dirs == 0;
+
     for my $subdir (@dirs)
     {
         # Some subdirectories shouldn't have make run within them.
         next unless is_subdir_buildable($module, $subdir);
 
-        # The -1 used to be an increasing prefix but with CMake we don't
-        # continually reattempt.  Leave the -1 for now since I expect
-        # most are used to the build log ending in it.
-        my $logname = $install_mode ? 'install' : "build-1";
-        $logname = 'uninstall' if $uninstalling;
+        my $logname = $optsRef->{logbase} // $optsRef->{target};
 
         if ($subdir ne '')
         {
-            $logname = $install_mode ? "install-$subdir" : "build-$subdir-1";
-            $logname = "uninstall-$subdir" if $uninstalling;
+            $logname = $logname . "-$subdir";
 
             # Remove slashes in favor of something else.
             $logname =~ tr{/}{-};
 
-            if ($install_mode) {
-                if ($args[0] eq 'uninstall') {
-                    info "\tUninstalling subdirectory g[$subdir]";
-                }
-                else {
-                    info "\tInstalling subdirectory g[$subdir]";
-                }
-            }
-            else {
-                info "\tBuilding subdirectory g[$subdir]";
-            }
+            # Mention subdirectory that we're working on, move ellipsis
+            # if present.
+            my $subdirMessage = $optsRef->{message};
+            $subdirMessage =~ s/(\.\.\.)?$/ subdirectory g[$subdir]$1/;
+            info "\t$subdirMessage";
         }
 
         my $builddir = $module->fullpath('build') . "/$subdir";
@@ -4724,7 +4707,7 @@ sub safe_make (@)
 
         p_chdir ($builddir);
 
-        my $result = run_make_command ($module, $logname, \@args );
+        my $result = run_make_command ($module, $logname, \@args);
         return $result if $result;
     };
 
@@ -7091,20 +7074,27 @@ sub handle_install
             next;
         }
 
+        my @makeInstallOpts = split(' ', $module->getOption('make-install-prefix'));
+
         # We can optionally uninstall prior to installing
         # to weed out old unused files.
         if ($module->getOption('use-clean-install') &&
             $module->getPersistentOption('last-install-rev') &&
-            safe_make ($module, 'uninstall'))
+            safe_make ($module, {
+                target => 'uninstall',
+                message => "Uninstalling g[$module]",
+                'prefix-options' => [@makeInstallOpts],
+            }))
         {
             warning "\tUnable to uninstall r[$module] before installing the new build.";
             warning "\tContinuing anyways...";
         }
 
-        # safe_make() evilly uses the "install" parameter to use installation
-        # mode instead of compile mode.  This is so we can get the subdirectory
-        # handling for free.
-        if (safe_make ($module, "install"))
+        if (safe_make ($module, {
+                target => 'install',
+                message => "Installing g[$module]",
+                'prefix-options' => [@makeInstallOpts],
+            }))
         {
             error "\tUnable to install r[$module]!";
             $result = 1;
@@ -7186,10 +7176,13 @@ sub handle_uninstall
             next;
         }
 
-        # safe_make() evilly uses the "install" parameter to use installation
-        # mode instead of compile mode.  This is so we can get the subdirectory
-        # handling for free.
-        if (safe_make ($module, "uninstall"))
+        my @makeInstallOpts = split(' ', $module->getOption('make-install-prefix'));
+
+        if (safe_make ($module, {
+                args => ['uninstall'],
+                message => clr("Uninstalling g[$module]"),
+                'prefix-options' => [@makeInstallOpts],
+            }))
         {
             error "\tUnable to uninstall r[$module]!";
             $result = 1;
