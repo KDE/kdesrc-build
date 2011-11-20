@@ -136,7 +136,7 @@ my @svnArgs = (
     svn://anonsvn.kde.org/home/kde/trunk/kdesupport},
     "$testSourceDirName/kdesupport");
 
-my $svnAvail = defined path_to_prog('svn') && $fullRun;
+my $svnAvail = defined absPathToExecutable('svn') && $fullRun;
 
 SKIP: {
     skip 'svn not installed', 1 unless $svnAvail;

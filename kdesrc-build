@@ -4537,7 +4537,7 @@ sub is_subdir_buildable
 #
 # This assumes that the module environment has already been updated since
 # binpath doesn't exactly correspond to $ENV{'PATH'}.
-sub path_to_prog
+sub absPathToExecutable
 {
     my $prog = shift;
     my @paths = split(/:/, $ENV{'PATH'});
@@ -4646,7 +4646,7 @@ sub safe_make (@)
     # apparently unable to guess.  Maybe it's better that it doesn't guess
     # anyways from a security point-of-view.
     my $make;
-    if(!($make = path_to_prog('gmake') || path_to_prog('make'))) {
+    if(!($make = absPathToExecutable('gmake') || absPathToExecutable('make'))) {
         # Weird, we can't find make, you'd think configure would have
         # noticed...
         error " r[b[*] Unable to find the g[make] executable!";
