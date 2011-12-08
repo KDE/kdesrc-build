@@ -7021,6 +7021,16 @@ sub check_module_validity
 
     if ($module_actual_url ne $module_expected_url)
     {
+        # Check if the --src-only flag was passed.
+        if ($module->buildContext()->getOption('#allow-auto-repo-move'))
+        {
+            note "g[$module] is checked out from a different location than expected.";
+            note "Attempting to correct";
+
+            log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
+            return;
+        }
+
         warning <<EOF;
  y[!!]
  y[!!] g[$module] seems to be checked out from somewhere other than expected.
