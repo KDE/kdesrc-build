@@ -2999,6 +2999,27 @@ EOF
         return $destDir;
     }
 
+    # Subroutine to return the installation path of a given module (the value
+    # that is passed to the CMAKE_INSTALL_PREFIX CMake option).
+    # It is based on the "prefix" and, if it is not set, the "kdedir" option.
+    # The user may use '$MODULE' or '${MODULE}' in the "prefix" option to have
+    # them replaced by the name of the module in question.
+    sub installationPath
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $path = $self->getOption('prefix');
+
+        if (!$path)
+        {
+            return $self->getOption('kdedir');
+        }
+
+        my $moduleName = $self->name();
+        $path =~ s/(\${MODULE})|(\$MODULE\b)/$moduleName/g;
+
+        return $path;
+    }
+
 
     1;
 }
@@ -6276,10 +6297,7 @@ sub safe_run_cmake
         push @commands, "-DCMAKE_CXX_FLAGS:STRING=$cxxflags";
     }
 
-    my $prefix = $module->getOption('prefix');
-
-    # If still no prefix, use KDEDIR
-    $prefix = $module->getOption('kdedir') unless $prefix;
+    my $prefix = $module->installationPath();
 
     push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
 
@@ -6565,9 +6583,7 @@ sub update_module_environment
     my $module = assert_isa(shift, 'Module');
     my $kdedir = $module->getOption('kdedir');
     my $qtdir = $module->getOption('qtdir');
-    my $prefix = $module->getOption('prefix');
-
-    $prefix = $kdedir unless $prefix;
+    my $prefix = $module->installationPath();
 
     # Add global set-envs
     setup_module_environment ($module->buildContext());
