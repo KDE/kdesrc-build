@@ -47,6 +47,7 @@ use File::Basename; # fileparse
 use File::Spec;     # tmpdir, rel2abs
 use LWP::UserAgent;
 use URI; # For git-clone snapshot support
+use Text::ParseWords qw(parse_line);
 use Sys::Hostname;
 use Storable 'dclone';
 use IO::Handle;
@@ -3147,34 +3148,21 @@ BEGIN {
     ksb::Util->import();
 }
 
-# This subroutine acts like split(' ', $_) except that double-quoted strings are not split in
-# the process.  Patch provided by Alain Boyer (alainboyer@gmail.com) based on a posting at
-# http://www.perlmonks.org/?node_id=212174.  Converted to an extended RE for readability by
-# mpyne.
-#
-# Note: This only works if the quotes completely surround the parameter in question.
-# i.e. "a=-DFOO -DBAR" works, a="-DFOO -DBAR" does not.
+# This subroutine acts like split(' ', $_) except that double-quoted strings
+# are not split in the process.
 #
 # First parameter: String to split on whitespace.
 # Return value: A list of the individual words and quoted values in the string.
+# The quotes themselves are not returned.
 sub split_quoted_on_whitespace($)
 {
-    my $str = shift;
-    my @words = $str =~
-      /\s*     # Eat up whitespace
-       "?      # Match 0-1 quotes
-       (       # Open grouping expression
-        (?<!") #   Match everything not following " (i.e. there was no quote)
-        \S+    #   Followed by 1 or more non-whitespace (this breaks on whitespace)
-        (?<!") #   Match everything not following " (don't read over a quote on accident)
-        |      #  or
-        [^"]+  #   All non-quote characters (After reading a quote)
-       )       # End grouping expression
-       "?      # Followed by 0-1 quotes
-       \s*     # Eat up whitespace
-      /xg; # g modifier repeats the match as often as possible to get all matches.
+    # 0 means not to keep delimiters or quotes
+    my $line = shift;
 
-    return @words;
+    # Remove leading/trailing whitespace
+    $line =~ s/^\s+//;
+    $line =~ s/\s+$//;
+    return parse_line('\s+', 0, $line);
 }
 
 # This function returns true if the give module uses CMake.  If the user has

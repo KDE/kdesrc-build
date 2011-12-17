@@ -171,6 +171,8 @@ is_deeply([ split_quoted_on_whitespace('a=b g f') ], \@result1, 'split_quoted_on
 is_deeply([ split_quoted_on_whitespace(' a=b g f') ], \@result1, 'split_quoted_on_whitespace space no quotes, leading whitespace');
 is_deeply([ split_quoted_on_whitespace('a=b g f ') ], \@result1, 'split_quoted_on_whitespace space no quotes, trailing whitespace');
 is_deeply([ split_quoted_on_whitespace(' a=b g f ') ], \@result1, 'split_quoted_on_whitespace space no quotes, leading and trailing whitespace');
+is_deeply([ split_quoted_on_whitespace('-DFOO="${MODULE}" BAR') ],
+          ['-DFOO=${MODULE}', 'BAR'], 'split_quoted_on_whitespace with braces/quotes');
 
 SKIP: {
     skip "svn not available or network was down", 2 unless $svnAvail;
