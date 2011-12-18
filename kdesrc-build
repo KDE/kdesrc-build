@@ -2011,6 +2011,13 @@ HOME
         return 1;
     }
 
+    # Returns true if the buildsystem will give percentage-completion updates on its output.
+    # Such percentage updates will be searched for to update the kdesrc-build status.
+    sub isProgressOutputSupported
+    {
+        return 0;
+    }
+
     # Returns true if the module should have make install run in order to be
     # used, or false if installation is not required or possible.
     sub needsInstalled
@@ -2284,6 +2291,12 @@ HOME
     {
         return 'KDE';
     }
+
+    sub isProgressOutputSupported
+    {
+        return 1;
+    }
+
 
     sub configureInternal
     {
@@ -4501,7 +4514,7 @@ sub run_make_command
     # 1. Not using CMake (i.e. Qt)
     # 2. If we're not printing to a terminal.
     # 3. When we're debugging (we'd interfere with debugging output).
-    if ((!module_uses_cmake($module)) or not -t STDERR or debugging)
+    if (!$module->buildSystem()->isProgressOutputSupported() || ! -t STDERR || debugging())
     {
         return log_command($module, $filename, $argRef);
     }
