@@ -371,6 +371,16 @@ ok(! -d "$testSourceDirName/build", 'Ensure build dir does not exist');
 isnt(super_mkdir("$testSourceDirName/build"), 0, 'Make temp build directory');
 ok(-d "$testSourceDirName/build", 'Double-check temp build dir created');
 
+# Test isSubdirBuildable
+my $tokenModule = Module->new($ctx, 'test-module');
+my $buildSystem = GenericBuildSystem->new($tokenModule);
+ok ($buildSystem->isSubdirBuildable('meh'), 'generic-build isSubdirBuildable');
+
+$buildSystem = l10nSystem->new($ctx);
+ok (!$buildSystem->isSubdirBuildable('scripts'), 'l10n-build isSubdirBuildable-scripts');
+ok ($buildSystem->isSubdirBuildable(''), 'l10n-build isSubdirBuildable-other');
+
+### TESTS GO ABOVE THIS LINE
 }; # eval
 
 if (my $err = $@) {

@@ -2004,6 +2004,13 @@ HOME
         return 0;
     }
 
+    # Returns true if the given subdirectory (reference from the module's root source directory)
+    # can be built or not. Should be reimplemented by subclasses as appropriate.
+    sub isSubdirBuildable
+    {
+        return 1;
+    }
+
     # Returns true if the module should have make install run in order to be
     # used, or false if installation is not required or possible.
     sub needsInstalled
@@ -2132,6 +2139,14 @@ HOME
     {
         my $self = shift;
         return $self->{module};
+    }
+
+    # Returns true if the given subdirectory (reference from the module's root source directory)
+    # can be built or not. Should be reimplemented by subclasses as appropriate.
+    sub isSubdirBuildable
+    {
+        my ($self, $subdir) = @_;
+        return $subdir ne 'scripts';
     }
 
     # scm-specific update procedure.
@@ -4528,18 +4543,6 @@ sub run_make_command
     return log_command($module, $filename, $argRef, $log_command_callback);
 }
 
-# Subroutine to determine if the given subdirectory of a module can actually be
-# built or not.  For instance, /admin can never be built, and the /kalyptus subdir
-# of kdebindings can't either.
-sub is_subdir_buildable
-{
-    my ($module, $dir) = @_;
-    assert_isa($module, 'Module');
-
-    return 0 if ($dir eq 'scripts' && ($module->name() =~ '^l10n-kde4'));
-    return 1;
-}
-
 # Subroutine to return the path to the given executable based on the current
 # binpath settings.  e.g. if you pass make you could get '/usr/bin/make'.  If
 # the executable is not found undef is returned.
@@ -4693,7 +4696,7 @@ sub safe_make (@)
     for my $subdir (@dirs)
     {
         # Some subdirectories shouldn't have make run within them.
-        next unless is_subdir_buildable($module, $subdir);
+        next unless $module->buildSystem()->isSubdirBuildable($subdir);
 
         my $logname = $optsRef->{logbase} // $optsRef->{target};
 
