@@ -2018,6 +2018,16 @@ HOME
         return 0;
     }
 
+    # If this method returns a non-empty string, then that string is the name
+    # of an environment variable to prepend the module's installation prefix
+    # path to. Mostly a hack, but will have to do until there's a better scheme
+    # for giving integration points for build systems into the actual build
+    # process.
+    sub prefixEnvironmentVariable
+    {
+        return undef;
+    }
+
     # Returns true if the module should have make install run in order to be
     # used, or false if installation is not required or possible.
     sub needsInstalled
@@ -2167,6 +2177,11 @@ HOME
         return $subdir ne 'scripts';
     }
 
+    sub prefixEnvironmentVariable
+    {
+        return 'CMAKE_PREFIX_PATH';
+    }
+
     # scm-specific update procedure.
     # May change the current directory as necessary.
     sub updateInternal
@@ -2306,6 +2321,11 @@ HOME
     sub isProgressOutputSupported
     {
         return 1;
+    }
+
+    sub prefixEnvironmentVariable
+    {
+        return 'CMAKE_PREFIX_PATH';
     }
 
     sub runTestsuite
@@ -3251,35 +3271,6 @@ sub split_quoted_on_whitespace($)
     $line =~ s/^\s+//;
     $line =~ s/\s+$//;
     return parse_line('\s+', 0, $line);
-}
-
-# This function returns true if the give module uses CMake.  If the user has
-# specified a choice, we use the user's choice regardless for now.  If no user
-# choice is given, auto-detect based on searching for filenames.
-#
-# First parameter: Module to check.
-# Return: True (non-zero) if user has chosen cmake or CMake support is detected,
-#         False (0, undef) if user does not want cmake or no CMake support is detected.
-sub module_uses_cmake
-{
-    my $module = assert_isa(shift, 'Module');
-
-    my $srcdir = $module->fullpath('source');
-    return 1 if -e "$srcdir/CMakeLists.txt";
-
-    # Kind of a hack but it beats inventing a sequence of checks that happens
-    # to get it right: just hardcode in the module that is the exception to the
-    # rule.
-
-    return 1 if $module->name() =~ /^l10n-kde4\/?/;
-
-    # No CMakeLists?  Expected for qt-copy
-    return 0 if $module->name() eq 'qt-copy';
-
-    # No CMakeLists.txt found, if the directory existed don't use CMake,
-    # otherwise assume we are using CMake for now.
-
-    return not -e $srcdir;
 }
 
 # Subroutine to return the branch prefix. i.e. the part before the branch name
@@ -6662,9 +6653,9 @@ sub update_module_environment
 
     my @path = ("$kdedir/bin", "$qtdir/bin", $module->getOption('binpath'));
 
-    if (module_uses_cmake($module))
+    if (my $prefixEnvVar = $module->buildSystem()->prefixEnvironmentVariable())
     {
-        prepend_environment_path('CMAKE_PREFIX_PATH', $prefix);
+        prepend_environment_path($prefixEnvVar, $prefix);
     }
 
     prepend_environment_path('PATH', @path);
