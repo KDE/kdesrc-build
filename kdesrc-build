@@ -1333,6 +1333,11 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         if (list_has($self->{modules}, $module)) {
             debug("Skipping duplicate module ", $module->name());
         }
+        elsif ($module->getOption('#xml-full-path') &&
+               list_has($self->{ignore_list}, $module->getOption('#xml-full-path')))
+        {
+            debug("Skipping ignored module $module");
+        }
         else {
             debug("Adding ", $module->name(), " to module list");
             push @{$self->{modules}}, $module;
@@ -1343,6 +1348,17 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     {
         my $self = shift;
         return $self->{modules};
+    }
+
+    # Sets a list of modules to ignore processing on completely.
+    # Parameters should simply be a list of XML repository paths to ignore,
+    # e.g. 'extragear/utils/kdesrc-build'.
+    sub setIgnoreList
+    {
+        my $self = shift;
+        $self->{ignore_list} = [@_];
+
+        debug ("Set context ignore list to ", join(', ', @_));
     }
 
     sub setupOperatingEnvironment
@@ -1814,6 +1830,42 @@ HOME
     sub name
     {
         return 'proj';
+    }
+
+    1;
+}
+# }}}
+
+# package KDEProjectMetadataUpdate {{{
+{
+    package KDEProjectMetadataUpdate;
+
+    our @ISA = qw(KDEProjectUpdate);
+
+    ksb::Util->import();
+
+    sub name
+    {
+        return 'metadata';
+    }
+
+    sub updateInternal
+    {
+        my $self = assert_isa(shift, 'KDEProjectMetadataUpdate');
+        my $count = $self->SUPER::updateInternal();
+
+        # Now that we in theory have up-to-date source code, read in the
+        # ignore file and propagate that information to our context object.
+
+        my $path = $self->module()->fullpath('source') . "/build-script-ignore";
+        open my $fh, '<', $path or die "Unable to read ignore data: $!";
+
+        my $ctx = $self->module()->buildContext();
+        my @ignoreModules = map { chomp $_; $_ } (<$fh>);
+
+        $ctx->setIgnoreList(@ignoreModules);
+
+        return $count;
     }
 
     1;
@@ -2665,6 +2717,7 @@ EOF
         given($scmType) {
             when('git')  { $newType = GitUpdate->new($self); }
             when('proj') { $newType = KDEProjectUpdate->new($self); }
+            when('metadata') { $newType = KDEProjectMetadataUpdate->new($self); }
             when('l10n') { $newType = l10nSystem->new($self); }
             when('svn')  { $newType = SvnUpdate->new($self); }
             default      { $newType = undef; }
@@ -5181,7 +5234,7 @@ sub expandXMLModules
         my $moduleSet = shift;
 
         # Only attempt to expand out XML-based modules.
-        return $moduleSet if $moduleSet->scmType() ne 'proj';
+        return $moduleSet if !$moduleSet->scm()->isa('KDEProjectUpdate');
 
         ensure_projects_xml_present($ctx) or
             die "kde-projects repository information could not be downloaded: $!.";
@@ -5235,13 +5288,16 @@ sub expandXMLModules
 
     if ($repositoryMetadataRequired) {
         my $repoMetadataModule = Module->new($ctx, 'kde-build-metadata');
-        $repoMetadataModule->setScmType('proj');
+
+        # Manually run this through the filter so all the right magic happens.
+        ($repoMetadataModule) = &$filter($repoMetadataModule);
 
         # Ensure we only ever try to update source, not build.
         $repoMetadataModule->phases()->phases('update');
+        $repoMetadataModule->setScmType('metadata');
 
-        # Manually run this through the filter so all the right magic happens.
-        unshift @results, &$filter($repoMetadataModule);
+        super_mkdir($repoMetadataModule->getSourceDir());
+        $repoMetadataModule->scm()->updateInternal();
     }
 
     return @results;
