@@ -5171,6 +5171,11 @@ sub expandXMLModules
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my @modules = @_;
 
+    # If we detect a KDE project we want to also pull in a "build support"
+    # repository that will contain metadata such as which modules depend on
+    # which other ones, what modules shouldn't be built, etc.
+    my $repositoryMetadataRequired = 0;
+
     # Using a sub allows me to use the 'return' keyword.
     my $filter = sub {
         my $moduleSet = shift;
@@ -5180,6 +5185,10 @@ sub expandXMLModules
 
         ensure_projects_xml_present($ctx) or
             die "kde-projects repository information could not be downloaded: $!.";
+
+        # At this point we know we'll need the kde-build-metadata module, force
+        # it in by setting a flag to be used by the higher-level subroutine.
+        $repositoryMetadataRequired = 1;
 
         my $name = $moduleSet->name();
         my $srcdir = $ctx->getSourceDir();
@@ -5222,7 +5231,20 @@ sub expandXMLModules
         return @xmlResults;
     };
 
-    return map { &$filter($_) } (@modules);
+    my @results = map { &$filter($_) } (@modules);
+
+    if ($repositoryMetadataRequired) {
+        my $repoMetadataModule = Module->new($ctx, 'kde-build-metadata');
+        $repoMetadataModule->setScmType('proj');
+
+        # Ensure we only ever try to update source, not build.
+        $repoMetadataModule->phases()->phases('update');
+
+        # Manually run this through the filter so all the right magic happens.
+        unshift @results, &$filter($repoMetadataModule);
+    }
+
+    return @results;
 }
 
 # This subroutine takes a reference to the current module list (specifically a
