@@ -364,9 +364,10 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     {
         my $exception_type = shift // 'Exception';
         my $message = shift;
+        my $levels = shift // 0; # Allow for more levels to be removed from bt
 
         # Remove this subroutine from the backtrace
-        local $Carp::CarpLevel = 1;
+        local $Carp::CarpLevel = 1 + $levels;
 
         $message = Carp::cluck($message) if $exception_type eq 'Internal';
         return bless({
@@ -378,7 +379,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     # Used in the assert methods
     sub fail_assertion
     {
-        die (make_exception('Internal', $_[0]));
+        die (make_exception('Internal', $_[0], 1));
     }
 
     # Throws an exception if the first parameter is not an object at all, or if
@@ -389,7 +390,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my ($obj, $class) = @_;
 
         if (!blessed($obj) || !$obj->isa($class)) {
-            fail_assertion("$obj is not of type $class");
+            fail_assertion("$obj is not of type $class, but of type " . ref($obj));
         }
 
         return $obj;
