@@ -2413,7 +2413,11 @@ HOME
             # Extract the number of failed tests
             if (open (my $logf, '<', "$logfile")) {
                 while (my $line = <$logf>) {
-                    last if (($numTests) = $line =~ m/([0-9]+) tests failed out of/);
+                    my $tmp = $line =~ m/([0-9]+) tests failed out of/;
+                    if ($tmp) {
+                        $numTests = $tmp;
+                        last;
+                    }
                 }
             }
 
