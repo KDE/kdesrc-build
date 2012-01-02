@@ -25,6 +25,24 @@ use IO::Pipe;
 use File::Copy;
 use File::Temp qw/tempfile/;
 
+sub clearScreen
+{
+    require POSIX;
+    my $termios = POSIX::Termios->new();
+    $termios->getattr(1); # Get STDOUT attributes
+
+    require Term::Cap;
+    my $terminal = Term::Cap->Tgetent({OSPEED => $termios->getospeed});
+
+    # Force the clear characters to be output immediately.
+    # Otherwise it might overlap with other output, like error messages.
+    local $| = 1;
+
+    print $terminal->Tputs('cl', 0);
+
+    return 0;
+}
+
 sub runDialogExecutable
 {
     my (@args) = @_;
@@ -49,7 +67,14 @@ sub runDialogExecutable
 
         # dialog uses -1 as an exit code, Perl gets just the standard 8 bits
         # the rest of UNIX uses...
-        die "Canceled the dialog" if $result == 255;
+        if ($? == -1) {
+            clearScreen();
+            die "Failed to run dialog(1): $@";
+        }
+        elsif ($result == 255) {
+            clearScreen();
+            die "Canceled the dialog";
+        }
         return $output || $result;
     }
     elsif (defined $pid) {
