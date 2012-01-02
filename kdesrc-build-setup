@@ -141,6 +141,24 @@ sub getListOptions
     return map { m/^"(.*)"$/ } (grep { length $_ } (split(/,/, $output)));
 }
 
+# The 'dialog(1)' program is required, verify it exists before going
+# further.
+# We use the --help option since it doesn't send weird terminal characters to the screen
+# and it's supported on dialog and Debian's dialog replacement called whiptail.
+system('dialog', '--help') == 0 or do {
+    my $osError = "$!";
+
+    say "Unable to run the dialog(1) program, it is required for this setup script.";
+    if ($? == -1) {
+        say "\tThe program wouldn't even run, due to error: $osError";
+    }
+    else {
+        say "\tProgram ran, but exited with error: ", $? >> 8;
+    }
+
+    exit 1;
+};
+
 showInfo(<<EOF);
 This program sets up a base kdesrc-build configuration to
 use.
