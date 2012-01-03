@@ -2477,6 +2477,16 @@ HOME
         return 'Qt';
     }
 
+    # If coming from gitorious.org instead of KDE's mirror we should force on
+    # progress output to work around a gitorious.org clone bug.
+    sub forceProgressOutput
+    {
+        my $self = assert_isa(shift, 'QtBuildSystem');
+        my $module = $self->module();
+
+        return $module->getOption('repository') =~ /gitorious\.org\//;
+    }
+
     # Return value style: boolean
     sub configureInternal
     {
@@ -3795,8 +3805,12 @@ sub git_clone_module
 
     # The -v forces progress output from git, which seems to work around either
     # a gitorious.org bug causing timeout errors after cloning large
-    # repositories (such as qt-copy...)
-    unshift (@args, '-v') if $module->name() eq 'qt-copy';
+    # repositories (such as Qt...)
+    if ($module->buildSystemType() eq 'Qt' &&
+        $module->buildSystem()->forceProgressOutput())
+    {
+        unshift (@args, '-v');
+    }
 
     note "Cloning g[$module]";
 
@@ -4521,12 +4535,12 @@ sub log_command
             # Don't abort, hopefully STDOUT still works.
         };
 
-        # Make sure we log everything.  If the command is svn, it is possible
-        # that the client will produce output trying to get a password, so
-        # don't redirect stderr in that case.
-        # In the case of qt-copy, we forced on progress output so let's leave
-        # that interactive to keep the logs sane.
-        if($command[0] ne 'svn' && $module->name() ne 'qt-copy') {
+        # Make sure we log everything.
+        # In the case of Qt, we may have forced on progress output so let's
+        # leave that interactive to keep the logs sane.
+        if($module->buildSystemType() eq 'Qt' &&
+           $module->buildSystem()->forceProgressOutput())
+        {
             open (STDERR, ">&STDOUT");
         }
 
