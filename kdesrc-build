@@ -206,9 +206,10 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
     # Subroutine which returns true if debug mode is on.  Uses the prototype
     # feature so you don't need the parentheses to use it.
-    sub debugging()
+    sub debugging(;$)
     {
-        return $debugLevel <= DEBUG;
+        my $level = shift // DEBUG;
+        return $debugLevel <= $level;
     }
 
     sub setDebugLevel
@@ -6940,12 +6941,17 @@ EOF
     {
         my $moduleSet = $module->moduleSet();
         my $moduleName = $module->name();
+        my $modOutput = "$module";
+
+        if (debugging(ksb::Debug::WHISPER)) {
+            $modOutput .= " (build system " . $module->buildSystemType() . ")"
+        }
 
         if ($moduleSet) {
-            note "Building g[$module] from g[$moduleSet] ($i/$num_modules)";
+            note "Building g[$modOutput] from g[$moduleSet] ($i/$num_modules)";
         }
         else {
-            note "Building g[$module] ($i/$num_modules)";
+            note "Building g[$modOutput] ($i/$num_modules)";
         }
 
         resetenv(); # Resets the list of env vars to change
