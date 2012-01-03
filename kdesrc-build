@@ -3037,9 +3037,9 @@ EOF
         assert_isa($ctx, 'ksb::BuildContext');
         $levelLimit //= 'allow-inherit';
 
-        # Some global options would probably make no sense applied to qt-copy.
+        # Some global options would probably make no sense applied to Qt.
         my @qtCopyOverrides = qw(branch configure-flags tag cxxflags);
-        if ($self->name() eq 'qt-copy' && list_has(@qtCopyOverrides, $key)) {
+        if (list_has(@qtCopyOverrides, $key) && $self->buildSystemType() eq 'Qt') {
             $levelLimit = 'module';
         }
 
