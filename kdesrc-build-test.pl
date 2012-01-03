@@ -47,9 +47,10 @@ isa_ok($ctx, 'ksb::BuildContext', 'Ensure BuildContext classiness');
 isa_ok($ctx->phases(), 'ksb::PhaseList', 'Ensure PhaseList classiness');
 
 my %moreOptions = (
-  'qt-copy' => {
+  'qt' => {
       'cxxflags' => '-pipe -march=i386',
       'configure-flags' => '-fast',
+      'repository' => 'git://gitorious.org/qt/qt.git',
   },
 
   'kdelibs' => {
@@ -103,11 +104,11 @@ $ctx->setOption('source-dir', $testSourceDirName);
 my ($qtModule, $kdelibsModule, $testModule, $kdesupportModule, $phononModule)
     = map {
         Module->new($ctx, $_);
-    } (qw/qt-copy kdelibs test kdesupport phonon/);
+    } (qw/qt kdelibs test kdesupport phonon/);
 
 like($kdelibsModule->getLogDir(), qr{^$testSourceDirName/log}, 'correct log dir for test run');
-is($qtModule->getOption('cxxflags'), '-pipe -march=i386', 'qt-copy cxxflags handling');
-is($qtModule->getOption('configure-flags'), '-fast', 'qt-copy configure-flags handling');
+is($qtModule->getOption('cxxflags'), '-pipe -march=i386', 'qt cxxflags handling');
+is($qtModule->getOption('configure-flags'), '-fast', 'qt configure-flags handling');
 is($kdelibsModule->getOption('unused'), 1, 'Test normal sticky option');
 like($kdelibsModule->getOption('cmake-options'), qr/^-DCMAKE_BUILD_TYPE=RelWithDebInfo/, 'kdelibs cmake-options appending');
 like($kdelibsModule->getOption('cmake-options'), qr/-DTEST=TRUE$/, 'kdelibs options appending');
@@ -220,7 +221,7 @@ my @modules = process_arguments($ctx, $pendingOptions, '--test,override-url=svn:
 is($pendingOptions->{test}{'override-url'}, 'svn://ann', 'testing process_arguments module options');
 is(scalar @modules, 0, 'testing process_arguments return value for no passed module names');
 
-@modules = qw/qt-copy kdelibs kdebase/;
+@modules = qw/qt kdelibs kdebase/;
 my $kdebaseModule;
 $ctx = ksb::BuildContext->new();
 my @Modules = map { Module->new($ctx, $_) } (@modules);
@@ -313,8 +314,9 @@ module-set set1
     repository kde-projects
 end module-set
 
-module qt-copy
+module qt
     configure-flags -fast
+    repository kde:qt
 end module
 EOF
 open my $fh, '<', \$conf;
@@ -323,22 +325,25 @@ open my $fh, '<', \$conf;
 
 # Read in new options
 my @conf_modules = read_options($ctx, $fh);
-# qt-copy
+# qt
 is($conf_modules[3]->getOption('configure-flags'), '-fast', 'read_options/parse_module');
 
 # kdelibs
 is($conf_modules[0]->getOption('repository'), 'kde:kdelibs', 'git-repository-base');
 is($conf_modules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 1)');
 
-my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt-copy/);
-$ConfModules[1] = Module->new($ctx, 'kdesrc-build'); # This should be a kde_projects.xml
-$ConfModules[2] = Module->new($ctx, 'kde-runtime');  # This should be a kde_projects.xml
+my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt/);
 
 is($ConfModules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 2)');
 $ConfModules[1]->setModuleSet('set1');
 $ConfModules[1]->setScmType('proj');
 $ConfModules[2]->setModuleSet('set1');
 $ConfModules[2]->setScmType('proj');
+$ConfModules[3]->setOption('repository', 'kde:qt');
+
+# This test must be performed to get the test after to pass, due to differences in each
+# code path leading to one having build_obj still undef.
+is($ConfModules[3]->buildSystemType(), $conf_modules[3]->buildSystemType(), 'Qt build systems load right.');
 ok(freeze(\@conf_modules) eq freeze(\@ConfModules), 'read_options module reading');
 
 # Test resume-from options

@@ -23,7 +23,7 @@ global
 #	kdedir ~/kde
 #
 # This is the Qt installation to use for building/using KDE. The default is
-# to build Qt (see the qt-copy module below). If you wish to use your system's
+# to build Qt (see the qt module below). If you wish to use your system's
 # installed Qt (assuming it is recent enough!) then you can set this to the
 # path to your Qt installation. To find the path to your system's Qt, run
 # "qmake -v". Qt will be installed to the path reported (do not include /lib)
@@ -35,7 +35,7 @@ global
 #
 # With KDE/4.7, use "branch 2.6" for soprano, or distribution-provided soprano.
 #
-# but also see the qt-copy and kdesupport modules below, which have special
+# but also see the qt and kdesupport modules below, which have special
 # requirements
 
 # This is the Subversion server to download the rest of the KDE sources from.
@@ -82,16 +82,15 @@ global
 #	 purge-old-logs false
 end global
 
-# qt-copy is the name of the module used to build Nokia's Qt toolkit, which is
+# qt is the default name of the module used to build Nokia's Qt toolkit, which is
 # required for KDE. It is sometimes required to use the latest Qt available
 # to build KDE. 2 versions are supported by kdesrc-build:
 # 1. Nokia's Qt with no modifications.
-# 2. A KDE copy with some very minor bugfixes and optimizations that have not
-#    been accepted into Qt yet.
+# 2. A KDE copy with no modifications (but on a better git server).
 #
 # The Qt buildsystem is different from that used by KDE modules, and so
-# settings from the global section will not apply to qt-copy.
-module qt-copy
+# settings from the global section will not apply to Qt.
+module qt
 # Configure flags. See README.kde-qt for the official recommended ones, which
 # may become inconsistent with these sample flags.
 # Do not specify -prefix, kdesrc-build will handle that.
@@ -115,7 +114,7 @@ module qt-copy
 # If you use the branch option up in the "global" section to set a
 # default KDE version, you should manually choose a branch here for Qt.
 # You can see the available branches by looking first on gitorious.org,
-# or by using "git branch -r" from the qt-copy source directory.
+# or by using "git branch -r" from the qt source directory.
 #
 # Note that Nokia's own Qt repository does not recommend using the master
 # branch anymore. The Qt repository may be splitting in the future as well.
@@ -152,7 +151,7 @@ module-set
     repository kde-projects
 
     # automoc is essential for building KDE's CMake-based modules, and so should be first
-    # in this module set (but after Qt, if you're using qt-copy)
+    # in this module set (but after Qt, if you're building that too)
     use-modules automoc cagibi attica soprano polkit-qt-1
 
     # Other options are simply passed to each defined module. For example if

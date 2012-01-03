@@ -1255,7 +1255,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         "prefix"               => "", # Override installation prefix.
         "pretend"              => "",
         "purge-old-logs"       => 1,
-        "qtdir"                => "$ENV{HOME}/kdesrc/build/qt-copy",
+        "qtdir"                => "$ENV{HOME}/qt4",
         "reconfigure"          => "",
         "refresh-build"        => "",
         "remove-after-install" => "none", # { none, builddir, all }
@@ -1577,7 +1577,7 @@ HOME
 
         # TODO: Move this to the build-support git repo.
         my @defaultModuleList = qw(
-            qt-copy automoc cagibi attica soprano polkit-qt-1 phonon
+            qt automoc cagibi attica soprano polkit-qt-1 phonon
             strigi kdesupport dbusmenu-qt
             kdelibs akonadi kdepimlibs
             kde-runtime kde-workspace kde-baseapps
@@ -2517,7 +2517,7 @@ HOME
         {
             warning (<<EOF);
 b[y[*]
-b[y[*] You have the y[-prefix] option selected in your qt-copy configure flags.
+b[y[*] You have the y[-prefix] option selected in your $module configure flags.
 b[y[*] kdesrc-build will correctly add the -prefix option to match your Qt
 b[y[*] directory setting, so you do not need to use -prefix yourself.
 b[y[*]
@@ -2905,7 +2905,7 @@ EOF
 
         # Now we're in the checkout directory
         # So, switch to the build dir.
-        # builddir is automatically set to the right value for qt-copy
+        # builddir is automatically set to the right value for qt
         p_chdir ($self->fullpath('build'));
 
         if (!$buildSystem->configureInternal()) {
@@ -3029,8 +3029,8 @@ EOF
     # and then the module's own value appended together. To get the actual
     # module setting you must use the level limit parameter set to 'module'.
     #
-    # Likewise, some qt-copy options do not obey the previous proviso since Qt
-    # options are not likely to agree nicely with generic KDE buildsystem
+    # Likewise, some qt module options do not obey the previous proviso since
+    # Qt options are not likely to agree nicely with generic KDE buildsystem
     # options.
     #
     # 1st parameter: Name of option
@@ -4189,8 +4189,8 @@ sub git_update_module
     }
 }
 
-# Either performs the initial checkout or updates the current git checkout for qt-copy,
-# as appropriate.
+# Either performs the initial checkout or updates the current git checkout for
+# git-using modules, as appropriate.
 #
 # If errors are encountered, an exception is raised using die().
 #
@@ -4877,9 +4877,9 @@ sub default_module_options
         'set-env' => { },
     );
     my %module_options = (
-        'qt-copy' => {
+        'qt' => {
             'configure-flags' => '-no-phonon -dbus -nomake demos -nomake examples -fast',
-            'repository' => 'git://anongit.kde.org/qt',
+            'repository' => 'kde:qt',
             'branch'     => '4.8',
         },
         'strigi' => {
