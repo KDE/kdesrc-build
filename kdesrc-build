@@ -2223,12 +2223,21 @@ HOME
         return $self->{module};
     }
 
+    # Sets the directories that are to be checked out/built/etc.
+    # There should be one l10nSystem for the entire l10n build (i.e. add
+    # all required support dirs and languages).
+    sub setLanguageDirs
+    {
+        my ($self, @languageDirs) = @_;
+        $self->{l10n_dirs} = \@languageDirs;
+    }
+
     # Returns true if the given subdirectory (reference from the module's root source directory)
     # can be built or not. Should be reimplemented by subclasses as appropriate.
     sub isSubdirBuildable
     {
         my ($self, $subdir) = @_;
-        return $subdir ne 'scripts';
+        return ($subdir ne 'scripts' && $subdir ne 'templates');
     }
 
     sub prefixEnvironmentVariable
@@ -2243,24 +2252,14 @@ HOME
         my $self = assert_isa(shift, 'UpdateHandler');
         my $module = $self->module();
         my $fullpath = $module->fullpath('source');
-        my @options = split(' ', $module->getOption('checkout-only'));
-
-        # Use kde-languages option if this isn't set on command line.
-        if (!@options)
-        {
-            push @options, split(' ', $module->getOption('kde-languages'));
-        }
-
-        # Ensure that scripts is pulled in for the update process (not req'd
-        # for build or install) for l10n module.
-        push @options, 'scripts';
+        my @dirs = @{$self->{l10n_dirs}};
 
         if (-e "$fullpath/.svn") {
             main::check_module_validity($module);
-            return main::update_module_path($module, @options);
+            return main::update_module_path($module, @dirs);
         }
         else {
-            return main::checkout_module_path($module, @options);
+            return main::checkout_module_path($module, @dirs);
         }
     }
 
@@ -2795,6 +2794,16 @@ EOF
         $self->{build_obj} = $buildType;
 
         return $self->{build_obj};
+    }
+
+    # Sets the build system **object**, although you can find the build system
+    # type afterwards (see buildSystemType).
+    sub setBuildSystem
+    {
+        my ($self, $obj) = @_;
+
+        assert_isa($obj, 'GenericBuildSystem');
+        $self->{build_obj} = $obj;
     }
 
     # Current possible build system types:
@@ -6863,11 +6872,12 @@ EOF
 #
 # This function filters out any plain 'l10n' entries in the given module list,
 # and adds the appropriate l10n/$lang modules to the end of the returned list.
+# In addition the returned l10n modules will have their scmType and build system
+# already set.
 #
-# The languages are selected using l10n/checkout-only (preferred since it will
-# be set from the command line), or using global/kde-languages (which should be
-# used exclusively from the configuration file).
-sub filter_l10n_module_list
+# The languages are selected using global/kde-languages (which should be used
+# exclusively from the configuration file).
+sub expandl10nModules
 {
     my ($ctx, @modules) = @_;
     my $l10n = 'l10n-kde4';
@@ -6876,31 +6886,35 @@ sub filter_l10n_module_list
 
     # Only filter if 'l10n' is actually present in list.
     my @matches = grep {$_->name() =~ /^(?:$l10n|l10n)$/} @modules;
-    my $subdirs;
+    my @langs = split(' ', $ctx->getOption('kde-languages'));
 
-    return @modules if not scalar @matches;
+    return @modules if (!@matches || !@langs);
 
+    my $l10nModule;
     for my $match (@matches)
     {
-        @modules = grep {$_ != $match} @modules; # Remove all instances of l10n
+        # Remove all instances of l10n.
+        @modules = grep {$_->name() ne $match->name()} @modules;
 
-        # Grab first matching sub directory options, depending on if the user
-        # used l10n or the full l10n-kde4 module name on the command line.
-        $subdirs = $match->getOption('checkout-only') if not $subdirs;
+        # Save l10n module if user had it in config. We only save the first
+        # one encountered though.
+        $l10nModule //= $match;
     }
 
-    # Still no subdirs?  Use kde-langauges.
-    $subdirs = $ctx->getOption('kde-languages') if not $subdirs;
-    my $l10nModule = $ctx->lookupModule($l10n);
+    # No l10n module? Just create one.
+    $l10nModule //= Module->new($ctx, $l10n);
 
-    for my $dir (split (' ', $subdirs))
-    {
-        my $newModule = Module->new($ctx, "$l10n/$dir");
-        $newModule->cloneOptionsFrom($l10nModule);
-        $ctx->addModule($newModule);
-        push @modules, $newModule;
-    }
+    whisper "\tAdding languages ", join(';', @langs), " to build.";
 
+    $l10nModule->setScmType('l10n');
+    my $scm = $l10nModule->scm();
+
+    # Add all required directories to the l10n module. Its buildsystem should
+    # know to skip scripts and templates.
+    $scm->setLanguageDirs(qw/scripts templates/, @langs);
+    $l10nModule->setBuildSystem($scm);
+
+    push @modules, $l10nModule;
     return @modules;
 }
 
@@ -7175,7 +7189,6 @@ sub handle_install
     # Check all modules passed.
     map { assert_isa($_, 'Module') } @modules;
 
-    @modules = filter_l10n_module_list($ctx, @modules);
     @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
 
     my $result = 0;
@@ -7279,7 +7292,6 @@ sub handle_uninstall
     # Check all modules passed.
     map { assert_isa($_, 'Module') } @modules;
 
-    @modules = filter_l10n_module_list($ctx, @modules);
     @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
     my $result = 0;
 
@@ -7805,6 +7817,10 @@ eval
     # event.
     @modules = applyModuleFilters($ctx, @modules);
     @modules = expandXMLModules($ctx, @modules);
+
+    # Apply kde-languages, by appending needed l10n modules to the end of the
+    # build.
+    @modules = expandl10nModules($ctx, @modules);
 
     # If modules were on the command line then they are effectively forced to
     # process unless overridden by command line options as well. If phases
