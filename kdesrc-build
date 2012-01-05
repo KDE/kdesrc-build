@@ -2202,6 +2202,47 @@ HOME
 }
 # }}}
 
+# package QMakeBuildSystem {{{
+{
+    package QMakeBuildSystem;
+
+    our @ISA = ('GenericBuildSystem');
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    sub name
+    {
+        return 'qmake';
+    }
+
+    # Return value style: boolean
+    sub configureInternal
+    {
+        my $self = assert_isa(shift, 'QMakeBuildSystem');
+        my $module = $self->module();
+        my $builddir = $module->fullpath('build');
+        my $sourcedir = $module->fullpath('source');
+        my @projectFiles = glob("$sourcedir/*.pro");
+
+        if (!@projectFiles || !$projectFiles[0]) {
+            die make_exception('Internal', "No *.pro files could be found for $module");
+        }
+
+        if (@projectFiles > 1) {
+            error (" b[r[*] Too many possible *.pro files for $module");
+            return 0;
+        }
+
+        p_chdir($builddir);
+        return main::log_command($module, 'qmake',
+                   [ 'qmake', $projectFiles[0] ]) == 0;
+    }
+
+    1;
+}
+# }}}
+
 # package l10nSystem {{{
 {
     package l10nSystem;
@@ -2824,6 +2865,10 @@ EOF
                 $self->scm()->name() eq 'proj'))
         {
             $buildType = KDEBuildSystem->new($self);
+        }
+
+        if (!$buildType && (glob ("$sourceDir/*.pro"))) {
+            $buildType = QMakeBuildSystem->new($self);
         }
 
         # 'configure' is a popular fall-back option even for other build
