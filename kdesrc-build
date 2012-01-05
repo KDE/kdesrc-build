@@ -2214,6 +2214,11 @@ HOME
     sub new
     {
         my ($class, $module) = @_;
+
+        # Ensure associated module updates from the proper svn path.
+        # TODO: Support different localization branches?
+
+        $module->setOption('module-base-path', 'trunk/l10n-kde4');
         return bless { module => $module }, $class;
     }
 
@@ -2278,6 +2283,51 @@ HOME
         return 1;
     }
 
+    sub buildInternal
+    {
+        my $self = assert_isa(shift, 'l10nSystem');
+        my $builddir = $self->module()->fullpath('build');
+        my @langs = @{$self->{l10n_dirs}};
+        my $result = 0;
+
+        @langs = grep { $self->isSubdirBuildable($_); } (@langs);
+
+        foreach my $lang (@langs) {
+            p_chdir("$builddir/$lang");
+
+            $result = (main::safe_make($self->module(), {
+                target => undef,
+                message => "Building localization for language $lang...",
+                logbase => "build-$lang",
+            }) == 0) || $result;
+        }
+
+        return $result;
+    }
+
+    sub configureInternal
+    {
+        my $self = assert_isa(shift, 'l10nSystem');
+        my $builddir = $self->module()->fullpath('build');
+
+        return 1 if pretending();
+
+        my @langs = @{$self->{l10n_dirs}};
+        @langs = grep { $self->isSubdirBuildable($_); } (@langs);
+
+        my $result = 0;
+
+        for my $lang (@langs) {
+            my $prefix = $self->module()->installationPath();
+            p_chdir("$builddir/$lang");
+
+            $result = (main::log_command($self->module(), "cmake-$lang",
+                ['cmake', '-DCMAKE_INSTALL_PREFIX=' . $prefix]) == 0) || $result;
+        }
+
+        return $result;
+    }
+
     # Subroutine to link a source directory into an alternate directory in
     # order to fake srcdir != builddir for modules that don't natively support
     # it.  The first parameter is the module to prepare.
@@ -2310,15 +2360,9 @@ HOME
     # Return convention: boolean (inherited)
     sub createBuildSystem
     {
-        my $self = assert_isa(shift, 'GenericBuildSystem');
+        my $self = assert_isa(shift, 'l10nSystem');
         my $module = $self->module();
         my $builddir = $module->fullpath('build');
-
-        if (pretending())
-        {
-            pretend ("\tWould have created g[$module]\'s build system.");
-            return 1;
-        }
 
         # l10n doesn't support srcdir != builddir, fake it.
         whisper ("\tFaking builddir for g[$module]");
@@ -2331,13 +2375,15 @@ HOME
         # autogen.sh must be run from one level below for some reason.
         p_chdir ("$builddir/..");
 
-        my ($lang) = ($module->name() =~ /^l10n-kde4\/(.*)$/);
-        my $cmd_ref = [ './scripts/autogen.sh', $lang ];
+        my @langs = @{$self->{l10n_dirs}};
+        @langs = grep { $self->isSubdirBuildable($_) } (@langs);
 
-        if (main::log_command ($module, "build-system", $cmd_ref))
-        {
-            error ("\tUnable to create build system for r[$module]");
-            return 0;
+        foreach my $lang (@langs) {
+            my $cmd_ref = [ './scripts/autogen.sh', $lang ];
+            if (main::log_command ($module, "build-system-$lang", $cmd_ref))
+            {
+                error ("\tUnable to create build system for r[$module]");
+            }
         }
 
         $module->setOption('#reconfigure', 1); # Force reconfigure of the module
