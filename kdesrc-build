@@ -3109,6 +3109,61 @@ EOF
         }
     }
 
+    # Establishes proper build environment in the build context. Should be run
+    # before forking off commands for e.g. updates, builds, installs, etc.
+    sub setupEnvironment
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $ctx = $self->buildContext();
+        my $kdedir = $self->getOption('kdedir');
+        my $qtdir = $self->getOption('qtdir');
+        my $prefix = $self->installationPath();
+
+        # Add global set-envs
+        $self->buildContext()->applyUserEnvironment();
+
+        # Add some standard directories for pkg-config support.  Include env settings.
+        my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
+        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @pkg_config_dirs);
+
+        # Likewise, add standard directories that should be in LD_LIBRARY_PATH.
+        my @ld_dirs = ("$kdedir/lib", "$qtdir/lib", $self->getOption('libpath'));
+        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
+
+        my @path = ("$kdedir/bin", "$qtdir/bin", $self->getOption('binpath'));
+
+        if (my $prefixEnvVar = $self->buildSystem()->prefixEnvironmentVariable())
+        {
+            $ctx->prependEnvironmentValue($prefixEnvVar, $prefix);
+        }
+
+        $ctx->prependEnvironmentValue('PATH', @path);
+
+        # Set up the children's environment.  We use queueEnvironmentVariable since
+        # it won't set an environment variable to nothing.  (e.g, setting QTDIR to
+        # a blank string might confuse Qt or KDE.
+
+        $ctx->queueEnvironmentVariable('QTDIR', $qtdir);
+
+        # If the module isn't kdelibs, also append kdelibs's KDEDIR setting.
+        if ($self->name() ne 'kdelibs')
+        {
+            my $kdelibsModule = $ctx->lookupModule('kdelibs');
+            my $kdelibsDir;
+            $kdelibsDir = $kdelibsModule->installationPath() if $kdelibsModule;
+
+            if ($kdelibsDir && $kdelibsDir ne $kdedir) {
+                whisper ("Module $self uses different KDEDIR than kdelibs, including kdelibs as well.");
+                $kdedir .= ":$kdelibsDir"
+            }
+        }
+
+        $ctx->queueEnvironmentVariable('KDEDIRS', $kdedir);
+
+        # Read in user environment defines
+        $self->applyUserEnvironment() unless $self->name() eq 'global';
+    }
+
     # Returns the path to the log directory used during this run for this
     # Module.
     #
@@ -6844,62 +6899,6 @@ sub prune_under_directory
     return 1;
 }
 
-# Subroutine to setup the environment for a module.  First parameter is the name of
-# the module to set the environment for
-sub update_module_environment
-{
-    my $module = assert_isa(shift, 'Module');
-    my $ctx = $module->buildContext();
-    my $kdedir = $module->getOption('kdedir');
-    my $qtdir = $module->getOption('qtdir');
-    my $prefix = $module->installationPath();
-
-    # Add global set-envs
-    $module->buildContext()->applyUserEnvironment();
-
-    # Add some standard directories for pkg-config support.  Include env settings.
-    my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
-    $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @pkg_config_dirs);
-
-    # Likewise, add standard directories that should be in LD_LIBRARY_PATH.
-    my @ld_dirs = ("$kdedir/lib", "$qtdir/lib", $module->getOption('libpath'));
-    $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
-
-    my @path = ("$kdedir/bin", "$qtdir/bin", $module->getOption('binpath'));
-
-    if (my $prefixEnvVar = $module->buildSystem()->prefixEnvironmentVariable())
-    {
-        $ctx->prependEnvironmentValue($prefixEnvVar, $prefix);
-    }
-
-    $ctx->prependEnvironmentValue('PATH', @path);
-
-    # Set up the children's environment.  We use queueEnvironmentVariable since
-    # it won't set an environment variable to nothing.  (e.g, setting QTDIR to
-    # a blank string might confuse Qt or KDE.
-
-    $ctx->queueEnvironmentVariable('QTDIR', $qtdir);
-
-    # If the module isn't kdelibs, also append kdelibs's KDEDIR setting.
-    if ($module->name() ne 'kdelibs')
-    {
-        my $ctx = $module->buildContext();
-        my $kdelibsModule = $ctx->lookupModule('kdelibs');
-        my $kdelibsDir;
-        $kdelibsDir = $kdelibsModule->getOption('kdedir') if $kdelibsModule;
-
-        if ($kdelibsDir and $kdelibsDir ne $kdedir) {
-            whisper "Module $module uses different KDEDIR than kdelibs, including kdelibs as well.";
-            $kdedir .= ":$kdelibsDir"
-        }
-    }
-
-    $ctx->queueEnvironmentVariable('KDEDIRS', $kdedir);
-
-    # Read in user environment defines
-    $module->applyUserEnvironment() unless $module->name() eq 'global';
-}
-
 # Subroutine to check for subversion conflicts in a module.  Basically just
 # runs svn st and looks for "^C".
 #
@@ -7091,8 +7090,7 @@ EOF
         }
 
         $ctx->resetEnvironment();
-
-        update_module_environment($module);
+        $module->setupEnvironment();
 
         my $start_time = time;
 
@@ -7306,11 +7304,10 @@ sub handle_install
     for my $module (@modules)
     {
         $ctx->resetEnvironment();
-        my $moduleName = $module->name();
-
-        update_module_environment ($module);
+        $module->setupEnvironment();
 
         my $builddir = $module->fullpath('build');
+        my $moduleName = $module->name();
 
         if (not pretending and not -e "$builddir/Makefile")
         {
@@ -7408,10 +7405,10 @@ sub handle_uninstall
     for my $module (reverse @modules)
     {
         $ctx->resetEnvironment();
-        my $moduleName = $module->name();
-        update_module_environment ($module);
+        $module->setupEnvironment();
 
         my $builddir = $module->fullpath('build');
+        my $moduleName = $module->name();
 
         if (not pretending and not -e "$builddir/Makefile")
         {

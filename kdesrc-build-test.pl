@@ -207,7 +207,7 @@ ok(-e "$testSourceDirName/log/latest/playground/libs/touch.log", 'correct playgr
 #is($kdelibsModule->getLogDir(), "$ENV{HOME}/kdesrc-build-log/$isoDate-01/kdelibs", 'getLogDir tilde expansion');
 
 is($testModule->getSourceDir(), "$ENV{HOME}/testsrc", 'separate source-dir for modules');
-update_module_environment($testModule);
+$testModule->setupEnvironment();
 is($ctx->{env}->{'TESTY_MCTEST'}, 'yes', 'setting global set-env for modules');
 is($ctx->{env}->{'MOIN'}, '2', 'setting module set-env for modules');
 
