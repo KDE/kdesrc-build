@@ -2210,6 +2210,38 @@ HOME
         return 0;
     }
 
+    # Used to install a module (that has already been built, tested, etc.)
+    # All options passed are prefixed to the eventual command to be run.
+    # Returns boolean false if unable to install, true otherwise.
+    sub installInternal
+    {
+        my $self = shift;
+        my $module = $self->module();
+        my @cmdPrefix = @_;
+
+        return main::safe_make ($module, {
+                target => 'install',
+                message => "Installing g[$module]",
+                'prefix-options' => [@cmdPrefix],
+               }) == 0;
+    }
+
+    # Used to uninstall a previously installed module.
+    # All options passed are prefixed to the eventual command to be run.
+    # Returns boolean false if unable to uninstall, true otherwise.
+    sub uninstallInternal
+    {
+        my $self = shift;
+        my $module = $self->module();
+        my @cmdPrefix = @_;
+
+        return main::safe_make ($module, {
+                target => 'uninstall',
+                message => "Uninstalling g[$module]",
+                'prefix-options' => [@cmdPrefix],
+               }) == 0;
+    }
+
     # Subroutine to clean the build system for the given module.  Works by
     # recursively deleting the directory and then recreating it.
     # Returns 0 for failure, non-zero for success.
@@ -3081,6 +3113,76 @@ EOF
         if (!$buildSystem->configureInternal()) {
             error ("\tUnable to configure r[$self] with " . $self->buildSystemType());
             return 0;
+        }
+
+        return 1;
+    }
+
+    # Responsible for installing the module (no update, build, etc.)
+    # Return value: Boolean flag indicating whether module installed successfully or
+    # not.
+    # Exceptions may be thrown for abnormal conditions (e.g. no build dir exists)
+    sub install
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $builddir = $self->fullpath('build');
+        my $buildSysFile = $self->buildSystem()->configuredModuleFileName();
+
+        if (!pretending() && ! -e "$builddir/$buildSysFile")
+        {
+            warning ("\tThe build system doesn't exist for r[$self].");
+            warning ("\tTherefore, we can't install it. y[:-(].");
+            return 0;
+        }
+
+        $self->setupEnvironment();
+
+        my @makeInstallOpts = split(' ', $self->getOption('make-install-prefix'));
+
+        # We can optionally uninstall prior to installing
+        # to weed out old unused files.
+        if ($self->getOption('use-clean-install') &&
+            $self->getPersistentOption('last-install-rev') &&
+            !$self->buildSystem()->uninstallInternal(@makeInstallOpts))
+        {
+            warning ("\tUnable to uninstall r[$self] before installing the new build.");
+            warning ("\tContinuing anyways...");
+        }
+
+        if (!$self->buildSystem()->installInternal(@makeInstallOpts))
+        {
+            error ("\tUnable to install r[$self]!");
+            $self->buildContext()->markModulePhaseFailed('install', $self);
+            return 0;
+        }
+
+        if (pretending())
+        {
+            pretend ("\tWould have installed g[$self]");
+            next;
+        }
+
+        # Past this point we know we've successfully installed, for real.
+
+        $self->setPersistentOption('last-install-rev', $self->currentScmRevision());
+
+        my $remove_setting = $self->getOption('remove-after-install');
+
+        # Possibly remove the srcdir and builddir after install for users with
+        # a little bit of HD space.
+        if($remove_setting eq 'all')
+        {
+            # Remove srcdir
+            my $srcdir = $self->fullpath('source');
+            note ("\tRemoving b[r[$self source].");
+            safe_rmtree($srcdir);
+        }
+
+        if($remove_setting eq 'builddir' || $remove_setting eq 'all')
+        {
+            # Remove builddir
+            note ("\tRemoving b[r[$self build directory].");
+            safe_rmtree($builddir);
         }
 
         return 1;
@@ -7304,78 +7406,11 @@ sub handle_install
     for my $module (@modules)
     {
         $ctx->resetEnvironment();
-        $module->setupEnvironment();
+        $result = $module->install() || $result;
 
-        my $builddir = $module->fullpath('build');
-        my $moduleName = $module->name();
-
-        if (not pretending and not -e "$builddir/Makefile")
-        {
-            warning "\tThe build system doesn't exist for r[$module].";
-            warning "\tTherefore, we can't install it. y[:-(].";
-            next;
-        }
-
-        my @makeInstallOpts = split(' ', $module->getOption('make-install-prefix'));
-
-        # We can optionally uninstall prior to installing
-        # to weed out old unused files.
-        if ($module->getOption('use-clean-install') &&
-            $module->getPersistentOption('last-install-rev') &&
-            safe_make ($module, {
-                target => 'uninstall',
-                message => "Uninstalling g[$module]",
-                'prefix-options' => [@makeInstallOpts],
-            }))
-        {
-            warning "\tUnable to uninstall r[$module] before installing the new build.";
-            warning "\tContinuing anyways...";
-        }
-
-        if (safe_make ($module, {
-                target => 'install',
-                message => "Installing g[$module]",
-                'prefix-options' => [@makeInstallOpts],
-            }))
-        {
-            error "\tUnable to install r[$module]!";
-            $result = 1;
-            $ctx->markModulePhaseFailed('install', $module);
-
-            if ($module->getOption('stop-on-failure'))
-            {
-                note "y[Stopping here].";
-                return 1; # Error
-            }
-        }
-
-        if (pretending)
-        {
-            pretend "\tWould have installed g[$module]";
-            next;
-        }
-
-        next if $result != 0; # Don't delete anything if the build failed.
-
-        $module->setPersistentOption('last-install-rev', $module->currentScmRevision());
-
-        my $remove_setting = $module->getOption('remove-after-install');
-
-        # Possibly remove the srcdir and builddir after install for users with
-        # a little bit of HD space.
-        if($remove_setting eq 'all')
-        {
-            # Remove srcdir
-            my $srcdir = $module->fullpath('source');
-            note "\tRemoving b[r[$module source].";
-            safe_rmtree($srcdir);
-        }
-
-        if($remove_setting eq 'builddir' or $remove_setting eq 'all')
-        {
-            # Remove builddir
-            note "\tRemoving b[r[$module build directory].";
-            safe_rmtree($builddir);
+        if ($result && $module->getOption('stop-on-failure')) {
+            note ("y[Stopping here].");
+            return 1; # Error
         }
     }
 
