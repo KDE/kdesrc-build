@@ -68,19 +68,6 @@ use constant {
 
 my $versionNum = '1.15-pre1';
 
-# This hash is used to store environment variables to be used on the next
-# execution of log_command().  This is done so that we don't have to fork new
-# processes just to change values in the environment.
-#
-# Previously we simply saved %ENV in a temp hash, but that broke on some systems.
-# Then we used 'local %ENV' to push/pop the environment from a stack but it only
-# really worked on the developer's system. :(
-#
-# Now we save environment variables to set right after forking...
-#
-# Don't use this except via setenv(), resetenv(), and log_command().
-our %ENV_VARS;
-
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
 
@@ -1301,6 +1288,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             },
             rcFiles => [@rcfiles],
             rcFile  => undef,
+            env     => { },
         );
 
         # Merge all new options into our self-hash.
@@ -1380,6 +1368,89 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
         # Get ready for logged output.
         ksb::Debug::setLogFile($self->getLogDirFor($self) . '/build-log');
+    }
+
+    # Clears the list of environment variables to set for log_command runs.
+    sub resetEnvironment
+    {
+        my $self = assert_isa(shift, 'ksb::BuildContext');
+
+        $self->{env} = { };
+    }
+
+    # Adds an environment variable and value to the list of environment
+    # variables to apply for the next subprocess execution.
+    #
+    # Note that these changes are /not/ reflected in the current environment,
+    # so if you are doing something that requires that kind of update you
+    # should do that yourself (but remember to have some way to restore the old
+    # value if necessary).
+    #
+    # In order to keep compatibility with the old 'setenv' sub, no action is
+    # taken if the value is not equivalent to boolean true.
+    sub queueEnvironmentVariable
+    {
+        my $self = assert_isa(shift, 'ksb::BuildContext');
+        my ($key, $value) = @_;
+
+        return unless $value;
+
+        debug ("\tQueueing g[$key] to be set to y[$value]");
+        $self->{env}->{$key} = $value;
+    }
+
+    # Applies all changes queued by queueEnvironmentVariable to the actual
+    # environment irretrievably. Use this before exec()'ing another child, for
+    # instance.
+    sub commitEnvironmentChanges
+    {
+        my $self = assert_isa(shift, 'ksb::BuildContext');
+
+        while (my ($key, $value) = each %{$self->{env}}) {
+            $ENV{$key} = $value;
+            debug ("\tSetting environment variable g[$key] to g[b[$value]");
+        }
+    }
+
+    # Adds the given library paths to the path already given in an environment
+    # variable. In addition, detected "system paths" are stripped to ensure
+    # that we don't inadvertently re-add a system path to be promoted over the
+    # custom code we're compiling (for instance, when a system Qt is used and
+    # installed to /usr).
+    #
+    # If the environment variable to be modified has already been queued using
+    # queueEnvironmentVariable, then that (queued) value will be modified and
+    # will take effect with the next forked subprocess.
+    #
+    # Otherwise, the current environment variable value will be used, and then
+    # queued. Either way the current environment will be unmodified afterward.
+    #
+    # First parameter is the name of the environment variable to modify
+    # All remaining paramters are prepended to the current environment path, in
+    # the order given. (i.e. param1, param2, param3 ->
+    # param1:param2:param3:existing)
+    sub prependEnvironmentValue
+    {
+        my $self = assert_isa(shift, 'ksb::BuildContext');
+        my ($envName, @items) = @_;
+        my @curPaths = split(':', $self->{env}->{$envName} // $ENV{$envName} // '');
+
+        # Filter out entries to add that are already in the environment from
+        # the system.
+        for my $path (grep { list_has(@curPaths, $_) } (@items) ) {
+            debug ("\tNot prepending y[$path] to y[$envName] as it appears " .
+                  "to already be defined in y[$envName].");
+        }
+
+        @items = grep { not list_has(@curPaths, $_); } (@items);
+
+        my $envValue = join(':', @_, @curPaths);
+
+        $envValue =~ s/^:*//;
+        $envValue =~ s/:*$//; # Remove leading/trailing colons
+        $envValue =~ s/:+/:/; # Remove duplicate colons
+
+        $self->queueEnvironmentVariable($envName, $envValue);
     }
 
     # This subroutine accepts a Module parameter, and returns the log directory
@@ -2591,7 +2662,7 @@ HOME
 
         # Get the user's CXXFLAGS
         my $cxxflags = $module->getOption('cxxflags');
-        main::setenv ('CXXFLAGS', $cxxflags);
+        $module->buildContext()->queueEnvironmentVariable('CXXFLAGS', $cxxflags);
 
         my $prefix = $module->getOption('qtdir');
 
@@ -4603,10 +4674,7 @@ sub log_command
         # handlers in here. For that we need POSIX::_exit.
 
         # Apply altered environment variables.
-        while (my ($key, $value) = each %ENV_VARS) {
-            $ENV{$key} = $value;
-            debug "\tSetting environment variable g[$key] to g[b[$value]";
-        }
+        $module->buildContext()->commitEnvironmentChanges();
 
         if (pretending)
         {
@@ -5003,27 +5071,6 @@ sub default_module_options
     @options{keys %{$this_module_options}} = values %{$this_module_options};
 
     return \%options;
-}
-
-# Subroutine to add a variable to the environment, but ONLY if it
-# is set. First parameter is the variable to set, the second is the
-# value to give it.
-sub setenv
-{
-    my ($var, $val) = @_;
-
-    return unless $val;
-
-    debug "\tMarking g[$var] to be set to y[$val].";
-
-    $ENV_VARS{$var} = $val;
-}
-
-# Clears out the list of environment variables to apply to created
-# subprocesses.
-sub resetenv
-{
-    %ENV_VARS = ();
 }
 
 # Reads a "line" from a file. This line is stripped of comments and extraneous
@@ -5571,13 +5618,14 @@ sub module_needs_builddir_help
 sub setup_module_environment
 {
     my $module = assert_isa(shift, 'Module');
+    my $ctx = $module->buildContext();
     my ($key, $value);
 
     # Let's see if the user has set env vars to be set.
     my $env_hash_ref = $module->getOption('set-env');
     while (($key, $value) = each %{$env_hash_ref})
     {
-        setenv($key, $value);
+        $ctx->queueEnvironmentVariable($key, $value);
     }
 }
 
@@ -6795,43 +6843,12 @@ sub prune_under_directory
     return 1;
 }
 
-# Adds the given library paths to the path already given in an environment
-# variable. In addition, detected "system paths" are stripped to ensure that
-# we don't inadvertently re-add a system path to be promoted over the custom
-# code we're compiling (for instance, when a system Qt is used and installed to
-# /usr).
-#
-# First parameter is the name of the environment variable to modify
-# All remaining paramters are prepended to the current environment path, in
-#   the order given. (i.e. param1, param2, param3 -> param1:param2:param3:existing
-sub prepend_environment_path
-{
-    my $envName = shift;
-    my @curPaths = split(':', $ENV_VARS{$envName} // $ENV{$envName} // '');
-
-    # Filter out entries to add that are already in the environment from the
-    # system.
-    for my $path (grep { list_has(@curPaths, $_) } (@_) ) {
-        debug "\tNot prepending y[$path] to y[$envName] as it appears " .
-              "to already be defined in y[$envName].";
-    }
-
-    @_ = grep { not list_has(@curPaths, $_); } (@_);
-
-    my $envValue = join(':', @_, @curPaths);
-
-    $envValue =~ s/^:*//;
-    $envValue =~ s/:*$//; # Remove leading/trailing colons
-    $envValue =~ s/:+/:/; # Remove duplicate colons
-
-    setenv($envName, $envValue);
-}
-
 # Subroutine to setup the environment for a module.  First parameter is the name of
 # the module to set the environment for
 sub update_module_environment
 {
     my $module = assert_isa(shift, 'Module');
+    my $ctx = $module->buildContext();
     my $kdedir = $module->getOption('kdedir');
     my $qtdir = $module->getOption('qtdir');
     my $prefix = $module->installationPath();
@@ -6841,26 +6858,26 @@ sub update_module_environment
 
     # Add some standard directories for pkg-config support.  Include env settings.
     my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
-    prepend_environment_path('PKG_CONFIG_PATH', @pkg_config_dirs);
+    $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @pkg_config_dirs);
 
     # Likewise, add standard directories that should be in LD_LIBRARY_PATH.
     my @ld_dirs = ("$kdedir/lib", "$qtdir/lib", $module->getOption('libpath'));
-    prepend_environment_path('LD_LIBRARY_PATH', @ld_dirs);
+    $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
 
     my @path = ("$kdedir/bin", "$qtdir/bin", $module->getOption('binpath'));
 
     if (my $prefixEnvVar = $module->buildSystem()->prefixEnvironmentVariable())
     {
-        prepend_environment_path($prefixEnvVar, $prefix);
+        $ctx->prependEnvironmentValue($prefixEnvVar, $prefix);
     }
 
-    prepend_environment_path('PATH', @path);
+    $ctx->prependEnvironmentValue('PATH', @path);
 
-    # Set up the children's environment.  We use setenv since it
-    # won't set an environment variable to nothing.  (e.g, setting
-    # QTDIR to a blank string might confuse Qt or KDE.
+    # Set up the children's environment.  We use queueEnvironmentVariable since
+    # it won't set an environment variable to nothing.  (e.g, setting QTDIR to
+    # a blank string might confuse Qt or KDE.
 
-    setenv ('QTDIR', $qtdir);
+    $ctx->queueEnvironmentVariable('QTDIR', $qtdir);
 
     # If the module isn't kdelibs, also append kdelibs's KDEDIR setting.
     if ($module->name() ne 'kdelibs')
@@ -6876,7 +6893,7 @@ sub update_module_environment
         }
     }
 
-    setenv ('KDEDIRS', $kdedir);
+    $ctx->queueEnvironmentVariable('KDEDIRS', $kdedir);
 
     # Read in user environment defines
     setup_module_environment ($module) unless $module->name() eq 'global';
@@ -7072,7 +7089,8 @@ EOF
             note "Building g[$modOutput] ($i/$num_modules)";
         }
 
-        resetenv(); # Resets the list of env vars to change
+        $ctx->resetEnvironment();
+
         update_module_environment($module);
 
         my $start_time = time;
@@ -7286,7 +7304,7 @@ sub handle_install
 
     for my $module (@modules)
     {
-        resetenv();
+        $ctx->resetEnvironment();
         my $moduleName = $module->name();
 
         update_module_environment ($module);
@@ -7388,7 +7406,7 @@ sub handle_uninstall
 
     for my $module (reverse @modules)
     {
-        resetenv();
+        $ctx->resetEnvironment();
         my $moduleName = $module->name();
         update_module_environment ($module);
 

@@ -208,8 +208,8 @@ ok(-e "$testSourceDirName/log/latest/playground/libs/touch.log", 'correct playgr
 
 is($testModule->getSourceDir(), "$ENV{HOME}/testsrc", 'separate source-dir for modules');
 update_module_environment($testModule);
-is($ENV_VARS{'TESTY_MCTEST'}, 'yes', 'setting global set-env for modules');
-is($ENV_VARS{'MOIN'}, '2', 'setting module set-env for modules');
+is($ctx->{env}->{'TESTY_MCTEST'}, 'yes', 'setting global set-env for modules');
+is($ctx->{env}->{'MOIN'}, '2', 'setting module set-env for modules');
 
 # Ensure svn URL hierarchy is correct
 like(svn_module_url($testModule), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer module specific to global');
