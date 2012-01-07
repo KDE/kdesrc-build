@@ -3092,6 +3092,23 @@ EOF
         return $self->{context};
     }
 
+    # Integrates 'set-env' option to the build context environment
+    sub applyUserEnvironment
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $ctx = $self->buildContext();
+
+        # Let's see if the user has set env vars to be set.
+        # Note the global set-env must be checked separately anyways, so
+        # we limit inheritance when searching.
+        my $env_hash_ref = $self->getOption('set-env', 'module');
+
+        while (my ($key, $value) = each %{$env_hash_ref})
+        {
+            $ctx->queueEnvironmentVariable($key, $value);
+        }
+    }
+
     # Returns the path to the log directory used during this run for this
     # Module.
     #
@@ -5613,22 +5630,6 @@ sub module_needs_builddir_help
     return 1 if ($module->name() =~ /^l10n-kde4\/?/);
 }
 
-# This subroutine reads the set-env option for a given module and initializes
-# the environment based on that setting.
-sub setup_module_environment
-{
-    my $module = assert_isa(shift, 'Module');
-    my $ctx = $module->buildContext();
-    my ($key, $value);
-
-    # Let's see if the user has set env vars to be set.
-    my $env_hash_ref = $module->getOption('set-env');
-    while (($key, $value) = each %{$env_hash_ref})
-    {
-        $ctx->queueEnvironmentVariable($key, $value);
-    }
-}
-
 # Print out an error message, and a list of modules that match that error
 # message.  It will also display the log file name if one can be determined.
 # The message will be displayed all in uppercase, with PACKAGES prepended, so
@@ -6854,7 +6855,7 @@ sub update_module_environment
     my $prefix = $module->installationPath();
 
     # Add global set-envs
-    setup_module_environment ($module->buildContext());
+    $module->buildContext()->applyUserEnvironment();
 
     # Add some standard directories for pkg-config support.  Include env settings.
     my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
@@ -6896,7 +6897,7 @@ sub update_module_environment
     $ctx->queueEnvironmentVariable('KDEDIRS', $kdedir);
 
     # Read in user environment defines
-    setup_module_environment ($module) unless $module->name() eq 'global';
+    $module->applyUserEnvironment() unless $module->name() eq 'global';
 }
 
 # Subroutine to check for subversion conflicts in a module.  Basically just
