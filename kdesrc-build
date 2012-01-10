@@ -45,6 +45,7 @@ use File::Path qw(remove_tree);
 use File::Glob ':glob';
 use File::Basename; # fileparse
 use File::Spec;     # tmpdir, rel2abs
+use Cwd qw(getcwd);
 use LWP::UserAgent;
 use URI; # For git-clone snapshot support
 use Text::ParseWords qw(parse_line);
@@ -4906,7 +4907,8 @@ sub log_command
 
         # Don't leave empty output files, give an indication of the particular
         # command run. Use print to go to stdout.
-        print "# kdesrc-build running: '", join("' '", @command), "'\n";
+        say "# kdesrc-build running: '", join("' '", @command), "'";
+        say "# from directory: ", Cwd::getcwd();
 
         # External command.
         exec (@command) or do {
