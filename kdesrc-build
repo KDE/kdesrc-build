@@ -5814,18 +5814,6 @@ sub read_options
     return @module_list;
 }
 
-# Subroutine to check if the given module needs special treatment to support
-# srcdir != builddir.  If this function returns true kdesrc-build will use a
-# few hacks to simulate it, and will update e.g. configure paths appropriately
-# as well.
-sub module_needs_builddir_help
-{
-    my $module = assert_isa(shift, 'Module');
-
-    # l10n/lang needs help.
-    return 1 if ($module->name() =~ /^l10n-kde4\/?/);
-}
-
 # Print out an error message, and a list of modules that match that error
 # message.  It will also display the log file name if one can be determined.
 # The message will be displayed all in uppercase, with PACKAGES prepended, so
@@ -6814,13 +6802,6 @@ sub safe_run_cmake
     {
         whisper "Enabling upload of test results";
         push @commands, "-DBUILD_experimental:BOOL=ON";
-    }
-
-    # For l10n-kde4, we must run cmake to search in the (fake) build dir.  There
-    # is no srcdir != builddir (but we do simulate it).
-    if ($module->name() =~ /^l10n-kde4\/?/)
-    {
-        $srcdir = ".";
     }
 
     unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
@@ -8071,7 +8052,7 @@ eval
     # Do some necessary adjusting. Right now this is used for supporting
     # the command-line option shortcut to where you can enter e.g.
     # kdelibs/khtml, and the script will only try to update that part of
-    # the module.  This also updates for the l10n module (kde-languages option)
+    # the module.
     # munge_lists(); # TODO: Unbreak my munge, say you'll work again.
 
     if ($run_mode eq 'build')
