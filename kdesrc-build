@@ -2476,13 +2476,9 @@ HOME
     sub configureInternal
     {
         my $self = assert_isa(shift, 'l10nSystem');
+
         my $builddir = $self->module()->fullpath('build');
-
-        return 1 if pretending();
-
-        my @langs = @{$self->{l10n_dirs}};
-        @langs = grep { $self->isSubdirBuildable($_); } (@langs);
-
+        my @langs = $self->languages();
         my $result = 0;
 
         for my $lang (@langs) {
