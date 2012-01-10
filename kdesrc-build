@@ -432,7 +432,11 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     {
         my $dir = shift;
         debug ("\tcd g[$dir]\n");
-        chdir $dir;
+
+        chdir ($dir) or do {
+            return 1 if pretending();
+            die make_exception('Runtime', "Could not change to directory $dir: $!");
+        };
     }
 
     # Helper subroutine to create a directory, including any parent
