@@ -2430,6 +2430,15 @@ HOME
         return 'l10n';
     }
 
+    # Returns a list of just the languages to install.
+    sub languages
+    {
+        my $self = assert_isa(shift, 'l10nSystem');
+        my @langs = @{$self->{l10n_dirs}};
+
+        return grep { $self->isSubdirBuildable($_); } (@langs);
+    }
+
     # Buildsystem support section
 
     sub needsRefreshed
@@ -2444,20 +2453,15 @@ HOME
     {
         my $self = assert_isa(shift, 'l10nSystem');
         my $builddir = $self->module()->fullpath('build');
-        my @langs = @{$self->{l10n_dirs}};
+        my @langs = $self->languages();
         my $result = 0;
 
-        @langs = grep { $self->isSubdirBuildable($_); } (@langs);
-
-        foreach my $lang (@langs) {
-            p_chdir("$builddir/$lang");
-
-            $result = (main::safe_make($self->module(), {
-                target => undef,
-                message => "Building localization for language $lang...",
-                logbase => "build-$lang",
-            }) == 0) || $result;
-        }
+        $result = (main::safe_make($self->module(), {
+            target => undef,
+            message => "Building localization for language...",
+            logbase => "build",
+            subdirs => \@langs,
+        }) == 0) || $result;
 
         return $result;
     }
@@ -2529,8 +2533,7 @@ HOME
             return 0;
         }
 
-        # autogen.sh must be run from one level below for some reason.
-        p_chdir ("$builddir/..");
+        p_chdir ($builddir);
 
         my @langs = @{$self->{l10n_dirs}};
         @langs = grep { $self->isSubdirBuildable($_) } (@langs);
