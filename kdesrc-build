@@ -2496,9 +2496,15 @@ HOME
     sub installInternal
     {
         my $self = assert_isa(shift, 'l10nSystem');
+        my $builddir = $self->module()->fullpath('build');
+        my @langs = $self->languages();
 
-        error ("Not implemented yet.");
-        return 0;
+        return (main::safe_make($self->module(), {
+            target => 'install',
+            message => "Installing language...",
+            logbase => "install",
+            subdirs => \@langs,
+        }) == 0);
     }
 
     # Subroutine to link a source directory into an alternate directory in
