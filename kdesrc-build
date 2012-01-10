@@ -7985,6 +7985,15 @@ eval
     }
     else {
         @modules = @optionModules;
+
+        if ($ctx->getOption('kde-languages')) {
+            my $l10nModule = Module->new($ctx, 'l10n');
+            $l10nModule->setScmType('l10n');
+            $l10nModule->setBuildSystem($l10nModule->scm());
+
+            push @modules, $l10nModule;
+        }
+
         Module->setModuleSource('config');
     }
 
