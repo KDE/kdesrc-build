@@ -2182,6 +2182,9 @@ HOME
                 split(' ', $self->module()->getOption('make-options')),
             ],
             logbase => 'build',
+            subdirs => [
+                split(' ', $self->module()->getOption("checkout-only"))
+            ],
         }) == 0;
     }
 
@@ -2228,6 +2231,7 @@ HOME
                 target => 'install',
                 message => "Installing g[$module]",
                 'prefix-options' => [@cmdPrefix],
+                subdirs => [ split(' ', $module->getOption("checkout-only")) ],
                }) == 0;
     }
 
@@ -2244,6 +2248,7 @@ HOME
                 target => 'uninstall',
                 message => "Uninstalling g[$module]",
                 'prefix-options' => [@cmdPrefix],
+                subdirs => [ split(' ', $module->getOption("checkout-only")) ],
                }) == 0;
     }
 
@@ -5120,6 +5125,8 @@ sub safe_rmtree
 #                        make command, used for make-install-prefix support for
 #                        e.g. sudo ],
 #    logbase        => 'base-log-filename',
+#    subdirs        => [ list of subdirectories of the module to build,
+#                        relative to the module's own build directory. ]
 # }
 #
 # target and message are required. logbase is required if target is left
@@ -5153,6 +5160,7 @@ sub safe_make (@)
     # Simplify code by forcing lists to exist.
     $optsRef->{'prefix-options'} //= [ ];
     $optsRef->{'make-options'} //= [ ];
+    $optsRef->{'subdirs'} //= [ ];
 
     my @prefixOpts = @{$optsRef->{'prefix-options'}};
 
@@ -5172,7 +5180,7 @@ sub safe_make (@)
 
     # Here we're attempting to ensure that we either run make in each
     # subdirectory, *or* for the whole module, but not both.
-    my @dirs = split(' ', $module->getOption("checkout-only"));
+    my @dirs = @{$optsRef->{subdirs}};
     push (@dirs, "") if scalar @dirs == 0;
 
     for my $subdir (@dirs)
@@ -7463,6 +7471,7 @@ sub handle_uninstall
         if (safe_make ($module, {
                 target => 'uninstall',
                 message => clr("Uninstalling g[$module]"),
+                subdirs => [ split(' ', $module->getOption("checkout-only")) ],
                 'prefix-options' => [@makeInstallOpts],
             }))
         {
