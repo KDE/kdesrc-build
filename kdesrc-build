@@ -2373,7 +2373,7 @@ HOME
         # TODO: Support different localization branches?
 
         $module->setOption('module-base-path', 'trunk/l10n-kde4');
-        return bless { module => $module }, $class;
+        return bless { module => $module, needsRefreshed => 1 }, $class;
     }
 
     sub module
@@ -2415,7 +2415,10 @@ HOME
 
         if (-e "$fullpath/.svn") {
             main::check_module_validity($module);
-            return main::update_module_path($module, @dirs);
+            my $count = main::update_module_path($module, @dirs);
+
+            $self->{needsRefreshed} = 0 if $count == 0;
+            return $count;
         }
         else {
             return main::checkout_module_path($module, @dirs);
@@ -2433,8 +2436,8 @@ HOME
     {
         my $self = shift;
 
-        debug ("l10n always needs autogen.sh run");
-        return 1;
+        # Should be 1 except if no update happened.
+        return $self->{needsRefreshed};
     }
 
     sub buildInternal
