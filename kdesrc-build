@@ -1852,6 +1852,24 @@ HOME
         return $persistent_opts->{$moduleName}{$key};
     }
 
+    # Clears a persistent option if set (for a given module and option-name).
+    #
+    # First parameter is the module name to get the option for, or 'global' for
+    # the global options.
+    # Second parameter is the name of the value to clear.
+    # No return value.
+    sub unsetPersistentOption
+    {
+        my ($self, $moduleName, $key) = @_;
+        my $persistent_opts = $self->{persistent_options};
+
+        if (exists $persistent_opts->{$moduleName} &&
+            exists $persistent_opts->{$moduleName}->{$key})
+        {
+            delete $persistent_opts->{$moduleName}->{$key};
+        }
+    }
+
     # Sets a "persistent" option which will be read in for a module when
     # kdesrc-build starts up and written back out at (normal) program exit.
     #
@@ -3513,6 +3531,14 @@ EOF
     {
         my ($self, $key, $value) = @_;
         return $self->buildContext()->setPersistentOption($self->name(), $key, $value);
+    }
+
+    # Unsets a persistent option for this module.
+    # Only parameter is the name of the option to unset.
+    sub unsetPersistentOption
+    {
+        my ($self, $key) = @_;
+        $self->buildContext()->unsetPersistentOption($self->name(), $key);
     }
 
     # Clones the options from the given Module (as handled by
