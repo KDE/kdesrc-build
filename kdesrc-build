@@ -3245,6 +3245,44 @@ EOF
         return 1;
     }
 
+    # Handles uninstalling this module (or its sub-directories as given by the checkout-only
+    # option).
+    #
+    # Returns boolean false on failure, boolean true otherwise.
+    sub uninstall
+    {
+        my $self = assert_isa(shift, 'Module');
+        my $builddir = $self->fullpath('build');
+        my $buildSysFile = $self->buildSystem()->configuredModuleFileName();
+
+        if (!pretending() && ! -e "$builddir/$buildSysFile")
+        {
+            warning ("\tThe build system doesn't exist for r[$self].");
+            warning ("\tTherefore, we can't uninstall it.");
+            return 0;
+        }
+
+        $self->setupEnvironment();
+
+        my @makeInstallOpts = split(' ', $self->getOption('make-install-prefix'));
+
+        if (!$self->buildSystem()->uninstallInternal(@makeInstallOpts))
+        {
+            error ("\tUnable to uninstall r[$self]!");
+            $self->buildContext()->markModulePhaseFailed('install', $self);
+            return 0;
+        }
+
+        if (pretending())
+        {
+            pretend ("\tWould have uninstalled g[$self]");
+            return 1;
+        }
+
+        $self->unsetPersistentOption('last-install-rev');
+        return 1;
+    }
+
     sub buildContext
     {
         my $self = shift;
@@ -7444,7 +7482,6 @@ sub handle_install
     map { assert_isa($_, 'Module') } @modules;
 
     @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
-
     my $result = 0;
 
     for my $module (@modules)
@@ -7484,42 +7521,12 @@ sub handle_uninstall
     for my $module (reverse @modules)
     {
         $ctx->resetEnvironment();
-        $module->setupEnvironment();
+        $result = $module->uninstall() || $result;
 
-        my $builddir = $module->fullpath('build');
-        my $moduleName = $module->name();
-
-        if (not pretending and not -e "$builddir/Makefile")
+        if ($result && $module->getOption('stop-on-failure'))
         {
-            warning "\tThe build system doesn't exist for r[$module].";
-            warning "\tTherefore it cannot be uninstalled by this program.";
-            next;
-        }
-
-        my @makeInstallOpts = split(' ', $module->getOption('make-install-prefix'));
-
-        if (safe_make ($module, {
-                target => 'uninstall',
-                message => clr("Uninstalling g[$module]"),
-                subdirs => [ split(' ', $module->getOption("checkout-only")) ],
-                'prefix-options' => [@makeInstallOpts],
-            }))
-        {
-            error "\tUnable to uninstall r[$module]!";
-            $result = 1;
-            $ctx->markModulePhaseFailed('uninstall', $module);
-
-            if ($module->getOption('stop-on-failure'))
-            {
-                note "y[Stopping here].";
-                return 1; # Error
-            }
-        }
-
-        if (pretending)
-        {
-            pretend "\tWould have uninstalled g[$module]";
-            next;
+            note "y[Stopping here].";
+            return 1; # Error
         }
     }
 
