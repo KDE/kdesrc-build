@@ -3195,11 +3195,15 @@ EOF
         # We can optionally uninstall prior to installing
         # to weed out old unused files.
         if ($self->getOption('use-clean-install') &&
-            $self->getPersistentOption('last-install-rev') &&
-            !$self->buildSystem()->uninstallInternal(@makeInstallOpts))
+            $self->getPersistentOption('last-install-rev'))
         {
-            warning ("\tUnable to uninstall r[$self] before installing the new build.");
-            warning ("\tContinuing anyways...");
+            if (!$self->buildSystem()->uninstallInternal(@makeInstallOpts)) {
+                warning ("\tUnable to uninstall r[$self] before installing the new build.");
+                warning ("\tContinuing anyways...");
+            }
+            else {
+                $self->unsetPersistentOption('last-install-rev');
+            }
         }
 
         if (!$self->buildSystem()->installInternal(@makeInstallOpts))
