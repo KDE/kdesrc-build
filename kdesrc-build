@@ -332,8 +332,13 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     sub list_has(\@$)
     {
         my $value = pop;
+        my @list = @_;
+
         # Expand list references if present, otherwise use all params.
-        my @list = scalar @_ == 1 ? @{$_[0]} : @_;
+        if (scalar @_ == 1 && (ref $_[0] eq ref [])) {
+            @list = @{$_[0]};
+        }
+
         return scalar grep { "$_" eq "$value" } (@list);
     }
 

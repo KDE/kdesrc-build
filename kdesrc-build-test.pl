@@ -211,6 +211,13 @@ $testModule->setupEnvironment();
 is($ctx->{env}->{'TESTY_MCTEST'}, 'yes', 'setting global set-env for modules');
 is($ctx->{env}->{'MOIN'}, '2', 'setting module set-env for modules');
 
+# Ensure that an empty {env} variable is not used.
+my $unlikelyEnvVar = 'KDESRC_BUILD_TEST_PATH';
+$ENV{$unlikelyEnvVar} = 'FAILED';
+$ctx->prependEnvironmentValue($unlikelyEnvVar, 'TEST_PATH');
+ok(defined $ctx->{env}->{$unlikelyEnvVar}, 'prependEnvironmentValue queues value');
+is($ctx->{env}->{$unlikelyEnvVar}, 'TEST_PATH:FAILED', 'prependEnvironmentValue queues in right order');
+
 # Ensure svn URL hierarchy is correct
 like(svn_module_url($testModule), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer module specific to global');
 $testModule->setOption('override-url', 'svn://annono');
