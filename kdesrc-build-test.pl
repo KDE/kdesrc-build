@@ -211,12 +211,26 @@ $testModule->setupEnvironment();
 is($ctx->{env}->{'TESTY_MCTEST'}, 'yes', 'setting global set-env for modules');
 is($ctx->{env}->{'MOIN'}, '2', 'setting module set-env for modules');
 
-# Ensure that an empty {env} variable is not used.
 my $unlikelyEnvVar = 'KDESRC_BUILD_TEST_PATH';
 $ENV{$unlikelyEnvVar} = 'FAILED';
 $ctx->prependEnvironmentValue($unlikelyEnvVar, 'TEST_PATH');
+
+# Ensure that an empty {env} variable is not used.
 ok(defined $ctx->{env}->{$unlikelyEnvVar}, 'prependEnvironmentValue queues value');
 is($ctx->{env}->{$unlikelyEnvVar}, 'TEST_PATH:FAILED', 'prependEnvironmentValue queues in right order');
+
+$unlikelyEnvVar .= '1';
+$ctx->{env}->{$unlikelyEnvVar} = '/path/1:/path/2';
+$ctx->prependEnvironmentValue($unlikelyEnvVar, '/path/0');
+
+is($ctx->{env}->{$unlikelyEnvVar}, '/path/0:/path/1:/path/2', 'prependEnvironmentValue queues multiple times');
+
+# Finally, see what happens when no env var or pre-existing queued var is set
+
+$unlikelyEnvVar .= '1';
+$ctx->prependEnvironmentValue($unlikelyEnvVar, '/path/10');
+
+is($ctx->{env}->{$unlikelyEnvVar}, '/path/10', 'prependEnvironmentValue initial value');
 
 # Ensure svn URL hierarchy is correct
 like(svn_module_url($testModule), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer module specific to global');
