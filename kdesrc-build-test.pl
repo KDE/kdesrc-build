@@ -339,6 +339,10 @@ module qt
     configure-flags -fast
     repository kde:qt
 end module
+
+module kde-runtime
+    manual-build true
+end module
 EOF
 open my $fh, '<', \$conf;
 
@@ -353,6 +357,8 @@ is($conf_modules[3]->getOption('configure-flags'), '-fast', 'read_options/parse_
 is($conf_modules[0]->getOption('repository'), 'kde:kdelibs', 'git-repository-base');
 is($conf_modules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 1)');
 
+is($conf_modules[2]->getOption('manual-build'), 'true', 'manual-build for kde-projects submodule (Bug 288611)');
+
 my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt/);
 
 is($ConfModules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 2)');
@@ -360,6 +366,7 @@ $ConfModules[1]->setModuleSet('set1');
 $ConfModules[1]->setScmType('proj');
 $ConfModules[2]->setModuleSet('set1');
 $ConfModules[2]->setScmType('proj');
+$ConfModules[2]->setOption('manual-build', 'true');
 $ConfModules[3]->setOption('repository', 'kde:qt');
 
 # This test must be performed to get the test after to pass, due to differences in each

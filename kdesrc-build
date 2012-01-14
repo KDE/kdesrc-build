@@ -5449,17 +5449,41 @@ sub split_option_value
 }
 
 # Reads in the options from the config file and adds them to the option store.
-# The first parameter is a reference to the file handle to read from.
-# The second parameter is 'global' if we're reading the global section, or
-# 'module' if we should expect an end module statement.
+# The first parameter is a BuildContext object to use for creating the returned
+#     Module under.
+# The second parameter is a reference to the file handle to read from.
+# The third parameter is the module name. It can be either an
+# already-constructed Module object (in which case it is used directly and any
+# options read for the module are applied directly to the object), or it can be
+# a string containing the module name (in which case a new Module object will
+# be created). For global options the module name should be 'global', or just
+# pass in the BuildContext for this param as well.
+#
+# The return value is the Module with options set as given in the configuration
+# file for that module. If global options were being read then a BuildContext
+# is returned (but that is-a Module anyways).
 sub parse_module
 {
-    my ($ctx, $fileReader, $moduleName) = @_;
+    my ($ctx, $fileReader, $moduleOrName) = @_;
     assert_isa($ctx, 'ksb::BuildContext');
 
     my $rcfile = $ctx->rcFile();
-    my $module = $moduleName eq 'global' ? $ctx : Module->new($ctx, $moduleName);
-    my $endWord = $moduleName eq 'global' ? 'global' : 'module';
+    my $module;
+
+    # Figure out what objects to store options into. If given, just use
+    # that, otherwise use context or a new Module depending on the name.
+    if (ref $moduleOrName) {
+        $module = $moduleOrName;
+        assert_isa($module, 'Module');
+    }
+    elsif ($moduleOrName eq 'global') {
+        $module = $ctx;
+    }
+    else {
+        $module = Module->new($ctx, $moduleOrName);
+    }
+
+    my $endWord = $module->isa('ksb::BuildContext') ? 'global' : 'module';
     my $endRE = qr/^end\s+$endWord/;
 
     # Read in each option
@@ -5478,7 +5502,7 @@ sub parse_module
         my ($option, $value) = split_option_value($ctx, $_);
 
         # Handle special options.
-        if ($moduleName eq 'global' && $option eq 'git-repository-base') {
+        if ($module->isa('ksb::BuildContext') && $option eq 'git-repository-base') {
             # This will be a hash reference instead of a scalar
             my ($repo, $url) = ($value =~ /^([a-zA-Z0-9_-]+)\s+(.+)$/);
             $value = $ctx->getOption($option) || { };
@@ -5864,7 +5888,17 @@ sub read_options
             push @module_list, parse_moduleset($ctx, $fileReader, $modulename);
         }
         else {
-            push @module_list, parse_module($ctx, $fileReader, $modulename);
+            # Overwrite options set for existing modules.
+            if (my @modules = grep { $_->name() eq $modulename } @module_list) {
+                if (!$modules[0]->moduleSet()) {
+                    warning ("Multiple module declarations for $modules[0]");
+                }
+
+                parse_module($ctx, $fileReader, $modules[0]); # Don't re-add
+            }
+            else {
+                push @module_list, parse_module($ctx, $fileReader, $modulename);
+            }
         }
 
         # Don't build default modules if user has their own wishes.
