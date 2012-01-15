@@ -362,6 +362,7 @@ is($conf_modules[2]->getOption('manual-build'), 'true', 'manual-build for kde-pr
 my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt/);
 
 is($ConfModules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 2)');
+$ConfModules[0]->setModuleSet(''); # Unnamed module set, instead of undef
 $ConfModules[1]->setModuleSet('set1');
 $ConfModules[1]->setScmType('proj');
 $ConfModules[2]->setModuleSet('set1');

@@ -2849,7 +2849,7 @@ EOF
             phases       => $phases,
             context      => $ctx,
             options      => $ctx->{build_options}{$name},
-            'module-set' => '',
+            'module-set' => undef,
         };
 
         return bless $module, $class;
@@ -5749,6 +5749,7 @@ sub expandXMLModules
             $_ = Module->new($ctx, $result->{'name'});
             $_->setScmType('git');
             $_->cloneOptionsFrom($moduleSet);
+            $_->setModuleSet($moduleSet->moduleSet());
             $_->setOption('repository', $repo);
             $_->setOption('#xml-full-path', $result->{'fullName'});
 
@@ -5890,7 +5891,9 @@ sub read_options
         else {
             # Overwrite options set for existing modules.
             if (my @modules = grep { $_->name() eq $modulename } @module_list) {
-                if (!$modules[0]->moduleSet()) {
+                # We check for definedness as a module-set can exist but be
+                # unnamed.
+                if (!defined $modules[0]->moduleSet()) {
                     warning ("Multiple module declarations for $modules[0]");
                 }
 
@@ -7624,10 +7627,11 @@ EOF
     # just harder in the --resume-after case where we have to leave that module
     # set before we can allow modules through the filter.
     my $filterTest = sub {
+        my $moduleSet = $_->moduleSet() // '';
         if ($found) {
-            return $filterInclusive || $_->moduleSet() ne $resumePoint;
+            return $filterInclusive || $moduleSet ne $resumePoint;
         }
-        $found = $_->{'name'} eq $resumePoint || $_->moduleSet() eq $resumePoint;
+        $found = $_->{'name'} eq $resumePoint || $moduleSet eq $resumePoint;
         return $found && $filterInclusive;
     };
 
