@@ -331,18 +331,13 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     }
 
     # Function to work around a Perl language limitation.
-    # First parameter is the list to search.
+    # First parameter is a reference to the list to search. ALWAYS.
     # Second parameter is the value to search for.
     # Returns true if the value is in the list
-    sub list_has(\@$)
+    sub list_has
     {
-        my $value = pop;
-        my @list = @_;
-
-        # Expand list references if present, otherwise use all params.
-        if (scalar @_ == 1 && (ref $_[0] eq ref [])) {
-            @list = @{$_[0]};
-        }
+        my ($listRef, $value) = @_;
+        my @list = @{$listRef};
 
         return scalar grep { "$_" eq "$value" } (@list);
     }
@@ -396,12 +391,13 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     }
 
     # Throws an exception if the first parameter is not included in the
-    # provided list of possible alternatives.
-    sub assert_in($@)
+    # provided list of possible alternatives. The list of alternatives must
+    # be passed as a reference, as the second parameter.
+    sub assert_in
     {
         my ($val, $listRef) = @_;
 
-        if (!list_has(@{$listRef}, $val)) {
+        if (!list_has($listRef, $val)) {
             fail_assertion("$val is not a permissible value for its argument");
         }
 
@@ -1453,12 +1449,12 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
         # Filter out entries to add that are already in the environment from
         # the system.
-        for my $path (grep { list_has(@curPaths, $_) } (@items) ) {
+        for my $path (grep { list_has(\@curPaths, $_) } (@items) ) {
             debug ("\tNot prepending y[$path] to y[$envName] as it appears " .
                   "to already be defined in y[$envName].");
         }
 
-        @items = grep { not list_has(@curPaths, $_); } (@items);
+        @items = grep { not list_has(\@curPaths, $_); } (@items);
 
         my $envValue = join(':', @items, @curPaths);
 
@@ -3499,7 +3495,7 @@ EOF
 
         # Some global options would probably make no sense applied to Qt.
         my @qtCopyOverrides = qw(branch configure-flags tag cxxflags);
-        if (list_has(@qtCopyOverrides, $key) && $self->buildSystemType() eq 'Qt') {
+        if (list_has(\@qtCopyOverrides, $key) && $self->buildSystemType() eq 'Qt') {
             $levelLimit = 'module';
         }
 
@@ -3513,7 +3509,7 @@ EOF
 
         # Some options append to the global (e.g. conf flags)
         my @confFlags = qw(cmake-options configure-flags cxxflags);
-        if (list_has(@confFlags, $key) && $ctx->hasOption($key)) {
+        if (list_has(\@confFlags, $key) && $ctx->hasOption($key)) {
             return $ctx->getOption($key) . " " . ($self->{options}{$key} || '');
         }
 
@@ -3829,7 +3825,7 @@ sub branch_prefix
     return "$type/KDE" if $moduleName =~ /^KDE\//;
 
     # KDE proper modules seem to use this pattern.
-    return "$type/KDE" if list_has(@kde_module_list, $moduleName);
+    return "$type/KDE" if list_has(\@kde_module_list, $moduleName);
 
     # KDE extragear / playground modules use this pattern
     return "$type" if has_base_module($moduleName);
@@ -3837,7 +3833,7 @@ sub branch_prefix
     # If we doing a tag just return 'tags' because the next part is the actual
     # tag name, which is added by the caller, unless the module has its own
     # subdirectory in /tags.
-    return "$type" if $type eq 'tags' and not list_has(@tag_components, $moduleName);
+    return "$type" if $type eq 'tags' and not list_has(\@tag_components, $moduleName);
 
     # Everything else.
     return "$type/$moduleName";
@@ -3922,7 +3918,7 @@ sub svn_module_url
         if (not $modulePath and $levelLimit eq 'allow-inherit')
         {
             $modulePath = "trunk/KDE/$moduleName";
-            $modulePath = "trunk/$moduleName" if list_has(@non_trunk_modules, $module_root);
+            $modulePath = "trunk/$moduleName" if list_has(\@non_trunk_modules, $module_root);
             $modulePath =~ s/^\/*//; # Eliminate / at beginning of string.
             $modulePath =~ s/\/*$//; # Likewise at the end.
         }
