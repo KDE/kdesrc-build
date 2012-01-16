@@ -8042,7 +8042,8 @@ eval
         }
 
         # Filter --resume-foo first so entire module-sets can be skipped.
-        @modules = applyModuleFilters($ctx, @modules);
+        # Wrap in eval to catch runtime errors
+        eval { @modules = applyModuleFilters($ctx, @modules); };
         @modules = expandModuleSets(\@modules, \@optionModules);
         Module->setModuleSource('cmdline');
     }
@@ -8060,11 +8061,13 @@ eval
         Module->setModuleSource('config');
     }
 
+    # Must be done before filtering so that we can filter under module-sets.
+    @modules = expandXMLModules($ctx, @modules);
+
     # Filter --resume-foo options. This might be a second pass, but that should
     # be OK since there's nothing different going on from the first pass in that
     # event.
     @modules = applyModuleFilters($ctx, @modules);
-    @modules = expandXMLModules($ctx, @modules);
 
     # Apply kde-languages, by appending needed l10n modules to the end of the
     # build.
