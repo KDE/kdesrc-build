@@ -5730,6 +5730,12 @@ sub expandXMLModules
         } (KDEXMLReader->getModulesForProject($name, $srcdir));
 
         if (!@xmlResults) {
+            # If this was a "guessed XML module" then we guessed wrong, and it's really
+            # a misspelling.
+            if ($moduleSet->getOption('#guessed-kde-project')) {
+                die make_exception('Runtime', "Unknown module or module-set: $name");
+            }
+
             warning " y[b[*] Module y[$name] is apparently XML-based, but contains no\n",
                 "active modules to build!";
             my $count = KDEXMLReader->getModulesForProject($name, $srcdir);
@@ -5820,7 +5826,15 @@ sub expandModuleSets
         (@$knownModules);
 
         if (!@modulesInSet) {
-            die make_exception('Runtime', "Unknown module or module-set: $setName");
+            # If we make it to this point the module is either completely
+            # unknown, or possibly part of a kde-projects module-set (it can't
+            # be part of a regular module-set as those modules are already in
+            # @knownModules). To allow things to continue we will
+            # optimistically mark the module as a kde-projects module and then
+            # cross our fingers...
+            $_->setScmType('proj');
+            $_->setOption('#guessed-kde-project', 1);
+            push @modulesInSet, $_;
         }
 
         return @modulesInSet;
