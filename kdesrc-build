@@ -5815,7 +5815,9 @@ sub expandModuleSets
 
         # Otherwise assume it's a set, replace this with all sub-modules in that
         # module set.
-        my @modulesInSet = grep { $_->moduleSet() eq $setName } (@$knownModules);
+        my @modulesInSet = grep
+            { ($_->moduleSet() // '') eq $setName }
+        (@$knownModules);
 
         if (!@modulesInSet) {
             die make_exception('Runtime', "Unknown module or module-set: $setName");
@@ -7304,7 +7306,7 @@ EOF
 
     while (my $module = shift @modules)
     {
-        my $moduleSet = $module->moduleSet();
+        my $moduleSet = $module->moduleSet() // '';
         my $moduleName = $module->name();
         my $modOutput = "$module";
 
