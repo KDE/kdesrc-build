@@ -1202,6 +1202,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     use File::Basename; # dirname
     use IO::File;
     use POSIX qw(strftime);
+    use Errno qw(:POSIX);
 
     # We derive from Module so that BuildContext acts like the 'global'
     # Module, with some extra functionality.
@@ -1215,6 +1216,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
     my @DefaultPhases = qw/update build install/;
     my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
+    my $LOCKFILE_NAME = '.kdesrc-lock';
 
     # defaultGlobalOptions {{{
     my %defaultGlobalOptions = (
@@ -1463,6 +1465,138 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         $envValue =~ s/:+/:/; # Remove duplicate colons
 
         $self->queueEnvironmentVariable($envName, $envValue);
+    }
+
+    # Installs the given subroutine as a signal handler for a set of signals which
+    # could kill the program.
+    #
+    # First parameter is a reference to the sub to act as the handler.
+    sub installSignalHandlers
+    {
+        my $handlerRef = shift;
+        my @signals = qw/HUP INT QUIT ABRT TERM PIPE/;
+
+        @SIG{@signals} = ($handlerRef) x scalar @signals;
+    }
+
+    # Tries to take the lock for our current base directory, which currently is
+    # what passes for preventing people from accidentally running kdesrc-build
+    # multiple times at once.  The lock is based on the base directory instead
+    # of being global to allow for motivated and/or brave users to properly
+    # configure kdesrc-build to run simultaneously with different
+    # configurations.
+    #
+    # Return value is a boolean success flag.
+    sub takeLock
+    {
+        my $self = assert_isa(shift, 'ksb::BuildContext');
+        my $baseDir = $self->baseConfigDirectory();
+        my $lockfile = "$baseDir/$LOCKFILE_NAME";
+
+        $! = 0; # Force reset to non-error status
+        sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
+        my $errorCode = $!; # Save for later testing.
+
+        # Install signal handlers to ensure that the lockfile gets closed.
+        # There is a race condition here, but at worst we have a stale lock
+        # file, so I'm not *too* concerned.
+        installSignalHandlers(sub {
+            note ("Signal received, terminating.");
+            @main::atexit_subs = (); # Remove their finish, doin' it manually
+            main::finish($self, 5);
+        });
+
+        if ($errorCode == EEXIST)
+        {
+            # Path already exists, read the PID and see if it belongs to a
+            # running process.
+            open (my $pidFile, "<", $lockfile) or do
+            {
+                # Lockfile is there but we can't open it?!?  Maybe a race
+                # condition but I have to give up somewhere.
+                warning (" WARNING: Can't open or create lockfile r[$lockfile]");
+                return 1;
+            };
+
+            my $pid = <$pidFile>;
+            close $pidFile;
+
+            if ($pid)
+            {
+                # Recent kdesrc-build; we wrote a PID in there.
+                chomp $pid;
+
+                # See if something's running with this PID.
+                if (kill(0, $pid) == 1)
+                {
+                    # Something *is* running, likely kdesrc-build.  Don't use error,
+                    # it'll scan for $!
+                    print clr(" r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n");
+                    print clr("  (b[Q])uit, (b[P])roceed anyways?: ");
+
+                    my $choice = <STDIN>;
+                    chomp $choice;
+
+                    if (lc $choice ne 'p')
+                    {
+                        say clr(" y[*] kdesrc-build run canceled.");
+                        return 0;
+                    }
+
+                    # We still can't grab the lockfile, let's just hope things
+                    # work out.
+                    note (" y[*] kdesrc-build run in progress by user request.");
+                    return 1;
+                }
+
+                # If we get here, then the program isn't running (or at least not
+                # as the current user), so allow the flow of execution to fall
+                # through below and unlink the lockfile.
+            } # pid
+
+            # No pid found, optimistically assume the user isn't running
+            # twice.
+            warning (" y[WARNING]: stale kdesrc-build lockfile found, deleting.");
+            unlink $lockfile;
+
+            sysopen (LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL) or do {
+                error (" r[*] Still unable to lock $lockfile, proceeding anyways...");
+                return 1;
+            };
+
+            # Hope the sysopen worked... fall-through
+        }
+        elsif ($errorCode == ENOTTY)
+        {
+            # Stupid bugs... normally sysopen will return ENOTTY, not sure who's to blame between
+            # glibc and Perl but I know that setting PERLIO=:stdio in the environment "fixes" things.
+            ; # pass
+        }
+        elsif ($errorCode != 0) # Some other error occurred.
+        {
+            warning (" r[*]: Error $errorCode while creating lock file (is $baseDir available?)");
+            warning (" r[*]: Continuing the script for now...");
+
+            # Even if we fail it's generally better to allow the script to proceed
+            # without being a jerk about things, especially as more non-CLI-skilled
+            # users start using kdesrc-build to build KDE.
+            return 1;
+        }
+
+        say LOCKFILE "$$";
+        close LOCKFILE;
+
+        return 1;
+    }
+
+    # Releases the lock obtained by takeLock.
+    sub closeLock
+    {
+        my $self = assert_isa(shift, 'ksb::BuildContext');
+        my $baseDir = $self->baseConfigDirectory();
+        my $lockFile = "$baseDir/$LOCKFILE_NAME";
+
+        unlink ($lockFile) or warning(" y[*] Failed to close lock: $!");
     }
 
     # This subroutine accepts a Module parameter, and returns the log directory
@@ -6466,134 +6600,6 @@ DONE
     return map { Module->new($ctx, $_) } (@enteredModules);
 }
 
-# Installs the given subroutine as a signal handler for a set of signals which
-# could kill the program.
-#
-# First parameter is a reference to the sub to act as the handler.
-sub install_signal_handler
-{
-    my $handler = shift;
-    my @signals = qw/HUP INT QUIT ABRT TERM PIPE/;
-
-    @SIG{@signals} = ($handler) x scalar @signals;
-}
-
-# Subroutine to try to get a lock on the script's lockfile to prevent
-# more than one script from updating KDE at once.
-# The value returned depends on the system's open() call.  Normally 0
-# is failure and non-zero is success (e.g. a file descriptor to read).
-# TODO: This could be improved to not fight over the lock when the scripts are
-# handling separate tasks.
-sub get_lock
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $lockfile = "$ENV{HOME}/.kdesrc-lock";
-    $! = 0; # Force reset to non-error status
-    sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
-    my $errorCode = $!; # Save for later testing.
-
-    # Install signal handlers to ensure that the lockfile gets closed.
-    # There is a race condition here, but at worst we have a stale lock
-    # file, so I'm not *too* concerned.
-    install_signal_handler(sub {
-        note "Signal received, terminating.";
-        @main::atexit_subs = (); # Remove their finish, doin' it manually
-        finish($ctx, 5);
-    });
-
-    # Note that we can use color codes at this point since get_lock is called
-    # after read_options (which sets up the color).
-    if($errorCode == EEXIST)
-    {
-        # Path already exists, read the PID and see if it belongs to a
-        # running process.
-        open PIDFILE, "<$lockfile" or do
-        {
-            # Lockfile is there but we can't open it?!?  Maybe a race
-            # condition but I have to give up somewhere.
-            warning " WARNING: Can't open or create lockfile r[$lockfile]";
-            return 1;
-        };
-
-        my $pid = <PIDFILE>;
-        close PIDFILE;
-
-        if($pid)
-        {
-            # Recent kdesrc-build; we wrote a PID in there.
-            chomp $pid;
-
-            # See if something's running with this PID.
-            if (kill(0, $pid) == 1)
-            {
-                # Something *is* running, likely kdesrc-build.  Don't use error,
-                # it'll scan for $!
-                print clr " r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n";
-                print clr "  (b[Q])uit, (b[P])roceed anyways?: ";
-
-                my $choice = <STDIN>;
-                chomp $choice;
-
-                if(lc $choice ne 'p')
-                {
-                    print clr " y[*] kdesrc-build run canceled.\n";
-                    exit 1;
-                }
-
-                # We still can't grab the lockfile, let's just hope things
-                # work out.
-                print clr " y[*] kdesrc-build run in progress by user request.\n";
-                return 1;
-            }
-
-            # If we get here, then the program isn't running (or at least not
-            # as the current user), so allow the flow of execution to fall
-            # through below and unlink the lockfile.
-        } # pid
-
-        # No pid found, optimistically assume the user isn't running
-        # twice.
-        warning " y[WARNING]: stale kdesrc-build lockfile found, deleting.";
-        unlink $lockfile;
-        sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL and do
-        {
-            print LOCKFILE "$$\n";
-            close LOCKFILE;
-        };
-        return 1; # Hope the sysopen worked.
-    }
-    elsif ($errorCode == ENOTTY)
-    {
-        # Stupid bugs... normally sysopen will return ENOTTY, not sure who's to blame between
-        # glibc and Perl but I know that setting PERLIO=:stdio in the environment "fixes" things.
-        ; # pass
-    }
-    elsif ($errorCode != 0) # Some other error occurred.
-    {
-        warning " r[*]: Error $errorCode while creating lock file (is home directory available?)";
-        warning " r[*]: Continuing the script for now...";
-
-        # Even if we fail it's generally better to allow the script to proceed
-        # without being a jerk about things, especially as more non-CLI-skilled
-        # users start using kdesrc-build to build KDE.
-        return 1;
-    }
-
-    print LOCKFILE "$$\n";
-    close LOCKFILE;
-
-    return 1;
-}
-
-# Subroutine to free the lock allocated by get_lock()
-sub close_lock
-{
-    my $lockfile = "$ENV{HOME}/.kdesrc-lock";
-
-    close LOCKFILE;
-    unlink $lockfile;
-}
-
 sub updateModulePhases
 {
     whisper "Filtering out module phases.";
@@ -7485,7 +7491,7 @@ sub finish
         exit $exitcode;
     }
 
-    close_lock();
+    $ctx->closeLock();
     $ctx->storePersistentOptions();
 
     my $logdir = $ctx->getLogDir();
@@ -8118,10 +8124,10 @@ eval
         print Data::Dumper->Dump([$ctx], [qw(ctx)]);
     }
 
-    if (!pretending() && !get_lock($ctx))
+    if (!pretending() && !$ctx->takeLock())
     {
         print "$0 is already running!\n";
-        exit 0; # Don't finish(), it's not our lockfile!!
+        exit 1; # Don't finish(), it's not our lockfile!!
     }
     else
     {
