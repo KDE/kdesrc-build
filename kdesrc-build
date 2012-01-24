@@ -1619,6 +1619,20 @@ to quickly generate a simple configuration to get started.
 HOME
     }
 
+    # Returns the base directory that holds the configuration file. This is
+    # typically used as the directory base for other necessary kdesrc-build
+    # execution files, such as the persistent data store and lock file.
+    #
+    # The RC file must have been found and loaded first, obviously.
+    sub baseConfigDirectory
+    {
+        my $self = assert_isa(shift, 'ksb::BuildContext');
+        my $rcfile = $self->rcFile() or
+            die make_exception('Internal', "Call to baseConfigDirectory before loadRcFile");
+
+        return dirname($rcfile);
+    }
+
     sub modulesInPhase
     {
         my ($self, $phase) = @_;
@@ -1770,8 +1784,7 @@ HOME
     sub loadPersistentOptions
     {
         my $self = assert_isa(shift, 'ksb::BuildContext');
-        my $rcfile = $self->rcFile();
-        my $dir = dirname($rcfile ? $rcfile : "");
+        my $dir = $self->baseConfigDirectory();
         my $fh = IO::File->new("<$dir/.kdesrc-build-data");
 
         return unless $fh;
@@ -1820,8 +1833,7 @@ HOME
         my $self = assert_isa(shift, 'ksb::BuildContext');
         return if pretending();
 
-        my $rcfile = $self->rcFile() // "";
-        my $dir = dirname($rcfile);
+        my $dir = $self->baseConfigDirectory();
         my $fh = IO::File->new("> $dir/.kdesrc-build-data");
 
         if (!$fh)
