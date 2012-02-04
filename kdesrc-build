@@ -7900,18 +7900,11 @@ sub handle_async_build
 # maintained.
 sub unique_list
 {
-    my @entries = sort @_;
-    my @result;
-    my $last = '';
-
-    for my $entry (@entries) {
-        next if ((not defined $entry) || ($last eq $entry));
-
-        push @result, $entry;
-        $last = $entry;
-    }
-
-    return @result;
+    # Take advantage of the fact that Perl hashes don't support duplicate
+    # keys by stuffing each item in our input list into a hash as a key, then
+    # retrieve the keys to get the unique items.
+    # Using the hash slice notation @hash{@list} is apparently a bit faster.
+    return do { my %tempHash; @tempHash{@_} = (); keys %tempHash; };
 }
 
 # Returns a list of module directory IDs that must be kept due to being
