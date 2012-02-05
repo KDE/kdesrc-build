@@ -3998,12 +3998,14 @@ EOF
         my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
         my $modulesFromNameRef  = $optionsRef->{modulesFromName};
 
-        if ($module->scmType() ne 'proj') {
+        my $item = $module->getOption('#xml-full-path');
+
+        if (!$item) {
             push @{$properBuildOrderRef}, $module;
             return;
         }
 
-        my $item = $module->name();
+        debug ("dep-resolv: Visiting $item");
 
         $visitedItemsRef->{$item} //= 0;
 
@@ -4053,7 +4055,7 @@ EOF
 
             # will map names back to their Modules
             modulesFromName => {
-                map { $_->name() => $_ } @modules
+                map { $_->getOption('#xml-full-path') => $_ } @modules
             },
         };
 
