@@ -8298,10 +8298,11 @@ eval
     info "Script started processing at g[$time]" unless pretending;
 
     $ctx->loadPersistentOptions();
+    my $metadataModule;
 
     # If we have kde-build-metadata we must process it first, ASAP.
     if (grep { $_->name() eq 'kde-build-metadata' } @modules) {
-        my $metadataModule = shift @modules;
+        $metadataModule = shift @modules;
         assert_isa($metadataModule->scm(), 'KDEProjectMetadataUpdate');
 
         eval {
@@ -8315,6 +8316,28 @@ eval
             warning (" b[r[*] Will attempt to press onward...");
             warning (" b[r[*] Exception message: $@");
         }
+    }
+
+    # Reorder if necessary. This involves reading some metadata so wrap in its
+    # own exception handler.
+    eval {
+        my $dependencyFile = $metadataModule->fullpath('source') . '/dependency-data';
+        open my $dependencies, '<', $dependencyFile
+            or die "Unable to open $dependencyFile: $!";
+
+        my $dependencyResolver = DependencyResolver->new();
+        $dependencyResolver->readDependencyData($dependencies);
+
+        my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
+
+        # If we make it here no exceptions were thrown, so accept the result
+        @modules = @reorderedModules;
+    };
+
+    if ($@) {
+        warning (" r[b[*] Problems encountered trying to sort modules into correct order:");
+        warning (" r[b[*] $@");
+        warning (" r[b[*] Will attempt to continue.");
     }
 
     # Add to global module list now that we've filtered everything.
