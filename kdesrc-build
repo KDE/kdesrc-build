@@ -3914,6 +3914,160 @@ EOF
 }
 # }}}
 
+# package DependencyResolver {{{
+{
+    package DependencyResolver;
+
+    # This module handles resolving dependencies between modules. Each "module"
+    # from the perspective of this resolver is simply a module full name, as
+    # given by the KDE Project database.  (e.g. extragear/utils/kdesrc-build)
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    sub new
+    {
+        my $class = shift;
+
+        my $self = {
+            # hash table mapping full module names (m) to a list reference
+            # containing the full module names of modules that depend on m.
+            dependenciesOf  => { },
+        };
+
+        return bless $self, $class;
+    }
+
+    # Reads in dependency data in a psuedo-Makefile format.
+    # See kde-build-metadata/dependency-data.
+    #
+    # Object method.
+    # First parameter is the filehandle to read from.
+    sub readDependencyData
+    {
+        my $self = assert_isa(shift, 'DependencyResolver');
+        my $fh = shift;
+
+        my $dependenciesOfRef  = $self->{dependenciesOf};
+        my $dependencyAtom =
+            qr/
+            ^\s*      # Clear leading whitespace
+            ([^:\s]+) # Capture anything not a color or whitespace (dependent item)
+            \s*       # Clear whitespace we didn't capture
+            :
+            \s*
+            ([^\s]+)  # Capture all non-whitespace (source item)
+            \s*$      # Ensure no trailing cruft. Any whitespace should end line
+            /x;       # /x Enables extended whitespace mode
+
+        while(my $line = <$fh>) {
+            # Strip comments, skip empty lines.
+            $line =~ s{#.*$}{};
+            next if $line =~ /^\s*$/;
+
+            if ($line !~ $dependencyAtom) {
+                die make_exception('Internal', "Invalid line $line when reading dependency data.");
+            }
+
+            my ($dependentItem, $sourceItem) = $line =~ $dependencyAtom;
+
+            # Initialize with array if not already defined.
+            $dependenciesOfRef->{$dependentItem} //= [ ];
+
+            push @{$dependenciesOfRef->{$dependentItem}}, $sourceItem;
+        }
+    }
+
+    # Internal.
+    # This method is used to topographically sort dependency data. It accepts
+    # a Module, ensures that any KDE Projects it depends on are already on the
+    # build list, and then adds the Module to the build list (whether it is
+    # a KDE Project or not, to preserve ordering).
+    #
+    # Static method.
+    # First parameter: Reference to a hash of parameters.
+    # Second parameter: Module to "visit". Does not have to be a KDE Project.
+    # Return: Nothing.
+    sub _visitModuleAndDependencies
+    {
+        my ($optionsRef, $module) = @_;
+        assert_isa($module, 'Module');
+
+        my $visitedItemsRef     = $optionsRef->{visitedItems};
+        my $properBuildOrderRef = $optionsRef->{properBuildOrder};
+        my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
+        my $modulesFromNameRef  = $optionsRef->{modulesFromName};
+
+        if ($module->scmType() ne 'proj') {
+            push @{$properBuildOrderRef}, $module;
+            return;
+        }
+
+        my $item = $module->name();
+
+        $visitedItemsRef->{$item} //= 0;
+
+        # This module may have already been added to build.
+        return if $visitedItemsRef->{$item} == 1;
+
+        # But if the value is 2 that means we've detected a cycle.
+        if ($visitedItemsRef->{$item} > 1) {
+            die make_exception('Internal', "Somehow there is a dependency cycle involving $item! :(");
+        }
+
+        $visitedItemsRef->{$item} = 2; # Mark as currently-visiting for cycle detection.
+        for my $subItem (@{$dependenciesOfRef->{$item}}) {
+            _visitModuleAndDependencies($optionsRef, $modulesFromNameRef->{$subItem});
+        }
+
+        $visitedItemsRef->{$item} = 1; # Mark as done visiting.
+        push @{$properBuildOrderRef}, $module;
+        return;
+    }
+
+    # This method takes a list of Modules (real Module objects, not just module
+    # names).
+    #
+    # These modules have their dependencies resolved, and a new list of Modules
+    # is returned, containing the proper build order for the module given.
+    #
+    # Only "KDE Project" modules can be re-ordered or otherwise affect the
+    # build so this currently won't affect Subversion modules or "plain Git"
+    # modules.
+    #
+    # The dependency data must have been read in first (readDependencyData).
+    #
+    # Object method
+    # Parameters: Modules to evaluate, in suggested build order.
+    # Return: Modules to build, with any KDE Project modules in a valid
+    # ordering based on the currently-read dependency data.
+    sub resolveDependencies
+    {
+        my $self = assert_isa(shift, 'DependencyResolver');
+        my @modules = @_;
+
+        my $optionsRef = {
+            visitedItems => { },
+            properBuildOrder => [ ],
+            dependenciesOf => $self->{dependenciesOf},
+
+            # will map names back to their Modules
+            modulesFromName => {
+                map { $_->name() => $_ } @modules
+            },
+        };
+
+        for my $module (@modules) {
+            _visitModuleAndDependencies($optionsRef, $module);
+        }
+
+        return @{$optionsRef->{properBuildOrder}};
+    }
+
+    1;
+}
+# }}}
+
 # }}}
 
 # Global import for debugging routines. This must be a BEGIN block only because
