@@ -4019,7 +4019,15 @@ EOF
 
         $visitedItemsRef->{$item} = 2; # Mark as currently-visiting for cycle detection.
         for my $subItem (@{$dependenciesOfRef->{$item}}) {
-            _visitModuleAndDependencies($optionsRef, $modulesFromNameRef->{$subItem});
+            debug ("\tdep-resolv: $item depends on $subItem");
+
+            my $subModule = $modulesFromNameRef->{$subItem};
+            if (!$subModule) {
+                note (" y[b[*] $module depends on $subItem, but no module builds $subItem for this run.");
+                next;
+            }
+
+            _visitModuleAndDependencies($optionsRef, $subModule);
         }
 
         $visitedItemsRef->{$item} = 1; # Mark as done visiting.
