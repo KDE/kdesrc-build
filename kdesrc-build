@@ -8321,17 +8321,19 @@ eval
     # Reorder if necessary. This involves reading some metadata so wrap in its
     # own exception handler.
     eval {
-        my $dependencyFile = $metadataModule->fullpath('source') . '/dependency-data';
-        open my $dependencies, '<', $dependencyFile
-            or die "Unable to open $dependencyFile: $!";
+        if ($metadataModule) {
+            my $dependencyFile = $metadataModule->fullpath('source') . '/dependency-data';
+            open my $dependencies, '<', $dependencyFile
+                or die "Unable to open $dependencyFile: $!";
 
-        my $dependencyResolver = DependencyResolver->new();
-        $dependencyResolver->readDependencyData($dependencies);
+            my $dependencyResolver = DependencyResolver->new();
+            $dependencyResolver->readDependencyData($dependencies);
 
-        my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
+            my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
 
-        # If we make it here no exceptions were thrown, so accept the result
-        @modules = @reorderedModules;
+            # If we make it here no exceptions were thrown, so accept the result
+            @modules = @reorderedModules;
+        }
     };
 
     if ($@) {
