@@ -1218,6 +1218,9 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
     my $LOCKFILE_NAME = '.kdesrc-lock';
 
+    # The # will be replaced by the directory the rc File is stored in.
+    my $PERSISTENT_FILE_NAME = '#/.kdesrc-build-data';
+
     # defaultGlobalOptions {{{
     my %defaultGlobalOptions = (
         "async"                => 1,
@@ -1911,6 +1914,28 @@ HOME
     # Persistent option handling
     #
 
+    # Returns the name of the file to use for persistent data.
+    # Supports expanding '#' at the beginning of the filename to the directory
+    # containing the rc-file in use, but only for the default name at this
+    # point.
+    sub persistentOptionFileName
+    {
+        my $self = shift;
+        my $filename = $self->getOption('persistent-data-file');
+
+        if (!$filename) {
+            $filename = $PERSISTENT_FILE_NAME;
+            my $dir = $self->baseConfigDirectory();
+            $filename =~ s/^#/$dir/;
+        }
+        else {
+            # Tilde-expand
+            $filename =~ s/^~\//$ENV{HOME}\//;
+        }
+
+        return $filename;
+    }
+
     # Reads in all persistent options from the file where they are kept
     # (.kdesrc-build-data) for use in the program.
     #
@@ -1918,8 +1943,7 @@ HOME
     sub loadPersistentOptions
     {
         my $self = assert_isa(shift, 'ksb::BuildContext');
-        my $dir = $self->baseConfigDirectory();
-        my $fh = IO::File->new("<$dir/.kdesrc-build-data");
+        my $fh = IO::File->new($self->persistentOptionFileName(), '<');
 
         return unless $fh;
 
@@ -1968,8 +1992,7 @@ HOME
         my $self = assert_isa(shift, 'ksb::BuildContext');
         return if pretending();
 
-        my $dir = $self->baseConfigDirectory();
-        my $fh = IO::File->new("> $dir/.kdesrc-build-data");
+        my $fh = IO::File->new($self->persistentOptionFileName(), '>');
 
         if (!$fh)
         {
