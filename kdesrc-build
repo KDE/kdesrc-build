@@ -994,7 +994,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         # extragear/utils/kdesrc-build
         @xmlGroupingIds{qw/component module project/} = 1;
 
-        my ($class, $proj, $srcdir) = @_;
+        my ($class, $handle, $proj, $srcdir) = @_;
 
         $searchProject = $proj;
         @modules = ();
@@ -1012,7 +1012,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
                 },
         );
 
-        my $result = $parser->parsefile("$srcdir/kde_projects.xml");
+        my $result = $parser->parse($handle);
         return @modules;
     }
 
@@ -6056,12 +6056,14 @@ sub expandXMLModules
 
         my $name = $moduleSet->name();
         my $srcdir = $ctx->getSourceDir();
+        open my $file, '<', "$srcdir/kde_projects.xml" or
+            die make_exception('Runtime', "Unable to open $srcdir/kde_projects.xml: $!");
+
+        my @allXmlResults = KDEXMLReader->getModulesForProject($file, $name, $srcdir);
 
         # It's possible to match modules which are marked as inactive on
         # projects.kde.org, elide those.
-        my @xmlResults = grep {
-            $_->{'active'} ne 'false'
-        } (KDEXMLReader->getModulesForProject($name, $srcdir));
+        my @xmlResults = grep { $_->{'active'} ne 'false' } (@allXmlResults);
 
         if (!@xmlResults) {
             # If this was a "guessed XML module" then we guessed wrong, and it's really
@@ -6072,7 +6074,7 @@ sub expandXMLModules
 
             warning " y[b[*] Module y[$name] is apparently XML-based, but contains no\n",
                 "active modules to build!";
-            my $count = KDEXMLReader->getModulesForProject($name, $srcdir);
+            my $count = scalar @allXmlResults;
             if ($count > 0) {
                 warning "\tAlthough no active modules are available, there were\n",
                     "\t$count inactive modules. Perhaps the git modules are not ready?";
