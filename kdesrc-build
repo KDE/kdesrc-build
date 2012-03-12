@@ -37,7 +37,7 @@ package main;
 
 use strict;
 use warnings;
-use Fcntl;    # For sysopen constants
+use Fcntl qw(:DEFAULT :seek);    # For sysopen constants
 use Carp;
 use POSIX qw(strftime :sys_wait_h _exit);
 use File::Find; # For our lndir reimplementation.
@@ -45,6 +45,7 @@ use File::Path qw(remove_tree);
 use File::Glob ':glob';
 use File::Basename; # fileparse
 use File::Spec;     # tmpdir, rel2abs
+use File::Temp qw(tempfile);
 use Cwd qw(getcwd);
 use LWP::UserAgent;
 use URI; # For git-clone snapshot support
@@ -994,7 +995,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         # extragear/utils/kdesrc-build
         @xmlGroupingIds{qw/component module project/} = 1;
 
-        my ($class, $handle, $proj, $srcdir) = @_;
+        my ($class, $handle, $proj) = @_;
 
         $searchProject = $proj;
         @modules = ();
@@ -5874,12 +5875,13 @@ EOF
 # work. Only tries once per script run. If it does succeed, the result is saved
 # to $srcdir/kde_projects.xml
 #
-# Returns 0 if the file could not be downloaded, 1 otherwise.
+# Returns the file handle that the database can be retrieved from. May throw an
+# exception if an error occurred.
 sub ensure_projects_xml_present
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $srcdir = $ctx->getSourceDir();
-    my $file = "$srcdir/kde_projects.xml";
+
+    state $file;
     state $cachedSuccess;
 
     # See if we've already tried to download. If we ever try to download for
@@ -5890,10 +5892,17 @@ sub ensure_projects_xml_present
         die make_exception('Internal', "Attempted to find projects.xml after it already failed");
     }
 
-    return 1 if $cachedSuccess;
+    if ($cachedSuccess) {
+        open my $fh, '<', $file or die make_exception('Runtime', "Unable to open $file: $!");
+        return $fh;
+    }
 
     # Not previously attempted, let's make a try.
+    my $srcdir = $ctx->getSourceDir();
+    my $fileHandleResult;
+
     super_mkdir($srcdir) unless -d "$srcdir";
+    $file = "$srcdir/kde_projects.xml";
     my $url = "http://projects.kde.org/kde_projects.xml";
 
     my $result = 1;
@@ -5906,9 +5915,15 @@ sub ensure_projects_xml_present
         $result = download_file($url, $file);
     }
     elsif (! -e $file) {
-        note " y[*] b[ACTUALLY downloading projects.kde.org project database to make the rest]";
-        note " y[*] b[of the --pretend output make sense.]";
+        note (" * Downloading projects.kde.org project database (will not be saved in pretend mode)...");
+
+        # Unfortunately dumping the HTTP output straight to the XML parser is a
+        # wee bit more complicated than I feel like dealing with => use a temp
+        # file.
+        ($fileHandleResult, $file) = tempfile('kde_projectsXXXXXX',
+            SUFFIX=>'.xml', TMPDIR=>1, UNLINK=>0);
         $result = download_file($url, $file);
+        seek ($fileHandleResult, 0, SEEK_SET);
     }
     else {
         info " * y[Using existing projects.kde.org project database], output may change";
@@ -5922,7 +5937,12 @@ sub ensure_projects_xml_present
         die make_exception('Runtime', "Unable to download kde_projects.xml for the kde-projects repository!");
     }
 
-    return $result;
+    if (!$fileHandleResult) {
+        open ($fileHandleResult, '<', $file) or die
+            make_exception('Runtime', "Unable to open $file: $!");
+    }
+
+    return $fileHandleResult;
 }
 
 # Reads in a "moduleset".
@@ -6047,7 +6067,7 @@ sub expandXMLModules
         # Only attempt to expand out XML-based modules.
         return $moduleSet if !$moduleSet->scm()->isa('KDEProjectUpdate');
 
-        ensure_projects_xml_present($ctx) or
+        my $databaseFile = ensure_projects_xml_present($ctx) or
             die "kde-projects repository information could not be downloaded: $!.";
 
         # At this point we know we'll need the kde-build-metadata module, force
@@ -6056,10 +6076,8 @@ sub expandXMLModules
 
         my $name = $moduleSet->name();
         my $srcdir = $ctx->getSourceDir();
-        open my $file, '<', "$srcdir/kde_projects.xml" or
-            die make_exception('Runtime', "Unable to open $srcdir/kde_projects.xml: $!");
 
-        my @allXmlResults = KDEXMLReader->getModulesForProject($file, $name, $srcdir);
+        my @allXmlResults = KDEXMLReader->getModulesForProject($databaseFile, $name);
 
         # It's possible to match modules which are marked as inactive on
         # projects.kde.org, elide those.
