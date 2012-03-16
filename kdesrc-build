@@ -2179,6 +2179,101 @@ HOME
 }
 # }}}
 
+# package BzrUpdate {{{
+# Support the bazaar source control manager for libdbusmenu-qt
+{
+    package BzrUpdate;
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    # Our superclass
+    our @ISA = ('UpdateHandler');
+
+    # scm-specific update procedure.
+    # May change the current directory as necessary.
+    # Should return a count of files changed (or commits, or something similar)
+    sub updateInternal
+    {
+        my $self = assert_isa(shift, 'BzrUpdate');
+        my $module = assert_isa($self->module(), 'Module');
+
+        # Full path to source directory on-disk.
+        my $srcdir = $module->fullpath('source');
+        my $bzrRepoName = $module->getOption('repository');
+
+        # Or whatever regex is appropriate to strip the bzr URI protocol.
+        $bzrRepoName =~ s/^bzr:\/\///;
+
+        if (! -e "$srcdir/.bzr") {
+            # Cmdline assumes bzr will create the $srcdir directory and then
+            # check the source out into that directory.
+            my @cmd = ('bzr', 'branch', $bzrRepoName, $srcdir);
+
+            # Exceptions are used for failure conditions
+            if (main::log_command($module, 'bzr-branch', \@cmd) != 0) {
+                die make_exception('Internal', "Unable to checkout $module!");
+            }
+
+            # TODO: Filtering the output by passing a subroutine to log_command
+            # should give us the number of revisions, or we can just somehow
+            # count files.
+            my $newRevisionCount = 0;
+            return $newRevisionCount;
+        }
+        else {
+            # Update existing checkout. The source is currently in $srcdir
+            p_chdir($srcdir);
+
+            if (main::log_command($module, 'bzr-up', ['bzr', 'up']) != 0) {
+                die make_exception('Internal', "Unable to update $module!");
+            }
+
+            # I haven't looked at bzr up output yet to determine how to find
+            # number of affected files or number of revisions skipped.
+            my $changeCount = 0;
+            return $changeCount;
+        }
+
+        return 0;
+    }
+
+    sub name
+    {
+        return 'bzr';
+    }
+
+    # This is used to track things like the last successfully installed
+    # revision of a given module.
+    sub currentRevisionInternal
+    {
+        my $self = assert_isa(shift, 'BzrUpdate');
+        my $module = $self->module();
+        my $result;
+
+        # slurp_program_output can throw exceptions
+        eval {
+            p_chdir($module->fullpath('source'));
+
+            local $ENV{'LC_ALL'} = 'C';
+            my @lines = slurp_program_output('bzr', 'revno');
+
+            chomp ($result = $lines[0]);
+        };
+
+        if ($@) {
+            error ("Unable to run r[b[bzr], is bazaar installed?");
+            error (" -- Error was: r[$@]");
+            return undef;
+        }
+
+        return $result;
+    }
+
+    1;
+}
+# }}}
+
 # package SvnUpdate {{{
 {
     package SvnUpdate;
@@ -3119,10 +3214,10 @@ EOF
         # global options.
 
         my $svn_status = $self->getOption('svn-server', 'module');
-        my $git_status = $self->getOption('repository', 'module');
+        my $repository = $self->getOption('repository', 'module');
         my $rcfile = $self->buildContext()->rcFile();
 
-        if ($svn_status && $git_status) {
+        if ($svn_status && $repository) {
             error (<<EOF);
 You have specified both y[b[svn-server] and y[b[repository] options for the
 b[$self] module in $rcfile.
@@ -3134,9 +3229,14 @@ EOF
             die (make_exception('Config', 'svn-server and repository both set'));
         }
 
+        # Overload repository to allow bzr URLs?
+        if ($repository =~ /^bzr:\/\//) {
+            $self->{scm_obj} = BzrUpdate->new($self);
+        }
+
         # If it needs a repo it's git. Everything else is svn for now.
-        $self->{scm_obj} =
-            $git_status
+        $self->{scm_obj} //=
+            $repository
                 ? GitUpdate->new($self)
                 : SvnUpdate->new($self);
 
@@ -3155,6 +3255,7 @@ EOF
             when('metadata') { $newType = KDEProjectMetadataUpdate->new($self); }
             when('l10n') { $newType = l10nSystem->new($self); }
             when('svn')  { $newType = SvnUpdate->new($self); }
+            when('bzr')  { $newType = BzrUpdate->new($self); }
             default      { $newType = undef; }
         }
 
