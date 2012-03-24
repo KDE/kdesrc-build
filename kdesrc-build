@@ -4523,7 +4523,10 @@ sub download_file
 
     whisper "Downloading g[$filename] from g[$url]";
     my $response = $ua->mirror($url, $filename);
-    return 1 if $response->is_success;
+
+    # LWP's mirror won't auto-convert "Unchanged" code to success, so check for
+    # both.
+    return 1 if $response->code == 304 || $response->is_success;
 
     error "Failed to download y[b[$url] to b[$filename]";
     error "Result was: y[b[" . $response->status_line . "]";
