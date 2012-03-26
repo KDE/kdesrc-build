@@ -4569,7 +4569,7 @@ sub update_module_subdirectories
     # If we have elements in @path, download them now
     for my $dir (@_)
     {
-        info "\tUpdating g[$dir]";
+        info ("\tUpdating g[$dir]");
 
         my $logname = $dir;
         $logname =~ tr{/}{-};
@@ -4605,7 +4605,7 @@ sub moveOldDirectories
     # if run in pretend mode while still showing the message the first time.
     $pretendedMoves->{$oldDir} //= { };
     if (!$pretendedMoves->{$oldDir}->{$newDir} && -e $oldDir && ! -e $newDir) {
-        info "\tMoving old kdesrc-build directory at\n\t\tb[$oldDir] to\n\t\tb[$newDir]";
+        info ("\tMoving old kdesrc-build directory at\n\t\tb[$oldDir] to\n\t\tb[$newDir]");
 
         $pretendedMoves->{$oldDir}->{$newDir} = 1 if pretending;
         safe_system('mv', $oldDir, $newDir) == 0 or
@@ -4702,15 +4702,15 @@ sub download_file
     # my custom coding anymore.
     $ua->agent("kdesrc-build $versionNum ");
 
-    whisper "Downloading g[$filename] from g[$url]";
+    whisper ("Downloading g[$filename] from g[$url]");
     my $response = $ua->mirror($url, $filename);
 
     # LWP's mirror won't auto-convert "Unchanged" code to success, so check for
     # both.
     return 1 if $response->code == 304 || $response->is_success;
 
-    error "Failed to download y[b[$url] to b[$filename]";
-    error "Result was: y[b[" . $response->status_line . "]";
+    error ("Failed to download y[b[$url] to b[$filename]");
+    error ("Result was: y[b[" . $response->status_line . "]");
     return 0;
 }
 
@@ -4799,23 +4799,23 @@ sub installGitSnapshot
     return 0 unless $tarball;
 
     if (pretending) {
-        pretend "\tWould have downloaded snapshot for g[$module], from";
-        pretend "\tb[g[$tarball]";
+        pretend ("\tWould have downloaded snapshot for g[$module], from");
+        pretend ("\tb[g[$tarball]");
         return 1;
     }
 
-    info "\tDownloading git snapshot for g[$module]";
+    info ("\tDownloading git snapshot for g[$module]");
 
     my $filename = basename(URI->new($tarball)->path());
     my $tmpdir = File::Spec->tmpdir() // "/tmp";
     $filename = "$tmpdir/$filename"; # Make absolute
 
     if (!download_file($tarball, $filename)) {
-        error "Unable to download snapshot for module r[$module]";
+        error ("Unable to download snapshot for module r[$module]");
         return 0;
     }
 
-    info "\tDownload complete, preparing module source code";
+    info ("\tDownload complete, preparing module source code");
 
     # It would be possible to use Archive::Tar, but it's apparently fairly
     # slow. In addition we need to use -C and --strip-components (which are
@@ -4831,33 +4831,33 @@ sub installGitSnapshot
     safe_unlink ($filename);
 
     if ($result) {
-        error "Unable to extract snapshot for r[b[$module]: $savedError";
+        error ("Unable to extract snapshot for r[b[$module]: $savedError");
         safe_rmtree($sourceDir);
         return 0;
     }
 
-    whisper "\tg[$module] snapshot is in place";
+    whisper ("\tg[$module] snapshot is in place");
 
     # Complete the preparation by running the initrepo.sh script
     p_chdir($sourceDir);
     $result = log_command($module, 'init-git-repo', ['/bin/sh', './initrepo.sh']);
 
     if ($result) {
-        error "Snapshot for r[$module] extracted successfully, but failed to complete initrepo.sh";
+        error ("Snapshot for r[$module] extracted successfully, but failed to complete initrepo.sh");
         safe_rmtree($sourceDir);
         return 0;
     }
 
-    whisper "\tConverting to kde:-style URL";
+    whisper ("\tConverting to kde:-style URL");
     $result = log_command($module, 'fixup-git-remote',
         ['git', 'remote', 'set-url', 'origin', "kde:$module"]);
 
     if ($result) {
-        warning "\tUnable to convert origin URL to kde:-style URL. Things should";
-        warning "\tstill work, you may have to adjust push URL manually.";
+        warning ("\tUnable to convert origin URL to kde:-style URL. Things should");
+        warning ("\tstill work, you may have to adjust push URL manually.");
     }
 
-    info "\tGit snapshot installed, now bringing up to date.";
+    info ("\tGit snapshot installed, now bringing up to date.");
     $result = log_command($module, 'init-git-pull', ['git', 'pull']);
     return ($result == 0);
 }
@@ -4886,7 +4886,7 @@ sub git_clone_module
         unshift (@args, '-v');
     }
 
-    note "Cloning g[$module]";
+    note ("Cloning g[$module]");
 
     # Invert the result of installGitSnapshot to get a shell-style return code
     # like those returned by log_command. Likewise the normal || must be a &&
@@ -4900,7 +4900,7 @@ sub git_clone_module
 
         # Switch immediately to user-requested branch now.
         if ($branch ne 'master') {
-            info "\tSwitching to branch g[$branch]";
+            info ("\tSwitching to branch g[$branch]");
             p_chdir($srcdir);
             $result = log_command($module, 'git-checkout',
                 ['git', 'checkout', '-b', "origin-$branch", "origin/$branch"]);
@@ -4952,7 +4952,7 @@ sub git_get_best_remote_names
     };
 
     if($@) {
-        error "Unable to run git config, is there a setup error?";
+        error ("Unable to run git config, is there a setup error?");
         return ();
     }
 
@@ -5013,7 +5013,7 @@ sub git_make_branchname
 
     # No name chosen, assume origin.
 
-    info " b[y[*] \tNo existing remote repository found for y[$module], assuming b[g[origin].";
+    info (" b[y[*] \tNo existing remote repository found for y[$module], assuming b[g[origin].");
 
     return "origin-$branch";
 }
@@ -5110,7 +5110,7 @@ sub git_stash_and_update
     }
 
     if ($needsStash) {
-        info "\tLocal changes detected, stashing them away...";
+        info ("\tLocal changes detected, stashing them away...");
         $status = log_command($module, 'git-stash-save', [
                 qw(git stash save --quiet), "kdesrc-build auto-stash at $date",
             ]);
@@ -5124,13 +5124,13 @@ sub git_stash_and_update
         ]);
 
     if ($status != 0) {
-        error "Unable to update the source code for r[b[$module]";
+        error ("Unable to update the source code for r[b[$module]");
         return 0;
     }
 
     # Update is performed and successful, re-apply the stashed changes
     if ($needsStash) {
-        info "\tModule updated, reapplying your local changes.";
+        info ("\tModule updated, reapplying your local changes.");
         $status = log_command($module, 'git-stash-pop', [
                 qw(git stash pop --index --quiet)
             ]);
@@ -5174,7 +5174,7 @@ sub git_update_module
 
     p_chdir($srcdir);
 
-    note "Updating g[$module]";
+    note ("Updating g[$module]");
     my $start_commit = git_commit_id($module);
 
     # Search for an existing remote name first. If none, add our alias.
@@ -5203,10 +5203,10 @@ sub git_update_module
     }
 
     if ($old_repo and ($cur_repo ne $old_repo)) {
-        note " y[b[*]\ty[$module]'s selected repository has changed";
-        note " y[b[*]\tfrom y[$old_repo]";
-        note " y[b[*]\tto   b[$cur_repo]";
-        note " y[b[*]\tThe git remote named b[", GIT_REMOTE_ALIAS, "] has been updated";
+        note (" y[b[*]\ty[$module]'s selected repository has changed");
+        note (" y[b[*]\tfrom y[$old_repo]");
+        note (" y[b[*]\tto   b[$cur_repo]");
+        note (" y[b[*]\tThe git remote named b[", GIT_REMOTE_ALIAS, "] has been updated");
 
         # Update what we think is the current repository on-disk.
         $module->setPersistentOption('git-cloned-repository', $cur_repo);
@@ -5230,7 +5230,7 @@ sub git_update_module
 
     if (not $branchName) {
         my $newName = git_make_branchname($module, \@remoteNames, $branch);
-        whisper "\tUpdating g[$module] with new remote-tracking branch y[$newName]";
+        whisper ("\tUpdating g[$module] with new remote-tracking branch y[$newName]");
         if (0 != log_command($module, 'git-checkout-branch',
                       ['git', 'checkout', '-b', $newName, "$remoteName/$branch"]))
         {
@@ -5238,7 +5238,7 @@ sub git_update_module
         }
     }
     else {
-        whisper "\tUpdating g[$module] using existing branch g[$branchName]";
+        whisper ("\tUpdating g[$module] using existing branch g[$branchName]");
         if (0 != log_command($module, 'git-checkout-update',
                       ['git', 'checkout', $branchName]))
         {
@@ -5277,9 +5277,9 @@ sub update_module_git_checkout
         # Check if an existing source directory is there somehow.
         if (-e "$srcdir") {
             if ($module->getOption('#delete-my-patches')) {
-                warning "\tRemoving conflicting source directory ",
-                        "as allowed by --delete-my-patches";
-                warning "\tRemoving b[$srcdir]";
+                warning ("\tRemoving conflicting source directory " .
+                         "as allowed by --delete-my-patches");
+                warning ("\tRemoving b[$srcdir]");
                 safe_rmtree($srcdir) or do {
                     die "Unable to delete r[b[$srcdir]!";
                 };
@@ -5301,7 +5301,7 @@ FILES IN THE DIRECTORY.
 EOF
 
                 if (-e "$srcdir/.svn") {
-                    error "svn status of $srcdir:";
+                    error ("svn status of $srcdir:");
                     system('svn', 'st', '--non-interactive', $srcdir);
                 }
 
@@ -5356,7 +5356,7 @@ sub checkout_module_path
     push @args, $svn_url;
     push @args, $modulename;
 
-    note "Checking out g[$module]";
+    note ("Checking out g[$module]");
 
     my $count = run_svn($module, 'svn-co', \@args);
 
@@ -5388,18 +5388,18 @@ sub update_module_path
     push @args, ('svn', 'up', '--non-interactive');
     push @args, '-N' if scalar @path;
 
-    note "Updating g[$module]";
+    note ("Updating g[$module]");
 
     my $count = eval { run_svn($module, 'svn-up', \@args); };
 
     if($@ && $@ !~ /conflict exists/) # Update failed, try svn cleanup.
     {
-        info "\tUpdate failed, trying a cleanup.";
+        info ("\tUpdate failed, trying a cleanup.");
         my $result = safe_system('svn', 'cleanup');
 
         die clr "Unable to update r[$module]" if $result;
 
-        info "\tCleanup complete.";
+        info ("\tCleanup complete.");
 
         # Now try again (allow exception to bubble up this time).
         $count = run_svn($module, 'svn-up-2', \@args);
@@ -5425,26 +5425,26 @@ sub install_missing_ssl_signature
     my $sig_dir  = "$ENV{HOME}/.subversion/auth/svn.ssl.server";
     my $sig_file = "ec08b331e2e6cabccb6c3e17a85e28ce";
 
-    debug "Checking $sig_dir/$sig_file for KDE SSL signature.";
+    debug ("Checking $sig_dir/$sig_file for KDE SSL signature.");
 
     if (-e "$sig_dir/$sig_file")
     {
-        debug "KDE SSL Signature file present.";
+        debug ("KDE SSL Signature file present.");
         return;
     }
 
-    debug "No KDE SSL Signature found.";
+    debug ("No KDE SSL Signature found.");
     return if pretending;
 
     # Now we're definitely installing, let the user know.
-    warning "Installing b[y[KDE SSL signature] for Subversion.  This is to avoid";
-    warning "Subversion warnings about KDE's self-signed SSL certificate for svn.kde.org";
+    warning ("Installing b[y[KDE SSL signature] for Subversion.  This is to avoid");
+    warning ("Subversion warnings about KDE's self-signed SSL certificate for svn.kde.org");
 
     # Make sure the directory is created.
     if(not super_mkdir($sig_dir))
     {
-        error "Unable to create r[Subversion signature] directory!";
-        error "$!";
+        error ("Unable to create r[Subversion signature] directory!");
+        error ("$!");
 
         return;
     }
@@ -5488,16 +5488,16 @@ END
 
     if(not open SIG, ">$sig_dir/$sig_file")
     {
-        error "Unable to open KDE SSL signature file!";
-        error "r[$!]";
+        error ("Unable to open KDE SSL signature file!");
+        error ("r[$!]");
 
         return;
     }
 
     if(not print SIG $sig_data)
     {
-        error "Unable to write to KDE SSL signature file!";
-        error "r[$!]";
+        error ("Unable to write to KDE SSL signature file!");
+        error ("r[$!]");
     }
 
     close SIG;
@@ -5520,7 +5520,7 @@ sub run_make_command
     my ($module, $filename, $argRef) = @_;
     assert_isa($module, 'Module');
 
-    debug "run_make_command: $module, ", join(', ', @{$argRef});
+    debug ("run_make_command: $module, ", join(', ', @{$argRef}));
 
     # There are situations when we don't want (or can't get) progress output:
     # 1. Not using CMake (i.e. Qt)
@@ -5620,7 +5620,7 @@ sub safe_rmtree
 
     if (pretending)
     {
-        pretend "Would have removed all files/folders in $user_path";
+        pretend ("Would have removed all files/folders in $user_path");
         return 1;
     }
 
@@ -5628,7 +5628,7 @@ sub safe_rmtree
     # delete just fine.
     if (not -d $path)
     {
-        error "Cannot recursively remove $user_path, as it is not a directory.";
+        error ("Cannot recursively remove $user_path, as it is not a directory.");
         return 0;
     }
 
@@ -5643,7 +5643,7 @@ sub safe_rmtree
 
     if ($@)
     {
-        error "Unable to remove directory $user_path: $@";
+        error ("Unable to remove directory $user_path: $@");
         return 0;
     }
 
@@ -5689,7 +5689,7 @@ sub safe_make (@)
     if(!($make = absPathToExecutable('gmake') || absPathToExecutable('make'))) {
         # Weird, we can't find make, you'd think configure would have
         # noticed...
-        error " r[b[*] Unable to find the g[make] executable!";
+        error (" r[b[*] Unable to find the g[make] executable!");
         return 1;
     }
 
@@ -5742,7 +5742,7 @@ sub safe_make (@)
             if ($subdirMessage =~ /\.\.\.$/) {
                 $subdirMessage =~ s/(\.\.\.)?$/ subdirectory g[$subdir]$1/;
             }
-            info "\t$subdirMessage";
+            info ("\t$subdirMessage");
         }
 
         my $builddir = $module->fullpath('build') . "/$subdir";
@@ -5871,10 +5871,10 @@ sub split_option_value
     {
         my $sub_var_value = $ctx->getOption($sub_var_name) || '';
         if(!$ctx->hasOption($sub_var_value)) {
-            warning " *\n * WARNING: $sub_var_name is not set at line y[$.]\n *";
+            warning (" *\n * WARNING: $sub_var_name is not set at line y[$.]\n *");
         }
 
-        debug "Substituting \${$sub_var_name} with $sub_var_value";
+        debug ("Substituting \${$sub_var_name} with $sub_var_value");
 
         $value =~ s/\${$sub_var_name}/$sub_var_value/g;
 
@@ -5935,8 +5935,8 @@ sub parse_module
         # Sanity check, make sure the section is correctly terminated
         if(/^(module\s|module$)/)
         {
-            error "Invalid configuration file $rcfile at line $.\nAdd an 'end $endWord' before " .
-                  "starting a new module.\n";
+            error ("Invalid configuration file $rcfile at line $.\nAdd an 'end $endWord' before " .
+                   "starting a new module.\n");
             die make_exception('Config', "Invalid $rcfile");
         }
 
@@ -6015,7 +6015,7 @@ sub ensure_projects_xml_present
     # modules are not all processed until after this function is called...
     my $updating = grep { /^update$/ } (@{$ctx->phases()});
     if (!pretending && $updating) {
-        info " * Downloading projects.kde.org project database...";
+        info (" * Downloading projects.kde.org project database...");
         $result = download_file($url, $file);
     }
     elsif (! -e $file) {
@@ -6030,8 +6030,8 @@ sub ensure_projects_xml_present
         seek ($fileHandleResult, 0, SEEK_SET);
     }
     else {
-        info " * y[Using existing projects.kde.org project database], output may change";
-        info " * when database is updated next.";
+        info (" * y[Using existing projects.kde.org project database], output may change");
+        info (" * when database is updated next.");
     }
 
     $cachedSuccess = $result;
@@ -6075,8 +6075,8 @@ sub parse_moduleset
             @modules = split(' ', $value);
 
             if (not @modules) {
-                error "No modules were selected for the current module-set";
-                error "in the y[use-modules] on line $. of $rcfile";
+                error ("No modules were selected for the current module-set");
+                error ("in the y[use-modules] on line $. of $rcfile");
                 die make_exception('Config', 'Invalid use-modules');
             }
         }
@@ -6143,8 +6143,8 @@ EOF
     }
 
     if (not scalar @moduleList) {
-        warning "No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]";
-        warning "You should use the g[b[use-modules] option to make the module-set useful.";
+        warning ("No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]");
+        warning ("You should use the g[b[use-modules] option to make the module-set useful.");
     }
 
     return @moduleList;
@@ -6194,12 +6194,12 @@ sub expandXMLModules
                 croak_runtime("Unknown module or module-set: $name");
             }
 
-            warning " y[b[*] Module y[$name] is apparently XML-based, but contains no\n",
-                "active modules to build!";
+            warning (" y[b[*] Module y[$name] is apparently XML-based, but contains no\n" .
+                     "active modules to build!");
             my $count = scalar @allXmlResults;
             if ($count > 0) {
-                warning "\tAlthough no active modules are available, there were\n",
-                    "\t$count inactive modules. Perhaps the git modules are not ready?";
+                warning ("\tAlthough no active modules are available, there were\n" .
+                         "\t$count inactive modules. Perhaps the git modules are not ready?");
             }
         }
 
@@ -6327,8 +6327,8 @@ sub read_options
         # options declaration, even if none are defined.
         if (not /^global\s*$/)
         {
-            error "Invalid configuration file: $rcfile.";
-            error "Expecting global settings section at b[r[line $.]!";
+            error ("Invalid configuration file: $rcfile.");
+            error ("Expecting global settings section at b[r[line $.]!");
             die make_exception('Config', 'Missing global section');
         }
 
@@ -6356,8 +6356,8 @@ sub read_options
 
             # modulename may be blank -- use the regex directly to match
             if (not /$moduleSetRE/) {
-                error "Invalid configuration file $rcfile!";
-                error "Expecting a start of module section at r[b[line $.].";
+                error ("Invalid configuration file $rcfile!");
+                error ("Expecting a start of module section at r[b[line $.].");
                 die make_exception('Config', 'Ungrouped/Unknown option');
             }
 
@@ -6414,15 +6414,15 @@ sub output_failed_module_list
 
     $message = uc $message; # Be annoying
 
-    debug "Message is $message";
-    debug "\tfor ", join(', ', @fail_list);
+    debug ("Message is $message");
+    debug ("\tfor ", join(', ', @fail_list));
 
     if (scalar @fail_list > 0)
     {
         my $homedir = $ENV{'HOME'};
         my $logfile;
 
-        warning "\nr[b[<<<  PACKAGES $message  >>>]";
+        warning ("\nr[b[<<<  PACKAGES $message  >>>]");
 
         for my $module (@fail_list)
         {
@@ -6439,8 +6439,8 @@ sub output_failed_module_list
             $logfile = "No log file" unless $logfile;
             $logfile =~ s|$homedir|~|;
 
-            warning "r[$module]" if pretending;
-            warning "r[$module] - g[$logfile]" if not pretending;
+            warning ("r[$module]") if pretending;
+            warning ("r[$module] - g[$logfile]") if not pretending;
         }
     }
 }
@@ -6467,10 +6467,10 @@ sub output_failed_module_lists
 
     if (@super_fail)
     {
-        warning "\nThe following modules have failed to build 3 or more times in a row:";
-        warning "\tr[b[$_]" foreach @super_fail;
-        warning "\nThere is probably a local error causing this kind of consistent failure, it";
-        warning "is recommended to verify no issues on the system.\n";
+        warning ("\nThe following modules have failed to build 3 or more times in a row:");
+        warning ("\tr[b[$_]") foreach @super_fail;
+        warning ("\nThere is probably a local error causing this kind of consistent failure, it");
+        warning ("is recommended to verify no issues on the system.\n");
     }
 }
 
@@ -6712,7 +6712,7 @@ DONE
 
             /^--debug$/ && do {
                 $ctx->setOption('#debug-level', ksb::Debug::DEBUG);
-                debug "Commandline was: ", join(', ', @savedOptions);
+                debug ("Commandline was: ", join(', ', @savedOptions));
                 last SWITCH;
             };
 
@@ -6914,7 +6914,7 @@ DONE
 
 sub updateModulePhases
 {
-    whisper "Filtering out module phases.";
+    whisper ("Filtering out module phases.");
     for my $module (@_) {
         if ($module->getOption('manual-update') ||
             $module->getOption('no-svn') || $module->getOption('no-src'))
@@ -6951,7 +6951,7 @@ sub dont_build
     my $ipc = shift;
     my $reason = shift;
 
-    whisper "Not building $module";
+    whisper ("Not building $module");
 
     if ($ipc)
     {
@@ -7017,7 +7017,7 @@ sub check_for_ssh_agent
         ($repo =~ /^git\+ssh:\/\//) || ($repo =~ /^[a-zA-Z0-9_.]+@.*:\//);
     } @gitServers;
 
-    whisper "\tChecking for SSH Agent" if (scalar @sshServers);
+    whisper ("\tChecking for SSH Agent") if (scalar @sshServers);
     return 1 if (not @sshServers) or $ctx->getOption('disable-agent-check');
 
     # We're using ssh to download, see if ssh-agent is running.
@@ -7029,9 +7029,9 @@ sub check_for_ssh_agent
     # that pid (this check is linux-specific at the moment).
     if (-d "/proc" and not -e "/proc/$pid")
     {
-        warning "r[ *] SSH Agent is enabled, but y[doesn't seem to be running].";
-        warning "Since SSH is used to download from Subversion you may want to see why";
-        warning "SSH Agent is not working, or correct the environment variable settings.";
+        warning ("r[ *] SSH Agent is enabled, but y[doesn't seem to be running].");
+        warning ("Since SSH is used to download from Subversion you may want to see why");
+        warning ("SSH Agent is not working, or correct the environment variable settings.");
 
         return 0;
     }
@@ -7065,7 +7065,7 @@ EOF
 
             print "\nUnable to add SSH identity, aborting.\n";
             print "If you don't want kdesrc-build to check in the future,\n";
-            print clr "Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n";
+            print clr ("Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n");
 
             return 0;
         }
@@ -7090,14 +7090,14 @@ sub verifyGitConfig
         );
 
         $error = $errors{$errNum} if exists $errors{$errNum};
-        error " r[*] Unable to run b[git] command:\n\t$error";
+        error (" r[*] Unable to run b[git] command:\n\t$error");
         return 0;
     }
 
     # If we make it here, I'm just going to assume git works from here on out
     # on this simple task.
     if ($configOutput !~ /^kde:\s*$/) {
-        info "\tAdding git download kde: alias";
+        info ("\tAdding git download kde: alias");
         my $result = safe_system(
             qw(git config --global --add url.git://anongit.kde.org/.insteadOf kde:)
         ) >> 8;
@@ -7107,7 +7107,7 @@ sub verifyGitConfig
     $configOutput = `git config --global --get url.git\@git.kde.org:.pushInsteadOf kde: 2>/dev/null`;
 
     if ($configOutput !~ /^kde:\s*$/) {
-        info "\tAdding git upload kde: alias";
+        info ("\tAdding git upload kde: alias");
         my $result = safe_system(
             qw(git config --global --add url.git@git.kde.org:.pushInsteadOf kde:)
         ) >> 8;
@@ -7160,15 +7160,15 @@ sub handle_updates
         verifyGitConfig();
     }
 
-    note "<<<  Updating Source Directories  >>>";
-    info " "; # Add newline for aesthetics unless in quiet mode.
+    note ("<<<  Updating Source Directories  >>>");
+    info (" "); # Add newline for aesthetics unless in quiet mode.
 
     if (not -e $kdesrc)
     {
-        whisper "KDE source download directory doesn't exist, creating.\n";
+        whisper ("KDE source download directory doesn't exist, creating.\n");
         if (not super_mkdir ($kdesrc))
         {
-            error "Unable to make directory r[$kdesrc]!";
+            error ("Unable to make directory r[$kdesrc]!");
             $ipc->sendIPCMessage(IPC::ALL_FAILURE, "no-source-dir");
 
             return 1;
@@ -7193,7 +7193,7 @@ sub handle_updates
         $hadError = !$module->update($ipc, $ctx) || $hadError;
     }
 
-    info "<<<  Update Complete  >>>\n";
+    info ("<<<  Update Complete  >>>\n");
     return $hadError;
 }
 
@@ -7249,7 +7249,7 @@ sub safe_run_cmake
         !grep { /^\s*-DKDE4_BUILD_TESTS(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
        )
     {
-        whisper "Enabling tests";
+        whisper ("Enabling tests");
         push @commands, "-DKDE4_BUILD_TESTS:BOOL=ON";
 
         # Also enable phonon tests.
@@ -7260,7 +7260,7 @@ sub safe_run_cmake
 
     if ($module->getOption('run-tests') eq 'upload')
     {
-        whisper "Enabling upload of test results";
+        whisper ("Enabling upload of test results");
         push @commands, "-DBUILD_experimental:BOOL=ON";
     }
 
@@ -7275,7 +7275,7 @@ sub safe_run_cmake
         ! -e "$builddir/CMakeCache.txt" # File should exist only on successful cmake run
        )
     {
-        info "\tRunning g[cmake]...";
+        info ("\tRunning g[cmake]...");
 
         # Remove any stray CMakeCache.txt
         safe_unlink ("$srcdir/CMakeCache.txt")   if -e "$srcdir/CMakeCache.txt";
@@ -7321,7 +7321,7 @@ sub safe_lndir
         print "$to\n";
         if (not pretending and not super_mkdir($to))
         {
-            error "Couldn't create directory r[$to]: b[r[$!]";
+            error ("Couldn't create directory r[$to]: b[r[$!]");
             return 0;
         }
     }
@@ -7371,7 +7371,7 @@ sub safe_lndir
 
     if ($@)
     {
-        error "Unable to symlink $from to $to: $@";
+        error ("Unable to symlink $from to $to: $@");
         return 0;
     }
 
@@ -7438,8 +7438,8 @@ sub run_svn
 
     if ($conflict)
     {
-        warning "Source code conflict exists in r[$module], this module will not";
-        warning "build until it is resolved.";
+        warning ("Source code conflict exists in r[$module], this module will not");
+        warning ("build until it is resolved.");
 
         # If in async this only affects the update process, we need to IPC it
         # to the build process.
@@ -7473,7 +7473,7 @@ sub prune_under_directory
 
     if ($@)
     {
-        error "\tUnable to clean r[$dir]:\n\ty[b[$@]";
+        error ("\tUnable to clean r[$dir]:\n\ty[b[$@]");
         return 0;
     }
 
@@ -7493,18 +7493,18 @@ sub module_has_conflict
 
     if ($module->getOption('no-svn'))
     {
-        whisper "\tSource code conflict check skipped.";
+        whisper ("\tSource code conflict check skipped.");
         return 1;
     }
     else
     {
-        info "\tChecking for source conflicts... ";
+        info ("\tChecking for source conflicts... ");
     }
 
     my $pid = open SVN, "-|";
     if (not defined $pid)
     {
-        error "\tUnable to open check source conflict status: b[r[$!]";
+        error ("\tUnable to open check source conflict status: b[r[$!]");
         return 0; # false allows the build to proceed anyways.
     };
 
@@ -7587,7 +7587,7 @@ sub expandl10nModules
     # No l10n module? Just create one.
     $l10nModule //= Module->new($ctx, $l10n);
 
-    whisper "\tAdding languages ", join(';', @langs), " to build.";
+    whisper ("\tAdding languages ", join(';', @langs), " to build.");
 
     $l10nModule->setScmType('l10n');
     my $scm = $l10nModule->scm();
@@ -7624,7 +7624,7 @@ sub handle_build
     # No reason to print building messages if we're not building.
     return 0 if scalar @modules == 0;
 
-    note "<<<  Build Process  >>>";
+    note ("<<<  Build Process  >>>");
 
     # IPC queue should have a message saying whether or not to bother with the
     # build.
@@ -7658,10 +7658,10 @@ EOF
         }
 
         if ($moduleSet) {
-            note "Building g[$modOutput] from g[$moduleSet] ($i/$num_modules)";
+            note ("Building g[$modOutput] from g[$moduleSet] ($i/$num_modules)");
         }
         else {
-            note "Building g[$modOutput] ($i/$num_modules)";
+            note ("Building g[$modOutput] ($i/$num_modules)");
         }
 
         $ctx->resetEnvironment();
@@ -7686,15 +7686,15 @@ EOF
                 ++$fail_count;
                 $module->setPersistentOption('failure-count', $fail_count);
 
-                error "\tUnable to update r[$module], build canceled.";
+                error ("\tUnable to update r[$module], build canceled.");
                 next;
             }
             when ('skipped') {
                 # i.e. build should be skipped.
-                info "\tNo changes to source code.";
+                info ("\tNo changes to source code.");
             }
             when ('success') {
-                note "\tSource update complete for g[$module]: $message";
+                note ("\tSource update complete for g[$module]: $message");
             }
         }
 
@@ -7705,7 +7705,7 @@ EOF
             $resultStatus eq 'skipped' &&
             ($module->getPersistentOption('failure-count') // 0) == 0)
         {
-            note "\tSkipping g[$module], its source code has not changed.";
+            note ("\tSkipping g[$module], its source code has not changed.");
             $i++;
             next;
         }
@@ -7717,7 +7717,7 @@ EOF
             $module->setPersistentOption('last-build-rev', $module->currentScmRevision());
             $module->setPersistentOption('failure-count', 0);
 
-            info "\tOverall time for g[$module] was g[$elapsed].";
+            info ("\tOverall time for g[$module] was g[$elapsed].");
             push @build_done, $moduleName;
         }
         else
@@ -7725,7 +7725,7 @@ EOF
             my $elapsed = prettify_seconds(time - $start_time);
             print STATUS_FILE "$module: Failed after $elapsed.\n" if $outfile;
 
-            info "\tOverall time for r[$module] was g[$elapsed].";
+            info ("\tOverall time for r[$module] was g[$elapsed].");
             $ctx->markModulePhaseFailed('build', $module);
             $result = 1;
 
@@ -7738,7 +7738,7 @@ EOF
 
             if ($module->getOption('stop-on-failure'))
             {
-                note "\n$module didn't build, stopping here.";
+                note ("\n$module didn't build, stopping here.");
                 return 1; # Error
             }
         }
@@ -7762,8 +7762,8 @@ EOF
         symlink($outfile, "$logdir/latest/build-status");
     }
 
-    info "<<<  Build Done  >>>";
-    info "\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>" if scalar @build_done > 0;
+    info ("<<<  Build Done  >>>");
+    info ("\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
 
     if (not pretending)
     {
@@ -7772,7 +7772,7 @@ EOF
         open BUILT_LIST, ">$kdesrc/successfully-built";
         foreach my $module (@build_done)
         {
-            info "$module";
+            info ("$module");
             print BUILT_LIST "$module\n";
         }
         close BUILT_LIST;
@@ -7780,10 +7780,10 @@ EOF
     else
     {
         # Just print out the results
-        info 'g[', join ("]\ng[", @build_done), ']';
+        info ('g[', join ("]\ng[", @build_done), ']');
     }
 
-    info " "; # Add newline for aesthetics if not in quiet mode.
+    info (" "); # Add newline for aesthetics if not in quiet mode.
     return $result;
 }
 
@@ -7806,7 +7806,7 @@ sub finish
     $ctx->storePersistentOptions();
 
     my $logdir = $ctx->getLogDir();
-    note "Your logs are saved in y[$logdir]";
+    note ("Your logs are saved in y[$logdir]");
 
     exit $exitcode;
 }
@@ -7833,8 +7833,8 @@ sub check_module_validity
         # Check if the --src-only flag was passed.
         if ($module->buildContext()->getOption('#allow-auto-repo-move'))
         {
-            note "g[$module] is checked out from a different location than expected.";
-            note "Attempting to correct";
+            note ("g[$module] is checked out from a different location than expected.");
+            note ("Attempting to correct");
 
             log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
             return;
@@ -7916,7 +7916,7 @@ sub handle_uninstall
 
         if ($result && $module->getOption('stop-on-failure'))
         {
-            note "y[Stopping here].";
+            note ("y[Stopping here].");
             return 1; # Error
         }
     }
@@ -7943,7 +7943,7 @@ sub applyModuleFilters
 
     if (!$ctx->getOption('resume-from') && !$ctx->getOption('resume-after'))
     {
-        debug "No --resume-from or --resume-after seems present.";
+        debug ("No --resume-from or --resume-after seems present.");
         return @moduleList;
     }
 
@@ -7961,7 +7961,7 @@ EOF
     my $resumePoint = $ctx->getOption('resume-from') ||
                       $ctx->getOption('resume-after');
 
-    debug "Looking for $resumePoint for --resume-* option";
+    debug ("Looking for $resumePoint for --resume-* option");
 
     # || 0 is a hack to force Boolean context.
     my $filterInclusive = $ctx->getOption('resume-from') || 0;
@@ -8004,23 +8004,23 @@ sub execute_command_line_program
 
     if (!$program)
     {
-        error "You need to specify a program with the --run option.";
+        error ("You need to specify a program with the --run option.");
         exit 1; # Can't use finish here.
     }
 
     if (($< != $>) && ($> == 0))
     {
-        error "kdesrc-build will not run a program as root unless you really are root.";
+        error ("kdesrc-build will not run a program as root unless you really are root.");
         exit 1;
     }
 
-    debug "Executing b[r[$program] ", join(' ', @args);
+    debug ("Executing b[r[$program] ", join(' ', @args));
 
     exit 0 if pretending;
 
     exec $program, @args or do {
         # If we get to here, that sucks, but don't continue.
-        error "Error executing $program: $!";
+        error ("Error executing $program: $!");
         exit 1;
     };
 }
@@ -8075,7 +8075,7 @@ sub handle_monitoring
 
         if ($numFound == -1)
         {
-            error "r[mon]: Monitor IPC error: r[$selectErr]";
+            error ("r[mon]: Monitor IPC error: r[$selectErr]");
             return 1;
         }
 
@@ -8100,7 +8100,7 @@ sub handle_monitoring
             }
             else
             {
-                error "r[mon]: Error reading update: r[b[$selectErr]";
+                error ("r[mon]: Error reading update: r[b[$selectErr]");
                 return 1;
             }
         }
@@ -8118,7 +8118,7 @@ sub handle_monitoring
 
                 if ($numFound2 == -1 and $selectErr)
                 {
-                    error "r[mon]: Monitor IPC error: r[$selectErr]";
+                    error ("r[mon]: Monitor IPC error: r[$selectErr]");
                     return 1;
                 }
 
@@ -8127,8 +8127,8 @@ sub handle_monitoring
                 $selectErr = $!;
                 if (not defined $msg and $selectErr)
                 {
-                    error "r[mon]: Monitor IPC error, unexpected disappearance of updater.";
-                    error "r[mon]: Mysterious circumstances: r[b[$selectErr]";
+                    error ("r[mon]: Monitor IPC error, unexpected disappearance of updater.");
+                    error ("r[mon]: Mysterious circumstances: r[b[$selectErr]");
                     return 1;
                 }
 
@@ -8138,7 +8138,7 @@ sub handle_monitoring
             # Send the message (if we got one).
             if (scalar @msgs and !$ipc->sendToBuilder(shift @msgs))
             {
-                error "r[mon]: Build process stopped too soon! r[$!]";
+                error ("r[mon]: Build process stopped too soon! r[$!]");
                 return 1;
             }
         }
@@ -8149,7 +8149,7 @@ sub handle_monitoring
     {
         if (!$ipc->sendToBuilder(shift @msgs))
         {
-            error "r[mon]: Build process stopped too soon! r[$!]";
+            error ("r[mon]: Build process stopped too soon! r[$!]");
             return 1;
         }
     }
@@ -8270,10 +8270,10 @@ sub cleanup_log_directory
 
     my $length = scalar @dirs - scalar @needed;
     if ($length > 15) { # Arbitrary man is arbitrary
-        note "Removing y[b[$length] out of g[b[$#dirs] old log directories (this may take some time)...";
+        note ("Removing y[b[$length] out of g[b[$#dirs] old log directories (this may take some time)...");
     }
     elsif ($length > 0) {
-        info "Removing g[b[$length] out of g[b[$#dirs] old log directories...";
+        info ("Removing g[b[$length] out of g[b[$#dirs] old log directories...");
     }
 
     for my $dir (@dirs) {
@@ -8323,7 +8323,7 @@ eval
     # them to be XML project modules.
     foreach (@modules) {
         if (substr($_->{name}, 0, 1) eq '+') {
-            debug "Forcing ", $_->name(), " to be an XML module";
+            debug ("Forcing ", $_->name(), " to be an XML module");
             $_->setScmType('proj');
             substr($_->{name}, 0, 1) = ''; # Remove first char
         }
@@ -8347,7 +8347,7 @@ eval
         }
 
         while (my ($key, $value) = each %{$options}) {
-            debug "Setting pending option $key to $value for $pendingModule";
+            debug ("Setting pending option $key to $value for $pendingModule");
             $module->setOption($key, $value);
         }
     }
@@ -8440,7 +8440,7 @@ eval
 
     # execution phase {{{
     my $time = localtime;
-    info "Script started processing at g[$time]" unless pretending;
+    info ("Script started processing at g[$time]") unless pretending;
 
     $ctx->loadPersistentOptions();
     my $metadataModule;
@@ -8452,7 +8452,7 @@ eval
 
         eval {
             super_mkdir($metadataModule->getSourceDir());
-            info "\tDownloading KDE Project module metadata...";
+            info ("\tDownloading KDE Project module metadata...");
             $metadataModule->scm()->updateInternal();
         };
 
@@ -8520,7 +8520,7 @@ eval
         if (!$ipc)
         {
             $ipc = new NullIPC;
-            whisper "Using no IPC mechanism\n";
+            whisper ("Using no IPC mechanism\n");
 
             $result = handle_updates ($ipc, $ctx);
             $result = handle_build ($ipc, $ctx) || $result;
@@ -8557,7 +8557,7 @@ eval
     my $color = '';
     $color = 'r[' if $result;
 
-    info "${color}Script finished processing at g[$time]" unless pretending;
+    info ("${color}Script finished processing at g[$time]") unless pretending;
 
     @atexit_subs = (); # Clear exit handlers
     finish($ctx, $result);
