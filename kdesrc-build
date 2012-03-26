@@ -45,15 +45,12 @@ use File::Path qw(remove_tree);
 use File::Glob ':glob';
 use File::Basename; # fileparse
 use File::Spec;     # tmpdir, rel2abs
-use File::Temp qw(tempfile);
-use Cwd qw(getcwd);
 use LWP::UserAgent;
 use URI; # For git-clone snapshot support
 use Text::ParseWords qw(parse_line);
 use Sys::Hostname;
 use Storable 'dclone';
 use IO::Handle;
-use Errno qw(:POSIX);
 use Data::Dumper;
 use 5.010_000; # Require Perl 5.10.0
 
@@ -297,7 +294,9 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     use Carp qw(cluck);
     use Scalar::Util qw(blessed);
     use File::Path qw(make_path);
+    use Cwd qw(getcwd);
     use IPC::Open3;
+    use Errno qw(:POSIX);
 
     ksb::Debug->import();
 
@@ -307,6 +306,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my $caller = caller;
         my @exports = qw(list_has make_exception assert_isa assert_in
                          croak_runtime croak_internal
+                         log_command
                          safe_unlink safe_system p_chdir super_mkdir
                          slurp_program_output prettify_seconds
         );
@@ -547,6 +547,177 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         $str = join (", ", @str_list);
 
         return $str;
+    }
+
+    # Subroutine to mark a file as being the error log for a module.  This also
+    # creates a symlink in the module log directory for easy viewing.
+    # First parameter is the module in question.
+    # Second parameter is the filename in the log directory of the error log.
+    sub _setErrorLogfile
+    {
+        my $module = assert_isa(shift, 'Module');
+        my $logfile = shift;
+
+        return unless $logfile;
+
+        my $logdir = $module->getLogDir();
+
+        $module->setOption('#error-log-file', "$logdir/$logfile");
+        debug ("Logfile for $module is $logfile");
+
+        # Setup symlink in the module log directory pointing to the appropriate
+        # file.  Make sure to remove it first if it already exists.
+        unlink("$logdir/error.log") if -l "$logdir/error.log";
+
+        if(-e "$logdir/error.log")
+        {
+            # Maybe it was a regular file?
+            error ("r[b[ * Unable to create symlink to error log file]");
+            return;
+        }
+
+        symlink "$logfile", "$logdir/error.log";
+    }
+
+
+    # Subroutine to run a command, optionally filtering on the output of the child
+    # command.
+    #
+    # First parameter is the module object being built (for logging purposes
+    #   and such).
+    # Second parameter is the name of the log file to use (relative to the log
+    #   directory).
+    # Third parameter is a reference to an array with the command and its
+    #   arguments.  i.e. ['command', 'arg1', 'arg2']
+    # Fourth parameter (optional) is a reference to a subroutine to have each line
+    #   of child output passed to.  This output is not supposed to be printed
+    #   to the screen by the subroutine, normally the output is only logged.
+    #   However this is useful for e.g. munging out the progress of the build.
+    #   USEFUL: When there is no more output from the child, the callback will be
+    #     called with an undef string.  (Not just empty, it is also undefined).
+    # The return value is the shell return code, so 0 is success, and non-zero is
+    #   failure.
+    #
+    # NOTE: This function has a special feature.  If the command passed into the
+    #   argument reference is 'kdesrc-build', then log_command will, when it
+    #   forks, execute the subroutine named by the second parameter rather than
+    #   executing a child process.  The remaining arguments in the list are
+    #   passed to the subroutine that is called.
+    sub log_command
+    {
+        my ($module, $filename, $argRef, $callbackRef) = @_;
+        assert_isa($module, 'Module');
+        my @command = @{$argRef};
+
+        debug ("log_command(): Module $module, Command: ", join(' ', @command));
+
+        # Fork a child, with its stdout connected to CHILD.
+        my $pid = open(CHILD, '-|');
+        if ($pid)
+        {
+            # Parent
+            if (!$callbackRef && debugging()) {
+                # If no other callback given, pass to debug() if debug-mode is on.
+                $callbackRef = sub { my $line = shift; chomp $line; debug($line); };
+            }
+
+            # Final fallback: Do nothing
+            $callbackRef //= sub { };
+
+            # Filter each line
+            &{$callbackRef}($_) while (<CHILD>);
+
+            # Let callback know there is no more output.
+            &{$callbackRef}(undef) if defined $callbackRef;
+
+            close CHILD;
+
+            # If the module fails building, set an internal flag in the module
+            # options with the name of the log file containing the error message.
+            # TODO: ($? is set when closing CHILD pipe?)
+            my $result = $?;
+            _setErrorLogfile($module, "$filename.log") if $result;
+
+            return $result;
+        }
+        else
+        {
+            # Child. Note here that we need to avoid running our exit cleanup
+            # handlers in here. For that we need POSIX::_exit.
+
+            # Apply altered environment variables.
+            $module->buildContext()->commitEnvironmentChanges();
+
+            if (pretending())
+            {
+                pretend ("\tWould have run g['", join ("' '", @command), "'");
+                POSIX::_exit(0);
+            }
+
+            my $logdir = $module->getLogDir();
+            if (!$logdir || ! -e $logdir)
+            {
+                # Error creating directory for some reason.
+                error ("\tLogging to std out due to failure creating log dir.");
+            }
+
+            # Redirect STDIN to /dev/null so that the handle is open but fails when
+            # being read from (to avoid waiting forever for e.g. a password prompt
+            # that the user can't see.
+
+            open (STDIN, '<', "/dev/null") unless exists $ENV{'KDESRC_BUILD_USE_TTY'};
+            open (STDOUT, "|tee $logdir/$filename.log") or do {
+                error ("Error opening pipe to tee command.");
+                # Don't abort, hopefully STDOUT still works.
+            };
+
+            # Make sure we log everything.
+            # In the case of Qt, we may have forced on progress output so let's
+            # leave that interactive to keep the logs sane.
+            if (!($module->buildSystemType() eq 'Qt' &&
+               $module->buildSystem()->forceProgressOutput()))
+            {
+                open (STDERR, ">&STDOUT");
+            }
+
+            # Call internal function, name given by $command[1]
+            if ($command[0] eq 'kdesrc-build')
+            {
+                # No colors!
+                ksb::Debug::setColorfulOutput(0);
+                debug ("Calling $command[1]");
+
+                my $cmd = $command[1];
+                splice (@command, 0, 2); # Remove first two elements.
+
+                no strict 'refs'; # Disable restriction on symbolic subroutines.
+                if (! &{$cmd}(@command)) # Call sub
+                {
+                    POSIX::_exit (EINVAL);
+                }
+
+                POSIX::_exit (0); # Exit child process successfully.
+            }
+
+            # Don't leave empty output files, give an indication of the particular
+            # command run. Use print to go to stdout.
+            say "# kdesrc-build running: '", join("' '", @command), "'";
+            say "# from directory: ", getcwd();
+
+            # External command.
+            exec (@command) or do {
+                my $cmd_string = join(' ', @command);
+                error (<<EOF);
+r[b[Unable to execute "$cmd_string"]!
+    $!
+
+Please check your binpath setting (it controls the PATH used by kdesrc-build).
+Currently it is set to g[$ENV{PATH}].
+EOF
+                # Don't use return, this is the child still!
+                POSIX::_exit (1);
+            };
+        }
     }
 
     1;
@@ -2316,7 +2487,7 @@ HOME
             };
 
             # Use log_command as the check so that an error file gets created.
-            if (0 != main::log_command($module, 'conflict-check',
+            if (0 != log_command($module, 'conflict-check',
                                  ['kdesrc-build', 'module_has_conflict', $module],
                                  $log_filter)
                )
@@ -2578,7 +2749,7 @@ HOME
 
             # This variant of log_command runs the sub prune_under_directory($builddir)
             # in a forked child, so that we can log its output.
-            if (main::log_command($module, 'clean-builddir', [ 'kdesrc-build', 'prune_under_directory', $builddir ]))
+            if (log_command($module, 'clean-builddir', [ 'kdesrc-build', 'prune_under_directory', $builddir ]))
             {
                 error (" r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.");
                 return 0; # False for this function.
@@ -2651,8 +2822,7 @@ HOME
         }
 
         p_chdir($builddir);
-        return main::log_command($module, 'qmake',
-                   [ 'qmake', $projectFiles[0] ]) == 0;
+        return log_command($module, 'qmake', [ 'qmake', $projectFiles[0] ]) == 0;
     }
 
     1;
@@ -2789,7 +2959,7 @@ HOME
             p_chdir("$builddir/$lang");
 
             info ("\tConfiguring to build language $lang");
-            $result = (main::log_command($self->module(), "cmake-$lang",
+            $result = (log_command($self->module(), "cmake-$lang",
                 ['cmake', '-DCMAKE_INSTALL_PREFIX=' . $prefix]) == 0) || $result;
         }
 
@@ -2832,7 +3002,7 @@ HOME
         my $args = [ 'kdesrc-build', 'safe_lndir', $srcdir, $builddir ];
 
         info ("\tSetting up alternate build directory for l10n");
-        return (0 == main::log_command ($module, 'create-builddir', $args));
+        return (0 == log_command ($module, 'create-builddir', $args));
     }
 
     # Subroutine to create the build system for a module.  This involves making
@@ -2862,7 +3032,7 @@ HOME
 
         foreach my $lang (@langs) {
             my $cmd_ref = [ './scripts/autogen.sh', $lang ];
-            if (main::log_command ($module, "build-system-$lang", $cmd_ref))
+            if (log_command ($module, "build-system-$lang", $cmd_ref))
             {
                 error ("\tUnable to create build system for r[$module]");
             }
@@ -2931,7 +3101,7 @@ HOME
         # We scrape the output of the commands, so force the locale to be
         # untranslated.
         local $ENV{'LC_ALL'} = 'C';
-        my $result = main::log_command($module, 'test-results', [ 'make', $make_target ]);
+        my $result = log_command($module, 'test-results', [ 'make', $make_target ]);
 
         if ($result != 0) {
             my $logdir = $module->getLogDir();
@@ -3067,7 +3237,7 @@ EOF
             info ("\tRunning g[configure]...");
 
             $module->setPersistentOption('last-configure-flags', $cur_flags);
-            return main::log_command($module, "configure", \@commands) == 0;
+            return log_command($module, "configure", \@commands) == 0;
         }
 
         # Skip execution of configure.
@@ -5331,183 +5501,6 @@ END
     }
 
     close SIG;
-}
-
-# Subroutine to run a command, optionally filtering on the output of the child
-# command.
-#
-# First parameter is the module object being built (for logging purposes
-#   and such).
-# Second parameter is the name of the log file to use (relative to the log
-#   directory).
-# Third parameter is a reference to an array with the command and its
-#   arguments.  i.e. ['command', 'arg1', 'arg2']
-# Fourth parameter (optional) is a reference to a subroutine to have each line
-#   of child output passed to.  This output is not supposed to be printed to
-#   the screen by the subroutine, normally the output is only logged.  However
-#   this is useful for e.g. munging out the progress of the build.
-#   USEFUL: When there is no more output from the child, the callback will be
-#     called with an undef string.  (Not just empty, it is also undefined).
-# The return value is the shell return code, so 0 is success, and non-zero is
-#   failure.
-#
-# NOTE: This function has a special feature.  If the command passed into the
-#   argument reference is 'kdesrc-build', then log_command will, when it forks,
-#   execute the subroutine named by the second parameter rather than executing
-#   a child process.  The remaining arguments in the list are passed to the
-#   subroutine that is called.
-sub log_command
-{
-    my ($module, $filename, $argRef, $callbackRef) = @_;
-    assert_isa($module, 'Module');
-    my $pid;
-    my @command = @{$argRef};
-    my $logdir = $module->getLogDir();
-
-    debug "log_command(): Module $module, Command: ", join(' ', @command);
-
-    # Fork a child, with its stdout connected to CHILD.
-    $pid = open(CHILD, '-|');
-    if ($pid)
-    {
-        # Parent
-        while (<CHILD>)
-        {
-            if (defined $callbackRef)
-            {
-                # Call callback with current output.
-                &{$callbackRef}($_);
-            }
-            else
-            {
-                chomp $_;
-                debug $_;
-            }
-        }
-
-        close CHILD;
-
-        # Let callback know there is no more output.
-        &{$callbackRef}(undef) if defined $callbackRef;
-
-        # If the module fails building, set an internal flag in the module
-        # options with the name of the log file containing the error message.
-        my $result = $?;
-        set_error_logfile($module, "$filename.log") if $result;
-
-        return $result;
-    }
-    else
-    {
-        # Child. Note here that we need to avoid running our exit cleanup
-        # handlers in here. For that we need POSIX::_exit.
-
-        # Apply altered environment variables.
-        $module->buildContext()->commitEnvironmentChanges();
-
-        if (pretending)
-        {
-            pretend "\tWould have run g['", join ("' '", @command), "'";
-            POSIX::_exit(0);
-        }
-
-        if (not $logdir or not -e $logdir)
-        {
-            # Error creating directory for some reason.
-            error "\tLogging to std out due to failure creating log dir.";
-        }
-
-# The stdin redirection used to be commented out because it will cause
-# problems for users using make-install-prefix when a password is desired, or
-# when svn complains about the SSL signature.  I think I've fixed the latter,
-# and I've decided that users should configure sudo to not need the password,
-# or simply run sudo kdesrc-build instead of using make-install-prefix.  Now
-# other commands will fail instead of hanging at the terminal.  As it stands, it can still
-# be canceled using an exported env var just in case.
-
-        open (STDIN, "</dev/null") unless exists $ENV{'KDESRC_BUILD_USE_TTY'};
-        open (STDOUT, "|tee $logdir/$filename.log") or do {
-            error "Error opening pipe to tee command.";
-            # Don't abort, hopefully STDOUT still works.
-        };
-
-        # Make sure we log everything.
-        # In the case of Qt, we may have forced on progress output so let's
-        # leave that interactive to keep the logs sane.
-        if(!($module->buildSystemType() eq 'Qt' &&
-           $module->buildSystem()->forceProgressOutput()))
-        {
-            open (STDERR, ">&STDOUT");
-        }
-
-        # Call internal function, name given by $command[1]
-        if($command[0] eq 'kdesrc-build')
-        {
-            # No colors!
-            ksb::Debug::setColorfulOutput(0);
-            debug "Calling $command[1]";
-
-            my $cmd = $command[1];
-            splice (@command, 0, 2); # Remove first two elements.
-
-            no strict 'refs'; # Disable restriction on symbolic subroutines.
-            if (! &{$cmd}(@command)) # Call sub
-            {
-                POSIX::_exit (EINVAL);
-            }
-
-            POSIX::_exit (0); # Exit child process successfully.
-        }
-
-        # Don't leave empty output files, give an indication of the particular
-        # command run. Use print to go to stdout.
-        say "# kdesrc-build running: '", join("' '", @command), "'";
-        say "# from directory: ", Cwd::getcwd();
-
-        # External command.
-        exec (@command) or do {
-            my $cmd_string = join(' ', @command);
-            error <<EOF;
-r[b[Unable to execute "$cmd_string"]!
-	$!
-
-Please check your binpath setting (it controls the PATH used by kdesrc-build).
-Currently it is set to g[$ENV{PATH}].
-EOF
-            # Don't use return, this is the child still!
-            POSIX::_exit (1);
-        };
-    }
-}
-
-# Subroutine to mark a file as being the error log for a module.  This also
-# creates a symlink in the module log directory for easy viewing.
-# First parameter is the module in question.
-# Second parameter is the filename in the log directory of the error log.
-sub set_error_logfile
-{
-    my $module = assert_isa(shift, 'Module');
-    my $logfile = shift;
-
-    return unless $logfile;
-
-    my $logdir = $module->getLogDir();
-
-    $module->setOption('#error-log-file', "$logdir/$logfile");
-    debug "Logfile for $module is $logfile";
-
-    # Setup symlink in the module log directory pointing to the appropriate
-    # file.  Make sure to remove it first if it already exists.
-    unlink("$logdir/error.log") if -l "$logdir/error.log";
-
-    if(-e "$logdir/error.log")
-    {
-        # Maybe it was a regular file?
-        error "r[b[ * Unable to create symlink to error log file]";
-        return 0;
-    }
-
-    symlink "$logfile", "$logdir/error.log";
 }
 
 # Subroutine to run make and process the build process output in order to
