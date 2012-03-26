@@ -785,12 +785,12 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     # sendMessage should accept one parameter (the message to send) and return
     # true on success, or false on failure.  $! should hold the error information
     # if false is returned.
-    sub sendMessage { die "Unimplemented.\n"; }
+    sub sendMessage { croak_internal("Unimplemented."); }
 
     # receiveMessage should return a message received from the other side, or
     # undef for EOF or error.  On error, $! should be set to hold the error
     # information.
-    sub receiveMessage { die "Unimplemented.\n" }
+    sub receiveMessage { croak_internal("Unimplemented."); }
 
     # Should be reimplemented if default does not apply.
     sub supportsConcurrency
@@ -2082,6 +2082,8 @@ HOME
 {
     package UpdateHandler;
 
+    ksb::Util->import();
+
     sub new
     {
         my ($class, $module) = @_;
@@ -2091,7 +2093,7 @@ HOME
 
     sub name
     {
-        die ksb::Util::make_exception ('Internal', 'This package should not be used directly.');
+        croak_internal('This package should not be used directly.');
     }
 
     sub module
@@ -2319,7 +2321,7 @@ HOME
                                  $log_filter)
                )
             {
-                die " * Conflicts present in module $module";
+                croak_runtime (" * Conflicts present in module $module");
             }
 
             return $updateCount;
@@ -2362,8 +2364,9 @@ HOME
         # eval since IPC::Open3 uses exceptions.
         eval
         {
-            # Need to chdir into the srcdir, in case srcdir is a symlink. svn info /path/to/symlink barfs.
-            p_chdir ($srcdir) or die "Can't change to srcdir for svn info: $!";
+            # Need to chdir into the srcdir, in case srcdir is a symlink.
+            # svn info /path/to/symlink barfs otherwise.
+            p_chdir ($srcdir);
 
             local $ENV{'LC_ALL'} = 'C'; # Make the svn output untranslated
 
@@ -4436,7 +4439,7 @@ sub moveOldDirectories
 
         $pretendedMoves->{$oldDir}->{$newDir} = 1 if pretending;
         safe_system('mv', $oldDir, $newDir) == 0 or
-            die "Unable to move directory $oldDir to $newDir";
+            croak_runtime("Unable to move directory $oldDir to $newDir");
     }
 
     return 1;
@@ -5613,11 +5616,12 @@ sub safe_rmtree
         return if $_ eq '.' or $_ eq '..';
         if (-f $_ || -l $_)
         {
-            unlink ($_) or die "Unable to delete $File::Find::name!";
+            unlink ($_) or croak_runtime("Unable to delete $File::Find::name: $!");
         }
         elsif (-d $_)
         {
-            rmdir ($File::Find::name)  or die "Unable to remove directory $File::Find::name: $!";
+            rmdir ($File::Find::name) or
+                croak_runtime("Unable to remove directory $File::Find::name: $!");
         }
     };
 
@@ -6175,7 +6179,7 @@ sub expandXMLModules
         return $moduleSet if !$moduleSet->scm()->isa('KDEProjectUpdate');
 
         my $databaseFile = ensure_projects_xml_present($ctx) or
-            die "kde-projects repository information could not be downloaded: $!.";
+            croak_runtime("kde-projects repository information could not be downloaded: $!");
 
         # At this point we know we'll need the kde-build-metadata module, force
         # it in by setting a flag to be used by the higher-level subroutine.
@@ -7345,7 +7349,7 @@ sub safe_lndir
 
             if (not pretending)
             {
-                super_mkdir ($dir) or die "Couldn't create directory $dir: $!";
+                super_mkdir ($dir) or croak_runtime("Couldn't create directory $dir: $!");
             }
         }
 
@@ -7359,7 +7363,7 @@ sub safe_lndir
             if (not pretending)
             {
                 symlink $File::Find::fullname, "$dir/$_" or
-                    die "Couldn't create file $dir/$_: $!";
+                    croak_runtime("Couldn't create file $dir/$_: $!");
             }
         }
     };
@@ -7447,7 +7451,7 @@ sub run_svn
         # If in async this only affects the update process, we need to IPC it
         # to the build process.
         $module->setOption('#update-error', IPC::MODULE_CONFLICT);
-        die "Source conflicts exist in $module";
+        croak_runtime("Source conflicts exist in $module");
     }
 
     return $count;
@@ -7519,8 +7523,8 @@ sub module_has_conflict
         close STDERR; # No broken pipe warnings
 
         $ENV{'LC_ALL'} = 'C'; # Force untranslated output
-        exec (qw/svn --non-interactive st/, $srcdir) ||
-            die "Cannot execute 'svn' program: $!";
+        exec (qw/svn --non-interactive st/, $srcdir) or
+            croak_runtime("Cannot execute 'svn' program: $!");
         # Not reached
     }
 
@@ -8232,7 +8236,7 @@ sub needed_module_logs
     my @dirs;
 
     # A lexicalized var (my $foo) is required in face of recursiveness.
-    opendir(my $fh, $logdir) || die "Can't opendir $logdir: $!";
+    opendir(my $fh, $logdir) or croak_runtime("Can't opendir $logdir: $!");
     my $dir = readdir($fh);
 
     while(defined $dir) {
