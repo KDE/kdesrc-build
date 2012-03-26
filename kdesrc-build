@@ -306,6 +306,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my $pkg = shift;
         my $caller = caller;
         my @exports = qw(list_has make_exception assert_isa assert_in
+                         croak_runtime croak_internal
                          safe_unlink safe_system p_chdir super_mkdir
                          slurp_program_output prettify_seconds
         );
@@ -371,8 +372,16 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         }, 'BuildException');
     }
 
-    # Used in the assert methods
-    sub fail_assertion
+    # Should be used for "runtime errors" (i.e. unrecoverable runtime problems that
+    # don't indicate a bug in the program itself).
+    sub croak_runtime
+    {
+        die (make_exception('Runtime', $_[0], 1));
+    }
+
+    # Should be used for "logic errors" (i.e. impossibilities in program state, things
+    # that shouldn't be possible no matter what input is fed at runtime)
+    sub croak_internal
     {
         die (make_exception('Internal', $_[0], 1));
     }
@@ -385,7 +394,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my ($obj, $class) = @_;
 
         if (!blessed($obj) || !$obj->isa($class)) {
-            fail_assertion("$obj is not of type $class, but of type " . ref($obj));
+            croak_runtime("$obj is not of type $class, but of type " . ref($obj));
         }
 
         return $obj;
@@ -399,7 +408,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my ($val, $listRef) = @_;
 
         if (!list_has($listRef, $val)) {
-            fail_assertion("$val is not a permissible value for its argument");
+            croak_runtime("$val is not a permissible value for its argument");
         }
 
         return $val;
@@ -442,7 +451,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
         chdir ($dir) or do {
             return 1 if pretending();
-            die make_exception('Runtime', "Could not change to directory $dir: $!");
+            croak_runtime("Could not change to directory $dir: $!");
         };
     }
 
@@ -605,7 +614,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             my $ipcType = $self->receiveIPCMessage(\$buffer);
             if (!$ipcType)
             {
-                die make_exception('Runtime', "IPC failure updating $moduleName: $!");
+                croak_runtime("IPC failure updating $moduleName: $!");
             }
 
             whisper ("\tReceived IPC status message for $buffer: $ipcType");
@@ -650,7 +659,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
                     }
                 }
                 default {
-                    die make_exception('Internal', "Unhandled IPC type: $ipcType");
+                    croak_internal("Unhandled IPC type: $ipcType");
                 }
             }
         }
@@ -679,7 +688,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
         if ($ipcType == IPC::ALL_FAILURE)
         {
-            die make_exception('Runtime', "Unable to perform source update for any module:\n\t$buffer");
+            croak_runtime("Unable to perform source update for any module:\n\t$buffer");
         }
         elsif ($ipcType == IPC::ALL_SKIPPED)
         {
@@ -687,7 +696,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         }
         elsif ($ipcType != IPC::ALL_UPDATING)
         {
-            die make_exception('Runtime', "IPC failure while expecting an update status: Incorrect type: $ipcType");
+            croak_runtime("IPC failure while expecting an update status: Incorrect type: $ipcType");
         }
     }
 
@@ -1723,7 +1732,7 @@ file, leave the --rc-file option out of the command line.
 If you want to force an empty rc file, use --rc-file /dev/null
 
 EOM
-            die make_exception('Runtime', "Missing $failedFile");
+            croak_runtime("Missing $failedFile");
         }
 
         # Set rcfile to something so the user knows what file to edit to
@@ -1766,7 +1775,7 @@ HOME
     {
         my $self = assert_isa(shift, 'ksb::BuildContext');
         my $rcfile = $self->rcFile() or
-            die make_exception('Internal', "Call to baseConfigDirectory before loadRcFile");
+            croak_internal("Call to baseConfigDirectory before loadRcFile");
 
         return dirname($rcfile);
     }
@@ -1793,7 +1802,7 @@ HOME
         return undef unless @options;
 
         if (scalar @options > 1) {
-            die make_exception('Internal', "Detected 2 or more $moduleName Module objects");
+            croak_internal("Detected 2 or more $moduleName Module objects");
         }
 
         return $options[0];
@@ -2132,7 +2141,7 @@ HOME
         # ignore file and propagate that information to our context object.
 
         my $path = $self->module()->fullpath('source') . "/build-script-ignore";
-        open my $fh, '<', $path or die make_exception('Internal', "Unable to read ignore data: $!");
+        open my $fh, '<', $path or croak_internal("Unable to read ignore data: $!");
 
         my $ctx = $self->module()->buildContext();
         my @ignoreModules = map { chomp $_; $_ } (<$fh>);
@@ -2487,7 +2496,7 @@ HOME
         # bug...
         return 1 if pretending();
 
-        die make_exception('Internal', 'We were not supposed to get to this point...');
+        croak_internal('We were not supposed to get to this point...');
     }
 
     # Returns name of file that should exist (relative to the module's build directory)
@@ -2630,7 +2639,7 @@ HOME
         my @projectFiles = glob("$sourcedir/*.pro");
 
         if (!@projectFiles || !$projectFiles[0]) {
-            die make_exception('Internal', "No *.pro files could be found for $module");
+            croak_internal("No *.pro files could be found for $module");
         }
 
         if (@projectFiles > 1) {
@@ -3311,7 +3320,7 @@ EOF
         if (!$buildType &&
             (-e "$sourceDir/configure" || -e "$sourceDir/autogen.sh"))
         {
-            die make_exception('Internal', 'The autotools build system is unsupported');
+            croak_internal('The autotools build system is unsupported');
         }
 
         # Don't just assume the build system is KDE-based...
@@ -3412,8 +3421,7 @@ EOF
         my $buildSystem = $self->buildSystem();
 
         if ($buildSystem->name() eq 'generic' && !pretending()) {
-            die make_exception('Internal',
-                'Build system determination still pending when build attempted.');
+            croak_internal('Build system determination still pending when build attempted.');
         }
 
         if ($buildSystem->needsRefreshed())
@@ -4092,7 +4100,7 @@ EOF
             next if $line =~ /^\s*$/;
 
             if ($line !~ $dependencyAtom) {
-                die make_exception('Internal', "Invalid line $line when reading dependency data.");
+                croak_internal("Invalid line $line when reading dependency data.");
             }
 
             my ($dependentItem, $sourceItem) = $line =~ $dependencyAtom;
@@ -4140,7 +4148,7 @@ EOF
 
         # But if the value is 2 that means we've detected a cycle.
         if ($visitedItemsRef->{$item} > 1) {
-            die make_exception('Internal', "Somehow there is a dependency cycle involving $item! :(");
+            croak_internal("Somehow there is a dependency cycle involving $item! :(");
         }
 
         $visitedItemsRef->{$item} = 2; # Mark as currently-visiting for cycle detection.
@@ -4910,9 +4918,7 @@ sub git_stash_and_update
     my $status = pretending() ? 0 : system('git', 'diff', '--quiet');
 
     if ($status == -1 || $status & 127) {
-        die make_exception('Runtime',
-            "$module doesn't appear to be a git module when " .
-            "trying to see if there are changes.");
+        croak_runtime("$module doesn't appear to be a git module.");
     }
 
     my $needsStash = 0;
@@ -4923,9 +4929,7 @@ sub git_stash_and_update
     else {
         $status = pretending() ? 0 : system('git', 'diff', '--cached', '--quiet');
         if ($status == -1 || $status & 127) {
-            die make_exception('Runtime',
-                "$module doesn't appear to be a git module when " .
-                "trying to see if there are changes.");
+            croak_runtime("$module doesn't appear to be a git module.");
         }
         else {
             $needsStash = ($status != 0);
@@ -4938,8 +4942,7 @@ sub git_stash_and_update
                 qw(git stash save --quiet), "kdesrc-build auto-stash at $date",
             ]);
         if ($status != 0) {
-            die make_exception('Runtime',
-                "Unable to stash local changes for $module, aborting update.");
+            croak_runtime("Unable to stash local changes for $module, aborting update.");
         }
     }
 
@@ -5993,7 +5996,7 @@ sub ensure_projects_xml_present
     # download, so we shouldn't have to worry about a corrupt XML file hanging
     # out for all time.
     if (defined $cachedSuccess && !$cachedSuccess) {
-        die make_exception('Internal', "Attempted to find projects.xml after it already failed");
+        croak_internal("Attempted to find projects.xml after it already failed");
     }
 
     if ($cachedSuccess) {
@@ -6038,7 +6041,7 @@ sub ensure_projects_xml_present
 
     if (!$result) {
         unlink $file if -e $file;
-        die make_exception('Runtime', "Unable to download kde_projects.xml for the kde-projects repository!");
+        croak_runtime("Unable to download kde_projects.xml for the kde-projects repository!");
     }
 
     if (!$fileHandleResult) {
@@ -6191,7 +6194,7 @@ sub expandXMLModules
             # If this was a "guessed XML module" then we guessed wrong, and it's really
             # a misspelling.
             if ($moduleSet->getOption('#guessed-kde-project')) {
-                die make_exception('Runtime', "Unknown module or module-set: $name");
+                croak_runtime("Unknown module or module-set: $name");
             }
 
             warning " y[b[*] Module y[$name] is apparently XML-based, but contains no\n",
@@ -6510,7 +6513,7 @@ sub extract_option_value_required($\@)
     my $returnValue = extract_option_value($option, @$options_ref);
 
     if (not defined $returnValue) {
-        die make_exception('Runtime', "Option $option needs to be set to some value instead of left blank");
+        croak_runtime("Option $option needs to be set to some value instead of left blank");
     }
 
     return $returnValue;
@@ -7411,8 +7414,7 @@ sub run_svn
 
     return 0 if pretending;
 
-    # Exception handling. Scary!
-    die make_exception('Runtime', "Error updating $module!") unless $result == 0;
+    croak_runtime("Error updating $module!") unless $result == 0;
 
     my $logdir = $module->getLogDir();
     $logfilename = "$logdir/$logfilename.log";
@@ -7956,8 +7958,7 @@ You specified both r[b[--resume-from] and r[b[--resume-after] but you can only
 use one.
 EOF
 
-        die make_exception('Runtime',
-            "Both --resume-after and --resume-from specified.");
+        croak_runtime("Both --resume-after and --resume-from specified.");
     }
 
     my $resumePoint = $ctx->getOption('resume-from') ||
@@ -7987,8 +7988,7 @@ EOF
 
     if (!@resultList && @moduleList) {
         # Lost all modules somehow.
-        die make_exception('Runtime', "Unknown resume point $resumePoint " .
-                "when handling --resume-from or --resume-after.");
+        croak_runtime("Unknown resume point $resumePoint.");
     }
 
     return @resultList;
