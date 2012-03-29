@@ -29,7 +29,7 @@ package main;
 
 # Must come after require kdesrc-build. note will interfere with our debugging
 # function, and we don't use it in the test harness anyways.
-use Test::More 'no_plan', import => ['!note'];
+use Test::More import => ['!note'];
 use File::Temp 'tempdir';
 use Storable 'dclone';
 
@@ -425,6 +425,7 @@ $buildSystem = l10nSystem->new($ctx);
 ok (!$buildSystem->isSubdirBuildable('scripts'), 'l10n-build isSubdirBuildable-scripts');
 ok ($buildSystem->isSubdirBuildable(''), 'l10n-build isSubdirBuildable-other');
 
+done_testing();
 ### TESTS GO ABOVE THIS LINE
 }; # eval
 
