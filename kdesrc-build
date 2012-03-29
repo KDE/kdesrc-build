@@ -305,7 +305,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my $caller = caller;
         my @exports = qw(list_has make_exception assert_isa assert_in
                          croak_runtime croak_internal
-                         log_command
+                         log_command disable_locale_message_translation
                          split_quoted_on_whitespace
                          safe_unlink safe_system p_chdir super_mkdir
                          filter_program_output prettify_seconds
@@ -477,6 +477,30 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         }
     }
 
+    # This function is intended to disable the message translation catalog
+    # settings in the program environment, so that any child processes executed
+    # will have their output untranslated (and therefore scrapeable).
+    #
+    # As such this should only be called for a forked child about to exec as
+    # there is no easy way to undo this within the process.
+    sub disable_locale_message_translation
+    {
+        # Ensure that program output is untranslated by setting 'C' locale.
+        # We're really trying to affect the LC_MESSAGES locale category, but
+        # LC_ALL is a catch-all for that (so needs to be unset if set).
+        #
+        # Note that the ONLY SUPPORTED way to pass file names, command-line
+        # args, etc. to commands is under the UTF-8 encoding at this point, as
+        # that is the only sane way for this en_US-based developer to handle
+        # the task.  Patches (likely using Encode::Locale) are accepted. :P
+
+        $ENV{'LC_MESSAGES'} = 'C';
+        if ($ENV{'LC_ALL'}) {
+            $ENV{'LANG'} = $ENV{'LC_ALL'}; # This is lower-priority "catch all"
+            delete $ENV{'LC_ALL'};
+        }
+    }
+
     # Returns an array of lines output from a program.  Use this only if you
     # expect that the output will be short.
     #
@@ -512,6 +536,11 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             return @lines;
         }
         else {
+            disable_locale_message_translation();
+
+            # We don't want stderr output on tty.
+            open (STDERR, '>', '/dev/null') or close (STDERR);
+
             exec { $program } ($program, @args) or
                 croak_internal("Unable to exec $program: $!");
         }
@@ -2471,8 +2500,6 @@ HOME
         eval {
             p_chdir($module->fullpath('source'));
 
-            local $ENV{'LC_ALL'} = 'C';
-
             ($result, undef) = filter_program_output('bzr', 'revno');
             chomp $result;
         };
@@ -2572,8 +2599,6 @@ HOME
             # Need to chdir into the srcdir, in case srcdir is a symlink.
             # svn info /path/to/symlink barfs otherwise.
             p_chdir ($srcdir);
-
-            local $ENV{'LC_ALL'} = 'C'; # Make the svn output untranslated
 
             my @lines = filter_program_output(
                 sub { /^$param:/ },
