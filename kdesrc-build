@@ -295,7 +295,6 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     use Scalar::Util qw(blessed);
     use File::Path qw(make_path);
     use Cwd qw(getcwd);
-    use IPC::Open3;
     use Errno qw(:POSIX);
 
     ksb::Debug->import();
@@ -309,7 +308,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
                          log_command
                          split_quoted_on_whitespace
                          safe_unlink safe_system p_chdir super_mkdir
-                         slurp_program_output prettify_seconds
+                         filter_program_output prettify_seconds
         );
 
         # This loop is only slightly "magical". Basically to import functions
@@ -484,23 +483,38 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     # Since there is no way to disambiguate no output from an error, this
     # function will call die on error, wrap in eval if this bugs you.
     #
-    # First parameter is the program to run, all remaining arguments are
-    # passed to the program.
-    sub slurp_program_output
+    # First parameter is subroutine reference to use as a filter (this sub will
+    # be passed a line at a time and should return true if the line should be
+    # returned).  If no filtering is desired pass 'undef'.
+    #
+    # Second parameter is the program to run (either full path or something
+    # accessible in $PATH).
+    #
+    # All remaining arguments are passed to the program.
+    #
+    # Return value is an array of lines that were accepted by the filter.
+    sub filter_program_output
     {
-        my ($program, @args) = @_;
-        my $output;
+        my ($filterRef, $program, @args) = @_;
+        $filterRef //= sub { return 1 }; # Default to all lines
 
         debug ("Slurping '$program' '", join("' '", @args), "'");
-        my $pid = open3(0, $output, undef, $program, @args);
 
-        # Just read all the input in so we can safely waitpid the process
-        my @lines = <$output>;
+        my $pid = open(my $childOutput, '-|');
+        croak_internal("Can't fork: $!") if ! defined($pid);
 
-        close $output;
-        waitpid $pid, 0;
+        if ($pid) {
+            # parent
+            my @lines = grep { &$filterRef; } (<$childOutput>);
+            close $childOutput;
+            waitpid $pid, 0;
 
-        return @lines;
+            return @lines;
+        }
+        else {
+            exec { $program } ($program, @args) or
+                croak_internal("Unable to exec $program: $!");
+        }
     }
 
     # Subroutine to return a string suitable for displaying an elapsed time,
@@ -2453,14 +2467,14 @@ HOME
         my $module = $self->module();
         my $result;
 
-        # slurp_program_output can throw exceptions
+        # filter_program_output can throw exceptions
         eval {
             p_chdir($module->fullpath('source'));
 
             local $ENV{'LC_ALL'} = 'C';
-            my @lines = slurp_program_output('bzr', 'revno');
 
-            chomp ($result = $lines[0]);
+            ($result, undef) = filter_program_output('bzr', 'revno');
+            chomp $result;
         };
 
         if ($@) {
@@ -2552,7 +2566,7 @@ HOME
         }
 
         # Search each line of output, ignore stderr.
-        # eval since IPC::Open3 uses exceptions.
+        # eval since filter_program_output uses exceptions.
         eval
         {
             # Need to chdir into the srcdir, in case srcdir is a symlink.
@@ -2561,8 +2575,9 @@ HOME
 
             local $ENV{'LC_ALL'} = 'C'; # Make the svn output untranslated
 
-            my @lines = grep { /^$param:/ } (
-                slurp_program_output('svn', 'info', '--non-interactive', '.')
+            my @lines = filter_program_output(
+                sub { /^$param:/ },
+                'svn', 'info', '--non-interactive', '.'
             );
 
             chomp ($result = $lines[0]);
@@ -4752,7 +4767,8 @@ sub git_commit_id
     my $gitdir = $module->fullpath('source') . '/.git';
 
     # Note that the --git-dir must come before the git command itself.
-    my ($id, undef) = slurp_program_output(
+    my ($id, undef) = filter_program_output(
+        undef, # No filter
         qw/git --git-dir/, $gitdir, 'rev-parse', $commit,
     );
     chomp $id;
@@ -6539,7 +6555,7 @@ sub handle_set_env
 }
 
 # A simple wrapper that is used to split the output of 'git config --null'
-# correctly. All parameters are then passed to slurp_program_output (so look
+# correctly. All parameters are then passed to filter_program_output (so look
 # there for help on usage).
 sub slurp_git_config_output
 {
@@ -6547,7 +6563,7 @@ sub slurp_git_config_output
 
     # This gets rid of the trailing nulls for single-line output. (chomp uses
     # $/ instead of hardcoding newline
-    chomp(my @output = slurp_program_output(@_));
+    chomp(my @output = filter_program_output(undef, @_)); # No filter
     return @output;
 }
 

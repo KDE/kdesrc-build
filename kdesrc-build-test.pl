@@ -83,6 +83,8 @@ for my $key (keys %moreOptions) {
 
 eval {
 
+ksb::Util->import();
+
 # If using set-env, it is handled by the handle_set_env routine, so the
 # value should be the space separated VAR and VALUE.
 $ctx->setOption('set-env', 'TESTY_MCTEST yes');
@@ -96,6 +98,9 @@ $ctx->setOption('#unused', '1');
 $ctx->setOption('branch', '4.3');
 
 # Commence testing proper
+my @gitStatusOutput = filter_program_output(sub { /On branch/ }, qw/git status/);
+is(@gitStatusOutput, 1, 'Correct number of items from filter_program_output');
+is(`git status`, join('', filter_program_output(undef, qw/git status/)), 'Ensure filter_program_output works w/ no filter');
 is($ctx->getSourceDir(), $ENV{HOME} . "/kdesrc-build-unused", 'Correct tilde-expansion for source-dir');
 
 # We know tilde-expansion works for source-dir, reset to our temp dir.
