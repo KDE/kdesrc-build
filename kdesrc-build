@@ -48,7 +48,6 @@ use File::Spec;     # tmpdir, rel2abs
 use File::Temp qw(tempfile);
 use LWP::UserAgent;
 use URI; # For git-clone snapshot support
-use Text::ParseWords qw(parse_line);
 use Sys::Hostname;
 use Storable 'dclone';
 use IO::Handle;
@@ -308,6 +307,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my @exports = qw(list_has make_exception assert_isa assert_in
                          croak_runtime croak_internal
                          log_command
+                         split_quoted_on_whitespace
                          safe_unlink safe_system p_chdir super_mkdir
                          slurp_program_output prettify_seconds
         );
@@ -719,6 +719,25 @@ EOF
                 POSIX::_exit (1);
             };
         }
+    }
+
+    # This subroutine acts like split(' ', $_) except that double-quoted strings
+    # are not split in the process.
+    #
+    # First parameter: String to split on whitespace.
+    # Return value: A list of the individual words and quoted values in the string.
+    # The quotes themselves are not returned.
+    sub split_quoted_on_whitespace
+    {
+        use Text::ParseWords qw(parse_line);
+        my $line = shift;
+
+        # Remove leading/trailing whitespace
+        $line =~ s/^\s+//;
+        $line =~ s/\s+$//;
+
+        # 0 means not to keep delimiters or quotes
+        return parse_line('\s+', 0, $line);
     }
 
     1;
@@ -4396,23 +4415,6 @@ EOF
 BEGIN {
     ksb::Debug->import();
     ksb::Util->import();
-}
-
-# This subroutine acts like split(' ', $_) except that double-quoted strings
-# are not split in the process.
-#
-# First parameter: String to split on whitespace.
-# Return value: A list of the individual words and quoted values in the string.
-# The quotes themselves are not returned.
-sub split_quoted_on_whitespace($)
-{
-    # 0 means not to keep delimiters or quotes
-    my $line = shift;
-
-    # Remove leading/trailing whitespace
-    $line =~ s/^\s+//;
-    $line =~ s/\s+$//;
-    return parse_line('\s+', 0, $line);
 }
 
 # Subroutine to return the branch prefix. i.e. the part before the branch name
