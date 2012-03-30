@@ -3172,34 +3172,28 @@ HOME
         info ("\tRunning test suite...");
 
         # Step 2: Run the tests.
-        # We scrape the output of the commands, so force the locale to be
-        # untranslated.
-        local $ENV{'LC_ALL'} = 'C';
-        my $result = log_command($module, 'test-results', [ 'make', $make_target ]);
+        my $numTests = -1;
+        my $countCallback = sub {
+            if (/([0-9]+) tests failed out of/) {
+                $numTests = $1;
+            }
+        };
+
+        my $result = log_command($module, 'test-results',
+                                 [ 'make', $make_target ],
+                                 { callback => $countCallback, no_translate => 1});
 
         if ($result != 0) {
-            my $logdir = $module->getLogDir();
-            my $logfile = "$logdir/test-results.log";
-            my $numTests = -1;
-
-            # Extract the number of failed tests
-            if (open (my $logf, '<', "$logfile")) {
-                while (my $line = <$logf>) {
-                    if ($line =~ m/([0-9]+) tests failed out of/) {
-                        $numTests = $1;
-                        last;
-                    }
-                }
+            if ($numTests > 0) {
+                warning ("\t$numTests tests failed for y[$module], consult latest/$module/test-results.log for info");
             }
-
-            if ($numTests > -1 ) {
-                warning ("\t$numTests tests failed for y[$module], consult $logdir/test-results.log for info");
-            } else {
-                warning ("\tSome tests failed for y[$module], consult $logdir/test-results.log for info");
+            else {
+                warning ("\tSome tests failed for y[$module], consult latest/$module/test-results.log for info");
             }
 
             return 0;
-        } else {
+        }
+        else {
             info ("\tAll tests ran successfully.");
         }
 
@@ -7096,14 +7090,11 @@ sub check_for_ssh_agent
 
     # The agent is running, but does it have any keys?  We can't be more specific
     # with this check because we don't know what key is required.
-    my $keys;
+    my $noKeys = 0;
 
-    {
-        local $ENV{'LC_ALL'} = 'C'; # Untranslated output
-        $keys = `ssh-add -l 2>/dev/null`;
-    }
+    filter_program_output(sub { $noKeys ||= /no identities/ }, 'ssh-add', '-l');
 
-    if ($keys =~ /no identities/)
+    if ($noKeys)
     {
         # Use print so user can't inadvertently keep us quiet about this.
         print clr (<<EOF);
@@ -7573,7 +7564,7 @@ sub module_has_conflict
 
         close STDERR; # No broken pipe warnings
 
-        $ENV{'LC_ALL'} = 'C'; # Force untranslated output
+        disable_locale_message_translation();
         exec (qw/svn --non-interactive st/, $srcdir) or
             croak_runtime("Cannot execute 'svn' program: $!");
         # Not reached
