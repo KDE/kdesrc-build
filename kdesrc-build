@@ -633,12 +633,20 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     #   directory).
     # Third parameter is a reference to an array with the command and its
     #   arguments.  i.e. ['command', 'arg1', 'arg2']
-    # Fourth parameter (optional) is a reference to a subroutine to have each line
+    #
+    # After the required three parameters you can pass a hash reference of
+    # optional features:
+    #   'callback' => a reference to a subroutine to have each line
     #   of child output passed to.  This output is not supposed to be printed
     #   to the screen by the subroutine, normally the output is only logged.
     #   However this is useful for e.g. munging out the progress of the build.
     #   USEFUL: When there is no more output from the child, the callback will be
     #     called with an undef string.  (Not just empty, it is also undefined).
+    #
+    #   'no_translate' => any true value will cause a flag to be set to request
+    #   the executed child process to not translate (for locale purposes) its
+    #   output, so that it can be screen-scraped.
+    #
     # The return value is the shell return code, so 0 is success, and non-zero is
     #   failure.
     #
@@ -649,9 +657,12 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     #   passed to the subroutine that is called.
     sub log_command
     {
-        my ($module, $filename, $argRef, $callbackRef) = @_;
+        my ($module, $filename, $argRef, $optionsRef) = @_;
         assert_isa($module, 'Module');
         my @command = @{$argRef};
+
+        $optionsRef //= { };
+        my $callbackRef = $optionsRef->{'callback'};
 
         debug ("log_command(): Module $module, Command: ", join(' ', @command));
 
@@ -747,6 +758,9 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             # command run. Use print to go to stdout.
             say "# kdesrc-build running: '", join("' '", @command), "'";
             say "# from directory: ", getcwd();
+
+            # If a callback is set assume no translation can be permitted.
+            disable_locale_message_translation() if $optionsRef->{'no_translate'};
 
             # External command.
             exec (@command) or do {
@@ -2550,7 +2564,7 @@ HOME
             # Use log_command as the check so that an error file gets created.
             if (0 != log_command($module, 'conflict-check',
                                  ['kdesrc-build', 'module_has_conflict', $module],
-                                 $log_filter)
+                                 { callback => $log_filter, no_translate => 1 })
                )
             {
                 croak_runtime (" * Conflicts present in module $module");
@@ -5609,7 +5623,7 @@ sub run_make_command
         }
     };
 
-    return log_command($module, $filename, $argRef, $log_command_callback);
+    return log_command($module, $filename, $argRef, { callback => $log_command_callback });
 }
 
 # Subroutine to return the path to the given executable based on the current

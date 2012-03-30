@@ -421,6 +421,33 @@ ok(! -d "$testSourceDirName/build", 'Ensure build dir does not exist');
 isnt(super_mkdir("$testSourceDirName/build"), 0, 'Make temp build directory');
 ok(-d "$testSourceDirName/build", 'Double-check temp build dir created');
 
+# Test log_command callback.
+my $flagged = 0;
+my $callback = sub {
+    $flagged = 1;
+    $flagged = 2 if !defined($_[0]);
+};
+
+is (log_command($ctx, 'test-callback', ['ls', '-1'], { callback => $callback }), 0, 'Successful return of log_command');
+cmp_ok ($flagged, '>', 0, 'log_command actually calls callback');
+is ($flagged, 2, 'Test undef was passed at end of execution');
+
+$flagged = 0;
+my $lc_all_found = 0;
+
+$callback = sub {
+    return if !defined $_[0];
+    $flagged      ||= !!/^LC_MESSAGES=C/;
+    $lc_all_found ||= !!/^LC_ALL=/;
+};
+
+$ENV{'LC_ALL'} = 'en_US.UTF-8';
+
+log_command($ctx, 'test-no_translate-messages', ['/usr/bin/env'], { callback => $callback, no_translate => 1 });
+ok ($flagged, 'Verify LC_MESSAGES set if no_translate used');
+ok (!$lc_all_found, 'Verify LC_ALL stripped if no_translate used');
+
+
 # Test isSubdirBuildable
 my $tokenModule = Module->new($ctx, 'test-module');
 my $buildSystem = GenericBuildSystem->new($tokenModule);
