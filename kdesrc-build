@@ -2713,6 +2713,14 @@ HOME
         return 1;
     }
 
+    # This should return a list of executable names that must be present to
+    # even bother attempting to use this build system. An empty list should be
+    # returned if there's no required programs.
+    sub requiredPrograms
+    {
+        return;
+    }
+
     sub name
     {
         return 'generic';
@@ -2875,6 +2883,11 @@ HOME
     sub name
     {
         return 'qmake';
+    }
+
+    sub requiredPrograms
+    {
+        return qw{qmake};
     }
 
     # Return value style: boolean
@@ -3151,6 +3164,11 @@ HOME
     sub prefixEnvironmentVariable
     {
         return 'CMAKE_PREFIX_PATH';
+    }
+
+    sub requiredPrograms
+    {
+        return qw{cmake qmake};
     }
 
     sub runTestsuite
@@ -7650,6 +7668,75 @@ sub expandl10nModules
     return @modules;
 }
 
+# This subroutine checks for programs which are absolutely essential to the
+# *build* process and returns false if they are not all present. Right now this
+# just means qmake and cmake (although this depends on what modules are
+# actually present in the build context).
+#
+# Pass the build context as the only parameter.
+sub checkForEssentialBuildPrograms
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+
+    return 1 if pretending();
+
+    my @buildModules = $ctx->modulesInPhase('build');
+    my %requiredPrograms;
+    my %modulesRequiringProgram;
+
+    foreach my $module ($ctx->modulesInPhase('build')) {
+        my @progs = $module->buildSystem()->requiredPrograms();
+
+        # Deliberately used @, since requiredPrograms can return a list.
+        @requiredPrograms{@progs} = 1;
+
+        foreach my $prog (@progs) {
+            $modulesRequiringProgram{$prog} //= { };
+            $modulesRequiringProgram{$prog}->{$module->name()} = 1;
+        }
+    }
+
+    my $wasError = 0;
+    for my $prog (keys %requiredPrograms) {
+        my %requiredPackages = (
+            qmake => 'Qt',
+            cmake => 'CMake',
+        );
+
+        if (!absPathToExecutable($prog)) {
+            # Don't complain about Qt if we're building it...
+            if ($prog eq 'qmake' && (
+                    grep { $_->buildSystemType() eq 'Qt' } (@buildModules)) ||
+                    pretending()
+                )
+            {
+                next;
+            }
+
+            $wasError = 1;
+            my $reqPackage = $requiredPackages{$prog} || $prog;
+
+            my @modulesNeeding = keys %{$modulesRequiringProgram{$prog}};
+            local $, = ', '; # List separator in output
+
+            error (<<"EOF");
+
+Unable to find r[b[$prog]. This program is absolutely essential for building
+the modules: y[@modulesNeeding].
+Please ensure the development packages for
+$reqPackage are installed by using your distribution's package manager.
+
+You can also see the
+http://techbase.kde.org/Getting_Started/Build/Distributions page for
+information specific to your distribution (although watch for outdated
+information :( ).
+EOF
+        }
+    }
+
+    return !$wasError;
+}
+
 # Subroutine to handle the build process.
 # First parameter is a reference of a list containing the packages
 # we are to build.
@@ -7674,6 +7761,18 @@ sub handle_build
     return 0 if scalar @modules == 0;
 
     note ("<<<  Build Process  >>>");
+
+    # Check for absolutely essential programs now.
+    if (!checkForEssentialBuildPrograms($ctx) &&
+        !exists $ENV{KDESRC_BUILD_IGNORE_MISSING_PROGRAMS})
+    {
+        error (" r[b[*] Aborting now to save a lot of wasted time.");
+        error (" y[b[*] export KDESRC_BUILD_IGNORE_MISSING_PROGRAMS=1 and re-run (perhaps with --no-src)");
+        error (" r[b[*] to continue anyways. If this check was in error please report a bug against");
+        error (" y[b[*] kdesrc-build at https://bugs.kde.org/");
+
+        return 1;
+    }
 
     # IPC queue should have a message saying whether or not to bother with the
     # build.
