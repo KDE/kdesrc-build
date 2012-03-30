@@ -2978,7 +2978,6 @@ END
         my ($self, $logfilename, $arg_ref) = @_;
         assert_isa($self, 'SvnUpdate');
         my $module = $self->module();
-        my $conflict = 0;
 
         my $revision = $module->getOption('revision');
         if ($revision ne '0')
@@ -2991,37 +2990,26 @@ END
             $arg_ref = \@tmp;
         }
 
-        # Do svn update.
-        my $result = log_command($module, $logfilename, $arg_ref);
-
-        return 0 if pretending();
-
-        croak_runtime("Error updating $module!") unless $result == 0;
-
-        my $logdir = $module->getLogDir();
-        $logfilename = "$logdir/$logfilename.log";
-
-        # TODO: Use callback filter instead of opening log.
-
-        # We need to open the file and try to determine what the Subversion process
-        # did.
-        open SVN_LOG, "<$logfilename" or return undef;
-
         my $count = 0;
-        while (<SVN_LOG>)
-        {
+        my $conflict = 0;
+
+        my $callback = sub {
+            return unless $_;
+
             # The check for capitalized letters in the second column is because
             # svn can use the first six columns for updates (the characters will
             # all be uppercase), which makes it hard to tell apart from normal
             # sentences (like "At Revision foo"
-
-            # Count all changes to the files.
-            $count++ if /^[UPDARGMC][ A-Z]/;
-
+            $count++      if /^[UPDARGMC][ A-Z]/;
             $conflict = 1 if /^C[ A-Z]/;
-        }
+        };
 
-        close SVN_LOG;
+        # Do svn update.
+        my $result = log_command($module, $logfilename, $arg_ref, { callback => $callback });
+
+        return 0 if pretending();
+
+        croak_runtime("Error updating $module!") unless $result == 0;
 
         if ($conflict)
         {
