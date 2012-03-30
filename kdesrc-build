@@ -6076,10 +6076,10 @@ sub ensure_projects_xml_present
         # Unfortunately dumping the HTTP output straight to the XML parser is a
         # wee bit more complicated than I feel like dealing with => use a temp
         # file.
-        ($fileHandleResult, $file) = tempfile('kde_projectsXXXXXX',
+        (undef, $file) = tempfile('kde_projectsXXXXXX',
             SUFFIX=>'.xml', TMPDIR=>1, UNLINK=>0);
         $result = download_file($url, $file);
-        seek ($fileHandleResult, 0, SEEK_SET);
+        open ($fileHandleResult, '<', $file) or croak_runtime("Unable to open KDE Project database $file: $!");
     }
     else {
         info (" * y[Using existing projects.kde.org project database], output may change");
