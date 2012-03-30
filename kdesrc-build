@@ -5179,7 +5179,7 @@ sub git_stash_and_update
                 qw(git stash pop --index --quiet)
             ]);
         if ($status != 0) {
-            error <<EOF;
+            error (<<EOF);
  r[b[*]
  r[b[*] Unable to re-apply stashed changes to r[b[$module]!
  r[b[*]
@@ -5329,7 +5329,7 @@ sub update_module_git_checkout
                 };
             }
             else {
-                error <<EOF;
+                error (<<EOF);
 The source directory for b[$module] does not exist. kdesrc-build would download
 it, except there is already a file or directory present in the desired source
 directory:
@@ -5993,7 +5993,7 @@ sub parse_module
             $value = $ctx->getOption($option) || { };
 
             if (!$repo || !$url) {
-                error <<"EOF";
+                error (<<"EOF");
 The y[git-repository-base] option at y[b[$rcfile:$.]
 requires a repository name and URL.
 
@@ -6141,7 +6141,7 @@ sub parse_moduleset
         my $moduleSetId = "module-set";
         $moduleSetId = "module-set ($moduleSetName)" if $moduleSetName;
 
-        error <<EOF;
+        error (<<EOF);
 There is no repository assigned to y[b[$optionSet{repository}] when assigning a
 $moduleSetId on line $startLine of $rcfile.
 
@@ -7092,7 +7092,7 @@ sub check_for_ssh_agent
     if ($keys =~ /no identities/)
     {
         # Use print so user can't inadvertently keep us quiet about this.
-        print clr <<EOF;
+        print clr (<<EOF);
 b[y[*] SSH Agent does not appear to be managing any keys.  This will lead to you
   being prompted for every module update for your SSH passphrase.  So, we're
   running g[ssh-add] for you.  Please type your passphrase at the prompt when
@@ -7569,14 +7569,14 @@ sub module_has_conflict
     {
         if (/^C/)
         {
-            error <<EOF;
+            error (<<EOF);
 The $module module has source code conflicts present.  This can occur
 when you have made changes to the source code in the local copy
 at $srcdir
 that interfere with a change introduced in the source repository.
 EOF
 
-            error <<EOF;
+            error (<<EOF);
 To fix this, y[if you have made no source changes that you haven't committed],
 run y[svn revert -R $srcdir]
 to bring the source directory back to a pristine state and trying building the
@@ -7680,7 +7680,7 @@ sub handle_build
     {
         $outfile = $ctx->getLogDir() . '/build-status';
         open STATUS_FILE, ">$outfile" or do {
-            error <<EOF;
+            error (<<EOF);
 	Unable to open output status file r[b[$outfile]
 	You won't be able to use the g[--resume] switch next run.\n";
 EOF
@@ -7884,7 +7884,7 @@ sub check_module_validity
             return;
         }
 
-        warning <<EOF;
+        warning (<<EOF);
  y[!!]
  y[!!] g[$module] seems to be checked out from somewhere other than expected.
  y[!!]
@@ -7994,7 +7994,7 @@ sub applyModuleFilters
     if ($ctx->getOption('resume-from') && $ctx->getOption('resume-after'))
     {
         # This one's an error.
-        error <<EOF;
+        error (<<EOF);
 You specified both r[b[--resume-from] and r[b[--resume-after] but you can only
 use one.
 EOF
