@@ -131,14 +131,14 @@ like($kdelibsModule->getOption('cmake-options'), qr/-DTEST=TRUE$/, 'kdelibs opti
 is($testModule->getOption('branch', 'module'), undef, 'get_option limit to module level');
 
 $kdelibsModule->setOption('branch', 'trunk');
-is(svn_module_url($kdelibsModule), 'svn+ssh://svn.kde.org/home/kde/trunk/KDE/kdelibs', 'KDE module trunk');
+is($kdelibsModule->scm()->svn_module_url(), 'svn+ssh://svn.kde.org/home/kde/trunk/KDE/kdelibs', 'KDE module trunk');
 
 $kdelibsModule->setOption('tag', '4.1.3');
 $kdelibsModule->setOption('branch', '4.2');
-like(handle_branch_tag_option($kdelibsModule, 'tags'), qr(/tags/KDE/4\.1\.3/kdelibs$), 'KDE module tag preferred to branch');
+like(SvnUpdate::_handle_branch_tag_option($kdelibsModule, 'tags'), qr(/tags/KDE/4\.1\.3/kdelibs$), 'KDE module tag preferred to branch');
 
 $kdelibsModule->setOption('tag', '');
-like(handle_branch_tag_option($kdelibsModule, 'branches'), qr(/branches/KDE/4.2/kdelibs$), 'KDE module branch');
+like(SvnUpdate::_handle_branch_tag_option($kdelibsModule, 'branches'), qr(/branches/KDE/4.2/kdelibs$), 'KDE module branch');
 
 $kdesupportModule->setOption('branch', 'trunk');
 $kdesupportModule->setOption('svn-server', 'svn://anonsvn.kde.org/home/kde');
@@ -160,7 +160,20 @@ SKIP: {
     $svnAvail = is(system(@svnArgs), 0, "Make empty subversion checkout.");
 }
 
-is(svn_module_url($kdesupportModule), 'svn://anonsvn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
+$ENV{HOME} = $testSourceDirName;
+SvnUpdate::_install_missing_ssl_signature();
+
+my $signatureFile = "$testSourceDirName/.subversion/auth/svn.ssl.server/ec08b331e2e6cabccb6c3e17a85e28ce";
+ok(-e $signatureFile, "Verify KDE SVN server SSL signature can be installed");
+
+use Digest::MD5;
+my $md5 = Digest::MD5->new();
+open my $md5Data, '<', $signatureFile;
+binmode($md5Data);
+is ($md5->addfile($md5Data)->hexdigest, '15d0534068cdbe340fc29db520b8beaa', "Verify installed KDE SVN SSL certificate is correct");
+close $md5Data;
+
+is($kdesupportModule->scm()->svn_module_url(), 'svn://anonsvn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
 
 # Issue reported by dfaure 2011-02-06, where the kdesupport-branch was not being
 # obeyed when global-branch was set to 4.6, so somehow kdesrc-build wanted a
@@ -168,18 +181,18 @@ is(svn_module_url($kdesupportModule), 'svn://anonsvn.kde.org/home/kde/trunk/kdes
 $kdesupportModule->setOption('branch', 'master');
 $kdesupportModule->setOption('prefix', '/d/kde/inst/kdesupport-for-4.6');
 $ctx->setOption('branch', '4.6');
-is(svn_module_url($kdesupportModule), 'svn://anonsvn.kde.org/home/kde/branches/kdesupport/master', 'kdesupport-for-$foo with local branch override');
+is($kdesupportModule->scm()->svn_module_url(), 'svn://anonsvn.kde.org/home/kde/branches/kdesupport/master', 'kdesupport-for-$foo with local branch override');
 
 $kdesupportModule->setOption('tag', 'kdesupport-for-4.2');
-like(handle_branch_tag_option($kdesupportModule, 'tags'), qr(/tags/kdesupport-for-4.2$), 'non-KDE module tag (no name appended)');
-is(svn_module_url($kdesupportModule), 'svn://anonsvn.kde.org/home/kde/tags/kdesupport-for-4.2', 'non-KDE module tag (no name; entire URL)');
+like(SvnUpdate::_handle_branch_tag_option($kdesupportModule, 'tags'), qr(/tags/kdesupport-for-4.2$), 'non-KDE module tag (no name appended)');
+is($kdesupportModule->scm()->svn_module_url(), 'svn://anonsvn.kde.org/home/kde/tags/kdesupport-for-4.2', 'non-KDE module tag (no name; entire URL)');
 
 $phononModule->setOption('branch', '4.2');
-is(svn_module_url($phononModule), 'svn+ssh://svn.kde.org/home/kde/branches/phonon/4.2', 'non-KDE module branch (no name appended)');
+is($phononModule->scm()->svn_module_url(), 'svn+ssh://svn.kde.org/home/kde/branches/phonon/4.2', 'non-KDE module branch (no name appended)');
 
 $phononModule->setOption('branch', '');
 $phononModule->setOption('module-base-path', 'tags/phonon/4.2');
-is(svn_module_url($phononModule), 'svn+ssh://svn.kde.org/home/kde/tags/phonon/4.2', 'module-base-path');
+is($phononModule->scm()->svn_module_url(), 'svn+ssh://svn.kde.org/home/kde/tags/phonon/4.2', 'module-base-path');
 
 my @result1 = qw/a=b g f/;
 my @quoted_result = ('a=b g f', 'e', 'c=d', 'bless');
@@ -249,9 +262,9 @@ $ctx->prependEnvironmentValue($unlikelyEnvVar, '/path/10');
 is($ctx->{env}->{$unlikelyEnvVar}, '/path/10', 'prependEnvironmentValue initial value');
 
 # Ensure svn URL hierarchy is correct
-like(svn_module_url($testModule), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer module specific to global');
+like($testModule->scm()->svn_module_url(), qr{/home/kde/KDE/KDE/test$}, 'svn_module_url prefer module specific to global');
 $testModule->setOption('override-url', 'svn://annono');
-is(svn_module_url($testModule), 'svn://annono', 'testing override-url');
+is($testModule->scm()->svn_module_url(), 'svn://annono', 'testing override-url');
 
 my $pendingOptions = { };
 my @modules = process_arguments($ctx, $pendingOptions, '--test,override-url=svn://ann');

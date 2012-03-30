@@ -2541,6 +2541,576 @@ HOME
 
     our @ISA = ('UpdateHandler');
 
+    # Returns true if a module has a base component to their name (e.g. KDE/,
+    # extragear/, or playground).  Note that modules that aren't in trunk/KDE
+    # don't necessary meet this criteria (e.g. kdereview is a module itself).
+    sub _has_base_module
+    {
+        my $moduleName = shift;
+
+        return $moduleName =~ /^(extragear|playground|KDE)(\/[^\/]+)?$/;
+    }
+
+    # Subroutine to return the branch prefix. i.e. the part before the branch
+    # name and module name.
+    #
+    # The first parameter is the module name in question.
+    # The second parameter should be 'branches' if we're dealing with a branch
+    #      or 'tags' if we're dealing with a tag.
+    #
+    # Ex: 'kdelibs'  => 'branches/KDE'
+    #     'kdevelop' => 'branches/kdevelop'
+    sub _branch_prefix
+    {
+        my $moduleName = shift;
+        my $type = shift;
+
+        # These modules seem to have their own subdir in /tags.
+        my @tag_components = qw/arts koffice amarok kst qt taglib/;
+
+        # The map call adds the kde prefix to the module names because I don't feel
+        # like typing them all in.
+        my @kde_module_list = ((map {'kde' . $_} qw/-base-artwork -wallpapers accessibility
+                addons admin artwork base bindings edu games graphics libs
+                multimedia network pim pimlibs plasma-addons sdk toys utils webdev/));
+
+        # If the user already has the module in the form KDE/foo, it's already
+        # done.
+        return "$type/KDE" if $moduleName =~ /^KDE\//;
+
+        # KDE proper modules seem to use this pattern.
+        return "$type/KDE" if list_has(\@kde_module_list, $moduleName);
+
+        # KDE extragear / playground modules use this pattern
+        return "$type" if _has_base_module($moduleName);
+
+        # If we doing a tag just return 'tags' because the next part is the actual
+        # tag name, which is added by the caller, unless the module has its own
+        # subdirectory in /tags.
+        return "$type" if $type eq 'tags' and not list_has(\@tag_components, $moduleName);
+
+        # Everything else.
+        return "$type/$moduleName";
+    }
+
+    # This subroutine is responsible for stripping the KDE/ part from the
+    # beginning of modules that were entered by the user like "KDE/kdelibs"
+    # instead of the normal "kdelibs".  That way you can search for kdelibs
+    # without having to strip KDE/ everywhere.
+    sub _moduleBaseName
+    {
+        my $moduleName = shift;
+        $moduleName =~ s/^KDE\///;
+
+        return $moduleName;
+    }
+
+    # Subroutine to return a module URL for a module using the 'branch' option.
+    # First parameter is the module in question.
+    # Second parameter is the type ('tags' or 'branches')
+    sub _handle_branch_tag_option
+    {
+        my $module = assert_isa(shift, 'Module');
+        my $type = shift;
+        my $branch = _branch_prefix($module->name(), $type);
+        my $svn_server = $module->getOption('svn-server');
+        my $branchname = $module->getOption($type eq 'branches' ? 'branch' : 'tag');
+
+        # Remove trailing slashes.
+        $svn_server =~ s/\/*$//;
+
+        # Remove KDE/ prefix for module name.
+        my $moduleName = _moduleBaseName($module->name());
+
+        # KDE modules have a different module naming scheme than the rest it seems.
+        return "$svn_server/$branch/$branchname/$moduleName" if $branch =~ /\/KDE\/?$/;
+
+        # Non-trunk translations happen in a single branch. Assume all non-trunk
+        # global branches are intended for the stable translations.
+        if ($moduleName =~ /^l10n-kde4\/?/ && $branch ne 'trunk') {
+            return "$svn_server/branches/stable/$moduleName";
+        }
+
+        # Otherwise don't append the module name by default since it makes more
+        # sense to branch this way in many situations (i.e. kdesupport tags, phonon)
+        return "$svn_server/$branch/$branchname";
+    }
+
+    # Subroutine to return the appropriate SVN URL for a given module, based on
+    # the user settings.  For example, 'kdelibs' ->
+    # https://svn.kde.org/home/kde/trunk/KDE/kdelibs
+    #
+    # This operates under a double hierarchy:
+    # 1. If any module-specific option is present, it wins.
+    # 2. If only global options are present, the order override-url, tag,
+    #    branch, module-base-path, is preferred.
+    sub svn_module_url
+    {
+        my $self = assert_isa(shift, 'SvnUpdate');
+        my $module = $self->module();
+        my $svn_server = $module->getOption('svn-server');
+        my $modulePath;
+
+        foreach my $levelLimit ('module', 'allow-inherit') {
+            $modulePath = $module->getOption('module-base-path', $levelLimit);
+
+            # Allow user to override normal processing of the module in a few ways,
+            # to make it easier to still be able to use kdesrc-build even when I
+            # can't be there to manually update every little special case.
+            if($module->getOption('override-url', $levelLimit))
+            {
+                return $module->getOption('override-url', $levelLimit);
+            }
+
+            if($module->getOption('tag', $levelLimit))
+            {
+                return _handle_branch_tag_option($module, 'tags');
+            }
+
+            my $branch = $module->getOption('branch', $levelLimit);
+            if($branch and $branch ne 'trunk')
+            {
+                return _handle_branch_tag_option($module, 'branches');
+            }
+
+            my $moduleName = _moduleBaseName($module->name());
+
+            # The following modules are in /trunk, not /trunk/KDE.  There are others,
+            # but these are the important ones.
+            my @non_trunk_modules = qw(extragear kdesupport koffice icecream kde-common
+                playground KDE kdereview www l10n-kde4);
+
+            my $module_root = $moduleName;
+            $module_root =~ s/\/.*//; # Remove everything after the first slash
+
+            if (not $modulePath and $levelLimit eq 'allow-inherit')
+            {
+                $modulePath = "trunk/KDE/$moduleName";
+                $modulePath = "trunk/$moduleName" if list_has(\@non_trunk_modules, $module_root);
+                $modulePath =~ s/^\/*//; # Eliminate / at beginning of string.
+                $modulePath =~ s/\/*$//; # Likewise at the end.
+            }
+
+            last if $modulePath;
+        }
+
+        # Remove trailing slashes.
+        $svn_server =~ s/\/*$//;
+
+        # Note that the module name is no longer appended if module-base-path is used (i.e.
+        # $branch variable was set.  This is a change as of version 1.8.
+        return "$svn_server/$modulePath";
+    }
+
+    # Subroutine to determine whether or not the given module has the correct
+    # URL.  If not, a warning is printed out.
+    # First parameter: module to check.
+    # Return: Nothing.
+    sub check_module_validity
+    {
+        my $self = assert_isa(shift, 'SvnUpdate');
+        my $module = $self->module();
+        my $source_dir = $module->fullpath('source');
+        my $module_expected_url = $self->svn_module_url();
+        my $module_actual_url = $self->svnInfo('URL');
+
+        $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
+        $module_actual_url   =~ s{/+$}{}; # Remove trailing slashes
+
+        if ($module_actual_url ne $module_expected_url)
+        {
+            # Check if the --src-only flag was passed.
+            if ($module->buildContext()->getOption('#allow-auto-repo-move'))
+            {
+                note ("g[$module] is checked out from a different location than expected.");
+                note ("Attempting to correct");
+
+                log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
+                return;
+            }
+
+            warning (<<EOF);
+ y[!!]
+ y[!!] g[$module] seems to be checked out from somewhere other than expected.
+ y[!!]
+
+kdesrc-build expects:        y[$module_expected_url]
+The module is actually from: y[$module_actual_url]
+
+If the module location is incorrect, you can fix it by either deleting the
+g[b[source] directory, or by changing to the source directory and running
+  svn switch $module_expected_url
+
+If the module is fine, please update your configuration file.
+
+If you use kdesrc-build with --src-only it will try switching for you (might not work
+correctly).
+EOF
+        }
+    }
+
+    # >>>>>>>>>
+    # Subroutine used to handle the checkout-only option.  It handles updating
+    # subdirectories of an already-checked-out module.
+    #
+    # This function can throw an exception in the event of a update failure.
+    #
+    # First parameter is the module.
+    # All remaining parameters are subdirectories to check out.
+    #
+    # Returns the number of files changed by the update, or undef if unable to
+    # be determined.
+    sub update_module_subdirectories
+    {
+        my $self = assert_isa(shift, 'SvnUpdate');
+        my $module = $self->module();
+        my $numChanged = 0;
+
+        # If we have elements in @path, download them now
+        for my $dir (@_)
+        {
+            info ("\tUpdating g[$dir]");
+
+            my $logname = $dir;
+            $logname =~ tr{/}{-};
+
+            my $count = $self->run_svn("svn-up-$logname", [ 'svn', 'up', $dir ]);
+            $numChanged = undef unless defined $count;
+            $numChanged += $count if defined $numChanged;
+        }
+
+        return $numChanged;
+    }
+
+    # Checkout a module that has not been checked out before, along with any
+    # subdirectories the user desires.
+    #
+    # This function will throw an exception in the event of a failure to update.
+    #
+    # The first parameter is the module to checkout (including extragear and
+    # playground modules).
+    # All remaining parameters are subdirectories of the module to checkout.
+    #
+    # Returns number of files affected, or undef.
+    sub checkout_module_path
+    {
+        my $self = assert_isa(shift, 'SvnUpdate');
+        my $module = $self->module();
+        my @path = @_;
+        my %pathinfo = main::get_module_path_dir($module, 'source');
+        my @args;
+
+        if (not -e $pathinfo{'path'} and not super_mkdir($pathinfo{'path'}))
+        {
+            croak_runtime ("Unable to create path r[$pathinfo{path}]!");
+        }
+
+        p_chdir ($pathinfo{'path'});
+
+        my $svn_url = $self->svn_module_url();
+        my $modulename = $pathinfo{'module'}; # i.e. kdelibs for KDE/kdelibs as $module
+
+        push @args, ('svn', 'co', '--non-interactive');
+        push @args, '-N' if scalar @path; # Tells svn to only update the base dir
+        push @args, $svn_url;
+        push @args, $modulename;
+
+        note ("Checking out g[$module]");
+
+        my $count = $self->run_svn('svn-co', \@args);
+
+        p_chdir ($pathinfo{'module'}) if scalar @path;
+
+        my $count2 = $self->update_module_subdirectories(@path);
+
+        return $count + $count2 if defined $count and defined $count2;
+        return undef;
+    }
+
+    # Update a module that has already been checked out, along with any
+    # subdirectories the user desires.
+    #
+    # This function will throw an exception in the event of an update failure.
+    #
+    # The first parameter is the module to checkout (including extragear and
+    # playground modules).
+    # All remaining parameters are subdirectories of the module to checkout.
+    sub update_module_path
+    {
+        my ($self, @path) = @_;
+        assert_isa($self, 'SvnUpdate');
+        my $module = $self->module();
+        my $fullpath = $module->fullpath('source');
+        my @args;
+
+        p_chdir ($fullpath);
+
+        push @args, ('svn', 'up', '--non-interactive');
+        push @args, '-N' if scalar @path;
+
+        note ("Updating g[$module]");
+
+        my $count = eval { $self->run_svn('svn-up', \@args); };
+
+        # Update failed, try svn cleanup.
+        if ($@ && $@->{exception_type} ne 'ConflictPresent')
+        {
+            info ("\tUpdate failed, trying a cleanup.");
+            my $result = safe_system('svn', 'cleanup');
+            $result == 0 or croak_runtime ("Unable to update $module, " .
+                               "svn cleanup failed with exit code $result");
+
+            info ("\tCleanup complete.");
+
+            # Now try again (allow exception to bubble up this time).
+            $count = $self->run_svn('svn-up-2', \@args);
+        }
+
+        my $count2 = $self->update_module_subdirectories(@path);
+
+        return $count + $count2 if defined $count and defined $count2;
+        return undef;
+    }
+
+    # The function checks whether subversion already has an ssl acceptance
+    # notification for svn.kde.org, and if it's doesn't, installs one.
+    # Problems: First off, installing any kind of "accept this ssl cert without
+    # user's active consent" kind of sucks.  Second, this function is very
+    # specific to the various signature algorithms used by svn, so it could break
+    # in the future.  But there's not a better way to skip warnings about svn.kde.org
+    # until the site has a valid ssl certificate.
+    #
+    # Accepts no arguments, has no return value.
+    sub _install_missing_ssl_signature
+    {
+        my $sig_dir  = "$ENV{HOME}/.subversion/auth/svn.ssl.server";
+        my $sig_file = "ec08b331e2e6cabccb6c3e17a85e28ce";
+
+        debug ("Checking $sig_dir/$sig_file for KDE SSL signature.");
+
+        if (-e "$sig_dir/$sig_file")
+        {
+            debug ("KDE SSL Signature file present.");
+            return;
+        }
+
+        debug ("No KDE SSL Signature found.");
+        return if pretending();
+
+        # Now we're definitely installing, let the user know.
+        warning ("Installing b[y[KDE SSL signature] for Subversion.  This is to avoid");
+        warning ("Subversion warnings about KDE's self-signed SSL certificate for svn.kde.org");
+
+        # Make sure the directory is created.
+        if (!super_mkdir($sig_dir))
+        {
+            error ("Unable to create r[Subversion signature] directory!");
+            error ("$!");
+
+            return;
+        }
+
+        my $sig_data =
+'K 10
+ascii_cert
+V 1216
+MIIDijCCAvOgAwIBAgIJAO9Ca3rOVtgrMA0GCSqGSIb3DQEBBQUAMIGLMQswCQYDVQQGE\
+wJERTEQMA4GA1UECBMHQmF2YXJpYTESMBAGA1UEBxMJTnVlcm5iZXJnMREwDwYDVQQKEw\
+hLREUgZS5WLjEMMAoGA1UECxMDU1ZOMRQwEgYDVQQDEwtzdm4ua2RlLm9yZzEfMB0GCSq\
+GSIb3DQEJARYQc3lzYWRtaW5Aa2RlLm9yZzAeFw0wNTA1MTExMDA4MjFaFw0xNTA1MDkx\
+MDA4MjFaMIGLMQswCQYDVQQGEwJERTEQMA4GA1UECBMHQmF2YXJpYTESMBAGA1UEBxMJT\
+nVlcm5iZXJnMREwDwYDVQQKEwhLREUgZS5WLjEMMAoGA1UECxMDU1ZOMRQwEgYDVQQDEw\
+tzdm4ua2RlLm9yZzEfMB0GCSqGSIb3DQEJARYQc3lzYWRtaW5Aa2RlLm9yZzCBnzANBgk\
+qhkiG9w0BAQEFAAOBjQAwgYkCgYEA6COuBkrEcEJMhzHajKpN/StQwr/YeXIXKwtROWEt\
+7evsXBNqqRe6TuUc/iVYgBuZ4umVlJ/qJ7Q8cSa8Giuk2B3ShZx/WMSC80OfGDJ4LoWm3\
+uoW8h45ExAACBlhuuSSa7MkH6EXhru1SvLbAbTcSVqyTzoWxhkAb8ujy6CUxHsCAwEAAa\
+OB8zCB8DAdBgNVHQ4EFgQUx2W0046HfWi1fGL1V8NlDJvnPRkwgcAGA1UdIwSBuDCBtYA\
+Ux2W0046HfWi1fGL1V8NlDJvnPRmhgZGkgY4wgYsxCzAJBgNVBAYTAkRFMRAwDgYDVQQI\
+EwdCYXZhcmlhMRIwEAYDVQQHEwlOdWVybmJlcmcxETAPBgNVBAoTCEtERSBlLlYuMQwwC\
+gYDVQQLEwNTVk4xFDASBgNVBAMTC3N2bi5rZGUub3JnMR8wHQYJKoZIhvcNAQkBFhBzeX\
+NhZG1pbkBrZGUub3JnggkA70Jres5W2CswDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQU\
+FAAOBgQDjATlL2NByFDo5hhQAQdXjSYrMxil7zcpQjR+KYVizC7yK99ZsA0LYf/Qbu/pa\
+oMnmKLKWeNlF8Eq7/23TeAJmjw1pKi97ZO2FJ8jvy65iBEJLRYnpJ75dvg05iugm9GZ5w\
+Px6GHZmkSrteGDXgVbbSDy5exv1naqc+qEM7Ar4Xw==
+K 8
+failures
+V 1
+8
+K 15
+svn:realmstring
+V 23
+https://svn.kde.org:443
+END
+';
+
+        # Remove the \<newline> parts (the gibberish should be one big long
+        # line).
+        $sig_data =~ s/\\\n//gm;
+
+        open (my $sig, '>', "$sig_dir/$sig_file") or do {
+            error ("Unable to open KDE SSL signature file!");
+            error ("r[$!]");
+
+            return;
+        };
+
+        print $sig $sig_data or do {
+            error ("Unable to write to KDE SSL signature file!");
+            error ("r[$!]");
+        };
+
+        close $sig;
+    }
+
+    # Run the svn command.  This is a special subroutine so that we can munge
+    # the generated output to see what files have been added, and adjust the
+    # build according.
+    #
+    # This function will throw an exception in the event of a build failure.
+    #
+    # First parameter is the Module object we're building.
+    # Second parameter is the filename to use for the log file.
+    # Third parameter is a reference to a list, which is the command ('svn')
+    #       and all of its arguments.
+    # Return value is the number of files update (may be undef if unable to tell)
+    sub run_svn
+    {
+        my ($self, $logfilename, $arg_ref) = @_;
+        assert_isa($self, 'SvnUpdate');
+        my $module = $self->module();
+        my $conflict = 0;
+
+        my $revision = $module->getOption('revision');
+        if ($revision ne '0')
+        {
+            my @tmp = @{$arg_ref};
+
+            # Insert after first two entries, deleting 0 entries from the
+            # list.
+            splice @tmp, 2, 0, '-r', $revision;
+            $arg_ref = \@tmp;
+        }
+
+        # Do svn update.
+        my $result = log_command($module, $logfilename, $arg_ref);
+
+        return 0 if pretending();
+
+        croak_runtime("Error updating $module!") unless $result == 0;
+
+        my $logdir = $module->getLogDir();
+        $logfilename = "$logdir/$logfilename.log";
+
+        # TODO: Use callback filter instead of opening log.
+
+        # We need to open the file and try to determine what the Subversion process
+        # did.
+        open SVN_LOG, "<$logfilename" or return undef;
+
+        my $count = 0;
+        while (<SVN_LOG>)
+        {
+            # The check for capitalized letters in the second column is because
+            # svn can use the first six columns for updates (the characters will
+            # all be uppercase), which makes it hard to tell apart from normal
+            # sentences (like "At Revision foo"
+
+            # Count all changes to the files.
+            $count++ if /^[UPDARGMC][ A-Z]/;
+
+            $conflict = 1 if /^C[ A-Z]/;
+        }
+
+        close SVN_LOG;
+
+        if ($conflict)
+        {
+            warning ("Source code conflict exists in r[$module], this module will not");
+            warning ("build until it is resolved.");
+
+            # If in async this only affects the update process, we need to IPC it
+            # to the build process.
+            $module->setOption('#update-error', IPC::MODULE_CONFLICT);
+            die make_exception('ConflictPresent', "Source conflicts exist in $module");
+        }
+
+        return $count;
+    }
+
+    # Subroutine to check for subversion conflicts in a module.  Basically just
+    # runs svn st and looks for "^C".
+    #
+    # First parameter is the module to check for conflicts on.
+    # Returns 0 if a conflict exists, non-zero otherwise.
+    sub module_has_conflict
+    {
+        my $module = assert_isa(shift, 'Module');
+        my $srcdir = $module->fullpath('source');
+
+        if ($module->getOption('no-svn'))
+        {
+            whisper ("\tSource code conflict check skipped.");
+            return 1;
+        }
+        else
+        {
+            info ("\tChecking for source conflicts... ");
+        }
+
+        my $pid = open my $svnProcess, "-|";
+        if (!$pid)
+        {
+            error ("\tUnable to open check source conflict status: b[r[$!]");
+            return 0; # false allows the build to proceed anyways.
+        };
+
+        if (0 == $pid)
+        {
+            # Avoid calling close subroutines in more than one routine.
+            @main::atexit_subs = ();
+
+            close STDERR; # No broken pipe warnings
+
+            disable_locale_message_translation();
+            exec {'svn'} (qw/svn --non-interactive st/, $srcdir) or
+                croak_runtime("Cannot execute 'svn' program: $!");
+            # Not reached
+        }
+
+        while (<$svnProcess>)
+        {
+            if (/^C/)
+            {
+                error (<<EOF);
+The $module module has source code conflicts present.  This can occur
+when you have made changes to the source code in the local copy
+at $srcdir
+that interfere with a change introduced in the source repository.
+EOF
+
+                error (<<EOF);
+To fix this, y[if you have made no source changes that you haven't committed],
+run y[svn revert -R $srcdir]
+to bring the source directory back to a pristine state and trying building the
+module again.
+
+NOTE: Again, if you have uncommitted source code changes, running this command
+will delete your changes in favor of the version in the source repository.
+EOF
+
+                kill "TERM", $pid; # Kill svn
+                waitpid ($pid, 0);
+                close $svnProcess;
+                return 0;
+            }
+        }
+
+        # conflicts cleared apparently.
+        waitpid ($pid, 0);
+        close $svnProcess;
+        return 1;
+    }
+
     # scm-specific update procedure.
     # May change the current directory as necessary.
     # Assumes called as part of a Module (i.e. $self->isa('Module') should be true.
@@ -2552,8 +3122,8 @@ HOME
         my @options = split(' ', $module->getOption('checkout-only'));
 
         if (-e "$fullpath/.svn") {
-            main::check_module_validity($module);
-            my $updateCount = main::update_module_path($module, @options);
+            $self->check_module_validity();
+            my $updateCount = $self->update_module_path(@options);
 
             my $log_filter = sub {
                 return unless defined $_;
@@ -2564,7 +3134,8 @@ HOME
 
             # Use log_command as the check so that an error file gets created.
             if (0 != log_command($module, 'conflict-check',
-                                 ['kdesrc-build', 'module_has_conflict', $module],
+                                 ['kdesrc-build', 'SvnUpdate::module_has_conflict',
+                                                  $module],
                                  { callback => $log_filter, no_translate => 1 })
                )
             {
@@ -2574,7 +3145,7 @@ HOME
             return $updateCount;
         }
         else {
-            return main::checkout_module_path($module, @options);
+            return $self->checkout_module_path(@options);
         }
     }
 
@@ -2982,14 +3553,14 @@ HOME
         my @dirs = @{$self->{l10n_dirs}};
 
         if (-e "$fullpath/.svn") {
-            main::check_module_validity($module);
-            my $count = main::update_module_path($module, @dirs);
+            $self->check_module_validity();
+            my $count = $self->update_module_path(@dirs);
 
             $self->{needsRefreshed} = 0 if $count == 0;
             return $count;
         }
         else {
-            return main::checkout_module_path($module, @dirs);
+            return $self->checkout_module_path(@dirs);
         }
     }
 
@@ -4559,184 +5130,6 @@ BEGIN {
     ksb::Util->import();
 }
 
-# Subroutine to return the branch prefix. i.e. the part before the branch name
-# and module name.
-#
-# The first parameter is the module name in question.
-# The second parameter should be 'branches' if we're dealing with a branch or
-#     'tags' if we're dealing with a tag.
-#
-# Ex: 'kdelibs'  => 'branches/KDE'
-#     'kdevelop' => 'branches/kdevelop'
-sub branch_prefix
-{
-    my $moduleName = shift;
-    my $type = shift;
-
-    # These modules seem to have their own subdir in /tags.
-    my @tag_components = qw/arts koffice amarok kst qt taglib/;
-
-    # The map call adds the kde prefix to the module names because I don't feel
-    # like typing them all in.
-    my @kde_module_list = ((map {'kde' . $_} qw/-base-artwork -wallpapers accessibility
-            addons admin artwork base bindings edu games graphics libs
-            multimedia network pim pimlibs plasma-addons sdk toys utils webdev/));
-
-    # If the user already has the module in the form KDE/foo, it's already
-    # done.
-    return "$type/KDE" if $moduleName =~ /^KDE\//;
-
-    # KDE proper modules seem to use this pattern.
-    return "$type/KDE" if list_has(\@kde_module_list, $moduleName);
-
-    # KDE extragear / playground modules use this pattern
-    return "$type" if has_base_module($moduleName);
-
-    # If we doing a tag just return 'tags' because the next part is the actual
-    # tag name, which is added by the caller, unless the module has its own
-    # subdirectory in /tags.
-    return "$type" if $type eq 'tags' and not list_has(\@tag_components, $moduleName);
-
-    # Everything else.
-    return "$type/$moduleName";
-}
-
-# Subroutine to return a module URL for a module using the 'branch' option.
-# First parameter is the module in question.
-# Second parameter is the type ('tags' or 'branches')
-sub handle_branch_tag_option
-{
-    my $module = assert_isa(shift, 'Module');
-    my $type = shift;
-    my $branch = branch_prefix($module->name(), $type);
-    my $svn_server = $module->getOption('svn-server');
-    my $branchname = $module->getOption($type eq 'branches' ? 'branch' : 'tag');
-
-    # Remove trailing slashes.
-    $svn_server =~ s/\/*$//;
-
-    # Remove KDE/ prefix for module name.
-    my $moduleName = moduleBaseName($module->name());
-
-    # KDE modules have a different module naming scheme than the rest it seems.
-    return "$svn_server/$branch/$branchname/$moduleName" if $branch =~ /\/KDE\/?$/;
-
-    # Non-trunk translations happen in a single branch. Assume all non-trunk
-    # global branches are intended for the stable translations.
-    if ($moduleName =~ /^l10n-kde4\/?/ && $branch ne 'trunk') {
-        return "$svn_server/branches/stable/$moduleName";
-    }
-
-    # Otherwise don't append the module name by default since it makes more
-    # sense to branch this way in many situations (i.e. kdesupport tags, phonon)
-    return "$svn_server/$branch/$branchname";
-}
-
-# Subroutine to return the appropriate SVN URL for a given module, based on
-# the user settings.  For example, 'kdelibs' -> https://svn.kde.org/home/kde/trunk/KDE/kdelibs
-#
-# This operates under a double hierarchy:
-# 1. If any module-specific option is present, it wins.
-# 2. If only global options are present, the order override-url, tag, branch, module-base-path,
-#    is preferred.
-sub svn_module_url
-{
-    my $module = assert_isa(shift, 'Module');
-    my $svn_server = $module->getOption('svn-server');
-    my $modulePath;
-
-    foreach my $levelLimit ('module', 'allow-inherit') {
-        $modulePath = $module->getOption('module-base-path', $levelLimit);
-
-        # Allow user to override normal processing of the module in a few ways,
-        # to make it easier to still be able to use kdesrc-build even when I
-        # can't be there to manually update every little special case.
-        if($module->getOption('override-url', $levelLimit))
-        {
-            return $module->getOption('override-url', $levelLimit);
-        }
-
-        if($module->getOption('tag', $levelLimit))
-        {
-            return handle_branch_tag_option($module, 'tags');
-        }
-
-        my $branch = $module->getOption('branch', $levelLimit);
-        if($branch and $branch ne 'trunk')
-        {
-            return handle_branch_tag_option($module, 'branches');
-        }
-
-        my $moduleName = moduleBaseName($module->name());
-
-        # The following modules are in /trunk, not /trunk/KDE.  There are others,
-        # but these are the important ones.
-        my @non_trunk_modules = qw(extragear kdesupport koffice icecream kde-common
-            playground KDE kdereview www l10n-kde4);
-
-        my $module_root = $moduleName;
-        $module_root =~ s/\/.*//; # Remove everything after the first slash
-
-        if (not $modulePath and $levelLimit eq 'allow-inherit')
-        {
-            $modulePath = "trunk/KDE/$moduleName";
-            $modulePath = "trunk/$moduleName" if list_has(\@non_trunk_modules, $module_root);
-            $modulePath =~ s/^\/*//; # Eliminate / at beginning of string.
-            $modulePath =~ s/\/*$//; # Likewise at the end.
-        }
-
-        last if $modulePath;
-    }
-
-    # Remove trailing slashes.
-    $svn_server =~ s/\/*$//;
-
-    # Note that the module name is no longer appended if module-base-path is used (i.e.
-    # $branch variable was set.  This is a change as of version 1.8.
-    return "$svn_server/$modulePath";
-}
-
-# Subroutine used to handle the checkout-only option.  It handles
-# updating subdirectories of an already-checked-out module.
-#
-# This function can throw an exception in the event of a update failure.
-#
-# First parameter is the module.
-# All remaining parameters are subdirectories to check out.
-#
-# Returns the number of files changed by the update, or undef if unable to
-# be determined.
-sub update_module_subdirectories
-{
-    my $module = assert_isa(shift, 'Module');
-    my $numChanged = 0;
-
-    # If we have elements in @path, download them now
-    for my $dir (@_)
-    {
-        info ("\tUpdating g[$dir]");
-
-        my $logname = $dir;
-        $logname =~ tr{/}{-};
-
-        my $count = run_svn($module, "svn-up-$logname", [ 'svn', 'up', $dir ]);
-        $numChanged = undef unless defined $count;
-        $numChanged += $count if defined $numChanged;
-    }
-
-    return $numChanged;
-}
-
-# Returns true if a module has a base component to their name (e.g. KDE/,
-# extragear/, or playground).  Note that modules that aren't in trunk/KDE
-# don't necessary meet this criteria (e.g. kdereview is a module itself).
-sub has_base_module
-{
-    my $moduleName = shift;
-
-    return $moduleName =~ /^(extragear|playground|KDE)(\/[^\/]+)?$/;
-}
-
 # Moves the directory given by the first parameter to be at the directory given
 # by the second parameter, but only if the first exists and the second doesn't.
 # The use case is to automatically migrate source and build directories from
@@ -4857,18 +5250,6 @@ sub download_file
     error ("Failed to download y[b[$url] to b[$filename]");
     error ("Result was: y[b[" . $response->status_line . "]");
     return 0;
-}
-
-# This subroutine is responsible for stripping the KDE/ part from the beginning
-# of modules that were entered by the user like "KDE/kdelibs" instead of the
-# normal "kdelibs".  That way you can search for kdelibs without having to
-# strip KDE/ everywhere.
-sub moduleBaseName
-{
-    my $moduleName = shift;
-    $moduleName =~ s/^KDE\///;
-
-    return $moduleName;
 }
 
 # Returns the user-selected branch for the given module, or 'master' if no
@@ -5468,185 +5849,6 @@ EOF
     }
 
     return 0;
-}
-
-# Checkout a module that has not been checked out before, along with any
-# subdirectories the user desires.
-#
-# This function will throw an exception in the event of a failure to update.
-#
-# The first parameter is the module to checkout (including extragear and
-# playground modules).
-# All remaining parameters are subdirectories of the module to checkout.
-#
-# Returns number of files affected, or undef.
-sub checkout_module_path
-{
-    my ($module, @path) = @_;
-    assert_isa($module, 'Module');
-    my %pathinfo = get_module_path_dir($module, 'source');
-    my @args;
-
-    if (not -e $pathinfo{'path'} and not super_mkdir($pathinfo{'path'}))
-    {
-        die clr "Unable to create path r[$pathinfo{path}]!";
-    }
-
-    p_chdir ($pathinfo{'path'});
-
-    my $svn_url = svn_module_url($module);
-    my $modulename = $pathinfo{'module'}; # i.e. kdelibs for KDE/kdelibs as $module
-
-    push @args, ('svn', 'co', '--non-interactive');
-    push @args, '-N' if scalar @path; # Tells svn to only update the base dir
-    push @args, $svn_url;
-    push @args, $modulename;
-
-    note ("Checking out g[$module]");
-
-    my $count = run_svn($module, 'svn-co', \@args);
-
-    p_chdir ($pathinfo{'module'}) if scalar @path;
-
-    my $count2 = update_module_subdirectories($module, @path);
-
-    return $count + $count2 if defined $count and defined $count2;
-    return undef;
-}
-
-# Update a module that has already been checked out, along with any
-# subdirectories the user desires.
-#
-# This function will throw an exception in the event of an update failure.
-#
-# The first parameter is the module to checkout (including extragear and
-# playground modules).
-# All remaining parameters are subdirectories of the module to checkout.
-sub update_module_path
-{
-    my ($module, @path) = @_;
-    assert_isa($module, 'Module');
-    my $fullpath = $module->fullpath('source');
-    my @args;
-
-    p_chdir ($fullpath);
-
-    push @args, ('svn', 'up', '--non-interactive');
-    push @args, '-N' if scalar @path;
-
-    note ("Updating g[$module]");
-
-    my $count = eval { run_svn($module, 'svn-up', \@args); };
-
-    if($@ && $@ !~ /conflict exists/) # Update failed, try svn cleanup.
-    {
-        info ("\tUpdate failed, trying a cleanup.");
-        my $result = safe_system('svn', 'cleanup');
-
-        die clr "Unable to update r[$module]" if $result;
-
-        info ("\tCleanup complete.");
-
-        # Now try again (allow exception to bubble up this time).
-        $count = run_svn($module, 'svn-up-2', \@args);
-    }
-
-    my $count2 = update_module_subdirectories($module, @path);
-
-    return $count + $count2 if defined $count and defined $count2;
-    return undef;
-}
-
-# The function checks whether subversion already has an ssl acceptance
-# notification for svn.kde.org, and if it's doesn't, installs one.
-# Problems: First off, installing any kind of "accept this ssl cert without
-# user's active consent" kind of sucks.  Second, this function is very
-# specific to the various signature algorithms used by svn, so it could break
-# in the future.  But there's not a better way to skip warnings about svn.kde.org
-# until the site has a valid ssl certificate.
-#
-# Accepts no arguments, has no return value.
-sub install_missing_ssl_signature
-{
-    my $sig_dir  = "$ENV{HOME}/.subversion/auth/svn.ssl.server";
-    my $sig_file = "ec08b331e2e6cabccb6c3e17a85e28ce";
-
-    debug ("Checking $sig_dir/$sig_file for KDE SSL signature.");
-
-    if (-e "$sig_dir/$sig_file")
-    {
-        debug ("KDE SSL Signature file present.");
-        return;
-    }
-
-    debug ("No KDE SSL Signature found.");
-    return if pretending;
-
-    # Now we're definitely installing, let the user know.
-    warning ("Installing b[y[KDE SSL signature] for Subversion.  This is to avoid");
-    warning ("Subversion warnings about KDE's self-signed SSL certificate for svn.kde.org");
-
-    # Make sure the directory is created.
-    if(not super_mkdir($sig_dir))
-    {
-        error ("Unable to create r[Subversion signature] directory!");
-        error ("$!");
-
-        return;
-    }
-
-    my $sig_data =
-'K 10
-ascii_cert
-V 1216
-MIIDijCCAvOgAwIBAgIJAO9Ca3rOVtgrMA0GCSqGSIb3DQEBBQUAMIGLMQswCQYDVQQGE\
-wJERTEQMA4GA1UECBMHQmF2YXJpYTESMBAGA1UEBxMJTnVlcm5iZXJnMREwDwYDVQQKEw\
-hLREUgZS5WLjEMMAoGA1UECxMDU1ZOMRQwEgYDVQQDEwtzdm4ua2RlLm9yZzEfMB0GCSq\
-GSIb3DQEJARYQc3lzYWRtaW5Aa2RlLm9yZzAeFw0wNTA1MTExMDA4MjFaFw0xNTA1MDkx\
-MDA4MjFaMIGLMQswCQYDVQQGEwJERTEQMA4GA1UECBMHQmF2YXJpYTESMBAGA1UEBxMJT\
-nVlcm5iZXJnMREwDwYDVQQKEwhLREUgZS5WLjEMMAoGA1UECxMDU1ZOMRQwEgYDVQQDEw\
-tzdm4ua2RlLm9yZzEfMB0GCSqGSIb3DQEJARYQc3lzYWRtaW5Aa2RlLm9yZzCBnzANBgk\
-qhkiG9w0BAQEFAAOBjQAwgYkCgYEA6COuBkrEcEJMhzHajKpN/StQwr/YeXIXKwtROWEt\
-7evsXBNqqRe6TuUc/iVYgBuZ4umVlJ/qJ7Q8cSa8Giuk2B3ShZx/WMSC80OfGDJ4LoWm3\
-uoW8h45ExAACBlhuuSSa7MkH6EXhru1SvLbAbTcSVqyTzoWxhkAb8ujy6CUxHsCAwEAAa\
-OB8zCB8DAdBgNVHQ4EFgQUx2W0046HfWi1fGL1V8NlDJvnPRkwgcAGA1UdIwSBuDCBtYA\
-Ux2W0046HfWi1fGL1V8NlDJvnPRmhgZGkgY4wgYsxCzAJBgNVBAYTAkRFMRAwDgYDVQQI\
-EwdCYXZhcmlhMRIwEAYDVQQHEwlOdWVybmJlcmcxETAPBgNVBAoTCEtERSBlLlYuMQwwC\
-gYDVQQLEwNTVk4xFDASBgNVBAMTC3N2bi5rZGUub3JnMR8wHQYJKoZIhvcNAQkBFhBzeX\
-NhZG1pbkBrZGUub3JnggkA70Jres5W2CswDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQU\
-FAAOBgQDjATlL2NByFDo5hhQAQdXjSYrMxil7zcpQjR+KYVizC7yK99ZsA0LYf/Qbu/pa\
-oMnmKLKWeNlF8Eq7/23TeAJmjw1pKi97ZO2FJ8jvy65iBEJLRYnpJ75dvg05iugm9GZ5w\
-Px6GHZmkSrteGDXgVbbSDy5exv1naqc+qEM7Ar4Xw==
-K 8
-failures
-V 1
-8
-K 15
-svn:realmstring
-V 23
-https://svn.kde.org:443
-END
-';
-
-    # Remove the \<newline> parts (the gibberish should be one big long
-    # line).
-    $sig_data =~ s/\\\n//gm;
-
-    if(not open SIG, ">$sig_dir/$sig_file")
-    {
-        error ("Unable to open KDE SSL signature file!");
-        error ("r[$!]");
-
-        return;
-    }
-
-    if(not print SIG $sig_data)
-    {
-        error ("Unable to write to KDE SSL signature file!");
-        error ("r[$!]");
-    }
-
-    close SIG;
 }
 
 # Subroutine to run make and process the build process output in order to
@@ -7325,7 +7527,7 @@ sub handle_updates
     # Make sure KDE's SSL signature is present since --non-interactive is
     # passed to svn.
     if (grep { $_->scmType() eq 'svn' } @update_list) {
-        install_missing_ssl_signature();
+        SvnUpdate::_install_missing_ssl_signature();
     }
 
     my $hadError = 0;
@@ -7521,78 +7723,6 @@ sub safe_lndir
     return 1;
 }
 
-# Run the svn command.  This is a special subroutine so that we can munge the
-# generated output to see what files have been added, and adjust the build
-# according.
-#
-# This function will throw an exception in the event of a build failure.
-#
-# First parameter is the Module object we're building.
-# Second parameter is the filename to use for the log file.
-# Third parameter is a reference to a list, which is the command ('svn') and all
-#       of its arguments.
-# Return value is the number of files update (may be undef if unable to tell)
-sub run_svn
-{
-    my ($module, $logfilename, $arg_ref) = @_;
-    assert_isa($module, 'Module');
-    my $conflict = 0;
-
-    my $revision = $module->getOption('revision');
-    if ($revision ne '0')
-    {
-        my @tmp = @{$arg_ref};
-
-        # Insert after first two entries, deleting 0 entries from the
-        # list.
-        splice @tmp, 2, 0, '-r', $revision;
-        $arg_ref = \@tmp;
-    }
-
-    # Do svn update.
-    my $result = log_command($module, $logfilename, $arg_ref);
-
-    return 0 if pretending;
-
-    croak_runtime("Error updating $module!") unless $result == 0;
-
-    my $logdir = $module->getLogDir();
-    $logfilename = "$logdir/$logfilename.log";
-
-    # We need to open the file and try to determine what the Subversion process
-    # did.
-    open SVN_LOG, "<$logfilename" or return undef;
-
-    my $count = 0;
-    while (<SVN_LOG>)
-    {
-        # The check for capitalized letters in the second column is because
-        # svn can use the first six columns for updates (the characters will
-        # all be uppercase), which makes it hard to tell apart from normal
-        # sentences (like "At Revision foo"
-
-        # Count all changes to the files.
-        $count++ if /^[UPDARGMC][ A-Z]/;
-
-        $conflict = 1 if /^C[ A-Z]/;
-    }
-
-    close SVN_LOG;
-
-    if ($conflict)
-    {
-        warning ("Source code conflict exists in r[$module], this module will not");
-        warning ("build until it is resolved.");
-
-        # If in async this only affects the update process, we need to IPC it
-        # to the build process.
-        $module->setOption('#update-error', IPC::MODULE_CONFLICT);
-        croak_runtime("Source conflicts exist in $module");
-    }
-
-    return $count;
-}
-
 # Subroutine to delete recursively, everything under the given directory,
 # unless we're in pretend mode.
 #
@@ -7620,81 +7750,6 @@ sub prune_under_directory
         return 0;
     }
 
-    return 1;
-}
-
-# Subroutine to check for subversion conflicts in a module.  Basically just
-# runs svn st and looks for "^C".
-#
-# First parameter is the module to check for conflicts on.
-# Returns 0 if a conflict exists, non-zero otherwise.
-sub module_has_conflict
-{
-    my $module = assert_isa(shift, 'Module');
-
-    my $srcdir = $module->fullpath('source');
-
-    if ($module->getOption('no-svn'))
-    {
-        whisper ("\tSource code conflict check skipped.");
-        return 1;
-    }
-    else
-    {
-        info ("\tChecking for source conflicts... ");
-    }
-
-    my $pid = open SVN, "-|";
-    if (not defined $pid)
-    {
-        error ("\tUnable to open check source conflict status: b[r[$!]");
-        return 0; # false allows the build to proceed anyways.
-    };
-
-    if (0 == $pid)
-    {
-        # Avoid calling close subroutines in more than one routine.
-        @main::atexit_subs = ();
-
-        close STDERR; # No broken pipe warnings
-
-        disable_locale_message_translation();
-        exec (qw/svn --non-interactive st/, $srcdir) or
-            croak_runtime("Cannot execute 'svn' program: $!");
-        # Not reached
-    }
-
-    while (<SVN>)
-    {
-        if (/^C/)
-        {
-            error (<<EOF);
-The $module module has source code conflicts present.  This can occur
-when you have made changes to the source code in the local copy
-at $srcdir
-that interfere with a change introduced in the source repository.
-EOF
-
-            error (<<EOF);
-To fix this, y[if you have made no source changes that you haven't committed],
-run y[svn revert -R $srcdir]
-to bring the source directory back to a pristine state and trying building the
-module again.
-
-NOTE: Again, if you have uncommitted source code changes, running this command
-will delete your changes in favor of the version in the source repository.
-EOF
-
-            kill "TERM", $pid; # Kill svn
-            waitpid ($pid, 0);
-            close SVN;
-            return 0;
-        }
-    }
-
-    # conflicts cleared apparently.
-    waitpid ($pid, 0);
-    close SVN;
     return 1;
 }
 
@@ -8033,55 +8088,6 @@ sub finish
     note ("Your logs are saved in y[$logdir]");
 
     exit $exitcode;
-}
-
-# module-base-path handling changed with kdesvn-build 1.8.  This function
-# returns true for a given module if it looks like it is checked out with
-# module-base-path from an older version of kdesvn-build.
-# Subroutine to determine whether or not the given module has the correct
-# URL.  If not, a warning is printed out.
-# First parameter: module to check.
-# Return: Nothing.
-sub check_module_validity
-{
-    my $module = assert_isa(shift, 'Module');
-    my $source_dir = $module->fullpath('source');
-    my $module_expected_url = svn_module_url($module);
-    my $module_actual_url = $module->scm()->svnInfo('URL');
-
-    $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
-    $module_actual_url   =~ s{/+$}{}; # Remove trailing slashes
-
-    if ($module_actual_url ne $module_expected_url)
-    {
-        # Check if the --src-only flag was passed.
-        if ($module->buildContext()->getOption('#allow-auto-repo-move'))
-        {
-            note ("g[$module] is checked out from a different location than expected.");
-            note ("Attempting to correct");
-
-            log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
-            return;
-        }
-
-        warning (<<EOF);
- y[!!]
- y[!!] g[$module] seems to be checked out from somewhere other than expected.
- y[!!]
-
-kdesrc-build expects:        y[$module_expected_url]
-The module is actually from: y[$module_actual_url]
-
-If the module location is incorrect, you can fix it by either deleting the
-g[b[source] directory, or by changing to the source directory and running
-  svn switch $module_expected_url
-
-If the module is fine, please update your configuration file.
-
-If you use kdesrc-build with --src-only it will try switching for you (might not work
-correctly).
-EOF
-    }
 }
 
 # Subroutine to handle the installation process.  Simply calls
