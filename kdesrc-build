@@ -653,8 +653,10 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     # NOTE: This function has a special feature.  If the command passed into the
     #   argument reference is 'kdesrc-build', then log_command will, when it
     #   forks, execute the subroutine named by the second parameter rather than
-    #   executing a child process.  The remaining arguments in the list are
-    #   passed to the subroutine that is called.
+    #   executing a child process.  The subroutine should include the full package
+    #   name as well (otherwise the package containing log_command's implementation
+    #   is used).  The remaining arguments in the list are passed to the
+    #   subroutine that is called.
     sub log_command
     {
         my ($module, $filename, $argRef, $optionsRef) = @_;
@@ -3391,7 +3393,7 @@ EOF
 
             # This variant of log_command runs the sub prune_under_directory($builddir)
             # in a forked child, so that we can log its output.
-            if (log_command($module, 'clean-builddir', [ 'kdesrc-build', 'prune_under_directory', $builddir ]))
+            if (log_command($module, 'clean-builddir', [ 'kdesrc-build', 'main::prune_under_directory', $builddir ]))
             {
                 error (" r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.");
                 return 0; # False for this function.
@@ -3646,7 +3648,7 @@ EOF
         # List reference, not a real list.  The initial kdesrc-build does *NOT*
         # fork another kdesrc-build using exec, see sub log_command() for more
         # info.
-        my $args = [ 'kdesrc-build', 'safe_lndir', $srcdir, $builddir ];
+        my $args = [ 'kdesrc-build', 'main::safe_lndir', $srcdir, $builddir ];
 
         info ("\tSetting up alternate build directory for l10n");
         return (0 == log_command ($module, 'create-builddir', $args));

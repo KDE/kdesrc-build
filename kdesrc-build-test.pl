@@ -460,11 +460,12 @@ log_command($ctx, 'test-no_translate-messages', ['/usr/bin/env'], { callback => 
 ok ($flagged, 'Verify LC_MESSAGES set if no_translate used');
 ok (!$lc_all_found, 'Verify LC_ALL stripped if no_translate used');
 
-
 # Test isSubdirBuildable
 my $tokenModule = Module->new($ctx, 'test-module');
 my $buildSystem = GenericBuildSystem->new($tokenModule);
 ok ($buildSystem->isSubdirBuildable('meh'), 'generic-build isSubdirBuildable');
+ok ($buildSystem->createBuildSystem(), 'Ensure createBuildSystem can be called');
+ok ($buildSystem->cleanBuildSystem(),  'Ensure cleanBuildSystem can be called');
 
 $buildSystem = l10nSystem->new($ctx);
 ok (!$buildSystem->isSubdirBuildable('scripts'), 'l10n-build isSubdirBuildable-scripts');
