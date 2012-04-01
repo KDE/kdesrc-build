@@ -133,20 +133,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my @exports = qw(debug pretending debugging whisper
                          note info warning error pretend clr);
 
-        # This loop is only slightly "magical". Basically to import functions
-        # into a different package in Perl, we can use something like:
-        # *PACKAGE::FUNCTION = \&SOURCE_PACKAGE::FUNCTION;
-        # where the *PACKAGE modifies the symbol table for that package.
-        #
-        # The extra part, which requires using eval, is to predeclare the
-        # subroutine with a prototype first.
-        # "sub foo($old_prototype);"
-
-        for my $fn (@exports) {
-            my $prototype = prototype($fn);
-            eval "sub ${caller}::${fn}(${prototype});\n" .
-                 "*${caller}::${fn} = \\&${pkg}::${fn};";
-        }
+        ksb::Util::exportFunctionsToPackage($pkg, $caller, @exports);
     }
 
     # I'm lazy and would rather write in shorthand for the colors.  This sub
@@ -299,6 +286,40 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
     ksb::Debug->import();
 
+    # This function exports some functions from a source package (who should
+    # actually call this function) to a destination package (who should have
+    # made the request by calling $sourcePackage->import()). Any subroutine
+    # prototypes defined when this function is called are copied over as well.
+    #
+    # The first parameter is the name of the source package.
+    # The second parameter is the name of the destination package.
+    # The remaining parameters are the names of the functions to export.
+    sub exportFunctionsToPackage
+    {
+        my ($sourcePackage, $destinationPackage, @exports) = @_;
+
+        # This loop is only slightly "magical". Basically to import functions
+        # into a different package in Perl, we can use something like:
+        # *PACKAGE::FUNCTION = \&SOURCE_PACKAGE::FUNCTION;
+        # where the *PACKAGE modifies the symbol table for that package.
+        #
+        # The extra part, which requires using eval, is to predeclare the
+        # subroutine with a prototype first (if that subroutine has a
+        # prototype).
+        # "sub foo($old_prototype);"
+
+        for my $fn (@exports) {
+            my $prototype = prototype("${sourcePackage}::$fn");
+            if ($prototype) {
+                eval "sub ${destinationPackage}::${fn}(${prototype});\n" .
+                     "*${destinationPackage}::${fn} = \\&${sourcePackage}::${fn};";
+            }
+            else {
+                eval "*${destinationPackage}::${fn} = \\&${sourcePackage}::${fn};";
+            }
+        }
+    }
+
     sub import
     {
         my $pkg = shift;
@@ -311,25 +332,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
                          filter_program_output prettify_seconds
         );
 
-        # This loop is only slightly "magical". Basically to import functions
-        # into a different package in Perl, we can use something like:
-        # *PACKAGE::FUNCTION = \&SOURCE_PACKAGE::FUNCTION;
-        # where the *PACKAGE modifies the symbol table for that package.
-        #
-        # The extra part, which requires using eval, is to predeclare the
-        # subroutine with a prototype first.
-        # "sub foo($old_prototype);"
-
-        for my $fn (@exports) {
-            my $prototype = prototype($fn);
-            if ($prototype) {
-                eval "sub ${caller}::${fn}(${prototype});\n" .
-                     "*${caller}::${fn} = \\&${pkg}::${fn};";
-            }
-            else {
-                eval "*${caller}::${fn} = \\&${pkg}::${fn};";
-            }
-        }
+        exportFunctionsToPackage($pkg, $caller, @exports);
     }
 
     # Function to work around a Perl language limitation.
