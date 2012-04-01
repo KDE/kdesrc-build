@@ -131,14 +131,14 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my $pkg = shift;
         my $caller = caller;
         my @exports = qw(debug pretending debugging whisper
-                         note info warning error pretend clr);
+                         note info warning error pretend ksb_clr);
 
         ksb::Util::exportFunctionsToPackage($pkg, $caller, @exports);
     }
 
     # I'm lazy and would rather write in shorthand for the colors.  This sub
     # allows me to do so.
-    sub clr($)
+    sub ksb_clr
     {
         my $str = shift;
 
@@ -211,22 +211,22 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     # You can also use the pretend output subroutine, which is emitted if, and only
     # if pretend mode is enabled.
     #
-    # clr is automatically run on the input for all of those functions.
+    # ksb_clr is automatically run on the input for all of those functions.
     # Also, the terminal color is automatically reset to normal as well so you don't
     # need to manually add the ] to reset.
 
-    # Subroutine used to actually display the data, calls clr on each entry first.
+    # Subroutine used to actually display the data, calls ksb_clr on each entry first.
     sub print_clr(@)
     {
-        print clr($_) foreach (@_);
-        print clr("]\n");
+        print ksb_clr($_) foreach (@_);
+        print ksb_clr("]\n");
 
         if (defined $screenLog) {
             my @savedColors = ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD);
             # Remove color but still extract codes
             ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
 
-            print ($screenLog clr($_)) foreach (@_);
+            print ($screenLog ksb_clr($_)) foreach (@_);
             print ($screenLog "\n");
 
             ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = @savedColors;
@@ -260,13 +260,13 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
     sub error(@)
     {
-        print STDERR (clr $_) foreach (@_);
-        print STDERR (clr "]\n");
+        print STDERR (ksb_clr $_) foreach (@_);
+        print STDERR (ksb_clr "]\n");
     }
 
     sub pretend(@)
     {
-        print_clr(@_) if pretending;
+        print_clr(@_) if pretending();
     }
 
     1;
@@ -1798,15 +1798,15 @@ EOF
                 {
                     # Something *is* running, likely kdesrc-build.  Don't use error,
                     # it'll scan for $!
-                    print clr(" r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n");
-                    print clr("  (b[Q])uit, (b[P])roceed anyways?: ");
+                    print ksb_clr(" r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n");
+                    print ksb_clr("  (b[Q])uit, (b[P])roceed anyways?: ");
 
                     my $choice = <STDIN>;
                     chomp $choice;
 
                     if (lc $choice ne 'p')
                     {
-                        say clr(" y[*] kdesrc-build run canceled.");
+                        say ksb_clr(" y[*] kdesrc-build run canceled.");
                         return 0;
                     }
 
@@ -4539,7 +4539,7 @@ EOF
             my $message;
             if (not defined $count)
             {
-                $message = clr ("b[y[Unknown changes].");
+                $message = ksb_clr ("b[y[Unknown changes].");
                 $ipc->notifyUpdateSuccess($moduleName, $message);
             }
             elsif ($count)
@@ -5113,15 +5113,9 @@ EOF
 
 # }}}
 
-# Global import for debugging routines. This must be a BEGIN block only because
-# for a long time I abused the Perl subroutine prototype feature to allow not
-# putting parentheses around subs like pretending or info, which would not even
-# parse correctly if the customized import routine were not allowed to run
-# first and insert prototypes in addition to the method names.
-BEGIN {
-    ksb::Debug->import();
-    ksb::Util->import();
-}
+# These packages are not in separate files so we must manually call import().
+ksb::Debug->import();
+ksb::Util->import();
 
 # Moves the directory given by the first parameter to be at the directory given
 # by the second parameter, but only if the first exists and the second doesn't.
@@ -5138,7 +5132,7 @@ sub moveOldDirectories
     if (!$pretendedMoves->{$oldDir}->{$newDir} && -e $oldDir && ! -e $newDir) {
         info ("\tMoving old kdesrc-build directory at\n\t\tb[$oldDir] to\n\t\tb[$newDir]");
 
-        $pretendedMoves->{$oldDir}->{$newDir} = 1 if pretending;
+        $pretendedMoves->{$oldDir}->{$newDir} = 1 if pretending();
         safe_system('mv', $oldDir, $newDir) == 0 or
             croak_runtime("Unable to move directory $oldDir to $newDir");
     }
@@ -5318,7 +5312,7 @@ sub installGitSnapshot
     return 0 if $module->getOption('disable-snapshots');
     return 0 unless $tarball;
 
-    if (pretending) {
+    if (pretending()) {
         pretend ("\tWould have downloaded snapshot for g[$module], from");
         pretend ("\tb[g[$tarball]");
         return 1;
@@ -5837,7 +5831,7 @@ EOF
 
         git_clone_module($module, "$git_repo") or die "Can't checkout $module: $!";
 
-        return 1 if pretending;
+        return 1 if pretending();
         return count_command_output('git', '--git-dir', "$srcdir/.git", 'ls-files');
     }
 
@@ -5959,7 +5953,7 @@ sub safe_rmtree
         }
     };
 
-    if (pretending)
+    if (pretending())
     {
         pretend ("Would have removed all files/folders in $user_path");
         return 1;
@@ -6035,7 +6029,7 @@ sub safe_make (@)
     }
 
     # Make it prettier if pretending (Remove leading directories).
-    $make =~ s{^/.*/}{} if pretending;
+    $make =~ s{^/.*/}{} if pretending();
 
     # Simplify code by forcing lists to exist.
     $optsRef->{'prefix-options'} //= [ ];
@@ -6355,7 +6349,7 @@ sub ensure_projects_xml_present
     # Must use ->phases() directly to tell if we will be updating since
     # modules are not all processed until after this function is called...
     my $updating = grep { /^update$/ } (@{$ctx->phases()});
-    if (!pretending && $updating) {
+    if (!pretending() && $updating) {
         info (" * Downloading projects.kde.org project database...");
         $result = download_file($url, $file);
     }
@@ -6780,8 +6774,8 @@ sub output_failed_module_list
             $logfile = "No log file" unless $logfile;
             $logfile =~ s|$homedir|~|;
 
-            warning ("r[$module]") if pretending;
-            warning ("r[$module] - g[$logfile]") if not pretending;
+            warning ("r[$module]") if pretending();
+            warning ("r[$module] - g[$logfile]") if not pretending();
         }
     }
 }
@@ -7334,7 +7328,7 @@ sub check_for_ssh_agent
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
 
     # Don't bother with all this if the user isn't even using SSH.
-    return 1 if pretending;
+    return 1 if pretending();
 
     my @svnServers = grep {
         $_->scmType() eq 'svn'
@@ -7386,7 +7380,7 @@ sub check_for_ssh_agent
     if ($noKeys)
     {
         # Use print so user can't inadvertently keep us quiet about this.
-        print clr (<<EOF);
+        print ksb_clr (<<EOF);
 b[y[*] SSH Agent does not appear to be managing any keys.  This will lead to you
   being prompted for every module update for your SSH passphrase.  So, we're
   running g[ssh-add] for you.  Please type your passphrase at the prompt when
@@ -7403,7 +7397,7 @@ EOF
 
             print "\nUnable to add SSH identity, aborting.\n";
             print "If you don't want kdesrc-build to check in the future,\n";
-            print clr ("Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n");
+            print ksb_clr ("Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n");
 
             return 0;
         }
@@ -7657,7 +7651,7 @@ sub safe_lndir
     if (not -e $to)
     {
         print "$to\n";
-        if (not pretending and not super_mkdir($to))
+        if (not pretending() and not super_mkdir($to))
         {
             error ("Couldn't create directory r[$to]: b[r[$!]");
             return 0;
@@ -7678,7 +7672,7 @@ sub safe_lndir
         {
             print "$dir\n";
 
-            if (not pretending)
+            if (not pretending())
             {
                 super_mkdir ($dir) or croak_runtime("Couldn't create directory $dir: $!");
             }
@@ -7691,7 +7685,7 @@ sub safe_lndir
         {
             print "$dir/$_\n";
 
-            if (not pretending)
+            if (not pretending())
             {
                 symlink $File::Find::fullname, "$dir/$_" or
                     croak_runtime("Couldn't create file $dir/$_: $!");
@@ -7904,7 +7898,7 @@ sub handle_build
 
     my $outfile = undef;
 
-    if (not pretending)
+    if (not pretending())
     {
         $outfile = $ctx->getLogDir() . '/build-status';
         open STATUS_FILE, ">$outfile" or do {
@@ -8037,7 +8031,7 @@ EOF
     info ("<<<  Build Done  >>>");
     info ("\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
 
-    if (not pretending)
+    if (not pretending())
     {
         # Print out results, and output to a file
         my $kdesrc = $ctx->getSourceDir();
@@ -8068,7 +8062,7 @@ sub finish
     my $exitcode = shift // 0;
 
     @main::atexit_subs = ();
-    if (pretending || $main::basePid != $$) {
+    if (pretending() || $main::basePid != $$) {
         # Abort early if pretending or if we're not the same process
         # that was started by the user (e.g. async mode, forked pipe-opens
         exit $exitcode;
@@ -8239,7 +8233,7 @@ sub execute_command_line_program
 
     debug ("Executing b[r[$program] ", join(' ', @args));
 
-    exit 0 if pretending;
+    exit 0 if pretending();
 
     exec $program, @args or do {
         # If we get to here, that sucks, but don't continue.
@@ -8663,7 +8657,7 @@ eval
 
     # execution phase {{{
     my $time = localtime;
-    info ("Script started processing at g[$time]") unless pretending;
+    info ("Script started processing at g[$time]") unless pretending();
 
     $ctx->loadPersistentOptions();
     my $metadataModule;
@@ -8717,8 +8711,8 @@ eval
     my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
     my @build_list = map { $_->name() } ($ctx->modulesInPhase('build'));
 
-    debug "Update list is ", join (', ', @update_list);
-    debug "Build list is ", join (', ', @build_list);
+    debug ("Update list is ", join (', ', @update_list));
+    debug ("Build list is ", join (', ', @build_list));
 
     # Do some necessary adjusting. Right now this is used for supporting
     # the command-line option shortcut to where you can enter e.g.
@@ -8780,7 +8774,7 @@ eval
     my $color = '';
     $color = 'r[' if $result;
 
-    info ("${color}Script finished processing at g[$time]") unless pretending;
+    info ("${color}Script finished processing at g[$time]") unless pretending();
 
     @atexit_subs = (); # Clear exit handlers
     finish($ctx, $result);
