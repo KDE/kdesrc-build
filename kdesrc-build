@@ -1339,25 +1339,34 @@ EOF
                 'name' => $nameStack[-1],
                 'active' => 'false',
                 'tarball' => '',
+                'branch:stable' => '',
             }; # Repo/Active/tarball to be added by char handler.
         }
+
+        # Currently we only pull data while under a <repo> tag, so bail early if
+        # we're not doing this to simplify later logic.
+        return unless $inRepo;
 
         # Character data is integrated by the char handler. To avoid having it
         # dump all willy-nilly into our dict, we leave a flag for what the
         # resultant key should be.
-        if ($element eq 'active' && $inRepo) {
+        if ($element eq 'active') {
             $curRepository->{'needs'} = 'active';
 
             # Unset our default value since one is present in the XML
             $curRepository->{'active'} = '';
         }
-
-        if ($element eq 'url' && $inRepo && $attrs{'protocol'} eq 'git') {
-            $curRepository->{'needs'} = 'repo';
+        # For git repos we want to retain the repository data and any snapshot
+        # tarballs available.
+        elsif ($element eq 'url' && $attrs{'protocol'} eq 'git') {
+            $curRepository->{'needs'} =
+                #                    this proto | needs this attr set
+                $attrs{'protocol'} eq 'git'     ? 'repo'    :
+                $attrs{'protocol'} eq 'tarball' ? 'tarball' : undef;
         }
-
-        if ($element eq 'url' && $inRepo && $attrs{'protocol'} eq 'tarball') {
-            $curRepository->{'needs'} = 'tarball';
+        # i18n data gives us the defined stable and trunk branches.
+        elsif ($element eq 'branch' && $attrs{'i18n'} && $attrs{'i18n'} eq 'stable') {
+            $curRepository->{'needs'} = 'branch:stable';
         }
     }
 
@@ -1537,6 +1546,8 @@ EOF
         "tag"                  => "",
         "use-clean-install"    => 0,
         "use-idle-io-priority" => 0,
+        # Controls whether to build "stable" branches instead of "master"
+        "use-stable-kde"       => 0,
     );
     # }}} 1
 
@@ -5248,7 +5259,14 @@ sub get_git_branch
     my $module = assert_isa(shift, 'Module');
     my $branch = $module->getOption('branch');
 
-    $branch = 'master' unless $branch;
+    if (!$branch && $module->getOption('use-stable-kde')) {
+        my $stable = $module->getOption('#branch:stable');
+        if ($stable && $stable ne 'none') {
+            $branch = $stable;
+        }
+    }
+
+    $branch ||= 'master'; # If no branch, use 'master'
     return $branch;
 }
 
@@ -5688,7 +5706,7 @@ sub git_update_module
 
     p_chdir($srcdir);
 
-    note ("Updating g[$module]");
+    note ("Updating g[$module] (to branch b[$branch])");
     my $start_commit = git_commit_id($module);
 
     # Search for an existing remote name first. If none, add our alias.
@@ -6553,6 +6571,7 @@ sub expandXMLModules
             $_->setModuleSet($moduleSet->moduleSet());
             $_->setOption('repository', $repo);
             $_->setOption('#xml-full-path', $result->{'fullName'});
+            $_->setOption('#branch:stable', $result->{'branch:stable'});
 
             my $tarball = $result->{'tarball'};
             $_->setOption('#snapshot-tarball', $tarball) if $tarball;

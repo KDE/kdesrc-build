@@ -384,6 +384,19 @@ The default settings should actually already be appropriate to perform a
 &kde; build. Some settings that you may wish to alter include:
 
 <itemizedlist>
+<listitem><para><link linkend="conf-use-stable-kde">use-stable-kde</link> to
+change the default version of &kde; modules to build. By default &kdesrc-build;
+will build the trunk version of &kde;. If you want to build
+the latest stable release of &kde; instead of using your distribution packages
+you would set this option to <replaceable>true</replaceable>.
+</para>
+
+<tip><para>Note that this option relies on information available from the
+&kde; project database, so this feature only works for these modules.
+See also <xref linkend="kde-projects-module-sets"/>.
+</para></tip>
+</listitem>
+
 <listitem><para><link linkend="conf-kdedir">kdedir</link>, which changes the
 destination directory that &kde; is installed to. This defaults to
 <filename class="directory">~/kde</filename>, which is a single-user installation.</para></listitem>
@@ -2154,13 +2167,26 @@ system.
 </entry>
 </row>
 
-<row>
+<row id="conf-use-stable-kde">
 <entry>use-stable-kde</entry>
-<entry></entry>
-<entry><para>
-This option was removed in version 1.10, which limits support to KDE 4,
-removing the effect of this option.
+<entry>Can't be overridden</entry>
+<entry><para>By default, &kdesrc-build; will build the main line of &kde;
+development (trunk or master branch). You can use the &branch; option globally
+or for a module in order to switch to a stable release. However, this is not
+convenient as a lot of branch options would have to be added to the
+configuration file and kept up to date when the next stable version is
+released.</para>
+
+<para>So, if you set this option to <replaceable>true</replaceable>,
+&kdesrc-build; will (for a given module) automatically download the version of
+that module which is marked as stable in kde_projects.xml.</para>
+
+<para>This option can only be set globally, but you can still use the &branch;
+or &tag; options for a module to override this option.
+This way you can easily choose to download current stable &kde; version by default
+while still choosing the current development version of specific modules.
 </para>
+
 </entry>
 </row>
 
