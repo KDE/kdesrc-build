@@ -1526,7 +1526,6 @@ EOF
         "module-base-path"     => "",  # Used for tags and branches
         "niceness"             => "10",
         "no-svn"               => "",
-        "ordering-tier"        => "", # Note, this is an int when set
         "override-url"         => "",
         "prefix"               => "", # Override installation prefix.
         "pretend"              => "",
@@ -5003,81 +5002,6 @@ EOF
         return;
     }
 
-    # Group the Modules passed in as argument in sorted tiers. Ordering amongst
-    # modules that end up in the same tier is preserved.
-    #
-    # Right now this is simply a simple method to arrange dependencies without
-    # requiring a full dependency resolution graph.
-    #
-    # The following tiers are used:
-    # Qt (for either qt from projects.kde.org or any 'QtBuildSystem')
-    # kdesupport/* (from projects.kde.org)
-    # kdelibs      (from projects.kde.org)
-    # Remainder of projects.kde.org modules
-    # Remainder of modules
-    #
-    # However, the user can override which tier a module is grouped into using
-    # the ordering-tier option (to allow for e.g. command line ordering,
-    # ordering of non-project.kde.org modules in the rc file, etc.)
-    #
-    # Return value is the list of Modules passed in, sorted by tier.
-    sub _groupByTiers
-    {
-        # Required to avoid reordering modules within a given tier.
-        use sort 'stable';
-        use POSIX qw/strtol/;
-
-        # To avoid having a million rules in
-        # kde-build-metadata/dependency-data, we split modules into several
-        # tiers, each of which inherently go after modules in the tier before.
-        # Right now we set: qt, kdesupport/* (in projects.kde.org), kdelibs,
-        # the remainder of projects.kde.org, and then modules not in
-        # projects.kde.org at all
-        my $determineTier = sub {
-            my $module = shift;
-            my $xmlPath = $module->getOption('#xml-full-path');
-            my $userDeterminedTier = $module->getOption('ordering-tier');
-
-            # Let user override (for modules that kdelibs really does depend on
-            # but is not in projects.kde.org)
-            if ($userDeterminedTier) {
-                $! = 0;
-                my ($intTier, $partUnparsed) = POSIX::strtol($userDeterminedTier, 10);
-                if ($partUnparsed || $! != 0 || $intTier < 0) {
-                    croak_runtime("ordering-tier option for $module must be an" .
-                                  "integer >= 0, instead it is $userDeterminedTier!");
-                }
-
-                return $intTier;
-            }
-
-            # Qt precedes all
-            return 0  if ($xmlPath eq 'qt' || $module->buildSystemType() eq 'Qt');
-
-            # modules with no project path data go after all
-            return 10 if !$xmlPath;
-
-            # kdesupport precedes kdelibs
-            return 1  if $xmlPath =~ m(^kdesupport/);
-
-            # kdelibs precedes most of the rest
-            return 2  if $xmlPath eq 'kde/kdelibs';
-
-            # These are "normal" XML modules, put between kdelibs and no-data.
-            return 5;
-        };
-
-        # Google "Schwartzian transform". This is just stable-sorting our
-        # modules based on the tier established above.
-        my @sorted =
-            map  { $_->[0] }                     # 3. Extract original module
-            sort { $a->[1] <=> $b->[1] }         # 2. Sort by that tier
-            map  { [ $_, &$determineTier($_) ] } # 1. Determine tier
-                @_;                              # Input to function
-
-        return @sorted;
-    }
-
     # This method takes a list of Modules (real Module objects, not just module
     # names).
     #
@@ -5097,7 +5021,7 @@ EOF
     sub resolveDependencies
     {
         my $self = assert_isa(shift, 'DependencyResolver');
-        my @modules = _groupByTiers(@_);
+        my @modules = @_;
 
         my $optionsRef = {
             visitedItems => { },
