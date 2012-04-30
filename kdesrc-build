@@ -70,7 +70,7 @@ use constant {
     KDE_PROJECT_ID   => 'kde-projects',          # git-repository-base for kde_projects.xml
 };
 
-my $versionNum = '1.15-pre2';
+my $versionNum = '1.15-rc1';
 
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
@@ -5358,7 +5358,7 @@ sub git_clone_module
             info ("\tSwitching to branch g[$branch]");
             p_chdir($srcdir);
             $result = log_command($module, 'git-checkout',
-                ['git', 'checkout', '-b', "origin-$branch", "origin/$branch"]);
+                ['git', 'checkout', '-b', $branch, "origin/$branch"]);
         }
     }
 
@@ -5435,8 +5435,8 @@ sub git_get_best_remote_names
 # Generates a potential new branch name for the case where we have to setup
 # a new remote-tracking branch for a repository/branch. There are several
 # criteria that go into this:
-# * The name will be in the style $repo-$branch to allow the user to make
-#   $branch-only names.
+# * The local branch name will be equal to the remote branch name to match usual
+#   Git convention.
 # * The name chosen must not already exist. This methods tests for that.
 # * The repo name chosen should be (ideally) a remote name that the user has
 #   added. If not, we'll try to autogenerate a repo name (but not add a
@@ -5462,15 +5462,21 @@ sub git_make_branchname
     my $branch = shift;
     my $chosenName;
 
-    # Pick the first "best" remote name, if available.
-    $chosenName = $remoteNamesRef->[0] if @{$remoteNamesRef};
-    return "$chosenName-$branch" if $chosenName;
+    # Use "$branch" directly if not already used, otherwise try
+    # to prefix with the best remote name or origin.
+    my $bestRemoteName = $remoteNamesRef ? $remoteNamesRef->[0] : 'origin';
+    for my $possibleBranch ($branch, "$bestRemoteName-$branch", "origin-$branch") {
+        my @known_branches = eval {
+            # undef == no filter
+            filter_program_output(undef, 'git', 'branch', '--list', $possibleBranch)
+        };
 
-    # No name chosen, assume origin.
+        # The desired branch name is OK as-is if no exceptions were thrown and
+        # the branch wasn't already known to git.
+        return $possibleBranch if !@known_branches && !$@;
+    }
 
-    info (" b[y[*] \tNo existing remote repository found for y[$module], assuming b[g[origin].");
-
-    return "origin-$branch";
+    croak_runtime("Unable to find good branch name for $module branch name $branch");
 }
 
 # This subroutine finds an existing remote-tracking branch name for the given
