@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Test suite for kdesrc-build. If you encounter tests that fail on your
 # correctly-configured system please let myself or the kde-buildsystem mailing
 # list know so I can fix and/or workaround. -mpyne
