@@ -254,7 +254,7 @@ to use the &Qt; copy, you need to do these things:</para>
 
 <itemizedlist>
 <listitem>
-  <para>Make sure to remove the qt-copy module from your <link
+  <para>Make sure to remove the qt module from your <link
   linkend="configure-data">configuration file</link>, as you will not need it,
   and having it would add extra time to your build.</para>
 </listitem>
@@ -403,11 +403,11 @@ destination directory that &kde; is installed to. This defaults to
 
 <listitem><para><link linkend="conf-qtdir">qtdir</link>, which controls the
 path to the installation of &Qt; to use. The default is to use a &Qt; compiled
-by &kdesrc-build;, using the special qt-copy module and the latest available
+by &kdesrc-build;, using the special qt module and the latest available
 source code.
-(<filename class="directory">~/kdesrc/build/qt-copy</filename>).</para>
+(<filename class="directory">~/kdesrc/build/qt</filename>).</para>
 
-<note><para>This also controls where to install qt-copy.</para></note>
+<note><para>This also controls where to install qt.</para></note>
 </listitem>
 
 <listitem><para><link linkend="conf-svn-server">svn-server</link>, which
@@ -562,7 +562,7 @@ global
     <option><link linkend="conf-git-repository-base">git-repository-base</link></option> <replaceable>kde-git</replaceable> <replaceable>kde:</replaceable>
 end global
 
-module <replaceable>qt-copy</replaceable>
+module <replaceable>qt</replaceable>
     # Options removed for brevity
 end module
 
@@ -829,10 +829,10 @@ samples given in this section for your particular shell.</para></important>
 Open or create the <filename>.bash_profile</filename> file in the home directory with your favorite editor,
 and add to the end of the file:
 
-If you are building the qt-copy module (you are by default), add instead:
+If you are building the qt module (you are by default), add instead:
 
 <programlisting>
-QTDIR=(path to qtdir)   # Such as ~/kdesrc/build/qt-copy by default.
+QTDIR=(path to qtdir)   # Such as ~/kdesrc/build/qt by default.
 KDEDIR=(path to kdedir) # Such as ~/kde by default.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
@@ -848,7 +848,7 @@ fi
 export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
 </programlisting>
 
-or, if you are not building qt-copy (and are using your system &Qt; instead), add
+or, if you are not building qt (and are using your system &Qt; instead), add
 this instead:
 
 <programlisting>
@@ -1028,8 +1028,8 @@ including optionally applying &kde;-recommended bugfix and optimization patches
 to the module.
 
 <note><para>For historical reasons, the &kdesrc-build; module used to build
-&Qt; should be called <literal>qt-copy</literal>. See also <xref
-linkend="using-qt-copy"/>.
+&Qt; should be called <literal>qt</literal>. See also <xref
+linkend="using-qt"/>.
 </para></note>
 
 </para></listitem>
@@ -1130,7 +1130,7 @@ a base &kde; single-user installation from the anonymous source repositories.
 <listitem><para>
 Tilde-expansion for your configuration options. For example, you can
 specify:
-<programlisting>qtdir ~/kdesrc/build/qt-copy</programlisting>
+<programlisting>qtdir ~/kdesrc/build/qt</programlisting>
 </para></listitem>
 
 <listitem><para>
@@ -1436,7 +1436,7 @@ for older modules of course.</para>
 <entry>apply-qt-patches</entry>
 <entry></entry>
 <entry>This option was removed in kdesrc-build 1.10. To get the same effect,
-see <xref linkend="using-qt-copy" /> and the <link
+see <xref linkend="using-qt" /> and the <link
 linkend="conf-repository">repository</link> option.</entry>
 </row>
 
@@ -1531,7 +1531,7 @@ time, especially if you run &kdesrc-build; daily, or more frequently.</para>
 
 <important><para>This feature is provided as an optimization only. Like many
 other optimizations, there are trade-offs for the correctness of your
-installation. For instance, changes to the qt-copy or kdelibs modules may cause
+installation. For instance, changes to the qt or kdelibs modules may cause
 a rebuild of other modules to be necessary, even if the source code doesn't
 change at all.</para></important>
 </entry>
@@ -1554,14 +1554,14 @@ operation of the &git; source control system.</para>
 
 <row id="conf-cmake-options">
 <entry>cmake-options</entry>
-<entry>Appends to global options (not applicable to qt-copy)</entry>
+<entry>Appends to global options (not applicable to qt)</entry>
 <entry><para>Use this option to specify what flags to pass to &cmake; when
 creating the build system for the module. When this is used as a global option,
 it is applied to all modules that this script builds. When used as a module
 option, it is added to the end of the global options. This allows you to
 specify common &cmake; options in the global section.</para>
 
-<para>This option does not apply to qt-copy (which does not use &cmake;). Use
+<para>This option does not apply to qt (which does not use &cmake;). Use
 <link linkend="conf-configure-flags">configure-flags</link> instead.</para>
 
 <para>Since these options are passed directly to the &cmake; command line, they
@@ -1592,7 +1592,7 @@ color codes to anything but a terminal (such as xterm, &konsole;, or the normal
 <entry><para>Use this option to specify what flags to pass to ./configure when
 creating the build system for the module. When this is used as a global-option,
 it is applied to all modules that this script builds. <emphasis>This option
-only works for qt-copy.</emphasis></para>
+only works for qt.</emphasis></para>
 
 <para>To change configuration settings for KDE 4 modules, see
 <link linkend="conf-cmake-options">cmake-options</link>.
@@ -1950,8 +1950,8 @@ deleted or not. The default value is <replaceable>true</replaceable>.</para>
 <entry>Set this option to set the environment variable <envar>QTDIR</envar> while building.
 You cannot override this setting in a module option. If you do not specify
 this option, it defaults to
-<filename class="directory"><symbol>${source-dir}</symbol>/build/qt-copy</filename>,
-which uses the qt-copy module included in the &kde; source repository.
+<filename class="directory"><symbol>${source-dir}</symbol>/build/qt</filename>,
+which uses the qt module included in the &kde; source repository.
 You may use a tilde (~) to represent your home directory.
 </entry>
 </row>
@@ -1983,7 +1983,7 @@ since &kdesrc-build; will be unable to perform incremental builds.</para>
 <entry>Module setting overrides global</entry>
 <entry><para>This option was introduced with version 1.10, and is used to
 specify the &git; repository to download the source code for the module.
-&Qt; (and therefore qt-copy) would need this option, as well as various
+&Qt; (and therefore qt) would need this option, as well as various
 &kde; modules that are in the process of conversion to use &git;.</para></entry>
 </row>
 
@@ -2694,11 +2694,11 @@ do with this tool.</para>
 <sect1 id="basic-features">
 <title>Basic &kdesrc-build; features</title>
 
-<sect2 id="using-qt-copy">
-<title>qt-copy support</title>
+<sect2 id="using-qt">
+<title>qt support</title>
 <para>&kdesrc-build; supports building the &Qt; toolkit used by &kde; software
 as a convenience to users. This support is handled by a special module named
-qt-copy.</para>
+qt.</para>
 
 <note><para>&Qt; is developed under a separate repository from &kde; software
 located at <ulink
@@ -2708,10 +2708,10 @@ url="http://qt.gitorious.org/qt">http://qt.gitorious.org/qt</ulink>.</para></not
 <link linkend="conf-qtdir">qtdir</link> setting is set to the directory you'd
 like to install &Qt; to, as described in <xref linkend="configure-data"/>.</para>
 
-<para>You should then ensure that the qt-copy module is added to
+<para>You should then ensure that the qt module is added to
 your <filename>.kdesrc-buildrc</filename>, before any other modules in the
 file. If you are using the sample configuration file, you can simply
-uncomment the existing qt-copy module entry.</para>
+uncomment the existing qt module entry.</para>
 
 <para>Now you should verify the <link
 linkend="conf-repository">repository</link> option and <link
@@ -2723,7 +2723,7 @@ on the &kde; source repositories (no other changes are applied, it is simply
 a clone of the official source). This is highly recommended due to occasional
 issues with cloning the full &Qt; module from its official repository.</para>
 
-<para>You can set the <option>repository</option> option for the qt-copy
+<para>You can set the <option>repository</option> option for the qt
 module to <userinput>kde:qt</userinput> to use this option.</para>
 </listitem>
 
@@ -3438,7 +3438,7 @@ if you are actually using them, at least until you are done using
 
 <para>Also, if you already have a &Qt; installed by your distribution (and
 the odds are good that you do), you probably do not need to install the
-qt-copy module. That will shave about 200 megabytes off of the on-disk source
+qt module. That will shave about 200 megabytes off of the on-disk source
 size.</para>
 
 <para>One thing to note is that due to the way &subversion; works: there are actually
