@@ -50,7 +50,7 @@ my %moreOptions = (
   'qt' => {
       'cxxflags' => '-pipe -march=i386',
       'configure-flags' => '-fast',
-      'repository' => 'git://gitorious.org/qt/qt.git',
+      'repository' => 'kde:qt',
   },
 
   'kdelibs' => {
