@@ -8,6 +8,8 @@ versions, as of 2012-04-29. Unfortunately I can't give a good timeframe:
   clear boundaries between components and better-defined requirements for
   integration of those components.
 
+- Make the changes necessary to build Qt 5.
+
 - Reduced duplication. Remove support for "built-in" modules entirely, instead
   fallback to a kdesrc-buildrc hosted on KDE's git infrastructure if the user
   doesn't define one. The kdesrc-buildrc-setup should be able to use this
@@ -22,6 +24,12 @@ versions, as of 2012-04-29. Unfortunately I can't give a good timeframe:
   automatically setup by kdesrc-build, either by generating the appropriate rc
   files or by using kdesrc-build as a trampoline (e.g. kdesrc-build --launch
   startkde)
+
+- Test suite. Should be self-explanatory but the test suite can be far better
+  than it is now. Probably should go Perl-style and split the large
+  kdesrc-build-test.pl into a t/*.pl containing unit tests and whatever
+  integration tests can be cooked up.  But then again, it's not like we're
+  launching astronauts into space, so don't go overboard.
 
 - Improved output. The current output, even in --verbose, is very noisy.
   Instead a "dashboard" approach would be better (for ncurses). It would be
@@ -45,3 +53,12 @@ versions, as of 2012-04-29. Unfortunately I can't give a good timeframe:
 
 - System reporting tool for reporting bugs. Possibly even using XML-RPC to post bug
   to bugs.kde.org automatically (or at least launch the wizard right).
+
+- A distro-specific "auto packager" script. I.e. some way to say "install the
+  base dependencies that are expected to be provided by the system" and have it
+  kept up-to-date by volunteers using each distro (not that I'd hold my breath,
+  but it has to be better than what we have now)
+
+- Continue porting code to standard Perl modules. Probably the biggest "problem
+  child" to go next would be the process_arguments subroutine which really
+  needs to be handled by a Getopt-alike.
