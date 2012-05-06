@@ -2,63 +2,64 @@ The Roadmap
 -----------
 
 This is a list of the changes that I would like to have made in the upcoming
-versions, as of 2012-04-29. Unfortunately I can't give a good timeframe:
+versions, as of 2012-05-06. Unfortunately I can't give a good timeframe:
 
-- Further modularization. This is to support enhancing the test suite by having
-  clear boundaries between components and better-defined requirements for
-  integration of those components.
+1. Further modularization. This is to support enhancing the test suite by
+having clear boundaries between components and better-defined requirements for
+integration of those components.
 
-- Make the changes necessary to build Qt 5.
+1a. Specifically, move git-related code to GitUpdate.
 
-- Reduced duplication. Remove support for "built-in" modules entirely, instead
-  fallback to a kdesrc-buildrc hosted on KDE's git infrastructure if the user
-  doesn't define one. The kdesrc-buildrc-setup should be able to use this
-  fallback kdesrc-buildrc as well when offering options.
+2. Make the changes necessary to build Qt 5.
 
-- Better documentation. Even if this means having a Markdown-to-DocBook
-  converter, it would be much nicer to have documentation that was at least
-  semi-consistent with the current state of building KDE software.
+3. Better documentation. Even if this means having a Markdown-to-DocBook
+converter, it would be much nicer to have documentation that was at least
+semi-consistent with the current state of building KDE software.
 
-- Generate `.xsession`/`.bashrc`/`.bash_profile` entries. i.e. make it possible
-  for the environment variables needed to _run_ the installed KDE software be
-  automatically setup by kdesrc-build, either by generating the appropriate rc
-  files or by using kdesrc-build as a trampoline (e.g. kdesrc-build --launch
-  startkde)
+4. Reduced duplication. Remove support for "built-in" modules entirely, instead
+fallback to a kdesrc-buildrc hosted on KDE's git infrastructure if the user
+doesn't define one. The kdesrc-buildrc-setup should be able to use this
+fallback kdesrc-buildrc as well when offering options.
 
-- Test suite. Should be self-explanatory but the test suite can be far better
-  than it is now. Probably should go Perl-style and split the large
-  kdesrc-build-test.pl into a t/*.pl containing unit tests and whatever
-  integration tests can be cooked up.  But then again, it's not like we're
-  launching astronauts into space, so don't go overboard.
+5. Generate `.xsession`/`.bashrc`/`.bash_profile` entries. i.e. make it
+possible for the environment variables needed to _run_ the installed KDE
+software be automatically setup by kdesrc-build, either by generating the
+appropriate rc files or by using kdesrc-build as a trampoline (e.g.
+kdesrc-build --launch startkde)
 
-- Improved output. The current output, even in --verbose, is very noisy.
-  Instead a "dashboard" approach would be better (for ncurses). It would be
-  nice to support GUI output if a GUI is available but it should remain
-  optional to support headless installs.
+6. Test suite. Should be self-explanatory but the test suite can be far better
+than it is now. Probably should go Perl-style and split the large
+kdesrc-build-test.pl into a t/*.pl containing unit tests and whatever
+integration tests can be cooked up.  But then again, it's not like we're
+launching astronauts into space, so don't go overboard.
 
-- "Network install". Right now kdesrc-build is a single-script install that
-  tries to rely only on Perl 5.10 core modules + LWP. Instead the single script
-  should be a shell that downloads Perl modules of kdesrc-build as needed from
-  anongit.  We would need to investigate how to ensure this is
-  cryptographically safe for users, or if this is already assured by the git
-  SCM.
+7. A distro-specific "auto packager" script. I.e. some way to say "install the
+base dependencies that are expected to be provided by the system" and have it
+kept up-to-date by volunteers using each distro (not that I'd hold my breath,
+but it has to be better than what we have now)
 
-- Use CPAN. Although I've been trying to keep kdesrc-build a kind of
-  hyper-documented Perl, this hasn't helped a great deal with code
-  contribution. It would be nice to be able to use some CPAN modules but I
-  don't want to require they be installed beforehand. Having a way to download
-  from CPAN automatically and save to the kdesrc-build working directories
-  would solve this but again would need to look into how to mark whether a
-  given CPAN module has been tested by the KDE developers...
+8. Improved output. The current output, even in --verbose, is very noisy.
+Instead a "dashboard" approach would be better (for ncurses). It would be nice
+to support GUI output if a GUI is available but it should remain optional to
+support headless installs.
 
-- System reporting tool for reporting bugs. Possibly even using XML-RPC to post bug
-  to bugs.kde.org automatically (or at least launch the wizard right).
+9. "Network install". Right now kdesrc-build is a single-script install that
+tries to rely only on Perl 5.10 core modules + LWP. Instead the single script
+should be a shell that downloads Perl modules of kdesrc-build as needed from
+anongit.  We would need to investigate how to ensure this is cryptographically
+safe for users, or if this is already assured by the git SCM.
 
-- A distro-specific "auto packager" script. I.e. some way to say "install the
-  base dependencies that are expected to be provided by the system" and have it
-  kept up-to-date by volunteers using each distro (not that I'd hold my breath,
-  but it has to be better than what we have now)
+10. Continue porting code to standard Perl modules. Probably the biggest
+"problem child" to go next would be the process_arguments subroutine which
+really needs to be handled by a Getopt-alike.
 
-- Continue porting code to standard Perl modules. Probably the biggest "problem
-  child" to go next would be the process_arguments subroutine which really
-  needs to be handled by a Getopt-alike.
+11. System reporting tool for reporting bugs. Possibly even using XML-RPC to
+post bug to bugs.kde.org automatically (or at least launch the wizard right).
+
+12. Use CPAN. Although I've been trying to keep kdesrc-build a kind of
+hyper-documented Perl, this hasn't helped a great deal with code contribution.
+It would be nice to be able to use some CPAN modules but I don't want to
+require they be installed beforehand. Having a way to download from CPAN
+automatically and save to the kdesrc-build working directories would solve this
+but again would need to look into how to mark whether a given CPAN module has
+been tested by the KDE developers...
