@@ -678,7 +678,9 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             # Parent
             if (!$callbackRef && debugging()) {
                 # If no other callback given, pass to debug() if debug-mode is on.
-                $callbackRef = sub { my $line = shift; chomp $line; debug($line); };
+                $callbackRef = sub {
+                    return unless $_; chomp; debug($_);
+                };
             }
 
             # Final fallback: Do nothing
