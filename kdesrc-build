@@ -3026,15 +3026,12 @@ EOF
         # Use "$branch" directly if not already used, otherwise try
         # to prefix with the best remote name or origin.
         my $bestRemoteName = $remoteNamesRef ? $remoteNamesRef->[0] : 'origin';
-        for my $possibleBranch ($branch, "$bestRemoteName-$branch", "origin-$branch") {
-            my @known_branches = eval {
-                # undef == no filter
-                filter_program_output(undef, 'git', 'branch', '--list', $possibleBranch)
-            };
 
-            # The desired branch name is OK as-is if no exceptions were thrown and
-            # the branch wasn't already known to git.
-            return $possibleBranch if !@known_branches && !$@;
+        for my $possibleBranch ($branch, "$bestRemoteName-$branch", "origin-$branch") {
+            my $result = safe_system('git', 'show-ref', '--quiet', '--verify',
+                '--', "/refs/heads/$possibleBranch");
+
+            return $possibleBranch if $result == 1;
         }
 
         croak_runtime("Unable to find good branch name for $module branch name $branch");
