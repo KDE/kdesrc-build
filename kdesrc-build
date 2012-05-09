@@ -3466,6 +3466,17 @@ EOF
         return qw{qmake};
     }
 
+    # Returns the absolute path to 'qmake'. Note the actual executable name may
+    # not necessarily be 'qmake' as some distributions rename it to allow for
+    # co-installability with Qt 3 (and 5...)
+    # If no suitable qmake can be found, undef is returned.
+    # This is a "static class method" i.e. use QMakeBuildSystem::absPathToQMake()
+    sub absPathToQMake
+    {
+        my @possibilities = qw/qmake qmake4 qmake-qt4 qmake-mac/;
+        return grep { absPathToExecutable($_) } @possibilities;
+    }
+
     # Return value style: boolean
     sub configureInternal
     {
@@ -3485,7 +3496,10 @@ EOF
         }
 
         p_chdir($builddir);
-        return log_command($module, 'qmake', [ 'qmake', $projectFiles[0] ]) == 0;
+
+        my $qmake = absPathToQMake();
+        return 0 unless $qmake;
+        return log_command($module, 'qmake', [ $qmake, $projectFiles[0] ]) == 0;
     }
 
     1;
@@ -7771,7 +7785,14 @@ sub checkForEssentialBuildPrograms
             cmake => 'CMake',
         );
 
-        if (!absPathToExecutable($prog)) {
+        my $programPath = absPathToExecutable($prog);
+
+        # qmake is not necessarily named 'qmake'
+        if (!$programPath && $prog eq 'qmake') {
+            $programPath = QMakeBuildSystem::absPathToQMake();
+        }
+
+        if (!$programPath) {
             # Don't complain about Qt if we're building it...
             if ($prog eq 'qmake' && (
                     grep { $_->buildSystemType() eq 'Qt' } (@buildModules)) ||
