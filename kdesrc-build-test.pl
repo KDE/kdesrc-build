@@ -120,6 +120,23 @@ SKIP: {
 # We know tilde-expansion works for source-dir, reset to our temp dir.
 $ctx->setOption('source-dir', $testSourceDirName);
 
+SKIP: {
+    skip 'No XML testing', 1 unless $fullRun;
+
+    my $fh = ensure_projects_xml_present($ctx);
+    ok($fh, 'Valid filehandle from ensure_projects_xml_present');
+
+    my $metadataModuleSet = Module->new($ctx, 'kde-build-metadata');
+    isa_ok($metadataModuleSet, 'Module');
+    $metadataModuleSet->setScmType('proj');
+
+    my @buildMetadataModule = expandXMLModules($ctx, $metadataModuleSet);
+    my $metadataModule = shift @buildMetadataModule;
+    is($metadataModule->scmType(), 'metadata', 'expandXMLModules adds kde-build-metadata');
+
+    $metadataModule->scm()->updateInternal();
+}
+
 # Ensure the utility methods work.
 my @listWithDuplicates = qw(2 3 5 2 8);
 
