@@ -98,13 +98,23 @@ $ctx->setOption('#unused', '1');
 $ctx->setOption('branch', '4.3');
 
 # Commence testing proper
+p_chdir ($testSourceDirName);
+
 SKIP: {
     skip 'git not installed', 1 unless defined absPathToExecutable('git');
+
+    if (!is(system('git', 'init', 'test-git-dir'), 0, 'Create new git directory')) {
+        skip 'git does not work', 1;
+    }
+
+    p_chdir('test-git-dir');
 
     my @gitStatusOutput = filter_program_output(sub { /On branch/ }, qw/git status/);
     is(@gitStatusOutput, 1, 'Correct number of items from filter_program_output');
     is(`git status`, join('', filter_program_output(undef, qw/git status/)), 'Ensure filter_program_output works w/ no filter');
     is($ctx->getSourceDir(), $ENV{HOME} . "/kdesrc-build-unused", 'Correct tilde-expansion for source-dir');
+
+    p_chdir($testSourceDirName);
 }
 
 # We know tilde-expansion works for source-dir, reset to our temp dir.
