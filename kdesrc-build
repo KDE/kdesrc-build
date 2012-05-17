@@ -129,14 +129,12 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my $pkg = shift;
         my $caller = caller;
         my @exports = qw(debug pretending debugging whisper
-                         note info warning error pretend ksb_clr);
+                         note info warning error pretend);
 
         ksb::Util::exportFunctionsToPackage($pkg, $caller, @exports);
     }
 
-    # I'm lazy and would rather write in shorthand for the colors.  This sub
-    # allows me to do so.
-    sub ksb_clr
+    sub ksb::Debug::colorize
     {
         my $str = shift;
 
@@ -209,22 +207,24 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     # You can also use the pretend output subroutine, which is emitted if, and only
     # if pretend mode is enabled.
     #
-    # ksb_clr is automatically run on the input for all of those functions.
-    # Also, the terminal color is automatically reset to normal as well so you don't
-    # need to manually add the ] to reset.
+    # ksb::Debug::colorize is automatically run on the input for all of those
+    # functions.  Also, the terminal color is automatically reset to normal as
+    # well so you don't need to manually add the ] to reset.
 
-    # Subroutine used to actually display the data, calls ksb_clr on each entry first.
+    # Subroutine used to actually display the data, calls ksb::Debug::colorize on each entry first.
     sub print_clr(@)
     {
-        print ksb_clr($_) foreach (@_);
-        print ksb_clr("]\n");
+        # Leading + prevents Perl from assuming the plain word "colorize" is actually
+        # a filehandle or future reserved word.
+        print +colorize($_) foreach (@_);
+        print +colorize("]\n");
 
         if (defined $screenLog) {
             my @savedColors = ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD);
             # Remove color but still extract codes
             ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
 
-            print ($screenLog ksb_clr($_)) foreach (@_);
+            print ($screenLog colorize($_)) foreach (@_);
             print ($screenLog "\n");
 
             ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = @savedColors;
@@ -258,8 +258,8 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
     sub error(@)
     {
-        print STDERR (ksb_clr $_) foreach (@_);
-        print STDERR (ksb_clr "]\n");
+        print STDERR (colorize $_) foreach (@_);
+        print STDERR (colorize "]\n");
     }
 
     sub pretend(@)
@@ -1808,15 +1808,15 @@ EOF
                 {
                     # Something *is* running, likely kdesrc-build.  Don't use error,
                     # it'll scan for $!
-                    print ksb_clr(" r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n");
-                    print ksb_clr("  (b[Q])uit, (b[P])roceed anyways?: ");
+                    print ksb::Debug::colorize(" r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n");
+                    print ksb::Debug::colorize("  (b[Q])uit, (b[P])roceed anyways?: ");
 
                     my $choice = <STDIN>;
                     chomp $choice;
 
                     if (lc $choice ne 'p')
                     {
-                        say ksb_clr(" y[*] kdesrc-build run canceled.");
+                        say ksb::Debug::colorize(" y[*] kdesrc-build run canceled.");
                         return 0;
                     }
 
@@ -5243,7 +5243,7 @@ EOF
             my $message;
             if (not defined $count)
             {
-                $message = ksb_clr ("b[y[Unknown changes].");
+                $message = ksb::Debug::colorize ("b[y[Unknown changes].");
                 $ipc->notifyUpdateSuccess($moduleName, $message);
             }
             elsif ($count)
@@ -7399,7 +7399,7 @@ sub check_for_ssh_agent
     if ($noKeys)
     {
         # Use print so user can't inadvertently keep us quiet about this.
-        print ksb_clr (<<EOF);
+        print ksb::Debug::colorize (<<EOF);
 b[y[*] SSH Agent does not appear to be managing any keys.  This will lead to you
   being prompted for every module update for your SSH passphrase.  So, we're
   running g[ssh-add] for you.  Please type your passphrase at the prompt when
@@ -7416,7 +7416,7 @@ EOF
 
             print "\nUnable to add SSH identity, aborting.\n";
             print "If you don't want kdesrc-build to check in the future,\n";
-            print ksb_clr ("Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n");
+            print ksb::Debug::colorize ("Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n");
 
             return 0;
         }
