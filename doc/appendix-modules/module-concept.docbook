@@ -1,0 +1,62 @@
+<sect1 id="module-concept">
+<title>The <quote>Module</quote></title>
+
+<para>&kde; groups its software into <quote>modules</quote> of various size.
+This was initially a loose grouping of a few large modules, but with the
+introduction of the <ulink href="http://git-scm.com/">Git</ulink>-based <ulink
+href="https://projects.kde.org/">source code repositories</ulink>, these large
+modules were further split into many smaller modules.
+</para>
+
+<para>&kdesrc-build; uses this module concept as well. In essence, a
+<quote>module</quote> is a grouping of code that can be downloaded, built,
+tested, and installed.
+</para>
+
+<sect2 id="single-modules">
+<title>Individual modules</title>
+
+<para>It is easy to set &kdesrc-build; to build a single module. The following
+listing is an example of what a declaration for a Subversion-based module would
+look like in <link linkend="kdesrc-buildrc">the configuration
+file</link>.</para>
+
+<programlisting>
+module <replaceable>kdefoo</replaceable>
+    <replaceable><option>cmake-options</option> -DCMAKE_BUILD_TYPE=Debug</replaceable>
+end module
+</programlisting>
+
+<tip>This is a Subversion-based module since it doesn't use a <link
+linkend="conf-repository">repository</link> option. Also, the
+<option>cmake-options</option> option is listed as an example only, it is not
+required.</tip>
+
+</sect2>
+<sect2 id="module-groups">
+<title>Groups of related modules</title>
+
+<para>Now most &kde; source modules are Git-based &kde;, and are normally
+combined into groups of modules.</para>
+
+<para>&kdesrc-build; therefore supports groups of modules as well, using
+<link linkend="module-sets">module sets</link>. An example:</para>
+
+<programlisting>
+module-set <replaceable>base-modules</replaceable>
+    <option>repository</option> kde-projects
+    <option>use-modules</option> <replaceable>kde-runtime kde-workspace kde-baseapps</replaceable>
+end module-set
+</programlisting>
+
+<tip>You can leave the module set name (<replaceable>base-modules</replaceable>
+in this case) empty if you like. This <option>repository</option> setting tells
+&kdesrc-build; where to download the source from, but you can also use a
+<symbol>git://</symbol> URL.</tip>
+
+<para>One special feature of the <quote><option>repository</option>
+<literal>kde-projects</literal></quote> is that &kdesrc-build; will
+automatically include any Git modules that are grouped under the modules you
+list (in the KDE Project database).</para>
+</sect2>
+</sect1>
