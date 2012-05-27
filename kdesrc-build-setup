@@ -238,13 +238,13 @@ my @chosenModules = getListOptions(
     "Which major module groups do you want to build?",
     [
         qt => 'The Qt library',
-        framework => 'KDE Framework libraries/runtime (required)',
+        baselibs => 'KDE essential libraries/runtime (required)',
         workspace => 'KDE Plasma Desktop and workspace',
         base => 'Essential KDE applications',
         pim => 'Personal Information Management software',
     ],
     {
-        framework => 1,
+        baselibs => 1,
         workspace => 1,
         base => 1,
     },
@@ -372,12 +372,12 @@ end module
 EOF
 }
 
-if (grep /^framework$/, @chosenModules) {
+if (grep /^baselibs$/, @chosenModules) {
     print $output <<EOF;
 # These encompass modules that are not directly a part of KDE proper but are
 # required or highly recommended for the KDE framework and are developed in
 # the KDE source repository.
-module-set framework-support
+module-set baselibs-support
     repository kde-projects
 
     use-modules automoc cagibi attica soprano polkit-qt-1
@@ -411,8 +411,8 @@ end module-set
 #    repository bzr://lp:libdbusmenu-qt
 #end module
 
-# Base KDE framework libraries and the required runtime programs.
-module-set framework
+# Base/essential KDE libraries and the required runtime programs.
+module-set baselibs
     repository kde-projects
 
     use-modules kdelibs kactivities kde-runtime
