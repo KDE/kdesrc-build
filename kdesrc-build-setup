@@ -412,10 +412,18 @@ end module-set
 #end module
 
 # Base/essential KDE libraries and the required runtime programs.
-module-set baselibs
+# Split into two module-sets to setup the right branch for kdelibs.
+module-set baselibs-kdelibs
     repository kde-projects
 
-    use-modules kdelibs kactivities kde-runtime
+    use-modules kdelibs
+    branch KDE/4.8 # kdelibs for KDE 4 is limited to bugfixes.
+end module-set
+
+module-set baselibs-other
+    repository kde-projects
+
+    use-modules kactivities kde-runtime
 end module-set
 
 EOF
