@@ -4132,6 +4132,8 @@ EOF
 
     our @ISA = ('GenericBuildSystem');
 
+    use List::Util qw(first);
+
     ksb::Debug->import();
     ksb::Util->import();
 
@@ -4153,7 +4155,7 @@ EOF
     sub absPathToQMake
     {
         my @possibilities = qw/qmake qmake4 qmake-qt4 qmake-mac/;
-        return grep { main::absPathToExecutable($_) } @possibilities;
+        return first { main::absPathToExecutable($_) } @possibilities;
     }
 
     # Return value style: boolean

@@ -502,6 +502,19 @@ $buildSystem = l10nSystem->new($ctx);
 ok (!$buildSystem->isSubdirBuildable('scripts'), 'l10n-build isSubdirBuildable-scripts');
 ok ($buildSystem->isSubdirBuildable(''), 'l10n-build isSubdirBuildable-other');
 
+# Note to packagers: This assumes qmake or qmake-qt4 are already installed on
+# the system.
+my @qmakePossibilities = QMakeBuildSystem::absPathToQMake();
+SKIP: {
+    is (scalar @qmakePossibilities, 1, 'Ensure exactly one qmake is returned from possibilities.')
+        or skip "Need a qmake candidate for next test", 1; # Skip next tests if no qmake
+    like ($qmakePossibilities[0], qr/^qmake/, 'qmake candidate looks like a qmake executable.');
+
+    # Duplicate test in scalar context the whole time.
+    my $newQMakePossibility = QMakeBuildSystem::absPathToQMake();
+    like ($newQMakePossibility, qr/^qmake/, 'qmake looks like an executable even in scalar context.');
+}
+
 done_testing();
 ### TESTS GO ABOVE THIS LINE
 }; # eval
