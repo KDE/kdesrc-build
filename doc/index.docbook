@@ -212,7 +212,7 @@ other tools, (in other words, steps that are not automatically performed by
 <para>
 In this chapter, we show how to use the &kdesrc-build; to checkout modules from
 the &kde; repository and build them. We also provide a basic explanation of the
-&kde; &subversion; structure and the steps you have to perform before running
+&kde; source code structure and the steps you have to perform before running
 the script.
 </para>
 
@@ -259,8 +259,9 @@ in order to prepare and use the system installation correctly.
 
 <para>Before using the &kdesrc-build; script (or any other building
 strategy) you must install the development tools and libraries needed for &kde;.
-The complete list of required tools can be found from
-the <ulink url="http://techbase.kde.org/">KDE TechBase</ulink>.
+The nearly complete list of required tools can be found from
+the <ulink url="http://techbase.kde.org/Getting_Started/Build/Requirements">KDE
+TechBase Build Requirements</ulink> page.
 </para>
 
 <para>Here is a list of some of the things you will need:</para>
@@ -268,19 +269,42 @@ the <ulink url="http://techbase.kde.org/">KDE TechBase</ulink>.
 
 <listitem><para>You will need &cmake;.  The required version will vary
 depending on what version of &kde; 4 you are building, see TechBase for
-specifics.</para></listitem>
+specifics, however a good bet is to have the most recent available version.
+&cmake; is the program used by &kdesrc-build; to handle the actual
+configuration and build steps for the vast majority of &kde; software.
+</para></listitem>
 
-<listitem><para>Also needed is the &subversion; client program.  You can check
+<listitem><para>You must also install the client software used to checkout
+the &kde; source code. This means you need at least the following:</para>
+
+<itemizedlist>
+<listitem><para>&subversion;, which used to be the only source code manager in use, and is still
+used for some modules with large data files.  You can check
 if you have it by running <userinput><command>svn
-<option>--version</option></command></userinput>.  </para></listitem>
+<option>--version</option></command></userinput>.</para></listitem>
 
-<listitem><para>You will also need the <ulink url="http://gitscm.org/">Git
+<listitem><para>You will need the <ulink url="http://gitscm.org/">Git
 source control manager</ulink> installed as well, for &kde;'s <ulink
 url="http://projects.kde.org/">git-based projects.</ulink>
 .</para></listitem>
 
-<listitem><para>You will need a C++ development environment. GCC 4.6 or
+<listitem><para>Although it is not required, the <ulink
+url="http://bazaar.canonical.com/">Bazaar</ulink> source control manager is
+used for a single module (libdbusmenu-qt) that is required for the &kde;
+libraries. Most users can install this library through their distribution
+packages but &kdesrc-build; supports building it as well if you desire. But to
+build libdbusmenu-qt, you must have Bazaar installed.</para></listitem>
+
+</itemizedlist></listitem>
+
+<listitem><para>You will need a full C++ development environment. GCC 4.6 or
 later is recommended.</para></listitem>
+
+<listitem><para>Finally, you will need a <quote>make</quote> tool. GNU Make is
+recommended and should be available through your package manager. After
+<command>cmake</command> has been run by &kdesrc-build;,
+<command>make</command> handles actually running the build process, which is
+why it is required.</para></listitem>
 
 </itemizedlist>
 
@@ -305,8 +329,13 @@ to use the &Qt; copy, you need to do these things:</para>
 <listitem>
   <para>Change the setting of the <link linkend="conf-qtdir">qtdir</link>
   option in your <link linkend="configure-data">configuration file</link> to
-  point to your system &Qt;. This is normally equal to the setting of
-  $<envar>QTDIR</envar> for your system.</para>
+  point to your system &Qt;. The location of your system &Qt; can be found
+  by running <userinput><command>qmake</command> <option>-query</option>
+  <option>QT_INSTALL_PREFIX</option></userinput>.</para>
+
+  <note><para>The <command>qmake</command> command might be called
+  <command>qmake4</command> or <command>qmake-qt4</command> on your
+  distribution.</para></note>
 </listitem>
 
 <listitem>
@@ -316,17 +345,16 @@ to use the &Qt; copy, you need to do these things:</para>
 </listitem>
 </itemizedlist>
 
-<para>
-Some of these packages are divided into libraries (or programs or utilities), and
-development packages. You will need at least the program or library and
-its development package. If in doubt, install all. The libraries you need
-will change depending on the modules you intend to build, as each module
-has its own requirements. The
-<ulink url="http://techbase.kde.org/Getting_Started/Build/KDE4#Required_packages_from_your_distribution">&kde;
-TechBase</ulink> has more details
-about the specific tools and techniques used to install and find the
-required software.
-</para>
+<important><para>
+Some of these packages are divided into libraries (or programs or utilities),
+and development packages. You will need at least the program or library
+<emphasis>and</emphasis> its development package. The libraries you need will
+change depending on the modules you intend to build, as each module has its own
+requirements. The <ulink
+url="http://techbase.kde.org/Getting_Started/Build/KDE4#Required_packages_from_your_distribution">&kde;
+TechBase</ulink> has more details about the specific tools and techniques used
+to install and find the required software.
+</para></important>
 
 </sect2>
 
@@ -757,6 +785,11 @@ because &kdesrc-build; will not perform dependency handling.
 </para></listitem>
 </orderedlist>
 
+<note><para>It is worth nothing that &kdesrc-build; will try to build modules
+in the right order, but this depends on other databases being kept up-to-date.
+You can manually do the right thing if necessary by using the technique
+described above.
+</para></note>
 </sect2>
 
 </sect1>
