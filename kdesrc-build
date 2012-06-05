@@ -5589,6 +5589,8 @@ EOF
     ksb::Debug->import();
     ksb::Util->import();
 
+    use List::Util qw(first);
+
     sub new
     {
         my $class = shift;
@@ -5639,6 +5641,43 @@ EOF
             $dependenciesOfRef->{$dependentItem} //= [ ];
 
             push @{$dependenciesOfRef->{$dependentItem}}, $sourceItem;
+        }
+    }
+
+    # Internal.
+    # This method adds any full module names as dependencies of any module that
+    # begins with that full module name. E.g. kde/kdelibs/foo automatically
+    # depends on kde/kdelibs if both are present in the build.
+    #
+    # Static method.
+    # First parameter: Reference to a hash of parameters.
+    # Return: Nothing.
+    sub _addInherentDependencies
+    {
+        my $optionsRef = shift;
+        my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
+        my $modulesFromNameRef  = $optionsRef->{modulesFromName};
+
+        # It's not good enough to just sort modules and compare one to its
+        # successor. Consider kde/foo, kde/foobar, kde/foo/a. The dependency
+        # here would be missed that way. Instead we strip off the last path
+        # component and see if that matches an existing module name.
+        for my $testModule (keys %{$modulesFromNameRef}) {
+            my $candidateBaseModule = $testModule;
+            $candidateBaseModule =~ s(/[^/]+$)(); # Remove trailing component
+
+            if ($candidateBaseModule &&
+                exists $modulesFromNameRef->{$candidateBaseModule})
+            {
+                # Add candidateBaseModule as dependency of testModule.
+                $dependenciesOfRef->{$testModule} //= [ ];
+
+                my $moduleDepsRef = $dependenciesOfRef->{$testModule};
+                if (!first { $_ eq $candidateBaseModule } @{$moduleDepsRef}) {
+                    debug ("dep-resolv: Adding $testModule as dependency of $candidateBaseModule");
+                    push @{$moduleDepsRef}, $candidateBaseModule;
+                }
+            }
         }
     }
 
@@ -5730,6 +5769,10 @@ EOF
                 map { $_->getOption('#xml-full-path') => $_ } @modules
             },
         };
+
+        # Adds things like kde/kdelibs/foo to automatically depend on
+        # kde/kdelibs if both are present in the build.
+        _addInherentDependencies($optionsRef);
 
         for my $module (@modules) {
             _visitModuleAndDependencies($optionsRef, $module);
