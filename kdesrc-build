@@ -5617,14 +5617,21 @@ EOF
         my $dependenciesOfRef  = $self->{dependenciesOf};
         my $dependencyAtom =
             qr/
-            ^\s*      # Clear leading whitespace
-            ([^:\s]+) # Capture anything not a colon or whitespace (dependent item)
-            \s*       # Clear whitespace we didn't capture
+            ^\s*        # Clear leading whitespace
+            ([^\[:\s]+) # (1) Capture anything not a [, :, or whitespace (dependent item)
+            \s*         # Clear whitespace we didn't capture
+            (?:\[       # Open a non-capture group...
+                ([^\]:\s]+) # (2) Capture branch name without brackets
+            ])?+        # Close group, make optional, no backtracking
+            \s*         # Clear whitespace we didn't capture
             :
             \s*
-            ([^\s]+)  # Capture all non-whitespace (source item)
-            \s*$      # Ensure no trailing cruft. Any whitespace should end line
-            /x;       # /x Enables extended whitespace mode
+            ([^\s\[]+)  # (3) Capture all non-whitespace (source item)
+            (?:\s*\[     # Open a non-capture group...
+                ([^\]\s]+) # (4) Capture branch name without brackets
+            ])?+        # Close group, make optional, no backtracking
+            \s*$        # Ensure no trailing cruft. Any whitespace should end line
+            /x;         # /x Enables extended whitespace mode
 
         while(my $line = <$fh>) {
             # Strip comments, skip empty lines.
@@ -5635,7 +5642,23 @@ EOF
                 croak_internal("Invalid line $line when reading dependency data.");
             }
 
-            my ($dependentItem, $sourceItem) = $line =~ $dependencyAtom;
+            my ($dependentItem, $dependentBranch,
+                $sourceItem,    $sourceBranch) = $line =~ $dependencyAtom;
+
+            # Ignore "doesn't use" markers.
+            next if index($sourceItem, '-') == 0;
+
+            # Ignore "catch-all" dependencies.
+            next if $sourceItem =~ m,/\*$, || $dependentItem =~ m,/\*$,;
+
+            # Ignore deps on Qt, since we allow system Qt.
+            next if $sourceItem =~ /^\s*Qt/ || $dependentItem =~ /^\s*Qt/;
+
+            # TODO: Utilize branch information in dependency tracking.
+            if ($dependentBranch || $sourceBranch) {
+                ksb::Debug::whisper ("$dependentItem only partially depends on $sourceItem");
+                next;
+            }
 
             # Initialize with array if not already defined.
             $dependenciesOfRef->{$dependentItem} //= [ ];
