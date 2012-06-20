@@ -1979,7 +1979,7 @@ EOF
             }
         }
 
-        # If still here, no luck.
+        # No rc found, check if we can use default.
         if (scalar @rcFiles == 1)
         {
             # This can only happen if the user uses --rc-file, so if we fail to
@@ -2001,33 +2001,19 @@ EOM
 
         # Set rcfile to something so the user knows what file to edit to
         # get what they want to work.
-        $self->{rcFile} = '~/.kdesrc-buildrc';
-        $self->whineForMissingConfig();
-        $self->setup_default_modules();
 
-        my $data = ''; # TODO: Point to sane default.
-        open ($fh, '<', \$data);
+        # Our default is to use a kdesrc-buildrc-sample if present in the same
+        # directory.
+        my $basePath = dirname($0);
+        my $sampleConfigFile = "$basePath/kdesrc-buildrc-sample";
+        open ($fh, '<', $sampleConfigFile)
+            or croak_runtime("No configuration available");
+
+        $self->{rcFile} = $sampleConfigFile;
+        $self->{rcFile} =~ s,^$ENV{HOME}/,~/,;
+        note (" * Using included sample configuration.");
+
         return $fh;
-    }
-
-    sub whineForMissingConfig
-    {
-        my $self = shift;
-        my $searched = join ("\n    ", @{$self->{rcFiles}});
-        my $homepage = "http://kdesrc-build.kde.org/";
-
-        note (<<"HOME");
-Unable to open configuration file!
-We looked for:
-    $searched
-
-You should create a configuration file. The file kdesrc-buildrc-sample should
-be included with your kdesrc-build package, which you can copy to
-~/.kdesrc-buildrc and edit from there.
-
-If the b[kdesrc-build-setup] program is installed, you can run that program
-to quickly generate a simple configuration to get started.
-HOME
     }
 
     # Returns the base directory that holds the configuration file. This is
@@ -2070,48 +2056,6 @@ HOME
         }
 
         return $options[0];
-    }
-
-    # This subroutine setups a default set of modules to be updated and built,
-    # and handles setting up their initial options (also just chosen by
-    # default).
-    #
-    # Note: Call this and you stand the risk of losing the options you're
-    # already set, do this only if you need to setup options for the entire
-    # list of default modules.
-    sub setup_default_modules()
-    {
-        my $self = shift;
-
-        # TODO: Move this to the build-support git repo.
-        my @defaultModuleList = qw(
-            qt automoc cagibi attica soprano polkit-qt-1 phonon
-            strigi kdesupport dbusmenu-qt
-            kdelibs akonadi kdepimlibs
-            kde-runtime kde-workspace kde-baseapps
-            konsole kate kdeplasma-addons
-            phonon-gstreamer phonon-vlc
-            kdeartwork kdepim kdeutils kdegraphics kdegames
-            kdetoys kdeedu kdenetwork
-        );
-
-        whisper("Setting up to build ", join(', ', @defaultModuleList), " by default.");
-
-        my $allOptsRef = $self->{build_options};
-        for my $i (@defaultModuleList) {
-            my $options_ref = main::default_module_options($i);
-
-            # Apply default option only if option not already set.  If the option
-            # is here at this point it's probably user defined on the command line
-            # or setup by kdesrc-build based on an option.
-            for my $key (keys %{$options_ref}) {
-                if (not exists $allOptsRef->{$i}{$key}) {
-                    $allOptsRef->{$i}{$key} = $options_ref->{$key};
-                }
-            }
-
-            $self->addModule(Module->new($self, $i));
-        }
     }
 
     sub markModulePhaseFailed
@@ -6188,51 +6132,6 @@ sub safe_make (@)
     };
 
     return 0;
-}
-
-# Given a module name, this subroutine returns a hash with the default module
-# options for the module.
-#
-# The global options must already be setup but there is no requirement for any
-# module options to be available.
-#
-# First parameter is the module to get options for.
-#
-# Return is a hash reference containing the default module options.
-sub default_module_options
-{
-    my $moduleName = shift;
-    my %options = (
-        'set-env' => { },
-    );
-    my %module_options = (
-        'qt' => {
-            'configure-flags' => '-no-phonon -dbus -nomake demos -nomake examples -fast',
-            'repository' => 'kde:qt',
-            'branch'     => '4.8',
-        },
-        'strigi' => {
-            # Until the strigi build system supports independent submodule
-            # builds.
-            'cmake-options' => '-DSTRIGI_SYNC_SUBMODULES=TRUE',
-            'reconfigure'   => 'true',
-        },
-        'taglib' => {
-            'cmake-options' => '-DWITH_ASF=TRUE -DWITH_MP4=TRUE',
-        },
-        'dbusmenu-qt' => {
-            'repository' => 'git://gitorious.org/dbusmenu/dbusmenu-qt.git',
-        },
-    );
-
-    # If no specific moduleName options just return the default
-    return \%options unless exists $module_options{$moduleName};
-
-    # Otherwise merge in options (uses Perl hash slice)
-    my $this_module_options = $module_options{$moduleName};
-    @options{keys %{$this_module_options}} = values %{$this_module_options};
-
-    return \%options;
 }
 
 # Reads a "line" from a file. This line is stripped of comments and extraneous
