@@ -5631,7 +5631,9 @@ EOF
         # component and see if that matches an existing module name.
         for my $testModule (keys %{$modulesFromNameRef}) {
             my $candidateBaseModule = $testModule;
-            $candidateBaseModule =~ s(/[^/]+$)(); # Remove trailing component
+
+            # Remove trailing component, bail if unable to do so.
+            next unless $candidateBaseModule =~ s(/[^/]+$)();
 
             if ($candidateBaseModule &&
                 exists $modulesFromNameRef->{$candidateBaseModule})
