@@ -1528,6 +1528,7 @@ EOF
         "cmake-options"        => "",
         "configure-flags"      => "",
         "colorful-output"      => 1, # Use color by default.
+        "custom-build-command" => '',
         "cxxflags"             => "-pipe",
         "debug"                => "",
         "debug-level"          => ksb::Debug::INFO,
@@ -3866,6 +3867,8 @@ EOF
     ksb::Debug->import();
     ksb::Util->import();
 
+    use List::Util qw(first);
+
     sub new
     {
         my ($class, $module) = @_;
@@ -3948,12 +3951,21 @@ EOF
         return 'generic';
     }
 
+    # Returns a list of possible build commands to run, any one of which should
+    # be supported by the build system.
+    sub buildCommands
+    {
+        # Non Linux systems can sometimes fail to build when GNU Make would work,
+        # so prefer GNU Make if present, otherwise try regular make.
+        return 'gmake', 'make';
+    }
+
     # Return value style: boolean
     sub buildInternal
     {
         my $self = shift;
 
-        return main::safe_make($self->module(), {
+        return $self->safe_make({
             target => undef,
             message => 'Compiling...',
             'make-options' => [
@@ -4005,7 +4017,7 @@ EOF
         my $module = $self->module();
         my @cmdPrefix = @_;
 
-        return main::safe_make ($module, {
+        return $self->safe_make ({
                 target => 'install',
                 message => "Installing g[$module]",
                 'prefix-options' => [@cmdPrefix],
@@ -4022,7 +4034,7 @@ EOF
         my $module = $self->module();
         my @cmdPrefix = @_;
 
-        return main::safe_make ($module, {
+        return $self->safe_make ({
                 target => 'uninstall',
                 message => "Uninstalling g[$module]",
                 'prefix-options' => [@cmdPrefix],
@@ -4087,6 +4099,198 @@ EOF
         }
 
         return 1;
+    }
+
+    # Subroutine to run the build command with the arguments given by the
+    # passed hash.
+    #
+    # In addition to finding the proper executable, this function handles the
+    # step of running the build command for individual subdirectories (as
+    # specified by the checkout-only option to the module).  Due to the various
+    # ways the build command is called by this script, it is required to pass
+    # customization options in a hash:
+    # {
+    #    target         => undef, or a valid build target e.g. 'install',
+    #    message        => 'Compiling.../Installing.../etc.'
+    #    make-options   => [ list of command line arguments to pass to make. See
+    #                        make-options ],
+    #    prefix-options => [ list of command line arguments to prefix *before* the
+    #                        make command, used for make-install-prefix support for
+    #                        e.g. sudo ],
+    #    logbase        => 'base-log-filename',
+    #    subdirs        => [ list of subdirectories of the module to build,
+    #                        relative to the module's own build directory. ]
+    # }
+    #
+    # target and message are required. logbase is required if target is left
+    # undefined, but otherwise defaults to the same value as target.
+    #
+    # Note that the make command is based on the results of the 'buildCommands'
+    # subroutine which should be overridden if necessary by subclasses. Each
+    # command should be the command name (i.e. no path). The user may override
+    # the command used (for build only) by using the 'custom-build-command'
+    # option.
+    #
+    # The first command name found which resolves to an executable on the
+    # system will be used, if no command this function will fail.
+    #
+    # The first argument should be the Module object to be made.
+    # The second argument should be the reference to the hash described above.
+    #
+    # Returns 0 on success, non-zero on failure (shell script style)
+    sub safe_make (@)
+    {
+        my ($self, $optsRef) = @_;
+        assert_isa($self, 'GenericBuildSystem');
+        my $module = $self->module();
+
+        # Convert the path to an absolute path since I've encountered a sudo
+        # that is apparently unable to guess.  Maybe it's better that it
+        # doesn't guess anyways from a security point-of-view.
+        my $buildCommand = first { absPathToExecutable($_) } $self->buildCommands();
+        my @buildCommandLine = $buildCommand;
+
+        # Check for custom user command. We support command line options being
+        # passed to the command as well.
+        my $userCommand = $module->getOption('custom-build-command');
+        if ($userCommand) {
+            @buildCommandLine = split_quoted_on_whitespace($userCommand);
+            $buildCommand = absPathToExecutable($buildCommandLine[0]);
+        }
+
+        if (!$buildCommand) {
+            $buildCommand = $userCommand || $self->buildCommands();
+            error (" r[b[*] Unable to find the g[$buildCommand] executable!");
+            return 1;
+        }
+
+        # Make it prettier if pretending (Remove leading directories).
+        $buildCommand =~ s{^/.*/}{} if pretending();
+        shift @buildCommandLine; # $buildCommand is already the first entry.
+
+        # Simplify code by forcing lists to exist.
+        $optsRef->{'prefix-options'} //= [ ];
+        $optsRef->{'make-options'} //= [ ];
+        $optsRef->{'subdirs'} //= [ ];
+
+        my @prefixOpts = @{$optsRef->{'prefix-options'}};
+
+        # If using sudo ensure that it doesn't wait on tty, but tries to read from
+        # stdin (which should fail as we redirect that from /dev/null)
+        if (@prefixOpts && $prefixOpts[0] eq 'sudo' && !grep { /^-S$/ } @prefixOpts)
+        {
+            splice (@prefixOpts, 1, 0, '-S'); # Add -S right after 'sudo'
+        }
+
+        # Assemble arguments
+        my @args = (@prefixOpts, $buildCommand, @buildCommandLine);
+        push @args, $optsRef->{target} if $optsRef->{target};
+        push @args, @{$optsRef->{'make-options'}};
+
+        info ("\t", $optsRef->{message});
+
+        # Here we're attempting to ensure that we either run the build command
+        # in each subdirectory, *or* for the whole module, but not both.
+        my @dirs = @{$optsRef->{subdirs}};
+        push (@dirs, "") if scalar @dirs == 0;
+
+        for my $subdir (@dirs)
+        {
+            # Some subdirectories shouldn't have the build command run within
+            # them.
+            next unless $self->isSubdirBuildable($subdir);
+
+            my $logname = $optsRef->{logbase} // $optsRef->{target};
+
+            if ($subdir ne '')
+            {
+                $logname = $logname . "-$subdir";
+
+                # Remove slashes in favor of something else.
+                $logname =~ tr{/}{-};
+
+                # Mention subdirectory that we're working on, move ellipsis
+                # if present.
+                my $subdirMessage = $optsRef->{message};
+                if ($subdirMessage =~ /\.\.\.$/) {
+                    $subdirMessage =~ s/(\.\.\.)?$/ subdirectory g[$subdir]$1/;
+                }
+                info ("\t$subdirMessage");
+            }
+
+            my $builddir = $module->fullpath('build') . "/$subdir";
+            $builddir =~ s/\/*$//; # Remove trailing /
+
+            p_chdir ($builddir);
+
+            my $result = $self->runBuildCommand($logname, \@args);
+            return $result if $result;
+        };
+
+        return 0;
+    }
+
+    # Subroutine to run make and process the build process output in order to
+    # provide completion updates.  This procedure takes the same arguments as
+    # log_command() (described here as well), except that the callback argument
+    # is not used.
+    #
+    # First parameter is the name of the log file to use (relative to the log
+    #   directory).
+    # Second parameter is a reference to an array with the command and its
+    #   arguments.  i.e. ['command', 'arg1', 'arg2']
+    # The return value is the shell return code, so 0 is success, and non-zero
+    #   is failure.
+    sub runBuildCommand
+    {
+        my ($self, $filename, $argRef) = @_;
+        assert_isa($self, 'GenericBuildSystem');
+        my $module = $self->module();
+
+        # There are situations when we don't want (or can't get) progress output:
+        # 1. Not using CMake (i.e. Qt)
+        # 2. If we're not printing to a terminal.
+        # 3. When we're debugging (we'd interfere with debugging output).
+        if (!$self->isProgressOutputSupported() || ! -t STDERR || debugging())
+        {
+            return log_command($module, $filename, $argRef);
+        }
+
+        # Setup callback function for use by log_command.
+        my $last = -1;
+
+        # w00t.  Check out the closure!  Maks would be so proud.
+        my $log_command_callback = sub {
+            my ($input) = shift;
+
+            if (not defined $input)
+            {
+                # End of input, cleanup.
+                print STDERR "\r\e[K";
+            }
+            else
+            {
+                chomp($input);
+
+                my $percentage = '';
+
+                if ($input =~ /^\[\s*([0-9]+)%]/)
+                {
+                    $percentage = $1;
+                }
+
+                # Update terminal (\e[K clears to the end of line) if the
+                # percentage changed.
+                if ($percentage and $percentage ne $last)
+                {
+                    print STDERR "\r$percentage% \e[K";
+                }
+
+                $last = $percentage;
+            }
+        };
+
+        return log_command($module, $filename, $argRef, { callback => $log_command_callback });
     }
 
     1;
@@ -4261,7 +4465,7 @@ EOF
         my @langs = $self->languages();
         my $result = 0;
 
-        $result = (main::safe_make($self->module(), {
+        $result = ($self->safe_make({
             target => undef,
             message => "Building localization for language...",
             logbase => "build",
@@ -4297,7 +4501,7 @@ EOF
         my $builddir = $self->module()->fullpath('build');
         my @langs = $self->languages();
 
-        return (main::safe_make($self->module(), {
+        return ($self->safe_make({
             target => 'install',
             message => "Installing language...",
             logbase => "install",
@@ -5905,71 +6109,6 @@ sub download_file
     return 0;
 }
 
-# Subroutine to run make and process the build process output in order to
-# provide completion updates.  This procedure takes the same arguments as
-# log_command() (described here as well), except that the callback argument is
-# not used.
-#
-# First parameter is the Module being built (for logging purposes and such).
-# Second parameter is the name of the log file to use (relative to the log
-#   directory).
-# Third parameter is a reference to an array with the command and its
-#   arguments.  i.e. ['command', 'arg1', 'arg2']
-# The return value is the shell return code, so 0 is success, and non-zero is
-#   failure.
-sub run_make_command
-{
-    my ($module, $filename, $argRef) = @_;
-    assert_isa($module, 'Module');
-
-    debug ("run_make_command: $module, ", join(', ', @{$argRef}));
-
-    # There are situations when we don't want (or can't get) progress output:
-    # 1. Not using CMake (i.e. Qt)
-    # 2. If we're not printing to a terminal.
-    # 3. When we're debugging (we'd interfere with debugging output).
-    if (!$module->buildSystem()->isProgressOutputSupported() || ! -t STDERR || debugging())
-    {
-        return log_command($module, $filename, $argRef);
-    }
-
-    # Setup callback function for use by log_command.
-    my $last = -1;
-
-    # w00t.  Check out the closure!  Maks would be so proud.
-    my $log_command_callback = sub {
-        my ($input) = shift;
-
-        if (not defined $input)
-        {
-            # End of input, cleanup.
-            print STDERR "\r\e[K";
-        }
-        else
-        {
-            chomp($input);
-
-            my $percentage = '';
-
-            if ($input =~ /^\[\s*([0-9]+)%]/)
-            {
-                $percentage = $1;
-            }
-
-            # Update terminal (\e[K clears to the end of line) if the
-            # percentage changed.
-            if ($percentage and $percentage ne $last)
-            {
-                print STDERR "\r$percentage% \e[K";
-            }
-
-            $last = $percentage;
-        }
-    };
-
-    return log_command($module, $filename, $argRef, { callback => $log_command_callback });
-}
-
 # Subroutine to delete a directory and all files and subdirectories within.
 # Does nothing in pretend mode.  An analogue to "rm -rf" from Linux.
 # Requires File::Find module.
@@ -6028,113 +6167,6 @@ sub safe_rmtree
     }
 
     return 1;
-}
-
-# Subroutine to run the make command with the arguments given by the passed
-# hash.  In addition to finding the proper make executable, this function
-# handles the step of running make for individual subdirectories (as specified
-# by the checkout-only option to the module).  Due to the various ways make is
-# used by this script, it is required to pass customization options in a hash:
-# {
-#    target         => undef, or a valid make target e.g. 'install',
-#    message        => 'Compiling.../Installing.../etc.'
-#    make-options   => [ list of command line arguments to pass to make. See
-#                        make-options ],
-#    prefix-options => [ list of command line arguments to prefix *before* the
-#                        make command, used for make-install-prefix support for
-#                        e.g. sudo ],
-#    logbase        => 'base-log-filename',
-#    subdirs        => [ list of subdirectories of the module to build,
-#                        relative to the module's own build directory. ]
-# }
-#
-# target and message are required. logbase is required if target is left
-# undefined, but otherwise defaults to the same value as target.
-#
-# The first argument should be the Module object to be made.
-# The second argument should be the reference to the hash described above.
-#
-# Returns 0 on success, non-zero on failure (shell script style)
-sub safe_make (@)
-{
-    my ($module, $optsRef) = @_;
-    assert_isa($module, 'Module');
-
-    # Non Linux systems can sometimes fail to build when GNU Make would work,
-    # so prefer GNU Make if present, otherwise try regular make.  Also, convert
-    # the path to an absolute path since I've encountered a sudo that is
-    # apparently unable to guess.  Maybe it's better that it doesn't guess
-    # anyways from a security point-of-view.
-    my $make;
-    if(!($make = absPathToExecutable('gmake') || absPathToExecutable('make'))) {
-        # Weird, we can't find make, you'd think configure would have
-        # noticed...
-        error (" r[b[*] Unable to find the g[make] executable!");
-        return 1;
-    }
-
-    # Make it prettier if pretending (Remove leading directories).
-    $make =~ s{^/.*/}{} if pretending();
-
-    # Simplify code by forcing lists to exist.
-    $optsRef->{'prefix-options'} //= [ ];
-    $optsRef->{'make-options'} //= [ ];
-    $optsRef->{'subdirs'} //= [ ];
-
-    my @prefixOpts = @{$optsRef->{'prefix-options'}};
-
-    # If using sudo ensure that it doesn't wait on tty, but tries to read from
-    # stdin (which should fail as we redirect that from /dev/null)
-    if (@prefixOpts && $prefixOpts[0] eq 'sudo' && !grep { /^-S$/ } @prefixOpts)
-    {
-        splice (@prefixOpts, 1, 0, '-S'); # Add -S right after 'sudo'
-    }
-
-    # Assemble arguments
-    my @args = (@prefixOpts, $make);
-    push @args, $optsRef->{target} if $optsRef->{target};
-    push @args, @{$optsRef->{'make-options'}};
-
-    info ("\t", $optsRef->{message});
-
-    # Here we're attempting to ensure that we either run make in each
-    # subdirectory, *or* for the whole module, but not both.
-    my @dirs = @{$optsRef->{subdirs}};
-    push (@dirs, "") if scalar @dirs == 0;
-
-    for my $subdir (@dirs)
-    {
-        # Some subdirectories shouldn't have make run within them.
-        next unless $module->buildSystem()->isSubdirBuildable($subdir);
-
-        my $logname = $optsRef->{logbase} // $optsRef->{target};
-
-        if ($subdir ne '')
-        {
-            $logname = $logname . "-$subdir";
-
-            # Remove slashes in favor of something else.
-            $logname =~ tr{/}{-};
-
-            # Mention subdirectory that we're working on, move ellipsis
-            # if present.
-            my $subdirMessage = $optsRef->{message};
-            if ($subdirMessage =~ /\.\.\.$/) {
-                $subdirMessage =~ s/(\.\.\.)?$/ subdirectory g[$subdir]$1/;
-            }
-            info ("\t$subdirMessage");
-        }
-
-        my $builddir = $module->fullpath('build') . "/$subdir";
-        $builddir =~ s/\/*$//; # Remove trailing /
-
-        p_chdir ($builddir);
-
-        my $result = run_make_command ($module, $logname, \@args);
-        return $result if $result;
-    };
-
-    return 0;
 }
 
 # Reads a "line" from a file. This line is stripped of comments and extraneous
