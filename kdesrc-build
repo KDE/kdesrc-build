@@ -324,6 +324,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my $caller = caller;
         my @exports = qw(list_has make_exception assert_isa assert_in
                          croak_runtime croak_internal
+                         absPathToExecutable
                          log_command disable_locale_message_translation
                          split_quoted_on_whitespace
                          safe_unlink safe_system p_chdir super_mkdir
@@ -343,6 +344,28 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my @list = @{$listRef};
 
         return scalar grep { "$_" eq "$value" } (@list);
+    }
+
+    # Subroutine to return the path to the given executable based on the
+    # current PATH.  e.g. if you pass make you could get '/usr/bin/make'.  If
+    # the executable is not found undef is returned.
+    #
+    # This assumes that the module environment has already been updated since
+    # binpath doesn't exactly correspond to $ENV{'PATH'}.
+    sub absPathToExecutable
+    {
+        my $prog = shift;
+        my @paths = split(/:/, $ENV{'PATH'});
+
+        # If it starts with a / the path is already absolute.
+        return $prog if $prog =~ /^\//;
+
+        for my $path (@paths)
+        {
+            return "$path/$prog" if (-x "$path/$prog");
+        }
+
+        return undef;
     }
 
     # Returns a Perl object worth "die"ing for. (i.e. can be given to the die
@@ -5945,28 +5968,6 @@ sub run_make_command
     };
 
     return log_command($module, $filename, $argRef, { callback => $log_command_callback });
-}
-
-# Subroutine to return the path to the given executable based on the current
-# binpath settings.  e.g. if you pass make you could get '/usr/bin/make'.  If
-# the executable is not found undef is returned.
-#
-# This assumes that the module environment has already been updated since
-# binpath doesn't exactly correspond to $ENV{'PATH'}.
-sub absPathToExecutable
-{
-    my $prog = shift;
-    my @paths = split(/:/, $ENV{'PATH'});
-
-    # If it starts with a / the path is already absolute.
-    return $prog if $prog =~ /^\//;
-
-    for my $path (@paths)
-    {
-        return "$path/$prog" if (-x "$path/$prog");
-    }
-
-    return undef;
 }
 
 # Subroutine to delete a directory and all files and subdirectories within.
