@@ -3205,6 +3205,8 @@ EOF
 
     our @ISA = ('UpdateHandler');
 
+    use IPC::Open3 qw(open3);
+
     # Returns true if a module has a base component to their name (e.g. KDE/,
     # extragear/, or playground).  Note that modules that aren't in trunk/KDE
     # don't necessary meet this criteria (e.g. kdereview is a module itself).
@@ -3370,13 +3372,16 @@ EOF
     # URL.  If not, a warning is printed out.
     # First parameter: module to check.
     # Return: Nothing.
-    sub check_module_validity
+    sub _verifyCorrectServerURL
     {
         my $self = assert_isa(shift, 'SvnUpdate');
-        my $module = $self->module();
-        my $source_dir = $module->fullpath('source');
+
         my $module_expected_url = $self->svn_module_url();
         my $module_actual_url = $self->svnInfo('URL');
+
+        if (!$module_actual_url) {
+            croak_runtime ("Unable to determine working copy's svn URL for " . $self->module());
+        }
 
         $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
         $module_actual_url   =~ s{/+$}{}; # Remove trailing slashes
@@ -3384,6 +3389,7 @@ EOF
         if ($module_actual_url ne $module_expected_url)
         {
             # Check if the --src-only flag was passed.
+            my $module = $self->module();
             if ($module->buildContext()->getOption('#allow-auto-repo-move'))
             {
                 note ("g[$module] is checked out from a different location than expected.");
@@ -3411,6 +3417,63 @@ If you use kdesrc-build with --src-only it will try switching for you (might not
 correctly).
 EOF
         }
+    }
+
+    # This procedure should be run before any usage of a local working copy to
+    # ensure it is valid. This should only be run if there's actually a local
+    # copy.
+    #
+    # Any errors will be fatal, so a 'Runtime' exception would be raised.
+    sub check_module_validity
+    {
+        my $self = assert_isa(shift, 'SvnUpdate');
+        my $module = $self->module();
+
+        # svn 1.7 has a different working copy format that must be manually
+        # converted. This will mess up everything else so make this our first
+        # check.
+        p_chdir($module->fullpath('source'));
+
+        # gensym makes a symbol that can be made a filehandle by open3
+        use Symbol qw(gensym);
+
+        # Can't use filter_program_output as that doesn't capture STDERR on
+        # purpose. We, on the other hand, just want STDERR.
+        my $stderrReader = gensym();
+        my $pid = open3(undef, undef, $stderrReader,
+            'svn', '--non-interactive', 'status');
+
+        my @errorLines = grep { /:\s*E155036:/ } (<$stderrReader>);
+        waitpid ($pid, 0);
+
+        if (@errorLines) {
+            warning (<<EOF);
+ y[*] A new version of svn has been installed which requires a b[one-time] update
+ y[*] Currently running b[svn upgrade], this may take some time but should only
+ y[*] be needed once.
+EOF
+
+            if (0 != log_command($module, 'svn-upgrade', ['svn', '--non-interactive', 'upgrade'])) {
+                error (<<EOF);
+ r[*] Unable to run b[svn upgrade] for b[r[$module]!
+ r[*] If you have no local changes you should try deleting the $module
+ r[*] source directory, and re-run b[kdesrc-build], which will re-download.
+ r[*]
+ r[*] There is no way for kdesrc-build to safely make this check for you as
+ r[*] the old version of b[svn] is required to read the current repository!
+EOF
+                croak_runtime("Unable to run svn upgrade for $module");
+            }
+
+            # By this point svn-upgrade should have run successfully, unless
+            # we're in pretend mode.
+            if (pretending()) {
+                croak_runtime("Unable to use --pretend for svn module $module until svn-upgrade is run");
+            }
+        }
+
+        # Ensure the URLs are correct.
+        $self->_verifyCorrectServerURL();
     }
 
     # Subroutine used to handle the checkout-only option.  It handles updating
