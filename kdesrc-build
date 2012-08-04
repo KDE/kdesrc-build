@@ -7945,19 +7945,16 @@ sub handle_build
     # build.
     $ipc->waitForStreamStart();
 
-    my $outfile = undef;
+    my $outfile = pretending() ? undef
+                               : $ctx->getLogDir() . '/build-status';
 
-    if (not pretending())
-    {
-        $outfile = $ctx->getLogDir() . '/build-status';
-        open STATUS_FILE, ">$outfile" or do {
-            error (<<EOF);
+    open (STATUS_FILE, '>', $outfile // '/dev/null') or do {
+        error (<<EOF);
 	Unable to open output status file r[b[$outfile]
 	You won't be able to use the g[--resume] switch next run.\n";
 EOF
-            $outfile = undef;
-        };
-    }
+        $outfile = undef;
+    };
 
     my $num_modules = scalar @modules;
     my $i = 1;
@@ -8028,7 +8025,7 @@ EOF
         if ($module->build())
         {
             my $elapsed = prettify_seconds(time - $start_time);
-            print STATUS_FILE "$module: Succeeded after $elapsed.\n" if $outfile;
+            print STATUS_FILE "$module: Succeeded after $elapsed.\n";
             $module->setPersistentOption('last-build-rev', $module->currentScmRevision());
             $module->setPersistentOption('failure-count', 0);
 
@@ -8038,7 +8035,7 @@ EOF
         else
         {
             my $elapsed = prettify_seconds(time - $start_time);
-            print STATUS_FILE "$module: Failed after $elapsed.\n" if $outfile;
+            print STATUS_FILE "$module: Failed after $elapsed.\n";
 
             info ("\tOverall time for r[$module] was g[$elapsed].");
             $ctx->markModulePhaseFailed('build', $module);
