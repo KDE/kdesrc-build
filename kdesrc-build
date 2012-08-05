@@ -1925,7 +1925,7 @@ EOF
         $logDir = $self->{logPaths}{$baseLogPath};
         return $logDir if pretending();
 
-        main::super_mkdir($logDir) unless -e $logDir;
+        super_mkdir($logDir) unless -e $logDir;
 
         # No symlink munging or module-name-adding is needed for the default
         # log dir.
@@ -1943,7 +1943,7 @@ EOF
         my ($moduleName, $modulePath) = fileparse($module->name());
         $latestPath .= "/$modulePath" if $module->name() =~ m(/);
 
-        main::super_mkdir($latestPath);
+        super_mkdir($latestPath);
 
         my $symlinkTarget = "$logDir/$moduleName";
         my $symlink = "$latestPath/$moduleName";
@@ -1959,7 +1959,7 @@ EOF
             symlink($symlinkTarget, $symlink);
         }
 
-        main::super_mkdir($symlinkTarget);
+        super_mkdir($symlinkTarget);
         return $symlinkTarget;
     }
 
@@ -5451,7 +5451,7 @@ EOF
         if ($kdesrc ne $module_src_dir)
         {
             # This module has a different source directory, ensure it exists.
-            if (!main::super_mkdir($module_src_dir))
+            if (!super_mkdir($module_src_dir))
             {
                 error ("Unable to create separate source directory for r[$self]: $module_src_dir");
                 $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $moduleName);
