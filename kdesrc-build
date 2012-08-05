@@ -856,7 +856,7 @@ EOF
         my $self = shift;
         my ($module, $msg) = @_;
 
-        $self->sendIPCMessage(main::IPC::MODULE_SUCCESS, "$module,$msg");
+        $self->sendIPCMessage(IPC::MODULE_SUCCESS, "$module,$msg");
     }
 
     # Waits for an update for a module with the given name.
@@ -1113,7 +1113,7 @@ EOF
         my $self = shift;
         my ($module, $msg) = @_;
 
-        $self->sendIPCMessage(main::IPC::MODULE_SUCCESS, "$module,$msg", 'toMon');
+        $self->sendIPCMessage(IPC::MODULE_SUCCESS, "$module,$msg", 'toMon');
     }
 
     # Closes the given list of filehandle ids.
@@ -1676,7 +1676,7 @@ EOF
         if ($self->getOption('use-idle-io-priority')) {
             # -p $$ is our PID, -c3 is idle priority
             # 0 return value means success
-            if (main::safe_system('ionice', '-c3', '-p', $$) != 0) {
+            if (safe_system('ionice', '-c3', '-p', $$) != 0) {
                 warning (" b[y[*] Unable to lower I/O priority, continuing...");
             }
         }
@@ -4394,7 +4394,7 @@ EOF
     sub absPathToQMake
     {
         my @possibilities = qw/qmake qmake4 qmake-qt4 qmake-mac/;
-        return first { main::absPathToExecutable($_) } @possibilities;
+        return first { absPathToExecutable($_) } @possibilities;
     }
 
     # Return value style: boolean
