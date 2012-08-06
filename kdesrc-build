@@ -3742,9 +3742,6 @@ END
             warning ("Source code conflict exists in r[$module], this module will not");
             warning ("build until it is resolved.");
 
-            # If in async this only affects the update process, we need to IPC it
-            # to the build process.
-            $module->setOption('#update-error', IPC::MODULE_CONFLICT);
             die make_exception('ConflictPresent', "Source conflicts exist in $module");
         }
 
@@ -5474,8 +5471,10 @@ EOF
             error ("Error updating r[$self], removing from list of packages to build.");
             error (" > y[$@]");
 
-            my $reason = $self->getOption('#update-error');
-            $reason = IPC::MODULE_FAILURE unless $reason; # Default error code
+            my $reason = $@->isa('ConflictPresent')
+                        ? IPC::MODULE_CONFLICT
+                        : IPC::MODULE_FAILURE;
+
             main::dont_build ($self, $ipc, $reason); # Sends IPC message.
             $returnValue = 0;
         }
