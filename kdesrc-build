@@ -5471,11 +5471,18 @@ EOF
             error ("Error updating r[$self], removing from list of packages to build.");
             error (" > y[$@]");
 
-            my $reason = $@->isa('ConflictPresent')
-                        ? IPC::MODULE_CONFLICT
-                        : IPC::MODULE_FAILURE;
+            my $reason = IPC::MODULE_FAILURE;
 
-            main::dont_build ($self, $ipc, $reason); # Sends IPC message.
+            if ($@->{'exception_type'} eq 'ConflictPresent') {
+                $reason = IPC::MODULE_CONFLICT;
+                $self->setPersistentOption('conflicts-present', 1);
+            }
+            else {
+                $ctx->markModulePhaseFailed('build', $self);
+            }
+
+            $ipc->sendIPCMessage($reason, $moduleName);
+            $self->phases()->filterOutPhase('build');
             $returnValue = 0;
         }
         else
@@ -5496,7 +5503,9 @@ EOF
             {
                 whisper ("This module will not be built. Nothing updated.");
                 $message = "0 files affected.";
-                main::dont_build($self, $ipc, IPC::MODULE_UPTODATE); # Sends IPC message.
+
+                $ipc->sendIPCMessage(IPC::MODULE_UPTODATE, $moduleName);
+                $self->phases()->filterOutPhase('build');
             }
 
             # We doing e.g. --src-only, the build phase that normally outputs
@@ -7357,45 +7366,6 @@ sub updateModulePhases
     }
 
     return @_;
-}
-
-# Subroutine to remove a package from the package build list.  This
-# is for use when you've detected an error that should keep the
-# package from building, but you don't want to abort completely.
-#
-# First parameter is the module that did not build.
-# Second parameter is the IPC connection to send the required message over
-# Third parameter is the error reason (e.g. IPC::MODULE_CONFLICT).
-# No return value;
-sub dont_build
-{
-    my $module = assert_isa(shift, 'Module');
-    my $ctx = assert_isa($module->buildContext(), 'ksb::BuildContext');
-    my $ipc = shift;
-    my $reason = shift;
-
-    whisper ("Not building $module");
-
-    if ($ipc)
-    {
-        $ipc->sendIPCMessage($reason, $module->name());
-    }
-    else
-    {
-        # Weed out matches of the module name
-        $module->phases()->filterOutPhase('build');
-
-        if ($module->getOption('#conflict-found'))
-        {
-            # Record now for posterity
-            $module->setPersistentOption("conflicts-present", 1);
-        }
-    }
-
-    if ($reason != IPC::MODULE_UPTODATE)
-    {
-        $ctx->markModulePhaseFailed('update', $module);
-    }
 }
 
 # Subroutine to split a url into a protocol and host
