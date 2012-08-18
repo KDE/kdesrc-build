@@ -1288,6 +1288,7 @@ EOF
     my $inRepo = 0;            # >0 if we are actually in a repo element.
     my $repoFound = 0;         # If we've already found the repo we need.
     my $searchProject = '';    # Project we're looking for.
+    my $desiredProtocol = '';  # URL protocol desired (normally 'git')
 
     # Note on searchProject: A /-separated path is fine, in which case we look
     # for the right-most part of the full path which matches all of searchProject.
@@ -1300,7 +1301,7 @@ EOF
         # extragear/utils/kdesrc-build
         @xmlGroupingIds{qw/component module project/} = 1;
 
-        my ($self, $proj) = @_;
+        my ($self, $proj, $protocol) = @_;
 
         $searchProject = $proj;
         @modules = ();
@@ -1308,6 +1309,7 @@ EOF
         $inRepo = 0;
         $trackingReposFlag = 0;
         $curRepository = undef;
+        $desiredProtocol = $protocol;
 
         my $parser = XML::Parser->new(
             Handlers =>
@@ -1403,9 +1405,9 @@ EOF
         # tarballs available.
         elsif ($element eq 'url') {
             $curRepository->{'needs'} =
-                #                    this proto | needs this attr set
-                $attrs{'protocol'} eq 'git'     ? 'repo'    :
-                $attrs{'protocol'} eq 'tarball' ? 'tarball' : undef;
+                #                     this proto       | needs this attr set
+                $attrs{'protocol'} eq $desiredProtocol ? 'repo'    :
+                $attrs{'protocol'} eq 'tarball'        ? 'tarball' : undef;
         }
         # i18n data gives us the defined stable and trunk branches.
         elsif ($element eq 'branch' && $attrs{'i18n'} && $attrs{'i18n'} eq 'stable') {
@@ -6645,7 +6647,7 @@ sub expandXMLModules
         my $srcdir = $ctx->getSourceDir();
 
         my $xmlReader = KDEXMLReader->new($databaseFile);
-        my @allXmlResults = $xmlReader->getModulesForProject($name);
+        my @allXmlResults = $xmlReader->getModulesForProject($name, 'git');
 
         # It's possible to match modules which are marked as inactive on
         # projects.kde.org, elide those.
