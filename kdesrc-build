@@ -1259,6 +1259,26 @@ EOF
 {
     package KDEXMLReader;
     use XML::Parser;
+    use strict;
+    use warnings;
+
+    sub new
+    {
+        my $class = shift;
+        my $inputHandle = shift;
+
+        my $self = {
+            inputHandle => $inputHandle,
+        };
+
+        return bless ($self, $class);
+    }
+
+    sub inputHandle
+    {
+        my $self = shift;
+        return $self->{inputHandle};
+    }
 
     my @nameStack = ();        # Used to assign full names to modules.
     my %xmlGroupingIds;        # XML tags which group repositories.
@@ -1280,7 +1300,7 @@ EOF
         # extragear/utils/kdesrc-build
         @xmlGroupingIds{qw/component module project/} = 1;
 
-        my ($class, $handle, $proj) = @_;
+        my ($self, $proj) = @_;
 
         $searchProject = $proj;
         @modules = ();
@@ -1298,7 +1318,7 @@ EOF
                 },
         );
 
-        my $result = $parser->parse($handle);
+        my $result = $parser->parse($self->inputHandle());
         return @modules;
     }
 
@@ -6624,7 +6644,8 @@ sub expandXMLModules
         my $name = $moduleSet->name();
         my $srcdir = $ctx->getSourceDir();
 
-        my @allXmlResults = KDEXMLReader->getModulesForProject($databaseFile, $name);
+        my $xmlReader = KDEXMLReader->new($databaseFile);
+        my @allXmlResults = $xmlReader->getModulesForProject($name);
 
         # It's possible to match modules which are marked as inactive on
         # projects.kde.org, elide those.
