@@ -324,6 +324,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my $caller = caller;
         my @exports = qw(list_has make_exception assert_isa assert_in
                          croak_runtime croak_internal
+                         download_file
                          absPathToExecutable
                          log_command disable_locale_message_translation
                          split_quoted_on_whitespace
@@ -823,6 +824,37 @@ EOF
 
         # 0 means not to keep delimiters or quotes
         return parse_line('\s+', 0, $line);
+    }
+
+    # This subroutine downloads the file pointed to by the URL given in the
+    # first parameter, saving to the given filename.  (FILENAME, not
+    # directory). HTTP and FTP are supported, but this functionality requires
+    # libwww-perl
+    #
+    # First parameter: URL of link to download (i.e. http://kdesrc-build.kde.org/foo.tbz2)
+    # Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
+    # Return value is 0 for failure, non-zero for success.
+    sub download_file
+    {
+        my $url = shift;
+        my $filename = shift;
+
+        my $ua = LWP::UserAgent->new(timeout => 30);
+
+        # Trailing space adds the appropriate LWP info since the resolver is not
+        # my custom coding anymore.
+        $ua->agent("kdesrc-build $versionNum ");
+
+        whisper ("Downloading g[$filename] from g[$url]");
+        my $response = $ua->mirror($url, $filename);
+
+        # LWP's mirror won't auto-convert "Unchanged" code to success, so check for
+        # both.
+        return 1 if $response->code == 304 || $response->is_success;
+
+        error ("Failed to download y[b[$url] to b[$filename]");
+        error ("Result was: y[b[" . $response->status_line . "]");
+        return 0;
     }
 
     1;
@@ -2736,7 +2768,7 @@ EOF
         my $tmpdir = File::Spec->tmpdir() // "/tmp";
         $filename = "$tmpdir/$filename"; # Make absolute
 
-        if (!main::download_file($tarball, $filename)) {
+        if (!download_file($tarball, $filename)) {
             error ("Unable to download snapshot for module r[$module]");
             return 0;
         }
@@ -6175,36 +6207,6 @@ sub get_module_path_dir
     }
 
     return %result;
-}
-
-# This subroutine downloads the file pointed to by the URL given in the first
-# parameter, saving to the given filename.  (FILENAME, not directory). HTTP
-# and FTP are supported, but this functionality requires libwww-perl
-#
-# First parameter: URL of link to download (i.e. http://kdesrc-build.kde.org/foo.tbz2)
-# Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
-# Return value is 0 for failure, non-zero for success.
-sub download_file
-{
-    my $url = shift;
-    my $filename = shift;
-
-    my $ua = LWP::UserAgent->new(timeout => 30);
-
-    # Trailing space adds the appropriate LWP info since the resolver is not
-    # my custom coding anymore.
-    $ua->agent("kdesrc-build $versionNum ");
-
-    whisper ("Downloading g[$filename] from g[$url]");
-    my $response = $ua->mirror($url, $filename);
-
-    # LWP's mirror won't auto-convert "Unchanged" code to success, so check for
-    # both.
-    return 1 if $response->code == 304 || $response->is_success;
-
-    error ("Failed to download y[b[$url] to b[$filename]");
-    error ("Result was: y[b[" . $response->status_line . "]");
-    return 0;
 }
 
 # Subroutine to delete a directory and all files and subdirectories within.
