@@ -1599,6 +1599,7 @@ EOF
         "dest-dir"             => '${MODULE}', # single quotes used on purpose!
         "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
         "do-not-compile"       => "",
+        "git-desired-protocol" => 'git', # protocol to grab from kde-projects
         "git-repository-base"  => {}, # Base path template for use multiple times.
         "http-proxy"           => '', # Proxy server to use for HTTP.
         "install-after-build"  => 1,  # Default to true
@@ -6667,7 +6668,15 @@ sub expandXMLModules
         my $srcdir = $ctx->getSourceDir();
 
         my $xmlReader = KDEXMLReader->new($databaseFile);
-        my @allXmlResults = $xmlReader->getModulesForProject($name, 'git');
+        my $protocol = $ctx->getOption('git-desired-protocol') || 'git';
+
+        if (!list_has(['git', 'http'], $protocol)) {
+            error (" b[y[*] Invalid b[git-desired-protocol] $protocol");
+            error (" b[y[*] Try setting this option to 'git' if you're not using a proxy");
+            croak_runtime ("Invalid git-desired-protocol: $protocol");
+        }
+
+        my @allXmlResults = $xmlReader->getModulesForProject($name, $protocol);
 
         # It's possible to match modules which are marked as inactive on
         # projects.kde.org, elide those.
