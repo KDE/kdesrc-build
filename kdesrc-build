@@ -833,17 +833,26 @@ EOF
     #
     # First parameter: URL of link to download (i.e. http://kdesrc-build.kde.org/foo.tbz2)
     # Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
+    # Third parameter: URL of a proxy to use (undef or empty means proxy as set in environment)
     # Return value is 0 for failure, non-zero for success.
     sub download_file
     {
-        my $url = shift;
-        my $filename = shift;
+        my ($url, $filename, $proxy) = @_;
 
         my $ua = LWP::UserAgent->new(timeout => 30);
 
         # Trailing space adds the appropriate LWP info since the resolver is not
         # my custom coding anymore.
         $ua->agent("kdesrc-build $versionNum ");
+
+        if ($proxy) {
+            whisper ("Using proxy $proxy for FTP, HTTP downloads");
+            $ua->proxy(['http', 'ftp'], $proxy);
+        }
+        else {
+            whisper ("Using proxy as determined by environment");
+            $ua->env_proxy();
+        }
 
         whisper ("Downloading g[$filename] from g[$url]");
         my $response = $ua->mirror($url, $filename);
@@ -1591,6 +1600,7 @@ EOF
         "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
         "do-not-compile"       => "",
         "git-repository-base"  => {}, # Base path template for use multiple times.
+        "http-proxy"           => '', # Proxy server to use for HTTP.
         "install-after-build"  => 1,  # Default to true
         "kdedir"               => "$ENV{HOME}/kde",
         "kde-languages"        => "",
@@ -1737,6 +1747,13 @@ EOF
 
         # Get ready for logged output.
         ksb::Debug::setLogFile($self->getLogDirFor($self) . '/build-log');
+
+        # Propagate HTTP proxy through environment unless overridden.
+        if ((my $proxy = $self->getOption('http-proxy')) &&
+            !defined $ENV{'http_proxy'})
+        {
+            $self->queueEnvironmentVariable('http_proxy', $proxy);
+        }
     }
 
     # Clears the list of environment variables to set for log_command runs.
@@ -2768,7 +2785,7 @@ EOF
         my $tmpdir = File::Spec->tmpdir() // "/tmp";
         $filename = "$tmpdir/$filename"; # Make absolute
 
-        if (!download_file($tarball, $filename)) {
+        if (!download_file($tarball, $filename, $module->getOption('http-proxy'))) {
             error ("Unable to download snapshot for module r[$module]");
             return 0;
         }
@@ -6483,7 +6500,7 @@ sub ensure_projects_xml_present
     my $updating = grep { /^update$/ } (@{$ctx->phases()});
     if (!pretending() && $updating) {
         info (" * Downloading projects.kde.org project database...");
-        $result = download_file($url, $file);
+        $result = download_file($url, $file, $ctx->getOption('http-proxy'));
     }
     elsif (! -e $file) {
         note (" * Downloading projects.kde.org project database (will not be saved in pretend mode)...");
@@ -6493,7 +6510,7 @@ sub ensure_projects_xml_present
         # file.
         (undef, $file) = tempfile('kde_projectsXXXXXX',
             SUFFIX=>'.xml', TMPDIR=>1, UNLINK=>0);
-        $result = download_file($url, $file);
+        $result = download_file($url, $file, $ctx->getOption('http-proxy'));
         open ($fileHandleResult, '<', $file) or croak_runtime("Unable to open KDE Project database $file: $!");
     }
     else {
