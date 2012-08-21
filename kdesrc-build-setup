@@ -25,7 +25,7 @@ use IO::Pipe;
 use File::Copy;
 use File::Temp qw/tempfile/;
 
-our $VERSION = 0.02; # Not user-visible yet.
+our $VERSION = 0.03; # Not user-visible yet.
 
 sub clearScreen
 {
@@ -221,6 +221,17 @@ if ($dev) {
     $dev = getUserInput("What is your KDE identity username (for SVN access)?");
 }
 
+# If the user appears to be using a proxy, ask for it directly, otherwise
+# prompt for one.
+my $proxy = $ENV{http_proxy} // '';
+
+my $proxyPrompt =
+    "Do you use an HTTP proxy? (If you don't know, you probably don't)";
+
+if ($proxy || getYesNoAnswer($proxyPrompt)) {
+    $proxy = getUserInput("What is the URL for your HTTP proxy?", $proxy);
+}
+
 my $installDir = getMenuOption('Where do you want to install the software?',
     [
         home => "$ENV{HOME}/kde4 (default)",
@@ -340,6 +351,21 @@ if ($dev) {
     # line.
     svn-server svn+ssh://$dev\@svn.kde.org/home/kde
 
+EOF
+}
+
+if ($proxy) {
+    print $output <<EOF;
+    # Proxy to use for HTTP downloads.
+    http-proxy $proxy
+
+    # Prefer HTTP instead of Git-native protocol for git modules that come
+    # from 'kde-projects' repositories.
+    #
+    # Note that any git:// repositories you use will need to be
+    # manually converted to http:// URLs if your network does not allow
+    # git:// protcol.
+    git-desired-protocol http
 EOF
 }
 
