@@ -5598,22 +5598,22 @@ EOF
 
         if ($@)
         {
+            my $reason = IPC::MODULE_FAILURE;
+
             if (ref $@ && $@->isa('BuildException')) {
+                if ($@->{'exception_type'} eq 'ConflictPresent') {
+                    $reason = IPC::MODULE_CONFLICT;
+                    $self->setPersistentOption('conflicts-present', 1);
+                }
+                else {
+                    $ctx->markModulePhaseFailed('build', $self);
+                }
+
                 $@ = $@->{'message'};
             }
 
             error ("Error updating r[$self], removing from list of packages to build.");
             error (" > y[$@]");
-
-            my $reason = IPC::MODULE_FAILURE;
-
-            if ($@->{'exception_type'} eq 'ConflictPresent') {
-                $reason = IPC::MODULE_CONFLICT;
-                $self->setPersistentOption('conflicts-present', 1);
-            }
-            else {
-                $ctx->markModulePhaseFailed('build', $self);
-            }
 
             $ipc->sendIPCMessage($reason, $moduleName);
             $self->phases()->filterOutPhase('build');
