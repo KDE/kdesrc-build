@@ -1614,6 +1614,7 @@ EOF
         "module-base-path"     => "",  # Used for tags and branches
         "niceness"             => "10",
         "no-svn"               => "",
+        "override-build-system"=> "",
         "override-url"         => "",
         "persistent-data-file" => "",
         "prefix"               => "", # Override installation prefix.
@@ -5178,11 +5179,38 @@ EOF
         return $self->scm()->currentRevisionInternal();
     }
 
+    # Returns a new build system object, given the appropriate name.
+    # This is a sub-optimal way to fix the problem of allowing users to override
+    # the detected build system (we could instead use introspection to figure out
+    # available build systems at runtime). However, KISS...
+    sub buildSystemFromName
+    {
+        my ($self, $name) = @_;
+        my $buildSystem;
+
+        given(lc($name)) {
+            when('generic')         { $buildSystem = GenericBuildSystem   -> new($self); }
+            when('qmake')           { $buildSystem = QMakeBuildSystem     -> new($self); }
+            when('cmake-bootstrap') { $buildSystem = CMakeBootstrapSystem -> new($self); }
+            when('kde')             { $buildSystem = KDEBuildSystem       -> new($self); }
+            when('qt')              { $buildSystem = QtBuildSystem        -> new($self); }
+
+            default { croak_runtime("Invalid build system $name requested"); }
+        }
+
+        return $buildSystem;
+    }
+
     sub buildSystem
     {
         my $self = shift;
 
         if ($self->{build_obj} && $self->{build_obj}->name() ne 'generic') {
+            return $self->{build_obj};
+        }
+
+        if (my $userBuildSystem = $self->getOption('override-build-system')) {
+            $self->{build_obj} = $self->buildSystemFromName($userBuildSystem);
             return $self->{build_obj};
         }
 
