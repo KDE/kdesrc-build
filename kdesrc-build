@@ -4497,6 +4497,53 @@ EOF
 }
 # }}}
 
+# package AutotoolsBuildSystem {{{
+{
+    package AutotoolsBuildSystem;
+
+    # This is a module used to support configuring with autotools.
+
+    use parent -norequire, 'GenericBuildSystem';
+
+    ksb::Debug->import();
+    ksb::Util->import();
+
+    use List::Util qw(first);
+
+    sub name
+    {
+        return 'autotools';
+    }
+
+    # Return value style: boolean
+    sub configureInternal
+    {
+        my $self = assert_isa(shift, 'AutotoolsBuildSystem');
+        my $module = $self->module();
+        my $sourcedir = $module->fullpath('source');
+        my $installdir = $module->installationPath();
+
+        # 'module'-limited option grabbing can return undef, so use //
+        # to convert to empty string in that case.
+        my @bootstrapOptions = split_quoted_on_whitespace(
+            $module->getOption('configure-flags', 'module') // '');
+
+        p_chdir($module->fullpath('build'));
+
+        my $configureCommand = first { -e "$sourcedir/$_" } qw(configure autogen.sh);
+
+        croak_internal("No configure command available") unless $configureCommand;
+
+        return log_command($module, 'configure', [
+                $configureCommand, "--prefix=$installdir",
+                @bootstrapOptions
+            ]) == 0;
+    }
+
+    1;
+}
+# }}}
+
 # package CMakeBootstrapSystem {{{
 {
     package CMakeBootstrapSystem;
@@ -5194,6 +5241,7 @@ EOF
             when('cmake-bootstrap') { $buildSystem = CMakeBootstrapSystem -> new($self); }
             when('kde')             { $buildSystem = KDEBuildSystem       -> new($self); }
             when('qt')              { $buildSystem = QtBuildSystem        -> new($self); }
+            when('autotools')       { $buildSystem = AutotoolsBuildSystem -> new($self); }
 
             default { croak_runtime("Invalid build system $name requested"); }
         }
@@ -5248,7 +5296,7 @@ EOF
         if (!$buildType &&
             (-e "$sourceDir/configure" || -e "$sourceDir/autogen.sh"))
         {
-            croak_internal('The autotools build system is unsupported');
+            $buildType = AutotoolsBuildSystem->new($self);
         }
 
         # Don't just assume the build system is KDE-based...
