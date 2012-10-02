@@ -4030,17 +4030,10 @@ EOF
         my $builddir = $module->fullpath('build');
         my $confFileKey = $self->configuredModuleFileName();
 
-        if (debugging())
-        {
-            debug ("Build directory not setup for $module.") if not -e "$builddir";
-            debug (".refresh-me exists for $module.") if -e "$builddir/.refresh-me";
-            debug ("refresh-build option set for $module.") if $module->getOption('refresh-build');
-            debug ("Can't find configure key file for $module.") if not -e "$builddir/$confFileKey";
-        }
-
         return 1 if ((not -e "$builddir") ||
             (-e "$builddir/.refresh-me") ||
             $module->getOption("refresh-build") ||
+            (($module->getPersistentOption('failure-count') // 0) > 1) ||
             (not -e "$builddir/$confFileKey"));
 
         return 0;
