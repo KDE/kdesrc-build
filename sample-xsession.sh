@@ -14,12 +14,19 @@
 
 # === User-modifiable variables. Should be set automatically by kdesrc-build.
 
+# kdesrc-build: filter | The KDESRC_BUILD_TESTING stuff is to allow the script to
+# kdesrc-build: filter | be executable by testsuite. It is filtered from destination.
+if ! test -n "$KDESRC_BUILD_TESTING"; then # kdesrc-build: filter
 # Where KDE libraries and applications are installed to.
 kde_prefix="<% kdedir %>"  # E.g. "$HOME/kde-4"
 
 # Where Qt is installed to. If using the system Qt, leave blank or set to
 # 'auto' and this script will try to auto-detect.
 qt_prefix="<% qtdir %>"    # E.g. "$HOME/qt4" or "/usr" on many systems.
+else # kdesrc-build: filter
+kde_prefix="$HOME/kde"     # kdesrc-build: filter
+qt_prefix="$HOME/qt4"      # kdesrc-build: filter
+fi # kdesrc-build: filter
 
 # Directory to use for KDE configuration and other user customizations.
 KDEHOME="$HOME/.kde4-self" # Or perhaps "$HOME/.kde-selfmade", etc.
@@ -67,7 +74,7 @@ fi
 # Can't use function keyword in Busybox-sh
 path_add()
 {
-    eval curVal=\$'{'$1'}'
+    eval curVal=\$'{'$1'-}'
 
     if [ -n "$curVal" ]; then
         eval "$1"="$2:$curVal";
@@ -130,6 +137,7 @@ export XDG_CONFIG_DIRS
 export MANPATH
 export KDEHOME
 
+if ! test -n "$KDESRC_BUILD_TESTING"; then # kdesrc-build: filter
 # Read in user-specific customizations
 if test -f "$HOME/.xsession-local"; then
     source "$HOME/.xsession-local"
@@ -148,3 +156,4 @@ fi
 if test -f "$HOME/.xsession-logout"; then
     source "$HOME/.xsession-logout"
 fi
+fi # kdesrc-build: filter

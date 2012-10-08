@@ -516,9 +516,16 @@ SKIP: {
     like ($newQMakePossibility, qr/^qmake/, 'qmake looks like an executable even in scalar context.');
 }
 
+is(system('/bin/sh', '-n', "$RealBin/sample-xsession.sh"), 0, 'xsession  pre-install syntax check');
+
+$ENV{KDESRC_BUILD_TESTING} = 1; # Tell sample-xsession.sh not to run.
+is(system('/bin/sh', '-u', "$RealBin/sample-xsession.sh"), 0, 'xsession unset variable check');
+
 # Ensure this function can run without throwing exception.
 ok(installTemplatedFile("$RealBin/sample-xsession.sh", "$testSourceDirName/xsession.sh", $ctx) || 1,
-    'installing-template');
+    'xsession template installation');
+
+is(system('/bin/sh', '-n', "$testSourceDirName/xsession.sh"), 0, 'xsession post-install syntax check');
 
 done_testing();
 ### TESTS GO ABOVE THIS LINE
