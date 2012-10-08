@@ -128,6 +128,7 @@ export STRIGI_PLUGIN_PATH
 export XDG_DATA_DIRS
 export XDG_CONFIG_DIRS
 export MANPATH
+export KDEHOME
 
 # Read in user-specific customizations
 if test -f "$HOME/.xsession-local"; then
