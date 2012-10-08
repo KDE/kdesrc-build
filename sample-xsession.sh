@@ -86,9 +86,7 @@ path_add()
 # Initialize some variables based on Qt and KDE install paths.
 # Since this should be run as .xsession there's no guarantee of any
 # user-specific variables being set already.
-libname="lib$libsuffix"
-unset STRIGI_PLUGIN_PATH
-unset KDEDIRS
+libname="lib$lib_suffix"
 
 # Now add the necessary directories, starting with Qt.
 path_add "PATH"               "$qt_prefix/bin";
