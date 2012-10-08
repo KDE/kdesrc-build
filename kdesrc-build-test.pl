@@ -15,6 +15,7 @@ use 5.010;
 use Getopt::Long;
 use Scalar::Util qw(blessed);
 use Storable qw(freeze);
+use FindBin qw($RealBin $Bin);
 
 # Control whether we actually try to svn checkouts, possibly more later.
 my $fullRun = 0;
@@ -514,6 +515,10 @@ SKIP: {
     my $newQMakePossibility = QMakeBuildSystem::absPathToQMake();
     like ($newQMakePossibility, qr/^qmake/, 'qmake looks like an executable even in scalar context.');
 }
+
+# Ensure this function can run without throwing exception.
+ok(installTemplatedFile("$RealBin/sample-xsession.sh", "$testSourceDirName/xsession.sh", $ctx) || 1,
+    'installing-template');
 
 done_testing();
 ### TESTS GO ABOVE THIS LINE
