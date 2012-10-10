@@ -5421,6 +5421,16 @@ EOF
 
         if (!$buildSystem->configureInternal()) {
             error ("\tUnable to configure r[$self] with " . $self->buildSystemType());
+
+            # Add undocumented ".refresh-me" file to build directory to flag
+            # for --refresh-build for this module on next run. See also the
+            # "needsRefreshed" subroutine.
+            if (open my $fh, '>', '.refresh-me') {
+                say $fh "# Build directory will be re-generated next kdesrc-build run";
+                say $fh "# due to failing to complete configuration on the last run";
+                close $fh;
+            };
+
             return 0;
         }
 
