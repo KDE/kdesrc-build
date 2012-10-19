@@ -2,15 +2,11 @@
 # A script to start the kde workspace.
 # Written by Michael Jansen and Michael Pyne
 #
-# You can use it in two ways. Just copy the content to the given path.
+# Use by copying this script to ~/.xsession (this will be done for you by
+# kdesrc-build and/or kdesrc-build-setup, later).
 #
-# 1. $HOME/.xsession
-# ------------------
-# Select "custom" session when logging in. This will use that script.
-#
-# 2. $KDEDIRS/bin/mystartkde
-# See "files xsession" on how to use that. Make sure the script is executable.
-# Note: This doesn't work with kdesrc-build -- mpyne
+# From there, select "custom" session when logging in, in order to login using
+# this script.
 
 # === User-modifiable variables. Should be set automatically by kdesrc-build.
 
