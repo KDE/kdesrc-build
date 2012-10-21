@@ -2549,11 +2549,16 @@ EOM
             $module->setPersistentOption('git-cloned-repository', $git_repo);
 
             my $branch = $self->getBranch();
+            p_chdir($srcdir);
 
-            # Switch immediately to user-requested branch now.
-            if ($branch ne 'master') {
+            # Switch immediately to user-requested tag or branch now.
+            if (my $tag = $module->getOption('tag')) {
+                info ("\tSwitching to specific tagged-commit g[$tag]");
+                $result = (log_command($module, 'git-checkout-tag',
+                    ['git', 'checkout', "refs/tags/$tag"]) == 0);
+            }
+            elsif ((my $branch = $self->getBranch()) ne 'master') {
                 info ("\tSwitching to branch g[$branch]");
-                p_chdir($srcdir);
                 $result = (log_command($module, 'git-checkout',
                     ['git', 'checkout', '-b', $branch, "origin/$branch"]) == 0);
             }
