@@ -2800,12 +2800,14 @@ EOF
         # checkout a specific tag/SHA1/etc.
         # We need to be wordy here to placate the Perl warning generator.
         my @gitRefTypes = (
-            [qw/revision commit/], [qw/tag tag/], [qw/branch branch/],
+            [qw/revision commit/], [qw/tag tag/],
         );
-        my $gitRefType = first { $module->getOption($_->[0]) } @gitRefTypes;
-        my ($branch, $type) = @$gitRefType;
+        my $gitRefType = (first { $module->getOption($_->[0]) } @gitRefTypes) //
+                          ['branch', 'branch'];
+        my ($chosenRefOption, $type) = @$gitRefType;
 
-        $branch = $module->getOption($branch);
+        my $branch = $type eq 'branch' ? $self->getBranch()
+                                       : $module->getOption($chosenRefOption);
 
         note ("Updating g[$module] (to $type b[$branch])");
         my $start_commit = $self->commit_id('HEAD');
