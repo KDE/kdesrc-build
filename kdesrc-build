@@ -6612,22 +6612,27 @@ sub installTemplatedFile
 #  The key name to use for searching/recording installed MD5 digest.
 sub installCustomFile
 {
+    use File::Copy qw(copy);
+
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my ($sourceFilePath, $destFilePath, $md5KeyName) = @_;
     my $baseName = basename($sourceFilePath);
 
     if (-e $destFilePath) {
-        my $existingMD5 = $ctx->getPersistentOption('/digests', $md5KeyName);
+        my $existingMD5 = $ctx->getPersistentOption('/digests', $md5KeyName) // '';
 
-        if ((!$existingMD5 || fileDigestMD5($destFilePath) ne $existingMD5) &&
-            !$ctx->getOption('#delete-my-settings'))
-        {
-            error ("\tr[*] Installing \"b[$baseName]\" would overwrite an existing file:");
-            error ("\tr[*]  y[b[$destFilePath]");
-            error ("\tr[*] If this is acceptable, please delete the existing file and re-run,");
-            error ("\tr[*] or pass b[--delete-my-settings] and re-run.");
+        if (fileDigestMD5($destFilePath) ne $existingMD5) {
+            if (!$ctx->getOption('#delete-my-settings')) {
+                error ("\tr[*] Installing \"b[$baseName]\" would overwrite an existing file:");
+                error ("\tr[*]  y[b[$destFilePath]");
+                error ("\tr[*] If this is acceptable, please delete the existing file and re-run,");
+                error ("\tr[*] or pass b[--delete-my-settings] and re-run.");
 
-            return;
+                return;
+            }
+            elsif (!pretending()) {
+                copy ($destFilePath, "$destFilePath.kdesrc-build-backup");
+            }
         }
     }
 
