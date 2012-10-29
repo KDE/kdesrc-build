@@ -1617,6 +1617,7 @@ EOF
         "debug"                => "",
         "debug-level"          => ksb::Debug::INFO,
         "delete-my-patches"    => 0, # Should only be set from cmdline
+        "delete-my-settings"   => 0, # Should only be set from cmdline
         "dest-dir"             => '${MODULE}', # single quotes used on purpose!
         "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
         "do-not-compile"       => "",
@@ -6618,7 +6619,9 @@ sub installCustomFile
     if (-e $destFilePath) {
         my $existingMD5 = $ctx->getPersistentOption('/digests', $md5KeyName);
 
-        if (!$existingMD5 || fileDigestMD5($destFilePath) ne $existingMD5) {
+        if ((!$existingMD5 || fileDigestMD5($destFilePath) ne $existingMD5) &&
+            !$ctx->getOption('#delete-my-settings'))
+        {
             error ("\tr[*] Installing \"b[$baseName]\" would overwrite an existing file:");
             error ("\tr[*]  y[b[$destFilePath]");
             error ("\tr[*] If this is acceptable, please delete the existing file and re-run,");
@@ -7718,6 +7721,11 @@ DONE
 
             /^--delete-my-patches$/ && do {
                 $ctx->setOption('#delete-my-patches', 1);
+                last SWITCH;
+            };
+
+            /^--delete-my-settings$/ && do {
+                $ctx->setOption('#delete-my-settings', 1);
                 last SWITCH;
             };
 
