@@ -40,6 +40,7 @@ use warnings;
 use Fcntl qw(:DEFAULT :seek);    # For sysopen constants
 use Carp;
 use POSIX qw(strftime :sys_wait_h _exit);
+use File::Basename; # basename
 use File::Find; # For our lndir reimplementation.
 use File::Path qw(remove_tree);
 use File::Glob ':glob';
@@ -6596,6 +6597,89 @@ sub installTemplatedFile
     }
 }
 
+# This function installs a source file to a destination path, assuming the
+# source file is a "templated" source file (see also installTemplatedFile), and
+# records a digest of the file actually installed. This function will overwrite
+# a destination if the destination is identical to the last-installed file.
+#
+# Error handling: Any errors will result in an exception being thrown.
+# Return value: There is no return value.
+# Parameters:
+#  BuildContext to use for looking up template values,
+#  The full path to the source file.
+#  The full path to the destination file (incl. name)
+#  The key name to use for searching/recording installed MD5 digest.
+sub installCustomFile
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my ($sourceFilePath, $destFilePath, $md5KeyName) = @_;
+    my $baseName = basename($sourceFilePath);
+
+    if (-e $destFilePath) {
+        my $existingMD5 = $ctx->getPersistentOption('/digests', $md5KeyName);
+
+        if (!$existingMD5 || fileDigestMD5($destFilePath) ne $existingMD5) {
+            error ("\tr[*] Installing \"b[$baseName]\" would overwrite an existing file:");
+            error ("\tr[*]  y[b[$destFilePath]");
+            error ("\tr[*] If this is acceptable, please delete the existing file and re-run,");
+            error ("\tr[*] or pass b[--delete-my-settings] and re-run.");
+
+            return;
+        }
+    }
+
+    if (!pretending()) {
+        installTemplatedFile($sourceFilePath, $destFilePath, $ctx);
+        $ctx->setPersistentOption('/digests', $md5KeyName, fileDigestMD5($destFilePath));
+    }
+}
+
+# This function installs the included sample .xsession and environment variable
+# setup files, and records the md5sum of the installed results.
+#
+# If a file already exists, then its md5sum is taken and if the same as what
+# was previously installed, is overwritten. If not the same, the original file
+# is left in place and the .xsession is instead installed to
+# .xsession-kdesrc-build
+#
+# Error handling: Any errors will result in an exception being thrown.
+# Return value: There is no return value.
+# Parameters:
+#  BuildContext to use for looking up template values,
+sub installCustomSessionDriver
+{
+    use FindBin qw($RealBin);
+    use List::Util qw(first);
+
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my @xdgDataDirs = split(':', $ENV{XDG_DATA_DIRS} || '/usr/local/share/:/usr/share/');
+    my $xdgDataHome = $ENV{XDG_DATA_HOME} || "$ENV{HOME}/.local/share";
+
+    # First we have to find the source
+    my @searchPaths = ($RealBin, map { "$_/kdesrc-build" } ($xdgDataHome, @xdgDataDirs));
+
+    s{/+$}{}   foreach @searchPaths; # Remove trailing slashes
+    s{//+}{/}g foreach @searchPaths; # Remove duplicate slashes
+
+    my $envScript = first { -f $_ } (
+        map { "$_/sample-kde-env-master.sh" } @searchPaths
+    );
+    my $sessionScript = first { -f $_ } (
+        map { "$_/sample-xsession.sh" } @searchPaths
+    );
+
+    if (!$envScript || !$sessionScript) {
+        warning ("b[*] Unable to find helper files to setup a login session.");
+        warning ("b[*] You will have to setup login yourself, or install kdesrc-build properly.");
+        return;
+    }
+
+    installCustomFile($ctx, $envScript, "$ENV{HOME}/.kde-env-master.sh",
+        'kde-env-master-digest');
+    installCustomFile($ctx, $sessionScript, "$ENV{HOME}/.xsession",
+        'xsession-digest');
+}
+
 # Reads a "line" from a file. This line is stripped of comments and extraneous
 # whitespace. Also, backslash-continued multiple lines are merged into a single
 # line.
@@ -9148,6 +9232,7 @@ eval
 
     cleanup_log_directory($ctx) if $ctx->getOption('purge-old-logs');
     output_failed_module_lists($ctx);
+    installCustomSessionDriver($ctx);
 
     $time = localtime;
     my $color = '';
