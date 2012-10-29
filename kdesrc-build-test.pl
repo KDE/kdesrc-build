@@ -546,6 +546,13 @@ do {
         'xsession post-install syntax check');
 };
 
+open my $testFile, '>', "$testSourceDirName/md5-sample";
+print $testFile "sample-vector";
+close $testFile;
+
+is(fileDigestMD5("$testSourceDirName/md5-sample"),
+    'fe840f4320cfd6e7ce9070756400e42e', 'MD5 file digests');
+
 done_testing();
 ### TESTS GO ABOVE THIS LINE
 }; # eval

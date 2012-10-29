@@ -281,6 +281,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
     use File::Path qw(make_path);
     use Cwd qw(getcwd);
     use Errno qw(:POSIX);
+    use Digest::MD5;
 
     ksb::Debug->import();
 
@@ -325,7 +326,7 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
         my @exports = qw(list_has make_exception assert_isa assert_in
                          croak_runtime croak_internal
                          download_file
-                         absPathToExecutable
+                         absPathToExecutable fileDigestMD5
                          log_command disable_locale_message_translation
                          split_quoted_on_whitespace
                          safe_unlink safe_system p_chdir super_mkdir
@@ -500,6 +501,25 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
             make_path($pathname);
             return (-e $pathname) ? 1 : 0;
         }
+    }
+
+    # Calculates the MD5 digest of a file already on-disk. The digest is
+    # returned as a hex string digest as from Digest::MD5::md5_hex
+    #
+    # First parameter: File name to read
+    # Return value: hex string MD5 digest of file.
+    # An exception is thrown if an error occurs reading the file.
+    sub fileDigestMD5
+    {
+        my $fileName = shift;
+        my $md5 = Digest::MD5->new;
+
+        open my $file, '<', $fileName or croak_runtime(
+            "Unable to open $fileName: $!");
+        binmode($file);
+
+        $md5->addfile($file);
+        return $md5->hexdigest();
     }
 
     # This function is intended to disable the message translation catalog
