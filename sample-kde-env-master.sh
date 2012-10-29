@@ -133,3 +133,7 @@ export XDG_DATA_DIRS
 export XDG_CONFIG_DIRS
 export MANPATH
 export KDEHOME
+
+if ! test -e "$KDEHOME"; then
+    mkdir -p "$KDEHOME" >/dev/null 2>&1
+fi
