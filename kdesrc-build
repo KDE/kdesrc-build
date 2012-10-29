@@ -6686,6 +6686,13 @@ sub installCustomSessionDriver
         'kde-env-master-digest');
     installCustomFile($ctx, $sessionScript, "$ENV{HOME}/.xsession",
         'xsession-digest');
+
+    if (!pretending()) {
+        chmod (0744, "$ENV{HOME}/.xsession") or do {
+            error ("\tb[r[*] Error making b[~/.xsession] executable: $!");
+            error ("\tb[r[*] If this file is not executable you may not be able to login!");
+        };
+    }
 }
 
 # Reads a "line" from a file. This line is stripped of comments and extraneous
