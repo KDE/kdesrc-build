@@ -12,14 +12,14 @@
 # .xsession-local, which will be sourced just prior to running KDE. This can
 # read .bashrc, just set a few vars, etc.
 
-source "$HOME/.kde-env-master.sh" # Should be installed by kdesrc-build
+. "$HOME/.kde-env-master.sh" # Should be installed by kdesrc-build
 
 # See .kde-env-master.sh for details on the kdesrc-build: filter stuff
 
 if ! test -n "$KDESRC_BUILD_TESTING"; then # kdesrc-build: filter
 # Read in user-specific customizations
 if test -f "$HOME/.xsession-local"; then
-    source "$HOME/.xsession-local"
+    . "$HOME/.xsession-local"
 fi
 
 #
@@ -33,6 +33,6 @@ fi
 
 # Use user-specific logout if present
 if test -f "$HOME/.xsession-logout"; then
-    source "$HOME/.xsession-logout"
+    . "$HOME/.xsession-logout"
 fi
 fi # kdesrc-build: filter
