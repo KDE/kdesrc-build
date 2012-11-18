@@ -6686,16 +6686,19 @@ sub installCustomSessionDriver
         return;
     }
 
-    installCustomFile($ctx, $envScript, "$ENV{HOME}/.kde-env-master.sh",
+    my $destDir = $ENV{XDG_CONFIG_HOME} || "$ENV{HOME}/.config";
+    super_mkdir($destDir) unless -d $destDir;
+
+    installCustomFile($ctx, $envScript, "$destDir/kde-env-master.sh",
         'kde-env-master-digest');
     installCustomFile($ctx, $sessionScript, "$ENV{HOME}/.xsession",
         'xsession-digest');
 
     if (!pretending()) {
-        if (! -e "$ENV{HOME}/.kde-env-user.sh") {
-            copy($userSample, "$ENV{HOME}/.kde-env-user.sh") or do {
+        if (! -e "$destDir/kde-env-user.sh") {
+            copy($userSample, "$destDir/kde-env-user.sh") or do {
                 warning ("b[*] Unable to install b[$userSample]: $!");
-                warning ("b[*] You should create b[~/.kde-env-user.sh] yourself or fix the error and re-run");
+                warning ("b[*] You should create b[~/.config/kde-env-user.sh] yourself or fix the error and re-run");
             };
         }
 

@@ -517,36 +517,37 @@ SKIP: {
     like ($newQMakePossibility, qr/^qmake/, 'qmake looks like an executable even in scalar context.');
 }
 
-# This test set must be run first as xsession depends on this env-master.
-is(system('/bin/sh', '-n', "$RealBin/sample-kde-env-master.sh"), 0,
-    'env-master pre-install syntax check');
-
-$ENV{KDESRC_BUILD_TESTING} = 1; # Tell sample-xsession.sh not to run.
-
-is(system('/bin/sh', '-u', "$RealBin/sample-kde-env-master.sh"), 0,
-    'env-master unset variable check');
-
-# Deliberately after env-master, env-master should have no unset variables if user doesn't set
-# this up.
-ok(File::Copy::copy("$RealBin/sample-kde-env-user.sh", "$testSourceDirName/.kde-env-user.sh"),
-    'env-user   sample installation');
-
-# Ensure this function can run without throwing exception.
-ok(installTemplatedFile("$RealBin/sample-kde-env-master.sh", "$testSourceDirName/.kde-env-master.sh", $ctx) || 1,
-    'env-master template installation');
-
-is(system('/bin/sh', '-n', "$RealBin/sample-xsession.sh"), 0,
-    'xsession   pre-install syntax check');
-
-ok(File::Copy::copy("$RealBin/sample-xsession.sh", "$testSourceDirName/xsession.sh"),
-    'xsession   installation');
-
-$ENV{KDESRC_BUILD_TESTING} = 1; # Tell sample-xsession.sh not to run.
-is(system('/bin/sh', '-u', "$RealBin/sample-xsession.sh"), 0,
-    'xsession   unset variable check');
-
 do {
     local $ENV{HOME} = "$testSourceDirName"; # Search right spot for kde-env-master.sh
+    local $ENV{XDG_CONFIG_HOME} = $testSourceDirName;
+
+    # This test set must be run first as xsession depends on this env-master.
+    is(system('/bin/sh', '-n', "$RealBin/sample-kde-env-master.sh"), 0,
+        'env-master pre-install syntax check');
+
+    local $ENV{KDESRC_BUILD_TESTING} = 1; # Tell sample-xsession.sh not to run.
+
+    is(system('/bin/sh', '-u', "$RealBin/sample-kde-env-master.sh"), 0,
+        'env-master unset variable check');
+
+    # Deliberately after env-master, env-master should have no unset variables if user doesn't set
+    # this up.
+    ok(File::Copy::copy("$RealBin/sample-kde-env-user.sh", "$testSourceDirName/kde-env-user.sh"),
+        'env-user   sample installation');
+
+    # Ensure this function can run without throwing exception.
+    ok(installTemplatedFile("$RealBin/sample-kde-env-master.sh", "$testSourceDirName/kde-env-master.sh", $ctx) || 1,
+        'env-master template installation');
+
+    is(system('/bin/sh', '-n', "$RealBin/sample-xsession.sh"), 0,
+        'xsession   pre-install syntax check');
+
+    ok(File::Copy::copy("$RealBin/sample-xsession.sh", "$testSourceDirName/xsession.sh"),
+        'xsession   installation');
+
+    is(system('/bin/sh', '-u', "$RealBin/sample-xsession.sh"), 0,
+        'xsession   unset variable check');
+
     is(system('/bin/sh', '-n', "$testSourceDirName/xsession.sh"), 0,
         'xsession post-install syntax check');
 };

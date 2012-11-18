@@ -9,16 +9,18 @@
 #
 # See also the sample xsession setup script which requires this file.
 #
-# Use by copying this script to ~/.kde-env-master (this will be done for you by
-# kdesrc-build and/or kdesrc-build-setup, later).
+# Use by copying this script to $XDG_CONFIG_HOME/kde-env-master.sh (this will
+# be done for you by kdesrc-build and/or kdesrc-build-setup, later). 99% of the
+# time this means ~/.config/kde-env-master.sh
 #
 # NOTHING IN THIS FILE IS MODIFIABLE, OTHERWISE WARNINGS WILL BE GENERATED
 
 # === Load user environment settings (i.e. not set through kdesrc-buildrc)
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 # ALL USER MODS GO HERE ↴
-if test -f "$HOME/.kde-env-user.sh"; then
-    . "$HOME/.kde-env-user.sh"
+if test -f "$XDG_CONFIG_HOME/kde-env-user.sh"; then
+    . "$XDG_CONFIG_HOME/kde-env-user.sh"
 fi
 
 # === Modifiable variables. Should be set automatically by kdesrc-build based

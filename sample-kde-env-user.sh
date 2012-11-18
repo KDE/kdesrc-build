@@ -4,7 +4,9 @@
 # setup files, this one can be modified by the user, and kdesrc-build will not
 # warn about it or overwrite it.
 #
-# This file should be installed to ~/.kde-env-user.sh
+# This file should be installed to $XDG_CONFIG_HOME/kde-env-user.sh (which
+# normally means ~/.config/kde-env-user.sh)
+#
 # As long as it is found here, the kdesrc-build sample session and environment
 # setup scripts will pull in settings from that file first.
 

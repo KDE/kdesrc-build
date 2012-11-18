@@ -12,7 +12,9 @@
 # .xsession-local, which will be sourced just prior to running KDE. This can
 # read .bashrc, just set a few vars, etc.
 
-. "$HOME/.kde-env-master.sh" # Should be installed by kdesrc-build
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+. "${XDG_CONFIG_HOME}/kde-env-master.sh" # Should be installed by kdesrc-build
 
 # See .kde-env-master.sh for details on the kdesrc-build: filter stuff
 
