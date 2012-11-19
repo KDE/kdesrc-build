@@ -1625,6 +1625,7 @@ EOF
         "git-repository-base"  => {}, # Base path template for use multiple times.
         "http-proxy"           => '', # Proxy server to use for HTTP.
         "install-after-build"  => 1,  # Default to true
+        "install-session-driver" => 1,# Default to true
         "kdedir"               => "$ENV{HOME}/kde",
         "kde-languages"        => "",
         "libpath"              => "",
@@ -9266,7 +9267,7 @@ eval
 
     cleanup_log_directory($ctx) if $ctx->getOption('purge-old-logs');
     output_failed_module_lists($ctx);
-    installCustomSessionDriver($ctx);
+    installCustomSessionDriver($ctx) if $ctx->getOption('install-session-driver');
 
     $time = localtime;
     my $color = '';
