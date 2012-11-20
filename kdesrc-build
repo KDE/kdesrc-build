@@ -40,6 +40,7 @@ use warnings;
 use Fcntl qw(:DEFAULT :seek);    # For sysopen constants
 use Carp;
 use POSIX qw(strftime :sys_wait_h _exit);
+use File::Basename; # basename
 use File::Find; # For our lndir reimplementation.
 use File::Path qw(remove_tree);
 use File::Glob ':glob';
@@ -1616,6 +1617,7 @@ EOF
         "debug"                => "",
         "debug-level"          => ksb::Debug::INFO,
         "delete-my-patches"    => 0, # Should only be set from cmdline
+        "delete-my-settings"   => 0, # Should only be set from cmdline
         "dest-dir"             => '${MODULE}', # single quotes used on purpose!
         "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
         "do-not-compile"       => "",
@@ -1623,6 +1625,7 @@ EOF
         "git-repository-base"  => {}, # Base path template for use multiple times.
         "http-proxy"           => '', # Proxy server to use for HTTP.
         "install-after-build"  => 1,  # Default to true
+        "install-session-driver" => 1,# Default to true
         "kdedir"               => "$ENV{HOME}/kde",
         "kde-languages"        => "",
         "libpath"              => "",
@@ -6596,6 +6599,117 @@ sub installTemplatedFile
     }
 }
 
+# This function installs a source file to a destination path, assuming the
+# source file is a "templated" source file (see also installTemplatedFile), and
+# records a digest of the file actually installed. This function will overwrite
+# a destination if the destination is identical to the last-installed file.
+#
+# Error handling: Any errors will result in an exception being thrown.
+# Return value: There is no return value.
+# Parameters:
+#  BuildContext to use for looking up template values,
+#  The full path to the source file.
+#  The full path to the destination file (incl. name)
+#  The key name to use for searching/recording installed MD5 digest.
+sub installCustomFile
+{
+    use File::Copy qw(copy);
+
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my ($sourceFilePath, $destFilePath, $md5KeyName) = @_;
+    my $baseName = basename($sourceFilePath);
+
+    if (-e $destFilePath) {
+        my $existingMD5 = $ctx->getPersistentOption('/digests', $md5KeyName) // '';
+
+        if (fileDigestMD5($destFilePath) ne $existingMD5) {
+            if (!$ctx->getOption('#delete-my-settings')) {
+                error ("\tr[*] Installing \"b[$baseName]\" would overwrite an existing file:");
+                error ("\tr[*]  y[b[$destFilePath]");
+                error ("\tr[*] If this is acceptable, please delete the existing file and re-run,");
+                error ("\tr[*] or pass b[--delete-my-settings] and re-run.");
+
+                return;
+            }
+            elsif (!pretending()) {
+                copy ($destFilePath, "$destFilePath.kdesrc-build-backup");
+            }
+        }
+    }
+
+    if (!pretending()) {
+        installTemplatedFile($sourceFilePath, $destFilePath, $ctx);
+        $ctx->setPersistentOption('/digests', $md5KeyName, fileDigestMD5($destFilePath));
+    }
+}
+
+# This function installs the included sample .xsession and environment variable
+# setup files, and records the md5sum of the installed results.
+#
+# If a file already exists, then its md5sum is taken and if the same as what
+# was previously installed, is overwritten. If not the same, the original file
+# is left in place and the .xsession is instead installed to
+# .xsession-kdesrc-build
+#
+# Error handling: Any errors will result in an exception being thrown.
+# Return value: There is no return value.
+# Parameters:
+#  BuildContext to use for looking up template values,
+sub installCustomSessionDriver
+{
+    use FindBin qw($RealBin);
+    use List::Util qw(first);
+    use File::Copy qw(copy);
+
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my @xdgDataDirs = split(':', $ENV{XDG_DATA_DIRS} || '/usr/local/share/:/usr/share/');
+    my $xdgDataHome = $ENV{XDG_DATA_HOME} || "$ENV{HOME}/.local/share";
+
+    # First we have to find the source
+    my @searchPaths = ($RealBin, map { "$_/kdesrc-build" } ($xdgDataHome, @xdgDataDirs));
+
+    s{/+$}{}   foreach @searchPaths; # Remove trailing slashes
+    s{//+}{/}g foreach @searchPaths; # Remove duplicate slashes
+
+    my $envScript = first { -f $_ } (
+        map { "$_/sample-kde-env-master.sh" } @searchPaths
+    );
+    my $sessionScript = first { -f $_ } (
+        map { "$_/sample-xsession.sh" } @searchPaths
+    );
+    my $userSample = first { -f $_ } (
+        map { "$_/sample-kde-env-user.sh" } @searchPaths
+    );
+
+    if (!$envScript || !$sessionScript) {
+        warning ("b[*] Unable to find helper files to setup a login session.");
+        warning ("b[*] You will have to setup login yourself, or install kdesrc-build properly.");
+        return;
+    }
+
+    my $destDir = $ENV{XDG_CONFIG_HOME} || "$ENV{HOME}/.config";
+    super_mkdir($destDir) unless -d $destDir;
+
+    installCustomFile($ctx, $envScript, "$destDir/kde-env-master.sh",
+        'kde-env-master-digest');
+    installCustomFile($ctx, $sessionScript, "$ENV{HOME}/.xsession",
+        'xsession-digest');
+
+    if (!pretending()) {
+        if (! -e "$destDir/kde-env-user.sh") {
+            copy($userSample, "$destDir/kde-env-user.sh") or do {
+                warning ("b[*] Unable to install b[$userSample]: $!");
+                warning ("b[*] You should create b[~/.config/kde-env-user.sh] yourself or fix the error and re-run");
+            };
+        }
+
+        chmod (0744, "$ENV{HOME}/.xsession") or do {
+            error ("\tb[r[*] Error making b[~/.xsession] executable: $!");
+            error ("\tb[r[*] If this file is not executable you may not be able to login!");
+        };
+    }
+}
+
 # Reads a "line" from a file. This line is stripped of comments and extraneous
 # whitespace. Also, backslash-continued multiple lines are merged into a single
 # line.
@@ -7634,6 +7748,11 @@ DONE
 
             /^--delete-my-patches$/ && do {
                 $ctx->setOption('#delete-my-patches', 1);
+                last SWITCH;
+            };
+
+            /^--delete-my-settings$/ && do {
+                $ctx->setOption('#delete-my-settings', 1);
                 last SWITCH;
             };
 
@@ -9148,6 +9267,7 @@ eval
 
     cleanup_log_directory($ctx) if $ctx->getOption('purge-old-logs');
     output_failed_module_lists($ctx);
+    installCustomSessionDriver($ctx) if $ctx->getOption('install-session-driver');
 
     $time = localtime;
     my $color = '';

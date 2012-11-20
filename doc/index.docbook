@@ -886,169 +886,131 @@ please see <xref linkend="kdesrc-build-logging"/>.</para></note>
 </sect1>
 
 <sect1 id="environment">
-<title>Setting the Environment to Run Your Fresh &kde;</title>
+<title>Setting the Environment to Run Your &kde; &plasma; Desktop</title>
 
 <para>
-Assuming you are using a dedicated user to build &kde;, and you already have
-an installed &kde; version, running your new &kde; may be a bit tricky, as the new &kde;
-has to take precedence over the old. Change the environment variables to
-make sure it does.
+Assuming you are using a dedicated user to build &kde;, and you already have an
+installed &kde; version, running your new &kde; may be a bit tricky, as the new
+&kde; has to take precedence over the old. You must change the environment
+variables of your login scripts to make sure the newly-built desktop is used.
 </para>
 
-<sect2 id="changing-profile">
-<title>Changing your startup profile settings</title>
+<sect2 id="session-driver">
+<title>Automatically installing a login driver</title>
 
-<important><para>The <filename>.bash_profile</filename> is the login settings
-file for the popular <application>bash</application> shell used by many &Linux;
-distributions. If you use a different shell, then you may need to adjust the
-samples given in this section for your particular shell.</para></important>
+<para>Starting from version 1.16, &kdesrc-build; will try to install an
+appropriate login driver, that will allow you to login to your
+&kdesrc-build;-built &kde; desktop from your login manager. This can be
+disabled by using the <option><link
+linkend="conf-install-session-driver">install-session-driver</link></option>
+configuration file option.</para>
 
-<para>
-Open or create the <filename>.bash_profile</filename> file in the home directory with your favorite editor,
-and add to the end of the file:
+<note><para>Session setup does not occur while &kdesrc-build; is running
+in pretend mode.</para></note>
 
-If you are building the qt module (you are by default), add instead:
+<para>This driver works by setting up a custom <quote><literal>xsession</literal></quote>
+session type. This type of session should work by default with the &kdm; login
+manager (where it appears as a <quote>Custom</quote> session), but other login
+managers (such as <application>LightDM</application> and
+<application>gdm</application>) may require additional files installed to
+enable <literal>xsession</literal> support.</para>
 
-<programlisting>
-QTDIR=(path to qtdir)   # Such as ~/kdesrc/build/qt by default.
-KDEDIR=(path to kdedir) # Such as ~/kde by default.
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
-MANPATH=$QTDIR/doc/man:$MANPATH
+<sect3 id="xsession-distribution-setup">
+<title>Adding xsession support for distributions</title>
 
-# Act appropriately if LD_LIBRARY_PATH is not already set.
-if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib
-else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib:$LD_LIBRARY_PATH
-fi
+<para>The default login managers for some distributions may require additional
+packages to be installed in order to support <literal>xsession</literal> logins.</para>
 
-export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
-</programlisting>
+<itemizedlist>
+<listitem><para>The <ulink url="http://fedoraproject.org/">Fedora</ulink>
+&Linux; distribution requires the <literal>xorg-x11-xinit-session</literal>
+package to be installed for custom <literal>xsession</literal> login
+support.</para></listitem>
 
-or, if you are not building qt (and are using your system &Qt; instead), add
-this instead:
+<listitem><para><ulink url="http://debian.org/">Debian</ulink> and
+Debian-derived &Linux; distributions should support custom
+<literal>xsession</literal> logins, but require the
+<option><userinput>allow-user-xsession</userinput></option> option to be set in
+<filename>/etc/X11/Xsession.options</filename>. See also the Debian <ulink
+url="http://www.debian.org/doc/manuals/debian-reference/ch07.en.html#_customizing_the_x_session_classic_method">documentation
+on customizing the X session.</ulink></para></listitem>
 
-<programlisting>
-KDEDIR=(path to kdedir)  # Such as ~/kde by default.
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+<listitem><para>For other distributions, go to <xref
+linkend="xsession-manual-setup"/>.</para></listitem>
+</itemizedlist>
 
-# Act appropriately if LD_LIBRARY_PATH is not already set.
-if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib
-else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
-fi
+</sect3>
 
-export KDEDIRS PATH LD_LIBRARY_PATH
-</programlisting>
-</para>
+<sect3 id="xsession-manual-setup">
+<title>Manually adding support for xsession</title>
 
-<para>
-If you are not using a dedicated user, set a different $<envar>KDEHOME</envar>
-for your new environment in your <filename>.bash_profile</filename>:
+<para>If there were no distribution-specific directions for your distribution
+in <xref linkend="xsession-distribution-setup"/>, you can manually add a
+<quote>Custom xsession login</quote> entry to your distribution's list of
+session types as follows:</para>
 
-<programlisting>
-export KDEHOME="${HOME}/.kde-svn"
+<procedure id="proc-adding-xsession-type">
+<title>Adding an .xsession login session type.</title>
 
-# Create it if needed
-[ ! -e ~/.kde-svn ] &amp;&amp; mkdir ~/.kde-svn
-</programlisting>
-</para>
+<note><para>This procedure will likely require administrative privileges to
+complete.
+</para></note>
 
-<note>
-<para>
-If later your K Menu is empty or too crowded with applications from your
-distribution, you may have to set the <acronym>XDG</acronym> environment
-variables in your <filename>.bash_profile</filename>:
+<step performance="required">
+<para>Create the file
+<filename>/usr/share/xsessions/kdesrc-build.desktop</filename>.</para>
+</step>
 
-<programlisting>
-XDG_CONFIG_DIRS="/etc/xdg"
-XDG_DATA_DIRS="${KDEDIR}/share:/usr/share"
-export XDG_CONFIG_DIRS XDG_DATA_DIRS
-</programlisting>
+<step performance="required">
+<para>Ensure the file just created has the following text:</para>
+<literallayout><userinput>
+Type=XSession
+Exec=<co id="session-homedir"/><replaceable>$HOME</replaceable>/.xsession
+Name=KDE Plasma Desktop (unstable; kdesrc-build)
+</userinput></literallayout>
 
-</para>
-</note>
+<calloutlist>
+<callout arearefs="session-homedir"><para>
+The <replaceable>$HOME</replaceable> entry must be replaced by the full path to
+your home directory (example, <filename
+class="directory">/home/<replaceable>user</replaceable></filename>).  The
+desktop entry specification does not allow for user-generic files.
+</para></callout>
+
+</calloutlist>
+</step>
+
+<step performance="optional"><para>When the login manager is restarted, it
+should show a new session type, <quote>KDE Plasma Desktop (unstable;
+kdesrc-build)</quote> in its list of sessions, which should try to run the
+<filename>.xsession</filename> file installed by &kdesrc-build; if it is
+selected when you login.</para>
+
+<note><para>It may be easiest to restart the computer to restart the login
+manager, if the login manager does not track updates to the <filename
+class="directory">/usr/share/xsessions</filename> directory.</para></note>
+
+</step>
+
+</procedure>
+
+</sect3>
 
 </sect2>
-<sect2 id="starting-kde">
-<title>Starting &kde;</title>
 
-<para>
-Now that you have adjusted your environment settings to use the correct &kde;,
-it is important to ensure that the correct <command>startkde</command> script
-is used as well.
-</para>
+<sect2 id="old-profile-instructions">
+<title>Setting up the environment manually</title>
+<para>This documentation used to include instruction on which environment
+variables to set in order to load up the newly-built desktop. These
+instructions have been moved to an appendix (<xref
+linkend="old-profile-setup"/>).</para>
 
-<para>
-Open the <filename>.xinitrc</filename> text file from the home directory, or
-create it if necessary. Add the line:
-
-<programlisting>
-<command>exec</command> <option>${KDEDIR}/bin/startkde</option>
-</programlisting>
-</para>
-
-<important><para>On some distributions, it may be necessary to perform the same
-steps with the <filename>.xsession</filename> file, also in the home directory.
-This is especially true when using graphical login managers such as
-&kdm;, <application>gdm</application>, or <application>xdm</application>.</para>
-</important>
-
-<para>
-Now start your fresh &kde;: in &BSD; and &Linux; systems with virtual terminal support,
-<keycombo action="simul">&Ctrl;&Alt;<keycap>F1</keycap></keycombo> ... <keycombo action="simul">&Ctrl;&Alt;<keycap>F12</keycap></keycombo> keystroke combinations are used to switch to Virtual Console 1 through 12.
-This allows you to run more than one desktop environment at the same time. The fist six are
-text terminals and the following six are graphical displays.
-</para>
-
-<para>
-If when you start your computer you are presented to the graphical display
-manager instead, you can use the new &kde; environment, even if it is not listed
-as an option. Most display managers, including &kdm;, have an option to use
-a <quote>Custom Session</quote> when you login. With this option, your session settings are
-loaded from the <filename>.xsession</filename> file in your home directory. If
-you have already modified this file as described above, this option should load
-you into your new &kde; installation.
-</para>
-
-<para>If it does not, there is something else you can try that should normally
-work: Press <keycombo action="simul">&Ctrl;&Alt;<keycap>F2</keycap></keycombo>,
-and you will be presented to a text terminal. Log in using the dedicated user
-and type:
-</para>
-
-<screen>
-<command>startx</command> <option>--</option> <option>:1</option>
-</screen>
-
-<tip>
-<para>
-You can run the &kde; from sources and the old &kde; at the same time! Log in
-using your regular user, start the stable &kde; desktop. Press <keycombo
-action="simul">&Ctrl;&Alt;<keycap>F2</keycap></keycombo> (or
-<keycap>F1</keycap>, <keycap>F3</keycap>, etc..), and you will be presented
-with a text terminal. Log in using the dedicated &kde; &subversion; user and
-type:</para>
-
-<screen>
-<command>startx</command> <option>--</option> <option>:1</option>
-</screen>
-
-<para>You can go back to the &kde; desktop of your regular user by pressing the
-shortcut key for the already running desktop. This is normally
-<keycombo action="simul">&Ctrl;&Alt;<keycap>F7</keycap></keycombo>, you may need
-to use <keycap>F6</keycap> or <keycap>F8</keycap> instead. To return to your
-&kdesrc-build;-compiled &kde;, you would use the same sequence, except with the
-next function key. For example, if you needed to enter <keycombo action="simul">&Ctrl;&Alt;<keycap>F7</keycap></keycombo>
-to switch to your regular &kde;, you would need to enter
-<keycombo action="simul">&Ctrl;&Alt;<keycap>F8</keycap></keycombo> to go back
-to your &kdesrc-build; &kde;.</para>
-</tip>
+<para>If you intend to setup your own login support you can consult that
+appendix or view the <filename>sample-kde-env-master.sh</filename> file
+included with the &kdesrc-build; source.</para>
 
 </sect2>
+
 </sect1>
 
 </chapter>
@@ -1887,6 +1849,32 @@ this option to <userinput>false</userinput> in the <link
 linkend="configure-data">configuration file</link>. You can also use the <link
 linkend="cmdline-no-install"><option>--no-install</option></link> command line
 flag.
+</entry>
+</row>
+
+<row id="conf-install-session-driver">
+<entry>install-session-driver</entry>
+<entry>Cannot be overridden</entry>
+<entry><para>By default, &kdesrc-build; will try to install a driver for the graphical
+login manager that allows you to login to your &kdesrc-build;-built &kde; desktop.</para>
+
+<para>This driver will alter the following files:</para>
+
+<itemizedlist>
+<listitem><para><filename>~/.xsession</filename> (normally found at <filename>~/.config/kde-env-master.sh</filename>).</para></listitem>
+<listitem><para><filename>$XDG_CONFIG_HOME/kde-env-master.sh</filename> (normally found at <filename>~/.config/kde-env-master.sh</filename>).</para></listitem>
+<listitem><para><filename>$XDG_CONFIG_HOME/kde-env-user.sh</filename> (normally found at <filename>~/.config/kde-env-user.sh</filename>).</para></listitem>
+</itemizedlist>
+
+<para>If you maintain your own login driver then you can disable this feature by setting this
+option to <replaceable>false</replaceable>.</para>
+
+<para>This option was introduced with &kdesrc-build; 1.16.</para>
+
+<tip><para>&kdesrc-build; will not overwrite your existing files (if present)
+unless you also pass the <option><link
+linkend="cmdline-delete-my-settings">--delete-my-settings</link></option>
+command-line option.</para></tip>
 </entry>
 </row>
 
@@ -2845,6 +2833,32 @@ aid.</para></note>
 </listitem>
 </varlistentry>
 
+<varlistentry id="cmdline-delete-my-patches">
+<term><parameter>--delete-my-patches</parameter></term>
+<listitem><para>
+This option is used to let &kdesrc-build; delete source directories that may
+contain user data, so that the module can be re-downloaded. This would normally
+only be useful for &kde; developers (who might have local changes that would be
+deleted).</para>
+
+<para>This is currently only used to checkout modules that have been converted
+from &subversion; to &git;. You should not use this option normally,
+&kdesrc-build; will prompt to be re-run with it if it is needed.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-delete-my-settings">
+<term><parameter>--delete-my-settings</parameter></term>
+<listitem><para>
+This option is used to let &kdesrc-build; overwrite existing files which may contain
+user data.</para>
+
+<para>This is currently only used for xsession setup for the login manager. You
+should not use this option normally, &kdesrc-build; will prompt to be re-run
+with it if it is needed.</para>
+</listitem>
+</varlistentry>
+
 <varlistentry id="cmdline-global-option">
 <term><parameter>--&lt;option-name&gt;=</parameter></term>
 <listitem><para>
@@ -3758,7 +3772,7 @@ as of &kdesrc-build; version 1.6.3.
 
 </chapter>
 
-<appendix>
+<appendix id="appendix-modules">
 <title>&kde; modules and source code organization</title>
 <sect1 id="module-concept">
 <title>The <quote>Module</quote></title>
@@ -3820,6 +3834,178 @@ in this case) empty if you like. This <option>repository</option> setting tells
 <literal>kde-projects</literal></quote> is that &kdesrc-build; will
 automatically include any Git modules that are grouped under the modules you
 list (in the KDE Project database).</para>
+</sect2>
+</sect1>
+</appendix>
+
+<appendix id="appendix-profile">
+<title>Superseded profile setup procedures</title>
+
+<sect1 id="old-profile-setup">
+<title>Setting up a &kde; login profile</title>
+
+<para>These instructions cover how to setup the profile required to ensure your
+computer can login to your newly-built &kde; &plasma; desktop. &kdesrc-build;
+will normally try to do this automatically (see <xref
+linkend="session-driver"/>). This appendix section can be useful for those who
+cannot use &kdesrc-build;'s support for login profile setup. However the
+instructions may not always be up-to-date, it can also be useful to consult the
+<filename>kde-env-master.sh</filename> file included with the &kdesrc-build;
+source.</para>
+
+<sect2 id="changing-profile">
+<title>Changing your startup profile settings</title>
+
+<important><para>The <filename>.bash_profile</filename> is the login settings
+file for the popular <application>bash</application> shell used by many &Linux;
+distributions. If you use a different shell, then you may need to adjust the
+samples given in this section for your particular shell.</para></important>
+
+<para>
+Open or create the <filename>.bash_profile</filename> file in the home directory with your favorite editor,
+and add to the end of the file:
+
+If you are building the qt module (you are by default), add instead:
+
+<programlisting>
+QTDIR=(path to qtdir)   # Such as ~/kdesrc/build/qt by default.
+KDEDIR=(path to kdedir) # Such as ~/kde by default.
+KDEDIRS=$KDEDIR
+PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+MANPATH=$QTDIR/doc/man:$MANPATH
+
+# Act appropriately if LD_LIBRARY_PATH is not already set.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib
+else
+  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+fi
+
+export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
+</programlisting>
+
+or, if you are not building qt (and are using your system &Qt; instead), add
+this instead:
+
+<programlisting>
+KDEDIR=(path to kdedir)  # Such as ~/kde by default.
+KDEDIRS=$KDEDIR
+PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+
+# Act appropriately if LD_LIBRARY_PATH is not already set.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=$KDEDIR/lib
+else
+  LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
+fi
+
+export KDEDIRS PATH LD_LIBRARY_PATH
+</programlisting>
+</para>
+
+<para>
+If you are not using a dedicated user, set a different $<envar>KDEHOME</envar>
+for your new environment in your <filename>.bash_profile</filename>:
+
+<programlisting>
+export KDEHOME="${HOME}/.kde-svn"
+
+# Create it if needed
+[ ! -e ~/.kde-svn ] &amp;&amp; mkdir ~/.kde-svn
+</programlisting>
+</para>
+
+<note>
+<para>
+If later your K Menu is empty or too crowded with applications from your
+distribution, you may have to set the <acronym>XDG</acronym> environment
+variables in your <filename>.bash_profile</filename>:
+
+<programlisting>
+XDG_CONFIG_DIRS="/etc/xdg"
+XDG_DATA_DIRS="${KDEDIR}/share:/usr/share"
+export XDG_CONFIG_DIRS XDG_DATA_DIRS
+</programlisting>
+
+</para>
+</note>
+
+</sect2>
+<sect2 id="starting-kde">
+<title>Starting &kde;</title>
+
+<para>
+Now that you have adjusted your environment settings to use the correct &kde;,
+it is important to ensure that the correct <command>startkde</command> script
+is used as well.
+</para>
+
+<para>
+Open the <filename>.xinitrc</filename> text file from the home directory, or
+create it if necessary. Add the line:
+
+<programlisting>
+<command>exec</command> <option>${KDEDIR}/bin/startkde</option>
+</programlisting>
+</para>
+
+<important><para>On some distributions, it may be necessary to perform the same
+steps with the <filename>.xsession</filename> file, also in the home directory.
+This is especially true when using graphical login managers such as
+&kdm;, <application>gdm</application>, or <application>xdm</application>.</para>
+</important>
+
+<para>
+Now start your fresh &kde;: in &BSD; and &Linux; systems with virtual terminal support,
+<keycombo action="simul">&Ctrl;&Alt;<keycap>F1</keycap></keycombo> ... <keycombo action="simul">&Ctrl;&Alt;<keycap>F12</keycap></keycombo> keystroke combinations are used to switch to Virtual Console 1 through 12.
+This allows you to run more than one desktop environment at the same time. The fist six are
+text terminals and the following six are graphical displays.
+</para>
+
+<para>
+If when you start your computer you are presented to the graphical display
+manager instead, you can use the new &kde; environment, even if it is not listed
+as an option. Most display managers, including &kdm;, have an option to use
+a <quote>Custom Session</quote> when you login. With this option, your session settings are
+loaded from the <filename>.xsession</filename> file in your home directory. If
+you have already modified this file as described above, this option should load
+you into your new &kde; installation.
+</para>
+
+<para>If it does not, there is something else you can try that should normally
+work: Press <keycombo action="simul">&Ctrl;&Alt;<keycap>F2</keycap></keycombo>,
+and you will be presented to a text terminal. Log in using the dedicated user
+and type:
+</para>
+
+<screen>
+<command>startx</command> <option>--</option> <option>:1</option>
+</screen>
+
+<tip>
+<para>
+You can run the &kde; from sources and the old &kde; at the same time! Log in
+using your regular user, start the stable &kde; desktop. Press <keycombo
+action="simul">&Ctrl;&Alt;<keycap>F2</keycap></keycombo> (or
+<keycap>F1</keycap>, <keycap>F3</keycap>, etc..), and you will be presented
+with a text terminal. Log in using the dedicated &kde; &subversion; user and
+type:</para>
+
+<screen>
+<command>startx</command> <option>--</option> <option>:1</option>
+</screen>
+
+<para>You can go back to the &kde; desktop of your regular user by pressing the
+shortcut key for the already running desktop. This is normally
+<keycombo action="simul">&Ctrl;&Alt;<keycap>F7</keycap></keycombo>, you may need
+to use <keycap>F6</keycap> or <keycap>F8</keycap> instead. To return to your
+&kdesrc-build;-compiled &kde;, you would use the same sequence, except with the
+next function key. For example, if you needed to enter <keycombo action="simul">&Ctrl;&Alt;<keycap>F7</keycap></keycombo>
+to switch to your regular &kde;, you would need to enter
+<keycombo action="simul">&Ctrl;&Alt;<keycap>F8</keycap></keycombo> to go back
+to your &kdesrc-build; &kde;.</para>
+</tip>
+
 </sect2>
 </sect1>
 

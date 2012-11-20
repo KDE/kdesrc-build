@@ -9,10 +9,22 @@
 #
 # See also the sample xsession setup script which requires this file.
 #
-# Use by copying this script to ~/.kde-env-master (this will be done for you by
-# kdesrc-build and/or kdesrc-build-setup, later).
+# Use by copying this script to $XDG_CONFIG_HOME/kde-env-master.sh (this will
+# be done for you by kdesrc-build and/or kdesrc-build-setup, later). 99% of the
+# time this means ~/.config/kde-env-master.sh
+#
+# NOTHING IN THIS FILE IS MODIFIABLE, OTHERWISE WARNINGS WILL BE GENERATED
 
-# === User-modifiable variables. Should be set automatically by kdesrc-build.
+# === Load user environment settings (i.e. not set through kdesrc-buildrc)
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+# ALL USER MODS GO HERE ↴
+if test -f "$XDG_CONFIG_HOME/kde-env-user.sh"; then
+    . "$XDG_CONFIG_HOME/kde-env-user.sh"
+fi
+
+# === Modifiable variables. Should be set automatically by kdesrc-build based
+# on kdesrc-buildrc settings. Nothing below this line is user-modifiable!
 
 # kdesrc-build: filter | The KDESRC_BUILD_TESTING stuff is to allow the script to
 # kdesrc-build: filter | be executable by testsuite. It is filtered from destination.
@@ -28,21 +40,12 @@ kde_prefix="$HOME/kde"     # kdesrc-build: filter
 qt_prefix="$HOME/qt4"      # kdesrc-build: filter
 fi # kdesrc-build: filter
 
-# Directory to use for KDE configuration and other user customizations.
-KDEHOME="$HOME/.kde4-self" # Or perhaps "$HOME/.kde-selfmade", etc.
+# === End of modifiable variables.
 
-# "Bitness" suffix to use for library directories. If left blank, will try to
-# auto-detect from installed KDE's compiled defaults, which may still leave
-# this blank.
-lib_suffix="" # Or 32, or 64, as appropriate for your system.
-
-# Additional paths to add to PATH, can be left blank.
-user_path=""  # Set to colon-separated PATH to add to the Qt/KDE paths.
-
-# If more user customizations to the environment are needed, you can "source"
-# this file from a more-specific file such as .bashrc, .profile, etc.
-
-# === End of user-modifiable variables.
+# Set defaults if these are unset or null. ':' is a null command
+: ${lib_suffix:=""}
+: ${user_path:=""}
+: ${KDEHOME:="$HOME/.kde4-self"}
 
 # Find system Qt
 if test -z "$qt_prefix"; then
@@ -133,3 +136,7 @@ export XDG_DATA_DIRS
 export XDG_CONFIG_DIRS
 export MANPATH
 export KDEHOME
+
+if ! test -e "$KDEHOME"; then
+    mkdir -p "$KDEHOME" >/dev/null 2>&1
+fi
