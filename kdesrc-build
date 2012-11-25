@@ -1585,26 +1585,20 @@ EOF
     sub buildSystemFromName
     {
         my ($self, $name) = @_;
-        my $buildSystem;
+        my %buildSystemClasses = (
+            'generic'         => 'ksb::BuildSystem',
+            'qmake'           => 'ksb::BuildSystem::QMake',
+            'cmake-bootstrap' => 'ksb::BuildSystem::CMakeBootstrap',
+            'kde'             => 'KDEBuildSystem',
+            'qt'              => 'QtBuildSystem',
+            'autotools'       => 'ksb::BuildSystem::Autotools',
+        );
 
-        given(lc($name)) {
-            when('generic')
-                { $buildSystem = ksb::BuildSystem     -> new($self); }
-            when('qmake')
-                { $buildSystem = ksb::BuildSystem::QMake->new($self); }
-            when('cmake-bootstrap')
-                { $buildSystem = ksb::BuildSystem::CMakeBootstrap->new($self); }
-            when('kde')
-                { $buildSystem = KDEBuildSystem       -> new($self); }
-            when('qt')
-                { $buildSystem = QtBuildSystem        -> new($self); }
-            when('autotools')
-                { $buildSystem = ksb::BuildSystem::Autotools -> new($self); }
+        my $class = $buildSystemClasses{lc $name} // undef;
+        return $class->new($self) if ($class);
 
-            default { croak_runtime("Invalid build system $name requested"); }
-        }
-
-        return $buildSystem;
+        # Past here, no class found
+        croak_runtime("Invalid build system $name requested");
     }
 
     sub buildSystem
