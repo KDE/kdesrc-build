@@ -56,6 +56,7 @@ use Sys::Hostname;
 use Storable 'dclone';
 use IO::Handle;
 use Data::Dumper;
+use ksb::IPC;
 use 5.010_000; # Require Perl 5.10.0
 
 # Make Perl 'plain die' exceptions use Carp::confess instead of their core
@@ -80,30 +81,6 @@ my %ignore_list;  # List of packages to refuse to include in the build list.
 
 my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
-# }}}
-
-# package IPC {{{
-{
-    # Separate package for namespacing.
-    package IPC;
-# IPC message types
-    use constant {
-        MODULE_SUCCESS  => 1, # Used for a successful src checkout
-        MODULE_FAILURE  => 2, # Used for a failed src checkout
-        MODULE_SKIPPED  => 3, # Used for a skipped src checkout (i.e. build anyways)
-        MODULE_UPTODATE => 4, # Used to skip building a module when had no code updates
-
-        # One of these messages should be the first message placed on the queue.
-        ALL_SKIPPED     => 5, # Used to indicate a skipped update process (i.e. build anyways)
-        ALL_FAILURE     => 6, # Used to indicate a major update failure (don't build)
-        ALL_UPDATING    => 7, # Informational message, feel free to start the build.
-
-        # Used to indicate specifically that a source conflict has occurred.
-        MODULE_CONFLICT => 8,
-    };
-
-    1;
-}
 # }}}
 
 # package ksb::Debug {{{
@@ -905,6 +882,8 @@ EOF
     ksb::Util->import(); # make_exception, list_has
     ksb::Debug->import();
 
+    use ksb::IPC;
+
     sub new
     {
         my $class = shift;
@@ -922,7 +901,7 @@ EOF
         my $self = shift;
         my ($module, $msg) = @_;
 
-        $self->sendIPCMessage(IPC::MODULE_SUCCESS, "$module,$msg");
+        $self->sendIPCMessage(ksb::IPC::MODULE_SUCCESS, "$module,$msg");
     }
 
     # Waits for an update for a module with the given name.
@@ -962,13 +941,13 @@ EOF
             whisper ("\tReceived IPC status message for $buffer: $ipcType");
 
             given ($ipcType) {
-                when (IPC::MODULE_SUCCESS) {
+                when (ksb::IPC::MODULE_SUCCESS) {
                     my ($ipcModuleName, $msg) = split(/,/, $buffer);
                     $message = $msg;
                     $updated->{$ipcModuleName} = 'success';
 
                 }
-                when (IPC::MODULE_SKIPPED) {
+                when (ksb::IPC::MODULE_SKIPPED) {
                     # The difference between success here and 'skipped' below
                     # is that success means we should build even though we
                     # didn't perform an update, while 'skipped' means the
@@ -977,16 +956,16 @@ EOF
                     $message = 'skipped';
                     $updated->{$buffer} = 'success';
                 }
-                when (IPC::MODULE_CONFLICT) {
+                when (ksb::IPC::MODULE_CONFLICT) {
                     $module->setPersistentOption('conflicts-present', 1);
                     $message = 'conflicts present';
                     $updated->{$buffer} = 'failed';
                 }
-                when (IPC::MODULE_FAILURE) {
+                when (ksb::IPC::MODULE_FAILURE) {
                     $message = 'update failed';
                     $updated->{$buffer} = 'failed';
                 }
-                when (IPC::MODULE_UPTODATE) {
+                when (ksb::IPC::MODULE_UPTODATE) {
                     # Properly account for users manually doing --refresh-build or
                     # using .refresh-me.
                     $message = 'no files affected';
@@ -1011,9 +990,9 @@ EOF
     }
 
     # Waits on the IPC connection until one of the ALL_* IPC codes is returned.
-    # If IPC::ALL_SKIPPED is returned then the 'no_update' entry will be set in
+    # If ksb::IPC::ALL_SKIPPED is returned then the 'no_update' entry will be set in
     # $self to flag that you shouldn't wait.
-    # If IPC::ALL_FAILURE is returned then an exception will be thrown due to the
+    # If ksb::IPC::ALL_FAILURE is returned then an exception will be thrown due to the
     # fatal error.
     # This method can be called multiple times, but only the first time will
     # result in a wait.
@@ -1028,15 +1007,15 @@ EOF
         my $ipcType = $self->receiveIPCMessage(\$buffer);
         $waited = 1;
 
-        if ($ipcType == IPC::ALL_FAILURE)
+        if ($ipcType == ksb::IPC::ALL_FAILURE)
         {
             croak_runtime("Unable to perform source update for any module:\n\t$buffer");
         }
-        elsif ($ipcType == IPC::ALL_SKIPPED)
+        elsif ($ipcType == ksb::IPC::ALL_SKIPPED)
         {
             $self->{'no_update'} = 1;
         }
-        elsif ($ipcType != IPC::ALL_UPDATING)
+        elsif ($ipcType != ksb::IPC::ALL_UPDATING)
         {
             croak_runtime("IPC failure while expecting an update status: Incorrect type: $ipcType");
         }
@@ -1153,6 +1132,8 @@ EOF
 {
     package PipeIPC;
 
+    use ksb::IPC;
+
     our(@ISA);
     @ISA = qw(BaseIPC);
 
@@ -1179,7 +1160,7 @@ EOF
         my $self = shift;
         my ($module, $msg) = @_;
 
-        $self->sendIPCMessage(IPC::MODULE_SUCCESS, "$module,$msg", 'toMon');
+        $self->sendIPCMessage(ksb::IPC::MODULE_SUCCESS, "$module,$msg", 'toMon');
     }
 
     # Closes the given list of filehandle ids.
@@ -5127,6 +5108,7 @@ EOF
 {
     package Module;
 
+    use ksb::IPC;
     use Storable 'dclone';
     use Carp 'confess';
     use Scalar::Util 'blessed';
@@ -5779,7 +5761,7 @@ EOF
             if (!super_mkdir($module_src_dir))
             {
                 error ("Unable to create separate source directory for r[$self]: $module_src_dir");
-                $ipc->sendIPCMessage(IPC::MODULE_FAILURE, $moduleName);
+                $ipc->sendIPCMessage(ksb::IPC::MODULE_FAILURE, $moduleName);
                 next;
             }
         }
@@ -5792,11 +5774,11 @@ EOF
 
         if ($@)
         {
-            my $reason = IPC::MODULE_FAILURE;
+            my $reason = ksb::IPC::MODULE_FAILURE;
 
             if (ref $@ && $@->isa('BuildException')) {
                 if ($@->{'exception_type'} eq 'ConflictPresent') {
-                    $reason = IPC::MODULE_CONFLICT;
+                    $reason = ksb::IPC::MODULE_CONFLICT;
                     $self->setPersistentOption('conflicts-present', 1);
                 }
                 else {
@@ -5832,7 +5814,7 @@ EOF
                 whisper ("This module will not be built. Nothing updated.");
                 $message = "0 files affected.";
 
-                $ipc->sendIPCMessage(IPC::MODULE_UPTODATE, $moduleName);
+                $ipc->sendIPCMessage(ksb::IPC::MODULE_UPTODATE, $moduleName);
                 $self->phases()->filterOutPhase('build');
             }
 
@@ -7969,13 +7951,13 @@ sub handle_updates
     # No reason to print out the text if we're not doing anything.
     if (!@update_list)
     {
-        $ipc->sendIPCMessage(IPC::ALL_UPDATING, "update-list-empty");
+        $ipc->sendIPCMessage(ksb::IPC::ALL_UPDATING, "update-list-empty");
         return 0;
     }
 
     if (not check_for_ssh_agent($ctx))
     {
-        $ipc->sendIPCMessage(IPC::ALL_FAILURE, "ssh-failure");
+        $ipc->sendIPCMessage(ksb::IPC::ALL_FAILURE, "ssh-failure");
         return 1;
     }
 
@@ -7999,7 +7981,7 @@ sub handle_updates
         if (not super_mkdir ($kdesrc))
         {
             error ("Unable to make directory r[$kdesrc]!");
-            $ipc->sendIPCMessage(IPC::ALL_FAILURE, "no-source-dir");
+            $ipc->sendIPCMessage(ksb::IPC::ALL_FAILURE, "no-source-dir");
 
             return 1;
         }
@@ -8007,7 +7989,7 @@ sub handle_updates
 
     # Once at this point, any errors we get should be limited to a module,
     # which means we can tell the build thread to start.
-    $ipc->sendIPCMessage(IPC::ALL_UPDATING, "starting-updates");
+    $ipc->sendIPCMessage(ksb::IPC::ALL_UPDATING, "starting-updates");
 
     # Make sure KDE's SSL signature is present since --non-interactive is
     # passed to svn.
