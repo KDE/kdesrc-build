@@ -927,54 +927,6 @@ EOM
 }
 # }}}
 
-# package CMakeBootstrapSystem {{{
-{
-    package CMakeBootstrapSystem;
-
-    # This is a module used to do only one thing: Bootstrap CMake onto a system
-    # that doesn't have it, or has only an older version of it.
-
-    use ksb::Debug;
-    use ksb::Util;
-    use ksb::BuildSystem;
-
-    our @ISA = ('ksb::BuildSystem');
-
-    sub name
-    {
-        return 'cmake-bootstrap';
-    }
-
-    sub requiredPrograms
-    {
-        return qw{c++};
-    }
-
-    # Return value style: boolean
-    sub configureInternal
-    {
-        my $self = assert_isa(shift, 'CMakeBootstrapSystem');
-        my $module = $self->module();
-        my $sourcedir = $module->fullpath('source');
-        my $installdir = $module->installationPath();
-
-        # 'module'-limited option grabbing can return undef, so use //
-        # to convert to empty string in that case.
-        my @bootstrapOptions = split_quoted_on_whitespace(
-            $module->getOption('configure-flags', 'module') // '');
-
-        p_chdir($module->fullpath('build'));
-
-        return log_command($module, 'cmake-bootstrap', [
-                "$sourcedir/bootstrap", "--prefix=$installdir",
-                @bootstrapOptions
-            ]) == 0;
-    }
-
-    1;
-}
-# }}}
-
 # package l10nSystem {{{
 {
     package l10nSystem;
@@ -1420,6 +1372,7 @@ EOF
     use ksb::BuildSystem;
     use ksb::BuildSystem::Autotools;
     use ksb::BuildSystem::QMake;
+    use ksb::BuildSystem::CMakeBootstrap;
 
     use Storable 'dclone';
     use Carp 'confess';
@@ -1640,7 +1593,7 @@ EOF
             when('qmake')
                 { $buildSystem = ksb::BuildSystem::QMake->new($self); }
             when('cmake-bootstrap')
-                { $buildSystem = CMakeBootstrapSystem -> new($self); }
+                { $buildSystem = ksb::BuildSystem::CMakeBootstrap->new($self); }
             when('kde')
                 { $buildSystem = KDEBuildSystem       -> new($self); }
             when('qt')
@@ -1683,7 +1636,7 @@ EOF
         if (!$buildType && (-e "$sourceDir/CMakeLists.txt") &&
             (-e "$sourceDir/bootstrap"))
         {
-            $buildType = CMakeBootstrapSystem->new($self);
+            $buildType = ksb::BuildSystem::CMakeBootstrap->new($self);
         }
 
         if (!$buildType && (-e "$sourceDir/CMakeLists.txt" ||
