@@ -270,7 +270,7 @@ sub createBuildSystem
 # The first command name found which resolves to an executable on the
 # system will be used, if no command this function will fail.
 #
-# The first argument should be the Module object to be made.
+# The first argument should be the ksb::Module object to be made.
 # The second argument should be the reference to the hash described above.
 #
 # Returns 0 on success, non-zero on failure (shell script style)

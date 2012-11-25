@@ -39,6 +39,7 @@ use File::Temp 'tempdir';
 use Storable 'dclone';
 use File::Copy;
 use ksb::BuildSystem::QMake;
+use ksb::Module;
 use ksb::l10nSystem;
 
 # From kdesrc-build
@@ -134,8 +135,8 @@ SKIP: {
     my $fh = ensure_projects_xml_present($ctx);
     ok($fh, 'Valid filehandle from ensure_projects_xml_present');
 
-    my $metadataModuleSet = Module->new($ctx, 'kde-build-metadata');
-    isa_ok($metadataModuleSet, 'Module');
+    my $metadataModuleSet = ksb::Module->new($ctx, 'kde-build-metadata');
+    isa_ok($metadataModuleSet, 'ksb::Module');
     $metadataModuleSet->setScmType('proj');
 
     my @buildMetadataModule = expandXMLModules($ctx, $metadataModuleSet);
@@ -158,7 +159,7 @@ is_deeply(\@uniqList, [qw(2 3 5 8)], 'unique_list');
 
 my ($qtModule, $kdelibsModule, $testModule, $kdesupportModule, $phononModule)
     = map {
-        Module->new($ctx, $_);
+        ksb::Module->new($ctx, $_);
     } (qw/qt kdelibs test kdesupport phonon/);
 
 like($kdelibsModule->getLogDir(), qr{^$testSourceDirName/log}, 'correct log dir for test run');
@@ -264,7 +265,7 @@ $kdelibsModule->setOption('build-dir', '~/tmp/build');
 is($kdelibsModule->getSubdirPath('build-dir'), "$ENV{HOME}/tmp/build", 'build-dir subdir path abs and tilde expansion');
 
 # correct log dir for modules with a / in the name
-my $playLibsModule = Module->new($ctx, 'playground/libs');
+my $playLibsModule = ksb::Module->new($ctx, 'playground/libs');
 my $logdir = $playLibsModule->getLogDir();
 
 ok(log_command($playLibsModule, 'touch', ['touch', "$testSourceDirName/touched"]) == 0, 'creating temp file');
@@ -313,7 +314,7 @@ is(scalar @modules, 0, 'testing process_arguments return value for no passed mod
 @modules = qw/qt kdelibs kdebase/;
 my $kdebaseModule;
 $ctx = ksb::BuildContext->new();
-my @Modules = map { Module->new($ctx, $_) } (@modules);
+my @Modules = map { ksb::Module->new($ctx, $_) } (@modules);
 my $backupCtx = dclone($ctx);
 
 # Ensure functions like updateModulePhases doesn't change the objects we pass
@@ -321,7 +322,7 @@ my $backupCtx = dclone($ctx);
 my $resetContext = sub {
     $ctx = dclone($backupCtx);
     # We must re-create modules to have the same context as ctx.
-    @Modules = map { Module->new($ctx, $_) } (@modules);
+    @Modules = map { ksb::Module->new($ctx, $_) } (@modules);
     ($qtModule, $kdelibsModule, $kdebaseModule) = @Modules;
 };
 
@@ -427,7 +428,7 @@ is($conf_modules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 1)
 
 is($conf_modules[2]->getOption('manual-build'), 'true', 'manual-build for kde-projects submodule (Bug 288611)');
 
-my @ConfModules = map { Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt/);
+my @ConfModules = map { ksb::Module->new($ctx, $_) }(qw/kdelibs kdesrc-build kde-runtime qt/);
 
 is($ConfModules[0]->scmType(), 'git', 'Ensure repository gives git scm (part 2)');
 $ConfModules[0]->setModuleSet(''); # Unnamed module set, instead of undef
@@ -500,7 +501,7 @@ ok ($flagged, 'Verify LC_MESSAGES set if no_translate used');
 ok (!$lc_all_found, 'Verify LC_ALL stripped if no_translate used');
 
 # Test isSubdirBuildable
-my $tokenModule = Module->new($ctx, 'test-module');
+my $tokenModule = ksb::Module->new($ctx, 'test-module');
 my $buildSystem = ksb::BuildSystem->new($tokenModule);
 ok ($buildSystem->isSubdirBuildable('meh'), 'generic-build isSubdirBuildable');
 ok ($buildSystem->createBuildSystem(), 'Ensure createBuildSystem can be called');

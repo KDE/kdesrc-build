@@ -331,7 +331,7 @@ sub prettify_seconds
 # Second parameter is the filename in the log directory of the error log.
 sub _setErrorLogfile
 {
-    my $module = assert_isa(shift, 'Module');
+    my $module = assert_isa(shift, 'ksb::Module');
     my $logfile = shift;
 
     return unless $logfile;
@@ -392,7 +392,7 @@ sub _setErrorLogfile
 sub log_command
 {
     my ($module, $filename, $argRef, $optionsRef) = @_;
-    assert_isa($module, 'Module');
+    assert_isa($module, 'ksb::Module');
     my @command = @{$argRef};
 
     $optionsRef //= { };

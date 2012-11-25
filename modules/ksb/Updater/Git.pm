@@ -388,7 +388,7 @@ sub getBranch
     return $branch;
 }
 
-# Attempts to download and install a git snapshot for the given Module.
+# Attempts to download and install a git snapshot for the given ksb::Module.
 # This requires the module to have the '#snapshot-tarball' option set,
 # normally done after KDEXMLReader is used to parse the projects.kde.org
 # XML database.  This function should be called with the current directory

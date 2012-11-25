@@ -57,7 +57,7 @@ sub notifyUpdateSuccess
 sub waitForModule
 {
     my ($self, $module) = @_;
-    assert_isa($module, 'Module');
+    assert_isa($module, 'ksb::Module');
 
     my $moduleName = $module->name();
     my $updated = $self->{'updated'};

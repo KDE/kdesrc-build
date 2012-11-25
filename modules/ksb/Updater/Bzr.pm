@@ -19,7 +19,7 @@ our @ISA = qw(ksb::Updater);
 sub updateInternal
 {
     my $self = assert_isa(shift, 'ksb::Updater::Bzr');
-    my $module = assert_isa($self->module(), 'Module');
+    my $module = assert_isa($self->module(), 'ksb::Module');
 
     # Full path to source directory on-disk.
     my $srcdir = $module->fullpath('source');

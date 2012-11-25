@@ -84,7 +84,7 @@ sub _moduleBaseName
 # Second parameter is the type ('tags' or 'branches')
 sub _handle_branch_tag_option
 {
-    my $module = assert_isa(shift, 'Module');
+    my $module = assert_isa(shift, 'ksb::Module');
     my $type = shift;
     my $branch = _branch_prefix($module->name(), $type);
     my $svn_server = $module->getOption('svn-server');
@@ -502,7 +502,7 @@ END
 #
 # This function will throw an exception in the event of a build failure.
 #
-# First parameter is the Module object we're building.
+# First parameter is the ksb::Module object we're building.
 # Second parameter is the filename to use for the log file.
 # Third parameter is a reference to a list, which is the command ('svn')
 #       and all of its arguments.
@@ -563,7 +563,7 @@ sub run_svn
 # Returns 0 if a conflict exists, non-zero otherwise.
 sub module_has_conflict
 {
-    my $module = assert_isa(shift, 'Module');
+    my $module = assert_isa(shift, 'ksb::Module');
     my $srcdir = $module->fullpath('source');
 
     if ($module->getOption('no-svn'))
@@ -632,7 +632,7 @@ EOF
 
 # scm-specific update procedure.
 # May change the current directory as necessary.
-# Assumes called as part of a Module (i.e. $self->isa('Module') should be true.
+# Assumes called as part of a ksb::Module (i.e. $self->isa('ksb::Module') should be true.
 sub updateInternal
 {
     my $self = assert_isa(shift, 'ksb::Updater::Svn');

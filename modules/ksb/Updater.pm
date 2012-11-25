@@ -1,6 +1,6 @@
 package ksb::Updater;
 
-# Base class for classes that handle updating the source code for a given Module.
+# Base class for classes that handle updating the source code for a given ksb::Module.
 # It should not be used directly.
 
 use strict;
