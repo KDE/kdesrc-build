@@ -168,10 +168,10 @@ is($kdelibsModule->scm()->svn_module_url(), 'svn+ssh://svn.kde.org/home/kde/trun
 
 $kdelibsModule->setOption('tag', '4.1.3');
 $kdelibsModule->setOption('branch', '4.2');
-like(SvnUpdate::_handle_branch_tag_option($kdelibsModule, 'tags'), qr(/tags/KDE/4\.1\.3/kdelibs$), 'KDE module tag preferred to branch');
+like(ksb::Updater::Svn::_handle_branch_tag_option($kdelibsModule, 'tags'), qr(/tags/KDE/4\.1\.3/kdelibs$), 'KDE module tag preferred to branch');
 
 $kdelibsModule->setOption('tag', '');
-like(SvnUpdate::_handle_branch_tag_option($kdelibsModule, 'branches'), qr(/branches/KDE/4.2/kdelibs$), 'KDE module branch');
+like(ksb::Updater::Svn::_handle_branch_tag_option($kdelibsModule, 'branches'), qr(/branches/KDE/4.2/kdelibs$), 'KDE module branch');
 
 $kdesupportModule->setOption('branch', 'trunk');
 $kdesupportModule->setOption('svn-server', 'svn://anonsvn.kde.org/home/kde');
@@ -194,7 +194,7 @@ SKIP: {
 }
 
 $ENV{HOME} = $testSourceDirName;
-SvnUpdate::_install_missing_ssl_signature();
+ksb::Updater::Svn::_install_missing_ssl_signature();
 
 my $signatureFile = "$testSourceDirName/.subversion/auth/svn.ssl.server/ec08b331e2e6cabccb6c3e17a85e28ce";
 ok(-e $signatureFile, "Verify KDE SVN server SSL signature can be installed");
@@ -217,7 +217,7 @@ $ctx->setOption('branch', '4.6');
 is($kdesupportModule->scm()->svn_module_url(), 'svn://anonsvn.kde.org/home/kde/branches/kdesupport/master', 'kdesupport-for-$foo with local branch override');
 
 $kdesupportModule->setOption('tag', 'kdesupport-for-4.2');
-like(SvnUpdate::_handle_branch_tag_option($kdesupportModule, 'tags'), qr(/tags/kdesupport-for-4.2$), 'non-KDE module tag (no name appended)');
+like(ksb::Updater::Svn::_handle_branch_tag_option($kdesupportModule, 'tags'), qr(/tags/kdesupport-for-4.2$), 'non-KDE module tag (no name appended)');
 is($kdesupportModule->scm()->svn_module_url(), 'svn://anonsvn.kde.org/home/kde/tags/kdesupport-for-4.2', 'non-KDE module tag (no name; entire URL)');
 
 $phononModule->setOption('branch', '4.2');
