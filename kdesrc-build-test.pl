@@ -495,7 +495,7 @@ ok (!$lc_all_found, 'Verify LC_ALL stripped if no_translate used');
 
 # Test isSubdirBuildable
 my $tokenModule = Module->new($ctx, 'test-module');
-my $buildSystem = GenericBuildSystem->new($tokenModule);
+my $buildSystem = ksb::BuildSystem->new($tokenModule);
 ok ($buildSystem->isSubdirBuildable('meh'), 'generic-build isSubdirBuildable');
 ok ($buildSystem->createBuildSystem(), 'Ensure createBuildSystem can be called');
 ok ($buildSystem->cleanBuildSystem(),  'Ensure cleanBuildSystem can be called');
