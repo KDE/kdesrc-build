@@ -39,6 +39,7 @@ use File::Temp 'tempdir';
 use Storable 'dclone';
 use File::Copy;
 use ksb::BuildSystem::QMake;
+use ksb::l10nSystem;
 
 # From kdesrc-build
 our %ENV_VARS;
@@ -505,7 +506,7 @@ ok ($buildSystem->isSubdirBuildable('meh'), 'generic-build isSubdirBuildable');
 ok ($buildSystem->createBuildSystem(), 'Ensure createBuildSystem can be called');
 ok ($buildSystem->cleanBuildSystem(),  'Ensure cleanBuildSystem can be called');
 
-$buildSystem = l10nSystem->new($ctx);
+$buildSystem = ksb::l10nSystem->new($ctx);
 ok (!$buildSystem->isSubdirBuildable('scripts'), 'l10n-build isSubdirBuildable-scripts');
 ok ($buildSystem->isSubdirBuildable(''), 'l10n-build isSubdirBuildable-other');
 
