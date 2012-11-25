@@ -927,59 +927,6 @@ EOM
 }
 # }}}
 
-# package KDEProjectUpdate {{{
-{
-    package KDEProjectUpdate;
-
-    use ksb::Updater::Git;
-
-    our @ISA = qw(ksb::Updater::Git);
-
-    sub name
-    {
-        return 'proj';
-    }
-
-    1;
-}
-# }}}
-
-# package KDEProjectMetadataUpdate {{{
-{
-    package KDEProjectMetadataUpdate;
-
-    our @ISA = qw(KDEProjectUpdate);
-
-    use ksb::Util;
-
-    sub name
-    {
-        return 'metadata';
-    }
-
-    sub updateInternal
-    {
-        my $self = assert_isa(shift, 'KDEProjectMetadataUpdate');
-        my $count = $self->SUPER::updateInternal();
-
-        # Now that we in theory have up-to-date source code, read in the
-        # ignore file and propagate that information to our context object.
-
-        my $path = $self->module()->fullpath('source') . "/build-script-ignore";
-        open my $fh, '<', $path or croak_internal("Unable to read ignore data: $!");
-
-        my $ctx = $self->module()->buildContext();
-        my @ignoreModules = map { chomp $_; $_ } (<$fh>);
-
-        $ctx->setIgnoreList(@ignoreModules);
-
-        return $count;
-    }
-
-    1;
-}
-# }}}
-
 # package GenericBuildSystem {{{
 {
     package GenericBuildSystem;
@@ -1998,6 +1945,8 @@ EOF
     use ksb::Updater::Svn;
     use ksb::Updater::Git;
     use ksb::Updater::Bzr;
+    use ksb::Updater::KDEProject;
+    use ksb::Updater::KDEProjectMetadata;
 
     use Storable 'dclone';
     use Carp 'confess';
@@ -2177,8 +2126,8 @@ EOF
 
         given($scmType) {
             when('git')  { $newType = ksb::Updater::Git->new($self); }
-            when('proj') { $newType = KDEProjectUpdate->new($self); }
-            when('metadata') { $newType = KDEProjectMetadataUpdate->new($self); }
+            when('proj') { $newType = ksb::Updater::KDEProject->new($self); }
+            when('metadata') { $newType = ksb::Updater::KDEProjectMetadata->new($self); }
             when('l10n') { $newType = l10nSystem->new($self); }
             when('svn')  { $newType = ksb::Updater::Svn->new($self); }
             when('bzr')  { $newType = ksb::Updater::Bzr->new($self); }
@@ -3945,7 +3894,7 @@ sub expandXMLModules
         my $moduleSet = shift;
 
         # Only attempt to expand out XML-based modules.
-        return $moduleSet if !$moduleSet->scm()->isa('KDEProjectUpdate');
+        return $moduleSet if !$moduleSet->scm()->isa('ksb::Updater::KDEProject');
 
         my $databaseFile = ensure_projects_xml_present($ctx) or
             croak_runtime("kde-projects repository information could not be downloaded: $!");
@@ -6031,7 +5980,7 @@ eval
     # If we have kde-build-metadata we must process it first, ASAP.
     if (grep { $_->name() eq 'kde-build-metadata' } @modules) {
         $metadataModule = shift @modules;
-        assert_isa($metadataModule->scm(), 'KDEProjectMetadataUpdate');
+        assert_isa($metadataModule->scm(), 'ksb::Updater::KDEProjectMetadata');
 
         eval {
             super_mkdir($metadataModule->getSourceDir());

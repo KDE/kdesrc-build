@@ -1,7 +1,8 @@
 package ksb::Updater::Git;
 
-# Module which is responsible for updating git-based source code modules. Can have
-# some features overridden by subclassing (see KDEProjectUpdate for an example).
+# Module which is responsible for updating git-based source code modules. Can
+# have some features overridden by subclassing (see ksb::Updater::KDEProject
+# for an example).
 
 use ksb::Debug;
 use ksb::Util;
