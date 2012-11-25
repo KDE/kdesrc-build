@@ -925,34 +925,6 @@ EOM
 }
 # }}}
 
-# package UpdateHandler {{{
-{
-    package UpdateHandler;
-
-    use ksb::Util;
-
-    sub new
-    {
-        my ($class, $module) = @_;
-
-        return bless { module => $module }, $class;
-    }
-
-    sub name
-    {
-        croak_internal('This package should not be used directly.');
-    }
-
-    sub module
-    {
-        my $self = shift;
-        return $self->{module};
-    }
-
-    1;
-}
-# }}}
-
 # package KDEProjectUpdate {{{
 {
     package KDEProjectUpdate;
@@ -1010,8 +982,9 @@ EOM
 
     use ksb::Debug;
     use ksb::Util;
+    use ksb::Updater;
 
-    our @ISA = ('UpdateHandler');
+    our @ISA = qw(ksb::Updater);
 
     use File::Basename; # basename
     use File::Spec;     # tmpdir
@@ -1813,9 +1786,10 @@ EOF
 
     use ksb::Debug;
     use ksb::Util;
+    use ksb::Updater;
 
     # Our superclass
-    our @ISA = ('UpdateHandler');
+    our @ISA = qw(ksb::Updater);
 
     # scm-specific update procedure.
     # May change the current directory as necessary.
@@ -1905,8 +1879,9 @@ EOF
 
     use ksb::Debug;
     use ksb::Util;
+    use ksb::Updater;
 
-    our @ISA = ('UpdateHandler');
+    our @ISA = qw(ksb::Updater);
 
     use IPC::Open3 qw(open3);
 
@@ -3270,7 +3245,7 @@ EOF
     # May change the current directory as necessary.
     sub updateInternal
     {
-        my $self = assert_isa(shift, 'UpdateHandler');
+        my $self = assert_isa(shift, 'ksb::Updater');
         my $module = $self->module();
         my $fullpath = $module->fullpath('source');
         my @dirs = @{$self->{l10n_dirs}};
