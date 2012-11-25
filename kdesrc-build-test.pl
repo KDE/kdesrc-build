@@ -39,6 +39,7 @@ use File::Temp 'tempdir';
 use Storable 'dclone';
 use File::Copy;
 use ksb::BuildSystem::QMake;
+use ksb::BuildContext;
 use ksb::Module;
 use ksb::l10nSystem;
 
