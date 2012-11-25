@@ -28,12 +28,17 @@ require 'kdesrc-build';
 # kdesrc-build.
 package main;
 
+use FindBin qw($RealBin);
+use lib "$RealBin/../share/apps/kdesrc-build/modules";
+use lib "$RealBin/modules";
+
 # Must come after require kdesrc-build. note will interfere with our debugging
 # function, and we don't use it in the test harness anyways.
 use Test::More import => ['!note'];
 use File::Temp 'tempdir';
 use Storable 'dclone';
 use File::Copy;
+use ksb::BuildSystem::QMake;
 
 # From kdesrc-build
 our %ENV_VARS;
@@ -506,14 +511,14 @@ ok ($buildSystem->isSubdirBuildable(''), 'l10n-build isSubdirBuildable-other');
 
 # Note to packagers: This assumes qmake or qmake-qt4 are already installed on
 # the system.
-my @qmakePossibilities = QMakeBuildSystem::absPathToQMake();
+my @qmakePossibilities = ksb::BuildSystem::QMake::absPathToQMake();
 SKIP: {
     is (scalar @qmakePossibilities, 1, 'Ensure exactly one qmake is returned from possibilities.')
         or skip "Need a qmake candidate for next test", 1; # Skip next tests if no qmake
     like ($qmakePossibilities[0], qr/^qmake/, 'qmake candidate looks like a qmake executable.');
 
     # Duplicate test in scalar context the whole time.
-    my $newQMakePossibility = QMakeBuildSystem::absPathToQMake();
+    my $newQMakePossibility = ksb::BuildSystem::QMake::absPathToQMake();
     like ($newQMakePossibility, qr/^qmake/, 'qmake looks like an executable even in scalar context.');
 }
 
