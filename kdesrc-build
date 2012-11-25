@@ -61,6 +61,7 @@ use ksb::Debug;
 use ksb::Util;
 use ksb::Version qw(scriptVersion);
 use ksb::IPC::Pipe;
+use ksb::IPC::Null;
 
 use 5.010_000; # Require Perl 5.10.0
 
@@ -86,46 +87,6 @@ my %ignore_list;  # List of packages to refuse to include in the build list.
 
 my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
-# }}}
-
-# package NullIPC {{{
-# Dummy IPC module in case SysVIPC doesn't work.
-{
-    package NullIPC;
-
-    use ksb::IPC;
-
-    our @ISA = qw(ksb::IPC);
-
-    sub new
-    {
-        my $class = shift;
-        my $self = $class->SUPER::new;
-
-        $self->{'msgList'} = []; # List of messages.
-        return bless $self, $class; # OOP in Perl is so completely retarded
-    }
-
-    sub sendMessage
-    {
-        my $self = shift;
-        my $msg = shift;
-
-        push @{$self->{'msgList'}}, $msg;
-        return 1;
-    }
-
-    sub receiveMessage
-    {
-        my $self = shift;
-
-        return undef unless scalar @{$self->{'msgList'}} > 0;
-
-        return shift @{$self->{'msgList'}};
-    }
-
-    1;
-}
 # }}}
 
 # package KDEXMLReader {{{
@@ -8038,7 +7999,7 @@ eval
 
         if (!$ipc)
         {
-            $ipc = new NullIPC;
+            $ipc = ksb::IPC::Null->new();
             whisper ("Using no IPC mechanism\n");
 
             $result = handle_updates ($ipc, $ctx);
