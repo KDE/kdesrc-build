@@ -7,6 +7,8 @@ use strict;
 use warnings;
 use v5.10;
 
+our $VERSION = '0.10';
+
 use ksb::Debug;
 use ksb::Util;
 use ksb::BuildSystem;

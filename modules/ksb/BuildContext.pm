@@ -7,6 +7,8 @@ use strict;
 use warnings;
 use v5.10;
 
+our $VERSION = '0.10';
+
 use Carp 'confess';
 use File::Basename; # dirname
 use IO::File;

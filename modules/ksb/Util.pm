@@ -6,6 +6,8 @@ use v5.10; # Needed for state keyword
 use strict;
 use warnings;
 
+our $VERSION = '0.10';
+
 use Carp qw(cluck);
 use Scalar::Util qw(blessed);
 use File::Path qw(make_path);

@@ -8,6 +8,8 @@ use ksb::Debug;
 use ksb::Util;
 use ksb::Updater;
 
+our $VERSION = '0.10';
+
 our @ISA = qw(ksb::Updater);
 
 use File::Basename; # basename

@@ -6,6 +6,8 @@ use strict;
 use warnings;
 use v5.10;
 
+our $VERSION = '0.10';
+
 use List::Util qw(first);
 
 use ksb::Debug;

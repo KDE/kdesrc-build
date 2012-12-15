@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use v5.10;
 
+our $VERSION = '0.10';
+
 use ksb::Util;
 
 # TODO: Replace make_exception with appropriate croak_* function.

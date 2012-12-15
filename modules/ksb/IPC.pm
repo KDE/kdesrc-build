@@ -9,6 +9,8 @@ use strict;
 use warnings;
 use v5.10;
 
+our $VERSION = '0.10';
+
 use ksb::Util; # make_exception, list_has
 use ksb::Debug;
 

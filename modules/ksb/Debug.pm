@@ -4,6 +4,9 @@ package ksb::Debug;
 
 use strict;
 use warnings;
+use v5.10;
+
+our $VERSION = '0.10';
 
 use Exporter qw(import); # Steal Exporter's import method
 our @EXPORT = qw(debug pretending debugging whisper

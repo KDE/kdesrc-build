@@ -7,6 +7,8 @@ use strict;
 use warnings;
 use v5.10;
 
+our $VERSION = '0.10';
+
 use ksb::Util;
 
 # Constructor. Passed in values are the initial phases in this set.

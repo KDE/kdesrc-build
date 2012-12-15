@@ -9,6 +9,8 @@ use strict;
 use warnings;
 use v5.10;
 
+our $VERSION = '0.10';
+
 use IO::Handle;
 use ksb::IPC;
 our @ISA = qw(ksb::IPC);
