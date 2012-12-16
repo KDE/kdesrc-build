@@ -811,6 +811,15 @@ sub expandXMLModules
         # projects.kde.org, elide those.
         my @xmlResults = grep { $_->{'active'} ne 'false' } (@allXmlResults);
 
+        # Bug 307694
+        my $moduleSetBranch = $moduleSet->getOption('branch', 'module');
+        if ($moduleSetBranch) {
+            debug ("Filtering kde-projects modules that don't have a $moduleSetBranch branch");
+            @xmlResults = grep {
+                list_has($_->{'branches'}, $moduleSetBranch)
+            } (@xmlResults);
+        }
+
         if (!@xmlResults) {
             # If this was a "guessed XML module" then we guessed wrong, and it's really
             # a misspelling.
