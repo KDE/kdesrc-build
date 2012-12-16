@@ -134,7 +134,9 @@ sub xmlTagStart
             'name' => $nameStack[-1],
             'active' => 'false',
             'tarball' => '',
-            'branch:stable' => '',
+            'branch'   => '',
+            'branches' => [ ],
+            'branchtype' => '', # Either branch:stable or branch:trunk
         }; # Repo/Active/tarball to be added by char handler.
     }
 
@@ -160,8 +162,11 @@ sub xmlTagStart
             $attrs{'protocol'} eq 'tarball'        ? 'tarball' : undef;
     }
     # i18n data gives us the defined stable and trunk branches.
-    elsif ($element eq 'branch' && $attrs{'i18n'} && $attrs{'i18n'} eq 'stable') {
-        $curRepository->{'needs'} = 'branch:stable';
+    elsif ($element eq 'branch') {
+        $curRepository->{'needs'} = 'branch';
+
+        my $branchType = $attrs{'i18n'} // '';
+        $curRepository->{'branchtype'} = "branch:$branchType" if $branchType;
     }
 }
 
@@ -176,6 +181,18 @@ sub xmlTagEnd
     # If gathering data for char handler, stop now.
     if ($inRepo && defined $curRepository->{'needs'}) {
         delete $curRepository->{'needs'};
+    }
+
+    # Save all branches encountered, mark which ones are 'stable' and 'trunk'
+    # for i18n purposes, as this keys into use-stable-kde handling.
+    if ($element eq 'branch') {
+        my $branch = $curRepository->{'branch'};
+        push @{$curRepository->{'branches'}}, $branch;
+        $curRepository->{'branch'} = '';
+
+        my $branchType = $curRepository->{'branchtype'};
+        $curRepository->{$branchType} = $branch if $branchType;
+        $curRepository->{'branchtype'} = '';
     }
 
     if ($element eq 'repo' && $inRepo) {
