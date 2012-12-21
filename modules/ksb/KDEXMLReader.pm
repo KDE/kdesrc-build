@@ -70,7 +70,9 @@ sub getModulesForProject
             },
     );
 
-    my $result = $parser->parse($self->inputHandle());
+    # Will die if the XML is not well-formed.
+    $parser->parse($self->inputHandle());
+
     return @modules;
 }
 

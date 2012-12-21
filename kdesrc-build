@@ -860,9 +860,14 @@ sub expandXMLModules
         return @xmlResults;
     };
 
-    my @results = map { &$filter($_) } (@modules);
+    # eval in case the XML processor throws an exception.
+    undef $@;
+    my @results = eval { map { &$filter($_) } (@modules) };
 
-    if ($repositoryMetadataRequired) {
+    if ($@) {
+        croak_runtime("The XML for the KDE Project database could not be understood: $@");
+    }
+    elsif ($repositoryMetadataRequired) {
         my $repoMetadataModule = ksb::Module->new($ctx, 'kde-build-metadata');
         $repoMetadataModule->setScmType('metadata');
 
