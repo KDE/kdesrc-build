@@ -2882,9 +2882,19 @@ eval
         assert_isa($metadataModule->scm(), 'ksb::Updater::KDEProjectMetadata');
 
         eval {
-            super_mkdir($metadataModule->getSourceDir());
-            info ("\tDownloading KDE Project module metadata...");
-            $metadataModule->scm()->updateInternal();
+            my $sourceDir = $metadataModule->getSourceDir();
+            super_mkdir($sourceDir);
+
+            if (!$ctx->phases()->has('update') &&
+                ! -e "$sourceDir/dependency-data")
+            {
+                warning (" r[b[*] Skipping build metadata update due to b[--no-src], but this is apparently required!");
+            }
+
+            if ($ctx->phases()->has('update') && !pretending()) {
+                info ("\tDownloading KDE Project module metadata...");
+                $metadataModule->scm()->updateInternal();
+            }
         };
 
         if ($@) {
@@ -2899,6 +2909,8 @@ eval
     eval {
         if ($metadataModule) {
             my $dependencyFile = $metadataModule->fullpath('source') . '/dependency-data';
+            $dependencyFile = \'' if pretending(); # Simulate empty file if --pretend
+
             open my $dependencies, '<', $dependencyFile
                 or die "Unable to open $dependencyFile: $!";
 
