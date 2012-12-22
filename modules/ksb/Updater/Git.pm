@@ -696,8 +696,8 @@ sub makeBranchname
     # Use "$branch" directly if not already used, otherwise try to prefix
     # with the remote name.
     for my $possibleBranch ($branch, "$remoteName-$branch", "ksdc-$remoteName-$branch") {
-        my $result = safe_system('git', 'show-ref', '--quiet', '--verify',
-            '--', "/refs/heads/$possibleBranch");
+        my $result = system('git', 'show-ref', '--quiet', '--verify',
+            '--', "refs/heads/$possibleBranch") >> 8;
 
         return $possibleBranch if $result == 1;
     }
