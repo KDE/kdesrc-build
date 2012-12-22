@@ -1,8 +1,10 @@
 package ksb::Module;
 
-# Class representing a source code module of some sort, which can be updated, built,
-# and installed. Includes a stringifying overload and can be sorted amongst other
-# ksb::Modules.
+# Class: Module
+#
+# Represents a source code module of some sort, which can be updated, built,
+# and installed. Includes a stringifying overload and can be sorted amongst
+# other ksb::Modules.
 
 use strict;
 use warnings;

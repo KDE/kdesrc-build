@@ -94,10 +94,18 @@ my $run_mode = 'build'; # Determines if updating, building, installing, etc.
 
 # }}}
 
-# Moves the directory given by the first parameter to be at the directory given
-# by the second parameter, but only if the first exists and the second doesn't.
+# Function: moveOldDirectories
+# Moves a directory to a new location, but only if the new location doesn't
+# already exist.
 # The use case is to automatically migrate source and build directories from
 # the change in dest-dir handling for XML-based modules.
+#
+# Parameters:
+#  oldDir - The directory to move.
+#  newDir - The name the directory should have afterwards.
+#
+# Returns:
+#  Boolean true, but throws an exception on error.
 sub moveOldDirectories
 {
     my ($oldDir, $newDir) = @_;
@@ -117,25 +125,36 @@ sub moveOldDirectories
     return 1;
 }
 
-# Subroutine to return the directory that a module will be stored in.
+# Function: get_module_path_dir
+#
+# Returns the directory that a module will be stored in.
+#
 # NOTE: The return value is a hash. The key 'module' will return the final
 # module name, the key 'path' will return the full path to the module. The
 # key 'fullpath' will return their concatenation.
+#
 # For example, with $module == 'KDE/kdelibs', and no change in the dest-dir
 # option, you'd get something like:
-# {
-#   'path'     => '/home/user/kdesrc/KDE',
-#   'module'   => 'kdelibs',
-#   'fullpath' => '/home/user/kdesrc/KDE/kdelibs'
-# }
+#
+# > {
+# >   'path'     => '/home/user/kdesrc/KDE',
+# >   'module'   => 'kdelibs',
+# >   'fullpath' => '/home/user/kdesrc/KDE/kdelibs'
+# > }
 # If dest-dir were changed to e.g. extragear-multimedia, you'd get:
-# {
-#   'path'     => '/home/user/kdesrc',
-#   'module'   => 'extragear-multimedia',
-#   'fullpath' => '/home/user/kdesrc/extragear-multimedia'
-# }
-# First parameter is the module.
-# Second parameter is either source or build.
+#
+# > {
+# >   'path'     => '/home/user/kdesrc',
+# >   'module'   => 'extragear-multimedia',
+# >   'fullpath' => '/home/user/kdesrc/extragear-multimedia'
+# > }
+#
+# Parameters:
+#   module - The <Module>.
+#   pathType - Either 'source' or 'build'.
+#
+# Returns:
+#   hash (Not a hashref; See description).
 sub get_module_path_dir
 {
     my $module = assert_isa(shift, 'ksb::Module');
