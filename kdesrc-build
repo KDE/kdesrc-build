@@ -784,10 +784,37 @@ EOF
     return @moduleList;
 }
 
+# Function: expandXMLModules
+#
 # Goes through the provided modules that have the 'proj' type (i.e. XML
 # projects.kde.org database) and expands the proj-types into their equivalent
 # git modules, and returns the fully expanded list. Non-proj modules are
 # included in the sequence they were originally.
+#
+# *Note*: This function will trigger network download of the kde-projects
+# database if any relevant modules are identified. In addition, a build-support
+# module will be included in this case, which requires special care.
+#
+# *Note*: Any modules that are part of a module-set requiring a specific
+# branch, that don't have that branch, are also elided with only a debug
+# message. This allows for building older branches of KDE even when newer
+# modules are eventually put into the database.
+#
+# Parameters:
+#  ctx - The <BuildContext> in use.
+#  @modules - The list of <Modules> to perform proj-expansion on.
+#
+# Returns:
+#  @modules - List of expanded <Modules>. *Note*: If the build-support
+#  repository was included it will be the first <Module>, with an SCM type of
+#  <ksb::Updater::KDEProjectMetadata>. Many other support functions will
+#  require this metadata be updated first.
+#
+# Throws:
+#  Runtime - if the kde-projects database was required but couldn't be
+#  downloaded or read.
+#  Runtime - if the git-desired-protocol is unsupported.
+#  Runtime - if an "assumed" kde-projects module was not actually one.
 sub expandXMLModules
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
@@ -905,20 +932,32 @@ sub expandXMLModules
     return @results;
 }
 
-# This subroutine takes a reference to the current module list (specifically a
-# list of ksb::Module objects), and takes a reference to the list of ksb::Module objects
-# read in from the config file.
+# Function: expandModuleSets
 #
-# For each module in the first list, it is checked to see if options have been
-# read in for it, and if so it is left alone.
+# Replaces <Modules> in an input list from the command line that name
+# module-sets listed in the configuration file, and returns the new list.
 #
-# If the module does not have any options for it, it is assumed that the user
-# might mean a named module set (i.e. the module is the name of a module-set),
-# and /if/ any of the Modules in the second list are recorded as having come
-# from a module set matching the name of the current module, it is used
-# instead.
+# A <Module> is assumed to name a module-set if all of the following are true.
+# * No options were read in for it.
+# * The module isn't already forced to be a kde-project module (as can happen
+# on the command line).
+# * <Modules> from the rcFileModules were included in a module-set of the same
+# name.
 #
-# The processed module list is the return value.
+# Any <Module> that meets these conditions is replaced by all of the matching
+# module-set <Modules> in the return list.
+#
+# Any <Module> that doesn't match a known rcFile module *or* module-set is
+# assumed to be a kde-project module and altered appropriately.
+#
+# Parameters:
+#  $@modules - listref of <Modules> to be expanded.
+#  $@rcFileModules - listref of <Modules> that list modules read in from the
+#    configuration file.
+#
+# Returns:
+#  @modules - List of <Modules> with any module-sets expanded into <Modules>.
+#  No kde-project module expansion occurs.
 sub expandModuleSets
 {
     my ($buildModuleList, $knownModules) = @_;
@@ -960,10 +999,26 @@ sub expandModuleSets
     return map { &$filter } (@$buildModuleList);
 }
 
-# This subroutine reads in the settings from the user's configuration
-# file. The filehandle to read from should be passed in as the first
-# parameter. The filehandle should be something that the <> operator works
-# on, usually some subclass of IO::Handle.
+# Function: read_options
+#
+# Reads in the settings from the configuration, passed in as an open
+# filehandle.
+#
+# Phase:
+#  initialization - Do not call <finish> from this function.
+#
+# Parameters:
+#  ctx - The <BuildContext> to update based on the configuration read.
+#  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
+#  methods (e.g. <IO::Handle> subclass).
+#
+# Returns:
+#  @module - List of <Modules> defined in the configuration file. Note that
+#  although any module-sets found will have been expanded out, no kde-projects
+#  modules will have been further expanded out.
+#
+# Throws:
+#  - Config exceptions.
 sub read_options
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
@@ -2394,18 +2449,24 @@ sub handle_uninstall
     return $result;
 }
 
-# This subroutine is used in order to apply any module-specific filtering that
-# is necessary after reading command line and rc-file options. (This is as
-# opposed to phase filters, which leave each module as-is but change the phases
-# they operate part of, this function could remove a module entirely from the
-# build).
+# Function: applyModuleFilters
 #
-# Famously used for --resume-from and --resume-after, but more could be added
-# in theory.
+# Applies any module-specific filtering that is necessary after reading command
+# line and rc-file options. (This is as opposed to phase filters, which leave
+# each module as-is but change the phases they operate as part of, this
+# function could remove a module entirely from the build).
 #
-# Requires a list of "ksb::Module" type objects, and returns the list with filters
-# applied. Right now the return list will be a subset of the given list, but
-# it's best not to rely on that long-term.
+# Used for --resume-from and --resume-after, but more could be added in theory.
+# This subroutine supports --resume-* for both modules and module-sets.
+#
+# Parameters:
+#  ctx - <BuildContext> in use.
+#  @modules - List of <Modules> to apply filters on.
+#
+# Returns:
+#  list of <Modules> with any inclusion/exclusion filters applied. Do not
+#  assume this list will be a strict subset of the input list, however the
+#  order will not change amongst the input modules.
 sub applyModuleFilters
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');

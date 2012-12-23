@@ -1,8 +1,14 @@
 package ksb::KDEXMLReader;
 
+# Class: KDEXMLReader
+#
 # kde_projects.xml module-handling code.
 # The core of this was graciously contributed by Allen Winter, and then
 # touched-up and kdesrc-build'ed by myself -mpyne.
+#
+# In C++ terms this would be a singleton-class (as it uses package variables
+# for everything due to XML::Parser limitations). So it is neither re-entrant
+# nor thread-safe.
 
 use strict;
 use warnings;
@@ -12,6 +18,15 @@ our $VERSION = '0.10';
 
 use XML::Parser;
 
+# Method: new
+#
+# Constructs a new KDEXMLReader. This doesn't contradict any part of the class
+# documentation which claims this class is a singleton however. This should be
+# called as a method (e.g. KDEXMLReader->new(...)).
+#
+# Parameters:
+#  $inputHandle - Ref to filehandle to read from. Must implement _readline_ and
+#  _eof_.
 sub new
 {
     my $class = shift;
