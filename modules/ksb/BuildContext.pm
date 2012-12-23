@@ -1,5 +1,7 @@
 package ksb::BuildContext;
 
+# Class: BuildContext
+#
 # This contains the information needed about the build context, e.g.  list of
 # modules, what phases each module is in, the various options, etc.
 

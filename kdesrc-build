@@ -1194,15 +1194,27 @@ sub handle_set_env
     return 1;
 }
 
-# Subroutine to process the command line arguments, which should be passed as
-# a list. The list of module names passed on the command line will be returned,
-# In addition, a second parameter should be passed, a reference to a hash that
-# will hold options that cannot be set until the rc-file is read.
+# Function: process_arguments
 #
-# NOTE: One exception to the return value is that if --run is passed, the list
-# of options to pass to the new program is returned instead (you can tell by
-# evaluating the '#start-program' option.
-# NOTE: Don't call finish() from this routine, the lock hasn't been obtained.
+# Processes the command line arguments, which are used to modify the given
+# <BuildContext> and possibly return a list of <Modules>.
+#
+# Phase:
+#  initialization - Do not call <finish> from this function.
+#
+# Parameters:
+#  ctx - BuildContext in use.
+#  pendingOptions - hashref to hold parsed modules options to be applied later.
+#    *Note* this must be done separately, it is not handled by this subroutine.
+#  @options - The remainder of the arguments are treated as command line
+#    arguments to process.
+#
+# Returns:
+#  - List of <ksb::Modules> that represent modules specifically entered on the
+#    command-line, _or_
+#  - List of options to pass to a command named by the --run command line
+#    option. (This is true if and only if the _ctx_ ends up with the
+#    _#start-program_ option set).
 sub process_arguments
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
@@ -2291,9 +2303,12 @@ EOF
     return $result;
 }
 
-# Subroutine to exit the script cleanly, including removing any
-# lock files created.  If a parameter is passed, it is interpreted
-# as an exit code to use
+# Function: finish
+#
+# Exits the script cleanly, including removing any lock files created.
+#
+# Parameters:
+#  [exit] - Optional; if passed, is used as the exit code, otherwise 0 is used.
 sub finish
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
