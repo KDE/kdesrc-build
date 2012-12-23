@@ -50,6 +50,7 @@ use File::Path qw(remove_tree);
 use File::Glob ':glob';
 use File::Spec;     # tmpdir, rel2abs
 use File::Temp qw(tempfile);
+use List::Util qw(first);
 use LWP::UserAgent;
 use URI; # For git-clone snapshot support
 use Sys::Hostname;
@@ -2522,6 +2523,33 @@ EOF
     return @resultList;
 }
 
+# Function: spliceOptionModules
+#
+# Replaces any modules in a given list that have a name matching that of a
+# "option module" with that option module inline. Modules that have no "option
+# module" match are unchanged.
+#
+# Parameters:
+#  @$modules - Listref of modules to potentially splice in replacements of.
+#  @$optionModules - Listref to list of the "option" modules, which should be
+#  of the same level of kde-project expansion as @$modules.
+#
+# Returns:
+#  Nothing.
+sub spliceOptionModules
+{
+    my ($modulesRef, $optionModulesRef) = @_;
+
+    for (my $i = 0; $i < scalar @{$modulesRef}; $i++) {
+        my $module = ${$modulesRef}[$i];
+        my ($optionModule) = grep {
+            $_->name() eq $module->name()
+        } @{$optionModulesRef};
+
+        splice @$modulesRef, $i, 1, $optionModule if defined $optionModule;
+    }
+}
+
 # Exits out of kdesrc-build, executing the user's preferred shell instead.  The
 # difference is that the environment variables should be as set in kdesrc-build
 # instead of as read from .bashrc and friends.
@@ -2900,10 +2928,7 @@ eval
     if ($commandLineModules) {
         # Copy ksb::Module objects from the ones created by read_options
         # since their module-type will actually be set.
-        foreach my $module (@modules) {
-            my ($optionModule) = grep {$_->name() eq $module->name()} @optionModules;
-            $module = $optionModule if defined $optionModule;
-        }
+        spliceOptionModules(\@modules, \@optionModules);
 
         # Modify l10n module inline, if present.
         for (@modules) {
@@ -2932,6 +2957,28 @@ eval
 
     # Must be done before filtering so that we can filter under module-sets.
     @modules = expandXMLModules($ctx, @modules);
+
+    # Fixup any "guessed" kde-projects modules. If we have a guessed module we
+    # know that a kde-project expansion pass was actually performed, but we
+    # don't know that the config-file option-module was found since we never
+    # ran a kde-project expansion pass on the optionModules (doing this
+    # unconditionally would be waste for runs where we know exactly what repos
+    # to build, although we're quickly approaching the day where that won't
+    # matter).
+    if (my @guessed = grep { $_->getOption('#guessed-kde-project') } @modules) {
+        whisper (" * Performing second-level kde-project expansion for cmdline modules");
+        @optionModules = expandXMLModules($ctx, @optionModules);
+        spliceOptionModules(\@guessed, \@optionModules);
+
+        # Now that we have fixed the @guessed entries, we still have to merge
+        # those back in.
+        my $i = 0;
+        for my $fixedModule (@guessed) {
+            $i = first { $modules[$_]->name() eq $fixedModule->name() } ($i .. $#modules);
+            splice (@modules, $i, 1, $fixedModule) if defined $i;
+            $i = 0 if not defined $i; # Reset when no match found
+        }
+    }
 
     # Filter --resume-foo options. This might be a second pass, but that should
     # be OK since there's nothing different going on from the first pass in that
