@@ -79,11 +79,13 @@ sub runTestsuite
                              { callback => $countCallback, no_translate => 1});
 
     if ($result != 0) {
+        my $logDir = $module->getLogDir();
+
         if ($numTests > 0) {
-            warning ("\t$numTests tests failed for y[$module], consult latest/$module/test-results.log for info");
+            warning ("\t$numTests tests failed for y[$module], consult $logDir/test-results.log for info");
         }
         else {
-            warning ("\tSome tests failed for y[$module], consult latest/$module/test-results.log for info");
+            warning ("\tSome tests failed for y[$module], consult $logDir/test-results.log for info");
         }
 
         return 0;
