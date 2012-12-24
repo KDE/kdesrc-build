@@ -760,7 +760,14 @@ EOF
         my $moduleName = $module;
 
         # Remove trailing .git for module name
-        $moduleName =~ s/\.git$// unless $usingXML;
+        if ($usingXML) {
+            # Remove all name components before the final /, as long as the /
+            # isn't followed by a *.
+            $moduleName =~ s,^.*/(?!\*),,;
+        }
+        else {
+            $moduleName =~ s/\.git$//;
+        }
 
         my $newModule = ksb::Module->new($ctx, $moduleName);
         $newModule->setModuleSet($moduleSetName);
