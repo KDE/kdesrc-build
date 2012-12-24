@@ -68,6 +68,12 @@ sub getModulesForProject
 
     my ($self, $proj, $protocol) = @_;
 
+    # Sanity-check
+    if ($proj eq '*' || !$proj) {
+        die "You are trying to import all modules. This is unwise. Ensure " .
+            "you do not have any use-module items with a bare '*'";
+    }
+
     $searchProject = $proj;
     @modules = ();
     @nameStack = ();
