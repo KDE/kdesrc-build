@@ -3044,13 +3044,12 @@ eval
     eval {
         if ($metadataModule) {
             my $dependencyFile = $metadataModule->fullpath('source') . '/dependency-data';
-            $dependencyFile = \'' if pretending(); # Simulate empty file if --pretend
-
-            open my $dependencies, '<', $dependencyFile
+            my $dependencies = pretend_open($dependencyFile)
                 or die "Unable to open $dependencyFile: $!";
 
             my $dependencyResolver = ksb::DependencyResolver->new();
             $dependencyResolver->readDependencyData($dependencies);
+            close $dependencies;
 
             my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
 

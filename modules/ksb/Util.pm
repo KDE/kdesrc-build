@@ -23,6 +23,7 @@ our @EXPORT = qw(list_has make_exception assert_isa assert_in
                  croak_runtime croak_internal download_file absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
+                 pretend_open
                  super_mkdir filter_program_output prettify_seconds);
 
 # Function to work around a Perl language limitation.
@@ -574,6 +575,29 @@ sub download_file
     error ("Failed to download y[b[$url] to b[$filename]");
     error ("Result was: y[b[" . $response->status_line . "]");
     return 0;
+}
+
+# Function: pretend_open
+#
+# Opens the given file and returns a filehandle to it if the file actually
+# exists or the script is not in pretend mode. If the script is in pretend mode
+# and the file is not already present then an open filehandle to an empty
+# string is returned.
+#
+# Parameters:
+#  filename - Path to the file to open.
+#
+# Returns:
+#  filehandle on success (supports readline() and eof()), can return boolean
+#  false if there is an error opening an existing file (or if the file doesn't
+#  exist when not in pretend mode)
+sub pretend_open
+{
+    my $path = shift;
+    return \'' if pretending() && ! -e $path;
+
+    open my $fh, '<', $path or return;
+    return $fh;
 }
 
 1;

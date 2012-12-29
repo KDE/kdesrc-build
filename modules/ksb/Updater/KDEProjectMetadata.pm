@@ -30,11 +30,8 @@ sub updateInternal
 
     my $path = $self->module()->fullpath('source') . "/build-script-ignore";
 
-    # A reference to a string can be used as a file to open. The string being
-    # empty means the "file" that is read is also empty, suitable for pretend
-    # mode.
-    $path = \'' if pretending();
-    open my $fh, '<', $path or croak_internal("Unable to read ignore data: $!");
+    my $fh = pretend_open($path) or
+        croak_internal("Unable to read ignore data: $!");
 
     my $ctx = $self->module()->buildContext();
     my @ignoreModules = map { chomp $_; $_ } (<$fh>);
