@@ -821,6 +821,39 @@ sub hasOption
     return exists $self->{options}{$key};
 }
 
+# Function: processSetEnvOption
+#
+# Handles setting set-env options in a format appropriate for a Module option
+# hash (a reference to which should be given as the first argument).
+#
+# Though part of the Module package, this is a simple sub, not a "method", so
+# call with Module::processSetEnvOption, not ->.
+#
+# Parameters:
+#
+# optionHash - hashref to the option hash where the set-env option(s) will be
+#   stored. The environment variable settings will be stored under the 'set-env'
+#   key, which will hold a hashref to the variables/values.
+# variable - Name of the environment variable to later set.
+# value - Value to give to the environment (can be empty).
+#
+# Returns:
+#
+# Boolean true if variable was processed, false otherwise.
+sub processSetEnvOption
+{
+    my ($href, $variable, $value) = @_;
+
+    return if $variable !~ /^#?set-env$/;
+
+    my ($var, @values) = split(' ', $value);
+
+    ${$href}{$variable} //= { };
+    ${$href}{$variable}->{$var} = join(' ', @values);
+
+    return 1;
+}
+
 # Sets the option refered to by the first parameter (a string) to the
 # scalar (e.g. references are OK too) value given as the second paramter.
 sub setOption
@@ -828,9 +861,9 @@ sub setOption
     my ($self, %options) = @_;
     while (my ($key, $value) = each %options) {
         # ref($value) checks if value is already a reference (i.e. a hashref)
-        # which means we should just copy it over, as all handle_set_env does
-        # is convert the string to the right hashref.
-        if (!ref($value) && main::handle_set_env($self->{options}, $key, $value))
+        # which means we should just copy it over, as all processSetEnvOption
+        # does is convert the string to the right hashref.
+        if (!ref($value) && processSetEnvOption($self->{options}, $key, $value))
         {
             return
         }

@@ -95,7 +95,7 @@ eval {
 
 ksb::Util->import();
 
-# If using set-env, it is handled by the handle_set_env routine, so the
+# If using set-env, it is handled by the Module::processSetEnvOption, so the
 # value should be the space separated VAR and VALUE.
 $ctx->setOption('set-env', 'TESTY_MCTEST yes');
 $ctx->setOption('cxxflags', '-g -O0');

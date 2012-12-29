@@ -716,7 +716,7 @@ sub parse_moduleset
             }
         }
         elsif ($option eq 'set-env') {
-            handle_set_env(\%optionSet, $option, $value);
+            Module::processSetEnvOption(\%optionSet, $option, $value);
         }
         else {
             $optionSet{$option} = $value;
@@ -1236,25 +1236,6 @@ sub extract_option_value_required($\@)
     }
 
     return $returnValue;
-}
-
-# Utility subroutine to handle setting the environment variable type of value.
-# Returns true (non-zero) if this subroutine handled everything, 0 otherwise.
-# The first parameter should by the reference to the hash with the 'set-env'
-# hash ref, second parameter is the exact option to check, and the third
-# option is the value to set that option to.
-sub handle_set_env
-{
-    my ($href, $option, $value) = @_;
-
-    return 0 if $option !~ /^#?set-env$/;
-
-    my ($var, @values) = split(' ', $value);
-
-    ${$href}{$option} //= { };
-    ${$href}{$option}->{$var} = join(' ', @values);
-
-    return 1;
 }
 
 # Function: process_arguments
