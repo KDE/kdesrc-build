@@ -8,7 +8,7 @@ use strict;
 use warnings;
 use v5.10;
 
-our $VERSION = '0.10';
+our $VERSION = '0.20';
 
 use ksb::Debug;
 use ksb::Util;
@@ -19,8 +19,8 @@ sub new
     my $class = shift;
 
     my $self = {
-        # hash table mapping full module names (m) to a list reference
-        # containing the full module names of modules that depend on m.
+        # hash table mapping full module names (m) to a hashref key by branch
+        # name, the value of which is yet another hashref (see readDependencyData)
         dependenciesOf  => { },
     };
 
@@ -68,25 +68,42 @@ sub readDependencyData
         my ($dependentItem, $dependentBranch,
             $sourceItem,    $sourceBranch) = $line =~ $dependencyAtom;
 
-        # Ignore "doesn't use" markers.
-        next if index($sourceItem, '-') == 0;
-
-        # Ignore "catch-all" dependencies.
-        next if $sourceItem =~ m,/\*$, || $dependentItem =~ m,/\*$,;
+        # Ignore "catch-all" dependencies where the source is the catch-all
+        next if $sourceItem =~ m,\*$,;
 
         # Ignore deps on Qt, since we allow system Qt.
         next if $sourceItem =~ /^\s*Qt/ || $dependentItem =~ /^\s*Qt/;
 
-        # TODO: Utilize branch information in dependency tracking.
-        if ($dependentBranch || $sourceBranch) {
-            ksb::Debug::whisper ("$dependentItem only partially depends on $sourceItem");
-            next;
-        }
+        $dependentBranch ||= '*'; # If no branch, apply catch-all flag
+        $sourceBranch ||= '*';
 
-        # Initialize with array if not already defined.
-        $dependenciesOfRef->{$dependentItem} //= [ ];
+        # Initialize with hashref if not already defined. The hashref will hold
+        #     - => [ ] (list of explicit *NON* dependencies of item:$branch),
+        #     + => [ ] (list of dependencies of item:$branch)
+        #
+        # Each dependency item is tracked at the module:branch level, and there
+        # is always at least an entry for module:*, where '*' means branch
+        # is unspecified and should only be used to add dependencies, never
+        # take them away.
+        #
+        # Finally, all (non-)dependencies in a list are also of the form
+        # fullname:branch, where "*" is a valid branch.
+        $dependenciesOfRef->{"$dependentItem:*"} //= {
+            '-' => [ ],
+            '+' => [ ],
+        };
 
-        push @{$dependenciesOfRef->{$dependentItem}}, $sourceItem;
+        # Create actual branch entry if not present
+        $dependenciesOfRef->{"$dependentItem:$dependentBranch"} //= {
+            '-' => [ ],
+            '+' => [ ],
+        };
+
+        my $depKey = (index($sourceItem, '-') == 0) ? '-' : '+';
+        $sourceItem =~ s/^-//;
+
+        push @{$dependenciesOfRef->{"$dependentItem:$dependentBranch"}->{$depKey}},
+             "$sourceItem:$sourceBranch";
     }
 }
 
@@ -118,15 +135,49 @@ sub _addInherentDependencies
             exists $modulesFromNameRef->{$candidateBaseModule})
         {
             # Add candidateBaseModule as dependency of testModule.
-            $dependenciesOfRef->{$testModule} //= [ ];
+            $dependenciesOfRef->{"$testModule:*"} //= {
+                '-' => [ ],
+                '+' => [ ],
+            };
 
-            my $moduleDepsRef = $dependenciesOfRef->{$testModule};
+            my $moduleDepsRef = $dependenciesOfRef->{"$testModule:*"}->{'+'};
             if (!first { $_ eq $candidateBaseModule } @{$moduleDepsRef}) {
                 debug ("dep-resolv: Adding $testModule as dependency of $candidateBaseModule");
-                push @{$moduleDepsRef}, $candidateBaseModule;
+                push @{$moduleDepsRef}, "$candidateBaseModule:*";
             }
         }
     }
+}
+
+# Finds the direct dependencies of the given module at a given branch.
+sub _directDependenciesOf
+{
+    my ($dependenciesOfRef, $module, $branch) = @_;
+
+    my $moduleDepEntryRef = $dependenciesOfRef->{"$module:*"};
+    my @directDeps;
+    my @exclusions;
+
+    return unless $moduleDepEntryRef;
+
+    push @directDeps, @{$moduleDepEntryRef->{'+'}};
+
+    $moduleDepEntryRef = $dependenciesOfRef->{"$module:$branch"};
+    if ($moduleDepEntryRef) {
+        push @directDeps, @{$moduleDepEntryRef->{'+'}};
+        push @exclusions, @{$moduleDepEntryRef->{'-'}};
+    }
+
+    foreach my $exclusion (@exclusions) {
+        my ($moduleName, $branchName) = $exclusion =~ m,^([^:]+):(.*)$,;
+
+        # Remove only modules at the exact given branch as a dep.
+        # We do this even for "catch-alls", so that specific branches are
+        # not removed by a "catch-all" exclusion.
+        @directDeps = grep { $_ ne $exclusion } (@directDeps);
+    }
+
+    return @directDeps;
 }
 
 # Internal.
@@ -169,13 +220,23 @@ sub _visitModuleAndDependencies
     }
 
     $visitedItemsRef->{$item} = 2; # Mark as currently-visiting for cycle detection.
-    for my $subItem (@{$dependenciesOfRef->{$item}}) {
-        debug ("\tdep-resolv: $item depends on $subItem");
 
-        my $subModule = $modulesFromNameRef->{$subItem};
+    my $branch = $module->scm()->getBranch();
+    for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
+        my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
+        croak_internal("Invalid dependency item: $subItem") if !$subItemName;
+
+        debug ("\tdep-resolv: $item:$branch depends on $subItem");
+
+        my $subModule = $modulesFromNameRef->{$subItemName};
         if (!$subModule) {
-            whisper (" y[b[*] $module depends on $subItem, but no module builds $subItem for this run.");
+            whisper (" y[b[*] $module:$branch depends on $subItem, but no module builds $subItem for this run.");
             next;
+        }
+
+        if ($subItemBranch ne '*' && $subModule->scm()->getBranch() ne $subItemBranch) {
+            my $wrongBranch = $subModule->scm()->getBranch();
+            error (" r[b[*] $module:$branch needs $subItem, not $subItemName:$wrongBranch");
         }
 
         _visitModuleAndDependencies($optionsRef, $subModule);
