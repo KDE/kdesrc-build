@@ -69,13 +69,24 @@ sub readDependencyData
             $sourceItem,    $sourceBranch) = $line =~ $dependencyAtom;
 
         # Ignore "catch-all" dependencies where the source is the catch-all
-        next if $sourceItem =~ m,\*$,;
+        if ($sourceItem =~ m,\*$,) {
+            warning ("\tIgnoring dependency on wildcard module grouping " .
+                     "on line $. of kde-build-metadata/dependency-data");
+            next;
+        }
 
         # Ignore deps on Qt, since we allow system Qt.
         next if $sourceItem =~ /^\s*Qt/ || $dependentItem =~ /^\s*Qt/;
 
         $dependentBranch ||= '*'; # If no branch, apply catch-all flag
         $sourceBranch ||= '*';
+
+        # Handle catch-all dependent groupings
+        if ($dependentItem =~ /\*$/) {
+            $self->{catchAllDependencies}->{$dependentItem} //= [ ];
+            push @{$self->{catchAllDependencies}->{$dependentItem}}, "$sourceItem:$sourceBranch";
+            next;
+        }
 
         # Initialize with hashref if not already defined. The hashref will hold
         #     - => [ ] (list of explicit *NON* dependencies of item:$branch),
@@ -180,11 +191,46 @@ sub _directDependenciesOf
     return @directDeps;
 }
 
-# Internal.
-# This method is used to topographically sort dependency data. It accepts
-# a ksb::Module, ensures that any KDE Projects it depends on are already on the
-# build list, and then adds the ksb::Module to the build list (whether it is
-# a KDE Project or not, to preserve ordering).
+# Function: makeCatchAllRules
+#
+# Internal:
+#
+# Given the internal dependency options data and a kde-project item, extracts
+# all "catch-all" rules that apply to the given item and converts them to
+# standard dependencies for that item. The dependency options are then
+# appropriately updated.
+#
+# No checks are done for logical errors (e.g. having the item depend on itself)
+# and no provision is made to avoid updating a module that has already had its
+# catch-all rules generated.
+#
+# Parameters:
+#  optionsRef - The hashref as provided to <_visitModuleAndDependencies>
+#  item - The kde-project module to generate dependencies of.
+sub _makeCatchAllRules
+{
+    my ($optionsRef, $item) = @_;
+    my $dependenciesOfRef = $optionsRef->{dependenciesOf};
+
+    while (my ($catchAll, $deps) = each %{$optionsRef->{catchAllDependencies}}) {
+        my $prefix = $catchAll;
+        $prefix =~ s/\*$//;
+
+        if (($item =~ /^$prefix/) || !$prefix) {
+            my $depEntry = "$item:*";
+            $dependenciesOfRef->{$depEntry} //= {
+                '-' => [ ],
+                '+' => [ ],
+            };
+
+            push @{$dependenciesOfRef->{$depEntry}->{'+'}}, @{$deps};
+        }
+    }
+}
+
+# Function: visitModuleAndDependencies
+#
+# Internal:
 #
 # Static method.
 # First parameter: Reference to a hash of parameters.
@@ -221,10 +267,14 @@ sub _visitModuleAndDependencies
 
     $visitedItemsRef->{$item} = 2; # Mark as currently-visiting for cycle detection.
 
+    _makeCatchAllRules($optionsRef, $item);
+
     my $branch = $module->scm()->getBranch();
     for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
         my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
         croak_internal("Invalid dependency item: $subItem") if !$subItemName;
+
+        next if $subItemName eq $item; # Catch-all deps might make this happen
 
         debug ("\tdep-resolv: $item:$branch depends on $subItem");
 
@@ -272,6 +322,7 @@ sub resolveDependencies
         visitedItems => { },
         properBuildOrder => [ ],
         dependenciesOf => $self->{dependenciesOf},
+        catchAllDependencies => $self->{catchAllDependencies},
 
         # will map names back to their Modules
         modulesFromName => {
