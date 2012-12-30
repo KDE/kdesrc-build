@@ -1,5 +1,7 @@
 package ksb::DependencyResolver;
 
+# Class: DependencyResolver
+#
 # This module handles resolving dependencies between modules. Each "module"
 # from the perspective of this resolver is simply a module full name, as
 # given by the KDE Project database.  (e.g. extragear/utils/kdesrc-build)
@@ -14,6 +16,15 @@ use ksb::Debug;
 use ksb::Util;
 use List::Util qw(first);
 
+# Constructor: new
+#
+# Constructs a new <DependencyResolver>. No parameters are taken.
+#
+# Synposis:
+#
+# > my $resolver = new DependencyResolver;
+# > $resolver->readDependencyData(open my $fh, '<', 'file.txt');
+# > $resolver->resolveDependencies(@modules);
 sub new
 {
     my $class = shift;
@@ -22,16 +33,26 @@ sub new
         # hash table mapping full module names (m) to a hashref key by branch
         # name, the value of which is yet another hashref (see readDependencyData)
         dependenciesOf  => { },
+
+        # hash table mapping a wildcarded module name with no branch to a
+        # listref of module:branch dependencies.
+        catchAllDependencies => { },
     };
 
     return bless $self, $class;
 }
 
+# Method: readDependencyData
+#
 # Reads in dependency data in a psuedo-Makefile format.
 # See kde-build-metadata/dependency-data.
 #
-# Object method.
-# First parameter is the filehandle to read from.
+# Parameters:
+#  $self - The DependencyResolver object.
+#  $fh   - Filehandle to read dependencies from (should already be open).
+#
+# Exceptions:
+#  Can throw an exception on I/O errors or malformed dependencies.
 sub readDependencyData
 {
     my $self = assert_isa(shift, 'ksb::DependencyResolver');
@@ -118,14 +139,23 @@ sub readDependencyData
     }
 }
 
-# Internal.
-# This method adds any full module names as dependencies of any module that
-# begins with that full module name. E.g. kde/kdelibs/foo automatically
-# depends on kde/kdelibs if both are present in the build.
+# Function: addInherentDependencies
 #
-# Static method.
-# First parameter: Reference to a hash of parameters.
-# Return: Nothing.
+# Internal:
+#
+# This method adds any full module names as dependencies of any module that
+# begins with that full module name. E.g. kde/kdelibs/foo automatically depends
+# on kde/kdelibs if both are present in the build.
+#
+# This is a static function, not an object method.
+#
+# Parameters:
+#
+#  options - Hashref to the internal options as given to <visitModuleAndDependencies>
+#
+# Returns:
+#
+#  Nothing.
 sub _addInherentDependencies
 {
     my $optionsRef = shift;
@@ -160,7 +190,29 @@ sub _addInherentDependencies
     }
 }
 
-# Finds the direct dependencies of the given module at a given branch.
+# Function: directDependenciesOf
+#
+# Internal:
+#
+# Finds and returns the direct dependencies of the given module at a given
+# branch. This requires forming a list of dependencies for the module from the
+# "branch neutral" dependencies, adding branch-specific dependencies, and then
+# removing any explicit non-dependencies for the given branch, which is why
+# this is a separate routine.
+#
+# Parameters:
+#  dependenciesOfRef - hashref to the table of dependencies as read by
+#  <readDependencyData>.
+#  module - The full name (just the name) of the kde-project module to list
+#  dependencies of.
+#  branch - The branch to assume for module. This must be specified, but use
+#  '*' if you have no specific branch in mind.
+#
+# Returns:
+#  A list of dependencies. Every item of the list will be of the form
+#  "$moduleName:$branch", where $moduleName will be the full kde-project module
+#  name (e.g. kde/kdelibs) and $branch will be a specific git branch or '*'.
+#  The order of the entries within the list is not important.
 sub _directDependenciesOf
 {
     my ($dependenciesOfRef, $module, $branch) = @_;
@@ -232,10 +284,20 @@ sub _makeCatchAllRules
 #
 # Internal:
 #
-# Static method.
-# First parameter: Reference to a hash of parameters.
-# Second parameter: ksb::Module to "visit". Does not have to be a KDE Project.
-# Return: Nothing.
+# This method is used to topographically sort dependency data. It accepts a
+# <ksb::Module>, ensures that any KDE Projects it depends on present on the
+# build list are re-ordered before the module, and then adds the <ksb::Module>
+# to the build list (whether it is a KDE Project or not, to preserve ordering).
+#
+# Parameters:
+#  optionsRef - hashref to the module dependencies, catch-all dependencies,
+#   module build list, module name to <ksb::Module> mapping, and auxiliary data
+#   to see if a module has already been visited.
+#  module - The <ksb::Module> to properly order in the build list.
+#
+# Returns:
+#  Nothing. The proper build order can be read out from the optionsRef passed
+#  in.
 sub _visitModuleAndDependencies
 {
     my ($optionsRef, $module) = @_;
@@ -297,22 +359,31 @@ sub _visitModuleAndDependencies
     return;
 }
 
-# This method takes a list of Modules (real ksb::Module objects, not just module
-# names).
+# Function: resolveDependencies
 #
-# These modules have their dependencies resolved, and a new list of Modules
+# This method takes a list of Modules (real <ksb::Module> objects, not just
+# module names).
+#
+# These modules have their dependencies resolved, and a new list of <Modules>
 # is returned, containing the proper build order for the module given.
 #
 # Only "KDE Project" modules can be re-ordered or otherwise affect the
 # build so this currently won't affect Subversion modules or "plain Git"
 # modules.
 #
-# The dependency data must have been read in first (readDependencyData).
+# The dependency data must have been read in first (<readDependencyData>).
 #
-# Object method
-# Parameters: Modules to evaluate, in suggested build order.
-# Return: Modules to build, with any KDE Project modules in a valid
-# ordering based on the currently-read dependency data.
+# Parameters:
+#
+#  $self    - The DependencyResolver object.
+#  @modules - List of <Modules> to evaluate, in suggested build order.
+#
+# Returns:
+#
+#  Modules to build, with the included KDE Project modules in a valid ordering
+#  based on the currently-read dependency data. KDE Project modules are only
+#  re-ordered amongst themselves, other module types retain their relative
+#  positions.
 sub resolveDependencies
 {
     my $self = assert_isa(shift, 'ksb::DependencyResolver');
