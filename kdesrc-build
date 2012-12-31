@@ -919,6 +919,7 @@ sub expandXMLModules
     my @results = eval { map { &$filter($_) } (@modules) };
 
     if ($@) {
+        die $@ if ref $@; # Forward exception objects up
         croak_runtime("The XML for the KDE Project database could not be understood: $@");
     }
     elsif ($repositoryMetadataRequired) {
