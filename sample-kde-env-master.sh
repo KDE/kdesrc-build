@@ -90,11 +90,14 @@ path_add()
 # user-specific variables being set already.
 libname="lib$lib_suffix"
 
-# Now add the necessary directories, starting with Qt.
-path_add "PATH"               "$qt_prefix/bin";
-path_add "LD_LIBRARY_PATH"    "$qt_prefix/$libname";
-path_add "PKG_CONFIG_PATH"    "$qt_prefix/$libname/pkgconfig";
-path_add "MANPATH"            "$qt_prefix/share/man";
+# Now add the necessary directories, starting with Qt (although we don't add Qt
+# if it's system Qt to avoid moving /usr up in the PATH.
+if test "x$qt_prefix" != "x/usr"; then
+    path_add "PATH"               "$qt_prefix/bin";
+    path_add "LD_LIBRARY_PATH"    "$qt_prefix/$libname";
+    path_add "PKG_CONFIG_PATH"    "$qt_prefix/$libname/pkgconfig";
+    path_add "MANPATH"            "$qt_prefix/share/man";
+fi
 
 # Now add KDE-specific paths.
 path_add "PATH"               "$kde_prefix/bin";
