@@ -1107,14 +1107,6 @@ sub read_options
         $using_default = 0;
     }
 
-    # All modules and their options have been read, filter out modules not
-    # to update or build, based on the --ignore-modules option already present
-    # on the command line. manual-update and manual-build are also relevant,
-    # but handled in updateModulePhases.
-    @module_list = grep {
-        not exists $ignore_list{$_->name()}
-    } (@module_list);
-
     # If the user doesn't ask to build any modules, build a default set.
     # The good question is what exactly should be built, but oh well.
     if ($using_default) {
@@ -2977,6 +2969,11 @@ eval
     # Apply kde-languages, by appending needed l10n modules to the end of the
     # build.
     @modules = expandl10nModules($ctx, @modules);
+
+    # Remove ignored modules and/or module-sets
+    @modules = grep {
+        not exists $ignore_list{$_->name()} && not exists $ignore_list{$_->moduleSet()}
+    } (@modules);
 
     # If modules were on the command line then they are effectively forced to
     # process unless overridden by command line options as well. If phases
