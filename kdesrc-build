@@ -924,16 +924,17 @@ sub expandXMLModules
     }
     elsif ($repositoryMetadataRequired) {
         my $repoMetadataModule = ksb::Module->new($ctx, 'kde-build-metadata');
-        $repoMetadataModule->setScmType('metadata');
 
-        # Manually run this through the filter so all the right magic happens.
-        ($repoMetadataModule) = &$filter($repoMetadataModule);
-
-        # Ensure we only ever try to update source, not build.
-        $repoMetadataModule->phases()->phases('update');
+        # Hardcode the results instead of expanding out the project info
+        $repoMetadataModule->setOption('repository', 'kde:kde-build-metadata');
+        $repoMetadataModule->setOption('#xml-full-path', 'kde-build-metadata');
+        $repoMetadataModule->setOption('#branch:stable', 'master');
         $repoMetadataModule->setScmType('metadata');
         $repoMetadataModule->setOption('disable-snapshots', 1);
         $repoMetadataModule->setOption('branch', 'master');
+
+        # Ensure we only ever try to update source, not build.
+        $repoMetadataModule->phases()->phases('update');
 
         unshift @results, $repoMetadataModule;
     }
