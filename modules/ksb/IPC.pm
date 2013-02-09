@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use v5.10;
 
-our $VERSION = '0.10';
+our $VERSION = '0.20';
 
 use ksb::Util; # make_exception, list_has
 use ksb::Debug;
@@ -35,11 +35,7 @@ sub new
     my $class = shift;
 
     # Must bless a hash ref since subclasses expect it.
-    my $ref = {};
-    $ref->{'residue'} = ''; # Define this for later.
-    $ref->{'updated'} = {}; # Tracks modules we've received status for.
-
-    return bless $ref, $class;
+    return bless {}, $class;
 }
 
 sub notifyUpdateSuccess
@@ -178,13 +174,10 @@ sub waitForStreamStart
 #  procedure.
 sub sendIPCMessage
 {
-    # Use shift for these to empty @_ of the parameters.
-    my $self = shift;
-    my $ipcType = shift;
-    my $msg = shift;
+    my ($self, $ipcType, $msg) = @_;
 
     my $encodedMsg = pack("l! a*", $ipcType, $msg);
-    return $self->sendMessage("$encodedMsg\n", @_);
+    return $self->sendMessage($encodedMsg);
 }
 
 # Static class function to unpack a message.
@@ -216,37 +209,9 @@ sub receiveIPCMessage
     my $self = shift;
     my $outBuffer = shift;
 
-    # Check if we still have data left over from last read, and if it
-    # contains a full message.
-    if ($self->{'residue'} =~ /\n/)
-    {
-        my ($first, $remainder) = split(/\n/, $self->{'residue'}, 2);
-        $self->{'residue'} = defined $remainder ? $remainder : '';
+    my $msg = $self->receiveMessage();
 
-        return unpackMsg($first, $outBuffer);
-    }
-
-    # Read in messages enough to get to the message separator (\n)
-    my $msg = '';
-    while($msg !~ /\n/) {
-        my $msgFragment = $self->receiveMessage(@_);
-        $msg .= $msgFragment if defined $msgFragment;
-
-        last unless defined $msgFragment;
-    }
-
-    return undef if not defined $msg or $msg eq '';
-
-    # We may have residue still if we had a partial husk of a message, so
-    # append to the residue before breaking up the message.  We assume a
-    # newline separates the messages.
-    $msg = $self->{'residue'} . $msg;
-    my ($first, $remainder) = split(/\n/, $msg, 2);
-
-    # Save rest for later.
-    $self->{'residue'} = defined $remainder ? $remainder : '';
-
-    return unpackMsg($first, $outBuffer);
+    return ($msg ? unpackMsg($msg, $outBuffer) : undef);
 }
 
 # These must be reimplemented.  They must be able to handle scalars without
@@ -266,6 +231,11 @@ sub receiveMessage { croak_internal("Unimplemented."); }
 sub supportsConcurrency
 {
     return 0;
+}
+
+# Should be reimplemented if default does not apply.
+sub close
+{
 }
 
 1;

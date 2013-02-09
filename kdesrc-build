@@ -56,13 +56,14 @@ use URI; # For git-clone snapshot support
 use Sys::Hostname;
 use Storable 'dclone';
 use IO::Handle;
+use IO::Select;
 use Data::Dumper;
 
-use ksb::IPC;
 use ksb::Debug;
 use ksb::Util;
 use ksb::Version qw(scriptVersion);
-use ksb::IPC::Pipe;
+use ksb::IPC 0.20;
+use ksb::IPC::Pipe 0.20;
 use ksb::IPC::Null;
 use ksb::KDEXMLReader;
 use ksb::Updater::Git;
@@ -1809,6 +1810,8 @@ sub handle_updates
         $hadError = !$module->update($ipc, $ctx) || $hadError;
     }
 
+    $ipc->close();
+
     info ("<<<  Update Complete  >>>\n");
     return $hadError;
 }
@@ -2304,6 +2307,8 @@ EOF
         print "\n"; # Space things out
     }
 
+    $ipc->close();
+
     if ($outfile)
     {
         close STATUS_FILE;
@@ -2575,112 +2580,73 @@ sub execute_command_line_program
 # process to go from start to finish without undue interruption on it waiting
 # to write out its status to the build process which is usually busy.
 #
-# First parameter is the IPC object to use.
+# First parameter is the IPC object to use to send to build process.
+# Second parameter is the IPC object to use to recv from update process.
 #
 # Returns 0 on success, non-zero on failure.
 sub handle_monitoring
 {
-    my $ipc = shift;
-
-    # Setup some file handle sets to use in the select() call.
-    # The out ones are copies of the in ones since select() overwrites its
-    # parameters.
-    my ($win, $wout, $rin, $rout);
-    ($win, $rin) = ("") x 2; # Get rid of undefined warnings.
+    my ($ipcToBuild, $ipcFromUpdater) = @_;
 
     my @msgs;  # Message queue.
 
-    # Perl uses vec() to setup the file handle sets.  Make some local
-    # subroutines to make it suck less in the real code.
-    sub setFdInSet($$$) {
-        my ($set, $fh, $inSet) = @_;
-        vec($set, fileno($fh), 1) = $inSet;
-        return $set;
-    }
-
-    sub fdIsChosen($$) {
-        my ($set, $fh) = @_;
-        return vec($set, fileno($fh), 1) == 1;
-    }
-
     # We will write to the build process and read from the update process.
-    $win = setFdInSet($win, $ipc->{'toBuild'}, 1);
-    $rin = setFdInSet($rin, $ipc->{'fromSvn'}, 1);
 
-    # Start the loop.  We will be waiting on either $win or $rin.  Whenever
-    # select() returns we must check both sets.
-    for(;;)
+    my $sendFH = $ipcToBuild->{fh}     || croak_runtime('??? missing pipe to build proc');
+    my $recvFH = $ipcFromUpdater->{fh} || croak_runtime('??? missing pipe from monitor');
+
+    my $readSelector  = IO::Select->new($recvFH);
+    my $writeSelector = IO::Select->new($sendFH);
+
+    # Start the loop.  We will be waiting on either read or write ends.
+    # Whenever select() returns we must check both sets.
+    while (
+        my ($readReadyRef, $writeReadyRef) =
+            IO::Select->select($readSelector, $writeSelector, undef))
     {
-        my $numFound = select($rout = $rin, $wout = $win, undef, undef);
-        my $selectErr = $!;
-
-        if ($numFound == -1)
+        # Check for source updates first.
+        if (@{$readReadyRef})
         {
-            error ("r[mon]: Monitor IPC error: r[$selectErr]");
-            return 1;
-        }
+            undef $@;
+            my $msg = eval { $ipcFromUpdater->receiveMessage(); };
 
-        # Check for svn updates first.
-        if (fdIsChosen($rout, $ipc->{'fromSvn'}))
-        {
-            my $msg = $ipc->receiveFromUpdater();
+            # undef msg indicates EOF, so check for exception obj specifically
+            die $@ if $@;
 
             # undef can be returned on EOF as well as error.  EOF means the
             # other side is presumably done.
-            if (not defined $msg and not $!)
+            if (! defined $msg)
             {
-                $rin = setFdInSet($rin, $ipc->{'fromSvn'}, 0);
+                $readSelector->remove($recvFH);
                 last; # Select no longer needed, just output to build.
-            }
-
-            # Don't check for $! first, it seems to always be set to EBADF.
-            # Probably I'm screwing up the select() call?
-            if (defined $msg)
-            {
-                push @msgs, $msg;
             }
             else
             {
-                error ("r[mon]: Error reading update: r[b[$selectErr]");
-                return 1;
+                push @msgs, $msg;
+
+                # We may not have been waiting for write handle to be ready if
+                # we were blocking on an update from updater thread.
+                $writeSelector->add($sendFH) unless $writeSelector->exists($sendFH);
             }
         }
 
         # Now check for build updates.
-        if (fdIsChosen($wout, $ipc->{'toBuild'}))
+        if (@{$writeReadyRef})
         {
             # If we're here the update is still going.  If we have no messages
             # to send wait for that first.
             if (not @msgs)
             {
-                my ($rout2, $numFound2);
-                $numFound2 = select($rout2 = $rin, undef, undef, undef);
-                $selectErr = $!;
-
-                if ($numFound2 == -1 and $selectErr)
-                {
-                    error ("r[mon]: Monitor IPC error: r[$selectErr]");
-                    return 1;
-                }
-
-                # Assume EOF can happen here.
-                my $msg = $ipc->receiveFromUpdater();
-                $selectErr = $!;
-                if (not defined $msg and $selectErr)
-                {
-                    error ("r[mon]: Monitor IPC error, unexpected disappearance of updater.");
-                    error ("r[mon]: Mysterious circumstances: r[b[$selectErr]");
-                    return 1;
-                }
-
-                push @msgs, $msg if $msg;
+                $writeSelector->remove($sendFH);
             }
-
-            # Send the message (if we got one).
-            if (scalar @msgs and !$ipc->sendToBuilder(shift @msgs))
+            else
             {
-                error ("r[mon]: Build process stopped too soon! r[$!]");
-                return 1;
+                # Send the message (if we got one).
+                if (!$ipcToBuild->sendMessage(shift @msgs))
+                {
+                    error ("r[mon]: Build process stopped too soon! r[$!]");
+                    return 1;
+                }
             }
         }
     }
@@ -2688,7 +2654,7 @@ sub handle_monitoring
     # Send all remaining messages.
     while (@msgs)
     {
-        if (!$ipc->sendToBuilder(shift @msgs))
+        if (!$ipcToBuild->sendMessage(shift @msgs))
         {
             error ("r[mon]: Build process stopped too soon! r[$!]");
             return 1;
@@ -2715,32 +2681,41 @@ sub handle_async_build
 
     my ($ipc, $ctx) = @_;
 
-    my $svnPid = fork;
-    if ($svnPid == 0)
-    { # child
-        $ipc->setUpdater();
-        # Avoid calling close subroutines in more than one routine.
-        POSIX::_exit (handle_updates ($ipc, $ctx));
-    }
+    my $result = 0;
+    my $monitorPid = fork;
+    if ($monitorPid == 0) {
+        # child
+        my $updaterToMonitorIPC = ksb::IPC::Pipe->new();
+        my $updaterPid = fork;
 
-    # Parent
-    my $monPid = fork;
-    if ($monPid == 0)
-    { # monitor
-        $ipc->setMonitor();
-        # Avoid calling close subroutines in more than one routine.
-        POSIX::_exit (handle_monitoring ($ipc));
-    }
+        if ($updaterPid) {
+            $updaterToMonitorIPC->setSender();
 
-    # Still the parent, let's do the build.
-    $ipc->setBuilder();
-    my $result = handle_build ($ipc, $ctx);
+            # Avoid calling close subroutines in more than one routine.
+            POSIX::_exit (handle_updates ($updaterToMonitorIPC, $ctx));
+        }
+        else {
+            $ipc->setSender();
+            $updaterToMonitorIPC->setReceiver();
+
+            # Avoid calling close subroutines in more than one routine.
+            my $result = handle_monitoring ($ipc, $updaterToMonitorIPC);
+
+            waitpid ($updaterPid, 0);
+            $result = 1 if $? != 0;
+
+            POSIX::_exit ($result);
+        }
+    }
+    else {
+        # Still the parent, let's do the build.
+        $ipc->setReceiver();
+        my $result = handle_build ($ipc, $ctx);
+    }
 
     # Exit code is in $?.
-    waitpid ($svnPid, 0);
-    $result = 1 if $? != 0;
+    waitpid ($monitorPid, 0);
 
-    waitpid ($monPid, 0);
     $result = 1 if $? != 0;
 
     return $result;

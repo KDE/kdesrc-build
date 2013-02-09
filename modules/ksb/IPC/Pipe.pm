@@ -1,19 +1,21 @@
 package ksb::IPC::Pipe;
 
-# IPC class that uses pipes for communication.  Basically requires forking two
-# children in order to communicate with.  Assumes that the two children are the
-# update process and a monitor process which keeps the update going and informs
-# us (the build process) of the status when we're ready to hear about it.
+# IPC class that uses pipes in addition to forking for IPC.
 
 use strict;
 use warnings;
 use v5.10;
 
-our $VERSION = '0.10';
+our $VERSION = '0.20';
 
-use IO::Handle;
 use ksb::IPC;
 our @ISA = qw(ksb::IPC);
+
+use ksb::Util qw(croak_internal croak_runtime);
+
+use IO::Handle;
+use IO::Pipe;
+use Errno qw(EINTR);
 
 sub new
 {
@@ -21,118 +23,99 @@ sub new
     my $self = $class->SUPER::new;
 
     # Define file handles.
-    $self->{$_} = new IO::Handle foreach qw/fromMon toMon fromSvn toBuild/;
-
-    if (not pipe($self->{'fromSvn'}, $self->{'toMon'})or
-        not pipe($self->{'fromMon'}, $self->{'toBuild'}))
-    {
-        return undef;
-    }
+    $self->{fh} = IO::Pipe->new();
 
     return bless $self, $class;
 }
 
-# Must override to send to correct filehandle.
-sub notifyUpdateSuccess
-{
-    my $self = shift;
-    my ($module, $msg) = @_;
-
-    $self->sendIPCMessage(ksb::IPC::MODULE_SUCCESS, "$module,$msg", 'toMon');
-}
-
-# Closes the given list of filehandle ids.
-sub closeFilehandles
-{
-    my $self = shift;
-    my @fhs = @_;
-
-    for my $fh (@fhs) {
-        close $self->{$fh};
-        $self->{$fh} = 0;
-    }
-}
-
 # Call this to let the object know it will be the update process.
-sub setUpdater
+sub setSender
 {
     my $self = shift;
-    $self->closeFilehandles(qw/fromSvn fromMon toBuild/);
+
+    $self->{fh}->writer();
+
+    # Disable buffering
+    $self->{fh}->autoflush(1);
 }
 
-sub setBuilder
+sub setReceiver
 {
     my $self = shift;
-    $self->closeFilehandles(qw/fromSvn toMon toBuild/);
+
+    $self->{fh}->reader();
+
+    # Disable buffering
+    $self->{fh}->autoflush(1);
 }
 
-sub setMonitor
-{
-    my $self = shift;
-    $self->closeFilehandles(qw/toMon fromMon/);
-}
-
+# Reimplementation of ksb::IPC::supportsConcurrency
 sub supportsConcurrency
 {
     return 1;
 }
 
-# First parameter is the ipc Type of the message to send.
-# Second parameter is the module name (or other message).
-# Third parameter is the file handle id to send on.
+# Required reimplementation of ksb::IPC::sendMessage
+# First parameter is the (encoded) message to send.
 sub sendMessage
 {
-    my $self = shift;
-    my ($msg, $fh) = @_;
-
-    return syswrite ($self->{$fh}, $msg);
-}
-
-# Override of sendIPCMessage to specify which filehandle to send to.
-sub sendIPCMessage
-{
-    my $self = shift;
-    push @_, 'toMon'; # Add filehandle to args.
-
-    return $self->SUPER::sendIPCMessage(@_);
-}
-
-# Used by monitor process, so no message encoding or decoding required.
-sub sendToBuilder
-{
     my ($self, $msg) = @_;
-    return $self->sendMessage($msg, 'toBuild');
+
+    # Since streaming does not provide message boundaries, we will insert
+    # ourselves, by sending a 2-byte unsigned length, then the message.
+    my $encodedMsg = pack ("S a*", length($msg), $msg);
+
+    if (length($encodedMsg) != $self->{fh}->syswrite($encodedMsg)) {
+        croak_runtime("Unable to write full msg to pipe: $!");
+    }
+
+    return 1;
 }
 
-# First parameter is a reference to the output buffer.
-# Second parameter is the id of the filehandle to read from.
+sub _readNumberOfBytes
+{
+    my ($self, $length) = @_;
+
+    my $fh = $self->{fh};
+    my $readLength = 0;
+    my $result;
+
+    while ($readLength < $length) {
+        $! = 0; # Reset errno
+
+        my $curLength = $fh->sysread ($result, ($length - $readLength), $readLength);
+        if ($curLength > $length) {
+            croak_runtime("sysread read too much: $curLength vs $length")
+        }
+
+        # EINTR is OK, but check early so we don't trip 0-length check
+        next   if (!defined $curLength && $!{EINTR});
+        return if (defined $curLength && $curLength == 0);
+        croak_runtime ("Error reading $length bytes from pipe: $!") if !$curLength;
+
+        $readLength += $curLength;
+    }
+
+    return $result;
+}
+
+# Required reimplementation of ksb::IPC::receiveMessage
 sub receiveMessage
 {
     my $self = shift;
-    my $fh = shift;
-    my $value;
 
-    undef $!; # Clear error marker
-    my $result = sysread ($self->{$fh}, $value, 256);
+    # Read unsigned short with msg length, then the message
+    my $msgLength = $self->_readNumberOfBytes(2);
+    return if !$msgLength;
 
-    return undef if not $result;
-    return $value;
+    $msgLength = unpack ("S", $msgLength); # Decode to Perl type
+    return $self->_readNumberOfBytes($msgLength);
 }
 
-# Override of receiveIPCMessage to specify which filehandle to receive from.
-sub receiveIPCMessage
+sub close
 {
     my $self = shift;
-    push @_, 'fromMon'; # Add filehandle to args.
-
-    return $self->SUPER::receiveIPCMessage(@_);
-}
-
-# Used by monitor process, so no message encoding or decoding required.
-sub receiveFromUpdater
-{
-    my $self = shift;
-    return $self->receiveMessage('fromSvn');
+    $self->{fh}->close();
 }
 
 1;
