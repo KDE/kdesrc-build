@@ -2,8 +2,8 @@ package ksb::IPC;
 
 # Handles the asynchronous communications needed to perform update and build
 # processes at the same time. This can be thought of as a partially-abstract
-# class, really you should use NullIPC (which is fully synchronous) or PipeIPC,
-# which both fall back to common methods implemented here.
+# class, really you should use IPC::Null (which is fully synchronous) or
+# IPC::Pipe, which both fall back to common methods implemented here.
 
 use strict;
 use warnings;

@@ -2224,7 +2224,7 @@ EOF
         my $start_time = time;
 
         # If using IPC, read in the contents of the message buffer, and wait
-        # for completion of the svn update if necessary.
+        # for completion of the source update if necessary.
 
         my ($resultStatus, $message) = $ipc->waitForModule($module);
 
@@ -2566,8 +2566,8 @@ sub execute_command_line_program
     };
 }
 
-# This subroutine is the monitoring process for when using IPC::Pipe.  It reads
-# in all status reports from the source update process and then holds on
+# This subroutine is the monitoring process for when using IPC::Pipe.  It
+# reads in all status reports from the source update process and then holds on
 # to them.  When the build process is ready to read information we send what
 # we have.  Otherwise we're waiting on the update process to send us something.
 #
@@ -2709,8 +2709,8 @@ sub handle_monitoring
 sub handle_async_build
 {
     # The exact method for async is that two children are forked.  One child
-    # is a svn update process.  The other child is a monitor process which will
-    # hold status updates from the svn process so that the svn updates may
+    # is a source update process.  The other child is a monitor process which will
+    # hold status updates from the update process so that the updates may
     # happen without waiting for us to be ready to read.
 
     my ($ipc, $ctx) = @_;
@@ -3083,7 +3083,7 @@ eval
     {
         # No packages to install, we're in build mode
 
-        # What we're going to do is fork another child to perform the svn
+        # What we're going to do is fork another child to perform the source
         # updates while we build.  Setup for this first by initializing some
         # shared memory.
         my $ipc = 0;
