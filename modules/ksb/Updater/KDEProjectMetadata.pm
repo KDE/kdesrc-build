@@ -20,25 +20,25 @@ sub name
     return 'metadata';
 }
 
-sub updateInternal
+# Returns a list of the full kde-project paths for each module to ignore.
+sub ignoredModules
 {
     my $self = assert_isa(shift, 'ksb::Updater::KDEProjectMetadata');
-    my $count = $self->SUPER::updateInternal();
+    my $path = $self->module()->fullpath('source') . "/build-script-ignore";
 
     # Now that we in theory have up-to-date source code, read in the
     # ignore file and propagate that information to our context object.
-
-    my $path = $self->module()->fullpath('source') . "/build-script-ignore";
 
     my $fh = pretend_open($path) or
         croak_internal("Unable to read ignore data: $!");
 
     my $ctx = $self->module()->buildContext();
-    my @ignoreModules = map { chomp $_; $_ } (<$fh>);
+    my @ignoreModules = map  { chomp $_; $_ } # 3 Remove newlines
+                        grep { !/^\s*$/ }     # 2 Filter empty lines
+                        map  { s/#.*$//; $_ } # 1 Remove comments
+                        (<$fh>);
 
-    $ctx->setIgnoreList(@ignoreModules);
-
-    return $count;
+    return @ignoreModules;
 }
 
 1;
