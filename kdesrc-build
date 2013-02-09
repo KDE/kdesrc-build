@@ -2986,9 +2986,8 @@ eval
     my $metadataModule;
 
     # If we have kde-build-metadata we must process it first, ASAP.
-    if (grep { $_->name() eq 'kde-build-metadata' } @modules) {
+    if (@modules && $modules[0]->scmType() eq 'metadata') {
         $metadataModule = shift @modules;
-        assert_isa($metadataModule->scm(), 'ksb::Updater::KDEProjectMetadata');
 
         eval {
             my $sourceDir = $metadataModule->getSourceDir();
