@@ -153,6 +153,9 @@ sub waitForStreamStart
     my $ipcType = $self->receiveIPCMessage(\$buffer);
     $waited = 1;
 
+    if (!$ipcType) {
+        croak_internal("IPC Failure waiting for stream start :( $!");
+    }
     if ($ipcType == ksb::IPC::ALL_FAILURE)
     {
         croak_runtime("Unable to perform source update for any module:\n\t$buffer");
