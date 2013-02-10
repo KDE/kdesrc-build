@@ -165,7 +165,10 @@ sub getListOptions
     my $output = runDialogExecutable(@args);
 
     # Filter out empty results, remove quotes.
-    return map { m/^"(.*)"$/ } (grep { length $_ } (split(/,/, $output)));
+    my @items = split (/,/, $output);
+    s/^"(.*)"$/\1/ foreach @items;
+    @items = grep { length $_ } @items;
+    return @items;
 }
 
 # The 'dialog(1)' program is required, verify it exists before going
