@@ -19,7 +19,7 @@ use ksb::Debug;
 use ksb::Version qw(scriptVersion);
 
 use Exporter qw(import); # Use Exporter's import method
-our @EXPORT = qw(list_has make_exception assert_isa assert_in
+our @EXPORT = qw(list_has make_exception assert_isa assert_in any
                  croak_runtime croak_internal download_file absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
@@ -598,6 +598,14 @@ sub pretend_open
 
     open my $fh, '<', $path or return;
     return $fh;
+}
+
+# Returns true if the given sub returns true for any item in the given listref.
+sub any(&@)
+{
+    my ($subRef, $listRef) = @_;
+    ($subRef->($_) && return 1) foreach @{$listRef};
+    return 0;
 }
 
 1;
