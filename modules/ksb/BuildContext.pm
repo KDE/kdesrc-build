@@ -60,6 +60,7 @@ my %defaultGlobalOptions = (
     "git-desired-protocol" => 'git', # protocol to grab from kde-projects
     "git-repository-base"  => {}, # Base path template for use multiple times.
     "http-proxy"           => '', # Proxy server to use for HTTP.
+    "ignore-modules"       => '', # See also: use-modules, kde-projects
     "install-after-build"  => 1,  # Default to true
     "install-session-driver" => 0,# Default to false
     "kdedir"               => "$ENV{HOME}/kde",
@@ -161,11 +162,13 @@ sub addModule
     my ($self, $module) = @_;
     Carp::confess("No module to push") unless $module;
 
+    my $path;
     if (list_has($self->{modules}, $module)) {
         debug("Skipping duplicate module ", $module->name());
     }
-    elsif ($module->getOption('#xml-full-path') &&
-           list_has($self->{ignore_list}, $module->getOption('#xml-full-path')))
+    elsif (($path = $module->getOption('#xml-full-path')) &&
+        # See if the name matches any given in the ignore list.
+           any(sub { $path =~ /(^|\/)$_$/ }, $self->{ignore_list}))
     {
         debug("Skipping ignored module $module");
     }

@@ -787,10 +787,44 @@ because &kdesrc-build; will not perform dependency handling.
 </orderedlist>
 
 <note><para>It is worth nothing that &kdesrc-build; will try to build modules
-in the right order, but this depends on other databases being kept up-to-date.
-You can manually do the right thing if necessary by using the technique
-described above.
+in the right order, such as if only <literal>kdegraphics/*</literal> had been
+listed above, but this depends on other databases being kept up-to-date.  You
+can manually list modules in the proper order if necessary by using the
+technique described above.
 </para></note>
+</sect2>
+
+<sect2 id="ignoring-project-modules">
+<title>Filtering out &kde; project modules</title>
+
+<para>You might decide that you'd like to build all programs within a &kde;
+module grouping <emphasis>except</emphasis> for a given program.</para>
+
+<para>For instance, the <literal>kdeutils</literal> group includes a program
+named <application>kremotecontrol</application>. If your computer does not have
+the proper hardware to receive the signals sent by remote controls then you may
+decide that you'd rather not download, build, and install
+<application>kremotecontrol</application> every time you update
+<literal>kdeutils</literal>.</para>
+
+<para>As of &kdesrc-build; 1.16, you can achieve this by using the <link
+linkend="conf-ignore-modules">ignore-modules</link> configuration option.</para>
+
+<example id="example-ignoring-a-module">
+<title>Example for ignoring a kde-project module in a group</title>
+<programlisting>
+module-set <replaceable>utils</replaceable>
+    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
+
+    # This option chooses what modules to look for in the database.
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>kdeutils</replaceable>
+
+    # This option "subtracts out" modules from the modules chosen by use-modules, above.
+    <option><link linkend="conf-ignore-modules">ignore-modules</link></option> <replaceable>kremotecontrol</replaceable>
+end module-set
+</programlisting>
+</example>
+
 </sect2>
 
 </sect1>
@@ -1835,6 +1869,21 @@ database</link>).</para>
 on also use that proxy server, if possible, by setting the
 <envar>http_proxy</envar> environment variable to the indicated server,
 <emphasis>if that environment variable is not already set</emphasis>.</para>
+
+<para>This option was introduced with &kdesrc-build; 1.16.</para>
+</entry>
+</row>
+
+<row id="conf-ignore-modules">
+<entry>ignore-modules</entry>
+<entry>Can't be overridden</entry>
+<entry><para>Modules named by this option, which would be chosen by &kdesrc-build;
+due to a <link linkend="conf-use-modules">use-modules</link> option, are
+instead skipped entirely. Use this option when you want to build an entire
+<link linkend="kde-projects-module-sets">kde-projects</link> project grouping
+<emphasis>except for</emphasis> some specific modules.</para>
+
+<tip><para>See also <xref linkend="example-ignoring-a-module"/>.</para></tip>
 
 <para>This option was introduced with &kdesrc-build; 1.16.</para>
 </entry>

@@ -698,9 +698,14 @@ sub parse_moduleset
     my $moduleSetName = shift || '';
     my $repoSet = $ctx->getOption('git-repository-base');
     my $rcfile = $ctx->rcFile();
+
     my @modules;
+    my %ignoredModules;
     my %optionSet; # We read all options, and apply them to all modules
     my $startLine = $.; # For later error messages
+
+    # Used to strip leading parts of module name if no wildcard present
+    my $pathLeadersRE = qr,^.*/(?!\*),;
 
     while($_ = readNextLogicalLine($fileReader)) {
         last if /^end\s+module(-?set)?$/;
@@ -715,6 +720,11 @@ sub parse_moduleset
                 error ("in the y[use-modules] on line $. of $rcfile");
                 die make_exception('Config', 'Invalid use-modules');
             }
+        }
+        elsif ($option eq 'ignore-modules') {
+            my @modulesToIgnore = split(' ', $value);
+            s,$pathLeadersRE,, foreach @modulesToIgnore;
+            @ignoredModules{@modulesToIgnore} = (1) x @modulesToIgnore;
         }
         elsif ($option eq 'set-env') {
             Module::processSetEnvOption(\%optionSet, $option, $value);
@@ -764,7 +774,10 @@ EOF
         if ($usingXML) {
             # Remove all name components before the final /, as long as the /
             # isn't followed by a *.
-            $moduleName =~ s,^.*/(?!\*),,;
+            $moduleName =~ s,$pathLeadersRE,,;
+
+            # Sometimes we just want all kde-projects modules except for a few
+            next if exists $ignoredModules{$moduleName};
         }
         else {
             $moduleName =~ s/\.git$//;
@@ -784,6 +797,8 @@ EOF
             $newModule->setOption('repository', $selectedRepo . $moduleName);
         }
     }
+
+    $ctx->addToIgnoreList(keys %ignoredModules);
 
     if (not scalar @moduleList) {
         warning ("No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]");
