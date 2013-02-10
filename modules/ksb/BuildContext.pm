@@ -181,13 +181,17 @@ sub moduleList
     return $self->{modules};
 }
 
-# Sets a list of modules to ignore processing on completely.
+# Adds a list of modules to ignore processing on completely.
 # Parameters should simply be a list of XML repository paths to ignore,
-# e.g. 'extragear/utils/kdesrc-build'.
-sub setIgnoreList
+# e.g. 'extragear/utils/kdesrc-build'. Partial paths are acceptable, matches
+# are determined by comparing the path provided to the suffix of the full path
+# of modules being compared.
+#
+# Existing items on the ignore list are not removed.
+sub addToIgnoreList
 {
     my $self = shift;
-    $self->{ignore_list} = [@_];
+    push @{$self->{ignore_list}}, @_;
 
     debug ("Set context ignore list to ", join(', ', @_));
 }
