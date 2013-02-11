@@ -154,7 +154,7 @@ sub safe_system(@)
         return system (@_) >> 8;
     }
 
-    pretend ("\tWould have run g['", join("' '", @_), "'");
+    pretend ("\tWould have run g['" . join("' '", @_) . "'");
     return 0; # Return true
 }
 
@@ -444,7 +444,7 @@ sub log_command
 
         if (pretending())
         {
-            pretend ("\tWould have run g['", join ("' '", @command), "'");
+            pretend ("\tWould have run g['" . join ("' '", @command) . "'");
             POSIX::_exit(0);
         }
 

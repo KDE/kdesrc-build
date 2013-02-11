@@ -29,7 +29,7 @@ my $debugLevel = INFO;
 my $ipc;         # Set only if we should forward log messages over IPC.
 
 # Colors
-my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
+my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD, $DIM) = ("") x 6;
 
 # Subroutine definitions
 
@@ -42,6 +42,7 @@ sub colorize
     $str =~ s/y\[/$YELLOW/g;
     $str =~ s/r\[/$RED/g;
     $str =~ s/b\[/$BOLD/g;
+    $str =~ s/d\[/$DIM/g;
 
     return $str;
 }
@@ -66,14 +67,18 @@ sub setColorfulOutput
     my $useColor = shift;
 
     if ($useColor) {
-        $RED = "\e[31m";
-        $GREEN = "\e[32m";
+        $RED    = "\e[31m";
+        $GREEN  = "\e[32m";
         $YELLOW = "\e[33m";
         $NORMAL = "\e[0m";
-        $BOLD = "\e[1m";
+        $BOLD   = "\e[1m";
+        $DIM    = "\e[34m"; # Really blue since dim doesn't work on konsole
+
+        # But konsole does support xterm-256color...
+        $DIM    = "\e[38;5;8m" if $ENV{TERM} =~ /-256color$/;
     }
     else {
-        ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
+        ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD, $DIM) = ("") x 6;
     }
 }
 
@@ -181,7 +186,12 @@ sub error(@)
 
 sub pretend(@)
 {
-    print_clr(@_) if pretending();
+    if (pretending()) {
+        my @lines = @_;
+        s/(\w)/d[$1/ foreach @lines; # Add dim prefix
+                                     # Clear suffix is actually implicit
+        print_clr(@lines);
+    }
 }
 
 1;
