@@ -2177,8 +2177,6 @@ sub handle_build
     # No reason to print building messages if we're not building.
     return 0 if scalar @modules == 0;
 
-    note ("<<<  Build Process  >>>");
-
     # Check for absolutely essential programs now.
     if (!checkForEssentialBuildPrograms($ctx) &&
         !exists $ENV{KDESRC_BUILD_IGNORE_MISSING_PROGRAMS})
@@ -2327,8 +2325,7 @@ EOF
         symlink($outfile, "$logdir/latest/build-status");
     }
 
-    info ("<<<  Build Done  >>>");
-    info ("\n<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
+    info ("<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
 
     if (not pretending())
     {
@@ -2348,7 +2345,8 @@ EOF
         info ('g[', join ("]\ng[", @build_done), ']');
     }
 
-    info (" "); # Add newline for aesthetics if not in quiet mode.
+    info (' '); # Space out nicely
+
     return $result;
 }
 
@@ -2687,6 +2685,8 @@ sub handle_async_build
 
     my ($ipc, $ctx) = @_;
 
+    print "\n"; # Space out from metadata messages.
+
     my $result = 0;
     my $monitorPid = fork;
     if ($monitorPid == 0) {
@@ -2845,6 +2845,10 @@ eval
     # Process --help, --install, etc. first.
     my @modules = process_arguments($ctx, $pendingOptions, @ARGV);
 
+    # Output time once we know if pretending or not.
+    my $time = localtime;
+    info ("Script started processing at g[$time]") unless pretending();
+
     # Change name and type of command line entries beginning with + to force
     # them to be XML project modules.
     foreach (@modules) {
@@ -2989,9 +2993,6 @@ eval
     # }}}
 
     # execution phase {{{
-    my $time = localtime;
-    info ("Script started processing at g[$time]") unless pretending();
-
     $ctx->loadPersistentOptions();
     my $metadataModule;
 
@@ -3084,7 +3085,10 @@ eval
             $ipc = ksb::IPC::Null->new();
             whisper ("Using no IPC mechanism\n");
 
+            note ("\n b[<<<  Update Process  >>>]\n");
             $result = handle_updates ($ipc, $ctx);
+
+            note (" b[<<<  Build Process  >>>]\n");
             $result = handle_build ($ipc, $ctx) || $result;
         }
         else

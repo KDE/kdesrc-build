@@ -80,7 +80,7 @@ sub clone
         unshift (@args, '-v');
     }
 
-    note ("Cloning g[$module]");
+    note ("\tCloning g[$module]");
 
     my $result = ($self->installGitSnapshot()) ||
                  0 == log_command($module, 'git-clone', ['git', 'clone', @args]);
@@ -330,7 +330,6 @@ sub updateExistingClone
 
     # Download updated objects. This also updates remote heads so do this
     # before we start comparing branches and such.
-    info ("Downloading updates for g[$module]");
     if (0 != log_command($module, 'git-fetch', ['git', 'fetch', $remoteName])) {
         die "Unable to perform git fetch for $remoteName, which should be $cur_repo";
     }
@@ -533,7 +532,7 @@ sub stashAndUpdate
     }
 
     if (!$updateSub->()) {
-        error ("Unable to update the source code for r[b[$module]");
+        error ("\tUnable to update the source code for r[b[$module]");
         return 0;
     }
 
@@ -640,7 +639,7 @@ sub bestRemoteName
     };
 
     if ($@) {
-        error ("Unable to run git config, is there a setup error?");
+        error ("\tUnable to run git config, is there a setup error?");
         return;
     }
 

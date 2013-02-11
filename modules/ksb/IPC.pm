@@ -164,7 +164,11 @@ sub waitForModule
     # include standard setup messages, etc. Print first and then print module's
     # messages.
     for my $item ('global', $moduleName) {
-        ksb::Debug::print_clr($_) foreach @{$messagesRef->{$item}};
+        for my $msg (@{$messagesRef->{$item}}) {
+            $msg = "\t$msg" unless $msg =~ /^\s+/;
+            ksb::Debug::print_clr($msg);
+        }
+
         delete $messagesRef->{$item};
     }
 
