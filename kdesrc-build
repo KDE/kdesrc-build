@@ -1781,19 +1781,9 @@ sub handle_updates
         return 1;
     }
 
-    # Be much quieter if operating multiprocess and the user has not chosen a
-    # different mode.
-    if ($ipc->supportsConcurrency() && !$ctx->getOption('#debug-level'))
-    {
-        $ctx->setOption('#debug-level', ksb::Debug::WARNING);
-    }
-
     if (grep { $_->scm()->isa('ksb::Updater::Git') } @update_list) {
         ksb::Updater::Git::verifyGitConfig();
     }
-
-    note ("<<<  Updating Source Directories  >>>");
-    info (" "); # Add newline for aesthetics unless in quiet mode.
 
     if (not -e $kdesrc)
     {
@@ -1820,14 +1810,14 @@ sub handle_updates
     my $hadError = 0;
     foreach my $module (@update_list)
     {
+        $ipc->setLoggedModule($module->name());
+
         # Note that this must be in this order to avoid accidentally not
         # running ->update() from short-circuiting if an error is noted.
         $hadError = !$module->update($ipc, $ctx) || $hadError;
     }
 
     $ipc->close();
-
-    info ("<<<  Update Complete  >>>\n");
     return $hadError;
 }
 
@@ -2705,6 +2695,7 @@ sub handle_async_build
 
         if ($updaterPid) {
             $updaterToMonitorIPC->setSender();
+            ksb::Debug::setIPC($updaterToMonitorIPC);
 
             # Avoid calling close subroutines in more than one routine.
             POSIX::_exit (handle_updates ($updaterToMonitorIPC, $ctx));
@@ -2712,6 +2703,9 @@ sub handle_async_build
         else {
             $ipc->setSender();
             $updaterToMonitorIPC->setReceiver();
+
+            $ipc->setLoggedModule('#monitor#'); # This /should/ never be used...
+            ksb::Debug::setIPC($ipc);
 
             # Avoid calling close subroutines in more than one routine.
             my $result = handle_monitoring ($ipc, $updaterToMonitorIPC);
@@ -3095,6 +3089,7 @@ eval
         else
         {
             $result = handle_async_build ($ipc, $ctx);
+            $ipc->outputPendingLoggedMessages();
         }
     }
     elsif ($run_mode eq 'install')

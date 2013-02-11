@@ -26,6 +26,8 @@ my $screenLog;   # Filehandle pointing to the "build log".
 my $isPretending = 0;
 my $debugLevel = INFO;
 
+my $ipc;         # Set only if we should forward log messages over IPC.
+
 # Colors
 my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
 
@@ -96,6 +98,15 @@ sub setLogFile
     open ($screenLog, '>', $fileName) or error ("Unable to open log file $fileName!");
 }
 
+# Sets an IPC object to use to proxy logged messages over, to avoid having
+# multiple procs fighting over the same TTY. Needless to say, you should only
+# bother with this if the IPC method is actually concurrent.
+sub setIPC
+{
+    $ipc = shift;
+    die "$ipc isn't an IPC obj!" if (!ref ($ipc) || !$ipc->isa('ksb::IPC'));
+}
+
 # The next few subroutines are used to print output at different importance
 # levels to allow for e.g. quiet switches, or verbose switches.  The levels are,
 # from least to most important:
@@ -111,6 +122,15 @@ sub setLogFile
 # Subroutine used to actually display the data, calls ksb::Debug::colorize on each entry first.
 sub print_clr(@)
 {
+    # If we have an IPC object that means there's multiple procs trying to
+    # share the same TTY. Just forward messages to the one proc that should be
+    # managing the TTY.
+    if ($ipc) {
+        my $msg = join('', @_);
+        $ipc->sendLogMessage($msg);
+        return;
+    }
+
     # Leading + prevents Perl from assuming the plain word "colorize" is actually
     # a filehandle or future reserved word.
     print +colorize($_) foreach (@_);

@@ -28,14 +28,22 @@ use constant {
 
     # Used to indicate specifically that a source conflict has occurred.
     MODULE_CONFLICT => 8,
+
+    MODULE_LOGMSG   => 9, # Tagged message should be put to TTY for module.
 };
 
 sub new
 {
     my $class = shift;
+    my $defaultOpts = {
+        no_update     => 0,
+        updated       => { },
+        logged_module => 'global',
+        messages      => { }, # Holds log output from update process
+    };
 
     # Must bless a hash ref since subclasses expect it.
-    return bless {}, $class;
+    return bless $defaultOpts, $class;
 }
 
 sub notifyUpdateSuccess
@@ -44,6 +52,24 @@ sub notifyUpdateSuccess
     my ($module, $msg) = @_;
 
     $self->sendIPCMessage(ksb::IPC::MODULE_SUCCESS, "$module,$msg");
+}
+
+# Sets which module messages stored by sendLogMessage are supposed to be
+# associated with.
+sub setLoggedModule
+{
+    my ($self, $moduleName) = @_;
+    $self->{logged_module} = $moduleName;
+}
+
+# Sends a message to be logged by the process holding the TTY.
+# The logged message is associated with the module set by setLoggedModule.
+sub sendLogMessage
+{
+    my ($self, $msg) = @_;
+    my $loggedModule = $self->{logged_module};
+
+    $self->sendIPCMessage(MODULE_LOGMSG, "$loggedModule,$msg");
 }
 
 # Waits for an update for a module with the given name.
@@ -59,6 +85,7 @@ sub waitForModule
 
     my $moduleName = $module->name();
     my $updated = $self->{'updated'};
+    my $messagesRef = $self->{'messages'};
     my $message;
 
     # Wait for for the initial phase to complete, if it hasn't.
@@ -72,7 +99,6 @@ sub waitForModule
 
     while(! defined $updated->{$moduleName}) {
         my $buffer;
-        info ("\tWaiting for source code update.");
 
         my $ipcType = $self->receiveIPCMessage(\$buffer);
         if (!$ipcType)
@@ -121,6 +147,11 @@ sub waitForModule
                     $updated->{$buffer} = 'skipped';
                 }
             }
+            when (ksb::IPC::MODULE_LOGMSG) {
+                my ($ipcModuleName, $logMessage) = split(',', $buffer);
+                $messagesRef->{$ipcModuleName} //= [ ];
+                push $messagesRef->{$ipcModuleName}, $logMessage;
+            }
             default {
                 croak_internal("Unhandled IPC type: $ipcType");
             }
@@ -128,7 +159,35 @@ sub waitForModule
     }
 
     # Out of while loop, should have a status now.
+
+    # If we have 'global' messages they are probably for the first module and
+    # include standard setup messages, etc. Print first and then print module's
+    # messages.
+    for my $item ('global', $moduleName) {
+        ksb::Debug::print_clr($_) foreach @{$messagesRef->{$item}};
+        delete $messagesRef->{$item};
+    }
+
     return ($updated->{$moduleName}, $message);
+}
+
+# Just in case we somehow have messages to display after all modules are
+# processed, we have this function to show any available messages near the end
+# of the script run.
+sub outputPendingLoggedMessages
+{
+    my $self = shift;
+    my $messages = $self->{messages};
+
+    while (my ($module, $logMessages) = each %{$messages}) {
+        my @nonEmptyMessages = grep { !!$_ } @{$logMessages};
+        if (@nonEmptyMessages) {
+            note ("Unhandled messages for module $module:");
+            ksb::Debug::print_clr($_) foreach @nonEmptyMessages;
+        }
+    }
+
+    $self->{messages} = { };
 }
 
 # Waits on the IPC connection until one of the ALL_* IPC codes is returned.
@@ -145,24 +204,33 @@ sub waitForStreamStart
 
     return if $waited;
 
-    my $buffer = '';
-    my $ipcType = $self->receiveIPCMessage(\$buffer);
+    my $buffer  = '';
+    my $ipcType = 0;
     $waited = 1;
 
-    if (!$ipcType) {
-        croak_internal("IPC Failure waiting for stream start :( $!");
-    }
-    if ($ipcType == ksb::IPC::ALL_FAILURE)
-    {
-        croak_runtime("Unable to perform source update for any module:\n\t$buffer");
-    }
-    elsif ($ipcType == ksb::IPC::ALL_SKIPPED)
-    {
-        $self->{'no_update'} = 1;
-    }
-    elsif ($ipcType != ksb::IPC::ALL_UPDATING)
-    {
-        croak_runtime("IPC failure while expecting an update status: Incorrect type: $ipcType");
+    while ($ipcType != ksb::IPC::ALL_UPDATING) {
+        $ipcType = $self->receiveIPCMessage(\$buffer);
+
+        if (!$ipcType) {
+            croak_internal("IPC Failure waiting for stream start :( $!");
+        }
+        if ($ipcType == ksb::IPC::ALL_FAILURE)
+        {
+            croak_runtime("Unable to perform source update for any module:\n\t$buffer");
+        }
+        elsif ($ipcType == ksb::IPC::ALL_SKIPPED)
+        {
+            $self->{'no_update'} = 1;
+        }
+        elsif ($ipcType == ksb::IPC::MODULE_LOGMSG) {
+            my ($ipcModuleName, $logMessage) = split(',', $buffer);
+            $self->{messages}->{$ipcModuleName} //= [ ];
+            push $self->{messages}->{$ipcModuleName}, $logMessage;
+        }
+        elsif ($ipcType != ksb::IPC::ALL_UPDATING)
+        {
+            croak_runtime("IPC failure while expecting an update status: Incorrect type: $ipcType");
+        }
     }
 }
 
