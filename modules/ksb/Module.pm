@@ -736,7 +736,6 @@ sub update
             $message = "0 files affected.";
 
             $ipc->sendIPCMessage(ksb::IPC::MODULE_UPTODATE, $moduleName);
-            $self->phases()->filterOutPhase('build');
         }
 
         # We doing e.g. --src-only, the build phase that normally outputs
