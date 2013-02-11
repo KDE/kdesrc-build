@@ -30,6 +30,8 @@ use constant {
     MODULE_CONFLICT => 8,
 
     MODULE_LOGMSG   => 9, # Tagged message should be put to TTY for module.
+
+    MODULE_PERSIST_OPT => 10, # Change to a persistent module option
 };
 
 sub new
@@ -44,6 +46,17 @@ sub new
 
     # Must bless a hash ref since subclasses expect it.
     return bless $defaultOpts, $class;
+}
+
+# Sends a message to the main/build process that a persistent option for the
+# given module name must be changed. For use by processes that do not control
+# the persistent option store upon shutdown.
+sub notifyPersistentOptionChange
+{
+    my $self = shift;
+    my ($moduleName, $optName, $optValue) = @_;
+
+    $self->sendIPCMessage(ksb::IPC::MODULE_PERSIST_OPT, "$moduleName,$optName,$optValue");
 }
 
 sub notifyUpdateSuccess
@@ -146,6 +159,11 @@ sub waitForModule
                 {
                     $updated->{$buffer} = 'skipped';
                 }
+            }
+            when (ksb::IPC::MODULE_PERSIST_OPT) {
+                my ($ipcModuleName, $optName, $value) = split(',', $buffer);
+                my $ctx = $module->buildContext();
+                $ctx->setPersistentOption($ipcModuleName, $optName, $value);
             }
             when (ksb::IPC::MODULE_LOGMSG) {
                 my ($ipcModuleName, $logMessage) = split(',', $buffer);

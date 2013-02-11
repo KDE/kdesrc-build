@@ -691,7 +691,7 @@ sub update
     my $count;
     my $returnValue;
 
-    eval { $count = $self->scm()->updateInternal() };
+    eval { $count = $self->scm()->updateInternal($ipc) };
 
     if ($@)
     {
@@ -700,7 +700,6 @@ sub update
         if (ref $@ && $@->isa('BuildException')) {
             if ($@->{'exception_type'} eq 'ConflictPresent') {
                 $reason = ksb::IPC::MODULE_CONFLICT;
-                $self->setPersistentOption('conflicts-present', 1);
             }
             else {
                 $ctx->markModulePhaseFailed('build', $self);

@@ -16,6 +16,7 @@ use File::Basename; # basename
 use File::Spec;     # tmpdir
 use POSIX qw(strftime);
 use List::Util qw(first);
+use ksb::IPC::Null;
 
 use constant {
     DEFAULT_GIT_REMOTE => 'origin',
@@ -26,7 +27,11 @@ use constant {
 sub updateInternal
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
+    my $ipc  = shift;
+
+    $self->{ipc} = $ipc // ksb::IPC::Null->new();
     return $self->updateCheckout();
+    delete $self->{ipc};
 }
 
 sub name
@@ -71,6 +76,8 @@ sub clone
     my $srcdir = $module->fullpath('source');
     my @args = ('--', $git_repo, $srcdir);
 
+    my $ipc = $self->{ipc} // croak_internal ('Missing IPC object');
+
     # The -v forces progress output from git, which seems to work around either
     # a gitorious.org bug causing timeout errors after cloning large
     # repositories (such as Qt...)
@@ -86,7 +93,8 @@ sub clone
                  0 == log_command($module, 'git-clone', ['git', 'clone', @args]);
 
     if ($result) {
-        $module->setPersistentOption('git-cloned-repository', $git_repo);
+        $ipc->notifyPersistentOptionChange(
+            $module->name(), 'git-cloned-repository', $git_repo);
 
         my $branch = $self->getBranch();
         p_chdir($srcdir);
@@ -192,6 +200,7 @@ sub _setupBestRemote
     my $self     = assert_isa(shift, 'ksb::Updater::Git');
     my $module   = $self->module();
     my $cur_repo = $module->getOption('repository');
+    my $ipc      = $self->{ipc} // croak_internal ('Missing IPC object');
 
     # Search for an existing remote name first. If none, add our alias.
     my @remoteNames = $self->bestRemoteName($cur_repo);
@@ -227,7 +236,8 @@ sub _setupBestRemote
         note (" y[b[*]\tThe git remote named b[", DEFAULT_GIT_REMOTE, "] has been updated");
 
         # Update what we think is the current repository on-disk.
-        $module->setPersistentOption('git-cloned-repository', $cur_repo);
+        $ipc->notifyPersistentOptionChange(
+            $module->name(), 'git-cloned-repository', $cur_repo);
     }
 
     return $remoteNames[0];
