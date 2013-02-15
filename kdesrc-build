@@ -604,6 +604,11 @@ EOF
 
             $value->{$repo} = $url;
         }
+        # Read ~~ as "is in this list:"
+        elsif ($option ~~ [qw(git-repository-base use-modules ignore-modules)]) {
+            error (" r[b[*] module b[$module] (near line $.) should be declared as module-set to use b[$option]");
+            die make_exception('Config', "Option $option can only be used in module-set");
+        }
 
         $module->setOption($option, $value);
     }
