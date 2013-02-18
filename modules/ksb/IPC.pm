@@ -85,6 +85,16 @@ sub sendLogMessage
     $self->sendIPCMessage(MODULE_LOGMSG, "$loggedModule,$msg");
 }
 
+# Prints the given message out (adjusting to have proper whitespace
+# if needed). For use with the log-message forwarding facility.
+sub _printLoggedMessage
+{
+    my $msg = shift;
+
+    $msg = "\t$msg" unless $msg =~ /^\s+/;
+    ksb::Debug::print_clr($msg);
+}
+
 # Waits for an update for a module with the given name.
 # Returns a list containing whether the module was successfully updated,
 # and any specific string message (e.g. for module update success you get
@@ -167,8 +177,16 @@ sub waitForModule
             }
             when (ksb::IPC::MODULE_LOGMSG) {
                 my ($ipcModuleName, $logMessage) = split(',', $buffer);
-                $messagesRef->{$ipcModuleName} //= [ ];
-                push @{$messagesRef->{$ipcModuleName}}, $logMessage;
+
+                # Print now if we can (means the user's waiting)
+                if ($ipcModuleName ~~ ['global', $moduleName]) {
+                    _printLoggedMessage($logMessage);
+                }
+                else {
+                    # Save it for later if we can't print it yet.
+                    $messagesRef->{$ipcModuleName} //= [ ];
+                    push @{$messagesRef->{$ipcModuleName}}, $logMessage;
+                }
             }
             default {
                 croak_internal("Unhandled IPC type: $ipcType");
@@ -183,8 +201,7 @@ sub waitForModule
     # messages.
     for my $item ('global', $moduleName) {
         for my $msg (@{$messagesRef->{$item}}) {
-            $msg = "\t$msg" unless $msg =~ /^\s+/;
-            ksb::Debug::print_clr($msg);
+            _printLoggedMessage($msg);
         }
 
         delete $messagesRef->{$item};
