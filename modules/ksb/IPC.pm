@@ -168,7 +168,7 @@ sub waitForModule
             when (ksb::IPC::MODULE_LOGMSG) {
                 my ($ipcModuleName, $logMessage) = split(',', $buffer);
                 $messagesRef->{$ipcModuleName} //= [ ];
-                push $messagesRef->{$ipcModuleName}, $logMessage;
+                push @{$messagesRef->{$ipcModuleName}}, $logMessage;
             }
             default {
                 croak_internal("Unhandled IPC type: $ipcType");
@@ -247,7 +247,7 @@ sub waitForStreamStart
         elsif ($ipcType == ksb::IPC::MODULE_LOGMSG) {
             my ($ipcModuleName, $logMessage) = split(',', $buffer);
             $self->{messages}->{$ipcModuleName} //= [ ];
-            push $self->{messages}->{$ipcModuleName}, $logMessage;
+            push @{$self->{messages}->{$ipcModuleName}}, $logMessage;
         }
         elsif ($ipcType != ksb::IPC::ALL_UPDATING)
         {
