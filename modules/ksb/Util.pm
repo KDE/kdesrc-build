@@ -594,9 +594,16 @@ sub download_file
 sub pretend_open
 {
     my $path = shift;
-    return \'' if pretending() && ! -e $path;
+    my $fh;
 
-    open my $fh, '<', $path or return;
+    if (pretending() && ! -e $path) {
+        my $simulatedFile = '';
+        open $fh, '<', \$simulatedFile or return;
+    }
+    else {
+        open $fh, '<', $path or return;
+    }
+
     return $fh;
 }
 
