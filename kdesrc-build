@@ -774,6 +774,7 @@ EOF
     # this phase of execution.
     for my $module (@modules) {
         my $moduleName = $module;
+        my $moduleFullName = $moduleName;
 
         # Remove trailing .git for module name
         if ($usingXML) {
@@ -788,9 +789,13 @@ EOF
             $moduleName =~ s/\.git$//;
         }
 
+        # The "module full name" is used by KDEXMLReader to disambiguate
+        # partial names. E.g. "kdegraphics/libs" => "libs", which would be read
+        # in as *all* "*/libs/*" by KDEXMLReader later.
         my $newModule = ksb::Module->new($ctx, $moduleName);
         $newModule->setModuleSet($moduleSetName);
         $newModule->setScmType($usingXML ? 'proj' : 'git');
+        $newModule->setOption('#xml-search-path', $moduleFullName) if $usingXML;
         push @moduleList, $newModule;
 
         # Dump all options into the existing ksb::Module's options.
@@ -868,7 +873,8 @@ sub expandXMLModules
         # it in by setting a flag to be used by the higher-level subroutine.
         $repositoryMetadataRequired = 1;
 
-        my $name = $moduleSet->name();
+        my $name = $moduleSet->getOption('#xml-search-path') or
+            croak_internal("Somehow tried to read XML data for non-XML module");
         my $srcdir = $ctx->getSourceDir();
 
         my $xmlReader = ksb::KDEXMLReader->new($databaseFile);
