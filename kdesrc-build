@@ -873,8 +873,8 @@ sub expandXMLModules
         # it in by setting a flag to be used by the higher-level subroutine.
         $repositoryMetadataRequired = 1;
 
-        my $name = $moduleSet->getOption('#xml-search-path') or
-            croak_internal("Somehow tried to read XML data for non-XML module");
+        my $name = $moduleSet->getOption('#xml-search-path') ||
+                   $moduleSet->name(); # Best-guess fallback
         my $srcdir = $ctx->getSourceDir();
 
         my $xmlReader = ksb::KDEXMLReader->new($databaseFile);
