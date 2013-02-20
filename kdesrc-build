@@ -2507,6 +2507,7 @@ EOF
     # just harder in the --resume-after case where we have to leave that module
     # set before we can allow modules through the filter.
     my $filterTest = sub {
+        return 1 if $_->scmType() eq 'metadata'; # Don't filter this one!
         my $moduleSet = $_->moduleSet() // '';
         if ($found) {
             return $filterInclusive || $moduleSet ne $resumePoint;
