@@ -1351,6 +1351,9 @@ Options:
     --resume-after=<pkg> Skips modules up to and including the given package,
                          then operates as normal.
 
+    --stop-before=<pkg>  Skips the given package and all later packages.
+    --stop-after=<pkg>   Skips all packages after the given package.
+
     --reconfigure        Run CMake/configure again, but don't clean the build
                          directory.
     --build-system-only  Create the build infrastructure, but don't actually
@@ -1593,6 +1596,20 @@ DONE
             /^--resume-after=?/ && do {
                 $_ = extract_option_value_required($_, @options);
                 $ctx->setOption('#resume-after', $_);
+
+                last SWITCH;
+            };
+
+            /^--stop-after=?/ && do {
+                $_ = extract_option_value_required($_, @options);
+                $ctx->setOption('#stop-after', $_);
+
+                last SWITCH;
+            };
+
+            /^--stop-before=?/ && do {
+                $_ = extract_option_value_required($_, @options);
+                $ctx->setOption('#stop-before', $_);
 
                 last SWITCH;
             };
@@ -2462,8 +2479,9 @@ sub handle_uninstall
 # each module as-is but change the phases they operate as part of, this
 # function could remove a module entirely from the build).
 #
-# Used for --resume-from and --resume-after, but more could be added in theory.
-# This subroutine supports --resume-* for both modules and module-sets.
+# Used for --resume-{from,after} and --stop-{before,after}, but more could be
+# added in theory.
+# This subroutine supports --{resume,stop}-* for both modules and module-sets.
 #
 # Parameters:
 #  ctx - <BuildContext> in use.
@@ -2478,9 +2496,10 @@ sub applyModuleFilters
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my @moduleList = @_;
 
-    if (!$ctx->getOption('resume-from') && !$ctx->getOption('resume-after'))
+    if (!$ctx->getOption('resume-from') && !$ctx->getOption('resume-after') &&
+        !$ctx->getOption('stop-before') && !$ctx->getOption('stop-after'))
     {
-        debug ("No --resume-from or --resume-after seems present.");
+        debug ("No command-line filter seems to be present.");
         return @moduleList;
     }
 
@@ -2495,38 +2514,85 @@ EOF
         croak_runtime("Both --resume-after and --resume-from specified.");
     }
 
+    if ($ctx->getOption('stop-before') && $ctx->getOption('stop-after'))
+    {
+        # This one's an error.
+        error (<<EOF);
+You specified both r[b[--stop-before] and r[b[--stop-after] but you can only
+use one.
+EOF
+
+        croak_runtime("Both --stop-before and --stop-from specified.");
+    }
+
     my $resumePoint = $ctx->getOption('resume-from') ||
                       $ctx->getOption('resume-after');
 
-    debug ("Looking for $resumePoint for --resume-* option");
+    my $startIndex = scalar @moduleList;
 
-    # || 0 is a hack to force Boolean context.
-    my $filterInclusive = $ctx->getOption('resume-from') || 0;
-    my $found = 0;
+    if ($resumePoint) {
+        debug ("Looking for $resumePoint for --resume-* option");
 
-    # If we already found our resume point, include this module. If this module
-    # *is* the resume point, include it if filterInclusive is true, otherwise
-    # just flag it. Module sets complicate the logic a bit, but it's basically
-    # just harder in the --resume-after case where we have to leave that module
-    # set before we can allow modules through the filter.
-    my $filterTest = sub {
-        return 1 if $_->scmType() eq 'metadata'; # Don't filter this one!
-        my $moduleSet = $_->moduleSet() // '';
-        if ($found) {
-            return $filterInclusive || $moduleSet ne $resumePoint;
+        # || 0 is a hack to force Boolean context.
+        my $filterInclusive = $ctx->getOption('resume-from') || 0;
+        my $found = 0;
+
+        for (my $i = 0; $i < scalar @moduleList; $i++) {
+            my $module = $moduleList[$i];
+            my $moduleSet = $module->moduleSet() // '';
+
+            # If a match was found we can only still be here if looking at
+            # --resume-after. If we matched on module set name then eliminate
+            # all of the module set before stopping.
+            if ($found && ($moduleSet ne $resumePoint)) {
+                $startIndex = $i;
+                last;
+            }
+
+            $found = $module->{'name'} eq $resumePoint || $moduleSet eq $resumePoint;
+            if ($found && $filterInclusive) {
+                $startIndex = $i;
+                last;
+            }
         }
-        $found = $_->{'name'} eq $resumePoint || $moduleSet eq $resumePoint;
-        return $found && $filterInclusive;
-    };
-
-    my @resultList = grep { &$filterTest } (@moduleList);
-
-    if (!@resultList && @moduleList) {
-        # Lost all modules somehow.
-        croak_runtime("Unknown resume point $resumePoint.");
+    }
+    else {
+        $startIndex = 0;
     }
 
-    return @resultList;
+    my $stopPoint = $ctx->getOption('stop-before') ||
+                    $ctx->getOption('stop-after');
+
+    my $stopIndex = 0;
+
+    if ($stopPoint) {
+        debug ("Looking for $stopPoint for --stop-* option");
+
+        # || 0 is a hack to force Boolean context.
+        my $filterInclusive = $ctx->getOption('stop-before') || 0;
+        my $found = 0;
+
+        for (my $i = $startIndex; $i < scalar @moduleList; $i++) {
+            my $module = $moduleList[$i];
+            my $moduleSet = $module->moduleSet() // '';
+
+            $found = $module->{'name'} eq $stopPoint || $moduleSet eq $stopPoint;
+            if ($found) {
+                $stopIndex = $i - ($filterInclusive ? 1 : 0);
+                last;
+            }
+        }
+    }
+    else {
+        $stopIndex = scalar @moduleList - 1;
+    }
+
+    if ($startIndex > $stopIndex || scalar @moduleList == 0) {
+        # Lost all modules somehow.
+        croak_runtime("Unknown resume -> stop point $resumePoint -> $stopPoint.");
+    }
+
+    return @moduleList[$startIndex .. $stopIndex];
 }
 
 # Function: spliceOptionModules
