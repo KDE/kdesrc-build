@@ -74,6 +74,11 @@ use ksb::DependencyResolver 0.20;
 
 use 5.010_000; # Require Perl 5.10.0
 
+# Perl 5.18 warns on given/when/~~, but also is the first version of
+# Perl to support conditional disabling of warnings, so we have to
+# version-protect our warning remover.
+no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
+
 # Make Perl 'plain die' exceptions use Carp::confess instead of their core
 # support. This is not supported by the Perl 5 authors but assuming it works
 # will be better than the alternative backtrace we get (which is to say, none)

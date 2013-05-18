@@ -8,6 +8,7 @@ package ksb::BuildContext;
 use strict;
 use warnings;
 use v5.10;
+no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
 our $VERSION = '0.10';
 
