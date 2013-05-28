@@ -1,0 +1,54 @@
+# Module definitions for building KDE Frameworks 5
+# (cmake, KF5's dependencies, kdelibs frameworks, plasma-framework)
+
+# Usage: Write your own kdesrc-buildrc with only a "global" section
+# then include this file, like this:
+#
+# include extragear/utils/kdesrc-build/kf5-qt5-build-include
+# (or using a full path)
+#
+# You can then add additional modules if desired.
+
+module cmake-git
+  repository git://cmake.org/cmake.git
+  ordering-tier 0
+end module
+
+module-set
+    repository kde-projects
+    use-modules kdesrc-build extra-cmake-modules attica libstreams libstreamanalyzer
+    # Optionally: add polkit-qt-1
+    cmake-options -DCMAKE_BUILD_TYPE:STRING=debug
+end module-set
+
+module-set phonon
+    repository kde-projects
+    branch phonon4qt5
+    # We avoid using just "phonon" as kdesrc-build will include all submodules
+    # that have phonon as part of their path. (i.e. it means phonon/*), but we
+    # don't want all the phonon backends.
+    use-modules phonon/phonon phonon-vlc phonon-gstreamer
+end module-set
+
+module libdbusmenu-qt
+    # The lp: prefix refers to Canonical's Launchpad repository
+    repository bzr://lp:libdbusmenu-qt
+end module
+
+module kdelibs-frameworks
+  repository kde:kdelibs
+  branch frameworks
+  # The CodeBlocks generator allows usage in QtCreator, while still generating Makefiles
+  cmake-options -DKDE4_BUILD_TESTS=TRUE -DBUILD_TESTING=TRUE -DCMAKE_BUILD_TYPE:STRING=debugfull -DBUILD_experimental:BOOL=true -G "CodeBlocks - Unix Makefiles"
+end module
+
+module plasma-framework
+  repository kde:plasma-framework
+end module
+
+# not much there yet?
+#module kde-workspace
+  #repository kde:kde-workspace
+  #branch frameworks-scratch
+#end module
+
