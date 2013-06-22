@@ -100,7 +100,7 @@ ksb::Util->import();
 $ctx->setOption('set-env', 'TESTY_MCTEST yes');
 $ctx->setOption('cxxflags', '-g -O0');
 $ctx->setOption('cmake-options', '-DCMAKE_BUILD_TYPE=RelWithDebInfo');
-$ctx->setOption('svn-server', 'svn+ssh://svn.kde.org/home/kde');
+$ctx->setOption('svn-server', 'svn+ssh://svn@svn.kde.org/home/kde');
 $ctx->setOption('configure-flags', '-fast -dbus');
 $ctx->setOption('#configure-flags', '-fast -dbus');
 $ctx->setOption('source-dir', '~/' . "kdesrc-build-unused");
@@ -172,7 +172,7 @@ like($kdelibsModule->getOption('cmake-options'), qr/-DTEST=TRUE$/, 'kdelibs opti
 is($testModule->getOption('branch', 'module'), undef, 'get_option limit to module level');
 
 $kdelibsModule->setOption('branch', 'trunk');
-is($kdelibsModule->scm()->svn_module_url(), 'svn+ssh://svn.kde.org/home/kde/trunk/KDE/kdelibs', 'KDE module trunk');
+is($kdelibsModule->scm()->svn_module_url(), 'svn+ssh://svn@svn.kde.org/home/kde/trunk/KDE/kdelibs', 'KDE module trunk');
 
 $kdelibsModule->setOption('tag', '4.1.3');
 $kdelibsModule->setOption('branch', '4.2');
@@ -229,11 +229,11 @@ like(ksb::Updater::Svn::_handle_branch_tag_option($kdesupportModule, 'tags'), qr
 is($kdesupportModule->scm()->svn_module_url(), 'svn://anonsvn.kde.org/home/kde/tags/kdesupport-for-4.2', 'non-KDE module tag (no name; entire URL)');
 
 $phononModule->setOption('branch', '4.2');
-is($phononModule->scm()->svn_module_url(), 'svn+ssh://svn.kde.org/home/kde/branches/phonon/4.2', 'non-KDE module branch (no name appended)');
+is($phononModule->scm()->svn_module_url(), 'svn+ssh://svn@svn.kde.org/home/kde/branches/phonon/4.2', 'non-KDE module branch (no name appended)');
 
 $phononModule->setOption('branch', '');
 $phononModule->setOption('module-base-path', 'tags/phonon/4.2');
-is($phononModule->scm()->svn_module_url(), 'svn+ssh://svn.kde.org/home/kde/tags/phonon/4.2', 'module-base-path');
+is($phononModule->scm()->svn_module_url(), 'svn+ssh://svn@svn.kde.org/home/kde/tags/phonon/4.2', 'module-base-path');
 
 my @result1 = qw/a=b g f/;
 my @quoted_result = ('a=b g f', 'e', 'c=d', 'bless');
