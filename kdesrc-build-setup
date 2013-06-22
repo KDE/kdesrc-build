@@ -220,10 +220,6 @@ EOF
 my $dev = getYesNoAnswer('Do you already have commit ' .
     'access to the KDE repositories?');
 
-if ($dev) {
-    $dev = getUserInput("What is your KDE identity username (for SVN access)?");
-}
-
 # If the user appears to be using a proxy, ask for it directly, otherwise
 # prompt for one.
 my $proxy = $ENV{http_proxy} // '';
@@ -351,8 +347,9 @@ EOF
 if ($dev) {
     print $output <<EOF;
     # Login to use for SVN. Anonymous SVN can be used by just deleting this
-    # line.
-    svn-server svn+ssh://$dev\@svn.kde.org/home/kde
+    # option.
+    # Note that ssh-agent must be running and loaded with the right key.
+    svn-server svn+ssh://svn\@svn.kde.org/home/kde
 
 EOF
 }
