@@ -202,17 +202,6 @@ SKIP: {
 }
 
 $ENV{HOME} = $testSourceDirName;
-ksb::Updater::Svn::_install_missing_ssl_signature();
-
-my $signatureFile = "$testSourceDirName/.subversion/auth/svn.ssl.server/ec08b331e2e6cabccb6c3e17a85e28ce";
-ok(-e $signatureFile, "Verify KDE SVN server SSL signature can be installed");
-
-use Digest::MD5;
-my $md5 = Digest::MD5->new();
-open my $md5Data, '<', $signatureFile;
-binmode($md5Data);
-is ($md5->addfile($md5Data)->hexdigest, '15d0534068cdbe340fc29db520b8beaa', "Verify installed KDE SVN SSL certificate is correct");
-close $md5Data;
 
 is($kdesupportModule->scm()->svn_module_url(), 'svn://anonsvn.kde.org/home/kde/trunk/kdesupport', 'non-KDE module trunk');
 

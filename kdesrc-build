@@ -1839,12 +1839,6 @@ sub handle_updates
     # which means we can tell the build thread to start.
     $ipc->sendIPCMessage(ksb::IPC::ALL_UPDATING, "starting-updates");
 
-    # Make sure KDE's SSL signature is present since --non-interactive is
-    # passed to svn.
-    if (grep { $_->scmType() eq 'svn' } @update_list) {
-        ksb::Updater::Svn::_install_missing_ssl_signature();
-    }
-
     my $hadError = 0;
     foreach my $module (@update_list)
     {
