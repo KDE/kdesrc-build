@@ -185,12 +185,13 @@ sub svn_module_url
 sub _verifyCorrectServerURL
 {
     my $self = assert_isa(shift, 'ksb::Updater::Svn');
+    my $module = $self->module();
 
     my $module_expected_url = $self->svn_module_url();
     my $module_actual_url = $self->svnInfo('URL');
 
     if (!$module_actual_url) {
-        croak_runtime ("Unable to determine working copy's svn URL for " . $self->module());
+        croak_runtime ("Unable to determine working copy's svn URL for $module");
     }
 
     $module_expected_url =~ s{/+$}{}; # Remove trailing slashes
@@ -226,6 +227,27 @@ If the module is fine, please update your configuration file.
 If you use kdesrc-build with --src-only it will try switching for you (might not work
 correctly).
 EOF
+    }
+    else { # The two URLs match, but are they *right*? Things changed June 2013
+        my ($uid, $url);
+        # uid might be empty, we use $url to see if the match succeeds.
+        ($uid, $url) = $module_actual_url =~ m{^svn\+ssh://([a-z]+\@)?(svn\.kde\.org)};
+
+        if ($url && (!$uid || $uid ne 'svn')) {
+            error ("SVN login scheme has changed for y[b[$module] as of 2013-06-21");
+            error ("\tPlease see http://mail.kde.org/pipermail/kde-cvs-announce/2013/000112.html");
+            error ("\tPlease update your b[svn-server] option to be:");
+            error ("\tb[g[svn+ssh://svn\@svn.kde.org/home/kde");
+            error ("\n\tThen, re-run kdesrc-build with the b[--src-only] option to complete the repair.");
+
+            if (!$uid) {
+                error (" r[b[* * *]: Note that your SVN URL has *no* username");
+                error (" r[b[* * *]: You should probably also double-check ~/.ssh/config");
+                error (" r[b[* * *]: for b[svn.kde.org] to ensure the correct default user (svn)");
+            }
+
+            croak_runtime ("SVN server has changed login scheme, see error message");
+        }
     }
 }
 
