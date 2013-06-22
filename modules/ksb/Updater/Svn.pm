@@ -204,9 +204,24 @@ sub _verifyCorrectServerURL
         if ($module->buildContext()->getOption('#allow-auto-repo-move'))
         {
             note ("g[$module] is checked out from a different location than expected.");
-            note ("Attempting to correct");
+            note ("Attempting to correct to $module_expected_url");
 
-            log_command($module, 'svn-switch', ['svn', 'switch', $module_expected_url]);
+            my ($expected_host, $expected_path) =
+                ($module_expected_url =~ m{://([^/]+)/(.*)$});
+            my ($actual_host, $actual_path) =
+                ($module_actual_url =~ m{://([^/]+)/(.*)$});
+
+            # If the path didn't change but the host info did try --relocate
+            # otherwise try regular svn switch.
+            if (($expected_path eq $actual_path) && ($expected_host ne $actual_host)) {
+                log_command($module, 'svn-switch', [
+                        'svn', 'switch', '--relocate',
+                        $module_actual_url, $module_expected_url]);
+            }
+            else {
+                log_command($module, 'svn-switch', [
+                        'svn', 'switch', $module_expected_url]);
+            }
             return;
         }
 
