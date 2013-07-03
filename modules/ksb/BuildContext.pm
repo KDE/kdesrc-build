@@ -58,6 +58,7 @@ my %defaultGlobalOptions = (
     "dest-dir"             => '${MODULE}', # single quotes used on purpose!
     "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
     "do-not-compile"       => "",
+    "filter-out-phases"    => '',
     "git-desired-protocol" => 'git', # protocol to grab from kde-projects
     "git-repository-base"  => {}, # Base path template for use multiple times.
     "http-proxy"           => '', # Proxy server to use for HTTP.

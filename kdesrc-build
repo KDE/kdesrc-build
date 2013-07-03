@@ -614,6 +614,13 @@ EOF
             error (" r[b[*] module b[$module] (near line $.) should be declared as module-set to use b[$option]");
             die make_exception('Config', "Option $option can only be used in module-set");
         }
+        elsif ($option eq 'filter-out-phases') {
+            for my $phase (split(' ', $value)) {
+                $module->phases()->filterOutPhase($phase);
+            }
+
+            next; # Don't fallthrough to set the option
+        }
 
         $module->setOption($option, $value);
     }
@@ -938,6 +945,7 @@ sub expandXMLModules
             $_ = ksb::Module->new($ctx, $result->{'name'});
             $_->setScmType('git');
             $_->cloneOptionsFrom($moduleSet);
+            $_->phases()->phases($moduleSet->phases()->phases()); # Copy phases over
             $_->setModuleSet($moduleSet->moduleSet());
             $_->setOption('repository', $repo);
             $_->setOption('#xml-full-path', $result->{'fullName'});
