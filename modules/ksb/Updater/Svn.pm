@@ -246,7 +246,7 @@ EOF
     else { # The two URLs match, but are they *right*? Things changed June 2013
         my ($uid, $url);
         # uid might be empty, we use $url to see if the match succeeds.
-        ($uid, $url) = $module_actual_url =~ m{^svn\+ssh://([a-z]+\@)?(svn\.kde\.org)};
+        ($uid, $url) = $module_actual_url =~ m{^svn\+ssh://(?:([a-z]+)\@)?(svn\.kde\.org)};
 
         if ($url && (!$uid || $uid ne 'svn')) {
             error ("SVN login scheme has changed for y[b[$module] as of 2013-06-21");
