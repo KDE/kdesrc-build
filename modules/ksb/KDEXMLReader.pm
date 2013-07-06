@@ -51,7 +51,6 @@ my @modules;               # Result list
 my $curRepository;         # ref to hash table when we are in a repo
 my $trackingReposFlag = 0; # >0 if we should be tracking for repo elements.
 my $inRepo = 0;            # >0 if we are actually in a repo element.
-my $repoFound = 0;         # If we've already found the repo we need.
 my $searchProject = '';    # Project we're looking for.
 my $desiredProtocol = '';  # URL protocol desired (normally 'git')
 
@@ -132,25 +131,23 @@ sub xmlTagStart
                         last;
                     }
                 }
-
-                # Reset our found flag if we're looking for another repo
-                $repoFound = 0 if $trackingReposFlag > 0;
             }
         }
     }
 
-    # Checking that we haven't already found a repo helps us out in
-    # situations where a supermodule has its own repo, -OR- you could build
-    # it in submodules. We won't typically want to do both, so prefer
-    # supermodules this way. (e.g. Calligra and its Krita submodules)
-    if ($element eq 'repo' &&     # Found a repo
-        $trackingReposFlag > 0 && # When we were looking for one
-        ($trackingReposFlag <= $repoFound || $repoFound == 0))
-            # (That isn't a direct child of an existing repo)
+    # This code used to check for direct descendants and filter them out.
+    # Now there are better ways (kde-build-metadata/build-script-ignore and
+    # the user can customize using ignore-modules), and this filter made it
+    # more difficult to handle kde/kdelibs{,/nepomuk-{core,widgets}}, so leave
+    # it out for now. See also bug 321667.
+    if ($element eq 'repo' &&   # Found a repo
+        $trackingReposFlag > 0) # When we were looking for one
     {
+        # This flag is cleared by the <repo>-end handler, so this *should* be
+        # logically impossible.
         die "We are already tracking a repository" if $inRepo > 0;
+
         $inRepo = 1;
-        $repoFound = $trackingReposFlag;
         $curRepository = {
             'fullName' => join('/', @nameStack),
             'repo' => '',

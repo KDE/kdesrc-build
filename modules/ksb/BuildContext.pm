@@ -170,7 +170,7 @@ sub addModule
     }
     elsif (($path = $module->getOption('#xml-full-path')) &&
         # See if the name matches any given in the ignore list.
-           any(sub { $path =~ /(^|\/)$_$/ }, $self->{ignore_list}))
+           any(sub { $path =~ /(^|\/)$_($|\/)/ }, $self->{ignore_list}))
     {
         debug("Skipping ignored module $module");
     }
