@@ -112,26 +112,14 @@ sub xmlTagStart
     if (exists $xmlGroupingIds{$element}) {
         push @nameStack, $attrs{'identifier'};
 
-        # If we're not tracking something, see if we should be. The logic is
-        # fairly long-winded but essentially just breaks searchProject into
-        # its components and compares it item-for-item to the end of our name
-        # stack.
+        # If we're not tracking something, see if we should be.
         if ($trackingReposFlag <= 0) {
-            my @searchParts = split(m{/}, $searchProject);
-            if (scalar @nameStack >= scalar @searchParts) {
-                my @candidateArray = @nameStack[-(scalar @searchParts)..-1];
-                die "candidate vs. search array mismatch" if $#candidateArray != $#searchParts;
-
-                $trackingReposFlag = 1;
-                for (my $i = 0; $i < scalar @searchParts; ++$i) {
-                    if (($searchParts[$i] ne $candidateArray[$i]) &&
-                        ($searchParts[$i] ne '*'))
-                    {
-                        $trackingReposFlag = 0;
-                        last;
-                    }
-                }
-            }
+            $trackingReposFlag =
+                _projectPathMatchesWildcardSearch(
+                    join('/', @nameStack), $searchProject
+                )
+                ? 1
+                : 0;
         }
     }
 
@@ -235,6 +223,51 @@ sub xmlCharData
     if ($curRepository && defined $curRepository->{'needs'}) {
         $curRepository->{$curRepository->{'needs'}} .= $utf8Data;
     }
+}
+
+# Utility subroutine, returns true if the given kde-project full path (e.g.
+# kde/kdelibs/nepomuk-core) matches the given search item.
+#
+# The search item itself is based on path-components. Each path component in
+# the search item must be present in the equivalent path component in the
+# module's project path for a match. A '*' in a path component position for the
+# search item matches any project path component.
+#
+# Finally, the search is pinned to search for a common suffix. E.g. a search
+# item of 'kdelibs' would match a project path of 'kde/kdelibs' but not
+# 'kde/kdelibs/nepomuk-core'. However 'kdelibs/*' would match
+# 'kde/kdelibs/nepomuk-core'.
+#
+# First parameter is the full project path from the kde-projects database.
+# Second parameter is the search item.
+# Returns true if they match, false otherwise.
+sub _projectPathMatchesWildcardSearch
+{
+    my ($projectPath, $searchItem) = @_;
+
+    my @searchParts = split(m{/}, $searchItem);
+    my @nameStack   = split(m{/}, $projectPath);
+
+    if (scalar @nameStack >= scalar @searchParts) {
+        # This logic is fairly long-winded but essentially just breaks
+        # searchItem into its components and compares it item-for-item to
+        # the end of our name stack.
+        my @candidateArray = @nameStack[-(scalar @searchParts)..-1];
+        die "candidate vs. search array mismatch" if $#candidateArray != $#searchParts;
+
+        for (my $i = 0; $i < scalar @searchParts; ++$i) {
+            if (($searchParts[$i] ne $candidateArray[$i]) &&
+                ($searchParts[$i] ne '*'))
+            {
+                return;
+            }
+        }
+    }
+    else {
+        return;
+    }
+
+    return 1;
 }
 
 1;

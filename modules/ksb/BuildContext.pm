@@ -10,7 +10,7 @@ use warnings;
 use v5.10;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
-our $VERSION = '0.10';
+our $VERSION = '0.20';
 
 use Carp 'confess';
 use File::Basename; # dirname
@@ -23,6 +23,7 @@ use ksb::Util;
 use ksb::PhaseList;
 use ksb::Module;
 use ksb::Version qw(scriptVersion);
+use File::Temp qw(tempfile);
 
 # We derive from ksb::Module so that BuildContext acts like the 'global'
 # ksb::Module, with some extra functionality.
@@ -133,6 +134,7 @@ sub new
         rcFile  => undef,
         env     => { },
         ignore_list => [ ], # List of XML paths to ignore completely.
+        kde_projects_filehandle => undef, # Filehandle to read database from.
     );
 
     # Merge all new options into our self-hash.
@@ -846,6 +848,70 @@ sub setPersistentOption
     $persistent_opts->{$moduleName} //= { };
 
     $persistent_opts->{$moduleName}{$key} = $value;
+}
+
+# Tries to download the kde_projects.xml file needed to make XML module support
+# work. Only tries once per script run. If it does succeed, the result is saved
+# to $srcdir/kde_projects.xml
+#
+# Returns the file handle that the database can be retrieved from. May throw an
+# exception if an error occurred.
+sub getKDEProjectMetadataFilehandle
+{
+    my $self = assert_isa(shift, 'ksb::BuildContext');
+
+    # Return our current filehandle if one exists.
+    if (defined $self->{kde_projects_filehandle}) {
+        my $fh = $self->{kde_projects_filehandle};
+        $fh->seek(0, 0); # Return to start
+        return $fh;
+    }
+
+    # Not previously attempted, let's make a try.
+    my $srcdir = $self->getSourceDir();
+    my $fileHandleResult = IO::File->new();
+
+    super_mkdir($srcdir) unless -d "$srcdir";
+    my $file = "$srcdir/kde_projects.xml";
+    my $url = "http://projects.kde.org/kde_projects.xml";
+
+    my $result = 1;
+
+    # Must use ->phases() directly to tell if we will be updating since
+    # modules are not all processed until after this function is called...
+    my $updating = grep { /^update$/ } (@{$self->phases()});
+    if (!pretending() && $updating) {
+        info (" * Downloading projects.kde.org project database...");
+        $result = download_file($url, $file, $self->getOption('http-proxy'));
+    }
+    elsif (! -e $file) {
+        note (" * Downloading projects.kde.org project database (will not be saved in pretend mode)...");
+
+        # Unfortunately dumping the HTTP output straight to the XML parser is a
+        # wee bit more complicated than I feel like dealing with => use a temp
+        # file.
+        (undef, $file) = tempfile('kde_projectsXXXXXX',
+            SUFFIX=>'.xml', TMPDIR=>1, UNLINK=>0);
+        $result = download_file($url, $file, $self->getOption('http-proxy'));
+        open ($fileHandleResult, '<', $file) or croak_runtime("Unable to open KDE Project database $file: $!");
+    }
+    else {
+        info (" * y[Using existing projects.kde.org project database], output may change");
+        info (" * when database is updated next.");
+    }
+
+    if (!$result) {
+        unlink $file if -e $file;
+        croak_runtime("Unable to download kde_projects.xml for the kde-projects repository!");
+    }
+
+    if (!$fileHandleResult->opened()) {
+        open ($fileHandleResult, '<', $file) or die
+            make_exception('Runtime', "Unable to open $file: $!");
+    }
+
+    $self->{kde_projects_filehandle} = $fileHandleResult;
+    return $fileHandleResult;
 }
 
 1;

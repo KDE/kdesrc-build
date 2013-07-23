@@ -49,8 +49,7 @@ use File::Find; # For our lndir reimplementation.
 use File::Path qw(remove_tree);
 use File::Glob ':glob';
 use File::Spec;     # tmpdir, rel2abs
-use File::Temp qw(tempfile);
-use List::Util qw(first);
+use List::Util qw(first min);
 use LWP::UserAgent;
 use URI; # For git-clone snapshot support
 use Sys::Hostname;
@@ -67,9 +66,11 @@ use ksb::IPC::Pipe 0.20;
 use ksb::IPC::Null;
 use ksb::KDEXMLReader;
 use ksb::Updater::Git;
-use ksb::BuildContext;
+use ksb::BuildContext 0.20;
 use ksb::RecursiveFH;
 use ksb::Module;
+use ksb::ModuleSet;
+use ksb::ModuleSet::KDEProjects;
 use ksb::DependencyResolver 0.20;
 
 use 5.010_000; # Require Perl 5.10.0
@@ -628,101 +629,26 @@ EOF
     return $module;
 }
 
-# Tries to download the kde_projects.xml file needed to make XML module support
-# work. Only tries once per script run. If it does succeed, the result is saved
-# to $srcdir/kde_projects.xml
-#
-# Returns the file handle that the database can be retrieved from. May throw an
-# exception if an error occurred.
-sub ensure_projects_xml_present
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-
-    state $file;
-    state $cachedSuccess;
-
-    # See if we've already tried to download. If we ever try to download for
-    # real, we end up unlinking the file if it didn't successfully complete the
-    # download, so we shouldn't have to worry about a corrupt XML file hanging
-    # out for all time.
-    if (defined $cachedSuccess && !$cachedSuccess) {
-        croak_internal("Attempted to find projects.xml after it already failed");
-    }
-
-    if ($cachedSuccess) {
-        open my $fh, '<', $file or die make_exception('Runtime', "Unable to open $file: $!");
-        return $fh;
-    }
-
-    # Not previously attempted, let's make a try.
-    my $srcdir = $ctx->getSourceDir();
-    my $fileHandleResult;
-
-    super_mkdir($srcdir) unless -d "$srcdir";
-    $file = "$srcdir/kde_projects.xml";
-    my $url = "http://projects.kde.org/kde_projects.xml";
-
-    my $result = 1;
-
-    # Must use ->phases() directly to tell if we will be updating since
-    # modules are not all processed until after this function is called...
-    my $updating = grep { /^update$/ } (@{$ctx->phases()});
-    if (!pretending() && $updating) {
-        info (" * Downloading projects.kde.org project database...");
-        $result = download_file($url, $file, $ctx->getOption('http-proxy'));
-    }
-    elsif (! -e $file) {
-        note (" * Downloading projects.kde.org project database (will not be saved in pretend mode)...");
-
-        # Unfortunately dumping the HTTP output straight to the XML parser is a
-        # wee bit more complicated than I feel like dealing with => use a temp
-        # file.
-        (undef, $file) = tempfile('kde_projectsXXXXXX',
-            SUFFIX=>'.xml', TMPDIR=>1, UNLINK=>0);
-        $result = download_file($url, $file, $ctx->getOption('http-proxy'));
-        open ($fileHandleResult, '<', $file) or croak_runtime("Unable to open KDE Project database $file: $!");
-    }
-    else {
-        info (" * y[Using existing projects.kde.org project database], output may change");
-        info (" * when database is updated next.");
-    }
-
-    $cachedSuccess = $result;
-
-    if (!$result) {
-        unlink $file if -e $file;
-        croak_runtime("Unable to download kde_projects.xml for the kde-projects repository!");
-    }
-
-    if (!$fileHandleResult) {
-        open ($fileHandleResult, '<', $file) or die
-            make_exception('Runtime', "Unable to open $file: $!");
-    }
-
-    return $fileHandleResult;
-}
-
 # Reads in a "moduleset".
 #
 # First parameter is the filehandle to the config file to read from.
 # Second parameter is the name of the moduleset, which is really the name
 # of the base repository to use.
-# Returns the expanded list of module names to include.
+# Returns a ksb::ModuleSet describing the module-set encountered, which may
+# need to be further expanded (see ksb::ModuleSet::convertToModules).
 sub parse_moduleset
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fileReader = shift;
     my $moduleSetName = shift || '';
-    my $repoSet = $ctx->getOption('git-repository-base');
     my $rcfile = $ctx->rcFile();
 
-    my @modules;
-    my %ignoredModules;
-    my %optionSet; # We read all options, and apply them to all modules
     my $startLine = $.; # For later error messages
+    my $internalModuleSetName =
+        $moduleSetName || "<module-set at line $startLine>";
 
-    # Used to strip leading parts of module name if no wildcard present
-    my $pathLeadersRE = qr,^.*/(?!\*),;
+    my $moduleSet = ksb::ModuleSet->new($ctx, $internalModuleSetName);
+    my %optionSet; # We read all options, and apply them to all modules
 
     while($_ = readNextLogicalLine($fileReader)) {
         last if /^end\s+module(-?set)?$/;
@@ -730,24 +656,26 @@ sub parse_moduleset
         my ($option, $value) = split_option_value($ctx, $_);
 
         if ($option eq 'use-modules') {
-            @modules = split(' ', $value);
+            my @modules = split(' ', $value);
 
             if (not @modules) {
                 error ("No modules were selected for the current module-set");
                 error ("in the y[use-modules] on line $. of $rcfile");
                 die make_exception('Config', 'Invalid use-modules');
             }
+
+            $moduleSet->setModulesToFind(@modules);
         }
         elsif ($option eq 'ignore-modules') {
             my @modulesToIgnore = split(' ', $value);
-            s,$pathLeadersRE,, foreach @modulesToIgnore;
-            @ignoredModules{@modulesToIgnore} = (1) x @modulesToIgnore;
 
             if (not @modulesToIgnore) {
                 error ("No modules were selected for the current module-set");
                 error ("in the y[ignore-modules] on line $. of $rcfile");
                 die make_exception('Config', 'Invalid ignore-modules');
             }
+
+            $moduleSet->setModulesToIgnore(@modulesToIgnore);
         }
         elsif ($option eq 'set-env') {
             Module::processSetEnvOption(\%optionSet, $option, $value);
@@ -756,6 +684,8 @@ sub parse_moduleset
             $optionSet{$option} = $value;
         }
     }
+
+    $moduleSet->setOptions(\%optionSet);
 
     # Check before we use this module set whether the user did something silly.
     my $repoSet = $ctx->getOption('git-repository-base');
@@ -777,8 +707,8 @@ EOF
         not exists $repoSet->{$optionSet{'repository'}})
     {
         my $projectID = KDE_PROJECT_ID;
-        my $moduleSetId = "module-set";
-        $moduleSetId = "module-set ($moduleSetName)" if $moduleSetName;
+        my $moduleSetId = $moduleSetName ? "module-set ($moduleSetName)"
+                                         : "module-set";
 
         error (<<EOF);
 There is no repository assigned to y[b[$optionSet{repository}] when assigning a
@@ -796,279 +726,69 @@ EOF
         die make_exception('Config', 'Unknown repository base');
     }
 
-    my @moduleList; # module names converted to ksb::Module objects.
-    my $selectedRepo;
-    my $usingXML = (exists $optionSet{'repository'}) &&
-                    $optionSet{'repository'} eq KDE_PROJECT_ID;
-
-    # Setup default options for each module
-    # Extraction of relevant XML modules will be handled immediately after
-    # this phase of execution.
-    for my $module (@modules) {
-        my $moduleName = $module;
-        my $moduleFullName = $moduleName;
-
-        # Remove trailing .git for module name
-        if ($usingXML) {
-            # Remove all name components before the final /, as long as the /
-            # isn't followed by a *.
-            $moduleName =~ s,$pathLeadersRE,,;
-
-            # Sometimes we just want all kde-projects modules except for a few
-            next if exists $ignoredModules{$moduleName};
-        }
-        else {
-            $moduleName =~ s/\.git$//;
-        }
-
-        # The "module full name" is used by KDEXMLReader to disambiguate
-        # partial names. E.g. "kdegraphics/libs" => "libs", which would be read
-        # in as *all* "*/libs/*" by KDEXMLReader later.
-        my $newModule = ksb::Module->new($ctx, $moduleName);
-        $newModule->setModuleSet($moduleSetName);
-        $newModule->setScmType($usingXML ? 'proj' : 'git');
-        $newModule->setOption('#xml-search-path', $moduleFullName) if $usingXML;
-        push @moduleList, $newModule;
-
-        # Dump all options into the existing ksb::Module's options.
-        $newModule->setOption(%optionSet);
-
-        # Fixup for the special repository handling if need be.
-        if (!$usingXML && exists $optionSet{'repository'}) {
-            $selectedRepo = $repoSet->{$optionSet{'repository'}} unless $selectedRepo;
-            $newModule->setOption('repository', $selectedRepo . $moduleName);
-        }
+    if ($optionSet{'repository'} eq KDE_PROJECT_ID) {
+        # Perl-specific note! re-blessing the module set into the right 'class'
+        # You'd probably have to construct an entirely new object and copy the
+        # members over in other languages.
+        bless $moduleSet, 'ksb::ModuleSet::KDEProjects';
     }
 
-    $ctx->addToIgnoreList(keys %ignoredModules);
-
-    if (not scalar @moduleList) {
-        warning ("No modules were defined for the module-set in r[b[$rcfile] starting at line y[b[$startLine]");
-        warning ("You should use the g[b[use-modules] option to make the module-set useful.");
-    }
-
-    return @moduleList;
-}
-
-# Function: expandXMLModules
-#
-# Goes through the provided modules that have the 'proj' type (i.e. XML
-# projects.kde.org database) and expands the proj-types into their equivalent
-# git modules, and returns the fully expanded list. Non-proj modules are
-# included in the sequence they were originally.
-#
-# *Note*: This function will trigger network download of the kde-projects
-# database if any relevant modules are identified. In addition, a build-support
-# module will be included in this case, which requires special care.
-#
-# *Note*: Any modules that are part of a module-set requiring a specific
-# branch, that don't have that branch, are also elided with only a debug
-# message. This allows for building older branches of KDE even when newer
-# modules are eventually put into the database.
-#
-# Parameters:
-#  ctx - The <BuildContext> in use.
-#  @modules - The list of <Modules> to perform proj-expansion on.
-#
-# Returns:
-#  A tuple of:
-#   ($metadataModule, @modules)
-#      $metadataModule - If the build-support repository was included this will
-#      be a <Module>, with an SCM type of <ksb::Updater::KDEProjectMetadata>.
-#      Many other support functions will require this metadata be updated
-#      first. If metadata is *not* needed this will be undef.
-#      @modules - List of remaining expanded git <Modules>.
-#
-# Throws:
-#  Runtime - if the kde-projects database was required but couldn't be
-#  downloaded or read.
-#  Runtime - if the git-desired-protocol is unsupported.
-#  Runtime - if an "assumed" kde-projects module was not actually one.
-sub expandXMLModules
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my @modules = @_;
-    my $metadataModule;
-
-    # If we detect a KDE project we want to also pull in a "build support"
-    # repository that will contain metadata such as which modules depend on
-    # which other ones, what modules shouldn't be built, etc.
-    my $repositoryMetadataRequired = 0;
-
-    # Using a sub allows me to use the 'return' keyword.
-    my $filter = sub {
-        my $moduleSet = shift;
-
-        # Only attempt to expand out XML-based modules.
-        return $moduleSet if !$moduleSet->scm()->isa('ksb::Updater::KDEProject');
-
-        my $databaseFile = ensure_projects_xml_present($ctx) or
-            croak_runtime("kde-projects repository information could not be downloaded: $!");
-
-        # At this point we know we'll need the kde-build-metadata module, force
-        # it in by setting a flag to be used by the higher-level subroutine.
-        $repositoryMetadataRequired = 1;
-
-        my $name = $moduleSet->getOption('#xml-search-path') ||
-                   $moduleSet->name(); # Best-guess fallback
-        my $srcdir = $ctx->getSourceDir();
-
-        my $xmlReader = ksb::KDEXMLReader->new($databaseFile);
-        my $protocol = $ctx->getOption('git-desired-protocol') || 'git';
-
-        if (!list_has(['git', 'http'], $protocol)) {
-            error (" b[y[*] Invalid b[git-desired-protocol] $protocol");
-            error (" b[y[*] Try setting this option to 'git' if you're not using a proxy");
-            croak_runtime ("Invalid git-desired-protocol: $protocol");
-        }
-
-        my @allXmlResults = $xmlReader->getModulesForProject($name, $protocol);
-
-        # It's possible to match modules which are marked as inactive on
-        # projects.kde.org, elide those.
-        my @xmlResults = grep { $_->{'active'} ne 'false' } (@allXmlResults);
-
-        # Bug 307694
-        my $moduleSetBranch = $moduleSet->getOption('branch');
-        if ($moduleSetBranch) {
-            debug ("Filtering kde-projects modules that don't have a $moduleSetBranch branch");
-            @xmlResults = grep {
-                list_has($_->{'branches'}, $moduleSetBranch)
-            } (@xmlResults);
-        }
-
-        if (!@xmlResults) {
-            # If this was a "guessed XML module" then we guessed wrong, and it's really
-            # a misspelling.
-            if ($moduleSet->getOption('#guessed-kde-project')) {
-                croak_runtime("Unknown module or module-set: $name");
-            }
-
-            warning (" y[b[*] Module y[$name] is apparently XML-based, but contains no\n" .
-                     "active modules to build!");
-            my $count = scalar @allXmlResults;
-            if ($count > 0) {
-                warning ("\tAlthough no active modules are available, there were\n" .
-                         "\t$count inactive modules. Perhaps the git modules are not ready?");
-            }
-        }
-
-        # Setup module options. This alters the results in @xmlResults.
-        foreach (@xmlResults) {
-            my $result = $_;
-            my $repo = $result->{'repo'};
-
-            # Prefer kde: alias to normal clone URL.
-            $repo =~ s(^git://anongit\.kde\.org/)(kde:);
-
-            # This alters the item we were looking at.
-            $_ = ksb::Module->new($ctx, $result->{'name'});
-            $_->setScmType('git');
-            $_->cloneOptionsFrom($moduleSet);
-            $_->phases()->phases($moduleSet->phases()->phases()); # Copy phases over
-            $_->setModuleSet($moduleSet->moduleSet());
-            $_->setOption('repository', $repo);
-            $_->setOption('#xml-full-path', $result->{'fullName'});
-            $_->setOption('#branch:stable', $result->{'branch:stable'});
-
-            my $tarball = $result->{'tarball'};
-            $_->setOption('#snapshot-tarball', $tarball) if $tarball;
-        };
-
-        return @xmlResults;
-    };
-
-    # eval in case the XML processor throws an exception.
-    undef $@;
-    my @results = eval { map { &$filter($_) } (@modules) };
-
-    if ($@) {
-        die $@ if ref $@; # Forward exception objects up
-        croak_runtime("The XML for the KDE Project database could not be understood: $@");
-    }
-    elsif ($repositoryMetadataRequired) {
-        $metadataModule = ksb::Module->new($ctx, 'kde-build-metadata');
-
-        # Hardcode the results instead of expanding out the project info
-        $metadataModule->setOption('repository', 'kde:kde-build-metadata');
-        $metadataModule->setOption('#xml-full-path', 'kde-build-metadata');
-        $metadataModule->setOption('#branch:stable', 'master');
-        $metadataModule->setScmType('metadata');
-        $metadataModule->setOption('disable-snapshots', 1);
-        $metadataModule->setOption('branch', 'master');
-
-        # Ensure we only ever try to update source, not build.
-        $metadataModule->phases()->phases('update');
-    }
-
-    return ($metadataModule, @results);
+    return $moduleSet;
 }
 
 # Function: expandModuleSets
 #
-# Replaces <Modules> in an input list from the command line that name
+# Replaces <ModuleSets> in an input list from the command line that name
 # module-sets listed in the configuration file, and returns the new list.
 #
-# A <Module> is assumed to name a module-set if all of the following are true.
-# * No options were read in for it.
-# * The module isn't already forced to be a kde-project module (as can happen
-# on the command line).
-# * <Modules> from the rcFileModules were included in a module-set of the same
-# name.
+# <Modules> are ignored if found in the input list, and transferred to the
+# output list in the same relative order.
 #
-# Any <Module> that meets these conditions is replaced by all of the matching
-# module-set <Modules> in the return list.
-#
-# Any <Module> that doesn't match a known rcFile module *or* module-set is
-# assumed to be a kde-project module and altered appropriately.
+# This function may result in kde-projects metadata being downloaded and
+# processed.
 #
 # Parameters:
-#  $@modules - listref of <Modules> to be expanded.
-#  $@rcFileModules - listref of <Modules> that list modules read in from the
-#    configuration file.
+#  $ctx - <BuildContext> in use for this script execution.
+#  @modules - list of <Modules>, <ModuleSets> to be expanded.
 #
 # Returns:
+#  $metadataModule - a <Module> to use if needed for kde-projects support, can be
+#     undef if not actually required this run.
 #  @modules - List of <Modules> with any module-sets expanded into <Modules>.
-#  No kde-project module expansion occurs.
 sub expandModuleSets
 {
-    my ($buildModuleList, $knownModules) = @_;
+    my ($ctx, @buildModuleList) = @_;
+    my $metadataModule;
+
+    if (grep { $_->isa('ksb::ModuleSet::KDEProjects') } @buildModuleList) {
+        debug ("Introducing metadata module into the build");
+        $metadataModule = ksb::ModuleSet::KDEProjects::getMetadataModule($ctx);
+        assert_isa($metadataModule, 'ksb::Module');
+    }
 
     my $filter = sub {
-        my $setName = $_->name();
+        my $moduleOrSetName = $_->name();
 
-        # If the module name matches a read-in ksb::Module, then it's not a set.
-        return $_ if grep { $setName eq $_->name() } (@$knownModules);
-
-        # XML module can only happen if forced by user on command line, allow
-        # it.
-        return $_ if $_->scmType() eq 'proj';
-
-        # Likewise with l10n module.
-        return $_ if $_->scmType() eq 'l10n';
-
-        # Otherwise assume it's a set, replace this with all sub-modules in that
-        # module set.
-        my @modulesInSet = grep
-            { ($_->moduleSet() // '') eq $setName }
-        (@$knownModules);
-
-        if (!@modulesInSet) {
-            # If we make it to this point the module is either completely
-            # unknown, or possibly part of a kde-projects module-set (it can't
-            # be part of a regular module-set as those modules are already in
-            # @knownModules). To allow things to continue we will
-            # optimistically mark the module as a kde-projects module and then
-            # cross our fingers...
-            $_->setScmType('proj');
-            $_->setOption('#guessed-kde-project', 1);
-            push @modulesInSet, $_;
+        # 'proj' module types can only come from command line -- we assume the
+        # user is trying to build a module from the kde-projects repo without
+        # first putting into rc-file.
+        if ($_->isa('ksb::Module') && $_->scmType() ne 'proj') {
+            return $_;
         }
 
-        return @modulesInSet;
+        if ($_->isa('ksb::ModuleSet')) {
+            return $_->convertToModules($ctx);
+        }
+
+        my $moduleSet = ksb::ModuleSet::KDEProjects->new($ctx, '<command line>');
+        $moduleSet->setModulesToFind($_->name());
+        $moduleSet->{options}->{'#guessed-kde-project'} = 1;
+
+        debug ("--- Trying to find a home for $_");
+        return $moduleSet->convertToModules($ctx);
     };
 
-    return map { &$filter } (@$buildModuleList);
+    return ($metadataModule, map { &$filter } (@buildModuleList));
 }
 
 # Function: read_options
@@ -1085,9 +805,9 @@ sub expandModuleSets
 #  methods (e.g. <IO::Handle> subclass).
 #
 # Returns:
-#  @module - List of <Modules> defined in the configuration file. Note that
-#  although any module-sets found will have been expanded out, no kde-projects
-#  modules will have been further expanded out.
+#  @module - Heterogenous list of <Modules> and <ModuleSets> defined in the
+#  configuration file. No module sets will have been expanded out (either
+#  kde-projects or standard sets).
 #
 # Throws:
 #  - Config exceptions.
@@ -1155,7 +875,7 @@ sub read_options
             if (my @modules = grep { $_->name() eq $modulename } @module_list) {
                 # We check for definedness as a module-set can exist but be
                 # unnamed.
-                if (!defined $modules[0]->moduleSet()) {
+                if ($modules[0]->moduleSet()->isa('ksb::ModuleSet::Null')) {
                     warning ("Multiple module declarations for $modules[0]");
                 }
 
@@ -1692,7 +1412,14 @@ DONE
         $ctx->setOption('#async', 0);
     }
 
-    return map { ksb::Module->new($ctx, $_) } (@enteredModules);
+    return map {
+        my $module = ksb::Module->new($ctx, $_);
+        # Following will be replaced by option modules if present in rc-file.
+        $module->setScmType('proj');
+        $module->setOption('#guessed-kde-project', 1);
+        $module->phases()->phases($phases->phases());
+        $module;
+    } (@enteredModules);
 }
 
 sub updateModulePhases
@@ -2269,8 +1996,8 @@ EOF
 
     while (my $module = shift @modules)
     {
-        my $moduleSet = $module->moduleSet() // '';
         my $moduleName = $module->name();
+        my $moduleSet = $module->moduleSet()->name();
         my $modOutput = "$module";
 
         if (debugging(ksb::Debug::WHISPER)) {
@@ -2514,12 +2241,12 @@ sub handle_uninstall
 #
 # Parameters:
 #  ctx - <BuildContext> in use.
-#  @modules - List of <Modules> to apply filters on.
+#  @modules - List of <Modules> or <ModuleSets> to apply filters on.
 #
 # Returns:
-#  list of <Modules> with any inclusion/exclusion filters applied. Do not
-#  assume this list will be a strict subset of the input list, however the
-#  order will not change amongst the input modules.
+#  list of <Modules> or <ModuleSets> with any inclusion/exclusion filters
+#  applied. Do not assume this list will be a strict subset of the input list,
+#  however the order will not change amongst the input modules.
 sub applyModuleFilters
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
@@ -2570,19 +2297,11 @@ EOF
 
         for (my $i = 0; $i < scalar @moduleList; $i++) {
             my $module = $moduleList[$i];
-            my $moduleSet = $module->moduleSet() // '';
 
-            # If a match was found we can only still be here if looking at
-            # --resume-after. If we matched on module set name then eliminate
-            # all of the module set before stopping.
-            if ($found && ($moduleSet ne $resumePoint)) {
-                $startIndex = $i;
-                last;
-            }
-
-            $found = $module->{'name'} eq $resumePoint || $moduleSet eq $resumePoint;
-            if ($found && $filterInclusive) {
-                $startIndex = $i;
+            $found = $module->name() eq $resumePoint;
+            if ($found) {
+                $startIndex = $filterInclusive ? $i : $i + 1;
+                $startIndex = min($startIndex, scalar @moduleList - 1);
                 last;
             }
         }
@@ -2605,9 +2324,8 @@ EOF
 
         for (my $i = $startIndex; $i < scalar @moduleList; $i++) {
             my $module = $moduleList[$i];
-            my $moduleSet = $module->moduleSet() // '';
 
-            $found = $module->{'name'} eq $stopPoint || $moduleSet eq $stopPoint;
+            $found = $module->name() eq $stopPoint;
             if ($found) {
                 $stopIndex = $i - ($filterInclusive ? 1 : 0);
                 last;
@@ -2634,8 +2352,9 @@ EOF
 #
 # Parameters:
 #  @$modules - Listref of modules to potentially splice in replacements of.
-#  @$optionModules - Listref to list of the "option" modules, which should be
-#  of the same level of kde-project expansion as @$modules.
+#  @$optionModules - Listref to list of the "option" modules (and module-sets),
+#  which should be of the same level of kde-project expansion as @$modules. A
+#  module-set might be spliced in to replace a named module.
 #
 # Returns:
 #  Nothing.
@@ -2645,6 +2364,7 @@ sub spliceOptionModules
 
     for (my $i = 0; $i < scalar @{$modulesRef}; $i++) {
         my $module = ${$modulesRef}[$i];
+
         my ($optionModule) = grep {
             $_->name() eq $module->name()
         } @{$optionModulesRef};
@@ -2954,8 +2674,11 @@ eval
     $ctx = ksb::BuildContext->new();
     my $pendingOptions = { };
 
+    debug ("+++ Reached pre-init phase");
+
     # Process --help, --install, etc. first.
     my @modules = process_arguments($ctx, $pendingOptions, @ARGV);
+    debug ("--- Arguments read: ", scalar @modules, " command line modules");
 
     # Output time once we know if pretending or not.
     my $time = localtime;
@@ -2974,14 +2697,18 @@ eval
     my $fh = $ctx->loadRcFile();
 
     # If we're still here, read the options
-    my @optionModules = read_options($ctx, $fh);
+    my @optionModulesAndSets = read_options($ctx, $fh);
     close $fh;
+    debug ("--- Config file read: ", scalar @optionModulesAndSets, " modules/module sets.");
+    debug ("   --- " , (scalar grep { $_->isa('ksb::ModuleSet') } @optionModulesAndSets) , " are module sets.");
 
     # Modify the options read from the rc-file to have the pending changes from
     # the command line.
     foreach my $pendingModule (keys %{$pendingOptions}) {
         my $options = ${$pendingOptions}{$pendingModule};
-        my ($module) = grep { $pendingModule eq $_->name() } (@optionModules);
+        my ($module) = grep {
+            $_->isa('ksb::Module') && $pendingModule eq $_->name()
+        } (@optionModulesAndSets);
 
         if (!$module) {
             warning ("Tried to set options for unknown module b[y[$pendingModule]");
@@ -2989,7 +2716,6 @@ eval
         }
 
         while (my ($key, $value) = each %{$options}) {
-            debug ("Setting pending option $key to $value for $pendingModule");
             $module->setOption($key, $value);
         }
     }
@@ -3010,62 +2736,73 @@ eval
 
     # Allow named module-sets to be given on the command line.
     if ($commandLineModules) {
-        # Copy ksb::Module objects from the ones created by read_options
-        # since their module-type will actually be set.
-        spliceOptionModules(\@modules, \@optionModules);
+        # Copy ksb::Module and ksb::ModuleSet objects from the ones created by
+        # read_options since their module-type will actually be set.
+        spliceOptionModules(\@modules, \@optionModulesAndSets);
+        debug ("--- spliced rc-file modules/sets into command line modules");
+        debug ("   --- now ", scalar @modules, " modules present");
+
+        # After this splicing, the only bare ksb::Modules with a 'proj'
+        # scm type should be the ones from the command line that we got from
+        # process_arguments.
 
         # Modify l10n module inline, if present.
         for (@modules) {
-            if ($_->name() eq 'l10n') { $_->setScmType('l10n') }
+            if ($_->name() eq 'l10n' && $_->isa('ksb::Module')) {
+                $_->setScmType('l10n')
+            }
         }
 
         # Filter --resume-foo first so entire module-sets can be skipped.
         # Wrap in eval to catch runtime errors
         eval { @modules = applyModuleFilters($ctx, @modules); };
-        @modules = expandModuleSets(\@modules, \@optionModules);
+
+        debug ("--- Applied command-line --resume-foo pass, ", scalar @modules, " remain.");
+        debug ("   --- " , (scalar grep { $_->isa("ksb::ModuleSet") } @modules) , " are module sets.");
+
+        ($metadataModule, @modules) = expandModuleSets($ctx, @modules);
+
+        debug ("--- Expanded command-line module sets into ", scalar @modules, " modules.");
+        debug ("   --- Metadata module needed? ", $metadataModule ? "Yes" : "No");
+
+        # If we have any 'guessed' modules they came from the command line. We
+        # want them to use ksb::Modules that came from read_options() instead
+        # of ones from process_arguments(), if any are available. But we don't
+        # expand module-sets from read_options unconditionally, only ones where
+        # the name matched between the command line and rc-file, so the
+        # previous spliceOptionModules might not have found them. (e.g. if you
+        # named a module on the command line that isn't named directly in the
+        # rc file but would eventually be found implicitly). To make this work
+        # we have to expand out our rc-file Modules and try splicing again.
+        if (first { $_->getOption('#guessed-kde-project', 'module') } @modules) {
+            my (undef, @expandedOptionModules) = expandModuleSets($ctx, @optionModulesAndSets);
+            spliceOptionModules(\@modules, \@expandedOptionModules);
+
+            debug ("--- re-spliced rc-file modules/sets into command line modules");
+            debug ("   --- now ", scalar @modules, " modules present");
+        }
+
+        # At this point @modules has no more module sets, kde-projects or
+        # otherwise.
         ksb::Module->setModuleSource('cmdline');
     }
     else {
-        @modules = @optionModules;
+        # Build everything in the rc-file, in the order specified.
+        ($metadataModule, @modules) = expandModuleSets($ctx, @optionModulesAndSets);
+
+        debug ("--- Expanded rc-file module sets into ", scalar @modules, " modules.");
+        debug ("   --- Metadata module needed? ", $metadataModule ? "Yes" : "No");
 
         if ($ctx->getOption('kde-languages')) {
             my $l10nModule = ksb::Module->new($ctx, 'l10n');
             $l10nModule->setScmType('l10n');
             $l10nModule->setBuildSystem($l10nModule->scm());
 
+            debug ("--- Added l10n module to end of build");
             push @modules, $l10nModule;
         }
 
         ksb::Module->setModuleSource('config');
-    }
-
-    # Must be done before filtering so that we can filter under module-sets.
-    ($metadataModule, @modules) = expandXMLModules($ctx, @modules);
-
-    # Fixup any "guessed" kde-projects modules. If we have a guessed module we
-    # know that a kde-project expansion pass was actually performed, but we
-    # don't know that the config-file option-module was found since we never
-    # ran a kde-project expansion pass on the optionModules (doing this
-    # unconditionally would be waste for runs where we know exactly what repos
-    # to build, although we're quickly approaching the day where that won't
-    # matter).
-    if (my @guessed = grep { $_->getOption('#guessed-kde-project') } @modules) {
-        whisper (" * Performing second-level kde-project expansion for cmdline modules");
-        my $newMetadata;
-        ($newMetadata, @optionModules) = expandXMLModules($ctx, @optionModules);
-        spliceOptionModules(\@guessed, \@optionModules);
-
-        # Metadata module if present should be the same, just pick either.
-        $metadataModule = $metadataModule // $newMetadata;
-
-        # Now that we have fixed the @guessed entries, we still have to merge
-        # those back in.
-        my $i = 0;
-        for my $fixedModule (@guessed) {
-            $i = first { $modules[$_]->name() eq $fixedModule->name() } ($i .. $#modules);
-            splice (@modules, $i, 1, $fixedModule) if defined $i;
-            $i = 0 if not defined $i; # Reset when no match found
-        }
     }
 
     # Filter --resume-foo options. This might be a second pass, but that should
@@ -3073,20 +2810,29 @@ eval
     # event.
     @modules = applyModuleFilters($ctx, @modules);
 
+    debug ("--- Applied all-modules --resume-foo pass, ", scalar @modules, " remain.");
+    debug ("   --- ", (scalar grep { $_->isa("ksb::ModuleSet") } @modules), " are module sets (should be 0!).");
+
     # Apply kde-languages, by appending needed l10n modules to the end of the
     # build.
     @modules = expandl10nModules($ctx, @modules);
 
+    debug ("--- Expanded l10n modules. ", scalar @modules, " remain.");
+
     # Remove ignored modules and/or module-sets
     @modules = grep {
-        not exists $ignore_list{$_->name()} && not exists $ignore_list{$_->moduleSet()}
+        not exists $ignore_list{$_->name()} && not exists $ignore_list{$_->moduleSet()->name()}
     } (@modules);
+
+    debug ("--- Handled ignore lists. ", scalar @modules, " remain.");
 
     # If modules were on the command line then they are effectively forced to
     # process unless overridden by command line options as well. If phases
     # *were* overridden on the command line, then no update pass is required
     # (all modules already have correct phases)
     @modules = updateModulePhases(@modules) unless $commandLineModules;
+
+    debug ("--- Updated module phases. ", scalar @modules, " remain.");
 
     if (exists $ENV{KDESRC_BUILD_DUMP_CONTEXT}) {
         local $Data::Dumper::Indent = 1;
@@ -3111,6 +2857,8 @@ eval
 
     # execution phase {{{
     $ctx->loadPersistentOptions();
+
+    debug ("+++ Reached execution phase");
 
     # If we have kde-build-metadata we must process it first, ASAP.
     if ($metadataModule) {

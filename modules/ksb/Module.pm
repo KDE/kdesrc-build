@@ -32,6 +32,8 @@ use ksb::BuildSystem::Qt4;
 use ksb::BuildSystem::KDE4;
 use ksb::BuildSystem::CMakeBootstrap;
 
+use ksb::ModuleSet::Null;
+
 use Storable 'dclone';
 use Carp 'confess';
 use Scalar::Util 'blessed';
@@ -93,8 +95,8 @@ sub phases
 sub moduleSet
 {
     my ($self) = @_;
-    return $self->{'module-set'} if exists $self->{'module-set'};
-    return '';
+    $self->{'module-set'} //= ksb::ModuleSet::Null->new();
+    return $self->{'module-set'};
 }
 
 sub setModuleSet
