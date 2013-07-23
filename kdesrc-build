@@ -742,6 +742,12 @@ sub parse_moduleset
             my @modulesToIgnore = split(' ', $value);
             s,$pathLeadersRE,, foreach @modulesToIgnore;
             @ignoredModules{@modulesToIgnore} = (1) x @modulesToIgnore;
+
+            if (not @modulesToIgnore) {
+                error ("No modules were selected for the current module-set");
+                error ("in the y[ignore-modules] on line $. of $rcfile");
+                die make_exception('Config', 'Invalid ignore-modules');
+            }
         }
         elsif ($option eq 'set-env') {
             Module::processSetEnvOption(\%optionSet, $option, $value);
@@ -751,9 +757,23 @@ sub parse_moduleset
         }
     }
 
-    # Check before we start looping whether the user did something silly.
-    if (exists $optionSet{'repository'} &&
-        ($optionSet{'repository'} ne KDE_PROJECT_ID) &&
+    # Check before we use this module set whether the user did something silly.
+    my $repoSet = $ctx->getOption('git-repository-base');
+    if (!exists $optionSet{'repository'}) {
+        error (<<EOF);
+
+There was no repository selected for the module-set declared on line $startLine
+of $rcfile.
+
+A repository is needed to determine where to download the source code from.
+
+Most will want to use the b[g[kde-projects] repository. See also
+http://kdesrc-build.kde.org/documentation/kde-modules-and-selection.html#module-sets
+EOF
+        die make_exception('Config', 'Missing repository option');
+    }
+
+    if (($optionSet{'repository'} ne KDE_PROJECT_ID) &&
         not exists $repoSet->{$optionSet{'repository'}})
     {
         my $projectID = KDE_PROJECT_ID;
