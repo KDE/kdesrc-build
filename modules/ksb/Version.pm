@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use v5.10;
 
-our $VERSION = '1.16-pre1';
+our $VERSION = '1.16-pre2';
 
 our $SCRIPT_VERSION = $VERSION;
 
