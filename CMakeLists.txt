@@ -31,6 +31,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/Util.pm
         modules/ksb/Version.pm
         modules/ksb/l10nSystem.pm
+        modules/ksb/ModuleSet.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb)
 
     install(FILES
@@ -40,6 +41,11 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/BuildSystem/QMake.pm
         modules/ksb/BuildSystem/Qt4.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/BuildSystem)
+
+    install(FILES
+        modules/ksb/ModuleSet/KDEProjects.pm
+        modules/ksb/ModuleSet/Null.pm
+    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/ModuleSet)
 
     install(FILES
         modules/ksb/IPC/Null.pm
