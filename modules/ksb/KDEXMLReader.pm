@@ -51,7 +51,6 @@ my @modules;               # Result list
 my $curRepository;         # ref to hash table when we are in a repo
 my $trackingReposFlag = 0; # >0 if we should be tracking for repo elements.
 my $inRepo = 0;            # >0 if we are actually in a repo element.
-my $repoFound = 0;         # If we've already found the repo we need.
 my $searchProject = '';    # Project we're looking for.
 my $desiredProtocol = '';  # URL protocol desired (normally 'git')
 
@@ -113,44 +112,30 @@ sub xmlTagStart
     if (exists $xmlGroupingIds{$element}) {
         push @nameStack, $attrs{'identifier'};
 
-        # If we're not tracking something, see if we should be. The logic is
-        # fairly long-winded but essentially just breaks searchProject into
-        # its components and compares it item-for-item to the end of our name
-        # stack.
+        # If we're not tracking something, see if we should be.
         if ($trackingReposFlag <= 0) {
-            my @searchParts = split(m{/}, $searchProject);
-            if (scalar @nameStack >= scalar @searchParts) {
-                my @candidateArray = @nameStack[-(scalar @searchParts)..-1];
-                die "candidate vs. search array mismatch" if $#candidateArray != $#searchParts;
-
-                $trackingReposFlag = 1;
-                for (my $i = 0; $i < scalar @searchParts; ++$i) {
-                    if (($searchParts[$i] ne $candidateArray[$i]) &&
-                        ($searchParts[$i] ne '*'))
-                    {
-                        $trackingReposFlag = 0;
-                        last;
-                    }
-                }
-
-                # Reset our found flag if we're looking for another repo
-                $repoFound = 0 if $trackingReposFlag > 0;
-            }
+            $trackingReposFlag =
+                _projectPathMatchesWildcardSearch(
+                    join('/', @nameStack), $searchProject
+                )
+                ? 1
+                : 0;
         }
     }
 
-    # Checking that we haven't already found a repo helps us out in
-    # situations where a supermodule has its own repo, -OR- you could build
-    # it in submodules. We won't typically want to do both, so prefer
-    # supermodules this way. (e.g. Calligra and its Krita submodules)
-    if ($element eq 'repo' &&     # Found a repo
-        $trackingReposFlag > 0 && # When we were looking for one
-        ($trackingReposFlag <= $repoFound || $repoFound == 0))
-            # (That isn't a direct child of an existing repo)
+    # This code used to check for direct descendants and filter them out.
+    # Now there are better ways (kde-build-metadata/build-script-ignore and
+    # the user can customize using ignore-modules), and this filter made it
+    # more difficult to handle kde/kdelibs{,/nepomuk-{core,widgets}}, so leave
+    # it out for now. See also bug 321667.
+    if ($element eq 'repo' &&   # Found a repo
+        $trackingReposFlag > 0) # When we were looking for one
     {
+        # This flag is cleared by the <repo>-end handler, so this *should* be
+        # logically impossible.
         die "We are already tracking a repository" if $inRepo > 0;
+
         $inRepo = 1;
-        $repoFound = $trackingReposFlag;
         $curRepository = {
             'fullName' => join('/', @nameStack),
             'repo' => '',
@@ -238,6 +223,51 @@ sub xmlCharData
     if ($curRepository && defined $curRepository->{'needs'}) {
         $curRepository->{$curRepository->{'needs'}} .= $utf8Data;
     }
+}
+
+# Utility subroutine, returns true if the given kde-project full path (e.g.
+# kde/kdelibs/nepomuk-core) matches the given search item.
+#
+# The search item itself is based on path-components. Each path component in
+# the search item must be present in the equivalent path component in the
+# module's project path for a match. A '*' in a path component position for the
+# search item matches any project path component.
+#
+# Finally, the search is pinned to search for a common suffix. E.g. a search
+# item of 'kdelibs' would match a project path of 'kde/kdelibs' but not
+# 'kde/kdelibs/nepomuk-core'. However 'kdelibs/*' would match
+# 'kde/kdelibs/nepomuk-core'.
+#
+# First parameter is the full project path from the kde-projects database.
+# Second parameter is the search item.
+# Returns true if they match, false otherwise.
+sub _projectPathMatchesWildcardSearch
+{
+    my ($projectPath, $searchItem) = @_;
+
+    my @searchParts = split(m{/}, $searchItem);
+    my @nameStack   = split(m{/}, $projectPath);
+
+    if (scalar @nameStack >= scalar @searchParts) {
+        # This logic is fairly long-winded but essentially just breaks
+        # searchItem into its components and compares it item-for-item to
+        # the end of our name stack.
+        my @candidateArray = @nameStack[-(scalar @searchParts)..-1];
+        die "candidate vs. search array mismatch" if $#candidateArray != $#searchParts;
+
+        for (my $i = 0; $i < scalar @searchParts; ++$i) {
+            if (($searchParts[$i] ne $candidateArray[$i]) &&
+                ($searchParts[$i] ne '*'))
+            {
+                return;
+            }
+        }
+    }
+    else {
+        return;
+    }
+
+    return 1;
 }
 
 1;
