@@ -959,7 +959,7 @@ sub destDir
 {
     my $self = assert_isa(shift, 'ksb::Module');
     my $destDir = $self->getOption('dest-dir');
-    my $basePath = shift // $self->getOption('#xml-full-path');
+    my $basePath = shift // $self->getOption('#xml-full-path', 'module');
     $basePath ||= $self->name(); # Default if not provided in XML
 
     $destDir =~ s/(\${MODULE})|(\$MODULE\b)/$basePath/g;

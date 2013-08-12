@@ -308,7 +308,7 @@ sub _visitModuleAndDependencies
     my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
     my $modulesFromNameRef  = $optionsRef->{modulesFromName};
 
-    my $item = $module->getOption('#xml-full-path');
+    my $item = ($module->scmType eq 'proj' && $module->fullProjectPath());
 
     if (!$item) {
         push @{$properBuildOrderRef}, $module;
@@ -397,7 +397,9 @@ sub resolveDependencies
 
         # will map names back to their Modules
         modulesFromName => {
-            map { $_->getOption('#xml-full-path') => $_ } @modules
+            map { $_->fullProjectPath() => $_ }
+            grep { $_->scmType() eq 'proj' }
+                @modules
         },
     };
 

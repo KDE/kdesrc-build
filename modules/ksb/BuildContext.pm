@@ -175,14 +175,16 @@ sub addModule
     if (list_has($self->{modules}, $module)) {
         debug("Skipping duplicate module ", $module->name());
     }
-    elsif (($path = $module->getOption('#xml-full-path')) &&
+    # TODO: Shouldn't this support all modules, not just 'proj' modules?
+    elsif ($module->scmType() eq 'proj' &&
+           ($path = $module->fullProjectPath()) &&
         # See if the name matches any given in the ignore list.
            any(sub { $path =~ /(^|\/)$_($|\/)/ }, $self->{ignore_list}))
     {
         debug("Skipping ignored module $module");
     }
     else {
-        debug("Adding ", $module->name(), " to module list");
+        debug("Adding $module to module list");
         push @{$self->{modules}}, $module;
     }
 }
