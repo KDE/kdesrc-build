@@ -380,8 +380,6 @@ sub updateExistingClone
 
 # Returns the user-selected branch for the given module, or 'master' if no
 # branch was selected.
-#
-# First parameter is the module name.
 sub getBranch
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');

@@ -934,6 +934,19 @@ sub fullpath
     return $pathinfo{'fullpath'};
 }
 
+# Returns the "full kde-projects path" for the module. As should be obvious by
+# the description, this only works for modules with an scm type that is a
+# Updater::KDEProject (or its subclasses).
+sub fullProjectPath
+{
+    my $self = shift;
+    my $path = $self->getOption('#xml-full-path', 'module') ||
+        croak_internal("Tried to ask for full path of a module $_ that doesn't have one!");
+
+    return $path;
+}
+
+
 # Subroutine to return the name of the destination directory for the
 # checkout and build routines.  Based on the dest-dir option.  The return
 # value will be relative to the src/build dir.  The user may use the

@@ -22,6 +22,7 @@ use ksb::Debug;
 use ksb::Util;
 use ksb::PhaseList;
 use ksb::Module;
+use ksb::Module::BranchGroupResolver;
 use ksb::Updater::KDEProjectMetadata;
 use ksb::Version qw(scriptVersion);
 use File::Temp qw(tempfile);
@@ -44,6 +45,7 @@ my %defaultGlobalOptions = (
     "async"                => 1,
     "binpath"              => '',
     "branch"               => "",
+    "branch-group"         => "", # Overrides branch, uses JSON data.
     "build-dir"            => "build",
     "build-system-only"    => "",
     "build-when-unchanged" => 1, # Safe default
@@ -137,6 +139,7 @@ sub new
         ignore_list => [ ], # List of XML paths to ignore completely.
         kde_projects_filehandle => undef, # Filehandle to read database from.
         kde_projects_metadata   => undef, # See ksb::Module::KDEProjects
+        logical_module_resolver => undef, # For branch-group option.
     );
 
     # Merge all new options into our self-hash.
@@ -941,6 +944,28 @@ sub setKDEProjectMetadataModule
 
     $self->{kde_projects_metadata} = $metadata;
     return;
+}
+
+# Returns a ksb::Module::BranchGroupResolver which can be used to efficiently
+# determine a git branch to use for a given kde-projects module (when the
+# branch-group option is in use), as specified at
+# http://community.kde.org/Infrastructure/Project_Metadata.
+sub moduleBranchGroupResolver
+{
+    my $self = shift;
+
+    if (!$self->{logical_module_resolver}) {
+        my $metadataModule = $self->getKDEProjectMetadataModule();
+
+        croak_internal("Tried to use branch-group, but needed data wasn't loaded!")
+            unless $metadataModule;
+
+        my $resolver = ksb::Module::BranchGroupResolver->new(
+            $metadataModule->scm()->logicalModuleGroups());
+        $self->{logical_module_resolver} = $resolver;
+    }
+
+    return $self->{logical_module_resolver};
 }
 
 1;

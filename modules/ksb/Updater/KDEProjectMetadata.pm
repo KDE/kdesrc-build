@@ -7,13 +7,15 @@ use strict;
 use warnings;
 use v5.10;
 
-our $VERSION = '0.10';
+our $VERSION = '0.20';
 
 use ksb::Util;
 use ksb::Debug;
 use ksb::Updater::KDEProject;
 
 our @ISA = qw(ksb::Updater::KDEProject);
+
+my $haveJson = eval { require JSON; JSON->import(); 1; };
 
 sub name
 {
@@ -39,6 +41,28 @@ sub ignoredModules
                         (<$fh>);
 
     return @ignoreModules;
+}
+
+# If JSON support is present, and the metadata has already been downloaded
+# (e.g. with ->updateInternal), returns a hashref to the logical module group
+# data contained within the kde-build-metadata, decoded from its JSON format.
+# See http://community.kde.org/Infrastructure/Project_Metadata
+sub logicalModuleGroups
+{
+    my $self = shift;
+    my $path = $self->module()->fullpath('source') . "/logical-module-structure";
+
+    croak_runtime("Logical module groups require the Perl JSON module")
+        unless $haveJson;
+
+    my $fh = pretend_open($path) or
+        croak_internal("Unable to read logical module structure: $!");
+
+    # The 'local $/' disables line-by-line reading; slurps the whole file
+    my $json_hashref = do { local $/; decode_json(<$fh>); };
+    close $fh;
+
+    return $json_hashref;
 }
 
 1;

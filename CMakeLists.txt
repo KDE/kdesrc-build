@@ -43,6 +43,10 @@ if (KDESRC_BUILD_INSTALL_MODULES)
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/BuildSystem)
 
     install(FILES
+        modules/ksb/Module/BranchGroupResolver.pm
+    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/Module)
+
+    install(FILES
         modules/ksb/ModuleSet/KDEProjects.pm
         modules/ksb/ModuleSet/Null.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/ModuleSet)
