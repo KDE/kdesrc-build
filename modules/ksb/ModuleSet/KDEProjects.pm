@@ -160,6 +160,7 @@ sub _expandModuleCandidates
         $newModule->setOption('repository', $repo);
         $newModule->setOption('#xml-full-path', $result->{'fullName'});
         $newModule->setOption('#branch:stable', $result->{'branch:stable'});
+        $newModule->setScmType('proj');
 
         my $tarball = $result->{'tarball'};
         $newModule->setOption('#snapshot-tarball', $tarball) if $tarball;
