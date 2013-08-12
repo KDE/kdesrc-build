@@ -213,7 +213,7 @@ sub convertToModules
     }
 
     if (not scalar @moduleList) {
-        warning ("No modules were defined for the module-set $self->name()");
+        warning ("No modules were defined for the module-set " . $self->name());
         warning ("You should use the g[b[use-modules] option to make the module-set useful.");
     }
 
