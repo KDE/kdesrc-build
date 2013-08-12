@@ -758,13 +758,6 @@ EOF
 sub expandModuleSets
 {
     my ($ctx, @buildModuleList) = @_;
-    my $metadataModule;
-
-    if (grep { $_->isa('ksb::ModuleSet::KDEProjects') } @buildModuleList) {
-        debug ("Introducing metadata module into the build");
-        $metadataModule = ksb::ModuleSet::KDEProjects::getMetadataModule($ctx);
-        assert_isa($metadataModule, 'ksb::Module');
-    }
 
     my $filter = sub {
         my $moduleOrSetName = $_->name();
@@ -788,7 +781,16 @@ sub expandModuleSets
         return $moduleSet->convertToModules($ctx);
     };
 
-    return ($metadataModule, map { &$filter } (@buildModuleList));
+    my @moduleResults = map { &$filter } (@buildModuleList);
+    my $metadataModule;
+
+    if (first { $_->scmType() eq 'proj' } @moduleResults) {
+        debug ("Introducing metadata module into the build");
+        $metadataModule = ksb::ModuleSet::KDEProjects::getMetadataModule($ctx);
+        assert_isa($metadataModule, 'ksb::Module');
+    }
+
+    return ($metadataModule, @moduleResults);
 }
 
 # Function: read_options
