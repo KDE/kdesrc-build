@@ -24,6 +24,13 @@ sub new
     # Copy just the objects we want over.
     @{$self}{@keys} = @{$jsonData}{@keys};
 
+    # For layers and groups, remove anything beginning with a '_' as that is
+    # defined in the spec to be a comment of some sort.
+    @{$self->{layers}} = grep { /^[^_]/ } @{$self->{layers}};
+
+    # Deleting a hash slice. Sorry about the syntax.
+    delete @{$self->{groups}}{grep { /^_/ } keys %{$self->{groups}}};
+
     # Extract wildcarded groups separately as they are handled separately
     # later. Note that the specific catch-all group '*' is itself handled
     # as a special case in findModuleBranch. This is important so that
