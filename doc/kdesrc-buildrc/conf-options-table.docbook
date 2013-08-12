@@ -80,15 +80,76 @@ may use the tilde (~) for any paths you add using this option.</para>
 <entry>branch</entry>
 <entry>Module setting overrides global</entry>
 <entry><para>Set this option to checkout from a branch of &kde; instead of the
-default of <replaceable>trunk</replaceable>, where &kde; development occurs.
+default of <replaceable>master</replaceable> (for &git; modules) or
+<replaceable>trunk</replaceable> (for &subversion;), where &kde; development
+occurs.</para>
+
+<para>
 For instance, to checkout &kde; 4.6 branch, you would set this option to
 <replaceable>4.6</replaceable>.</para>
+
 <para>If &kdesrc-build; fails to properly download a branch with this option, you
 may have to manually specify the &url; to download from using the <link
 linkend="conf-module-base-path">module-base-path</link> or <link
 linkend="conf-override-url">override-url</link> options.</para>
-<para>Note: This option also works with source modules that use
-&git; instead of &subversion;.</para>
+
+<note><para>For most &kde; modules you probably wish to use the <link
+linkend="conf-branch-group">branch-group</link> option instead and use this
+option for case-by-case exceptions.</para></note>
+
+</entry>
+</row>
+
+<row id="conf-branch-group">
+<entry>branch-group</entry>
+<entry>Module setting overrides global</entry>
+<entry>
+
+<para>Set this option to a general group from which you want modules to be
+chosen.</para>
+
+<para>For supported &git; module types, &kdesrc-build; will determine the
+actual branch to use automatically based on rules encoded by the &kde;
+developers (these rules may be viewed in the
+<literal>kde-build-metadata</literal> source repository in your source
+directory). After a branch is determined that branch is used as if you had
+specified it yourself using the <link linkend="conf-branch">branch</link>
+option.
+</para>
+
+<para>This is useful if you're just trying to maintain up-to-date on some
+normal development track without having to pay attention to all the branch name
+changes.</para>
+
+<para>The current branch groups (as of 2013-08-11) are:</para>
+
+<itemizedlist>
+
+<listitem><para><literal>stable-qt4</literal>, for tracking bugfixes to the
+&Qt; 4-based &kde; libraries and applications.</para></listitem>
+
+<listitem><para><literal>latest-qt4</literal>, for tracking development and new
+features for the &Qt; 4-based &kde; libraries and
+applications.</para></listitem>
+
+<listitem><para><literal>kf5-qt5</literal>, for tracking
+<quote>bleeding-edge</quote> development for the upcoming &Qt; 5-based &kde;
+Frameworks 5, &plasma; Workspace 2, &etc;</para></listitem>
+
+</itemizedlist>
+
+<para>Note that if you <emphasis>do</emphasis> choose a
+<literal>branch</literal> yourself, that it will override this setting. The
+same is true of other specific branch selection options such as <link
+linkend="conf-tag">tag</link>.</para>
+
+<para>This option was added in &kdesrc-build; 1.16-pre2.</para>
+
+<note><para>This option only applies to <literal>kde-projects</literal> &git;
+modules (the common case).  See also <xref
+linkend="kde-projects-module-sets"/>.
+</para></note>
+
 </entry>
 </row>
 

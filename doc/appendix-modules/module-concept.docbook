@@ -59,4 +59,70 @@ in this case) empty if you like. This <option>repository</option> setting tells
 automatically include any Git modules that are grouped under the modules you
 list (in the KDE Project database).</para>
 </sect2>
+
+<sect2 id="module-branch-groups">
+<title>Module <quote>branch groups</quote></title>
+
+<para>Taking the concept of a <link linkend="module-groups">group of
+modules</link> further, the &kde; developers eventually found that
+synchronizing the names of the Git branches across a large number of
+repositories was getting difficult, especially during the development push for
+the new &kde; Frameworks for &Qt; 5.
+</para>
+
+<para>So the concept of <quote>branch groups</quote> was developed, to allow
+users and developers to select one of only a few groups, and allow the script
+to automatically select the appropriate Git branch.
+</para>
+
+<para>&kdesrc-build; supports this feature as of version 1.16-pre2, via the
+<link linkend="conf-branch-group">branch-group</link> option.
+</para>
+
+<example id="ex-branch-group">
+<title>Example of using branch-group</title>
+
+<para>branch-group can be used in the configuration file as follows:
+</para>
+
+<programlisting>
+global
+    # Select KDE Frameworks 5 and other Qt5-based apps
+    <option>branch-group</option> <replaceable>kf5-qt5</replaceable>
+
+    # Other global options here ...
+end global
+
+module-set
+    # branch-group only works for kde-projects
+    <option>repository</option> kde-projects
+
+    # branch-group is inherited from the one set globally, but could
+    # specified here.
+
+    <option>use-modules</option> <replaceable>kdelibs kde-workspace</replaceable>
+end module-set
+
+# kdelibs's branch will be "frameworks"
+# kde-workspace's branch will be "master" (as of August 2013)
+</programlisting>
+
+<para>In this case the same <literal>branch-group</literal> gives different
+branch names for each Git module.
+</para>
+</example>
+
+<para>This feature requires some data maintained by the &kde; developers in a Git
+repository named <literal>kde-build-metadata</literal>, however this module
+will be included automatically by &kdesrc-build; (though you may see it appear
+in the script output).
+</para>
+
+<tip><para>&kde; modules that do not have a set branch name for the branch
+group you choose will default to an appropriate branch name, as if you had not
+specified <literal>branch-group</literal> at all.
+</para></tip>
+
+</sect2>
+
 </sect1>
