@@ -22,6 +22,7 @@ use ksb::Debug;
 use ksb::Util;
 use ksb::PhaseList;
 use ksb::Module;
+use ksb::Updater::KDEProjectMetadata;
 use ksb::Version qw(scriptVersion);
 use File::Temp qw(tempfile);
 
@@ -135,6 +136,7 @@ sub new
         env     => { },
         ignore_list => [ ], # List of XML paths to ignore completely.
         kde_projects_filehandle => undef, # Filehandle to read database from.
+        kde_projects_metadata   => undef, # See ksb::Module::KDEProjects
     );
 
     # Merge all new options into our self-hash.
@@ -912,6 +914,33 @@ sub getKDEProjectMetadataFilehandle
 
     $self->{kde_projects_filehandle} = $fileHandleResult;
     return $fileHandleResult;
+}
+
+# Returns the ksb::Module (which has a 'metadata' scm type) that is used for
+# kde-project metadata, so that other modules that need it can call into it if
+# necessary.
+#
+# Also may return undef, if such metadata are unneeded, unavailable, or have
+# not yet been set by setKDEProjectMetadataModule (this method does not
+# automatically create the needed module).
+sub getKDEProjectMetadataModule
+{
+    my $self = shift;
+    return $self->{kde_projects_metadata};
+}
+
+# Sets the ksb::Module to be returned by getKDEProjectMetadataModule.  Should
+# be set as soon as it is confirmed which metadata module may be needed (and in
+# any event, before setModuleList is eventually called).
+sub setKDEProjectMetadataModule
+{
+    my $self = assert_isa(shift, 'ksb::BuildContext');
+    my $metadata = shift;
+
+    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
+
+    $self->{kde_projects_metadata} = $metadata;
+    return;
 }
 
 1;
