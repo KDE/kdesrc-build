@@ -280,6 +280,23 @@ sub _makeCatchAllRules
     }
 }
 
+# Function: getBranchOf
+#
+# Internal:
+#
+# This function extracts the branch of the given Module by calling its
+# scm object's branch-determining method. It also ensures that the branch
+# returned was really intended to be a branch (as opposed to a detached HEAD);
+# undef is returned when the desired commit is not a branch name, otherwise
+# the user-requested branch name is returned.
+sub _getBranchOf
+{
+    my $module = shift;
+    my ($branch, $type) = $module->scm()->_determinePreferredCheckoutSource($module);
+
+    return ($type eq 'branch' ? $branch : undef);
+}
+
 # Function: visitModuleAndDependencies
 #
 # Internal:
@@ -331,7 +348,11 @@ sub _visitModuleAndDependencies
 
     _makeCatchAllRules($optionsRef, $item);
 
-    my $branch = $module->scm()->getBranch();
+    # We still run dependency analysis even if the user has requested a
+    # specific tag, as it is possible that there are catch-all dependencies to
+    # handle. So turn an undefined branch into a set name.
+    my $branch = _getBranchOf($module) // '?';
+
     for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
         my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
         croak_internal("Invalid dependency item: $subItem") if !$subItemName;
@@ -346,8 +367,8 @@ sub _visitModuleAndDependencies
             next;
         }
 
-        if ($subItemBranch ne '*' && $subModule->scm()->getBranch() ne $subItemBranch) {
-            my $wrongBranch = $subModule->scm()->getBranch();
+        if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
+            my $wrongBranch = _getBranchOf($subModule);
             error (" r[b[*] $module:$branch needs $subItem, not $subItemName:$wrongBranch");
         }
 

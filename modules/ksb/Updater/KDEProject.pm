@@ -19,29 +19,19 @@ sub name
     return 'proj';
 }
 
-# Overrides ksb::Updater::Git's version to return the right branch based off
-# a logical branch-group, if one is set.
-sub getBranch
+# Resolves the requested branch-group for this Updater's module.
+# Returns the required branch name, or undef if none is set.
+sub _resolveBranchGroup
 {
-    my $self = shift;
+    my ($self, $branchGroup) = @_;
     my $module = $self->module();
-    my $branchGroup = $module->getOption('branch-group');
-
-    return $self->SUPER::getBranch() if !$branchGroup;
 
     # If we're using a logical group we need to query the global build context
     # to resolve it.
     my $ctx = $module->buildContext();
     my $resolver = $ctx->moduleBranchGroupResolver();
     my $modulePath = $module->fullProjectPath();
-    my $branch = $resolver->findModuleBranch($modulePath, $branchGroup);
-
-    if (!$branch) {
-        whisper ("No specific branch set for $modulePath and $branchGroup, using b[master]");
-        $branch = 'master';
-    }
-
-    return $branch;
+    return $resolver->findModuleBranch($modulePath, $branchGroup);
 }
 
 1;

@@ -96,24 +96,21 @@ sub clone
         $ipc->notifyPersistentOptionChange(
             $module->name(), 'git-cloned-repository', $git_repo);
 
-        my $branch = $self->getBranch();
+        my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+
         p_chdir($srcdir);
 
         # Switch immediately to user-requested tag or branch now.
-        if (my $rev = $module->getOption('revision')) {
-            info ("\tSwitching to specific revision g[$rev]");
-            $result = (log_command($module, 'git-checkout-rev',
-                ['git', 'checkout', $rev]) == 0);
+        if ($commitType eq 'tag') {
+            info ("\tSwitching to specific commit g[$commitId]");
+            $result = (log_command($module, 'git-checkout-commit',
+                ['git', 'checkout', $commitId]) == 0);
         }
-        elsif (my $tag = $module->getOption('tag')) {
-            info ("\tSwitching to specific tagged-commit g[$tag]");
-            $result = (log_command($module, 'git-checkout-tag',
-                ['git', 'checkout', "refs/tags/$tag"]) == 0);
-        }
-        elsif ((my $branch = $self->getBranch()) ne 'master') {
-            info ("\tSwitching to branch g[$branch]");
+        # If not a tag, it's a defined branch
+        elsif ($commitId ne 'master') {
+            info ("\tSwitching to branch g[$commitId]");
             $result = (log_command($module, 'git-checkout',
-                ['git', 'checkout', '-b', $branch, "origin/$branch"]) == 0);
+                ['git', 'checkout', '-b', $commitId, "origin/$commitId"]) == 0);
         }
     }
 
@@ -346,24 +343,17 @@ sub updateExistingClone
 
     # Now we need to figure out if we should update a branch, or simply
     # checkout a specific tag/SHA1/etc.
-    # We need to be wordy here to placate the Perl warning generator.
-    my @gitRefTypes = (
-        [qw/revision commit/], [qw/tag tag/],
-    );
-    my $gitRefType = (first { $module->getOption($_->[0]) } @gitRefTypes) //
-                      ['branch', 'branch'];
-    my ($chosenRefOption, $type) = @$gitRefType;
+    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
 
-    my $branch = $type eq 'branch' ? $self->getBranch()
-                                   : $module->getOption($chosenRefOption);
-
-    note ("Updating g[$module] (to $type b[$branch])");
+    note ("Updating g[$module] (to $commitType b[$commitId])");
     my $start_commit = $self->commit_id('HEAD');
 
-    my $updateSub = sub { $self->_updateToRemoteHead($remoteName, $branch) };
-    if ($type ne 'branch') {
-        $branch = "refs/tags/$branch" if $type eq 'tag';
-        $updateSub = sub { $self->_updateToDetachedHead($branch); }
+    my $updateSub;
+    if ($commitType eq 'branch') {
+        $updateSub = sub { $self->_updateToRemoteHead($remoteName, $commitId) };
+    }
+    else {
+        $updateSub = sub { $self->_updateToDetachedHead($commitId); }
     }
 
     # With all remote branches fetched, and the checkout of our desired
@@ -378,23 +368,66 @@ sub updateExistingClone
     }
 }
 
-# Returns the user-selected branch for the given module, or 'master' if no
-# branch was selected.
-sub getBranch
+# Goes through all the various combination of git checkout selection options in
+# various orders of priority.
+#
+# Returns a *list* containing: (the resultant symbolic ref/or SHA1,'branch' or
+# 'tag' (to determine if something like git-pull would be suitable or whether
+# you have a detached HEAD)). Since the sym-ref is returned first that should
+# be what you get in a scalar context, if that's all you want.
+sub _determinePreferredCheckoutSource
 {
-    my $self = assert_isa(shift, 'ksb::Updater::Git');
-    my $module = $self->module();
-    my $branch = $module->getOption('branch');
+    my ($self, $module) = @_;
+    $module //= $self->module();
 
-    if (!$branch && $module->getOption('use-stable-kde')) {
-        my $stable = $module->getOption('#branch:stable');
-        if ($stable && $stable ne 'none') {
-            $branch = $stable;
+    my @priorityOrderedSources = (
+        #   option-name    type   getOption-inheritance-flag
+        [qw(commit         tag    module)],
+        [qw(revision       tag    module)],
+        [qw(tag            tag    module)],
+        [qw(branch         branch module)],
+        [qw(branch-group   branch module)],
+        [qw(use-stable-kde branch module)],
+        # commit/rev/tag don't make sense for git as globals
+        [qw(branch         branch allow-inherit)],
+        [qw(branch-group   branch allow-inherit)],
+        [qw(use-stable-kde branch allow-inherit)],
+    );
+
+    my $checkoutSource;
+    # Sorry about the !!, easiest way to be clear that bool context is intended
+    my $sourceTypeRef = first {
+        !!($checkoutSource = ($module->getOption($_->[0], $_->[2]) // ''))
+    } @priorityOrderedSources;
+
+    if (!$sourceTypeRef) {
+        return qw(master branch);
+    }
+
+    # One fixup is needed for use-stable-kde, to pull the actual branch name
+    # from the right spot. Although if no branch name is set we use master,
+    # without trying to search again.
+    if ($sourceTypeRef->[0] eq 'use-stable-kde') {
+        $checkoutSource = $module->getOption('#branch:stable', 'module') || 'master';
+    }
+
+    # Likewise branch-group requires special handling. checkoutSource is
+    # currently the branch-group to be resolved.
+    if ($sourceTypeRef->[0] eq 'branch-group') {
+        assert_isa($self, 'ksb::Updater::KDEProject');
+        $checkoutSource = $self->_resolveBranchGroup($checkoutSource);
+
+        if (!$checkoutSource) {
+            whisper ("No specific branch set for $modulePath and $branchGroup, using master!");
+            $checkoutSource = 'master';
         }
     }
 
-    $branch ||= 'master'; # If no branch, use 'master'
-    return $branch;
+    if ($sourceTypeRef->[0] eq 'tag' && $checkoutSource !~ m{^refs/tags/}) {
+        $checkoutSource = "refs/tags/$checkoutSource";
+    }
+
+    return ($checkoutSource, $sourceTypeRef->[1]);
 }
 
 # Attempts to download and install a git snapshot for the given ksb::Module.
