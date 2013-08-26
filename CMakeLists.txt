@@ -19,6 +19,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
     message(STATUS "Installing component modules to ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}")
     install(FILES
         modules/ksb/BuildContext.pm
+        modules/ksb/BuildException.pm
         modules/ksb/BuildSystem.pm
         modules/ksb/Debug.pm
         modules/ksb/DependencyResolver.pm

@@ -17,6 +17,7 @@ use Digest::MD5;
 
 use ksb::Debug;
 use ksb::Version qw(scriptVersion);
+use ksb::BuildException;
 
 use Exporter qw(import); # Use Exporter's import method
 our @EXPORT = qw(list_has make_exception assert_isa assert_in any
@@ -62,10 +63,10 @@ sub absPathToExecutable
 
 # Returns a Perl object worth "die"ing for. (i.e. can be given to the die
 # function and handled appropriately later with an eval). The returned
-# reference will be an instance of BuildException. The actual exception
-# type is passed in as the first parameter (as a string), and can be
-# retrieved from the object later using the 'exception_type' key, and the
-# message is returned as 'message'
+# reference will be an instance of ksb::BuildException. The actual exception
+# type is passed in as the first parameter (as a string), and can be retrieved
+# from the object later using the 'exception_type' key, and the message is
+# returned as 'message'
 #
 # First parameter: Exception type. Recommended are one of: Config, Internal
 # (for logic errors), Runtime (other runtime errors which are not logic
@@ -82,10 +83,7 @@ sub make_exception
     local $Carp::CarpLevel = 1 + $levels;
 
     $message = Carp::cluck($message) if $exception_type eq 'Internal';
-    return bless({
-        'exception_type' => $exception_type,
-        'message'        => $message,
-    }, 'BuildException');
+    return ksb::BuildException->new($exception_type, $message);
 }
 
 # Should be used for "runtime errors" (i.e. unrecoverable runtime problems that

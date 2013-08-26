@@ -700,7 +700,7 @@ sub update
     {
         my $reason = ksb::IPC::MODULE_FAILURE;
 
-        if (ref $@ && $@->isa('BuildException')) {
+        if (ref $@ && $@->isa('ksb::BuildException')) {
             if ($@->{'exception_type'} eq 'ConflictPresent') {
                 $reason = ksb::IPC::MODULE_CONFLICT;
             }

@@ -450,7 +450,7 @@ $@ = '';
 eval {
     @filtered_modules = applyModuleFilters($ctx, @conf_modules);
 };
-isa_ok($@, 'BuildException', 'resume-{from,after} combine for exception');
+isa_ok($@, 'ksb::BuildException', 'resume-{from,after} combine for exception');
 
 $ctx->deleteOption('resume-from');
 @filtered_modules = applyModuleFilters($ctx, @conf_modules);
@@ -615,7 +615,7 @@ done_testing();
 }; # eval
 
 if (my $err = $@) {
-    if (blessed ($err) && $err->isa('BuildException')) {
+    if (blessed ($err) && $err->isa('ksb::BuildException')) {
         say "Test suite failed after kdesrc-build threw the following exception:";
         say "$@->{message}";
         fail();

@@ -666,10 +666,6 @@ sub svnInfo
 
     if($@)
     {
-        if (ref $@ && $@->isa('BuildException')) {
-            $@ = $@->{message};
-        }
-
         error ("Unable to run r[b[svn], is the Subversion program installed?");
         error (" -- Error was: r[$@]");
         return undef;
