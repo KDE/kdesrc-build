@@ -394,6 +394,15 @@ sub _determinePreferredCheckoutSource
         [qw(use-stable-kde branch allow-inherit)],
     );
 
+    # For modules that are not actually a 'proj' module we skip branch-group
+    # and use-stable-kde entirely to allow for global/module branch selection
+    # options to be selected... kind of complicated, but more DWIMy
+    if (!$module->scm()->isa('ksb::Updater::KDEProject')) {
+        @priorityOrderedSources = grep {
+            $_->[0] ne 'branch-group' && $_->[0] ne 'use-stable-kde'
+        } @priorityOrderedSources;
+    }
+
     my $checkoutSource;
     # Sorry about the !!, easiest way to be clear that bool context is intended
     my $sourceTypeRef = first {
