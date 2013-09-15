@@ -18,6 +18,7 @@ set(KDESRC_BUILD_MODULE_INSTALL_PREFIX "${DATA_INSTALL_DIR}/kdesrc-build/modules
 if (KDESRC_BUILD_INSTALL_MODULES)
     message(STATUS "Installing component modules to ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}")
     install(FILES
+        modules/ksb/Application.pm
         modules/ksb/BuildContext.pm
         modules/ksb/BuildException.pm
         modules/ksb/BuildSystem.pm
