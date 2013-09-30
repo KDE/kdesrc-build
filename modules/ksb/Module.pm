@@ -519,14 +519,14 @@ sub install
         # Remove srcdir
         my $srcdir = $self->fullpath('source');
         note ("\tRemoving b[r[$self source].");
-        main::safe_rmtree($srcdir);
+        safe_rmtree($srcdir);
     }
 
     if($remove_setting eq 'builddir' || $remove_setting eq 'all')
     {
         # Remove builddir
         note ("\tRemoving b[r[$self build directory].");
-        main::safe_rmtree($builddir);
+        safe_rmtree($builddir);
     }
 
     return 1;

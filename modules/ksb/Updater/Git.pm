@@ -140,7 +140,7 @@ sub updateCheckout
                 warning ("\tRemoving conflicting source directory " .
                          "as allowed by --delete-my-patches");
                 warning ("\tRemoving b[$srcdir]");
-                main::safe_rmtree($srcdir) or do {
+                safe_rmtree($srcdir) or do {
                     die "Unable to delete r[b[$srcdir]!";
                 };
             }
@@ -495,7 +495,7 @@ sub installGitSnapshot
 
     if ($result) {
         error ("Unable to extract snapshot for r[b[$module]: $savedError");
-        main::safe_rmtree($sourceDir);
+        safe_rmtree($sourceDir);
         return 0;
     }
 
@@ -507,7 +507,7 @@ sub installGitSnapshot
 
     if ($result) {
         error ("Snapshot for r[$module] extracted successfully, but failed to complete initrepo.sh");
-        main::safe_rmtree($sourceDir);
+        safe_rmtree($sourceDir);
         return 0;
     }
 
