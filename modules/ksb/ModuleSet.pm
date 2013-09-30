@@ -39,7 +39,8 @@ our $VERSION = '0.10';
 use ksb::Debug;
 use ksb::Util;
 use ksb::PhaseList;
-use ksb::BuildContext;
+use ksb::Module;
+
 use Storable qw(dclone);
 
 sub new

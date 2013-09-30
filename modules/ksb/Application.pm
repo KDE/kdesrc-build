@@ -17,6 +17,8 @@ use ksb::Util;
 use ksb::BuildContext;
 use ksb::BuildSystem::QMake;
 use ksb::Module;
+use ksb::ModuleSet;
+use ksb::ModuleSet::KDEProjects;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
 use ksb::IPC::Pipe 0.20;
@@ -800,13 +802,10 @@ sub _readConfigurationOptions
         }
         else {
             # Overwrite options set for existing modules.
-            if (my @modules = grep { $_->name() eq $modulename } @module_list) {
+            if (my @modules = grep { $_->isa('ksb::Module') && ($_->name() eq $modulename) } @module_list) {
                 # We check for definedness as a module-set can exist but be
                 # unnamed.
-                if ($modules[0]->moduleSet()->isa('ksb::ModuleSet::Null')) {
-                    warning ("Multiple module declarations for $modules[0]");
-                }
-
+                warning ("Multiple module declarations for $modules[0]");
                 _parseModuleOptions($ctx, $fileReader, $modules[0]); # Don't re-add
             }
             else {

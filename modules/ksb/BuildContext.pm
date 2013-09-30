@@ -26,6 +26,7 @@ use ksb::Module::BranchGroupResolver;
 use ksb::Updater::KDEProjectMetadata;
 use ksb::Version qw(scriptVersion);
 use File::Temp qw(tempfile);
+use File::Spec; # rel2abs
 
 # We derive from ksb::Module so that BuildContext acts like the 'global'
 # ksb::Module, with some extra functionality.

@@ -78,7 +78,7 @@ EOF
 
     my $builddir = $module->fullpath('build');
     my $old_flags = $module->getPersistentOption('last-configure-flags') || '';
-    my $cur_flags = main::get_list_digest(@commands);
+    my $cur_flags = get_list_digest(@commands);
 
     if(($cur_flags ne $old_flags) ||
        ($module->getOption('reconfigure')) ||

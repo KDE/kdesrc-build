@@ -16,6 +16,8 @@ use File::Basename; # basename
 use File::Spec;     # tmpdir
 use POSIX qw(strftime);
 use List::Util qw(first);
+use URI;
+
 use ksb::IPC::Null;
 
 use constant {

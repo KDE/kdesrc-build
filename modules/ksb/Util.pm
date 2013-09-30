@@ -15,6 +15,7 @@ use File::Find;
 use Cwd qw(getcwd);
 use Errno qw(:POSIX);
 use Digest::MD5;
+use LWP::UserAgent;
 
 use ksb::Debug;
 use ksb::Version qw(scriptVersion);
@@ -25,7 +26,7 @@ our @EXPORT = qw(list_has make_exception assert_isa assert_in any
                  croak_runtime croak_internal download_file absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
-                 pretend_open safe_rmtree
+                 pretend_open safe_rmtree get_list_digest
                  super_mkdir filter_program_output prettify_seconds);
 
 # Function to work around a Perl language limitation.
@@ -672,6 +673,22 @@ sub safe_rmtree
     }
 
     return 1;
+}
+
+# Returns a hash digest of the given options in the list.  The return value is
+# base64-encoded at this time.
+#
+# Note: Don't be dumb and pass data that depends on execution state as the
+# returned hash is almost certainly not useful for whatever you're doing with
+# it.  (i.e. passing a reference to a list is not helpful, pass the list itself)
+#
+# Parameters: List of scalar values to hash.
+# Return value: base64-encoded hash value.
+sub get_list_digest
+{
+    use Digest::MD5 "md5_base64"; # Included standard with Perl 5.8
+
+    return md5_base64(@_);
 }
 
 1;

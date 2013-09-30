@@ -104,13 +104,91 @@ sub configureInternal
 
     # Use cmake to create the build directory (sh script return value
     # semantics).
-    if (main::safe_run_cmake ($module))
+    if (_safe_run_cmake ($module))
     {
         error ("\tUnable to configure r[$module] with CMake!");
         return 0;
     }
 
     return 1;
+}
+
+### Internal package functions.
+
+# Subroutine to run CMake to create the build directory for a module.
+# CMake is not actually run if pretend mode is enabled.
+#
+# First parameter is the module to run cmake on.
+# Return value is the shell return value as returned by log_command().  i.e.
+# 0 for success, non-zero for failure.
+sub _safe_run_cmake
+{
+    my $module = assert_isa(shift, 'ksb::Module');
+    my $srcdir = $module->fullpath('source');
+    my @commands = split_quoted_on_whitespace ($module->getOption('cmake-options'));
+
+    # grep out empty fields
+    @commands = grep {!/^\s*$/} @commands;
+
+    # Add -DBUILD_foo=OFF options for the directories in do-not-compile.
+    # This will only work if the CMakeLists.txt file uses macro_optional_add_subdirectory()
+    my @masked_directories = split(' ', $module->getOption('do-not-compile'));
+    push @commands, "-DBUILD_$_=OFF" foreach @masked_directories;
+
+    # Get the user's CXXFLAGS, use them if specified and not already given
+    # on the command line.
+    my $cxxflags = $module->getOption('cxxflags');
+    if ($cxxflags and not grep { /^-DCMAKE_CXX_FLAGS(:\w+)?=/ } @commands)
+    {
+        push @commands, "-DCMAKE_CXX_FLAGS:STRING=$cxxflags";
+    }
+
+    my $prefix = $module->installationPath();
+
+    push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
+
+    if ($module->getOption('run-tests') &&
+        !grep { /^\s*-DKDE4_BUILD_TESTS(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
+       )
+    {
+        whisper ("Enabling tests");
+        push @commands, "-DKDE4_BUILD_TESTS:BOOL=ON";
+
+        # Also enable phonon tests.
+        if ($module =~ /^phonon$/) {
+            push @commands, "-DPHONON_BUILD_TESTS:BOOL=ON";
+        }
+    }
+
+    if ($module->getOption('run-tests') eq 'upload')
+    {
+        whisper ("Enabling upload of test results");
+        push @commands, "-DBUILD_experimental:BOOL=ON";
+    }
+
+    unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
+
+    my $old_options =
+        $module->getPersistentOption('last-cmake-options') || '';
+    my $builddir = $module->fullpath('build');
+
+    if (($old_options ne get_list_digest(@commands)) ||
+        $module->getOption('reconfigure') ||
+        ! -e "$builddir/CMakeCache.txt" # File should exist only on successful cmake run
+       )
+    {
+        info ("\tRunning g[cmake]...");
+
+        # Remove any stray CMakeCache.txt
+        safe_unlink ("$srcdir/CMakeCache.txt")   if -e "$srcdir/CMakeCache.txt";
+        safe_unlink ("$builddir/CMakeCache.txt") if -e "$builddir/CMakeCache.txt";
+
+        $module->setPersistentOption('last-cmake-options', get_list_digest(@commands));
+        return log_command($module, "cmake", \@commands);
+    }
+
+    # Skip cmake run
+    return 0;
 }
 
 1;
