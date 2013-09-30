@@ -41,164 +41,39 @@ package main;
 
 use strict;
 use warnings;
-use Fcntl qw(:DEFAULT :seek);    # For sysopen constants
+
 use Carp;
-use POSIX qw(strftime :sys_wait_h);
 use Data::Dumper;
 use File::Find; # For our lndir reimplementation.
 use File::Path qw(remove_tree);
-use File::Spec;     # tmpdir, rel2abs
-use LWP::UserAgent;
-use URI; # For git-clone snapshot support
-use Sys::Hostname;
-use Storable 'dclone';
 
 use ksb::Debug;
 use ksb::Util;
 use ksb::Version qw(scriptVersion);
 use ksb::Application;
-use ksb::IPC 0.20;
-use ksb::IPC::Pipe 0.20;
-use ksb::IPC::Null;
-use ksb::KDEXMLReader;
-use ksb::Updater::Git;
-use ksb::BuildContext 0.20;
-use ksb::Module;
-use ksb::ModuleSet;
-use ksb::ModuleSet::KDEProjects;
 
 use 5.010_000; # Require Perl 5.10.0
-
-# Perl 5.18 warns on given/when/~~, but also is the first version of
-# Perl to support conditional disabling of warnings, so we have to
-# version-protect our warning remover.
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
 # Make Perl 'plain die' exceptions use Carp::confess instead of their core
 # support. This is not supported by the Perl 5 authors but assuming it works
 # will be better than the alternative backtrace we get (which is to say, none)
 $SIG{__DIE__} = \&Carp::confess;
 
-# global variables {{{
-
 my $SCRIPT_VERSION = scriptVersion();
 
-# }}}
+### Script-global functions.
 
-# Function: moveOldDirectories
-# Moves a directory to a new location, but only if the new location doesn't
-# already exist.
-# The use case is to automatically migrate source and build directories from
-# the change in dest-dir handling for XML-based modules.
+# These functions might be called at runtime via log_command, using
+# log_command's support for symbolic execution of a named subroutine. Because
+# of that, they have been left in the top-level script.
 #
-# Parameters:
-#  oldDir - The directory to move.
-#  newDir - The name the directory should have afterwards.
-#
-# Returns:
-#  Boolean true, but throws an exception on error.
-sub moveOldDirectories
-{
-    my ($oldDir, $newDir) = @_;
-    state $pretendedMoves = { };
-
-    # All this pretended move stuff is just to avoid tons of debug output
-    # if run in pretend mode while still showing the message the first time.
-    $pretendedMoves->{$oldDir} //= { };
-    if (!$pretendedMoves->{$oldDir}->{$newDir} && -e $oldDir && ! -e $newDir) {
-        info ("\tMoving old kdesrc-build directory at\n\t\tb[$oldDir] to\n\t\tb[$newDir]");
-
-        $pretendedMoves->{$oldDir}->{$newDir} = 1 if pretending();
-        safe_system('mv', $oldDir, $newDir) == 0 or
-            croak_runtime("Unable to move directory $oldDir to $newDir");
-    }
-
-    return 1;
-}
-
-# Function: get_module_path_dir
-#
-# Returns the directory that a module will be stored in.
-#
-# NOTE: The return value is a hash. The key 'module' will return the final
-# module name, the key 'path' will return the full path to the module. The
-# key 'fullpath' will return their concatenation.
-#
-# For example, with $module == 'KDE/kdelibs', and no change in the dest-dir
-# option, you'd get something like:
-#
-# > {
-# >   'path'     => '/home/user/kdesrc/KDE',
-# >   'module'   => 'kdelibs',
-# >   'fullpath' => '/home/user/kdesrc/KDE/kdelibs'
-# > }
-# If dest-dir were changed to e.g. extragear-multimedia, you'd get:
-#
-# > {
-# >   'path'     => '/home/user/kdesrc',
-# >   'module'   => 'extragear-multimedia',
-# >   'fullpath' => '/home/user/kdesrc/extragear-multimedia'
-# > }
-#
-# Parameters:
-#   module - The <Module>.
-#   pathType - Either 'source' or 'build'.
-#
-# Returns:
-#   hash (Not a hashref; See description).
-sub get_module_path_dir
-{
-    my $module = assert_isa(shift, 'ksb::Module');
-    my $type = shift;
-    my $destdir = $module->destDir();
-    my $srcbase = $module->getSourceDir();
-    $srcbase = $module->getSubdirPath('build-dir') if $type eq 'build';
-
-    my $combined = "$srcbase/$destdir";
-
-    # Remove dup //
-    $combined =~ s/\/+/\//;
-
-    my @parts = split(/\//, $combined);
-    my %result = ();
-    $result{'module'} = pop @parts;
-    $result{'path'} = join('/', @parts);
-    $result{'fullpath'} = "$result{path}/$result{module}";
-
-    my $compatDestDir = $module->destDir($module->name());
-    my $fullCompatPath = "$srcbase/$compatDestDir";
-
-    # kdesrc-build 1.14 changed the source directory layout to be more
-    # compatible with the sharply-growing number of modules.
-    if ($fullCompatPath ne $combined && -d $fullCompatPath) {
-        if ($type eq 'source') {
-            super_mkdir($result{'path'});
-            moveOldDirectories($fullCompatPath, $combined);
-        }
-        elsif ($type eq 'build') {
-            # CMake doesn't like moving build directories, just destroy the
-            # old one.
-            state %warnedFor;
-
-            if (!$warnedFor{$fullCompatPath}) {
-                $warnedFor{$fullCompatPath} = 1;
-
-                safe_rmtree($fullCompatPath) or do {
-                    warning("\tUnable to remove the old build directory for y[b[$module]");
-                    warning("\tThe disk layout has changed, you no longer need the old directory at");
-                    warning("\t\tb[$fullCompatPath]");
-                    warning("\tHowever you will have to delete it, kdesrc-build was unable to.");
-                }
-            };
-        }
-    }
-
-    return %result;
-}
+# Everything else should be in an appropriate class.
 
 # Subroutine to recursively symlink a directory into another location, in a
 # similar fashion to how the XFree/X.org lndir() program does it.  This is
 # reimplemented here since some systems lndir doesn't seem to work right.
+#
+# Used from ksb::l10nSystem
 #
 # As a special exception to the GNU GPL, you may use and redistribute this
 # function however you would like (i.e. consider it public domain).
@@ -287,6 +162,8 @@ sub safe_lndir
 
 # Subroutine to delete recursively, everything under the given directory,
 # unless we're in pretend mode.
+#
+# Used from ksb::BuildSystem to handle cleaning a build directory.
 #
 # i.e. the effect is similar to "rm -r $arg/* $arg/.*".
 #

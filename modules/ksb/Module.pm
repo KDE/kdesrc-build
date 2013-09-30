@@ -150,6 +150,64 @@ sub getSubdirPath
     return $dir;
 }
 
+# Method: getInstallPathComponents
+#
+# Returns the directory that a module should be installed in.
+#
+# NOTE: The return value is a hash. The key 'module' will return the final
+# module name, the key 'path' will return the full path to the module. The
+# key 'fullpath' will return their concatenation.
+#
+# For example, with $module == 'KDE/kdelibs', and no change in the dest-dir
+# option, you'd get something like:
+#
+# > {
+# >   'path'     => '/home/user/kdesrc/KDE',
+# >   'module'   => 'kdelibs',
+# >   'fullpath' => '/home/user/kdesrc/KDE/kdelibs'
+# > }
+#
+# If dest-dir were changed to e.g. extragear-multimedia, you'd get:
+#
+# > {
+# >   'path'     => '/home/user/kdesrc',
+# >   'module'   => 'extragear-multimedia',
+# >   'fullpath' => '/home/user/kdesrc/extragear-multimedia'
+# > }
+#
+# Parameters:
+#   pathType - Either 'source' or 'build'.
+#
+# Returns:
+#   hash (Not a hashref; See description).
+sub getInstallPathComponents
+{
+    my $module = assert_isa(shift, 'ksb::Module');
+    my $type = shift;
+    my $destdir = $module->destDir();
+    my $srcbase = $module->getSourceDir();
+    $srcbase = $module->getSubdirPath('build-dir') if $type eq 'build';
+
+    my $combined = "$srcbase/$destdir";
+
+    # Remove dup //
+    $combined =~ s/\/+/\//;
+
+    my @parts = split(/\//, $combined);
+    my %result = ();
+    $result{'module'} = pop @parts;
+    $result{'path'} = join('/', @parts);
+    $result{'fullpath'} = "$result{path}/$result{module}";
+
+    my $compatDestDir = $module->destDir($module->name());
+    my $fullCompatPath = "$srcbase/$compatDestDir";
+
+    # We used to have code here to migrate very old directory layouts. It was
+    # removed as of about 2013-09-29.
+
+    return %result;
+}
+
 # Do note that this returns the *base* path to the source directory,
 # without the module name or kde_projects stuff appended. If you want that
 # use subroutine fullpath().
@@ -929,7 +987,7 @@ sub fullpath
     my ($self, $type) = @_;
     assert_in($type, [qw/build source/]);
 
-    my %pathinfo = main::get_module_path_dir($self, $type);
+    my %pathinfo = $self->getInstallPathComponents($type);
     return $pathinfo{'fullpath'};
 }
 

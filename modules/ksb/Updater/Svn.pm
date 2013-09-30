@@ -370,7 +370,7 @@ sub checkout_module_path
     my $self = assert_isa(shift, 'ksb::Updater::Svn');
     my $module = $self->module();
     my @path = @_;
-    my %pathinfo = main::get_module_path_dir($module, 'source');
+    my %pathinfo = $module->getInstallPathComponents('source');
     my @args;
 
     if (not -e $pathinfo{'path'} and not super_mkdir($pathinfo{'path'}))
@@ -534,9 +534,6 @@ sub module_has_conflict
 
     if (0 == $pid)
     {
-        # Avoid calling close subroutines in more than one routine.
-        @main::atexit_subs = ();
-
         close STDERR; # No broken pipe warnings
 
         disable_locale_message_translation();
