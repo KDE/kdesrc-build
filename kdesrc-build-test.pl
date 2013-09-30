@@ -163,17 +163,6 @@ SKIP: {
     $metadataModule->scm()->updateInternal();
 }
 
-# Ensure the utility methods work.
-my @listWithDuplicates = qw(2 3 5 2 8);
-
-# For some reason sort cannot be used with unique_list()'s output directly,
-# probably it needs to be coerced to a list somehow instead of trying to guess
-# that I mean for it to do some other magic.
-my @uniqList = unique_list(@listWithDuplicates);
-@uniqList = sort @uniqList;
-
-is_deeply(\@uniqList, [qw(2 3 5 8)], 'unique_list');
-
 my ($qtModule, $kdelibsModule, $testModule, $kdesupportModule, $phononModule)
     = map {
         ksb::Module->new($ctx, $_);

@@ -389,8 +389,7 @@ sub build
         # TODO: Likewise this should be a phase to run.
         if ($self->getOption('install-after-build'))
         {
-            my $ctx = $self->buildContext();
-            main::handle_install($ctx, $self);
+            return 0 if !$self->install();
         }
         else
         {

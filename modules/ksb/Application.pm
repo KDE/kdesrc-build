@@ -15,11 +15,21 @@ our $VERSION = '0.10';
 use ksb::Debug;
 use ksb::Util;
 use ksb::BuildContext;
+use ksb::BuildSystem::QMake;
 use ksb::Module;
 use ksb::RecursiveFH;
+use ksb::DependencyResolver 0.20;
+use ksb::IPC::Pipe 0.20;
+use ksb::IPC::Null;
+use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
 use List::Util qw(first min);
+use File::Basename; # basename
+use File::Glob ':glob';
+use POSIX qw(:sys_wait_h _exit);
+use IO::Handle;
+use IO::Select;
 
 ### Package-specific variables (not shared outside this file).
 
@@ -45,6 +55,7 @@ sub new
         metadata_module => undef,
         run_mode        => 'build',
         modules         => undef,
+        _base_pid       => $$, # See finish()
     }, $class;
 
     # Default to colorized output if sending to TTY
@@ -62,6 +73,13 @@ sub new
         print "$0 is already running!\n";
         exit 1; # Don't finish(), it's not our lockfile!!
     }
+
+    # Install signal handlers to ensure that the lockfile gets closed.
+    _installSignalHandlers(sub {
+        note ("Signal received, terminating.");
+        @main::atexit_subs = (); # Remove their finish, doin' it manually
+        $self->finish(5);
+    });
 
     return $self;
 }
@@ -242,8 +260,166 @@ sub generateModuleList
 
     # Save our metadata module, if used.
     $self->{metadata_module} = $metadataModule;
+    $ctx->setKDEProjectMetadataModule($metadataModule);
 
     return @modules;
+}
+
+# Runs all update, build, install, etc. phases. Basically this *is* the
+# script.
+sub runAllModulePhases
+{
+    my $self = shift;
+    my $ctx = $self->context();
+    my $metadataModule = $self->metadataModule();
+    my @modules = $self->modules();
+
+    $ctx->loadPersistentOptions();
+
+    debug ("+++ Reached execution phase");
+
+    # If we have kde-build-metadata we must process it first, ASAP.
+    if ($metadataModule) {
+        eval {
+            my $sourceDir = $metadataModule->getSourceDir();
+            super_mkdir($sourceDir);
+
+            if (!$ctx->phases()->has('update') &&
+                ! -e "$sourceDir/dependency-data")
+            {
+                warning (" r[b[*] Skipping build metadata update due to b[--no-src], but this is apparently required!");
+            }
+
+            if ($ctx->phases()->has('update') && !pretending()) {
+                $metadataModule->scm()->updateInternal();
+            }
+        };
+
+        if ($@) {
+            warning (" b[r[*] Unable to download required metadata for build process");
+            warning (" b[r[*] Will attempt to press onward...");
+            warning (" b[r[*] Exception message: $@");
+        }
+    }
+
+    # Reorder if necessary. This involves reading some metadata so wrap in its
+    # own exception handler.
+    if ($metadataModule) {
+        eval {
+            $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
+
+            my $dependencyFile = $metadataModule->fullpath('source') . '/dependency-data';
+            my $dependencies = pretend_open($dependencyFile)
+                or die "Unable to open $dependencyFile: $!";
+
+            my $dependencyResolver = ksb::DependencyResolver->new();
+            $dependencyResolver->readDependencyData($dependencies);
+            close $dependencies;
+
+            my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
+
+            # If we make it here no exceptions were thrown, so accept the result
+            @modules = @reorderedModules;
+        };
+
+        if ($@) {
+            warning (" r[b[*] Problems encountered trying to sort modules into correct order:");
+            warning (" r[b[*] $@");
+            warning (" r[b[*] Will attempt to continue.");
+        }
+    }
+
+    # Add to global module list now that we've filtered everything.
+    $ctx->addModule($_) foreach @modules;
+
+    my $runMode = $self->runMode();
+    my $result;
+
+    my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
+    my @build_list = map { $_->name() } ($ctx->modulesInPhase('build'));
+
+    debug ("Update list is ", join (', ', @update_list));
+    debug ("Build list is ", join (', ', @build_list));
+
+    if ($runMode eq 'build')
+    {
+        # No packages to install, we're in build mode
+
+        # What we're going to do is fork another child to perform the source
+        # updates while we build.  Setup for this first by initializing some
+        # shared memory.
+        my $ipc = 0;
+
+        if ($ctx->getOption('async'))
+        {
+            $ipc = ksb::IPC::Pipe->new();
+        }
+
+        if (!$ipc)
+        {
+            $ipc = ksb::IPC::Null->new();
+            whisper ("Using no IPC mechanism\n");
+
+            note ("\n b[<<<  Update Process  >>>]\n");
+            $result = _handle_updates ($ipc, $ctx);
+
+            note (" b[<<<  Build Process  >>>]\n");
+            $result = _handle_build ($ipc, $ctx) || $result;
+        }
+        else
+        {
+            $result = _handle_async_build ($ipc, $ctx);
+            $ipc->outputPendingLoggedMessages();
+        }
+    }
+    elsif ($runMode eq 'install')
+    {
+        $result = _handle_install ($ctx);
+    }
+    elsif ($runMode eq 'uninstall')
+    {
+        $result = _handle_uninstall ($ctx);
+    }
+
+    _cleanup_log_directory($ctx) if $ctx->getOption('purge-old-logs');
+    _output_failed_module_lists($ctx);
+    _installCustomSessionDriver($ctx) if $ctx->getOption('install-session-driver');
+
+    my $time = localtime;
+    my $color = '';
+    $color = 'r[' if $result;
+
+    info ("${color}Script finished processing at g[$time]") unless pretending();
+
+    return $result;
+}
+
+# Method: finish
+#
+# Exits the script cleanly, including removing any lock files created.
+#
+# Parameters:
+#  ctx - Required; BuildContext to use.
+#  [exit] - Optional; if passed, is used as the exit code, otherwise 0 is used.
+sub finish
+{
+    my $self = shift;
+    my $ctx = $self->context();
+    my $exitcode = shift // 0;
+
+    if (pretending() || $self->{_base_pid} != $$) {
+        # Abort early if pretending or if we're not the same process
+        # that was started by the user (e.g. async mode, forked pipe-opens
+        exit $exitcode;
+    }
+
+    $ctx->closeLock();
+    $ctx->storePersistentOptions();
+
+    my $logdir = $ctx->getLogDir();
+    note ("Your logs are saved in y[$logdir]");
+
+    exit $exitcode;
 }
 
 ### Package-internal helper functions.
@@ -713,6 +889,617 @@ sub _spliceOptionModules
 
         splice @$modulesRef, $i, 1, $optionModule if defined $optionModule;
     }
+}
+
+# Function: _split_url
+#
+# Subroutine to split a url into a protocol and host
+sub _split_url
+{
+    my $url = shift;
+    my ($proto, $host) = ($url =~ m|([^:]*)://([^/]*)/|);
+
+    return ($proto, $host);
+}
+
+# Function: _check_for_ssh_agent
+#
+# Checks if we are supposed to use ssh agent by examining the environment, and
+# if so checks if ssh-agent has a list of identities.  If it doesn't, we run
+# ssh-add (with no arguments) and inform the user.  This can be controlled with
+# the disable-agent-check parameter.
+#
+# Parameters:
+# 1. Build context
+sub _check_for_ssh_agent
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+
+    # Don't bother with all this if the user isn't even using SSH.
+    return 1 if pretending();
+
+    my @svnServers = grep {
+        $_->scmType() eq 'svn'
+    } ($ctx->modulesInPhase('update'));
+
+    my @gitServers = grep {
+        $_->scmType() eq 'git'
+    } ($ctx->modulesInPhase('update'));
+
+    my @sshServers = grep {
+        my ($proto, $host) = _split_url($_->getOption('svn-server'));
+
+        # Check if ssh is explicitly used in the proto, or if the host is the
+        # developer main svn.
+        (defined $proto && $proto =~ /ssh/) || (defined $host && $host =~ /^svn\.kde\.org/);
+    } @svnServers;
+
+    push @sshServers, grep {
+        # Check for git+ssh:// or git@git.kde.org:/path/etc.
+        my $repo = $_->getOption('repository');
+        ($repo =~ /^git\+ssh:\/\//) || ($repo =~ /^[a-zA-Z0-9_.]+@.*:\//);
+    } @gitServers;
+
+    whisper ("\tChecking for SSH Agent") if (scalar @sshServers);
+    return 1 if (not @sshServers) or $ctx->getOption('disable-agent-check');
+
+    # We're using ssh to download, see if ssh-agent is running.
+    return 1 unless exists $ENV{'SSH_AGENT_PID'};
+
+    my $pid = $ENV{'SSH_AGENT_PID'};
+
+    # It's supposed to be running, let's see if there exists the program with
+    # that pid (this check is linux-specific at the moment).
+    if (-d "/proc" and not -e "/proc/$pid")
+    {
+        warning ("r[ *] SSH Agent is enabled, but y[doesn't seem to be running].");
+        warning ("Since SSH is used to download from Subversion you may want to see why");
+        warning ("SSH Agent is not working, or correct the environment variable settings.");
+
+        return 0;
+    }
+
+    # The agent is running, but does it have any keys?  We can't be more specific
+    # with this check because we don't know what key is required.
+    my $noKeys = 0;
+
+    filter_program_output(sub { $noKeys ||= /no identities/ }, 'ssh-add', '-l');
+
+    if ($noKeys)
+    {
+        # Use print so user can't inadvertently keep us quiet about this.
+        print ksb::Debug::colorize (<<EOF);
+b[y[*] SSH Agent does not appear to be managing any keys.  This will lead to you
+  being prompted for every module update for your SSH passphrase.  So, we're
+  running g[ssh-add] for you.  Please type your passphrase at the prompt when
+  requested, (or simply Ctrl-C to abort the script).
+EOF
+        my @commandLine = ('ssh-add');
+        my $identFile = $ctx->getOption('ssh-identity-file');
+        push (@commandLine, $identFile) if $identFile;
+
+        my $result = system (@commandLine);
+        if ($result) # Run this code for both death-by-signal and nonzero return
+        {
+            my $rcfile = $ctx->rcFile();
+
+            print "\nUnable to add SSH identity, aborting.\n";
+            print "If you don't want kdesrc-build to check in the future,\n";
+            print ksb::Debug::colorize ("Set the g[disable-agent-check] option to g[true] in your $rcfile.\n\n");
+
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+# Function: _handle_updates
+#
+# Subroutine to update a list of modules.
+#
+# Parameters:
+# 1. IPC module to pass results to.
+# 2. Build Context, which will be used to determine the module update list.
+#
+# The ipc parameter contains an object that is responsible for communicating
+# the status of building the modules.  This function must account for every
+# module in $ctx's update phase to the ipc object before returning.
+#
+# Returns 0 on success, non-zero on error.
+sub _handle_updates
+{
+    my ($ipc, $ctx) = @_;
+    my $kdesrc = $ctx->getSourceDir();
+    my @update_list = $ctx->modulesInPhase('update');
+
+    # No reason to print out the text if we're not doing anything.
+    if (!@update_list)
+    {
+        $ipc->sendIPCMessage(ksb::IPC::ALL_UPDATING, "update-list-empty");
+        return 0;
+    }
+
+    if (not _check_for_ssh_agent($ctx))
+    {
+        $ipc->sendIPCMessage(ksb::IPC::ALL_FAILURE, "ssh-failure");
+        return 1;
+    }
+
+    if (grep { $_->scm()->isa('ksb::Updater::Git') } @update_list) {
+        ksb::Updater::Git::verifyGitConfig();
+    }
+
+    if (not -e $kdesrc)
+    {
+        whisper ("KDE source download directory doesn't exist, creating.\n");
+        if (not super_mkdir ($kdesrc))
+        {
+            error ("Unable to make directory r[$kdesrc]!");
+            $ipc->sendIPCMessage(ksb::IPC::ALL_FAILURE, "no-source-dir");
+
+            return 1;
+        }
+    }
+
+    # Once at this point, any errors we get should be limited to a module,
+    # which means we can tell the build thread to start.
+    $ipc->sendIPCMessage(ksb::IPC::ALL_UPDATING, "starting-updates");
+
+    my $hadError = 0;
+    foreach my $module (@update_list)
+    {
+        $ipc->setLoggedModule($module->name());
+
+        # Note that this must be in this order to avoid accidentally not
+        # running ->update() from short-circuiting if an error is noted.
+        $hadError = !$module->update($ipc, $ctx) || $hadError;
+    }
+
+    $ipc->close();
+    return $hadError;
+}
+
+# Function: _handle_build
+#
+# Subroutine to handle the build process.
+#
+# Parameters:
+# 1. IPC object to receive results from.
+# 2. Build Context, which is used to determine list of modules to build.
+#
+# If the packages are not already checked-out and/or updated, this
+# subroutine WILL NOT do so for you.
+#
+# This subroutine assumes that the source directory has already been set up.
+# It will create the build directory if it doesn't already exist.
+#
+# If $builddir/$module/.refresh-me exists, the subroutine will
+# completely rebuild the module (as if --refresh-build were passed for that
+# module).
+#
+# Returns 0 for success, non-zero for failure.
+sub _handle_build
+{
+    my ($ipc, $ctx) = @_;
+    my @build_done;
+    my @modules = $ctx->modulesInPhase('build');
+    my $result = 0;
+
+    # No reason to print building messages if we're not building.
+    return 0 if scalar @modules == 0;
+
+    # Check for absolutely essential programs now.
+    if (!_checkForEssentialBuildPrograms($ctx) &&
+        !exists $ENV{KDESRC_BUILD_IGNORE_MISSING_PROGRAMS})
+    {
+        error (" r[b[*] Aborting now to save a lot of wasted time.");
+        error (" y[b[*] export KDESRC_BUILD_IGNORE_MISSING_PROGRAMS=1 and re-run (perhaps with --no-src)");
+        error (" r[b[*] to continue anyways. If this check was in error please report a bug against");
+        error (" y[b[*] kdesrc-build at https://bugs.kde.org/");
+
+        return 1;
+    }
+
+    # IPC queue should have a message saying whether or not to bother with the
+    # build.
+    $ipc->waitForStreamStart();
+
+    my $outfile = pretending() ? undef
+                               : $ctx->getLogDir() . '/build-status';
+
+    open (STATUS_FILE, '>', $outfile // '/dev/null') or do {
+        error (<<EOF);
+	Unable to open output status file r[b[$outfile]
+	You won't be able to use the g[--resume] switch next run.\n";
+EOF
+        $outfile = undef;
+    };
+
+    my $num_modules = scalar @modules;
+    my $i = 1;
+
+    while (my $module = shift @modules)
+    {
+        my $moduleName = $module->name();
+        my $moduleSet = $module->moduleSet()->name();
+        my $modOutput = "$module";
+
+        if (debugging(ksb::Debug::WHISPER)) {
+            $modOutput .= " (build system " . $module->buildSystemType() . ")"
+        }
+
+        if ($moduleSet) {
+            note ("Building g[$modOutput] from g[$moduleSet] ($i/$num_modules)");
+        }
+        else {
+            note ("Building g[$modOutput] ($i/$num_modules)");
+        }
+
+        $ctx->resetEnvironment();
+        $module->setupEnvironment();
+
+        my $start_time = time;
+
+        # If using IPC, read in the contents of the message buffer, and wait
+        # for completion of the source update if necessary.
+
+        my ($resultStatus, $message) = $ipc->waitForModule($module);
+
+        if ($resultStatus eq 'failed') {
+            $result = 1;
+            $ctx->markModulePhaseFailed('update', $module);
+            print STATUS_FILE "$module: Failed on update.\n";
+
+            # Increment failed count to track when to start bugging the
+            # user to fix stuff.
+            my $fail_count = $module->getPersistentOption('failure-count') // 0;
+            ++$fail_count;
+            $module->setPersistentOption('failure-count', $fail_count);
+
+            error ("\tUnable to update r[$module], build canceled.");
+            next;
+        }
+        elsif ($resultStatus eq 'skipped') {
+            # i.e. build should be skipped.
+            info ("\tNo changes to source code.");
+        }
+        elsif ($resultStatus eq 'success') {
+            note ("\tSource update complete for g[$module]: $message");
+        }
+
+        # Skip actually building a module if the user has selected to skip
+        # builds when the source code was not actually updated. But, don't skip
+        # if we didn't successfully build last time.
+        if (!$module->getOption('build-when-unchanged') &&
+            $resultStatus eq 'skipped' &&
+            ($module->getPersistentOption('failure-count') // 0) == 0)
+        {
+            note ("\tSkipping g[$module], its source code has not changed.");
+            $i++;
+            push @build_done, $moduleName; # Make it show up as a success
+            next;
+        }
+
+        if ($module->build())
+        {
+            my $elapsed = prettify_seconds(time - $start_time);
+            print STATUS_FILE "$module: Succeeded after $elapsed.\n";
+            $module->setPersistentOption('last-build-rev', $module->currentScmRevision());
+            $module->setPersistentOption('failure-count', 0);
+
+            info ("\tOverall time for g[$module] was g[$elapsed].");
+            push @build_done, $moduleName;
+        }
+        else
+        {
+            my $elapsed = prettify_seconds(time - $start_time);
+            print STATUS_FILE "$module: Failed after $elapsed.\n";
+
+            info ("\tOverall time for r[$module] was g[$elapsed].");
+            $ctx->markModulePhaseFailed('build', $module);
+            $result = 1;
+
+            # Increment failed count to track when to start bugging the
+            # user to fix stuff.
+
+            my $fail_count = $module->getPersistentOption('failure-count') // 0;
+            ++$fail_count;
+            $module->setPersistentOption('failure-count', $fail_count);
+
+            if ($module->getOption('stop-on-failure'))
+            {
+                note ("\n$module didn't build, stopping here.");
+                return 1; # Error
+            }
+        }
+
+        $i++;
+    }
+    continue # Happens at the end of each loop and on next
+    {
+        print "\n"; # Space things out
+    }
+
+    $ipc->close();
+
+    if ($outfile)
+    {
+        close STATUS_FILE;
+
+        # Update the symlink in latest to point to this file.
+        my $logdir = $ctx->getSubdirPath('log-dir');
+        if (-l "$logdir/latest/build-status") {
+            safe_unlink("$logdir/latest/build-status");
+        }
+        symlink($outfile, "$logdir/latest/build-status");
+    }
+
+    info ("<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
+
+    if (not pretending())
+    {
+        # Print out results, and output to a file
+        my $kdesrc = $ctx->getSourceDir();
+        open BUILT_LIST, ">$kdesrc/successfully-built";
+        foreach my $module (@build_done)
+        {
+            info ("$module");
+            print BUILT_LIST "$module\n";
+        }
+        close BUILT_LIST;
+    }
+    else
+    {
+        # Just print out the results
+        info ('g[', join ("]\ng[", @build_done), ']');
+    }
+
+    info (' '); # Space out nicely
+
+    return $result;
+}
+
+# Function: _handle_async_build
+#
+# This subroutine special-cases the handling of the update and build phases, by
+# performing them concurrently (where possible), using forked processes.
+#
+# Only one thread or process of execution will return from this procedure. Any
+# other processes will be forced to exit after running their assigned module
+# phase(s).
+#
+# We also redirect ksb::Debug output messages to be sent to a single process
+# for display on the terminal instead of allowing them all to interrupt each
+# other.
+#
+# Parameters:
+# 1. IPC Object to use for sending/receiving update/build status. It must be
+# an object type that supports IPC concurrency (e.g. IPC::Pipe).
+# 2. Build Context to use, from which the module lists will be determined.
+#
+# Returns 0 on success, non-zero on failure.
+sub _handle_async_build
+{
+    # The exact method for async is that two children are forked.  One child
+    # is a source update process.  The other child is a monitor process which will
+    # hold status updates from the update process so that the updates may
+    # happen without waiting for us to be ready to read.
+
+    my ($ipc, $ctx) = @_;
+
+    print "\n"; # Space out from metadata messages.
+
+    my $result = 0;
+    my $monitorPid = fork;
+    if ($monitorPid == 0) {
+        # child
+        my $updaterToMonitorIPC = ksb::IPC::Pipe->new();
+        my $updaterPid = fork;
+
+        if ($updaterPid) {
+            $updaterToMonitorIPC->setSender();
+            ksb::Debug::setIPC($updaterToMonitorIPC);
+
+            # Avoid calling close subroutines in more than one routine.
+            POSIX::_exit (_handle_updates ($updaterToMonitorIPC, $ctx));
+        }
+        else {
+            $ipc->setSender();
+            $updaterToMonitorIPC->setReceiver();
+
+            $ipc->setLoggedModule('#monitor#'); # This /should/ never be used...
+            ksb::Debug::setIPC($ipc);
+
+            # Avoid calling close subroutines in more than one routine.
+            my $result = _handle_monitoring ($ipc, $updaterToMonitorIPC);
+
+            waitpid ($updaterPid, 0);
+            $result = 1 if $? != 0;
+
+            POSIX::_exit ($result);
+        }
+    }
+    else {
+        # Still the parent, let's do the build.
+        $ipc->setReceiver();
+        my $result = _handle_build ($ipc, $ctx);
+    }
+
+    # Exit code is in $?.
+    waitpid ($monitorPid, 0);
+
+    $result = 1 if $? != 0;
+
+    return $result;
+}
+
+# Function: _handle_install
+#
+# Handles the installation process.  Simply calls 'make install' in the build
+# directory, though there is also provision for cleaning the build directory
+# afterwards, or stopping immediately if there is a build failure (normally
+# every built module is attempted to be installed).
+#
+# Parameters:
+# 1. Build Context, from which the install list is generated.
+#
+# Return value is a shell-style success code (0 == success)
+sub _handle_install
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my @modules = $ctx->modulesInPhase('install');
+
+    @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
+    my $result = 0;
+
+    for my $module (@modules)
+    {
+        $ctx->resetEnvironment();
+        $result = $module->install() || $result;
+
+        if ($result && $module->getOption('stop-on-failure')) {
+            note ("y[Stopping here].");
+            return 1; # Error
+        }
+    }
+
+    return $result;
+}
+
+# Function: _handle_uninstall
+#
+# Handles the uninstal process.  Simply calls 'make uninstall' in the build
+# directory, while assuming that Qt or CMake actually handles it.
+#
+# The order of the modules is often significant, and it may work better to
+# uninstall modules in reverse order from how they were installed. However this
+# code does not automatically reverse the order; modules are uninstalled in the
+# order determined by the build context.
+#
+# This function obeys the 'stop-on-failure' option supported by _handle_install.
+#
+# Parameters:
+# 1. Build Context, from which the uninstall list is generated.
+#
+# Return value is a shell-style success code (0 == success)
+sub _handle_uninstall
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my @modules = $ctx->modulesInPhase('uninstall');
+
+    @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
+    my $result = 0;
+
+    for my $module (@modules)
+    {
+        $ctx->resetEnvironment();
+        $result = $module->uninstall() || $result;
+
+        if ($result && $module->getOption('stop-on-failure'))
+        {
+            note ("y[Stopping here].");
+            return 1; # Error
+        }
+    }
+
+    return $result;
+}
+
+# Function: _handle_monitoring
+#
+# This is the main subroutine for the monitoring process when using IPC::Pipe.
+# It reads in all status reports from the source update process and then holds
+# on to them.  When the build process is ready to read information we send what
+# we have.  Otherwise we're waiting on the update process to send us something.
+#
+# This convoluted arrangement is required to allow the source update
+# process to go from start to finish without undue interruption on it waiting
+# to write out its status to the build process (which is usually busy).
+#
+# Parameters:
+# 1. the IPC object to use to send to build process.
+# 2. the IPC object to use to receive from update process.
+#
+# Returns 0 on success, non-zero on failure.
+sub _handle_monitoring
+{
+    my ($ipcToBuild, $ipcFromUpdater) = @_;
+
+    my @msgs;  # Message queue.
+
+    # We will write to the build process and read from the update process.
+
+    my $sendFH = $ipcToBuild->{fh}     || croak_runtime('??? missing pipe to build proc');
+    my $recvFH = $ipcFromUpdater->{fh} || croak_runtime('??? missing pipe from monitor');
+
+    my $readSelector  = IO::Select->new($recvFH);
+    my $writeSelector = IO::Select->new($sendFH);
+
+    # Start the loop.  We will be waiting on either read or write ends.
+    # Whenever select() returns we must check both sets.
+    while (
+        my ($readReadyRef, $writeReadyRef) =
+            IO::Select->select($readSelector, $writeSelector, undef))
+    {
+        # Check for source updates first.
+        if (@{$readReadyRef})
+        {
+            undef $@;
+            my $msg = eval { $ipcFromUpdater->receiveMessage(); };
+
+            # undef msg indicates EOF, so check for exception obj specifically
+            die $@ if $@;
+
+            # undef can be returned on EOF as well as error.  EOF means the
+            # other side is presumably done.
+            if (! defined $msg)
+            {
+                $readSelector->remove($recvFH);
+                last; # Select no longer needed, just output to build.
+            }
+            else
+            {
+                push @msgs, $msg;
+
+                # We may not have been waiting for write handle to be ready if
+                # we were blocking on an update from updater thread.
+                $writeSelector->add($sendFH) unless $writeSelector->exists($sendFH);
+            }
+        }
+
+        # Now check for build updates.
+        if (@{$writeReadyRef})
+        {
+            # If we're here the update is still going.  If we have no messages
+            # to send wait for that first.
+            if (not @msgs)
+            {
+                $writeSelector->remove($sendFH);
+            }
+            else
+            {
+                # Send the message (if we got one).
+                if (!$ipcToBuild->sendMessage(shift @msgs))
+                {
+                    error ("r[mon]: Build process stopped too soon! r[$!]");
+                    return 1;
+                }
+            }
+        }
+    }
+
+    # Send all remaining messages.
+    while (@msgs)
+    {
+        if (!$ipcToBuild->sendMessage(shift @msgs))
+        {
+            error ("r[mon]: Build process stopped too soon! r[$!]");
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 # Function: _applyModuleFilters
@@ -1414,6 +2201,453 @@ DONE
         $module->phases()->phases($phases->phases());
         $module;
     } (@enteredModules);
+}
+
+# Function: _cleanup_log_directory
+#
+# This function removes log directories from old kdesrc-build runs.  All log
+# directories not referenced by $log_dir/latest somehow are made to go away.
+#
+# Parameters:
+# 1. Build context.
+#
+# No return value.
+sub _cleanup_log_directory
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $logdir = $ctx->getSubdirPath('log-dir');
+
+    return 0 if ! -e "$logdir/latest"; # Could happen for error on first run...
+
+    # This glob relies on the date being in the specific format YYYY-MM-DD-ID
+    my @dirs = bsd_glob("$logdir/????-??-??-??/", GLOB_NOSORT);
+    my @needed = _reachableModuleLogs("$logdir/latest");
+
+    # Convert a list to a hash lookup since Perl lacks a "list-has"
+    my %needed_table;
+    @needed_table{@needed} = (1) x @needed;
+
+    my $length = scalar @dirs - scalar @needed;
+    if ($length > 15) { # Arbitrary man is arbitrary
+        note ("Removing y[b[$length] out of g[b[$#dirs] old log directories (this may take some time)...");
+    }
+    elsif ($length > 0) {
+        info ("Removing g[b[$length] out of g[b[$#dirs] old log directories...");
+    }
+
+    for my $dir (@dirs) {
+        my ($id) = ($dir =~ m/(\d\d\d\d-\d\d-\d\d-\d\d)/);
+        safe_rmtree($dir) unless $needed_table{$id};
+    }
+}
+
+# Function: _output_failed_module_list
+#
+# Print out an error message, and a list of modules that match that error
+# message.  It will also display the log file name if one can be determined.
+# The message will be displayed all in uppercase, with PACKAGES prepended, so
+# all you have to do is give a descriptive message of what this list of
+# packages failed at doing.
+#
+# No message is printed out if the list of failed modules is empty, so this
+# function can be called unconditionally.
+#
+# Parameters:
+# 1. Build Context
+# 2. Message to print (e.g. 'failed to foo')
+# 3. List of ksb::Modules that had failed to foo
+#
+# No return value.
+sub _output_failed_module_list
+{
+    my ($ctx, $message, @fail_list) = @_;
+    assert_isa($ctx, 'ksb::BuildContext');
+
+    $message = uc $message; # Be annoying
+
+    debug ("Message is $message");
+    debug ("\tfor ", join(', ', @fail_list));
+
+    if (scalar @fail_list > 0)
+    {
+        my $homedir = $ENV{'HOME'};
+        my $logfile;
+
+        warning ("\nr[b[<<<  PACKAGES $message  >>>]");
+
+        for my $module (@fail_list)
+        {
+            $logfile = $module->getOption('#error-log-file');
+
+            # async updates may cause us not to have a error log file stored.  There's only
+            # one place it should be though, take advantage of side-effect of log_command()
+            # to find it.
+            if (not $logfile) {
+                my $logdir = $module->getLogDir() . "/error.log";
+                $logfile = $logdir if -e $logdir;
+            }
+
+            $logfile = "No log file" unless $logfile;
+            $logfile =~ s|$homedir|~|;
+
+            warning ("r[$module]") if pretending();
+            warning ("r[$module] - g[$logfile]") if not pretending();
+        }
+    }
+}
+
+# Function: _output_failed_module_lists
+#
+# This subroutine reads the list of failed modules for each phase in the build
+# context and calls _output_failed_module_list for all the module failures.
+#
+# Parameters:
+# 1. Build context
+#
+# Return value:
+# None
+sub _output_failed_module_lists
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+
+    # This list should correspond to the possible phase names (although
+    # it doesn't yet since the old code didn't, TODO)
+    for my $phase ($ctx->phases()->phases())
+    {
+        my @failures = $ctx->failedModulesInPhase($phase);
+        _output_failed_module_list($ctx, "failed to $phase", @failures);
+    }
+
+    # See if any modules fail continuously and warn specifically for them.
+    my @super_fail = grep {
+        ($_->getPersistentOption('failure-count') // 0) > 3
+    } (@{$ctx->moduleList()});
+
+    if (@super_fail)
+    {
+        warning ("\nThe following modules have failed to build 3 or more times in a row:");
+        warning ("\tr[b[$_]") foreach @super_fail;
+        warning ("\nThere is probably a local error causing this kind of consistent failure, it");
+        warning ("is recommended to verify no issues on the system.\n");
+    }
+}
+
+# Function: _installTemplatedFile
+#
+# This function takes a given file and a build context, and installs it to a
+# given location while expanding out template entries within the source file.
+#
+# The template language is *extremely* simple: <% foo %> is replaced entirely
+# with the result of $ctx->getOption(foo, 'no-inherit'). If the result
+# evaluates false for any reason than an exception is thrown. No quoting of
+# any sort is used in the result, and there is no way to prevent expansion of
+# something that resembles the template format.
+#
+# Multiple template entries on a line will be replaced.
+#
+# The destination file will be created if it does not exist. If the file
+# already exists then an exception will be thrown.
+#
+# Error handling: Any errors will result in an exception being thrown.
+#
+# Parameters:
+# 1. Pathname to the source file (use absolute paths)
+# 2. Pathname to the destination file (use absolute paths)
+# 3. Build context to use for looking up template values
+#
+# Return value: There is no return value.
+sub _installTemplatedFile
+{
+    my ($sourcePath, $destinationPath, $ctx) = @_;
+    assert_isa($ctx, 'ksb::BuildContext');
+
+    open (my $input,  '<', $sourcePath) or
+        croak_runtime("Unable to open template source $sourcePath: $!");
+    open (my $output, '>', $destinationPath) or
+        croak_runtime("Unable to open template output $destinationPath: $!");
+
+    while (!eof ($input)) {
+        my $line = readline($input);
+        if (!defined ($line)) {
+            croak_runtime("Failed to read from $sourcePath at line $.: $!");
+            unlink($destinationPath);
+        }
+
+        # Some lines should only be present in the source as they aid with testing.
+        next if $line =~ /kdesrc-build: filter/;
+
+        $line =~
+            s {
+                <% \s*    # Template bracket and whitespace
+                ([^\s%]+) # Capture variable name
+                \s*%>     # remaining whitespace and closing bracket
+              }
+              {
+                  $ctx->getOption($1, 'module') ||
+                      croak_runtime("Invalid variable $1")
+              }gxe;
+              # Replace all matching expressions, use extended regexp w/
+              # comments, and replacement is Perl code to execute.
+
+        (print $output $line) or
+            croak_runtime("Unable to write line to $destinationPath at line $.: $!");
+    }
+}
+
+# Function: _installCustomFile
+#
+# This function installs a source file to a destination path, assuming the
+# source file is a "templated" source file (see also _installTemplatedFile), and
+# records a digest of the file actually installed. This function will overwrite
+# a destination if the destination is identical to the last-installed file.
+#
+# Error handling: Any errors will result in an exception being thrown.
+#
+# Parameters:
+# 1. Build context to use for looking up template values,
+# 2. The full path to the source file.
+# 3. The full path to the destination file (incl. name)
+# 4. The key name to use for searching/recording installed MD5 digest.
+#
+# Return value: There is no return value.
+sub _installCustomFile
+{
+    use File::Copy qw(copy);
+
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my ($sourceFilePath, $destFilePath, $md5KeyName) = @_;
+    my $baseName = basename($sourceFilePath);
+
+    if (-e $destFilePath) {
+        my $existingMD5 = $ctx->getPersistentOption('/digests', $md5KeyName) // '';
+
+        if (fileDigestMD5($destFilePath) ne $existingMD5) {
+            if (!$ctx->getOption('#delete-my-settings')) {
+                error ("\tr[*] Installing \"b[$baseName]\" would overwrite an existing file:");
+                error ("\tr[*]  y[b[$destFilePath]");
+                error ("\tr[*] If this is acceptable, please delete the existing file and re-run,");
+                error ("\tr[*] or pass b[--delete-my-settings] and re-run.");
+
+                return;
+            }
+            elsif (!pretending()) {
+                copy ($destFilePath, "$destFilePath.kdesrc-build-backup");
+            }
+        }
+    }
+
+    if (!pretending()) {
+        _installTemplatedFile($sourceFilePath, $destFilePath, $ctx);
+        $ctx->setPersistentOption('/digests', $md5KeyName, fileDigestMD5($destFilePath));
+    }
+}
+
+# Function: _installCustomSessionDriver
+#
+# This function installs the included sample .xsession and environment variable
+# setup files, and records the md5sum of the installed results.
+#
+# If a file already exists, then its md5sum is taken and if the same as what
+# was previously installed, is overwritten. If not the same, the original file
+# is left in place and the .xsession is instead installed to
+# .xsession-kdesrc-build
+#
+# Error handling: Any errors will result in an exception being thrown.
+#
+# Parameters:
+# 1. Build context to use for looking up template values,
+#
+# Return value: There is no return value.
+sub _installCustomSessionDriver
+{
+    use FindBin qw($RealBin);
+    use List::Util qw(first);
+    use File::Copy qw(copy);
+
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my @xdgDataDirs = split(':', $ENV{XDG_DATA_DIRS} || '/usr/local/share/:/usr/share/');
+    my $xdgDataHome = $ENV{XDG_DATA_HOME} || "$ENV{HOME}/.local/share";
+
+    # First we have to find the source
+    my @searchPaths = ($RealBin, map { "$_/kdesrc-build" } ($xdgDataHome, @xdgDataDirs));
+
+    s{/+$}{}   foreach @searchPaths; # Remove trailing slashes
+    s{//+}{/}g foreach @searchPaths; # Remove duplicate slashes
+
+    my $envScript = first { -f $_ } (
+        map { "$_/sample-kde-env-master.sh" } @searchPaths
+    );
+    my $sessionScript = first { -f $_ } (
+        map { "$_/sample-xsession.sh" } @searchPaths
+    );
+    my $userSample = first { -f $_ } (
+        map { "$_/sample-kde-env-user.sh" } @searchPaths
+    );
+
+    if (!$envScript || !$sessionScript) {
+        warning ("b[*] Unable to find helper files to setup a login session.");
+        warning ("b[*] You will have to setup login yourself, or install kdesrc-build properly.");
+        return;
+    }
+
+    my $destDir = $ENV{XDG_CONFIG_HOME} || "$ENV{HOME}/.config";
+    super_mkdir($destDir) unless -d $destDir;
+
+    _installCustomFile($ctx, $envScript, "$destDir/kde-env-master.sh",
+        'kde-env-master-digest');
+    _installCustomFile($ctx, $sessionScript, "$ENV{HOME}/.xsession",
+        'xsession-digest');
+
+    if (!pretending()) {
+        if (! -e "$destDir/kde-env-user.sh") {
+            copy($userSample, "$destDir/kde-env-user.sh") or do {
+                warning ("b[*] Unable to install b[$userSample]: $!");
+                warning ("b[*] You should create b[~/.config/kde-env-user.sh] yourself or fix the error and re-run");
+            };
+        }
+
+        chmod (0744, "$ENV{HOME}/.xsession") or do {
+            error ("\tb[r[*] Error making b[~/.xsession] executable: $!");
+            error ("\tb[r[*] If this file is not executable you may not be able to login!");
+        };
+    }
+}
+
+# Function: _checkForEssentialBuildPrograms
+#
+# This subroutine checks for programs which are absolutely essential to the
+# *build* process and returns false if they are not all present. Right now this
+# just means qmake and cmake (although this depends on what modules are
+# actually present in the build context).
+#
+# Parameters:
+# 1. Build context
+#
+# Return value:
+# None
+sub _checkForEssentialBuildPrograms
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+
+    return 1 if pretending();
+
+    my @buildModules = $ctx->modulesInPhase('build');
+    my %requiredPrograms;
+    my %modulesRequiringProgram;
+
+    foreach my $module ($ctx->modulesInPhase('build')) {
+        my @progs = $module->buildSystem()->requiredPrograms();
+
+        # Deliberately used @, since requiredPrograms can return a list.
+        @requiredPrograms{@progs} = 1;
+
+        foreach my $prog (@progs) {
+            $modulesRequiringProgram{$prog} //= { };
+            $modulesRequiringProgram{$prog}->{$module->name()} = 1;
+        }
+    }
+
+    my $wasError = 0;
+    for my $prog (keys %requiredPrograms) {
+        my %requiredPackages = (
+            qmake => 'Qt',
+            cmake => 'CMake',
+        );
+
+        my $programPath = absPathToExecutable($prog);
+
+        # qmake is not necessarily named 'qmake'
+        if (!$programPath && $prog eq 'qmake') {
+            $programPath = ksb::BuildSystem::QMake::absPathToQMake();
+        }
+
+        if (!$programPath) {
+            # Don't complain about Qt if we're building it...
+            if ($prog eq 'qmake' && (
+                    grep { $_->buildSystemType() eq 'Qt' } (@buildModules)) ||
+                    pretending()
+                )
+            {
+                next;
+            }
+
+            $wasError = 1;
+            my $reqPackage = $requiredPackages{$prog} || $prog;
+
+            my @modulesNeeding = keys %{$modulesRequiringProgram{$prog}};
+            local $, = ', '; # List separator in output
+
+            error (<<"EOF");
+
+Unable to find r[b[$prog]. This program is absolutely essential for building
+the modules: y[@modulesNeeding].
+Please ensure the development packages for
+$reqPackage are installed by using your distribution's package manager.
+
+You can also see the
+http://techbase.kde.org/Getting_Started/Build/Distributions page for
+information specific to your distribution (although watch for outdated
+information :( ).
+EOF
+        }
+    }
+
+    return !$wasError;
+}
+
+# Function: _reachableModuleLogs
+#
+# Returns a list of module directory IDs that must be kept due to being
+# referenced from the "latest" symlink.
+#
+# This function may call itself recursively if needed.
+#
+# Parameters:
+# 1. The log directory under which to search for symlinks, including the "/latest"
+#    part of the path.
+sub _reachableModuleLogs
+{
+    my $logdir = shift;
+    my @dirs;
+
+    # A lexicalized var (my $foo) is required in face of recursiveness.
+    opendir(my $fh, $logdir) or croak_runtime("Can't opendir $logdir: $!");
+    my $dir = readdir($fh);
+
+    while(defined $dir) {
+        if (-l "$logdir/$dir") {
+            my $link = readlink("$logdir/$dir");
+            push @dirs, $link;
+        }
+        elsif ($dir !~ /^\.{1,2}$/) {
+            # Skip . and .. directories (this is a great idea, trust me)
+            push @dirs, _reachableModuleLogs("$logdir/$dir");
+        }
+        $dir = readdir $fh;
+    }
+
+    closedir $fh;
+
+    # Extract numeric IDs from directory names.
+    @dirs = map { m/(\d{4}-\d\d-\d\d-\d\d)/ } (@dirs);
+
+    # Convert to unique list by abusing hash keys.
+    my %tempHash;
+    @tempHash{@dirs} = ();
+
+    return keys %tempHash;
+}
+
+# Installs the given subroutine as a signal handler for a set of signals which
+# could kill the program.
+#
+# First parameter is a reference to the sub to act as the handler.
+sub _installSignalHandlers
+{
+    my $handlerRef = shift;
+    my @signals = qw/HUP INT QUIT ABRT TERM PIPE/;
+
+    @SIG{@signals} = ($handlerRef) x scalar @signals;
 }
 
 # Accessors

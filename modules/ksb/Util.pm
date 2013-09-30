@@ -11,6 +11,7 @@ our $VERSION = '0.10';
 use Carp qw(cluck);
 use Scalar::Util qw(blessed);
 use File::Path qw(make_path);
+use File::Find;
 use Cwd qw(getcwd);
 use Errno qw(:POSIX);
 use Digest::MD5;
@@ -24,7 +25,7 @@ our @EXPORT = qw(list_has make_exception assert_isa assert_in any
                  croak_runtime croak_internal download_file absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
-                 pretend_open
+                 pretend_open safe_rmtree
                  super_mkdir filter_program_output prettify_seconds);
 
 # Function to work around a Perl language limitation.
@@ -611,6 +612,66 @@ sub any(&@)
     my ($subRef, $listRef) = @_;
     ($subRef->($_) && return 1) foreach @{$listRef};
     return 0;
+}
+
+# Subroutine to delete a directory and all files and subdirectories within.
+# Does nothing in pretend mode.  An analogue to "rm -rf" from Linux.
+# Requires File::Find module.
+#
+# First parameter: Path to delete
+# Returns boolean true on success, boolean false for failure.
+sub safe_rmtree
+{
+    my $path = shift;
+
+    # Pretty user-visible path
+    my $user_path = $path;
+    $user_path =~ s/^$ENV{HOME}/~/;
+
+    my $delete_file_or_dir = sub {
+        # $_ is the filename/dirname.
+        return if $_ eq '.' or $_ eq '..';
+        if (-f $_ || -l $_)
+        {
+            unlink ($_) or croak_runtime("Unable to delete $File::Find::name: $!");
+        }
+        elsif (-d $_)
+        {
+            rmdir ($File::Find::name) or
+                croak_runtime("Unable to remove directory $File::Find::name: $!");
+        }
+    };
+
+    if (pretending())
+    {
+        pretend ("Would have removed all files/folders in $user_path");
+        return 1;
+    }
+
+    # Error out because we probably have a logic error even though it would
+    # delete just fine.
+    if (not -d $path)
+    {
+        error ("Cannot recursively remove $user_path, as it is not a directory.");
+        return 0;
+    }
+
+    eval {
+        $@ = '';
+        finddepth( # finddepth does a postorder traversal.
+        {
+            wanted => $delete_file_or_dir,
+            no_chdir => 1, # We'll end up deleting directories, so prevent this.
+        }, $path);
+    };
+
+    if ($@)
+    {
+        error ("Unable to remove directory $user_path: $@");
+        return 0;
+    }
+
+    return 1;
 }
 
 1;

@@ -319,18 +319,6 @@ sub prependEnvironmentValue
     $self->queueEnvironmentVariable($envName, $envValue);
 }
 
-# Installs the given subroutine as a signal handler for a set of signals which
-# could kill the program.
-#
-# First parameter is a reference to the sub to act as the handler.
-sub installSignalHandlers
-{
-    my $handlerRef = shift;
-    my @signals = qw/HUP INT QUIT ABRT TERM PIPE/;
-
-    @SIG{@signals} = ($handlerRef) x scalar @signals;
-}
-
 # Tries to take the lock for our current base directory, which currently is
 # what passes for preventing people from accidentally running kdesrc-build
 # multiple times at once.  The lock is based on the base directory instead
@@ -348,15 +336,6 @@ sub takeLock
     $! = 0; # Force reset to non-error status
     sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
     my $errorCode = $!; # Save for later testing.
-
-    # Install signal handlers to ensure that the lockfile gets closed.
-    # There is a race condition here, but at worst we have a stale lock
-    # file, so I'm not *too* concerned.
-    installSignalHandlers(sub {
-        note ("Signal received, terminating.");
-        @main::atexit_subs = (); # Remove their finish, doin' it manually
-        main::finish($self, 5);
-    });
 
     if ($errorCode == EEXIST)
     {
@@ -942,7 +921,7 @@ sub setKDEProjectMetadataModule
     my $self = assert_isa(shift, 'ksb::BuildContext');
     my $metadata = shift;
 
-    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
+    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata') if $metadata;
 
     $self->{kde_projects_metadata} = $metadata;
     return;
