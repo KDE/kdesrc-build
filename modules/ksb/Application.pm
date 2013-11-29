@@ -30,6 +30,7 @@ use List::Util qw(first min);
 use File::Basename; # basename
 use File::Glob ':glob';
 use POSIX qw(:sys_wait_h _exit);
+use Getopt::Long qw(GetOptionsFromArray :config gnu_getopt nobundling pass_through);
 use IO::Handle;
 use IO::Select;
 
@@ -86,6 +87,383 @@ sub new
     return $self;
 }
 
+# Method: _readCommandLineOptionsAndSelectors
+#
+# Returns a list of module/module-set selectors, selected module/module-set
+# options, and global options, based on the command-line arguments passed to
+# this function.
+#
+# This is a package method, should be called as
+# $app->_readCommandLineOptionsAndSelectors
+#
+# Phase:
+#  initialization - Do not call <finish> from this function.
+#
+# Parameters:
+#  pendingOptions - hashref to hold parsed modules options to be applied later.
+#    *Note* this must be done separately, it is not handled by this subroutine.
+#    Global options will be stored in a hashref at $pendingOptions->{global}.
+#    Module or module-set options will be stored in a hashref at
+#    $pendingOptions->{$moduleName} (it will be necessary to disambiguate
+#    later in the run whether it is a module set or a single module).
+#
+#    If the global option 'start-program' is set, then the selectors parameter
+#    (see below) will not be selector at all, but will be a list of command
+#    line options to pass to the chosen program to start (the program will be
+#    the value of the 'start-program' option mentioned above).
+#
+#  selectors - listref to hold the list of module or module-set selectors to
+#    build, in the order desired by the user. These will just be strings, the
+#    caller will have to figure out whether the selector is a module or
+#    module-set, and create any needed objects, and then set the recommended
+#    options as listed in pendingOptions.
+#
+#    See pendingOptions for the special note about the value of this listref
+#    when start-options is in effect.
+#
+#  phases - <PhaseList> to hold the list of phases to run. See <PhaseList>.
+#    This will be the PhaseList that should be used for the global context
+#    object.
+#
+#  @options - The remainder of the arguments are treated as command line
+#    arguments to process.
+#
+# Returns:
+#  Nothing. An exception will be raised on failure, or this function may quit
+#  the program directly (e.g. to handle --help, --usage).
+sub _readCommandLineOptionsAndSelectors
+{
+    my $self = shift;
+    my ($pendingOptionsRef, $selectorsRef, $phases, @options) = @_;
+    my @savedOptions = @options; # Copied for use in debugging.
+    my $version = "kdesrc-build $SCRIPT_VERSION";
+    my $author = <<DONE;
+$version was written (mostly) by:
+  Michael Pyne <mpyne\@kde.org>
+
+Many people have contributed code, bugfixes, and documentation.
+
+Please report bugs using the KDE Bugzilla, at http://bugs.kde.org/
+DONE
+
+    my %foundOptions;
+    %foundOptions = (
+        version => sub { say $version; exit },
+        author  => sub { say $author;  exit },
+        help    => sub { _showHelpMessage(); exit 0 },
+        install => sub {
+            $self->{run_mode} = 'install';
+            $phases->phases('install');
+        },
+        uninstall => sub {
+            $self->{run_mode} = 'uninstall';
+            $phases->phases('uninstall');
+        },
+        'no-src' => sub {
+            $phases->filterOutPhase('update');
+        },
+        'no-install' => sub {
+            $phases->filterOutPhase('install');
+        },
+        'no-tests' => sub {
+            # The "right thing" to do
+            $phases->filterOutPhase('test');
+
+            # What actually works at this point.
+            $foundOptions{'run-tests'} = 0;
+        },
+        'no-build' => sub {
+            $phases->filterOutPhase('build');
+        },
+        # Mostly equivalent to the above
+        'src-only' => sub {
+            $phases->phases('update');
+
+            # We have an auto-switching function that we only want to run
+            # if --src-only was passed to the command line, so we still
+            # need to set a flag for it.
+            $foundOptions{'allow-auto-repo-move'} = 1;
+        },
+        'build-only' => sub {
+            $phases->phases('build');
+        },
+        prefix => sub {
+            my ($optName, $arg) = @_;
+            $foundOptions{prefix} = $arg;
+            $foundOptions{kdedir} = $arg; #TODO: Still needed for compat?
+            $foundOptions{reconfigure} = 1;
+        },
+        pretend => sub {
+            # Set pretend mode but also force the build process to run.
+            $foundOptions{pretend} = 1;
+            $foundOptions{'build-when-unchanged'} = 1;
+        },
+        verbose => sub { $foundOptions{'debug-level'} = ksb::Debug::WHISPER },
+        quiet => sub { $foundOptions{'debug-level'} = ksb::Debug::NOTE },
+        'really-quiet' => sub { $foundOptions{'debug-level'} = ksb::Debug::WARNING },
+        debug => sub {
+            $foundOptions{'debug-level'} = ksb::Debug::DEBUG;
+            debug ("Commandline was: ", join(', ', @savedOptions));
+        },
+
+        # Hack to set module options
+        'set-module-option-value' => sub {
+            my ($optName, $arg) = @_;
+            my ($module, $option, $value) = split (',', $arg, 3);
+            if ($module && $option) {
+                $pendingOptionsRef->{$module} //= { };
+                $pendingOptionsRef->{$module}->{$option} = $value;
+            }
+        },
+
+        # Getopt::Long doesn't set these up for us even though we specify an
+        # array. Set them up ourselves.
+        'start-program' => [ ],
+        'ignore-modules' => [ ],
+
+        # Module selectors, the <> is Getopt::Long shortcut for an
+        # unrecognized non-option value (i.e. an actual argument)
+        '<>' => sub {
+            my $arg = shift;
+            push @{$selectorsRef}, $arg;
+        },
+    );
+
+    GetOptionsFromArray(\@options, \%foundOptions,
+        'version', 'author', 'help', 'disable-snapshots|no-snapshots',
+        'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
+        'no-tests', 'build-when-unchanged|force-build',
+        'verbose|v', 'quiet|quite|q', 'really-quiet', 'debug',
+        'reconfigure', 'colorful-output|color!', 'async!',
+        'src-only|svn-only', 'build-only', 'build-system-only',
+        'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
+        'pretend|dry-run|p', 'refresh-build', 'delete-my-patches',
+        'start-program|run=s{,}',
+        'delete-my-settings', 'revision=i', 'resume-from=s', 'resume-after=s',
+        'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
+        '<>', # Required to read non-option args
+        );
+
+    # TODO: Handle unrecognized options by searching within our list of global
+    # preset options as before?
+    say "Warning: Unrecognized option $_" foreach @options;
+
+    $pendingOptionsRef->{'global'} //= { };
+
+    # To store the values we found, need to strip out the values that are
+    # subroutines, as those are the ones we created. Alternately, place the
+    # subs inline as an argument to the appropriate option in the
+    # GetOptionsFromArray call above, but that's ugly too.
+    my @readOptionNames = grep {
+        ref($foundOptions{$_}) ne 'CODE'
+    } (keys %foundOptions);
+
+    # Slice assignment: $left{$key} = $right{$key} foreach $key (@keys), but
+    # with hashref syntax everywhere.
+    @{ $pendingOptionsRef->{'global'} }{@readOptionNames}
+        = @foundOptions{@readOptionNames};
+}
+
+# Method: _resolveSelectorsIntoModules
+#
+# Takes the provided list of module/module-set selectors, pending options to set,
+# and module/module-sets to choose from (as read from rc-file) and selects the
+# appropriate rc-file module/module-sets.
+#
+# Additionally the module-sets are expanded into modules.
+#
+# All pending options are set into each module. Global options are set by
+# removing any existing rc-file option value, so you must setup the build context
+# separately to have the needed option for this to work.
+#
+# Returns a list of <ksb::Modules> in build order.
+#
+# This is a package method, should be called as
+# $app->_resolveSelectorsIntoModules
+#
+# Phase:
+#  initialization - Do not call <finish> from this function.
+#
+# Parameters:
+#  ctx - <BuildContext> in use.
+#
+#  selectors - listref to hold the list of module or module-set selectors to
+#    build, in the order desired by the user. The value of this parameter
+#    WILL BE CHANGED by this function (each string name is replaced by matching
+#    <Module> or <ModuleSet>.
+#
+#  modNew - reference to a subroutine to run that will accept a newly-made
+#    <Module> and perform any needed setup. The idea is that this subroutine
+#    will also setup any pending options (either from the cmdline or as rc-file
+#    overlay). This could easily be an object except it doesn't seem to warrant
+#    a full separate class.
+#
+#  rcFileModulesAndModuleSets - listref to a list of <Module> or <ModuleSet> (and
+#    no other types) that can be selected from.
+#
+# Returns:
+#  A list: ($metadataModule, @modules), where @modules is a list of <Module> to
+#  build (all module-sets expanded), with options correctly setup from the
+#  rc-file and cmdline, in the same relative order as determined in selectors.
+#  $metadataModule is 'undef' if kde-projects metadata is not required, or a
+#  <Module> to use to perform the download otherwise.
+#
+#  If any passed-in selector does not match a module or module set from
+#  rcFileModulesAndModuleSets then a <Module> will be created and assumed to
+#  come from the kde-projects repository. A special option flag
+#  '#guessed-kde-project' will be set for such modules.
+sub _resolveSelectorsIntoModules
+{
+    my ($self, $ctx, $selectorsRef, $modNewRef, $rcFileModulesAndModuleSetsRef)
+        = @_;
+    my @modules = @{$selectorsRef};
+    my $metadataModule;
+
+    # Lookup modules/module-sets by name
+    my %lookupTable =
+        map { $_->name() => $_ } (@$rcFileModulesAndModuleSetsRef);
+
+    # Separate lookup table for the use-modules entries for module-sets to allow
+    # for partial module-set expansion. This and lookupTable *should* end up
+    # with disjoint sets of module-names, at least as long as the user declared
+    # their option-overriding module *after* the appropriate use-modules line.
+    my %setEntryLookupTable;
+    for my $moduleSet (grep { $_->isa('ksb::ModuleSet') } (@{$rcFileModulesAndModuleSetsRef}))
+    {
+        my @results = $moduleSet->moduleNamesToFind();
+
+        # Have each use-module item point to the source module-set. The
+        # parens in front of 'x' are semantically required for repetition!
+        @setEntryLookupTable{@results} = ($moduleSet) x scalar @results;
+    }
+
+    my %expandedModuleSets; # Holds module-sets expanded on-the-fly
+
+    # This is the meat of our procedure, so we wrap in a sub.
+    # If not for the dependency on almost all of our params and the lifetime
+    # requirements this could be a separate function.
+    my $lookupSelector = sub {
+        my $selector = shift;
+        my $selectorName = $selector;
+
+        # Module selectors beginning with '+' force treatment as a kde-projects
+        # module, which means they won't be matched here (we're only looking for
+        # sets).
+        my $forcedToKDEProject = substr($selectorName, 0, 1) eq '+';
+        substr($selectorName, 0, 1, '') if $forcedToKDEProject;
+
+        # This test applies for both modules and (entire) module-sets. Note
+        # that a partially-expanded module-set has its module results
+        # re-inserted into lookup table though.
+        if (exists $lookupTable{$selectorName}) {
+            $selector = $lookupTable{$selectorName};
+            $selector->{options}->{'#selected-by'} = 'name';
+        }
+        # This applies to module-sets when only a partial expansion is needed.
+        elsif (exists $setEntryLookupTable{$selectorName}) {
+            my $neededModuleSet = $setEntryLookupTable{$selectorName};
+
+            # _expandModuleSets applies pending/cmdline options.
+            if (!exists $expandedModuleSets{$neededModuleSet}) {
+                my (undef, @moduleResults) = _expandModuleSets(
+                    $ctx, $modNewRef, $neededModuleSet);
+                $expandedModuleSets{$neededModuleSet} = \@moduleResults;
+            }
+
+            $selector = first {
+                $_->name() eq $selectorName
+            } @{$expandedModuleSets{$neededModuleSet}};
+
+            if (!$selector) {
+                croak_internal("Didn't select a module that was here earlier in the code path. Please report a bug.");
+            }
+
+            $lookupTable{$selectorName} = $selector;
+            $selector->setOption('#selected-by',
+                'partial-expansion-' . $neededModuleSet->name());
+        }
+        elsif (ref $selector && $selector->isa('ksb::Module')) {
+            # We couldn't find anything better than what we were provided,
+            # just give it back.
+            $selector = $selector;
+            $selector->setOption('#selected-by', 'best-guess-after-full-search');
+        }
+        elsif ($forcedToKDEProject) {
+            # Just assume it's a kde-projects module and expand away...
+            my $tempSet = ksb::ModuleSet::KDEProjects->new($ctx, '_cmdline');
+            $tempSet->setModulesToFind($selectorName);
+            (undef, $selector) = _expandModuleSets($ctx, $modNewRef, $tempSet);
+        }
+        else {
+            # Neither a named Module, ModuleSet, or use-modules entry within a
+            # known ModuleSet. It's possible it might be a to-be-expanded
+            # ModuleSet entry though, so create a shell Module for now and mark
+            # it as a guess so we can see if it can be sorted out later.
+            $selector = ksb::Module->new($ctx, $selectorName);
+            $selector->phases()->phases($ctx->phases()->phases());
+
+            if ($selectorName eq 'l10n') {
+                $_->setScmType('l10n')
+            }
+
+            $selector->setScmType('proj');
+            $selector->setOption('#guessed-kde-project', 1);
+            $selector->setOption('#selected-by', 'initial-guess');
+        }
+
+        return $selector;
+    };
+
+    # We have to be careful to maintain order of selectors throughout.
+    for my $selector (@modules) {
+        $selector = $lookupSelector->($selector);
+        $modNewRef->($selector); # Perform module option setup
+    }
+
+    # Filter --resume-foo first so entire module-sets can be skipped.
+    # Wrap in eval to catch runtime errors
+    eval { @modules = _applyModuleFilters($ctx, @modules); };
+
+    ($metadataModule, @modules) = _expandModuleSets($ctx, $modNewRef, @modules);
+
+    # If we have any 'guessed' modules then they had no obvious source in the
+    # rc-file. But they might still be implicitly from one of our module-sets.
+    # We want them to use ksb::Modules from the rc-file modules/module-sets
+    # instead of our shell Modules, if possible.
+    # But we didn't expand module-sets in rcFileModulesAndModuleSets
+    # unconditionally, only ones that had been selected via the selectors.
+    # Because of this we may need to go a step further and expand out all
+    # remaining module-sets in rcFileModulesAndModuleSets if we have 'guess'
+    # modules still left over, and see if we can then successfully match.
+    if (first { $_->getOption('#guessed-kde-project', 'module') } @modules) {
+        my (undef, @expandedOptionModules) =
+            _expandModuleSets($ctx, $modNewRef, @$rcFileModulesAndModuleSetsRef);
+        %lookupTable = map { $_->name() => $_ } @expandedOptionModules;
+
+        for my $guessedModule (grep {
+            $_->getOption('#guessed-kde-project', 'module') } @modules)
+        {
+            # If the module we want could be found from within our rc-file
+            # module-sets (even implicitly), use it. Otherwise assume
+            # kde-projects and evaluate now.
+            if (exists $lookupTable{$guessedModule->name()}) {
+                $guessedModule = $lookupTable{$guessedModule->name()};
+            }
+            else {
+                my $set = ksb::ModuleSet::KDEProjects->new($ctx, "guessed_from_cmdline");
+                $set->setModulesToFind($guessedModule->name());
+
+                my (undef, @results) = _expandModuleSets($ctx, $modNewRef, $set);
+                $guessedModule = shift @results;
+            }
+        }
+    }
+
+    ### TODO: Metadata Module should go away
+
+    return ($metadataModule, @modules);
+}
+
 # Runs the pre-initialization phase and takes the kdesrc-build lock. Once this
 # function successfully completes it is required for the main process to call
 # finish() to remove the lock.
@@ -98,167 +476,108 @@ sub generateModuleList
     # doing.
 
     my $ctx = $self->context();
-    my $pendingOptions = { };
-
-    debug ("+++ Reached pre-init phase");
+    my $pendingOptions = { global => { }, };
+    my $pendingGlobalOptions = $pendingOptions->{global};
 
     # Process --help, --install, etc. first.
-    my @modules = $self->_processCmdlineArguments($ctx, $pendingOptions, @argv);
+    my @selectors;
+    $self->_readCommandLineOptionsAndSelectors($pendingOptions, \@selectors,
+        $ctx->phases(), @argv);
 
-    debug ("--- Arguments read: ", scalar @modules, " command line modules");
+    my %ignoredSelectors;
+    @ignoredSelectors{@{$pendingGlobalOptions->{'ignore-modules'}}} = undef;
+
+    my @startProgramArgs = @{$pendingGlobalOptions->{'start-program'}};
+    delete @{$pendingGlobalOptions}{qw/ignore-modules start-program/};
+
+    # Everything else in pendingOptions should be OK to apply directly as a module
+    # or context option.
+
+    # rc-file needs special handling.
+    if (exists $pendingGlobalOptions->{'rc-file'} && $pendingGlobalOptions->{'rc-file'}) {
+        $ctx->setRcFile($pendingGlobalOptions->{'rc-file'});
+    }
+
+    # disable async if only running a single phase.
+    $pendingGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
 
     # Output time once we know if pretending or not.
     my $time = localtime;
     info ("Script started processing at g[$time]") unless pretending();
 
-    # Change name and type of command line entries beginning with + to force
-    # them to be XML project modules.
-    foreach (@modules) {
-        if (substr($_->{name}, 0, 1) eq '+') {
-            debug ("Forcing ", $_->name(), " to be an XML module");
-            $_->setScmType('proj');
-            substr($_->{name}, 0, 1) = ''; # Remove first char
-        }
-    }
-
     my $fh = $ctx->loadRcFile();
 
-    # If we're still here, read the options
-    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh);
+    # _readConfigurationOptions will add pending global opts to ctx while ensuring
+    # returned modules/sets have any such options stripped out. It will also add
+    # module-specific options to any returned modules/sets.
+    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $pendingOptions);
     close $fh;
-    debug ("--- Config file read: ", scalar @optionModulesAndSets, " modules/module sets.");
-    debug ("   --- " , (scalar grep { $_->isa('ksb::ModuleSet') } @optionModulesAndSets) , " are module sets.");
-
-    # Modify the options read from the rc-file to have the pending changes from
-    # the command line.
-    foreach my $pendingModule (keys %{$pendingOptions}) {
-        my $options = ${$pendingOptions}{$pendingModule};
-        my ($module) = grep {
-            $_->isa('ksb::Module') && $pendingModule eq $_->name()
-        } (@optionModulesAndSets);
-
-        if (!$module) {
-            warning ("Tried to set options for unknown module b[y[$pendingModule]");
-            next;
-        }
-
-        while (my ($key, $value) = each %{$options}) {
-            $module->setOption($key, $value);
-        }
-    }
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
 
-    if (my $prog = $ctx->getOption('#start-program'))
+    if (@startProgramArgs)
     {
         # @modules is the command line arguments to pass in this case.
-        _executeCommandLineProgram($prog, @modules);
+        # TODO: Have context setup environment variables here first.
+        _executeCommandLineProgram(@startProgramArgs); # noreturn
     }
 
-    my $commandLineModules = scalar @modules;
+    # At this point we have our list of candidate modules / module-sets (as read in
+    # from rc-file). The module sets have not been expanded into modules.
+    # We also might have cmdline "selectors" to determine which modules or
+    # module-sets to choose. First let's select module sets, and expand them.
+
+    my @modules;
+    my @globalCmdlineArgs = keys %{$pendingGlobalOptions};
+    my $commandLineModules = scalar @selectors;
     my $metadataModule;
 
-    # Allow named module-sets to be given on the command line.
+    my $newModuleSub = sub {
+        my $module = shift;
+        while (my ($k, $v) = each %{$pendingOptions->{$module->name()}}) {
+            $module->setOption($k, $v);
+        }
+
+        # Just in case
+        delete @{$module->{options}}{@globalCmdlineArgs};
+    };
+
     if ($commandLineModules) {
-        # Copy ksb::Module and ksb::ModuleSet objects from the ones created by
-        # _readConfigurationOptions since their module-type will actually be set.
-        _spliceOptionModules(\@modules, \@optionModulesAndSets);
-        debug ("--- spliced rc-file modules/sets into command line modules");
-        debug ("   --- now ", scalar @modules, " modules present");
+        # select our modules and module-sets, and expand them out
+        ($metadataModule, @modules) = $self->_resolveSelectorsIntoModules(
+            $ctx, \@selectors, $newModuleSub, \@optionModulesAndSets);
 
-        # After this splicing, the only bare ksb::Modules with a 'proj'
-        # scm type should be the ones from the command line that we got from
-        # _processCmdlineArguments.
-
-        # Modify l10n module inline, if present.
-        for (@modules) {
-            if ($_->name() eq 'l10n' && $_->isa('ksb::Module')) {
-                $_->setScmType('l10n')
-            }
-        }
-
-        # Filter --resume-foo first so entire module-sets can be skipped.
-        # Wrap in eval to catch runtime errors
-        eval { @modules = _applyModuleFilters($ctx, @modules); };
-
-        debug ("--- Applied command-line --resume-foo pass, ", scalar @modules, " remain.");
-        debug ("   --- " , (scalar grep { $_->isa("ksb::ModuleSet") } @modules) , " are module sets.");
-
-        ($metadataModule, @modules) = _expandModuleSets($ctx, @modules);
-
-        debug ("--- Expanded command-line module sets into ", scalar @modules, " modules.");
-        debug ("   --- Metadata module needed? ", $metadataModule ? "Yes" : "No");
-
-        # If we have any 'guessed' modules they came from the command line. We
-        # want them to use ksb::Modules that came from
-        # _readConfigurationOptions() instead of ones from _processCmdlineArguments(),
-        # if any are available. But we don't expand module-sets from
-        # _readConfigurationOptions unconditionally, only ones where the name
-        # matched between the command line and rc-file, so the previous
-        # _spliceOptionModules might not have found them. (e.g. if you named a
-        # module on the command line that isn't named directly in the rc file
-        # but would eventually be found implicitly). To make this work we have
-        # to expand out our rc-file Modules and try splicing again.
-        if (first { $_->getOption('#guessed-kde-project', 'module') } @modules) {
-            my (undef, @expandedOptionModules) = _expandModuleSets($ctx, @optionModulesAndSets);
-            _spliceOptionModules(\@modules, \@expandedOptionModules);
-
-            debug ("--- re-spliced rc-file modules/sets into command line modules");
-            debug ("   --- now ", scalar @modules, " modules present");
-        }
-
-        # At this point @modules has no more module sets, kde-projects or
-        # otherwise.
         ksb::Module->setModuleSource('cmdline');
     }
     else {
         # Build everything in the rc-file, in the order specified.
-        ($metadataModule, @modules) = _expandModuleSets($ctx, @optionModulesAndSets);
 
-        debug ("--- Expanded rc-file module sets into ", scalar @modules, " modules.");
-        debug ("   --- Metadata module needed? ", $metadataModule ? "Yes" : "No");
+        # Check for ignored module-sets and modules (pre-expansion)
+        @optionModulesAndSets = grep { ! exists $ignoredSelectors{$_->name()} } @optionModulesAndSets;
+        ($metadataModule, @modules) = _expandModuleSets(
+            $ctx, $newModuleSub, @optionModulesAndSets);
 
         if ($ctx->getOption('kde-languages')) {
-            my $l10nModule = ksb::Module->new($ctx, 'l10n');
-            $l10nModule->setScmType('l10n');
-            $l10nModule->setBuildSystem($l10nModule->scm());
-
-            debug ("--- Added l10n module to end of build");
-            push @modules, $l10nModule;
+            @modules = _expandl10nModules($ctx, @modules);
         }
 
         ksb::Module->setModuleSource('config');
     }
+
+    # Check for ignored modules (post-expansion)
+    @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
 
     # Filter --resume-foo options. This might be a second pass, but that should
     # be OK since there's nothing different going on from the first pass in that
     # event.
     @modules = _applyModuleFilters($ctx, @modules);
 
-    debug ("--- Applied all-modules --resume-foo pass, ", scalar @modules, " remain.");
-    debug ("   --- ", (scalar grep { $_->isa("ksb::ModuleSet") } @modules), " are module sets (should be 0!).");
-
-    # Apply kde-languages, by appending needed l10n modules to the end of the
-    # build.
-    @modules = _expandl10nModules($ctx, @modules);
-
-    debug ("--- Expanded l10n modules. ", scalar @modules, " remain.");
-
-    # Remove ignored modules and/or module-sets
-    @modules = grep {
-        not exists $ignore_list{$_->name()} && not exists $ignore_list{$_->moduleSet()->name()}
-    } (@modules);
-
-    debug ("--- Handled ignore lists. ", scalar @modules, " remain.");
-
     # If modules were on the command line then they are effectively forced to
     # process unless overridden by command line options as well. If phases
     # *were* overridden on the command line, then no update pass is required
     # (all modules already have correct phases)
     @modules = _updateModulePhases(@modules) unless $commandLineModules;
-
-    debug ("--- Updated module phases. ", scalar @modules, " remain.");
 
     # Save our metadata module, if used.
     $self->{metadata_module} = $metadataModule;
@@ -277,8 +596,6 @@ sub runAllModulePhases
     my @modules = $self->modules();
 
     $ctx->loadPersistentOptions();
-
-    debug ("+++ Reached execution phase");
 
     # If we have kde-build-metadata we must process it first, ASAP.
     if ($metadataModule) {
@@ -730,9 +1047,22 @@ EOF
 #  initialization - Do not call <finish> from this function.
 #
 # Parameters:
-#  ctx - The <BuildContext> to update based on the configuration read.
+#  ctx - The <BuildContext> to update based on the configuration read and
+#  any pending options (see pendingGlobalOptions).
+#
 #  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
 #  methods (e.g. <IO::Handle> subclass).
+#
+#  pendingOptions - hashref holding key/value pairs of pending
+#  options. Any read-in global options matching a key in this hash will be
+#  ignored in the result list (i.e. the global options will mask the read-in
+#  ones), except for ctx, which will have its options modified to match the
+#  pending ones.
+#
+#  Conversely, any module/set options to be applied in pendingOptions are
+#  applied before this function returns. Options for a module are removed from
+#  pendingOptions when they are applied, so that you can tell which options have
+#  not yet been applied.
 #
 # Returns:
 #  @module - Heterogenous list of <Modules> and <ModuleSets> defined in the
@@ -745,6 +1075,7 @@ sub _readConfigurationOptions
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fh = shift;
+    my $pendingOptionsRef = shift;
     my @module_list;
     my $rcfile = $ctx->rcFile();
     my ($option, $modulename, %readModules);
@@ -770,10 +1101,17 @@ sub _readConfigurationOptions
 
         # Now read in each global option.
         _parseModuleOptions($ctx, $fileReader, 'global');
+        while (my ($k, $v) = each %{$pendingOptionsRef->{global}}) {
+            $ctx->setOption($k, $v);
+        }
+
         last;
     }
 
     my $using_default = 1;
+    my @pendingOptsKeys = keys %{$pendingOptionsRef->{global}};
+    my %seenModules; # NOTE! *not* module-sets, *just* modules.
+    my %seenModuleSetItems; # To track option override modules.
 
     # Now read in module settings
     while ($_ = $fileReader->readLine())
@@ -784,9 +1122,10 @@ sub _readConfigurationOptions
 
         # Get modulename (has dash, dots, slashes, or letters/numbers)
         ($modulename) = /^module\s+([-\/\.\w]+)\s*$/;
+        my $newModule;
 
-        if (not $modulename)
-        {
+        # Module-set?
+        if (not $modulename) {
             my $moduleSetRE = qr/^module-set\s*([-\/\.\w]+)?\s*$/;
             ($modulename) = m/$moduleSetRE/;
 
@@ -798,20 +1137,53 @@ sub _readConfigurationOptions
             }
 
             # A moduleset can give us more than one module to add.
-            push @module_list, _parseModuleSetOptions($ctx, $fileReader, $modulename);
+            $newModule = _parseModuleSetOptions($ctx, $fileReader, $modulename);
+
+            # Save 'use-modules' entries so we can see if later module decls
+            # are overriding/overlaying their options.
+            my @moduleSetItems = $newModule->moduleNamesToFind();
+            @seenModuleSetItems{@moduleSetItems} = ($newModule) x scalar @moduleSetItems;
+        }
+        # Module override?
+        elsif (exists $seenModuleSetItems{$modulename}) {
+            # Parse the modules...
+            $newModule = _parseModuleOptions($ctx, $fileReader, "#overlay_$modulename");
+
+            # but only keep the options. Any existing pending options came from
+            # cmdline so do not overwrite existing keys.
+            $pendingOptionsRef->{$modulename} //= { };
+            my $moduleOptsRef = $pendingOptionsRef->{$modulename};
+            while (my ($k, $v) = each %{$newModule->{options}}) {
+                $moduleOptsRef->{$k} = $v unless exists $moduleOptsRef->{$k};
+            }
+
+            # Don't mask global cmdline options.
+            delete @{$moduleOptsRef}{@pendingOptsKeys};
+
+            next; # Don't add to module list
+        }
+        # Duplicate module entry?
+        elsif (exists $seenModules{$modulename}) {
+            # Overwrite options set for existing modules.
+            warning ("Multiple module declarations for $modulename");
+
+            $newModule = $seenModules{$modulename};
+
+            # _parseModuleOptions will re-use newModule, but we still need to
+            # be careful not to mask cmdline options in pendingOptsKeys.
+            _parseModuleOptions($ctx, $fileReader, $newModule);
+
+            delete @{$newModule->{options}}{@pendingOptsKeys};
+
+            next; # Skip all the stuff below
         }
         else {
-            # Overwrite options set for existing modules.
-            if (my @modules = grep { $_->isa('ksb::Module') && ($_->name() eq $modulename) } @module_list) {
-                # We check for definedness as a module-set can exist but be
-                # unnamed.
-                warning ("Multiple module declarations for $modules[0]");
-                _parseModuleOptions($ctx, $fileReader, $modules[0]); # Don't re-add
-            }
-            else {
-                push @module_list, _parseModuleOptions($ctx, $fileReader, $modulename);
-            }
+            $newModule = _parseModuleOptions($ctx, $fileReader, $modulename);
+            $seenModules{$modulename} = $newModule;
         }
+
+        delete @{$newModule->{options}}{@pendingOptsKeys};
+        push @module_list, $newModule;
 
         # Don't build default modules if user has their own wishes.
         $using_default = 0;
@@ -1630,6 +2002,8 @@ EOF
 #
 # Parameters:
 #  $ctx - <BuildContext> in use for this script execution.
+#  $modNew  - Reference to a subroutine to be run for every new <Module>
+#    created. See _resolveSelectorsIntoModules for full details.
 #  @modules - list of <Modules>, <ModuleSets> to be expanded.
 #
 # Returns:
@@ -1638,33 +2012,20 @@ EOF
 #  @modules - List of <Modules> with any module-sets expanded into <Modules>.
 sub _expandModuleSets
 {
-    my ($ctx, @buildModuleList) = @_;
+    my ($ctx, $modNewSub, @buildModuleList) = @_;
 
     my $filter = sub {
-        my $moduleOrSetName = $_->name();
-
-        # 'proj' module types can only come from command line -- we assume the
-        # user is trying to build a module from the kde-projects repo without
-        # first putting into rc-file.
-        if ($_->isa('ksb::Module') && $_->scmType() ne 'proj') {
-            return $_;
-        }
-
         if ($_->isa('ksb::ModuleSet')) {
-            return $_->convertToModules($ctx);
+            return map { $modNewSub->($_); $_ } ($_->convertToModules($ctx));
         }
 
-        my $moduleSet = ksb::ModuleSet::KDEProjects->new($ctx, '<command line>');
-        $moduleSet->setModulesToFind($_->name());
-        $moduleSet->{options}->{'#guessed-kde-project'} = 1;
-
-        debug ("--- Trying to find a home for $_");
-        return $moduleSet->convertToModules($ctx);
+        return $_;
     };
 
     my @moduleResults = map { &$filter } (@buildModuleList);
     my $metadataModule;
 
+    # TODO Extract this to a higher-level function.
     if (first { $_->scmType() eq 'proj' } @moduleResults) {
         debug ("Introducing metadata module into the build");
         $metadataModule = ksb::ModuleSet::KDEProjects::getMetadataModule($ctx);
@@ -1789,417 +2150,6 @@ sub _extractOptionValueRequired
     }
 
     return $returnValue;
-}
-
-# Method: _processCmdlineArguments
-#
-# Processes the command line arguments, which are used to modify the given
-# <BuildContext> and possibly return a list of <Modules>.
-#
-# This is a package method, should be called as $app->_processCmdlineArguments
-#
-# Phase:
-#  initialization - Do not call <finish> from this function.
-#
-# Parameters:
-#  ctx - BuildContext in use.
-#  pendingOptions - hashref to hold parsed modules options to be applied later.
-#    *Note* this must be done separately, it is not handled by this subroutine.
-#  @options - The remainder of the arguments are treated as command line
-#    arguments to process.
-#
-# Returns:
-#  - List of <ksb::Modules> that represent modules specifically entered on the
-#    command-line, _or_
-#  - List of options to pass to a command named by the --run command line
-#    option. (This is true if and only if the _ctx_ ends up with the
-#    _#start-program_ option set).
-sub _processCmdlineArguments
-{
-    my $self = shift;
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $pendingOptions = shift;
-    my $phases = $ctx->phases();
-    my @savedOptions = @_; # Used for --debug
-    my @options = @_;
-    my $arg;
-    my $version = "kdesrc-build $SCRIPT_VERSION";
-    my $author = <<DONE;
-$version was written (mostly) by:
-  Michael Pyne <mpyne\@kde.org>
-
-Many people have contributed code, bugfixes, and documentation.
-
-Please report bugs using the KDE Bugzilla, at http://bugs.kde.org/
-DONE
-
-    my @enteredModules;
-
-    while ($_ = shift @options)
-    {
-        SWITCH: {
-            /^(--version)$/      && do { print "$version\n"; exit; };
-            /^--author$/         && do { print $author; exit; };
-            /^(-h)|(--?help)$/   && do {
-                print <<DONE;
-$version
-http://kdesrc-build.kde.org/
-
-This script automates the download, build, and install process for KDE software
-using the latest available source code.
-
-You should first setup a configuration file (~/.kdesrc-buildrc). You can do
-this by running the kdesrc-build-setup program, which should be included with
-this one.  You can also copy the kdesrc-buildrc-sample file (which should be
-included) to ~/.kdesrc-buildrc.
-
-Basic synopsis, after setting up .kdesrc-buildrc:
-\$ $0 [--options] [module names]
-
-The module names can be either the name of an individual module (as set in your
-configuration with a module declaration, or a use-modules declaration), or of a
-module set (as set with a module-set declaration).
-
-If you don\'t specify any particular module names, then every module you have
-listed in your configuration will be built, in the order listed.
-
-Copyright (c) 2003 - 2013 $author
-The script is distributed under the terms of the GNU General Public License
-v2, and includes ABSOLUTELY NO WARRANTY!!!
-
-Options:
-    --no-src             Skip contacting the source server.
-    --no-build           Skip the build process.
-    --no-install         Don't automatically install after build.
-
-    --pretend            Don't actually take major actions, instead describe
-                         what would be done.
-
-    --src-only           Only update the source code (Identical to --no-build
-                         at this point).
-    --build-only         Build only, don't perform updates or install.
-
-    --rc-file=<filename> Read configuration from filename instead of default.
-
-    --resume-from=<pkg>  Skips modules until just before the given package,
-                         then operates as normal.
-    --resume-after=<pkg> Skips modules up to and including the given package,
-                         then operates as normal.
-
-    --stop-before=<pkg>  Skips the given package and all later packages.
-    --stop-after=<pkg>   Skips all packages after the given package.
-
-    --reconfigure        Run CMake/configure again, but don't clean the build
-                         directory.
-    --build-system-only  Create the build infrastructure, but don't actually
-                         perform the build.
-
-    --<option>=          Any unrecognized options are added to the global
-                         configuration, overriding any value that may exist.
-    --<module>,<option>= Likewise, this allows you to override any module
-                         specific option from the command line.
-
-    --pretend (or -p)    Don't actually contact the source server, run make,
-                         or create/delete files and directories.  Instead,
-                         output what the script would have done.
-    --refresh-build      Start the build from scratch.
-
-    --help               You\'re reading it. :-)
-    --version            Output the program version.
-
-You can get more help by going online to http://kdesrc-build.kde.org/ to view
-the online documentation.  If you have installed kdesrc-build you may also be
-able to view the documentation using KHelpCenter or Konqueror at the URL
-help:/kdesrc-build
-DONE
-                # We haven't done any locking... no need to finish()
-                exit 0;
-            };
-
-            /^--install$/ && do {
-                $self->{run_mode} = 'install';
-                $phases->phases('install');
-
-                last SWITCH;
-            };
-
-            /^--uninstall$/ && do {
-                $self->{run_mode} = 'uninstall';
-                $phases->phases('uninstall');
-
-                last SWITCH;
-            };
-
-            /^--no-snapshots$/ && do {
-                $ctx->setOption('#disable-snapshots', 1);
-                last SWITCH;
-            };
-
-            /^--no-(src|svn)$/ && do {
-                $phases->filterOutPhase('update');
-                last SWITCH;
-            };
-
-            /^--no-install$/ && do {
-                $phases->filterOutPhase('install');
-                last SWITCH;
-            };
-
-            /^--no-tests$/ && do {
-                # The "right thing" to do
-                $phases->filterOutPhase('test');
-
-                # What actually works at this point.
-                $ctx->setOption('#run-tests', 0);
-                last SWITCH;
-            };
-
-            /^--(force-build)|(no-build-when-unchanged)$/ && do {
-                $ctx->setOption('#build-when-unchanged', 1);
-                last SWITCH;
-            };
-
-            /^(-v)|(--verbose)$/ && do {
-                $ctx->setOption('#debug-level', ksb::Debug::WHISPER);
-                last SWITCH;
-            };
-
-            /^(-q)|(--quiet)$/ && do {
-                $ctx->setOption('#debug-level', ksb::Debug::NOTE);
-                last SWITCH;
-            };
-
-            /^--really-quiet$/ && do {
-                $ctx->setOption('#debug-level', ksb::Debug::WARNING);
-                last SWITCH;
-            };
-
-            /^--debug$/ && do {
-                $ctx->setOption('#debug-level', ksb::Debug::DEBUG);
-                debug ("Commandline was: ", join(', ', @savedOptions));
-                last SWITCH;
-            };
-
-            /^--reconfigure$/ && do {
-                $ctx->setOption('#reconfigure', 1);
-                last SWITCH;
-            };
-
-            /^--color$/ && do {
-                $ctx->setOption('#colorful-output', 1);
-                last SWITCH;
-            };
-
-            /^--no-color$/ && do {
-                $ctx->setOption('#colorful-output', 0);
-                last SWITCH;
-            };
-
-            /^--no-build$/ && do {
-                $phases->filterOutPhase('build');
-                last SWITCH;
-            };
-
-            /^--async$/ && do {
-                $ctx->setOption('#async', 1);
-                last SWITCH;
-            };
-
-            /^--no-async$/ && do {
-                $ctx->setOption('#async', 0);
-                last SWITCH;
-            };
-
-            # Although equivalent to --no-build at this point, someday the
-            # script may interpret the two differently, so get ready now.
-            /^--(src|svn)-only$/ && do {      # Identically to --no-build
-                $phases->phases('update');
-
-                # We have an auto-switching function that we only want to run
-                # if --src-only was passed to the command line, so we still
-                # need to set a flag for it.
-                $ctx->setOption('#allow-auto-repo-move', 1);
-                last SWITCH;
-            };
-
-            # Don't run source updates or install
-            /^--build-only$/ && do {
-                $phases->phases('build');
-                last SWITCH;
-            };
-
-            # Start up a program with the environment variables as
-            # read from the config file.
-            /^--run=?/ && do {
-                my $program = _extractOptionValueRequired($_, \@options);
-                $ctx->setOption('#start-program', $program);
-
-                # Save remaining command line options to pass to the program.
-                return @options;
-            };
-
-            /^--build-system-only$/ && do {
-                $ctx->setOption('#build-system-only', 1);
-                last SWITCH;
-            };
-
-            /^--rc-file=?/ && do {
-                my $rcfile = _extractOptionValueRequired($_, \@options);
-                $ctx->setRcFile($rcfile);
-
-                last SWITCH;
-            };
-
-            /^--prefix=?/ && do {
-                my $prefix = _extractOptionValueRequired($_, \@options);
-
-                $ctx->setOption('#kdedir', $prefix);
-                $ctx->setOption('#reconfigure', 1);
-
-                last SWITCH;
-            };
-
-            /^--nice=?/ && do {
-                my $niceness = _extractOptionValueRequired($_, \@options);
-
-                $ctx->setOption('#niceness', $niceness);
-                last SWITCH;
-            };
-
-            /^--ignore-modules$/ && do {
-                # We need to keep _readConfigurationOptions() from adding these
-                # modules to the build list, taken care of by ignore_list.  We
-                # then need to remove the modules from the command line, taken
-                # care of by the @options = () statement;
-                my @innerOptions = ();
-                foreach (@options)
-                {
-                    if (/^-/)
-                    {
-                        push @innerOptions, $_;
-                    }
-                    else
-                    {
-                        $ignore_list{$_} = 1;
-
-                        # the pattern match doesn't work with $_, alias it.
-                        my $module = $_;
-                        @enteredModules = grep (!/^$module$/, @enteredModules);
-                    }
-                }
-                @options = @innerOptions;
-
-                last SWITCH;
-            };
-
-            /^(--dry-run)|(--pretend)|(-p)$/ && do {
-                $ctx->setOption('#pretend', 1);
-                # Simulate the build process too.
-                $ctx->setOption('#build-when-unchanged', 1);
-                last SWITCH;
-            };
-
-            /^--refresh-build$/ && do {
-                $ctx->setOption('#refresh-build', 1);
-                last SWITCH;
-            };
-
-            /^--delete-my-patches$/ && do {
-                $ctx->setOption('#delete-my-patches', 1);
-                last SWITCH;
-            };
-
-            /^--delete-my-settings$/ && do {
-                $ctx->setOption('#delete-my-settings', 1);
-                last SWITCH;
-            };
-
-            /^(--revision|-r)=?/ && do {
-                my $revision = _extractOptionValueRequired($_, \@options);
-                $ctx->setOption('#revision', $revision);
-
-                last SWITCH;
-            };
-
-            /^--resume-from=?/ && do {
-                $_ = _extractOptionValueRequired($_, \@options);
-                $ctx->setOption('#resume-from', $_);
-
-                last SWITCH;
-            };
-
-            /^--resume-after=?/ && do {
-                $_ = _extractOptionValueRequired($_, \@options);
-                $ctx->setOption('#resume-after', $_);
-
-                last SWITCH;
-            };
-
-            /^--stop-after=?/ && do {
-                $_ = _extractOptionValueRequired($_, \@options);
-                $ctx->setOption('#stop-after', $_);
-
-                last SWITCH;
-            };
-
-            /^--stop-before=?/ && do {
-                $_ = _extractOptionValueRequired($_, \@options);
-                $ctx->setOption('#stop-before', $_);
-
-                last SWITCH;
-            };
-
-            /^--/ && do {
-                # First let's see if they're trying to override a global option.
-                my ($option) = /^--([-\w\d\/]+)/;
-                my $value = _extractOptionValue($_, \@options);
-
-                if ($ctx->hasOption($option))
-                {
-                    $ctx->setOption("#$option", $value);
-                }
-                else
-                {
-                    # Module specific option.  The module options haven't been
-                    # read in, so we'll just have to assume that the module the
-                    # user passes actually does exist.
-                    my ($module, $option) = /^--([\w\/-]+),([-\w\d\/]+)/;
-
-                    if (not $module)
-                    {
-                        print "Unknown option $_\n";
-                        exit 8;
-                    }
-
-                    ${$pendingOptions}{$module}{"$option"} = $value;
-                }
-
-                last SWITCH;
-            };
-
-            /^-/ && do { print "WARNING: Unknown option $_\n"; last SWITCH; };
-
-            # Strip trailing slashes.
-            s/\/*$//;
-            push @enteredModules, $_; # Reconstruct correct @options
-        }
-    }
-
-    # Don't go async if only performing one phase.  It (should) work but why
-    # risk it?
-    if (scalar $phases->phases() == 1)
-    {
-        $ctx->setOption('#async', 0);
-    }
-
-    return map {
-        my $module = ksb::Module->new($ctx, $_);
-        # Following will be replaced by option modules if present in rc-file.
-        $module->setScmType('proj');
-        $module->setOption('#guessed-kde-project', 1);
-        $module->phases()->phases($phases->phases());
-        $module;
-    } (@enteredModules);
 }
 
 # Function: _cleanup_log_directory
@@ -2647,6 +2597,83 @@ sub _installSignalHandlers
     my @signals = qw/HUP INT QUIT ABRT TERM PIPE/;
 
     @SIG{@signals} = ($handlerRef) x scalar @signals;
+}
+
+# Shows a help message and version. Does not exit.
+sub _showHelpMessage
+{
+    print <<DONE;
+kdesrc-build $SCRIPT_VERSION
+http://kdesrc-build.kde.org/
+
+This script automates the download, build, and install process for KDE software
+using the latest available source code.
+
+You should first setup a configuration file (~/.kdesrc-buildrc). You can do
+this by running the kdesrc-build-setup program, which should be included with
+this one.  You can also copy the kdesrc-buildrc-sample file (which should be
+included) to ~/.kdesrc-buildrc.
+
+Basic synopsis, after setting up .kdesrc-buildrc:
+\$ $0 [--options] [module names]
+
+The module names can be either the name of an individual module (as set in your
+configuration with a module declaration, or a use-modules declaration), or of a
+module set (as set with a module-set declaration).
+
+If you don\'t specify any particular module names, then every module you have
+listed in your configuration will be built, in the order listed.
+
+Copyright (c) 2003 - 2013 Michael Pyne <mpyne\@kde.org>, and others.
+
+The script is distributed under the terms of the GNU General Public License
+v2, and includes ABSOLUTELY NO WARRANTY!!!
+
+Options:
+    --no-src             Skip contacting the source server.
+    --no-build           Skip the build process.
+    --no-install         Don't automatically install after build.
+
+    --pretend            Don't actually take major actions, instead describe
+                         what would be done.
+
+    --src-only           Only update the source code (Identical to --no-build
+                         at this point).
+    --build-only         Build only, don't perform updates or install.
+
+    --rc-file=<filename> Read configuration from filename instead of default.
+
+    --resume-from=<pkg>  Skips modules until just before the given package,
+                         then operates as normal.
+    --resume-after=<pkg> Skips modules up to and including the given package,
+                         then operates as normal.
+
+    --stop-before=<pkg>  Skips the given package and all later packages.
+    --stop-after=<pkg>   Skips all packages after the given package.
+
+    --reconfigure        Run CMake/configure again, but don't clean the build
+                         directory.
+    --build-system-only  Create the build infrastructure, but don't actually
+                         perform the build.
+
+    --<option>=          Any unrecognized options are added to the global
+                         configuration, overriding any value that may exist.
+    --<module>,<option>= Likewise, this allows you to override any module
+                         specific option from the command line.
+
+    --pretend (or -p)    Don't actually contact the source server, run make,
+                         or create/delete files and directories.  Instead,
+                         output what the script would have done.
+    --refresh-build      Start the build from scratch.
+
+    --help               You\'re reading it. :-)
+    --version            Output the program version.
+
+You can get more help by going online to http://kdesrc-build.kde.org/ to view
+the online documentation.  If you have installed kdesrc-build you may also be
+able to view the documentation using KHelpCenter or Konqueror at the URL
+help:/kdesrc-build, or using the man page by typing "man kdesrc-build".
+DONE
 }
 
 # Accessors
