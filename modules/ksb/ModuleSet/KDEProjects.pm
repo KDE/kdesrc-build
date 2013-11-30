@@ -193,11 +193,15 @@ sub convertToModules
     my ($self, $ctx) = @_;
 
     my @moduleList; # module names converted to ksb::Module objects.
+    my %foundModules;
 
     # Setup default options for each module
     # Extraction of relevant XML modules will be handled immediately after
     # this phase of execution.
     for my $moduleItem ($self->modulesToFind()) {
+        # We might have already grabbed the right module recursively.
+        next if exists $foundModules{$moduleItem};
+
         # eval in case the XML processor throws an exception.
         undef $@;
         my @candidateModules = eval {
@@ -209,6 +213,8 @@ sub convertToModules
             croak_runtime("The XML for the KDE Project database could not be understood: $@");
         }
 
+        my @moduleNames = map { $_->name() } @candidateModules;
+        @foundModules{@moduleNames} = (1) x @moduleNames;
         push @moduleList, @candidateModules;
     }
 
