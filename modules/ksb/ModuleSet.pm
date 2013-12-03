@@ -172,7 +172,7 @@ sub convertToModules
         $newModule->setOption('repository', $selectedRepo . $moduleItem);
     }
 
-    if (not scalar @moduleList) {
+    if (not scalar $self->modulesToFind()) {
         warning ("No modules were defined for the module-set $self->name()");
         warning ("You should use the g[b[use-modules] option to make the module-set useful.");
     }
