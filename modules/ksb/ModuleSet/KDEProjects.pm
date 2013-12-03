@@ -121,6 +121,8 @@ sub _expandModuleCandidates
     my $xmlReader = ksb::KDEXMLReader->new($databaseFile);
     my @allXmlResults = $xmlReader->getModulesForProject($moduleSearchItem, $protocol);
 
+    croak_runtime ("Unknown KDE project: $moduleSearchItem") unless @allXmlResults;
+
     # It's possible to match modules which are marked as inactive on
     # projects.kde.org, elide those.
     my @xmlResults = grep { $_->{'active'} ne 'false' } (@allXmlResults);
