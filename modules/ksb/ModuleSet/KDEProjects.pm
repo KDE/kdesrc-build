@@ -125,7 +125,7 @@ sub _expandModuleCandidates
 
     # It's possible to match modules which are marked as inactive on
     # projects.kde.org, elide those.
-    my @xmlResults = ($moduleSearchItem eq "frameworks" ? @allXmlResults : grep { $_->{'active'} ne 'false' } (@allXmlResults) );
+    my @xmlResults = grep { $_->{'active'} ne 'false' } (@allXmlResults);
 
     # Bug 307694
     my $moduleSetBranch = $self->{'options'}->{'branch'} // '';
