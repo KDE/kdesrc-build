@@ -61,6 +61,7 @@ my %defaultGlobalOptions = (
     "delete-my-patches"    => 0, # Should only be set from cmdline
     "delete-my-settings"   => 0, # Should only be set from cmdline
     "dest-dir"             => '${MODULE}', # single quotes used on purpose!
+    "ignore-kde-structure" => 0, #respect or not kde dir structure like extragear/network
     "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
     "do-not-compile"       => "",
     "filter-out-phases"    => '',
