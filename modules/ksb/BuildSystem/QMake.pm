@@ -33,7 +33,7 @@ sub requiredPrograms
 # This is a "static class method" i.e. use ksb::BuildSystem::QMake::absPathToQMake()
 sub absPathToQMake
 {
-    my @possibilities = qw/qmake qmake4 qmake-qt4 qmake-mac/;
+    my @possibilities = qw/qmake qmake4 qmake-qt4 qmake-mac qmake-qt5/;
     return first { absPathToExecutable($_) } @possibilities;
 }
 
