@@ -9,12 +9,20 @@
 #
 # You can then add additional modules if desired.
 
+# ============================ Dependencies ==========================
+
 module cmake-git
     repository git://cmake.org/cmake.git
 end module
 
+module libdbusmenu-qt
+    # The lp: prefix refers to Canonical's Launchpad repository
+    repository bzr://lp:libdbusmenu-qt
+end module
+
 module-set
     repository kde-projects
+    # Should attica become a kde framework?
     use-modules kdesrc-build extra-cmake-modules attica libstreams libstreamanalyzer
     # Optionally: add polkit-qt-1
     cmake-options -DCMAKE_BUILD_TYPE:STRING=debug
@@ -30,10 +38,7 @@ module-set phonon
     use-modules phonon/phonon phonon-vlc phonon-gstreamer
 end module-set
 
-module libdbusmenu-qt
-    # The lp: prefix refers to Canonical's Launchpad repository
-    repository bzr://lp:libdbusmenu-qt
-end module
+# ============================= KDE Frameworks ========================
 
 module-set frameworks
     repository kde-projects
@@ -43,6 +48,15 @@ module-set frameworks
     cmake-options -DBUILD_TESTING=TRUE -DCMAKE_BUILD_TYPE:STRING=debugfull -G "CodeBlocks - Unix Makefiles"
 end module
 
+# This module is temporary
+module kde-runtime
+    repository kde:kde-runtime
+    branch frameworks
+end module
+
+# ============================== KDE Workspace =========================
+
+# Should this become a framework?
 module kde-kactivities
     repository kde:kactivities
     branch frameworks
@@ -57,8 +71,10 @@ module kde-workspace
     branch master
 end module
 
-module kde-runtime
-    repository kde:kde-runtime
+# ============================== KDE Applications =========================
+
+module kate
+    repository kde:kate
     branch frameworks
 end module
 
