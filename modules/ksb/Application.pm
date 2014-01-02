@@ -27,7 +27,7 @@ use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
 use List::Util qw(first min);
-use File::Basename; # basename
+use File::Basename; # basename, dirname
 use File::Glob ':glob';
 use POSIX qw(:sys_wait_h _exit);
 use IO::Handle;
@@ -750,6 +750,7 @@ sub _readConfigurationOptions
     my ($option, $modulename, %readModules);
 
     my $fileReader = ksb::RecursiveFH->new();
+    $fileReader->pushBasePath(dirname($rcfile)); # rcfile should already be absolute
     $fileReader->addFilehandle($fh);
 
     # Read in global settings

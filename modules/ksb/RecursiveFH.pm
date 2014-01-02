@@ -7,6 +7,7 @@ use v5.10;
 our $VERSION = '0.10';
 
 use ksb::Util;
+use File::Basename; # dirname
 
 # TODO: Replace make_exception with appropriate croak_* function.
 sub new
@@ -14,12 +15,18 @@ sub new
     my ($class) = @_;
     my $data = {
         'filehandles' => [],    # Stack of filehandles to read
+        'base_path'   => [],    # Base directory path for relative includes
         'current'     => undef, # Current filehandle to read
     };
 
     return bless($data, $class);
 }
 
+# Adds a new filehandle to read config data from.
+#
+# This should be called in conjunction with pushBasePath to allow for recursive
+# includes from different folders to maintain the correct notion of the current
+# cwd at each recursion level.
 sub addFilehandle
 {
     my ($self, $fh) = @_;
@@ -49,6 +56,33 @@ sub setCurrentFilehandle
     $self->{current} = shift;
 }
 
+# Sets the base directory to use for any future encountered include entries
+# that use relative notation, and saves the existing base path (as on a stack).
+# Use in conjunction with addFilehandle, and use popFilehandle and popBasePath
+# when done with the filehandle.
+sub pushBasePath
+{
+    my $self = shift;
+    push @{$self->{base_path}}, shift;
+}
+
+# See above
+sub popBasePath
+{
+    my $self = shift;
+    return pop @{$self->{base_path}};
+}
+
+# Returns the current base path to use for relative include declarations.
+sub currentBasePath
+{
+    my $self = shift;
+    my $curBase = $self->popBasePath();
+
+    $self->pushBasePath($curBase);
+    return $curBase;
+}
+
 # Reads the next line of input and returns it.
 # If a line of the form "include foo" is read, this function automatically
 # opens the given file and starts reading from it instead. The original
@@ -73,6 +107,8 @@ sub readLine
 
         if (eof($fh) || !defined($line = <$fh>)) {
             my $oldFh = $self->popFilehandle();
+            $self->popBasePath();
+
             close $oldFh;
 
             my $fh = $self->currentFilehandle();
@@ -92,13 +128,18 @@ sub readLine
             }
 
             my $newFh;
+            my $prefix = $self->currentBasePath();
+
             $filename =~ s/^~\//$ENV{HOME}\//; # Tilde-expand
+            $filename = "$prefix/$filename" unless $filename =~ m(^/);
 
             open ($newFh, '<', $filename) or
                 die make_exception('Config',
                     "Unable to open file $filename which was included from line $.");
 
+            $prefix = dirname($filename); # Recalculate base path
             $self->addFilehandle($newFh);
+            $self->pushBasePath($prefix);
 
             redo READLINE;
         }
