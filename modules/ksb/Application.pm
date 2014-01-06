@@ -604,7 +604,7 @@ sub runAllModulePhases
             super_mkdir($sourceDir);
 
             if (!$ctx->phases()->has('update') &&
-                ! -e "$sourceDir/dependency-data")
+                ! -e "$sourceDir/dependency-data-common")
             {
                 warning (" r[b[*] Skipping build metadata update due to b[--no-src], but this is apparently required!");
             }
@@ -627,13 +627,25 @@ sub runAllModulePhases
         eval {
             $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
 
-            my $dependencyFile = $metadataModule->fullpath('source') . '/dependency-data';
-            my $dependencies = pretend_open($dependencyFile)
-                or die "Unable to open $dependencyFile: $!";
-
             my $dependencyResolver = ksb::DependencyResolver->new();
-            $dependencyResolver->readDependencyData($dependencies);
-            close $dependencies;
+            my $branchGroup = $ctx->getOption('branch-group', 'module') // '';
+            if (!$branchGroup) {
+                $branchGroup = $ctx->getOption('use-stable-kde')
+                    ? 'latest-qt4'
+                    : ($ctx->hasOption('use-stable-kde') # Could also be false if unset
+                        ? 'kf5-qt5'      # Really set to false
+                        : 'latest-qt4'); # Unset / this is default branch group if no option set
+            }
+
+            for my $file ('dependency-data-common', "dependency-data-$branchGroup")
+            {
+                my $dependencyFile = $metadataModule->fullpath('source') . "/$file";
+                my $dependencies = pretend_open($dependencyFile)
+                    or die "Unable to open $dependencyFile: $!";
+
+                $dependencyResolver->readDependencyData($dependencies);
+                close $dependencies;
+            }
 
             my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
 
