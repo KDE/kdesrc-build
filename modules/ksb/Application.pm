@@ -879,7 +879,7 @@ sub _parseModuleOptions
     }
 
     my $endWord = $module->isa('ksb::BuildContext') ? 'global' : 'module';
-    my $endRE = qr/^end\s+$endWord/;
+    my $endRE = qr/^end[\w\s]*$/;
 
     # Read in each option
     while ($_ = _readNextLogicalLine($fileReader))
@@ -1090,7 +1090,7 @@ sub _readConfigurationOptions
     my $pendingOptionsRef = shift;
     my @module_list;
     my $rcfile = $ctx->rcFile();
-    my ($option, $modulename, %readModules);
+    my ($option, %readModules);
 
     my $fileReader = ksb::RecursiveFH->new();
     $fileReader->pushBasePath(dirname($rcfile)); # rcfile should already be absolute
@@ -1134,7 +1134,7 @@ sub _readConfigurationOptions
         next if (/^\s*$/); # Skip blank lines
 
         # Get modulename (has dash, dots, slashes, or letters/numbers)
-        ($modulename) = /^module\s+([-\/\.\w]+)\s*$/;
+        my ($type, $modulename) = /^(options|module)\s+([-\/\.\w]+)\s*$/;
         my $newModule;
 
         # Module-set?
@@ -1157,8 +1157,27 @@ sub _readConfigurationOptions
             my @moduleSetItems = $newModule->moduleNamesToFind();
             @seenModuleSetItems{@moduleSetItems} = ($newModule) x scalar @moduleSetItems;
         }
-        # Module override?
-        elsif (exists $seenModuleSetItems{$modulename}) {
+        # Duplicate module entry? (Note, this must be checked before the check
+        # below for 'options' sets)
+        elsif (exists $seenModules{$modulename}) {
+            # Overwrite options set for existing modules.
+            # But allow duplicate 'options' declarations without error.
+            if ($type ne 'options') {
+                warning ("Don't use b[r[module $modulename] on line $., use b[g[options $modulename]");
+            }
+
+            $newModule = $seenModules{$modulename};
+
+            # _parseModuleOptions will re-use newModule, but we still need to
+            # be careful not to mask cmdline options in pendingOptsKeys.
+            _parseModuleOptions($ctx, $fileReader, $newModule);
+
+            delete @{$newModule->{options}}{@pendingOptsKeys};
+
+            next; # Skip all the stuff below
+        }
+        # Module override (for use-modules from a module-set), or option overrride?
+        elsif ($type eq 'options' || exists $seenModuleSetItems{$modulename}) {
             # Parse the modules...
             $newModule = _parseModuleOptions($ctx, $fileReader, "#overlay_$modulename");
 
@@ -1173,22 +1192,13 @@ sub _readConfigurationOptions
             # Don't mask global cmdline options.
             delete @{$moduleOptsRef}{@pendingOptsKeys};
 
+            # TODO: Remove compat handling of 'module $foo' as 'options $foo',
+            # probably 2014-04-01?
+            if ($type ne 'options') {
+                warning ("Don't use b[r[module $modulename] on line $., use b[g[options $modulename]");
+            }
+
             next; # Don't add to module list
-        }
-        # Duplicate module entry?
-        elsif (exists $seenModules{$modulename}) {
-            # Overwrite options set for existing modules.
-            warning ("Multiple module declarations for $modulename");
-
-            $newModule = $seenModules{$modulename};
-
-            # _parseModuleOptions will re-use newModule, but we still need to
-            # be careful not to mask cmdline options in pendingOptsKeys.
-            _parseModuleOptions($ctx, $fileReader, $newModule);
-
-            delete @{$newModule->{options}}{@pendingOptsKeys};
-
-            next; # Skip all the stuff below
         }
         else {
             $newModule = _parseModuleOptions($ctx, $fileReader, $modulename);
