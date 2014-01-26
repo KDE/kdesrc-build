@@ -1717,7 +1717,7 @@ sub _handle_async_build
     else {
         # Still the parent, let's do the build.
         $ipc->setReceiver();
-        my $result = _handle_build ($ipc, $ctx);
+        $result = _handle_build ($ipc, $ctx);
     }
 
     # Exit code is in $?.
