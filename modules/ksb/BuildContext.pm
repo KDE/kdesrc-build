@@ -41,73 +41,80 @@ my $PERSISTENT_FILE_NAME = '#/.kdesrc-build-data';
 
 my $SCRIPT_VERSION = scriptVersion();
 
-# defaultGlobalOptions {{{
-my %defaultGlobalOptions = (
+# Should be used for internal state that shouldn't be exposed as a hidden
+# cmdline option, or has other cmdline switches (e.g. debug/verbose handling).
+my %internalGlobalOptions = (
     "async"                => 1,
+    "build-system-only"    => "",
+    "build-when-unchanged" => 1, # Safe default
+    "checkout-only"        => "",
+    "colorful-output"      => 1, # Use color by default.
+    "debug-level"          => ksb::Debug::INFO,
+    "filter-out-phases"    => '',
+    "git-desired-protocol" => 'git', # protocol to grab from kde-projects
+    "git-repository-base"  => {}, # Base path template for use multiple times.
+    "ignore-modules"       => '', # See also: use-modules, kde-projects
+    "manual-build"         => "",
+    "manual-update"        => "",
+    "niceness"             => "10",
+    "no-svn"               => "",  # TODO: Rename to no-src
+    "prefix"               => "", # Override installation prefix.
+    "pretend"              => "",
+    "reconfigure"          => "",
+    "refresh-build"        => "",
+    "repository"           => '',     # module's git repo
+    "revision"             => '', # Only useful for Subversion modules at cmdline
+    "set-env"              => { }, # Hash of environment vars to set
+    "ssh-identity-file"    => '', # If set, is passed to ssh-add.
+    "use-modules"          => "",
+);
+
+# Holds boolean flags that could be altered from cmdline.
+our %defaultGlobalFlags = (
+    "delete-my-patches"    => 0, # Should only be set from cmdline
+    "delete-my-settings"   => 0, # Should only be set from cmdline
+    "disable-agent-check"  => 0, # If true we don't check on ssh-agent
+    "ignore-kde-structure" => 0, # Whether to use kde dir structure like extragear/network
+    "install-after-build"  => 1,  # Default to true
+    "install-session-driver" => 0,# Default to false
+    "purge-old-logs"       => 1,
+    "run-tests"            => 0,  # 1 = make test, upload = make Experimental
+    "stop-on-failure"      => 0,
+    "use-clean-install"    => 0,
+    "use-idle-io-priority" => 0,
+    # Controls whether to build "stable" branches instead of "master"
+    "use-stable-kde"       => 0,
+);
+
+# Holds other cmdline-accessible options that aren't simply binary flags.
+our %defaultGlobalOptions = (
     "binpath"              => '',
     "branch"               => "",
     "branch-group"         => "", # Overrides branch, uses JSON data.
     "build-dir"            => "build",
-    "build-system-only"    => "",
-    "build-when-unchanged" => 1, # Safe default
-    "checkout-only"        => "",
     "cmake-options"        => "",
-    "colorful-output"      => 1, # Use color by default.
     "configure-flags"      => "",
     "custom-build-command" => '',
     "cxxflags"             => "-pipe",
-    "debug"                => "",
-    "debug-level"          => ksb::Debug::INFO,
-    "delete-my-patches"    => 0, # Should only be set from cmdline
-    "delete-my-settings"   => 0, # Should only be set from cmdline
     "dest-dir"             => '${MODULE}', # single quotes used on purpose!
-    "ignore-kde-structure" => 0, #respect or not kde dir structure like extragear/network
-    "disable-agent-check"  => 0,   # If true we don't check on ssh-agent
     "do-not-compile"       => "",
-    "filter-out-phases"    => '',
-    "git-desired-protocol" => 'git', # protocol to grab from kde-projects
-    "git-repository-base"  => {}, # Base path template for use multiple times.
     "http-proxy"           => '', # Proxy server to use for HTTP.
-    "ignore-modules"       => '', # See also: use-modules, kde-projects
-    "install-after-build"  => 1,  # Default to true
-    "install-session-driver" => 0,# Default to false
     "kdedir"               => "$ENV{HOME}/kde",
     "kde-languages"        => "",
     "libpath"              => "",
     "log-dir"              => "log",
     "make-install-prefix"  => "",  # Some people need sudo
     "make-options"         => "",
-    "manual-build"         => "",
-    "manual-update"        => "",
     "module-base-path"     => "",  # Used for tags and branches
-    "niceness"             => "10",
-    "no-svn"               => "",
     "override-build-system"=> "",
     "override-url"         => "",
     "persistent-data-file" => "",
-    "prefix"               => "", # Override installation prefix.
-    "pretend"              => "",
-    "purge-old-logs"       => 1,
     "qtdir"                => "$ENV{HOME}/qt4",
-    "reconfigure"          => "",
-    "refresh-build"        => "",
     "remove-after-install" => "none", # { none, builddir, all }
-    "repository"           => '',     # module's git repo
-    "revision"             => 0,
-    "run-tests"            => 0,  # 1 = make test, upload = make Experimental
-    "set-env"              => { }, # Hash of environment vars to set
     "source-dir"           => "$ENV{HOME}/kdesrc",
-    "ssh-identity-file"    => '', # If set, is passed to ssh-add.
-    "stop-on-failure"      => "",
     "svn-server"           => "svn://anonsvn.kde.org/home/kde",
     "tag"                  => "",
-    "use-clean-install"    => 0,
-    "use-idle-io-priority" => 0,
-    "use-modules"          => "",
-    # Controls whether to build "stable" branches instead of "master"
-    "use-stable-kde"       => 0,
 );
-# }}} 1
 
 sub new
 {
@@ -120,7 +127,11 @@ sub new
         modules => [],
         context => $self, # Fix link to buildContext (i.e. $self)
         build_options => {
-            global => \%defaultGlobalOptions,
+            global => {
+                %internalGlobalOptions,
+                %defaultGlobalFlags,
+                %defaultGlobalOptions,
+            },
             # Module options are stored under here as well, keyed by module->name()
         },
         # This one replaces ksb::Module::{phases}
