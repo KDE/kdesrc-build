@@ -2679,10 +2679,13 @@ Options:
     --build-system-only  Create the build infrastructure, but don't actually
                          perform the build.
 
-    --<option>=          Any unrecognized options are added to the global
-                         configuration, overriding any value that may exist.
-    --<module>,<option>= Likewise, this allows you to override any module
-                         specific option from the command line.
+    --<option>=          Any unrecognized options override an existing global
+                         configuration value, if present.
+
+    --set-module-option-value=<module>,<option>,<value>
+        This option allows you to override an option for a given module, so
+        that you don't have to change it in the configuration file temporarily.
+        Use a module name of 'global' for the global configuration.
 
     --pretend (or -p)    Don't actually contact the source server, run make,
                          or create/delete files and directories.  Instead,
