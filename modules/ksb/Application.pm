@@ -1334,8 +1334,8 @@ sub _check_for_ssh_agent
         ($repo =~ /^git\+ssh:\/\//) || ($repo =~ /^[a-zA-Z0-9_.]+@.*:\//);
     } @gitServers;
 
-    whisper ("\tChecking for SSH Agent") if (scalar @sshServers);
     return 1 if (not @sshServers) or $ctx->getOption('disable-agent-check');
+    whisper ("\tChecking for SSH Agent") if (scalar @sshServers);
 
     # We're using ssh to download, see if ssh-agent is running.
     return 1 unless exists $ENV{'SSH_AGENT_PID'};
