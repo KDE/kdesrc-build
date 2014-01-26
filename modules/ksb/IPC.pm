@@ -130,8 +130,6 @@ sub waitForModule
             croak_runtime("IPC failure updating $moduleName: $!");
         }
 
-        whisper ("\tReceived IPC status message for $buffer: $ipcType");
-
         given ($ipcType) {
             when (ksb::IPC::MODULE_SUCCESS) {
                 my ($ipcModuleName, $msg) = split(/,/, $buffer);
