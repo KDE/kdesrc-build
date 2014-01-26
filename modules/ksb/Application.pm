@@ -121,9 +121,7 @@ sub new
 #    See pendingOptions for the special note about the value of this listref
 #    when start-options is in effect.
 #
-#  phases - <PhaseList> to hold the list of phases to run. See <PhaseList>.
-#    This will be the PhaseList that should be used for the global context
-#    object.
+#  ctx - <BuildContext> to hold the global build state.
 #
 #  @options - The remainder of the arguments are treated as command line
 #    arguments to process.
@@ -134,7 +132,8 @@ sub new
 sub _readCommandLineOptionsAndSelectors
 {
     my $self = shift;
-    my ($pendingOptionsRef, $selectorsRef, $phases, @options) = @_;
+    my ($pendingOptionsRef, $selectorsRef, $ctx, @options) = @_;
+    my $phases = $ctx->phases();
     my @savedOptions = @options; # Copied for use in debugging.
     my $version = "kdesrc-build $SCRIPT_VERSION";
     my $author = <<DONE;
@@ -146,7 +145,12 @@ Many people have contributed code, bugfixes, and documentation.
 Please report bugs using the KDE Bugzilla, at http://bugs.kde.org/
 DONE
 
-    my %foundOptions;
+    # Getopt::Long will store options in %foundOptions, since that is what we
+    # pass in. To allow for custom subroutines to handle an option it is
+    # required that the sub *also* be in %foundOptions... whereupon it will
+    # promptly be overwritten if we're not careful. Instead we let the custom
+    # subs save to %auxOptions, and read those in back over it later.
+    my (%foundOptions, %auxOptions);
     %foundOptions = (
         version => sub { say $version; exit },
         author  => sub { say $author;  exit },
@@ -189,13 +193,13 @@ DONE
         },
         prefix => sub {
             my ($optName, $arg) = @_;
-            $foundOptions{prefix} = $arg;
+            $auxOptions{prefix} = $arg;
             $foundOptions{kdedir} = $arg; #TODO: Still needed for compat?
             $foundOptions{reconfigure} = 1;
         },
         pretend => sub {
             # Set pretend mode but also force the build process to run.
-            $foundOptions{pretend} = 1;
+            $auxOptions{pretend} = 1;
             $foundOptions{'build-when-unchanged'} = 1;
         },
         verbose => sub { $foundOptions{'debug-level'} = ksb::Debug::WHISPER },
@@ -229,6 +233,25 @@ DONE
         },
     );
 
+    # Handle any "cmdline-eligible" options not already covered.
+    my $flagHandler = sub {
+        my ($optName, $optValue) = @_;
+
+        # Assume to set if nothing provided.
+        $optValue = 1 if (!defined $optValue or $optValue eq '');
+        $optValue = 0 if lc($optValue) eq 'false';
+        $optValue = 0 if !$optValue;
+
+        $auxOptions{$optName} = $optValue;
+    };
+
+    foreach my $option (keys %ksb::BuildContext::defaultGlobalFlags) {
+        if (!exists $foundOptions{$option}) {
+            $foundOptions{$option} = $flagHandler; # A ref to a sub here!
+        }
+    }
+
+    # Actually read the options.
     GetOptionsFromArray(\@options, \%foundOptions,
         'version', 'author', 'help', 'disable-snapshots|no-snapshots',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
@@ -237,15 +260,21 @@ DONE
         'reconfigure', 'colorful-output|color!', 'async!',
         'src-only|svn-only', 'build-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
-        'pretend|dry-run|p', 'refresh-build', 'delete-my-patches',
+        'pretend|dry-run|p', 'refresh-build',
         'start-program|run=s{,}',
-        'delete-my-settings', 'revision=i', 'resume-from=s', 'resume-after=s',
+        'revision=i', 'resume-from=s', 'resume-after=s',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
+
+        # Special sub used (see above), but have to tell Getopt::Long to look
+        # for strings
+        (map { "$_:s" } (keys %ksb::BuildContext::defaultGlobalFlags)),
+
+        # Default handling fine, still have to ask for strings.
+        (map { "$_:s" } (keys %ksb::BuildContext::defaultGlobalOptions)),
+
         '<>', # Required to read non-option args
         );
 
-    # TODO: Handle unrecognized options by searching within our list of global
-    # preset options as before?
     say "Warning: Unrecognized option $_" foreach @options;
 
     $pendingOptionsRef->{'global'} //= { };
@@ -262,6 +291,9 @@ DONE
     # with hashref syntax everywhere.
     @{ $pendingOptionsRef->{'global'} }{@readOptionNames}
         = @foundOptions{@readOptionNames};
+
+    @{ $pendingOptionsRef->{'global'} }{keys %auxOptions}
+        = values %auxOptions;
 }
 
 # Method: _resolveSelectorsIntoModules
@@ -482,7 +514,7 @@ sub generateModuleList
     # Process --help, --install, etc. first.
     my @selectors;
     $self->_readCommandLineOptionsAndSelectors($pendingOptions, \@selectors,
-        $ctx->phases(), @argv);
+        $ctx, @argv);
 
     my %ignoredSelectors;
     @ignoredSelectors{@{$pendingGlobalOptions->{'ignore-modules'}}} = undef;

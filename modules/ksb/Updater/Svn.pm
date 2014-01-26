@@ -463,7 +463,7 @@ sub run_svn
     my $module = $self->module();
 
     my $revision = $module->getOption('revision');
-    if ($revision ne '0')
+    if ($revision && $revision ne '0')
     {
         my @tmp = @{$arg_ref};
 
