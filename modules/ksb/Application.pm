@@ -675,6 +675,7 @@ sub runAllModulePhases
                 my $dependencies = pretend_open($dependencyFile)
                     or die "Unable to open $dependencyFile: $!";
 
+                debug (" -- Reading dependencies from $dependencyFile");
                 $dependencyResolver->readDependencyData($dependencies);
                 close $dependencies;
             }

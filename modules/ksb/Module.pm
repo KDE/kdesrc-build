@@ -926,7 +926,6 @@ sub setOption
             return
         }
 
-        debug ("  Setting $self,$key = $value");
         $self->{options}{$key} = $value;
     }
 }
