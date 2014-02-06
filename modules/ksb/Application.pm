@@ -260,7 +260,7 @@ DONE
         'reconfigure', 'colorful-output|color!', 'async!',
         'src-only|svn-only', 'build-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
-        'pretend|dry-run|p', 'refresh-build',
+        'print-modules', 'pretend|dry-run|p', 'refresh-build',
         'start-program|run=s{,}',
         'revision=i', 'resume-from=s', 'resume-after=s',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
@@ -712,6 +712,12 @@ sub runAllModulePhases
     # be OK since there's nothing different going on from the first pass (in
     # _resolveSelectorsIntoModules) in that event.
     @modules = _applyModuleFilters($ctx, @modules);
+
+    if ($ctx->getOption('print-modules')) {
+        info (" * Module list", $metadataModule ? " in dependency order" : '');
+        say "$_" foreach @modules;
+        return 0; # Abort execution early!
+    }
 
     # Add to global module list now that we've filtered everything.
     $ctx->addModule($_) foreach @modules;
