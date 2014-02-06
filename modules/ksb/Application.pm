@@ -535,10 +535,6 @@ sub generateModuleList
     # disable async if only running a single phase.
     $pendingGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
 
-    # Output time once we know if pretending or not.
-    my $time = localtime;
-    info ("Script started processing at g[$time]") unless pretending();
-
     my $fh = $ctx->loadRcFile();
 
     # _readConfigurationOptions will add pending global opts to ctx while ensuring
@@ -775,11 +771,10 @@ sub runAllModulePhases
     _output_failed_module_lists($ctx);
     _installCustomSessionDriver($ctx) if $ctx->getOption('install-session-driver');
 
-    my $time = localtime;
-    my $color = '';
-    $color = 'r[' if $result;
+    my $color = 'g[b[';
+    $color = 'r[b[' if $result;
 
-    info ("${color}Script finished processing at g[$time]") unless pretending();
+    info ("${color}", $result ? ":-(" : ":-)") unless pretending();
 
     return $result;
 }
