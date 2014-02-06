@@ -317,7 +317,9 @@ DONE
 #  initialization - Do not call <finish> from this function.
 #
 # Parameters:
-#  ctx - <BuildContext> in use.
+#  ctx - <BuildContext> in use. This function might call
+#    setKDEProjectMetadataModule on the build context. If so, the project
+#    metadata module should be updated before the build phase.
 #
 #  selectors - listref to hold the list of module or module-set selectors to
 #    build, in the order desired by the user. The value of this parameter
@@ -334,11 +336,9 @@ DONE
 #    no other types) that can be selected from.
 #
 # Returns:
-#  A list: ($metadataModule, @modules), where @modules is a list of <Module> to
-#  build (all module-sets expanded), with options correctly setup from the
-#  rc-file and cmdline, in the same relative order as determined in selectors.
-#  $metadataModule is 'undef' if kde-projects metadata is not required, or a
-#  <Module> to use to perform the download otherwise.
+#  A list of <Module> to build (all module-sets expanded), with options
+#  correctly setup from the rc-file and cmdline, in the same relative order as
+#  determined in selectors.
 #
 #  If any passed-in selector does not match a module or module set from
 #  rcFileModulesAndModuleSets then a <Module> will be created and assumed to
@@ -349,7 +349,6 @@ sub _resolveSelectorsIntoModules
     my ($self, $ctx, $selectorsRef, $modNewRef, $rcFileModulesAndModuleSetsRef)
         = @_;
     my @modules = @{$selectorsRef};
-    my $metadataModule;
 
     # Lookup modules/module-sets by name
     my %lookupTable =
@@ -397,7 +396,7 @@ sub _resolveSelectorsIntoModules
 
             # _expandModuleSets applies pending/cmdline options.
             if (!exists $expandedModuleSets{$neededModuleSet}) {
-                my (undef, @moduleResults) = _expandModuleSets(
+                my @moduleResults = _expandModuleSets(
                     $ctx, $modNewRef, $neededModuleSet);
                 $expandedModuleSets{$neededModuleSet} = \@moduleResults;
             }
@@ -424,7 +423,7 @@ sub _resolveSelectorsIntoModules
             # Just assume it's a kde-projects module and expand away...
             my $tempSet = ksb::ModuleSet::KDEProjects->new($ctx, '_cmdline');
             $tempSet->setModulesToFind($selectorName);
-            (undef, $selector) = _expandModuleSets($ctx, $modNewRef, $tempSet);
+            $selector = _expandModuleSets($ctx, $modNewRef, $tempSet);
         }
         else {
             # Neither a named Module, ModuleSet, or use-modules entry within a
@@ -456,7 +455,7 @@ sub _resolveSelectorsIntoModules
     # Wrap in eval to catch runtime errors
     eval { @modules = _applyModuleFilters($ctx, @modules); };
 
-    ($metadataModule, @modules) = _expandModuleSets($ctx, $modNewRef, @modules);
+    @modules = _expandModuleSets($ctx, $modNewRef, @modules);
 
     # If we have any 'guessed' modules then they had no obvious source in the
     # rc-file. But they might still be implicitly from one of our module-sets.
@@ -468,7 +467,7 @@ sub _resolveSelectorsIntoModules
     # remaining module-sets in rcFileModulesAndModuleSets if we have 'guess'
     # modules still left over, and see if we can then successfully match.
     if (first { $_->getOption('#guessed-kde-project', 'module') } @modules) {
-        my (undef, @expandedOptionModules) =
+        my @expandedOptionModules =
             _expandModuleSets($ctx, $modNewRef, @$rcFileModulesAndModuleSetsRef);
         %lookupTable = map { $_->name() => $_ } @expandedOptionModules;
 
@@ -485,20 +484,23 @@ sub _resolveSelectorsIntoModules
                 my $set = ksb::ModuleSet::KDEProjects->new($ctx, "guessed_from_cmdline");
                 $set->setModulesToFind($guessedModule->name());
 
-                my (undef, @results) = _expandModuleSets($ctx, $modNewRef, $set);
+                my @results = _expandModuleSets($ctx, $modNewRef, $set);
                 $guessedModule = shift @results;
             }
         }
     }
 
-    ### TODO: Metadata Module should go away
-
-    return ($metadataModule, @modules);
+    return @modules;
 }
 
-# Runs the pre-initialization phase and takes the kdesrc-build lock. Once this
-# function successfully completes it is required for the main process to call
-# finish() to remove the lock.
+# Generates the build context and module list based on the command line options
+# and module selectors provided.
+#
+# After this function is called all module set selectors will have been
+# expanded, and we will know if we need to download kde-projects metadata or
+# not. Dependency resolution has not occurred.
+#
+# Returns: List of Modules to build.
 sub generateModuleList
 {
     my $self = shift;
@@ -563,7 +565,6 @@ sub generateModuleList
     my @modules;
     my @globalCmdlineArgs = keys %{$pendingGlobalOptions};
     my $commandLineModules = scalar @selectors;
-    my $metadataModule;
 
     my $newModuleSub = sub {
         my $module = shift;
@@ -577,7 +578,7 @@ sub generateModuleList
 
     if ($commandLineModules) {
         # select our modules and module-sets, and expand them out
-        ($metadataModule, @modules) = $self->_resolveSelectorsIntoModules(
+        @modules = $self->_resolveSelectorsIntoModules(
             $ctx, \@selectors, $newModuleSub, \@optionModulesAndSets);
 
         ksb::Module->setModuleSource('cmdline');
@@ -587,8 +588,7 @@ sub generateModuleList
 
         # Check for ignored module-sets and modules (pre-expansion)
         @optionModulesAndSets = grep { ! exists $ignoredSelectors{$_->name()} } @optionModulesAndSets;
-        ($metadataModule, @modules) = _expandModuleSets(
-            $ctx, $newModuleSub, @optionModulesAndSets);
+        @modules = _expandModuleSets($ctx, $newModuleSub, @optionModulesAndSets);
 
         if ($ctx->getOption('kde-languages')) {
             @modules = _expandl10nModules($ctx, @modules);
@@ -600,20 +600,90 @@ sub generateModuleList
     # Check for ignored modules (post-expansion)
     @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
 
-    # Filter --resume-foo options. This might be a second pass, but that should
-    # be OK since there's nothing different going on from the first pass in that
-    # event.
-    @modules = _applyModuleFilters($ctx, @modules);
-
     # If modules were on the command line then they are effectively forced to
     # process unless overridden by command line options as well. If phases
     # *were* overridden on the command line, then no update pass is required
     # (all modules already have correct phases)
     @modules = _updateModulePhases(@modules) unless $commandLineModules;
 
-    # Save our metadata module, if used.
-    $self->{metadata_module} = $metadataModule;
-    $ctx->setKDEProjectMetadataModule($metadataModule);
+    return @modules;
+}
+
+# Causes kde-projects metadata to be downloaded (unless --pretend or --no-src
+# is in effect, although we'll download even in --pretend if nothing is
+# available).
+#
+# No return value.
+sub _downloadKDEProjectMetadata
+{
+    my $self = shift;
+    my $ctx = $self->context();
+    my $metadataModule = $ctx->getKDEProjectMetadataModule();
+
+    eval {
+        my $sourceDir = $metadataModule->getSourceDir();
+        super_mkdir($sourceDir);
+
+        my $updateNeeded = (! -e "$sourceDir/dependency-data-common");
+        if (!$ctx->phases()->has('update') && $updateNeeded) {
+            warning (" r[b[*] Skipping build metadata update due to b[--no-src], but this is apparently required!");
+        }
+
+        if ($ctx->phases()->has('update') && (!pretending() || $updateNeeded)) {
+            $metadataModule->scm()->updateInternal();
+        }
+    };
+
+    if ($@) {
+        warning (" b[r[*] Unable to download required metadata for build process");
+        warning (" b[r[*] Will attempt to press onward...");
+        warning (" b[r[*] Exception message: $@");
+    }
+}
+
+# Returns a list of Modules in the proper build order according to the
+# kde-build-metadata dependency information.
+#
+# The kde-build-metadata repository must have already been updated. The Modules
+# to reorder must be passed as arguments.
+sub _resolveModuleDependencies
+{
+    my $self = shift;
+    my $ctx = $self->context();
+    my $metadataModule = $ctx->getKDEProjectMetadataModule();
+    my @modules = @_;
+
+    @modules = eval {
+        my $dependencyResolver = ksb::DependencyResolver->new();
+        my $branchGroup = $ctx->getOption('branch-group', 'module') // '';
+        if (!$branchGroup) {
+            $branchGroup = $ctx->getOption('use-stable-kde')
+                ? 'latest-qt4'
+                : ($ctx->hasOption('use-stable-kde') # Could also be false if unset
+                    ? 'kf5-qt5'      # Really set to false
+                    : 'latest-qt4'); # Unset / this is default branch group if no option set
+        }
+
+        for my $file ('dependency-data-common', "dependency-data-$branchGroup")
+        {
+            my $dependencyFile = $metadataModule->fullpath('source') . "/$file";
+            my $dependencies = pretend_open($dependencyFile)
+                or die "Unable to open $dependencyFile: $!";
+
+            debug (" -- Reading dependencies from $dependencyFile");
+            $dependencyResolver->readDependencyData($dependencies);
+            close $dependencies;
+        }
+
+        my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
+        return @reorderedModules;
+    };
+
+    if ($@) {
+        warning (" r[b[*] Problems encountered trying to sort modules into correct order:");
+        warning (" r[b[*] $@");
+        warning (" r[b[*] Will attempt to continue.");
+    }
 
     return @modules;
 }
@@ -624,74 +694,24 @@ sub runAllModulePhases
 {
     my $self = shift;
     my $ctx = $self->context();
-    my $metadataModule = $self->metadataModule();
+    my $metadataModule = $ctx->getKDEProjectMetadataModule();
     my @modules = $self->modules();
 
     $ctx->loadPersistentOptions();
 
     # If we have kde-build-metadata we must process it first, ASAP.
     if ($metadataModule) {
-        eval {
-            my $sourceDir = $metadataModule->getSourceDir();
-            super_mkdir($sourceDir);
+        $self->_downloadKDEProjectMetadata();
 
-            if (!$ctx->phases()->has('update') &&
-                ! -e "$sourceDir/dependency-data-common")
-            {
-                warning (" r[b[*] Skipping build metadata update due to b[--no-src], but this is apparently required!");
-            }
+        $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
 
-            if ($ctx->phases()->has('update') && !pretending()) {
-                $metadataModule->scm()->updateInternal();
-            }
-        };
-
-        if ($@) {
-            warning (" b[r[*] Unable to download required metadata for build process");
-            warning (" b[r[*] Will attempt to press onward...");
-            warning (" b[r[*] Exception message: $@");
-        }
+        @modules = $self->_resolveModuleDependencies(@modules);
     }
 
-    # Reorder if necessary. This involves reading some metadata so wrap in its
-    # own exception handler.
-    if ($metadataModule) {
-        eval {
-            $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
-
-            my $dependencyResolver = ksb::DependencyResolver->new();
-            my $branchGroup = $ctx->getOption('branch-group', 'module') // '';
-            if (!$branchGroup) {
-                $branchGroup = $ctx->getOption('use-stable-kde')
-                    ? 'latest-qt4'
-                    : ($ctx->hasOption('use-stable-kde') # Could also be false if unset
-                        ? 'kf5-qt5'      # Really set to false
-                        : 'latest-qt4'); # Unset / this is default branch group if no option set
-            }
-
-            for my $file ('dependency-data-common', "dependency-data-$branchGroup")
-            {
-                my $dependencyFile = $metadataModule->fullpath('source') . "/$file";
-                my $dependencies = pretend_open($dependencyFile)
-                    or die "Unable to open $dependencyFile: $!";
-
-                debug (" -- Reading dependencies from $dependencyFile");
-                $dependencyResolver->readDependencyData($dependencies);
-                close $dependencies;
-            }
-
-            my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
-
-            # If we make it here no exceptions were thrown, so accept the result
-            @modules = @reorderedModules;
-        };
-
-        if ($@) {
-            warning (" r[b[*] Problems encountered trying to sort modules into correct order:");
-            warning (" r[b[*] $@");
-            warning (" r[b[*] Will attempt to continue.");
-        }
-    }
+    # Filter --resume-foo options. This might be a second pass, but that should
+    # be OK since there's nothing different going on from the first pass (in
+    # _resolveSelectorsIntoModules) in that event.
+    @modules = _applyModuleFilters($ctx, @modules);
 
     # Add to global module list now that we've filtered everything.
     $ctx->addModule($_) foreach @modules;
@@ -2057,14 +2077,13 @@ EOF
 # processed.
 #
 # Parameters:
-#  $ctx - <BuildContext> in use for this script execution.
+#  $ctx - <BuildContext> in use for this script execution. Additionally this
+#    method might call setKDEProjectMetadataModuleNeeded on the $ctx.
 #  $modNew  - Reference to a subroutine to be run for every new <Module>
 #    created. See _resolveSelectorsIntoModules for full details.
 #  @modules - list of <Modules>, <ModuleSets> to be expanded.
 #
 # Returns:
-#  $metadataModule - a <Module> to use if needed for kde-projects support, can be
-#     undef if not actually required this run.
 #  @modules - List of <Modules> with any module-sets expanded into <Modules>.
 sub _expandModuleSets
 {
@@ -2079,16 +2098,12 @@ sub _expandModuleSets
     };
 
     my @moduleResults = map { &$filter } (@buildModuleList);
-    my $metadataModule;
 
-    # TODO Extract this to a higher-level function.
     if (first { $_->scmType() eq 'proj' } @moduleResults) {
-        debug ("Introducing metadata module into the build");
-        $metadataModule = ksb::ModuleSet::KDEProjects::getMetadataModule($ctx);
-        assert_isa($metadataModule, 'ksb::Module');
+        $ctx->setKDEProjectMetadataModuleNeeded();
     }
 
-    return ($metadataModule, @moduleResults);
+    return @moduleResults;
 }
 
 # This function converts any 'l10n' references on the command line to return a l10n

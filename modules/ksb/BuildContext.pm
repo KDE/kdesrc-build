@@ -926,15 +926,22 @@ sub getKDEProjectMetadataModule
     return $self->{kde_projects_metadata};
 }
 
-# Sets the ksb::Module to be returned by getKDEProjectMetadataModule.  Should
-# be set as soon as it is confirmed which metadata module may be needed (and in
-# any event, before setModuleList is eventually called).
-sub setKDEProjectMetadataModule
+# Call this method to force this build context to pull in the kde-projects
+# metadata module. This is a one-time action, subsequent calls to this method
+# are ignored. Use getKDEProjectMetadataModule to see if this build context is
+# using a metadata module.
+#
+# This method should be called before setModuleList.
+sub setKDEProjectMetadataModuleNeeded
 {
     my $self = assert_isa(shift, 'ksb::BuildContext');
-    my $metadata = shift;
 
-    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata') if $metadata;
+    return if defined $self->{kde_projects_metadata};
+
+    my $metadata = ksb::ModuleSet::KDEProjects::getMetadataModule($self);
+
+    debug ("Introducing metadata module into the build");
+    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
 
     $self->{kde_projects_metadata} = $metadata;
     return;
