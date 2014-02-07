@@ -32,15 +32,20 @@ global
 # By default (if the above is commented out), you are getting svn trunk / git master.
 # If instead you want to check out another branch, like 4.7, use
 #	branch KDE/4.7
+# Note that other non-KDE modules (including in kdesupport) have their own special
+# branch names.
 #
-# With KDE/4.7, use "branch 2.6" for soprano, or distribution-provided soprano.
-#
-# but also see the qt and kdesupport modules below, which have special
-# requirements
+# A better option might be to use the "branch-group" option, which
+# automatically selects the right branch for supported modules (ones which use
+# the kde-projects repository). There are three branch groups, stable-qt4 (the
+# last KDE 4 release, plus bugfixes), latest-qt4 (the upcoming KDE 4 release),
+# and kf5-qt5 (the Qt5-based KDE Frameworks 5 under development).
+#	branch-group latest-qt4
 
 # This is the Subversion server to download the rest of the KDE sources from.
-# Developers: Don't forget to add your username to the URL if necessary!
-	svn-server svn+ssh://svn@svn.kde.org/home/kde
+# Developers should uncomment this line, non-developers can leave it alone to use
+# the anonymous mirrors.
+#	svn-server svn+ssh://svn@svn.kde.org/home/kde
 
 # cmake-options controls the compilation options for building KDE 4 modules.
 # These options apply to all KDE modules unless otherwise specified.
@@ -80,12 +85,19 @@ global
 # purge-old-logs controls whether old log files should be removed after the
 # latest build finishes. Set to false to disable it.
 #	 purge-old-logs false
+#
+
+# For the full list of options please see
+# http://kdesrc-build.kde.org/documentation/conf-options-table.html
 end global
 
-# qt is the default name of the module used to build Nokia's Qt toolkit, which is
+# With the global options set, the remainder of the file selects which modules
+# to build, the options to set for each module, and the order to build them in.
+
+# qt is the default name of the module used to build the Qt toolkit, which is
 # required for KDE. It is sometimes required to use the latest Qt available
 # to build KDE. 2 versions are supported by kdesrc-build:
-# 1. Nokia's Qt with no modifications.
+# 1. Qt Projects's Qt with no modifications.
 # 2. A KDE copy with no modifications (but on a better git server).
 #
 # The Qt buildsystem is different from that used by KDE modules, and so
@@ -166,7 +178,7 @@ options attica
     cmake-options -DQT4_BUILD=TRUE # Required if both Qt4 and 5 are present.
 end options
 
-# Phonon is the KDE multimedia layer, which is occasionally synced to Qt.
+# Phonon is the KDE multimedia layer.
 # It is required for the KDE libraries, and a specific backend for your system
 # is also required. For Linux users, this means either phonon-gstreamer or
 # phonon-vlc
@@ -224,14 +236,18 @@ module-set
     use-modules extra-cmake-modules
 end module-set
 
-# kdelibs are the base KDE libraries needed by all KDE applications.
-# kactivities is required for kde-runtime (supports Plasma Activity management)
+# kdelibs and the sub-libraries in its group are the base KDE libraries needed
+# by all KDE 4 applications.
 # kde-runtime contains applications that are required for the operation of
 # some base KDE libraries.
-# nepomuk-core contains some split-out Nepomuk libraries.
 module-set
     repository kde-projects
-    use-modules kdelibs nepomuk-core kactivities kde-runtime
+
+    # Note that 'kdelibs' is itself a module and a group pulling in things like
+    # kactivities and baloo-widgets. Rather than specifying all the modules I
+    # just let kdesrc-build figure it out, at least while they're still
+    # changing.
+    use-modules kdelibs kde-runtime
 
 # KDE 4 uses CMake, if you need to pass options to the cmake command, use this
 # option:
@@ -339,16 +355,6 @@ module-set
 
     use-modules kdegraphics
 end module-set
-
-# Contains nifty diversions of time, which generally aren't games.
-module kdetoys
-	# Let's explain a new kdesrc-build feature here, as an example:
-	# Say you don't want "./kdesrc-build" to always update and build kdetoys,
-	# but you want to specify options here (branch, cmake-options etc.) so that
-	# you can invoke "./kdesrc-build kdetoys" explicitly, now and then.
-	# The option manual-update does exactly this.
-	manual-update true
-end module
 
 # Educational programs.  Some are actually quite fun even if you're not trying
 # to learn anything.
