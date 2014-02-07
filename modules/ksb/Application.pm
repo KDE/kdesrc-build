@@ -421,9 +421,8 @@ sub _resolveSelectorsIntoModules
         }
         elsif ($forcedToKDEProject) {
             # Just assume it's a kde-projects module and expand away...
-            my $tempSet = ksb::ModuleSet::KDEProjects->new($ctx, '_cmdline');
-            $tempSet->setModulesToFind($selectorName);
-            $selector = _expandModuleSets($ctx, $modNewRef, $tempSet);
+            $selector = ksb::ModuleSet::KDEProjects->new($ctx, '_cmdline');
+            $selector->setModulesToFind($selectorName);
         }
         else {
             # Neither a named Module, ModuleSet, or use-modules entry within a
@@ -448,7 +447,8 @@ sub _resolveSelectorsIntoModules
     # We have to be careful to maintain order of selectors throughout.
     for my $selector (@modules) {
         $selector = $lookupSelector->($selector);
-        $modNewRef->($selector); # Perform module option setup
+        # Perform module option setup
+        $modNewRef->($selector) if $selector->isa('ksb::Module');
     }
 
     # Filter --resume-foo first so entire module-sets can be skipped.
