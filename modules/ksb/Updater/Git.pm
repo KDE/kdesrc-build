@@ -69,7 +69,7 @@ sub commit_id
 # Perform a git clone to checkout the latest branch of a given git module
 #
 # First parameter is the repository (typically URL) to use.
-# Returns boolean true if successful, false otherwise.
+# Throws an exception if it fails.
 sub clone
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
@@ -91,38 +91,45 @@ sub clone
 
     note ("\tCloning g[$module]");
 
-    my $result = ($self->installGitSnapshot()) ||
-                 0 == log_command($module, 'git-clone', ['git', 'clone', @args]);
-
-    if ($result) {
-        $ipc->notifyPersistentOptionChange(
-            $module->name(), 'git-cloned-repository', $git_repo);
-
-        my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
-
-        p_chdir($srcdir);
-
-        # Switch immediately to user-requested tag or branch now.
-        if ($commitType eq 'tag') {
-            info ("\tSwitching to specific commit g[$commitId]");
-            $result = (log_command($module, 'git-checkout-commit',
-                ['git', 'checkout', $commitId]) == 0);
-        }
-        # If not a tag, it's a defined branch
-        elsif ($commitId ne 'master') {
-            info ("\tSwitching to branch g[$commitId]");
-            $result = (log_command($module, 'git-checkout',
-                ['git', 'checkout', '-b', $commitId, "origin/$commitId"]) == 0);
+    if (!$self->installGitSnapshot()) {
+        if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
+            croak_runtime("Failed to make initial clone of $module");
         }
     }
 
-    return ($result != 0);
+    $ipc->notifyPersistentOptionChange(
+        $module->name(), 'git-cloned-repository', $git_repo);
+
+    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+
+    p_chdir($srcdir);
+
+    # Switch immediately to user-requested tag or branch now.
+    if ($commitType eq 'tag') {
+        info ("\tSwitching to specific commit g[$commitId]");
+        if (0 != log_command($module, 'git-checkout-commit',
+                ['git', 'checkout', $commitId]))
+        {
+            croak_runtime("Failed to checkout desired commit $commitId");
+        }
+    }
+    # If not a tag, it's a defined branch
+    elsif ($commitId ne 'master') {
+        info ("\tSwitching to branch g[$commitId]");
+        if (0 != log_command($module, 'git-checkout',
+                ['git', 'checkout', '-b', $commitId, "origin/$commitId"]))
+        {
+            croak_runtime("Failed to checkout desired branch $commitId");
+        }
+    }
+
+    return;
 }
 
 # Either performs the initial checkout or updates the current git checkout
 # for git-using modules, as appropriate.
 #
-# If errors are encountered, an exception is raised using die().
+# If errors are encountered, an exception is raised.
 #
 # Returns the number of *commits* affected.
 sub updateCheckout
@@ -142,9 +149,8 @@ sub updateCheckout
                 warning ("\tRemoving conflicting source directory " .
                          "as allowed by --delete-my-patches");
                 warning ("\tRemoving b[$srcdir]");
-                safe_rmtree($srcdir) or do {
-                    die "Unable to delete r[b[$srcdir]!";
-                };
+                safe_rmtree($srcdir) or
+                    croak_internal("Unable to delete $srcdir!");
             }
             else {
                 error (<<EOF);
@@ -167,17 +173,17 @@ EOF
                     system('svn', 'st', '--non-interactive', $srcdir);
                 }
 
-                die ('Conflicting source-dir present');
+                croak_runtime('Conflicting source-dir present');
             }
         }
 
         my $git_repo = $module->getOption('repository');
 
         if (!$git_repo) {
-            die "Unable to checkout $module, you must specify a repository to use.";
+            croak_internal("Unable to checkout $module, you must specify a repository to use.");
         }
 
-        $self->clone($git_repo) or die "Can't checkout $module: $!";
+        $self->clone($git_repo);
 
         return 1 if pretending();
         return count_command_output('git', '--git-dir', "$srcdir/.git", 'ls-files');
@@ -190,6 +196,8 @@ EOF
 # defined remote if available, using 'origin' otherwise).
 #
 # Assumes the current directory is already set to the source directory.
+#
+# Throws an exception on error.
 #
 # Return value: Remote name that should be used for further updates.
 #
@@ -213,14 +221,14 @@ sub _setupBestRemote
                         ['git', 'remote', 'set-url', DEFAULT_GIT_REMOTE, $cur_repo])
                 != 0)
             {
-                die "Unable to update the fetch URL for existing remote alias for $module";
+                croak_runtime("Unable to update the fetch URL for existing remote alias for $module");
             }
         }
         elsif (log_command($module, 'git-remote-setup',
                        ['git', 'remote', 'add', DEFAULT_GIT_REMOTE, $cur_repo])
             != 0)
         {
-            die "Unable to add a git remote named " . DEFAULT_GIT_REMOTE . " for $cur_repo";
+            croak_runtime("Unable to add a git remote named " . DEFAULT_GIT_REMOTE . " for $cur_repo");
         }
 
         push @remoteNames, DEFAULT_GIT_REMOTE;
@@ -278,7 +286,7 @@ sub _updateToRemoteHead
         if (0 != log_command($module, 'git-checkout-branch',
                       ['git', 'checkout', '-b', $newName, "$remoteName/$branch"]))
         {
-            die "Unable to perform a git checkout of $remoteName/$branch to a local branch of $newName";
+            croak_runtime("Unable to perform a git checkout of $remoteName/$branch to a local branch of $newName");
         }
     }
     else {
@@ -286,7 +294,7 @@ sub _updateToRemoteHead
         if (0 != log_command($module, 'git-checkout-update',
                       ['git', 'checkout', $branchName]))
         {
-            die "Unable to perform a git checkout to existing branch $branchName";
+            croak_runtime("Unable to perform a git checkout to existing branch $branchName");
         }
 
         # On the right branch, merge in changes.
@@ -324,8 +332,9 @@ sub _updateToDetachedHead
 
 # Updates an already existing git checkout by running git pull.
 #
-# Return parameter is the number of affected *commits*. Errors are
-# returned only via exceptions because of this.
+# Throws an exception on error.
+#
+# Return parameter is the number of affected *commits*.
 sub updateExistingClone
 {
     my $self     = assert_isa(shift, 'ksb::Updater::Git');
@@ -340,7 +349,7 @@ sub updateExistingClone
     # Download updated objects. This also updates remote heads so do this
     # before we start comparing branches and such.
     if (0 != log_command($module, 'git-fetch', ['git', 'fetch', $remoteName])) {
-        die "Unable to perform git fetch for $remoteName, which should be $cur_repo";
+        croak_runtime ("Unable to perform git fetch for $remoteName, which should be $cur_repo");
     }
 
     # Now we need to figure out if we should update a branch, or simply
@@ -361,13 +370,8 @@ sub updateExistingClone
     # With all remote branches fetched, and the checkout of our desired
     # branch completed, we can now use our update sub to complete the
     # changes.
-    if ($self->stashAndUpdate($updateSub)) {
-        return count_command_output('git', 'rev-list', "$start_commit..HEAD");
-    }
-    else {
-        # We must throw an exception if we fail.
-        die "Unable to update $module";
-    }
+    $self->stashAndUpdate($updateSub);
+    return count_command_output('git', 'rev-list', "$start_commit..HEAD");
 }
 
 # Goes through all the various combination of git checkout selection options in
@@ -453,7 +457,11 @@ sub _determinePreferredCheckoutSource
 # The user can cause this function to fail by setting the disable-snapshots
 # option for the module (either at the command line or in the rc file).
 #
-# Returns boolean true on success, false otherwise.
+# Throws an exception on failure.
+#
+# Returns true if the snapshot actually was installed and usable, false
+# otherwise.  If the snapshot was not installed, the source directory should
+# still be empty for it.
 sub installGitSnapshot
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
@@ -475,10 +483,8 @@ sub installGitSnapshot
     my $tmpdir = File::Spec->tmpdir() // "/tmp";
     $filename = "$tmpdir/$filename"; # Make absolute
 
-    if (!download_file($tarball, $filename, $module->getOption('http-proxy'))) {
-        error ("Unable to download snapshot for module r[$module]");
-        return 0;
-    }
+    download_file($tarball, $filename, $module->getOption('http-proxy')) or
+        croak_runtime("Unable to download snapshot for module \"$module\"");
 
     info ("\tDownload complete, preparing module source code");
 
@@ -496,9 +502,8 @@ sub installGitSnapshot
     safe_unlink ($filename);
 
     if ($result) {
-        error ("Unable to extract snapshot for r[b[$module]: $savedError");
         safe_rmtree($sourceDir);
-        return 0;
+        croak_runtime("Unable to extract snapshot for $module: $savedError");
     }
 
     whisper ("\tg[$module] snapshot is in place");
@@ -508,9 +513,8 @@ sub installGitSnapshot
     $result = log_command($module, 'init-git-repo', ['/bin/sh', './initrepo.sh']);
 
     if ($result) {
-        error ("Snapshot for r[$module] extracted successfully, but failed to complete initrepo.sh");
         safe_rmtree($sourceDir);
-        return 0;
+        croak_runtime("Snapshot for $module extracted successfully, but failed to complete initrepo.sh");
     }
 
     whisper ("\tConverting to kde:-style URL");
@@ -524,7 +528,11 @@ sub installGitSnapshot
 
     info ("\tGit snapshot installed, now bringing up to date.");
     $result = log_command($module, 'init-git-pull', ['git', 'pull']);
-    return ($result == 0);
+    if ($result != 0) {
+        warning("Unable to complete update for y[b[$module] snapshot");
+    }
+
+    return 1;
 }
 
 # This stashes existing changes if necessary, and then runs a provided
@@ -540,8 +548,9 @@ sub installGitSnapshot
 # should need no parameters and return a boolean success indicator. It may
 # throw exceptions.
 #
-# Returns true on success, false otherwise. Some egregious errors result in
-# exceptions being thrown however.
+# Throws an exception on error.
+#
+# No return value.
 sub stashAndUpdate
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
@@ -585,7 +594,7 @@ sub stashAndUpdate
 
     if (!$updateSub->()) {
         error ("\tUnable to update the source code for r[b[$module]");
-        return 0;
+        return;
     }
 
     # Update is performed and successful, re-apply the stashed changes
@@ -609,11 +618,11 @@ r[b[*]
 * $module. Developers be careful, doing either of these options will remove
 * any of your local work.
 EOF
-            return 0;
+            croak_runtime("Failed to re-apply stashed changes for $module");
         }
     }
 
-    return 1;
+    return;
 }
 
 # This subroutine finds an existing remote-tracking branch name for the
