@@ -91,7 +91,10 @@ sub clone
 
     note ("\tCloning g[$module]");
 
-    if (!$self->installGitSnapshot()) {
+    my $result = eval { $self->installGitSnapshot() };
+
+    if (my $e = had_an_exception() || !$result) {
+        warning($e->message()) if $e;
         if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
             croak_runtime("Failed to make initial clone of $module");
         }

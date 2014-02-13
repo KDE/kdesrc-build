@@ -22,8 +22,9 @@ use ksb::Version qw(scriptVersion);
 use ksb::BuildException;
 
 use Exporter qw(import); # Use Exporter's import method
-our @EXPORT = qw(list_has make_exception assert_isa assert_in any
-                 croak_runtime croak_internal download_file absPathToExecutable
+our @EXPORT = qw(list_has assert_isa assert_in any
+                 croak_runtime croak_internal had_an_exception make_exception
+                 download_file absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
                  pretend_open safe_rmtree get_list_digest
@@ -86,6 +87,19 @@ sub make_exception
 
     $message = Carp::cluck($message) if $exception_type eq 'Internal';
     return ksb::BuildException->new($exception_type, $message);
+}
+
+# Helper function to return $@ if $@ is a ksb::BuildException.
+#
+# This function assumes that an eval block had just been used in order to set or
+# clear $@ as appropriate.
+sub had_an_exception
+{
+    if ($@ && ref $@ && $@->isa('ksb::BuildException')) {
+        return $@;
+    }
+
+    return;
 }
 
 # Should be used for "runtime errors" (i.e. unrecoverable runtime problems that

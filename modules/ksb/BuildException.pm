@@ -27,4 +27,10 @@ sub to_string
     return $exception->{exception_type} . " Error: " . $exception->{message};
 }
 
+sub message
+{
+    my $self = shift;
+    return $self->{message};
+}
+
 1;
