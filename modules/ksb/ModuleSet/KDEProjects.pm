@@ -211,7 +211,7 @@ sub convertToModules
         };
 
         if ($@) {
-            die $@ if ref $@; # Forward exception objects up
+            die $@ if had_an_exception(); # Forward exception objects up
             croak_runtime("The XML for the KDE Project database could not be understood: $@");
         }
 

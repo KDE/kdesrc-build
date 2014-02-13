@@ -426,7 +426,7 @@ sub update_module_path
     my $count = eval { $self->run_svn('svn-up', \@args); };
 
     # Update failed, try svn cleanup.
-    if ($@ && $@->{exception_type} ne 'ConflictPresent')
+    if (had_an_exception() && $@->{exception_type} ne 'ConflictPresent')
     {
         info ("\tUpdate failed, trying a cleanup.");
         my $result = safe_system('svn', 'cleanup');
