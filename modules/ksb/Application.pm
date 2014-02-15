@@ -2741,6 +2741,8 @@ Options:
                          output what the script would have done.
     --refresh-build      Start the build from scratch.
 
+    --verbose            Print verbose output
+
     --help               You\'re reading it. :-)
     --version            Output the program version.
 
