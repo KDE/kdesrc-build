@@ -422,6 +422,7 @@ sub build
 
     # Ensure we're in a known directory before we start; some options remove
     # the old build directory that a previous module might have been using.
+    super_mkdir($pathinfo{'path'});
     p_chdir($pathinfo{'path'});
 
     return 0 if !$self->setupBuildSystem();
