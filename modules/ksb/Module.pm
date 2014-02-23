@@ -671,6 +671,10 @@ sub setupEnvironment
     my @ld_dirs = ("$kdedir/lib", "$qtdir/lib", $self->getOption('libpath'));
     $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
 
+    # Needed to find installed resources for KF5.
+    # TODO: Make this an integration point for the BuildSystem interface.
+    $ctx->prependEnvironmentValue('XDG_DATA_DIRS', "$kdedir/share");
+
     my @path = ("$kdedir/bin", "$qtdir/bin", $self->getOption('binpath'));
 
     if (my $prefixEnvVar = $self->buildSystem()->prefixEnvironmentVariable())
