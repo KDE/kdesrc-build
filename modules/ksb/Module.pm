@@ -410,7 +410,8 @@ sub build
 {
     my $self = assert_isa(shift, 'ksb::Module');
     my $moduleName = $self->name();
-    my $builddir = $self->fullpath('build');
+    my %pathinfo = $self->getInstallPathComponents('build');
+    my $builddir = $pathinfo{'fullpath'};
     my $start_time = time;
     my $buildSystem = $self->buildSystem();
 
@@ -418,6 +419,10 @@ sub build
         error ("\tr[b[$self] does not seem to have a build system to use.");
         return 0;
     }
+
+    # Ensure we're in a known directory before we start; some options remove
+    # the old build directory that a previous module might have been using.
+    p_chdir($pathinfo{'path'});
 
     return 0 if !$self->setupBuildSystem();
     return 1 if $self->getOption('build-system-only');
