@@ -177,13 +177,14 @@ sub safe_lndir
 sub prune_under_directory
 {
     my $dir = shift;
+    my $errorRef;
 
     print "starting delete of $dir\n";
     eval {
-        remove_tree($dir, { keep_root => 1 });
+        remove_tree($dir, { keep_root => 1, safe => 1, error => \$errorRef });
     };
 
-    if ($@)
+    if ($@ || @$errorRef)
     {
         error ("\tUnable to clean r[$dir]:\n\ty[b[$@]");
         return 0;
