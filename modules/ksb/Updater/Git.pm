@@ -436,7 +436,8 @@ sub _determinePreferredCheckoutSource
         $checkoutSource = $self->_resolveBranchGroup($checkoutSource);
 
         if (!$checkoutSource) {
-            whisper ("No specific branch set for $modulePath and $branchGroup, using master!");
+            my $branchGroup = $module->getOption('branch-group');
+            whisper ("No specific branch set for $module and $branchGroup, using master!");
             $checkoutSource = 'master';
         }
     }
