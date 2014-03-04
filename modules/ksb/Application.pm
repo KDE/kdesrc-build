@@ -1584,6 +1584,10 @@ EOF
             note ("Building g[$modOutput] ($i/$num_modules)");
         }
 
+        if (debugging(ksb::Debug::WHISPER) && exists $module->{deps_were}) {
+            note ("\tDeps from current build were: b[", join(', ', @{$module->{deps_were}}));
+        }
+
         $ctx->resetEnvironment();
         $module->setupEnvironment();
 

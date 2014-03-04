@@ -317,13 +317,14 @@ sub _getBranchOf
 #  in.
 sub _visitModuleAndDependencies
 {
-    my ($optionsRef, $module) = @_;
+    my ($optionsRef, $module, $level) = @_;
     assert_isa($module, 'ksb::Module');
 
     my $visitedItemsRef     = $optionsRef->{visitedItems};
     my $properBuildOrderRef = $optionsRef->{properBuildOrder};
     my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
     my $modulesFromNameRef  = $optionsRef->{modulesFromName};
+    $level //= 0;
 
     my $item = ($module->scmType eq 'proj' && $module->fullProjectPath());
 
@@ -332,7 +333,7 @@ sub _visitModuleAndDependencies
         return;
     }
 
-    debug ("dep-resolv: Visiting $item");
+    debug ("dep-resolv: Visiting ", (' ' x $level), "$item");
 
     $visitedItemsRef->{$item} //= 0;
 
@@ -367,12 +368,18 @@ sub _visitModuleAndDependencies
             next;
         }
 
+        # For debugging
+        $module->{deps_were} //= [ ];
+
         if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
             my $wrongBranch = _getBranchOf($subModule) // '?';
             error (" r[b[*] $module:$branch needs $subItem, not $subItemName:$wrongBranch");
         }
 
-        _visitModuleAndDependencies($optionsRef, $subModule);
+        push @{$module->{deps_were}}, $subItemName;
+
+        next if (($visitedItemsRef->{$subItemName} // 0) == 1); # microoptimization
+        _visitModuleAndDependencies($optionsRef, $subModule, $level + 1);
     }
 
     $visitedItemsRef->{$item} = 1; # Mark as done visiting.
