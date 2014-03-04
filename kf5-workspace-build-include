@@ -9,34 +9,20 @@
 # (or using full paths)
 #
 # You can then add additional modules if desired.
+#
+# This file uses "branch groups" to decide which git branch to use. If you
+# want to add your application here please be sure to update
+# kde-build-metadata repo's "logical-module-structure". It includes a simple
+# tool you can use to validate your change works (or just "kdesrc-build -p
+# your-module" and look for the right branch).
 
-# This module is temporary (parts of it depend on plasma, so it's here)
-module kde-runtime
-    repository kde:kde-runtime
-    branch frameworks
-end module
+module-set kf5-workspace-modules
+    repository kde-projects # Required for branch-group
+    # kde-runtime is temporary (parts of it depend on plasma, so it's here)
+    use-modules kde-runtime kde-workspace plasmate kwin-compositing-kcm
+end module-set
 
-module kde-workspace
-    repository kde:kde-workspace
-    branch master
-end module
-
-module plasmate
-    repository kde:plasmate
-    branch frameworks
-end module
-
-module libnm-qt
-    repository kde:libnm-qt
-    branch qt5
-end module
-
-module plasma-nm
-    repository kde:plasma-nm
-    branch frameworks
-end module
-
-module kwin-compositing-kcm
-    repository kde:kwin-compositing-kcm
-    branch master
-end module
+module-set kf5-network-management
+    repository kde-projects
+    use-modules libnm-qt plasma-nm
+end module-set

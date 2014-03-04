@@ -9,41 +9,34 @@
 # (or using full paths)
 #
 # You can then add additional modules if desired.
+#
+# This file uses "branch groups" to decide which git branch to use. If you
+# want to add your application here please be sure to update
+# kde-build-metadata repo's "logical-module-structure". It includes a simple
+# tool you can use to validate your change works (or just "kdesrc-build -p
+# your-module" and look for the right branch).
 
-module konsole
-    repository kde:konsole
-    branch frameworks
-end module
-
-module kate
-    repository kde:kate
-    branch frameworks
-end module
+module-set kf5-base-applications
+    repository kde-projects # Required by branch-group
+    use-modules konsole kate
+end module-set
 
 module-set okteta
-  repository kde-projects
-  use-modules okteta
-  branch frameworks
+    repository kde-projects
+    use-modules okteta
 end module
 
 module-set kdevelop-kf5
     repository kde-projects
     use-modules kdevplatform kdevelop/kdevelop
-    # Did you remember to set branch-group in your global section? See comment
-    # at top of this file if you haven't.
 end module-set
 
-module libksane
-    repository kde:libksane
-    branch frameworks
-end module
+module-set kf5-scanner
+    repository kde-projects
+    use-modules libksane skanlite
+end module-set
 
-module skanlite
-    repository kde:skanlite
-    branch frameworks
-end module
-
-module yakuake
-    repository kde:yakuake
-    branch frameworks
-end module
+module-set kf5-utils
+    repository kde-projects
+    use-modules yakuake
+end module-set

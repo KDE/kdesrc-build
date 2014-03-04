@@ -8,6 +8,12 @@
 # (or using a full path)
 #
 # You can then add additional modules if desired.
+#
+# This file uses "branch groups" to decide which git branch to use. If you
+# need to add your framework or library here please be sure to update
+# kde-build-metadata repo's "logical-module-structure". It includes a simple
+# tool you can use to validate your change works (or just "kdesrc-build -p
+# your-module" and look for the right branch).
 
 # ============================ Dependencies ==========================
 
@@ -46,25 +52,24 @@ module-set frameworks
     # KRunner depends on Plasma
     # KPrintUtils has been merged into kde4support
     ignore-modules krunner kprintutils
-    branch master
+    branch master # Probably can be removed? --mpyne 2014-03-03
     # The CodeBlocks generator allows usage in QtCreator, while still generating Makefiles
     cmake-options -DBUILD_TESTING=TRUE -DCMAKE_BUILD_TYPE:STRING=debug -G "CodeBlocks - Unix Makefiles"
 end module
 
-# Will move to frameworks/ once the 4.x branch doesn't matter much anymore
-# (and master branch is used for the Qt5/KF5 version)
-module kde-kactivities
-    repository kde:kactivities
-    branch master
-    cmake-options -DKDE4_BUILD_TESTS=TRUE -DBUILD_TESTING=TRUE -DCMAKE_BUILD_TYPE:STRING=debug
-end module
+module-set extra-frameworks
+    repository kde-projects
 
-# Will move to frameworks/ together with kactivities
-module plasma-framework
-    repository kde:plasma-framework
-end module
+    # Will move to frameworks/ once the 4.x branch doesn't matter much anymore
+    # (master branch is used for the Qt5/KF5 version)
+    use-modules kactivities plasma-framework krunner
+end module-set
 
-module krunner
-    repository kde:krunner
-end module
-
+# Example of how to set options for just one module from a module-set... this is
+# useful to have *after* your "include .../kf5-framework-build-include" in your
+# kdesrc-buildrc if you just want to tweak some settings without adding/removing
+# modules.
+options kactivities
+    cmake-options -DKDE4_BUILD_TESTS=TRUE -DBUILD_TESTING=TRUE \
+                  -DKACTIVITIES_ENABLE_EXCEPTIONS=TRUE -DCMAKE_BUILD_TYPE:STRING=debug
+end options
