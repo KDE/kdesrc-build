@@ -224,19 +224,19 @@ sub _directDependenciesOf
     return unless $moduleDepEntryRef;
 
     push @directDeps, @{$moduleDepEntryRef->{'+'}};
+    push @exclusions, @{$moduleDepEntryRef->{'-'}};
 
     $moduleDepEntryRef = $dependenciesOfRef->{"$module:$branch"};
-    if ($moduleDepEntryRef) {
+    if ($moduleDepEntryRef && $branch ne '*') {
         push @directDeps, @{$moduleDepEntryRef->{'+'}};
         push @exclusions, @{$moduleDepEntryRef->{'-'}};
     }
 
     foreach my $exclusion (@exclusions) {
-        my ($moduleName, $branchName) = $exclusion =~ m,^([^:]+):(.*)$,;
-
         # Remove only modules at the exact given branch as a dep.
-        # We do this even for "catch-alls", so that specific branches are
-        # not removed by a "catch-all" exclusion.
+        # However catch-alls can remove catch-alls.
+        # But catch-alls cannot remove a specific branch, such exclusions have
+        # to also be specific.
         @directDeps = grep { $_ ne $exclusion } (@directDeps);
     }
 
@@ -351,7 +351,7 @@ sub _visitModuleAndDependencies
     # We still run dependency analysis even if the user has requested a
     # specific tag, as it is possible that there are catch-all dependencies to
     # handle. So turn an undefined branch into a set name.
-    my $branch = _getBranchOf($module) // '?';
+    my $branch = _getBranchOf($module) // '*';
 
     for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
         my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
@@ -368,7 +368,7 @@ sub _visitModuleAndDependencies
         }
 
         if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
-            my $wrongBranch = _getBranchOf($subModule);
+            my $wrongBranch = _getBranchOf($subModule) // '?';
             error (" r[b[*] $module:$branch needs $subItem, not $subItemName:$wrongBranch");
         }
 
