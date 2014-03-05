@@ -97,6 +97,23 @@ sub runTestsuite
     return 1;
 }
 
+# Re-implementing the one in BuildSystem since in CMake we want to call
+# make install/fast, so it only installs rather than building + installing
+sub installInternal
+{
+    my $self = shift;
+    my $module = $self->module();
+    my @cmdPrefix = @_;
+
+    return $self->safe_make ({
+            target => 'install/fast',
+            logfile => 'install',
+            message => "Installing g[$module]",
+            'prefix-options' => [@cmdPrefix],
+            subdirs => [ split(' ', $module->getOption("checkout-only")) ],
+           }) == 0;
+}
+
 sub configureInternal
 {
     my $self = assert_isa(shift, 'ksb::BuildSystem::KDE4');

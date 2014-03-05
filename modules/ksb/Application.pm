@@ -191,6 +191,10 @@ DONE
         'build-only' => sub {
             $phases->phases('build');
         },
+        'install-only' => sub {
+            $self->{run_mode} = 'install';
+            $phases->phases('install');
+        },
         prefix => sub {
             my ($optName, $arg) = @_;
             $auxOptions{prefix} = $arg;
@@ -258,7 +262,7 @@ DONE
         'no-tests', 'build-when-unchanged|force-build',
         'verbose|v', 'quiet|quite|q', 'really-quiet', 'debug',
         'reconfigure', 'colorful-output|color!', 'async!',
-        'src-only|svn-only', 'build-only', 'build-system-only',
+        'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
         'print-modules', 'pretend|dry-run|p', 'refresh-build',
         'start-program|run=s{,}',
@@ -2716,6 +2720,11 @@ Options:
     --src-only           Only update the source code (Identical to --no-build
                          at this point).
     --build-only         Build only, don't perform updates or install.
+
+    --install-only       Only install the already compiled code, this is equivalent
+    --install            to make install/fast in CMake. Useful for example when we
+                         want to clean the install directory but we do not want to
+                         re-compile everything.
 
     --rc-file=<filename> Read configuration from filename instead of default.
 

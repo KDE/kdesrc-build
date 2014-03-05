@@ -338,7 +338,7 @@ sub safe_make (@)
         # them.
         next unless $self->isSubdirBuildable($subdir);
 
-        my $logname = $optsRef->{logbase} // $optsRef->{target};
+        my $logname = $optsRef->{logbase} // $optsRef->{logfile} // $optsRef->{target};
 
         if ($subdir ne '')
         {
