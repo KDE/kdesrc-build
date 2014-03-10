@@ -1,50 +1,77 @@
-kdesrc-build 1.15
+# kdesrc-build 1.16.1
 
-*** QUICK HOWTO ***
+## QUICK HOWTO
 
-1.  Copy kdesrc-build somewhere where you will be able to find it.
+1. Install kdesrc-build:
+    - Copy the kdesrc-build directory somewhere where you will be able to find
+      it. The whole directory has to go together, so don't just copy the script
+      itself.
 
-2.
-    a) If you don't already have a ~/.kdesrc-buildrc, use the kdesrc-build-setup
-program to make one, or copy kdesrc-buildrc-sample to ~/.kdesrc-buildrc and
-make any changes that you need.
+    - Alternately, you can run the `git` command itself to easily install
+      kdesrc-build:
 
-    b) If you do have a ~/.kdesrc-buildrc, I recommend looking through the
-kdesrc-buildrc-sample to ensure that your configuration doesn't need changed
-(due to feature additions or changes to the KDE source repositories).
+      $ mkdir -p ~/kdesrc
+      $ cd ~/kdesrc
+      $ git clone git://anongit.kde.org/kdesrc-build
+      $ cd kdesrc-build # kdesrc-build is in this directory
 
-    c) NOTE: There is no kde-qt module anymore. There *is* a Qt mirror hosted
-on the kde infrastructure, which you can access using "repository kde:qt" in
-your qt module.
+2. Setup:
+    - **For KDE 4 Platform and Plasma Desktop**: If you don't already have a
+      ~/.kdesrc-buildrc, use the kdesrc-build-setup program to make one, or
+      copy kdesrc-buildrc-sample to ~/.kdesrc-buildrc and make any changes that
+      you need.
 
-3.  Run "/path/to/kdesrc-build --pretend".  This will have kdesrc-build go
-through the steps that it would perform, but without actually doing them.
-This is a good time to make sure that kdesrc-build is set the way you want it.
+    - **For KDE Frameworks ("KF5") / Plasma Next**: Please see the
+      `kf5-qt5-build-include` file contained within the kdesrc-build directory.
+      You will still end up generating a ~/.kdesrc-buildrc file but you will
+      use the `branch-group` option to help kdesrc-build select the right
+      modules and branches.
 
-4.  When you're ready, run "/path/to/kdesrc-build".  Hopefully everything will
-go well the first time, and kdesrc-build will be able to download and build
-all of the modules that you ask for. :)
+    - Either way, you can also consult the kdesrc-buildrc-sample file to see
+      what options are available, or look at the documentation at
+      http://kdesrc-build.kde.org/documentation/conf-options-table.html
 
-*** UPGRADING KDESRC-BUILD ***
+3. From the kdesrc-build directory, run "./kdesrc-build --pretend".  This will
+   have kdesrc-build go through the steps that it would perform, but without
+   actually doing them. This is a good time to make sure that kdesrc-build is
+   set the way you want it.
 
-Upgrading is simple.  Just copy the new kdesrc-build over the old one, and
-then you may want to edit your ~/.kdesrc-buildrc to make sure any new options
-are included (if you'd like).  You should always read the changes for the new
-version however, as sometimes there are slight changes in behavior necessary
-to adapt to updates in the source repository.
+4. When you're ready, run "./kdesrc-build". Hopefully everything will go well
+   the first time, and kdesrc-build will be able to download and build all of
+   the modules that you ask for. :)
 
-You can use the 'kdesrc-build --version' command to ensure that you have
+## UPGRADING KDESRC-BUILD
+
+Upgrading is simple. You can delete your old kdesrc-build directory (make sure
+you don't have any local changes in there first, or your kdesrc-buildrc file!)
+and then install the new version where the old kdesrc-build directory used to
+be.
+
+If you are tracking "KF5" development, it is probably best to run kdesrc-build
+itself from its git repository to automatically pick up bugfixes and needed
+feature additions. You can even use kdesrc-build to manage keeping kdesrc-build
+up to date (though remember if you do this that if kdesrc-build updates itself,
+those updates won't take effect until the next run).
+
+Either way, you may want to edit your ~/.kdesrc-buildrc to make sure any new
+options are included. You should always read the changes for the new version
+however, as sometimes there are slight changes in behavior necessary to adapt
+to updates in the source repository. If you are running kdesrc-build from its
+git repository, you can use the "git log" command from inside the kdesrc-build
+source directory to see the latest changes.
+
+You can use the `./kdesrc-build --version` command to ensure that you have
 successfully upgraded kdesrc-build.
 
-*** SAMPLE CONFIGURATION ***
+## SAMPLE CONFIGURATION
 
 A sample configuration file is included.  It should work for you for the most
 part with only minor tweaking.  To use it, just copy it to ~/.kdesrc-buildrc.
 
-Alternatively, a program is included starting with kdesrc-build 1.14 called
-kdesrc-build-setup which can be used to generate a simple configuration.
+Alternatively, a program is included called kdesrc-build-setup, which can be
+used to generate a simple configuration (for KDE4-based builds).
 
-*** HELP!!! ***
+## HELP!!!
 
 kdesrc-build includes a limited command-line description with the
 --help option.
@@ -59,16 +86,12 @@ You can also ask on the KDE support mailing lists, such as kde-devel@kde.org
 Finally you can drop me an email at mpyne@kde.org (although I have a job/family
 and therefore don't always have time to respond)
 
-*** UPDATES / CONTACT INFO ***
+## UPDATES / CONTACT INFO
 
 You can find updated versions of kdesrc-build online as part of the
 extragear/utils module: (You can also see the change log this way)
 
 https://projects.kde.org/projects/extragear/utils/kdesrc-build
-
-(Note: Many kde modules are migrating to git.kde.org. This may require frequent updates
-to kdesrc-buildrc until the next release of kdesrc-build, which will support auto-updating
-many of these modules from the KDE Projects page)
 
 If you find a bug, please report it at:
   http://bugs.kde.org/
