@@ -306,6 +306,10 @@ sub _getBranchOf
 # build list are re-ordered before the module, and then adds the <ksb::Module>
 # to the build list (whether it is a KDE Project or not, to preserve ordering).
 #
+# See also _visitDependencyItemAndDependencies, which actually does most of
+# the work of handling dependencies, and calls back to this function when it
+# finds Modules in the build list.
+#
 # Parameters:
 #  optionsRef - hashref to the module dependencies, catch-all dependencies,
 #   module build list, module name to <ksb::Module> mapping, and auxiliary data
@@ -320,18 +324,55 @@ sub _visitModuleAndDependencies
     my ($optionsRef, $module, $level) = @_;
     assert_isa($module, 'ksb::Module');
 
+    my $item = $module->fullProjectPath() if $module->scmType() eq 'proj';
+
+    if ($item) {
+        my $branch = _getBranchOf($module) // '*';
+        _visitDependencyItemAndDependencies($optionsRef, "$item:$branch", $level);
+    }
+
+    push @{$optionsRef->{properBuildOrder}}, $module;
+    --($optionsRef->{modulesNeeded});
+    return;
+}
+
+# Function: visitDependencyItemAndDependencies
+#
+# Internal:
+#
+# This method is used by _visitModuleAndDependencies to account for dependencies
+# by kde-project modules across dependency items that are not actually present
+# in the build.
+#
+# For instance, if kde/foo/a depends on kde/lib/bar, and kde/lib/bar depends on
+# kde/foo/baz, then /a also depends on /baz and should be ordered after /baz.
+# This function accounts for that in cases such as trying to build only /a and
+# /baz.
+#
+# Parameters:
+#  optionsRef - hashref to the module dependencies, catch-all dependencies,
+#   module build list, module name to <ksb::Module> mapping, and auxiliary data
+#   to see if a module has already been visited.
+#  dependencyItem - a string containing the kde-projects full path for the module,
+#   ':', and the specific branch name for the dependency if needed. The branch
+#   name is '*' if the branch doesn't matter (or can be determined only by the
+#   branch-group in use). E.g. 'kde/kdelibs/baloo:*' or
+#   'kdesupport/akonadi:master'.
+#
+# Returns:
+#  Nothing. The proper build order can be read out from the optionsRef passed
+#  in.
+sub _visitDependencyItemAndDependencies
+{
+    my ($optionsRef, $dependencyItem, $level) = @_;
+
     my $visitedItemsRef     = $optionsRef->{visitedItems};
     my $properBuildOrderRef = $optionsRef->{properBuildOrder};
     my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
     my $modulesFromNameRef  = $optionsRef->{modulesFromName};
     $level //= 0;
 
-    my $item = ($module->scmType eq 'proj' && $module->fullProjectPath());
-
-    if (!$item) {
-        push @{$properBuildOrderRef}, $module;
-        return;
-    }
+    my ($item, $branch) = split(':', $dependencyItem, 2);
 
     debug ("dep-resolv: Visiting ", (' ' x $level), "$item");
 
@@ -349,41 +390,36 @@ sub _visitModuleAndDependencies
 
     _makeCatchAllRules($optionsRef, $item);
 
-    # We still run dependency analysis even if the user has requested a
-    # specific tag, as it is possible that there are catch-all dependencies to
-    # handle. So turn an undefined branch into a set name.
-    my $branch = _getBranchOf($module) // '*';
-
     for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
         my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
         croak_internal("Invalid dependency item: $subItem") if !$subItemName;
 
         next if $subItemName eq $item; # Catch-all deps might make this happen
 
+        # This keeps us from doing a deep recursive search for dependencies
+        # on an item we've already asked about.
+        next if (($visitedItemsRef->{$subItemName} // 0) == 1);
+
         debug ("\tdep-resolv: $item:$branch depends on $subItem");
 
         my $subModule = $modulesFromNameRef->{$subItemName};
         if (!$subModule) {
-            whisper (" y[b[*] $module:$branch depends on $subItem, but no module builds $subItem for this run.");
-            next;
+            whisper (" y[b[*] $dependencyItem depends on $subItem, but no module builds $subItem for this run.");
+            _visitDependencyItemAndDependencies($optionsRef, $subItem, $level + 1);
+        }
+        else {
+            if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
+                my $wrongBranch = _getBranchOf($subModule) // '?';
+                error (" r[b[*] $item needs $subItem, not $subItemName:$wrongBranch");
+            }
+
+            _visitModuleAndDependencies($optionsRef, $subModule, $level + 1);
         }
 
-        # For debugging
-        $module->{deps_were} //= [ ];
-
-        if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
-            my $wrongBranch = _getBranchOf($subModule) // '?';
-            error (" r[b[*] $module:$branch needs $subItem, not $subItemName:$wrongBranch");
-        }
-
-        push @{$module->{deps_were}}, $subItemName;
-
-        next if (($visitedItemsRef->{$subItemName} // 0) == 1); # microoptimization
-        _visitModuleAndDependencies($optionsRef, $subModule, $level + 1);
+        last if $optionsRef->{modulesNeeded} == 0;
     }
 
     $visitedItemsRef->{$item} = 1; # Mark as done visiting.
-    push @{$properBuildOrderRef}, $module;
     return;
 }
 
@@ -429,6 +465,9 @@ sub resolveDependencies
             grep { $_->scmType() eq 'proj' }
                 @modules
         },
+
+        # Help _visitModuleAndDependencies to optimize
+        modulesNeeded => scalar @modules,
     };
 
     # Adds things like kde/kdelibs/foo to automatically depend on
