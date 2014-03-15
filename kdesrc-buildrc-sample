@@ -173,7 +173,7 @@ module-set
 
     # automoc is essential for building KDE's CMake-based modules, and so should be first
     # in this module set (but after Qt, if you're building that too)
-    use-modules automoc cagibi attica soprano polkit-qt-1
+    use-modules automoc cagibi attica polkit-qt-1
 
     # Other options are simply passed to each defined module. For example if
     # you uncomment the next line, then the "Debug" build type will be used for
@@ -258,6 +258,12 @@ module-set
     # changing.
     use-modules kdelibs kde-runtime
 
+    # These are pulled in by kdelibs and are still required by some extragear modules, but
+    # are optional or no longer required for kde.org modules. Remove this line if you need to
+    # build Nepomuk, but if you need to build nepomuk you'd also want to add "soprano" to
+    # use-modules above.
+    ignore-modules nepomuk-core nepomuk-widgets
+
 # KDE 4 uses CMake, if you need to pass options to the cmake command, use this
 # option:
 #	cmake-options -DKDE4_BUILD_TESTS:BOOL=ON
@@ -272,7 +278,7 @@ end module-set
 module-set
     repository kde-projects
 
-    use-modules akonadi kdepimlibs nepomuk-widgets kde-workspace \
+    use-modules akonadi kdepimlibs kde-workspace \
                 kate kde-baseapps konsole
 end module-set
 
