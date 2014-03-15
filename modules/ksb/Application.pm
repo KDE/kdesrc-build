@@ -259,7 +259,7 @@ DONE
     GetOptionsFromArray(\@options, \%foundOptions,
         'version', 'author', 'help', 'disable-snapshots|no-snapshots',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
-        'no-tests', 'build-when-unchanged|force-build',
+        'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
         'verbose|v', 'quiet|quite|q', 'really-quiet', 'debug',
         'reconfigure', 'colorful-output|color!', 'async!',
         'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
@@ -609,9 +609,9 @@ sub generateModuleList
     return @modules;
 }
 
-# Causes kde-projects metadata to be downloaded (unless --pretend or --no-src
-# is in effect, although we'll download even in --pretend if nothing is
-# available).
+# Causes kde-projects metadata to be downloaded (unless --pretend, --no-src, or
+# --no-metadata is in effect, although we'll download even in --pretend if
+# nothing is available).
 #
 # No return value.
 sub _downloadKDEProjectMetadata
@@ -624,13 +624,17 @@ sub _downloadKDEProjectMetadata
         my $sourceDir = $metadataModule->getSourceDir();
         super_mkdir($sourceDir);
 
+        my $updateDesired = !$ctx->getOption('no-metadata') && $ctx->phases()->has('update');
         my $updateNeeded = (! -e "$sourceDir/dependency-data-common");
-        if (!$ctx->phases()->has('update') && $updateNeeded) {
-            warning (" r[b[*] Skipping build metadata update due to b[--no-src], but this is apparently required!");
+        my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
+
+        if (!$updateDesired && $updateNeeded && (time - ($lastUpdate)) >= 7200) {
+            warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
         }
 
-        if ($ctx->phases()->has('update') && (!pretending() || $updateNeeded)) {
+        if ($updateDesired && (!pretending() || $updateNeeded)) {
             $metadataModule->scm()->updateInternal();
+            $ctx->setPersistentOption('global', 'last-metadata-update', time);
         }
     };
 
