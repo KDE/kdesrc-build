@@ -1771,6 +1771,13 @@ sub _handle_async_build
             $ipc->setLoggedModule('#monitor#'); # This /should/ never be used...
             ksb::Debug::setIPC($ipc);
 
+            $SIG{'INT'} = sub {
+                say "Received SIGQUIT, shutting down monitor.";
+                kill 'INT', $updaterPid;
+                waitpid ($updaterPid, 0);
+                POSIX::_exit ($result);
+            };
+
             # Avoid calling close subroutines in more than one routine.
             my $result = _handle_monitoring ($ipc, $updaterToMonitorIPC);
 
@@ -1786,8 +1793,14 @@ sub _handle_async_build
         $result = _handle_build ($ipc, $ctx);
     }
 
-    # Exit code is in $?.
-    waitpid ($monitorPid, 0);
+    # It's possible if build fails on first module that git or svn is still
+    # running. Make them stop too.
+    if (waitpid ($monitorPid, WNOHANG) == 0) {
+        kill 'INT', $monitorPid;
+
+        # Exit code is in $?.
+        waitpid ($monitorPid, 0);
+    }
 
     $result = 1 if $? != 0;
 
