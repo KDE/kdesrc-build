@@ -47,16 +47,14 @@ sub inputHandle
 
 my @nameStack = ();        # Used to assign full names to modules.
 my %xmlGroupingIds;        # XML tags which group repositories.
-my @modules;               # Result list
+my %repositories;          # Maps short names to repo info blocks
 my $curRepository;         # ref to hash table when we are in a repo
-my $trackingReposFlag = 0; # >0 if we should be tracking for repo elements.
 my $inRepo = 0;            # >0 if we are actually in a repo element.
-my $searchProject = '';    # Project we're looking for.
 my $desiredProtocol = '';  # URL protocol desired (normally 'git')
 
-# Note on searchProject: A /-separated path is fine, in which case we look
+# Note on $proj: A /-separated path is fine, in which case we look
 # for the right-most part of the full path which matches all of searchProject.
-# e.g. kde/kdebase/kde-runtime would be matched searchProject of either
+# e.g. kde/kdebase/kde-runtime would be matched by a proj of either
 # "kdebase/kde-runtime" or simply "kde-runtime".
 sub getModulesForProject
 {
@@ -73,54 +71,55 @@ sub getModulesForProject
             "you do not have any use-module items with a bare '*'";
     }
 
-    $searchProject = $proj;
-    @modules = ();
-    @nameStack = ();
-    $inRepo = 0;
-    $trackingReposFlag = 0;
-    $curRepository = undef;
-    $desiredProtocol = $protocol;
+    if (!%repositories) {
+        @nameStack = ();
+        $inRepo = 0;
+        $curRepository = undef;
+        $desiredProtocol = $protocol;
 
-    my $parser = XML::Parser->new(
-        Handlers =>
-            {
-                Start => \&xmlTagStart,
-                End => \&xmlTagEnd,
-                Char => \&xmlCharData,
-            },
-    );
+        my $parser = XML::Parser->new(
+            Handlers =>
+                {
+                    Start => \&xmlTagStart,
+                    End => \&xmlTagEnd,
+                    Char => \&xmlCharData,
+                },
+        );
 
-    # Will die if the XML is not well-formed.
-    $parser->parse($self->inputHandle());
+        # Will die if the XML is not well-formed.
+        $parser->parse($self->inputHandle());
+    }
 
-    return @modules;
+    my @results;
+
+    # Wildcard matches happen as specified if asked for. Non-wildcard matches
+    # have an implicit "$proj/*" search as well for compatibility with previous
+    # use-modules
+    if ($proj !~ /\*/) {
+        # We have to do a search to account for over-specified module names
+        # like phonon/phonon
+        push @results, grep {
+            _projectPathMatchesWildcardSearch($repositories{$_}->{'fullName'}, $proj)
+        } keys %repositories;
+
+        # Now setup for a wildcard search to find things like kde/kdelibs/baloo
+        # if just 'kdelibs' is asked for.
+        $proj .= '/*';
+    }
+
+    push @results, grep {
+        _projectPathMatchesWildcardSearch($repositories{$_}->{'fullName'}, $proj)
+    } keys %repositories;
+
+    return @repositories{@results};
 }
 
 sub xmlTagStart
 {
     my ($expat, $element, %attrs) = @_;
 
-    # In order to ensure that repos which are recursively under this node are
-    # actually handled, we increment this flag if it's already >0 (which means
-    # we're actively tracking repos for some given module).
-    # xmlTagEnd will then decrement the flag so we eventually stop tracking
-    # repos once we've fully recursively handled the node we cared about.
-    if ($trackingReposFlag > 0) {
-        ++$trackingReposFlag;
-    }
-
     if (exists $xmlGroupingIds{$element}) {
         push @nameStack, $attrs{'identifier'};
-
-        # If we're not tracking something, see if we should be.
-        if ($trackingReposFlag <= 0) {
-            $trackingReposFlag =
-                _projectPathMatchesWildcardSearch(
-                    join('/', @nameStack), $searchProject
-                )
-                ? 1
-                : 0;
-        }
     }
 
     # This code used to check for direct descendants and filter them out.
@@ -128,8 +127,7 @@ sub xmlTagStart
     # the user can customize using ignore-modules), and this filter made it
     # more difficult to handle kde/kdelibs{,/nepomuk-{core,widgets}}, so leave
     # it out for now. See also bug 321667.
-    if ($element eq 'repo' &&   # Found a repo
-        $trackingReposFlag > 0) # When we were looking for one
+    if ($element eq 'repo')
     {
         # This flag is cleared by the <repo>-end handler, so this *should* be
         # logically impossible.
@@ -146,6 +144,8 @@ sub xmlTagStart
             'branches' => [ ],
             'branchtype' => '', # Either branch:stable or branch:trunk
         }; # Repo/Active/tarball to be added by char handler.
+
+        $repositories{$nameStack[-1]} = $curRepository;
     }
 
     # Currently we only pull data while under a <repo> tag, so bail early if
@@ -205,12 +205,8 @@ sub xmlTagEnd
 
     if ($element eq 'repo' && $inRepo) {
         $inRepo = 0;
-        push @modules, $curRepository;
         $curRepository = undef;
     }
-
-    # See xmlTagStart above for an explanation.
-    --$trackingReposFlag;
 }
 
 sub xmlCharData
