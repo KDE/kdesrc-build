@@ -331,8 +331,13 @@ sub _visitModuleAndDependencies
         _visitDependencyItemAndDependencies($optionsRef, "$item:$branch", $level);
     }
 
-    push @{$optionsRef->{properBuildOrder}}, $module;
-    --($optionsRef->{modulesNeeded});
+    # It's possible for _visitDependencyItemAndDependencies to add *this*
+    # module without it being a cycle, so make sure we don't duplicate.
+    if (! grep { $_->name() eq $module->name() } @{$optionsRef->{properBuildOrder}}) {
+        push @{$optionsRef->{properBuildOrder}}, $module;
+        --($optionsRef->{modulesNeeded});
+    }
+
     return;
 }
 
