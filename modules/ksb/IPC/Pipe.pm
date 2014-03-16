@@ -64,8 +64,9 @@ sub sendMessage
     # Since streaming does not provide message boundaries, we will insert
     # ourselves, by sending a 2-byte unsigned length, then the message.
     my $encodedMsg = pack ("S a*", length($msg), $msg);
+    my $result = $self->{fh}->syswrite($encodedMsg);
 
-    if (length($encodedMsg) != $self->{fh}->syswrite($encodedMsg)) {
+    if (!$result || length($encodedMsg) != $result) {
         croak_runtime("Unable to write full msg to pipe: $!");
     }
 
