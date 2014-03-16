@@ -206,6 +206,11 @@ DONE
             $auxOptions{pretend} = 1;
             $foundOptions{'build-when-unchanged'} = 1;
         },
+        resume => sub {
+            $auxOptions{resume} = 1;
+            $phases->filterOutPhase('update'); # Implied --no-src
+            $foundOptions{'no-metadata'} = 1;  # Implied --no-metadata
+        },
         verbose => sub { $foundOptions{'debug-level'} = ksb::Debug::WHISPER },
         quiet => sub { $foundOptions{'debug-level'} = ksb::Debug::NOTE },
         'really-quiet' => sub { $foundOptions{'debug-level'} = ksb::Debug::WARNING },
@@ -267,6 +272,7 @@ DONE
         'print-modules', 'pretend|dry-run|p', 'refresh-build',
         'start-program|run=s{,}',
         'revision=i', 'resume-from=s', 'resume-after=s',
+        'resume', 'stop-on-failure',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
@@ -540,6 +546,18 @@ sub generateModuleList
     $pendingGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
 
     my $fh = $ctx->loadRcFile();
+    $ctx->loadPersistentOptions();
+
+    if (exists $pendingGlobalOptions->{'resume'}) {
+        my $moduleList = $ctx->getPersistentOption('global', 'resume-list');
+        if (!$moduleList) {
+            error ("b[--resume] specified, but unable to find resume point!");
+            error ("Perhaps try b[--resume-from] or b[--resume-after]?");
+            croak_runtime("Invalid --resume flag");
+        }
+
+        unshift @selectors, split(/,\s*/, $moduleList);
+    }
 
     # _readConfigurationOptions will add pending global opts to ctx while ensuring
     # returned modules/sets have any such options stripped out. It will also add
@@ -700,8 +718,6 @@ sub runAllModulePhases
     my $ctx = $self->context();
     my $metadataModule = $ctx->getKDEProjectMetadataModule();
     my @modules = $self->modules();
-
-    $ctx->loadPersistentOptions();
 
     # If we have kde-build-metadata we must process it first, ASAP.
     if ($metadataModule) {
@@ -1561,6 +1577,8 @@ sub _handle_build
     # build.
     $ipc->waitForStreamStart();
 
+    $ctx->unsetPersistentOption('global', 'resume-list');
+
     my $outfile = pretending() ? undef
                                : $ctx->getLogDir() . '/build-status';
 
@@ -1658,6 +1676,13 @@ EOF
 
             info ("\tOverall time for r[$module] was g[$elapsed].");
             $ctx->markModulePhaseFailed('build', $module);
+
+            if ($result == 0) {
+                # No failures yet, mark this as resume point
+                my $moduleList = join(', ', map { "$_" } ($module, @modules));
+                $ctx->setPersistentOption('global', 'resume-list', $moduleList);
+            }
+
             $result = 1;
 
             # Increment failed count to track when to start bugging the

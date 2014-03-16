@@ -2971,6 +2971,33 @@ yourself, and want &kdesrc-build; to start again with the next
 module.</para></listitem>
 </varlistentry>
 
+<varlistentry id="cmdline-resume">
+<term><parameter>--resume</parameter></term>
+<listitem><para>
+
+This option can be used to run &kdesrc-build; after it has had a build failure.
+</para><para>
+
+It resumes the build from the module that failed, using the list of modules
+that were waiting to be built before, and disables source and metadata updates
+as well. The use case is when a simple mistake or missing dependency causes the
+build failure. Once you correct the error you can quickly get back into
+building the modules you were building before, without fiddling with
+<option><link linkend="cmdline-resume-from">--resume-from</link></option> and
+<option><link linkend="cmdline-stop-before">--stop-before</link></option>.
+
+</para><para>
+This is even handier with the <option><link
+linkend="cmdline-stop-on-failure">--stop-on-failure</link></option> command
+line argument, especially if you're initially setting up your development
+environment.
+
+</para><para>
+This option was added with &kdesrc-build; 1.16.
+
+</para></listitem>
+</varlistentry>
+
 <varlistentry id="cmdline-stop-before">
 <term><parameter>--stop-before</parameter></term>
 <listitem><para>
@@ -2998,6 +3025,19 @@ then <option>--stop-after=<replaceable>moduleB</replaceable></option> would caus
 &kdesrc-build; to build <literal>moduleA</literal> and <literal>moduleB</literal>.
 </para><para>
 This command line option was added with &kdesrc-build; 1.16.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-on-failure">
+<term><parameter>--stop-on-failure</parameter></term>
+<listitem><para>
+This option causes the build to abort as soon as a failure occurs. Useful when
+you're setting up your initial development environment. Without this flag,
+&kdesrc-build; will try to press on with the rest of the modules in the build
+to avoid wasting time in case the problem is with a single module.
+</para><para>
+This option was added with &kdesrc-build; 1.16. See also the
+<link linkend="conf-stop-on-failure">stop-on-failure</link> option.
 </para></listitem>
 </varlistentry>
 
@@ -3779,6 +3819,14 @@ the issue and installed the module yourself):</para>
 <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--resume-after=<replaceable>kdebase</replaceable></option></userinput>
 </screen>
 </informalexample>
+
+<para>If the last &kdesrc-build; build ended with a build failure, you can also
+use the <link linkend="cmdline-resume">--resume</link> command line option,
+which resumes the last build starting at the module that failed. The source and
+metadata updates are skipped as well (but if you need these, it's generally
+better to use <link linkend="cmdline-resume-from">--resume-from</link>
+instead.</para>
+
 
 </sect3>
 
