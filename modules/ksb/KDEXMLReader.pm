@@ -245,25 +245,33 @@ sub _projectPathMatchesWildcardSearch
     my @nameStack   = split(m{/}, $projectPath);
 
     if (scalar @nameStack >= scalar @searchParts) {
-        # This logic is fairly long-winded but essentially just breaks
-        # searchItem into its components and compares it item-for-item to
-        # the end of our name stack.
-        my @candidateArray = @nameStack[-(scalar @searchParts)..-1];
-        die "candidate vs. search array mismatch" if $#candidateArray != $#searchParts;
+        my $sizeDifference = scalar @nameStack - scalar @searchParts;
 
-        for (my $i = 0; $i < scalar @searchParts; ++$i) {
-            if (($searchParts[$i] ne $candidateArray[$i]) &&
-                ($searchParts[$i] ne '*'))
-            {
-                return;
+        # We might have to loop if we somehow find the wrong start point for our search.
+        # E.g. looking for a/b/* against a/a/b/c, we'd need to start with the second a.
+        my $i = 0;
+        while ($i <= $sizeDifference) {
+            # Find our common prefix, then ensure the remainder matches item-for-item.
+            for (; $i <= $sizeDifference; $i++) {
+                last if $nameStack[$i] eq $searchParts[0];
             }
+
+            return if $i > $sizeDifference; # Not enough room to find it now
+
+            # At this point we have synched up nameStack to searchParts, ensure they
+            # match item-for-item.
+            my $found = 1;
+            for (my $j = 0; $found && ($j < @searchParts); $j++) {
+                return 1   if $searchParts[$j] eq '*'; # This always works
+                $found = 0 if $searchParts[$j] ne $nameStack[$i + $j];
+            }
+
+            return 1 if $found; # We matched every item to the substring we found.
+            $i++; # Try again
         }
     }
-    else {
-        return;
-    }
 
-    return 1;
+    return;
 }
 
 1;
