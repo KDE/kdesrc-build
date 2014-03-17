@@ -50,7 +50,7 @@ sub updateInternal
         # Update existing checkout. The source is currently in $srcdir
         p_chdir($srcdir);
 
-        if (log_command($module, 'bzr-up', ['bzr', 'up']) != 0) {
+        if (log_command($module, 'bzr-pull', ['bzr', 'pull']) != 0) {
             die make_exception('Internal', "Unable to update $module!");
         }
 
