@@ -492,10 +492,15 @@ sub _resolveSelectorsIntoModules
             }
             else {
                 my $set = ksb::ModuleSet::KDEProjects->new($ctx, "guessed_from_cmdline");
+                my $searchItem = $guessedModule->name();
                 $set->setModulesToFind($guessedModule->name());
 
                 my @results = _expandModuleSets($ctx, $modNewRef, $set);
-                $guessedModule = shift @results;
+                $guessedModule = first { "$_" eq "$searchItem" } @results;
+                if (!$guessedModule) {
+                    # This is a misfeature, I know. This should support whole sets too.
+                    croak_runtime ("$searchItem doesn't match a single module, it matches many.");
+                }
             }
         }
     }
