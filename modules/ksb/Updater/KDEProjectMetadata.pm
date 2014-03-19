@@ -32,7 +32,7 @@ sub ignoredModules
     # ignore file and propagate that information to our context object.
 
     my $fh = pretend_open($path) or
-        croak_internal("Unable to read ignore data: $!");
+        croak_internal("Unable to read ignore data from $path: $!");
 
     my $ctx = $self->module()->buildContext();
     my @ignoreModules = map  { chomp $_; $_ } # 3 Remove newlines
