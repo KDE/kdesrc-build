@@ -884,7 +884,11 @@ sub getKDEProjectMetadataFilehandle
         $result = download_file($url, $file, $self->getOption('http-proxy'));
     }
     elsif (! -e $file) {
-        note (" * Downloading projects.kde.org project database (will not be saved in pretend mode)...");
+        if (pretending()) {
+            note (" * Downloading projects.kde.org project database (will not be saved due to pretend mode)...");
+        } else {
+            note (" * Downloading projects.kde.org project database");
+        }
 
         # Unfortunately dumping the HTTP output straight to the XML parser is a
         # wee bit more complicated than I feel like dealing with => use a temp
