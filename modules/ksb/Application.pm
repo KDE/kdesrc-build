@@ -29,7 +29,7 @@ use ksb::Version qw(scriptVersion);
 use List::Util qw(first min);
 use File::Basename; # basename, dirname
 use File::Glob ':glob';
-use POSIX qw(:sys_wait_h _exit);
+use POSIX qw(:sys_wait_h _exit :errno_h);
 use Getopt::Long qw(GetOptionsFromArray :config gnu_getopt nobundling pass_through);
 use IO::Handle;
 use IO::Select;
@@ -1787,34 +1787,24 @@ sub _handle_async_build
         my $updaterToMonitorIPC = ksb::IPC::Pipe->new();
         my $updaterPid = fork;
 
+        $SIG{INT} = sub { POSIX::_exit(EINTR); };
+
         if ($updaterPid) {
+            $0 = 'kdesrc-build-updater';
             $updaterToMonitorIPC->setSender();
             ksb::Debug::setIPC($updaterToMonitorIPC);
 
-            # Avoid calling close subroutines in more than one routine.
             POSIX::_exit (_handle_updates ($updaterToMonitorIPC, $ctx));
         }
         else {
+            $0 = 'kdesrc-build-monitor';
             $ipc->setSender();
             $updaterToMonitorIPC->setReceiver();
 
             $ipc->setLoggedModule('#monitor#'); # This /should/ never be used...
             ksb::Debug::setIPC($ipc);
 
-            $SIG{'INT'} = sub {
-                say "Received SIGQUIT, shutting down monitor.";
-                kill 'INT', $updaterPid;
-                waitpid ($updaterPid, 0);
-                POSIX::_exit ($result);
-            };
-
-            # Avoid calling close subroutines in more than one routine.
-            my $result = _handle_monitoring ($ipc, $updaterToMonitorIPC);
-
-            waitpid ($updaterPid, 0);
-            $result = 1 if $? != 0;
-
-            POSIX::_exit ($result);
+            POSIX::_exit (_handle_monitoring ($ipc, $updaterToMonitorIPC));
         }
     }
     else {
@@ -1945,6 +1935,11 @@ sub _handle_monitoring
         my ($readReadyRef, $writeReadyRef) =
             IO::Select->select($readSelector, $writeSelector, undef))
     {
+        if (!$readReadyRef && !$writeReadyRef) {
+            # Some kind of error occurred.
+            return 1;
+        }
+
         # Check for source updates first.
         if (@{$readReadyRef})
         {

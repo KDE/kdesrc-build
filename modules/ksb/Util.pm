@@ -438,15 +438,17 @@ sub log_command
         # Let callback know there is no more output.
         &{$callbackRef}(undef) if defined $callbackRef;
 
-        close CHILD;
+        # This implicitly does a waitpid() as well
+        close CHILD or do {
+            if ($! == 0) {
+                _setErrorLogfile($module, "$filename.log");
+                return $?;
+            }
 
-        # If the module fails building, set an internal flag in the module
-        # options with the name of the log file containing the error message.
-        # TODO: ($? is set when closing CHILD pipe?)
-        my $result = $?;
-        _setErrorLogfile($module, "$filename.log") if $result;
+            return 1;
+        };
 
-        return $result;
+        return 0;
     }
     else
     {
@@ -470,6 +472,11 @@ sub log_command
         }
 
         $SIG{PIPE} = "IGNORE";
+        $SIG{INT} = sub {
+            close (STDOUT); # This should be a pipe
+            close (STDERR);
+            POSIX::_exit(EINTR);
+        };
 
         # Redirect STDIN to /dev/null so that the handle is open but fails when
         # being read from (to avoid waiting forever for e.g. a password prompt
