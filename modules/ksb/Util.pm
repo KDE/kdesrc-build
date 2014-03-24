@@ -469,6 +469,8 @@ sub log_command
             error ("\tLogging to std out due to failure creating log dir.");
         }
 
+        $SIG{PIPE} = "IGNORE";
+
         # Redirect STDIN to /dev/null so that the handle is open but fails when
         # being read from (to avoid waiting forever for e.g. a password prompt
         # that the user can't see.
