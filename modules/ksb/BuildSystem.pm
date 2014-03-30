@@ -17,7 +17,37 @@ use List::Util qw(first);
 sub new
 {
     my ($class, $module) = @_;
-    return bless { module => $module }, $class;
+    my $self = bless { module => $module }, $class;
+
+    # This is simply the 'default' build system at this point, also used for
+    # KF5.
+    if ($class ne 'ksb::BuildSystem::KDE4') {
+        _maskGlobalBuildSystemOptions($self);
+    }
+
+    return $self;
+}
+
+# Removes or masks global build system-related options, so that they aren't
+# accidentally picked up for use with our non-default build system.
+# Module-specific options are left intact.
+sub _maskGlobalBuildSystemOptions
+{
+    my $self = shift;
+    my $module = $self->module();
+    my $ctx = $module->buildContext();
+    my @buildSystemOptions = qw(
+        cmake-options configure-flags custom-build-command cxxflags
+        make-install-prefix make-options run-tests use-clean-install
+    );
+
+    for my $opt (@buildSystemOptions) {
+        # If an option is present, and not set at module-level, it must be
+        # global. Can't use getOption() method due to recursion.
+        if ($ctx->{options}->{$opt} && !$module->{options}->{$opt}) {
+            $module->{options}->{$opt} = '';
+        }
+    }
 }
 
 sub module
