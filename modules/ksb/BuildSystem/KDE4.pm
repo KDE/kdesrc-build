@@ -103,10 +103,13 @@ sub installInternal
 {
     my $self = shift;
     my $module = $self->module();
+    my $target = 'install/fast';
     my @cmdPrefix = @_;
 
+    $target = 'install' if $module->getOption('custom-build-command');
+
     return $self->safe_make ({
-            target => 'install/fast',
+            target => $target,
             logfile => 'install',
             message => "Installing g[$module]",
             'prefix-options' => [@cmdPrefix],
