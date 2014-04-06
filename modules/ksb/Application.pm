@@ -723,6 +723,20 @@ sub runAllModulePhases
 
         $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
 
+        # Remove modules that are explicitly blanked out in their branch-group
+        # i.e. those modules where they *have* a branch-group, and it's set to
+        # be empty ("").
+        my $resolver = $ctx->moduleBranchGroupResolver();
+        my $branchGroup = $ctx->effectiveBranchGroup();
+
+        @modules = grep {
+            my $branch = $_->isKDEProject()
+                ? $resolver->findModuleBranch($_->fullProjectPath(), $branchGroup)
+                : 1; # Just a placeholder truthy value
+            whisper ("Removing $_ due to branch-group") if (defined $branch and !$branch);
+            (!defined $branch or $branch); # This is the actual test
+        } (@modules);
+
         @modules = $self->_resolveModuleDependencies(@modules);
     }
 

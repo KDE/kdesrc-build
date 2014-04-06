@@ -1012,6 +1012,12 @@ sub fullProjectPath
     return $path;
 }
 
+# Returns true if this module is (or was derived from) a kde-projects module.
+sub isKDEProject
+{
+    my $self = shift;
+    return $self->hasOption('#xml-full-path');
+}
 
 # Subroutine to return the name of the destination directory for the
 # checkout and build routines.  Based on the dest-dir option.  The return
