@@ -878,7 +878,9 @@ sub getKDEProjectMetadataFilehandle
 
     # Must use ->phases() directly to tell if we will be updating since
     # modules are not all processed until after this function is called...
-    my $updating = grep { /^update$/ } (@{$self->phases()}) && !$self->getOption('no-metadata');
+    my $updating = grep { /^update$/ } (@{$self->phases()});
+    $updating &&= !$self->getOption('no-metadata');
+
     if (!pretending() && $updating) {
         info (" * Downloading projects.kde.org project database...");
         $result = download_file($url, $file, $self->getOption('http-proxy'));
