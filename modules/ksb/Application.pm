@@ -682,14 +682,7 @@ sub _resolveModuleDependencies
 
     @modules = eval {
         my $dependencyResolver = ksb::DependencyResolver->new();
-        my $branchGroup = $ctx->getOption('branch-group', 'module') // '';
-        if (!$branchGroup) {
-            $branchGroup = $ctx->getOption('use-stable-kde')
-                ? 'latest-qt4'
-                : ($ctx->hasOption('use-stable-kde') # Could also be false if unset
-                    ? 'kf5-qt5'      # Really set to false
-                    : 'latest-qt4'); # Unset / this is default branch group if no option set
-        }
+        my $branchGroup = $ctx->effectiveBranchGroup();
 
         for my $file ('dependency-data-common', "dependency-data-$branchGroup")
         {

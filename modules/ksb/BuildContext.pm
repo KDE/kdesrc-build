@@ -951,6 +951,25 @@ sub setKDEProjectMetadataModuleNeeded
     return;
 }
 
+# Returns the effective branch group to use for modules. You should not call
+# this unless kde-build-metadata is also in use (see
+# setKDEProjectMetadataModule and moduleBranchGroupResolver).
+sub effectiveBranchGroup
+{
+    my $self = shift;
+    my $branchGroup = $self->getOption('branch-group', 'module') // '';
+
+    if (!$branchGroup) {
+        $branchGroup = $self->getOption('use-stable-kde')
+            ? 'latest-qt4'
+            : ($self->hasOption('use-stable-kde') # Could also be false if unset
+                ? 'kf5-qt5'      # Really set to false
+                : 'latest-qt4'); # Unset / this is default branch group if no option set
+    }
+
+    return $branchGroup;
+}
+
 # Returns a ksb::Module::BranchGroupResolver which can be used to efficiently
 # determine a git branch to use for a given kde-projects module (when the
 # branch-group option is in use), as specified at
