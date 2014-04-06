@@ -1007,7 +1007,7 @@ sub fullProjectPath
 {
     my $self = shift;
     my $path = $self->getOption('#xml-full-path', 'module') ||
-        croak_internal("Tried to ask for full path of a module $_ that doesn't have one!");
+        croak_internal("Tried to ask for full path of a module $self that doesn't have one!");
 
     return $path;
 }
