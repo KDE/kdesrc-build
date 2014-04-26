@@ -1,5 +1,5 @@
 # Module definitions for building KDE Frameworks 5
-# (cmake, KF5's dependencies, kdelibs frameworks, plasma-framework)
+# (cmake, KF5's dependencies, KDE Frameworks 5)
 
 # Usage: Write your own kdesrc-buildrc with only a "global" section
 # then include this file, like this:
@@ -47,19 +47,14 @@ end module-set
 module-set frameworks
     repository kde-projects
     use-modules frameworks
-    # KRunner depends on Plasma
     # KPrintUtils has been merged into kde4support
-    ignore-modules krunner kprintutils
+    ignore-modules kprintutils
     # The CodeBlocks generator allows usage in QtCreator, while still generating Makefiles
     cmake-options -DBUILD_TESTING=TRUE -DCMAKE_BUILD_TYPE:STRING=debug -G "CodeBlocks - Unix Makefiles"
 end module
 
 module-set extra-frameworks
     repository kde-projects
-
-    # TODO: finish moving plasma-framework to frameworks/
-    use-modules plasma-framework krunner
-end module-set
 
 # Example of how to set options for just one module from a module-set... this is
 # useful to have *after* your "include .../kf5-framework-build-include" in your
