@@ -1,5 +1,5 @@
 # Module definitions for building KDE Frameworks 5
-# (cmake, KF5's dependencies, kdelibs frameworks, plasma-framework)
+# (cmake, KF5's dependencies, KDE Frameworks 5)
 
 # Usage: Write your own kdesrc-buildrc with only a "global" section
 # then include this file, like this:
@@ -26,10 +26,9 @@ module libdbusmenu-qt
     repository bzr://lp:libdbusmenu-qt
 end module
 
-# Attica will move to frameworks/ once the 4.x branch doesn't matter much anymore
 module-set
     repository kde-projects
-    use-modules kdesrc-build extra-cmake-modules attica
+    use-modules kdesrc-build extra-cmake-modules
     # Optionally: add polkit-qt-1
     cmake-options -DCMAKE_BUILD_TYPE:STRING=debug
 end module-set
@@ -43,25 +42,21 @@ module-set phonon
     use-modules phonon/phonon phonon-vlc phonon-gstreamer
 end module-set
 
+module-set akonadi
+    repository kde-projects
+    use-modules akonadi
+end module-set
+
 # ============================= KDE Frameworks ========================
 
 module-set frameworks
     repository kde-projects
     use-modules frameworks
-    # KRunner depends on Plasma
     # KPrintUtils has been merged into kde4support
-    ignore-modules krunner kprintutils
+    ignore-modules kprintutils
     # The CodeBlocks generator allows usage in QtCreator, while still generating Makefiles
     cmake-options -DBUILD_TESTING=TRUE -DCMAKE_BUILD_TYPE:STRING=debug -G "CodeBlocks - Unix Makefiles"
 end module
-
-module-set extra-frameworks
-    repository kde-projects
-
-    # Will move to frameworks/ once the 4.x branch doesn't matter much anymore
-    # (master branch is used for the Qt5/KF5 version)
-    use-modules kactivities plasma-framework krunner
-end module-set
 
 # Example of how to set options for just one module from a module-set... this is
 # useful to have *after* your "include .../kf5-framework-build-include" in your
