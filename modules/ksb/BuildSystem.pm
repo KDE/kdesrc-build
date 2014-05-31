@@ -38,7 +38,7 @@ sub _maskGlobalBuildSystemOptions
     my $ctx = $module->buildContext();
     my @buildSystemOptions = qw(
         cmake-options configure-flags custom-build-command cxxflags
-        make-install-prefix make-options run-tests use-clean-install
+        make-options run-tests use-clean-install
     );
 
     for my $opt (@buildSystemOptions) {
