@@ -44,7 +44,7 @@ sub new
 
 # Method: readDependencyData
 #
-# Reads in dependency data in a psuedo-Makefile format.
+# Reads in dependency data in a pseudo-Makefile format.
 # See kde-build-metadata/dependency-data.
 #
 # Parameters:
