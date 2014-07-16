@@ -67,6 +67,11 @@ sub new
     my @moduleList = $self->generateModuleList(@options);
     $self->{modules} = \@moduleList;
 
+    if (!@moduleList) {
+        print "No modules to build, exiting.\n";
+        exit 0;
+    }
+
     $self->context()->setupOperatingEnvironment(); # i.e. niceness, ulimits, etc.
 
     # After this call, we must run the finish() method
@@ -274,6 +279,7 @@ DONE
         'revision=i', 'resume-from=s', 'resume-after=s',
         'resume', 'stop-on-failure',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
+        'metadata-only',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
         # for strings
@@ -580,6 +586,18 @@ sub generateModuleList
         _executeCommandLineProgram(@startProgramArgs); # noreturn
     }
 
+    # Selecting modules or module sets would require having the KDE build
+    # metadata available. This used to be optional, but now everything needs
+    # it, so download it unilaterally.
+    $ctx->setKDEProjectMetadataModuleNeeded();
+    $self->_downloadKDEProjectMetadata();
+
+    # The user might only want metadata to update to allow for a later
+    # --pretend run, check for that here.
+    if (exists $pendingGlobalOptions->{'metadata-only'}) {
+        return;
+    }
+
     # At this point we have our list of candidate modules / module-sets (as read in
     # from rc-file). The module sets have not been expanded into modules.
     # We also might have cmdline "selectors" to determine which modules or
@@ -641,6 +659,7 @@ sub _downloadKDEProjectMetadata
 {
     my $self = shift;
     my $ctx = $self->context();
+    my $updateNeeded;
     my $metadataModule = $ctx->getKDEProjectMetadataModule();
 
     eval {
@@ -648,11 +667,17 @@ sub _downloadKDEProjectMetadata
         super_mkdir($sourceDir);
 
         my $updateDesired = !$ctx->getOption('no-metadata') && $ctx->phases()->has('update');
-        my $updateNeeded = (! -e "$sourceDir/dependency-data-common");
+        $updateNeeded = (! -e "$sourceDir/dependency-data-common");
         my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
 
         if (!$updateDesired && $updateNeeded && (time - ($lastUpdate)) >= 7200) {
             warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
+        }
+
+        if ($updateNeeded && pretending() && ! -e $sourceDir) {
+            croak_runtime("\n\tCan't use --pretend without having metadata
+                available, and can't download it in pretend mode. Try running
+                \"kdesrc-build --metadata-only\" first and try again.");
         }
 
         if ($updateDesired && (!pretending() || $updateNeeded)) {
@@ -662,9 +687,14 @@ sub _downloadKDEProjectMetadata
     };
 
     if ($@) {
-        warning (" b[r[*] Unable to download required metadata for build process");
-        warning (" b[r[*] Will attempt to press onward...");
-        warning (" b[r[*] Exception message: $@");
+        if (!$updateNeeded) {
+            warning (" b[r[*] Unable to download required metadata for build process");
+            warning (" b[r[*] Will attempt to press onward...");
+            warning (" b[r[*] Exception message: $@");
+        }
+        else {
+            die;
+        }
     }
 }
 
@@ -710,6 +740,7 @@ sub _resolveModuleDependencies
 
 # Runs all update, build, install, etc. phases. Basically this *is* the
 # script.
+# The metadata module must already have performed its update by this point.
 sub runAllModulePhases
 {
     my $self = shift;
@@ -717,28 +748,23 @@ sub runAllModulePhases
     my $metadataModule = $ctx->getKDEProjectMetadataModule();
     my @modules = $self->modules();
 
-    # If we have kde-build-metadata we must process it first, ASAP.
-    if ($metadataModule) {
-        $self->_downloadKDEProjectMetadata();
+    $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
 
-        $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
+    # Remove modules that are explicitly blanked out in their branch-group
+    # i.e. those modules where they *have* a branch-group, and it's set to
+    # be empty ("").
+    my $resolver = $ctx->moduleBranchGroupResolver();
+    my $branchGroup = $ctx->effectiveBranchGroup();
 
-        # Remove modules that are explicitly blanked out in their branch-group
-        # i.e. those modules where they *have* a branch-group, and it's set to
-        # be empty ("").
-        my $resolver = $ctx->moduleBranchGroupResolver();
-        my $branchGroup = $ctx->effectiveBranchGroup();
+    @modules = grep {
+        my $branch = $_->isKDEProject()
+            ? $resolver->findModuleBranch($_->fullProjectPath(), $branchGroup)
+            : 1; # Just a placeholder truthy value
+        whisper ("Removing $_ due to branch-group") if (defined $branch and !$branch);
+        (!defined $branch or $branch); # This is the actual test
+    } (@modules);
 
-        @modules = grep {
-            my $branch = $_->isKDEProject()
-                ? $resolver->findModuleBranch($_->fullProjectPath(), $branchGroup)
-                : 1; # Just a placeholder truthy value
-            whisper ("Removing $_ due to branch-group") if (defined $branch and !$branch);
-            (!defined $branch or $branch); # This is the actual test
-        } (@modules);
-
-        @modules = $self->_resolveModuleDependencies(@modules);
-    }
+    @modules = $self->_resolveModuleDependencies(@modules);
 
     # Filter --resume-foo options. This might be a second pass, but that should
     # be OK since there's nothing different going on from the first pass (in
