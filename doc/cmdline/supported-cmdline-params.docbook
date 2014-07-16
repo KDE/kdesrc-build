@@ -82,10 +82,19 @@ performing any actions to update or build, will instead output what the
 script would have done (e.g. what commands to run, general steps being taken,
 etc.).</para>
 
-<para>Note: Simple read-only commands (such as reading file information) may
+<note><para>Simple read-only commands (such as reading file information) may
 still be run to make the output more relevant (such as correctly simulating
 whether source code would be checked out or updated).
-</para></listitem>
+</para></note>
+
+<important><para>This option requires that some needed metadata is available,
+which is normally automatically downloaded, but downloads are disabled in
+pretend mode. If you've never run &kdesrc-build; (and therefore, don't have
+this metadata), you should run <command>kdesrc-build
+<option>--metadata-only</option></command> to download the required metadata
+first.
+</para></important>
+</listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-quiet">
@@ -132,6 +141,15 @@ Only perform the install process.
 </para></listitem>
 </varlistentry>
 
+<varlistentry id="cmdline-metadata-only">
+<term><parameter>--metadata-only</parameter></term>
+<listitem><para>
+Only perform the metadata download process. &kdesrc-build; normally handles this
+automatically, but you might manually use this to allow the <option><link
+linkend="cmdline-pretend">--pretend</link></option> command line option to work.
+</para></listitem>
+</varlistentry>
+
 <varlistentry id="cmdline-ignore-modules">
 <term><parameter>--ignore-modules</parameter></term>
 <listitem><para>
@@ -166,7 +184,10 @@ The source updates for the modules themselves will still occur unless you pass
 <link linkend="cmdline-no-src">--no-src</link> as well.
 </para><para>
 This can be useful if you are frequently re-running &kdesrc-build; since the
-metadata does not change very often.
+metadata does not change very often. But note that many other features require
+the metadata to be available. You might want to consider running &kdesrc-build;
+with the <link linkend="cmdline-metadata-only">--metadata-only</link> option
+one time and then using this option for subsequent runs.
 </para></listitem>
 </varlistentry>
 
