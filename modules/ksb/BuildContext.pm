@@ -529,8 +529,6 @@ sub setRcFile
 #
 # If unable to find or open the rc file an exception is raised. Empty rc
 # files are supported however.
-#
-# TODO: Support a fallback default rc file.
 sub loadRcFile
 {
     my $self = shift;
@@ -566,21 +564,39 @@ EOM
         croak_runtime("Missing $failedFile");
     }
 
-    # Set rcfile to something so the user knows what file to edit to
-    # get what they want to work.
+    # If no configuration but no --rc-file option was used, warn the user
+    # and fail, as there are too many possible modes of using kdesrc-build
+    # for kdesrc-buildrc-sample to be appropriate.
 
-    # Our default is to use a kdesrc-buildrc-sample if present in the same
-    # directory.
-    my $basePath = dirname($0);
-    my $sampleConfigFile = "$basePath/kdesrc-buildrc-sample";
-    open ($fh, '<', $sampleConfigFile)
-        or croak_runtime("No configuration available");
+    error (<<EOM);
+b[No configuration file is present.]
 
-    $self->{rcFile} = $sampleConfigFile;
-    $self->{rcFile} =~ s,^$ENV{HOME}/,~/,;
-    note (" * Using included sample configuration.");
+kdesrc-build requires a configuration file to select which KDE software modules
+to build, what options to build them with, the path to install to, etc.
 
-    return $fh;
+kdesrc-build looks for its configuration in the file `kdesrc-buildrc' in
+whatever directory kdesrc-build is run from.
+
+If no such file exists, kdesrc-build tries to use `~/.kdesrc-buildrc' (note the
+leading `.')
+
+A sample configuration suitable for KDE 4 software is included at the file
+`kdesrc-buildrc-sample' which can be copied to the correct location and then
+edited.
+
+KDE Frameworks 5 users can use the `kdesrc-buildrc-kf5-sample' file which can
+be copied to the correct location and then edited.
+
+In either case b[once the configuration file is setup to your liking], you
+should run:
+b[kdesrc-build --metadata-only]
+
+to download needed information about the KDE source repositories and then:
+b[kdesrc-build --pretend]
+
+to preview what kdesrc-build will do.
+EOM
+    croak_runtime("No configuration available");
 }
 
 # Returns the base directory that holds the configuration file. This is
