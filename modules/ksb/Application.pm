@@ -2369,8 +2369,11 @@ sub _output_failed_module_list
 
     $message = uc $message; # Be annoying
 
-    debug ("Message is $message");
-    debug ("\tfor ", join(', ', @fail_list));
+    if (@fail_list)
+    {
+        debug ("Message is $message");
+        debug ("\tfor ", join(', ', @fail_list));
+    }
 
     if (scalar @fail_list > 0)
     {
