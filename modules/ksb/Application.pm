@@ -30,7 +30,7 @@ use List::Util qw(first min);
 use File::Basename; # basename, dirname
 use File::Glob ':glob';
 use POSIX qw(:sys_wait_h _exit :errno_h);
-use Getopt::Long qw(GetOptionsFromArray :config gnu_getopt nobundling pass_through);
+use Getopt::Long qw(GetOptionsFromArray :config gnu_getopt nobundling);
 use IO::Handle;
 use IO::Select;
 
@@ -290,8 +290,6 @@ DONE
 
         '<>', # Required to read non-option args
         );
-
-    say "Warning: Unrecognized option $_" foreach @options;
 
     $pendingOptionsRef->{'global'} //= { };
 
