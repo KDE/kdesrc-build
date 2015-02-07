@@ -44,6 +44,7 @@ sub configureInternal
     my $module = $self->module();
     my $builddir = $module->fullpath('build');
     my $sourcedir = $module->fullpath('source');
+    my @qmakeOpts = split(' ', $module->getOption('qmake-options'));
     my @projectFiles = glob("$sourcedir/*.pro");
 
     if (!@projectFiles || !$projectFiles[0]) {
@@ -59,7 +60,7 @@ sub configureInternal
 
     my $qmake = absPathToQMake();
     return 0 unless $qmake;
-    return log_command($module, 'qmake', [ $qmake, $projectFiles[0] ]) == 0;
+    return log_command($module, 'qmake', [ $qmake, @qmakeOpts, $projectFiles[0] ]) == 0;
 }
 
 1;
