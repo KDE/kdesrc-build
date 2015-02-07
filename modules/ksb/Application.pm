@@ -2839,6 +2839,12 @@ You can get more help by going online to http://kdesrc-build.kde.org/ to view
 the online documentation.  If you have installed kdesrc-build you may also be
 able to view the documentation using KHelpCenter or Konqueror at the URL
 help:/kdesrc-build, or using the man page by typing "man kdesrc-build".
+
+This help is not comprehensive, to see a listing of all options please visit:
+https://kdesrc-build.kde.org/documentation/conf-options-table.html
+
+For all command line options, please visit:
+https://kdesrc-build.kde.org/documentation/supported-cmdline-params.html
 DONE
 }
 
