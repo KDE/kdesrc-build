@@ -89,7 +89,7 @@ sub clone
         unshift (@args, '-v');
     }
 
-    note ("\tCloning g[$module]");
+    note ("Cloning g[$module]");
 
     my $result = eval { $self->installGitSnapshot() };
 
