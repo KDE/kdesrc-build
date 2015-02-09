@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language: kdesrc-build configuration file
 " Maintainer: Michael Pyne <mpyne@kde.org>
-" Latest Revision: 8 August 2014
+" Latest Revision: 8 February 2015
 
-" Copyright (c) 2014 Michael Pyne <mpyne@kde.org>
+" Copyright (c) 2014,2015 Michael Pyne <mpyne@kde.org>
 " Redistribution and use in source and binary forms, with or without
 " modification, are permitted provided that the following conditions
 " are met:
@@ -41,6 +41,7 @@ syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
             \ libpath log-dir make-install-prefix make-options module-base-path
             \ override-build-system override-url prefix qtdir repository
             \ revision source-dir svn-server tag remove-after-install
+            \ qmake-options
 
 syn keyword ksbrcGlobalOption contained skipwhite nextgroup=ksbrcStringValue
             \ branch-group git-desired-protocol git-repository-base http-proxy
