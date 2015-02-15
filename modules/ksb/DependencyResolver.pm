@@ -30,8 +30,12 @@ sub new
     my $class = shift;
 
     my $self = {
-        # hash table mapping full module names (m) to a hashref key by branch
-        # name, the value of which is yet another hashref (see readDependencyData)
+        # hash table mapping short module names (m) to a hashref key by branch
+        # name, the value of which is yet another hashref (see
+        # readDependencyData). Note that this assumes KDE git infrastructure
+        # ensures that all full module names (e.g.
+        # kde/workspace/plasma-workspace) map to a *unique* short name (e.g.
+        # plasma-workspace) by stripping leading path components
         dependenciesOf  => { },
 
         # hash table mapping a wildcarded module name with no branch to a
@@ -40,6 +44,29 @@ sub new
     };
 
     return bless $self, $class;
+}
+
+# Function: shortenModuleName
+#
+# Internal:
+#
+# This method returns the 'short' module name of kde-project full project paths.
+# E.g. 'kde/kdelibs/foo' would be shortened to 'foo'.
+#
+# This is a static function, not an object method.
+#
+# Parameters:
+#
+#  path - A string holding the full module virtual path
+#
+# Returns:
+#
+#  The module name.
+sub _shortenModuleName
+{
+    my $name = shift;
+    $name =~ s{^.*/}{}; # Uses greedy capture by default
+    return $name;
 }
 
 # Method: readDependencyData
@@ -109,6 +136,11 @@ sub readDependencyData
             next;
         }
 
+        # No catch-alls here, these are direct dependencies so remove optional
+        # path components
+        $sourceItem    = _shortenModuleName($sourceItem);
+        $dependentItem = _shortenModuleName($dependentItem);
+
         # Initialize with hashref if not already defined. The hashref will hold
         #     - => [ ] (list of explicit *NON* dependencies of item:$branch),
         #     + => [ ] (list of dependencies of item:$branch)
@@ -166,25 +198,38 @@ sub _addInherentDependencies
     # successor. Consider kde/foo, kde/foobar, kde/foo/a. The dependency
     # here would be missed that way. Instead we strip off the last path
     # component and see if that matches an existing module name.
-    for my $testModule (keys %{$modulesFromNameRef}) {
-        my $candidateBaseModule = $testModule;
+    for my $testModule (values %{$modulesFromNameRef}) {
+        my $candidateBaseModule = $testModule->fullProjectPath();
 
         # Remove trailing component, bail if unable to do so.
         next unless $candidateBaseModule =~ s(/[^/]+$)();
 
-        if ($candidateBaseModule &&
-            exists $modulesFromNameRef->{$candidateBaseModule})
+        # See if new base path matches up to an existing module
+        my $candidateModuleName = _shortenModuleName($candidateBaseModule);
+        if ($candidateModuleName ne $testModule->name() &&
+            exists $modulesFromNameRef->{$candidateModuleName})
         {
+            # Verify this possible base's full path is actually fully-contained
+            # within the dependent item, to account for things like
+            # kdevelop/kdevelop and phonon/phonon
+            my $candidateModule = $modulesFromNameRef->{$candidateModuleName};
+            my $candidateModulePath = $candidateModule->fullProjectPath();
+
+            next if $candidateBaseModule !~ /^$candidateModulePath/;
+
+            my $shortDependencyName = $candidateModuleName;
+            my $shortDependentName  = _shortenModuleName($testModule);
+
             # Add candidateBaseModule as dependency of testModule.
-            $dependenciesOfRef->{"$testModule:*"} //= {
+            $dependenciesOfRef->{"$shortDependentName:*"} //= {
                 '-' => [ ],
                 '+' => [ ],
             };
 
-            my $moduleDepsRef = $dependenciesOfRef->{"$testModule:*"}->{'+'};
-            if (!first { $_ eq $candidateBaseModule } @{$moduleDepsRef}) {
-                debug ("dep-resolv: Adding $testModule as dependency of $candidateBaseModule");
-                push @{$moduleDepsRef}, "$candidateBaseModule:*";
+            my $moduleDepsRef = $dependenciesOfRef->{"$shortDependentName:*"}->{'+'};
+            if (!first { $_ eq $shortDependencyName } @{$moduleDepsRef}) {
+                debug ("dep-resolv: Adding $shortDependentName as dependency of $shortDependencyName");
+                push @{$moduleDepsRef}, "$shortDependencyName:*";
             }
         }
     }
@@ -203,15 +248,15 @@ sub _addInherentDependencies
 # Parameters:
 #  dependenciesOfRef - hashref to the table of dependencies as read by
 #  <readDependencyData>.
-#  module - The full name (just the name) of the kde-project module to list
+#  module - The short name (just the name) of the kde-project module to list
 #  dependencies of.
 #  branch - The branch to assume for module. This must be specified, but use
 #  '*' if you have no specific branch in mind.
 #
 # Returns:
 #  A list of dependencies. Every item of the list will be of the form
-#  "$moduleName:$branch", where $moduleName will be the full kde-project module
-#  name (e.g. kde/kdelibs) and $branch will be a specific git branch or '*'.
+#  "$moduleName:$branch", where $moduleName will be the short kde-project module
+#  name (e.g. kdelibs) and $branch will be a specific git branch or '*'.
 #  The order of the entries within the list is not important.
 sub _directDependenciesOf
 {
@@ -258,7 +303,7 @@ sub _directDependenciesOf
 #
 # Parameters:
 #  optionsRef - The hashref as provided to <_visitModuleAndDependencies>
-#  item - The kde-project module to generate dependencies of.
+#  item - The kde-project short module name to generate dependencies for.
 sub _makeCatchAllRules
 {
     my ($optionsRef, $item) = @_;
@@ -302,9 +347,10 @@ sub _getBranchOf
 # Internal:
 #
 # This method is used to topographically sort dependency data. It accepts a
-# <ksb::Module>, ensures that any KDE Projects it depends on present on the
-# build list are re-ordered before the module, and then adds the <ksb::Module>
-# to the build list (whether it is a KDE Project or not, to preserve ordering).
+# <ksb::Module>, ensures that any KDE Projects it depends on (which are present
+# on the build list) are re-ordered before the module, and then adds the
+# <ksb::Module> to the build list (whether it is a KDE Project or not, to
+# preserve ordering).
 #
 # See also _visitDependencyItemAndDependencies, which actually does most of
 # the work of handling dependencies, and calls back to this function when it
@@ -324,9 +370,8 @@ sub _visitModuleAndDependencies
     my ($optionsRef, $module, $level) = @_;
     assert_isa($module, 'ksb::Module');
 
-    my $item = $module->fullProjectPath() if $module->scmType() eq 'proj';
-
-    if ($item) {
+    if ($module->scmType() eq 'proj') {
+        my $item = _shortenModuleName($module->fullProjectPath());
         my $branch = _getBranchOf($module) // '*';
         _visitDependencyItemAndDependencies($optionsRef, "$item:$branch", $level);
     }
@@ -358,11 +403,10 @@ sub _visitModuleAndDependencies
 #  optionsRef - hashref to the module dependencies, catch-all dependencies,
 #   module build list, module name to <ksb::Module> mapping, and auxiliary data
 #   to see if a module has already been visited.
-#  dependencyItem - a string containing the kde-projects full path for the module,
+#  dependencyItem - a string containing the kde-projects short name for the module,
 #   ':', and the specific branch name for the dependency if needed. The branch
 #   name is '*' if the branch doesn't matter (or can be determined only by the
-#   branch-group in use). E.g. 'kde/kdelibs/baloo:*' or
-#   'kdesupport/akonadi:master'.
+#   branch-group in use). E.g. 'baloo:*' or 'akonadi:master'.
 #
 # Returns:
 #  Nothing. The proper build order can be read out from the optionsRef passed
@@ -396,7 +440,7 @@ sub _visitDependencyItemAndDependencies
     _makeCatchAllRules($optionsRef, $item);
 
     for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
-        my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
+        my ($subItemName, $subItemBranch) = split(':', $subItem, 2);
         croak_internal("Invalid dependency item: $subItem") if !$subItemName;
 
         next if $subItemName eq $item; # Catch-all deps might make this happen
@@ -466,7 +510,7 @@ sub resolveDependencies
 
         # will map names back to their Modules
         modulesFromName => {
-            map { $_->fullProjectPath() => $_ }
+            map { $_->name() => $_ }
             grep { $_->scmType() eq 'proj' }
                 @modules
         },
