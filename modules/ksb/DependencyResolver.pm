@@ -171,70 +171,6 @@ sub readDependencyData
     }
 }
 
-# Function: addInherentDependencies
-#
-# Internal:
-#
-# This method adds any full module names as dependencies of any module that
-# begins with that full module name. E.g. kde/kdelibs/foo automatically depends
-# on kde/kdelibs if both are present in the build.
-#
-# This is a static function, not an object method.
-#
-# Parameters:
-#
-#  options - Hashref to the internal options as given to <visitModuleAndDependencies>
-#
-# Returns:
-#
-#  Nothing.
-sub _addInherentDependencies
-{
-    my $optionsRef = shift;
-    my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
-    my $modulesFromNameRef  = $optionsRef->{modulesFromName};
-
-    # It's not good enough to just sort modules and compare one to its
-    # successor. Consider kde/foo, kde/foobar, kde/foo/a. The dependency
-    # here would be missed that way. Instead we strip off the last path
-    # component and see if that matches an existing module name.
-    for my $testModule (values %{$modulesFromNameRef}) {
-        my $candidateBaseModule = $testModule->fullProjectPath();
-
-        # Remove trailing component, bail if unable to do so.
-        next unless $candidateBaseModule =~ s(/[^/]+$)();
-
-        # See if new base path matches up to an existing module
-        my $candidateModuleName = _shortenModuleName($candidateBaseModule);
-        if ($candidateModuleName ne $testModule->name() &&
-            exists $modulesFromNameRef->{$candidateModuleName})
-        {
-            # Verify this possible base's full path is actually fully-contained
-            # within the dependent item, to account for things like
-            # kdevelop/kdevelop and phonon/phonon
-            my $candidateModule = $modulesFromNameRef->{$candidateModuleName};
-            my $candidateModulePath = $candidateModule->fullProjectPath();
-
-            next if $candidateBaseModule !~ /^$candidateModulePath/;
-
-            my $shortDependencyName = $candidateModuleName;
-            my $shortDependentName  = _shortenModuleName($testModule);
-
-            # Add candidateBaseModule as dependency of testModule.
-            $dependenciesOfRef->{"$shortDependentName:*"} //= {
-                '-' => [ ],
-                '+' => [ ],
-            };
-
-            my $moduleDepsRef = $dependenciesOfRef->{"$shortDependentName:*"}->{'+'};
-            if (!first { $_ eq $shortDependencyName } @{$moduleDepsRef}) {
-                debug ("dep-resolv: Adding $shortDependentName as dependency of $shortDependencyName");
-                push @{$moduleDepsRef}, "$shortDependencyName:*";
-            }
-        }
-    }
-}
-
 # Function: directDependenciesOf
 #
 # Internal:
@@ -518,10 +454,6 @@ sub resolveDependencies
         # Help _visitModuleAndDependencies to optimize
         modulesNeeded => scalar @modules,
     };
-
-    # Adds things like kde/kdelibs/foo to automatically depend on
-    # kde/kdelibs if both are present in the build.
-    _addInherentDependencies($optionsRef);
 
     for my $module (@modules) {
         _visitModuleAndDependencies($optionsRef, $module);
