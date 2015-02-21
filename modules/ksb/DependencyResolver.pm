@@ -315,6 +315,7 @@ sub _visitModuleAndDependencies
     # It's possible for _visitDependencyItemAndDependencies to add *this*
     # module without it being a cycle, so make sure we don't duplicate.
     if (! grep { $_->name() eq $module->name() } @{$optionsRef->{properBuildOrder}}) {
+        $module->setOption('#dependency-level', $level);
         push @{$optionsRef->{properBuildOrder}}, $module;
         --($optionsRef->{modulesNeeded});
     }

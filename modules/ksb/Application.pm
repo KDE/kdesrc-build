@@ -771,7 +771,9 @@ sub runAllModulePhases
 
     if ($ctx->getOption('print-modules')) {
         info (" * Module list", $metadataModule ? " in dependency order" : '');
-        say "$_" foreach @modules;
+        for my $m (@modules) {
+            say ((" " x ($m->getOption('#dependency-level', 'module') // 0)), "$m");
+        }
         return 0; # Abort execution early!
     }
 
