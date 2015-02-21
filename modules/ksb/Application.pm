@@ -320,7 +320,8 @@ DONE
 #
 # All pending options are set into each module. Global options are set by
 # removing any existing rc-file option value, so you must setup the build context
-# separately to have the needed option for this to work.
+# separately to have the needed option for this to work. Additionally, the
+# KDE project metadata must be available.
 #
 # Returns a list of <ksb::Modules> in build order.
 #
@@ -331,9 +332,7 @@ DONE
 #  initialization - Do not call <finish> from this function.
 #
 # Parameters:
-#  ctx - <BuildContext> in use. This function might call
-#    setKDEProjectMetadataModule on the build context. If so, the project
-#    metadata module should be updated before the build phase.
+#  ctx - <BuildContext> in use.
 #
 #  selectors - listref to hold the list of module or module-set selectors to
 #    build, in the order desired by the user. The value of this parameter
@@ -2161,8 +2160,7 @@ EOF
 # processed.
 #
 # Parameters:
-#  $ctx - <BuildContext> in use for this script execution. Additionally this
-#    method might call setKDEProjectMetadataModuleNeeded on the $ctx.
+#  $ctx - <BuildContext> in use for this script execution.
 #  $modNew  - Reference to a subroutine to be run for every new <Module>
 #    created. See _resolveSelectorsIntoModules for full details.
 #  @modules - list of <Modules>, <ModuleSets> to be expanded.
@@ -2182,10 +2180,6 @@ sub _expandModuleSets
     };
 
     my @moduleResults = map { &$filter } (@buildModuleList);
-
-    if (first { $_->scmType() eq 'proj' } @moduleResults) {
-        $ctx->setKDEProjectMetadataModuleNeeded();
-    }
 
     return @moduleResults;
 }
