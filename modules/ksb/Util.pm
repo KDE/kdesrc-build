@@ -124,7 +124,7 @@ sub assert_isa
     my ($obj, $class) = @_;
 
     if (!blessed($obj) || !$obj->isa($class)) {
-        croak_runtime("$obj is not of type $class, but of type " . ref($obj));
+        croak_internal("$obj is not of type $class, but of type " . ref($obj));
     }
 
     return $obj;
