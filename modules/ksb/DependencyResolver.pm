@@ -129,6 +129,10 @@ sub readDependencyData
         $dependentBranch ||= '*'; # If no branch, apply catch-all flag
         $sourceBranch ||= '*';
 
+        # Source can never be a catch-all so we can shorten early. Also,
+        # we *must* shorten early to avoid a dependency on a long path.
+        $sourceItem    = _shortenModuleName($sourceItem);
+
         # Handle catch-all dependent groupings
         if ($dependentItem =~ /\*$/) {
             $self->{catchAllDependencies}->{$dependentItem} //= [ ];
@@ -136,9 +140,6 @@ sub readDependencyData
             next;
         }
 
-        # No catch-alls here, these are direct dependencies so remove optional
-        # path components
-        $sourceItem    = _shortenModuleName($sourceItem);
         $dependentItem = _shortenModuleName($dependentItem);
 
         # Initialize with hashref if not already defined. The hashref will hold
