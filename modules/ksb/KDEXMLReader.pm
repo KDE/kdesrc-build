@@ -90,7 +90,19 @@ sub getModulesForProject
         $parser->parse($self->inputHandle());
     }
 
-    my @results;
+    # A hash is used to hold results since the keys inherently form a set,
+    # since we don't want dups.
+    my %results;
+    my $findResults = sub {
+        for my $result (
+            grep {
+                _projectPathMatchesWildcardSearch(
+                    $repositories{$_}->{'fullName'}, $proj)
+            } keys %repositories)
+        {
+            $results{$result} = 1;
+        };
+    };
 
     # Wildcard matches happen as specified if asked for. Non-wildcard matches
     # have an implicit "$proj/*" search as well for compatibility with previous
@@ -98,20 +110,16 @@ sub getModulesForProject
     if ($proj !~ /\*/) {
         # We have to do a search to account for over-specified module names
         # like phonon/phonon
-        push @results, grep {
-            _projectPathMatchesWildcardSearch($repositories{$_}->{'fullName'}, $proj)
-        } keys %repositories;
+        $findResults->();
 
         # Now setup for a wildcard search to find things like kde/kdelibs/baloo
         # if just 'kdelibs' is asked for.
         $proj .= '/*';
     }
 
-    push @results, grep {
-        _projectPathMatchesWildcardSearch($repositories{$_}->{'fullName'}, $proj)
-    } keys %repositories;
+    $findResults->();
 
-    return @repositories{@results};
+    return @repositories{keys %results};
 }
 
 sub xmlTagStart
