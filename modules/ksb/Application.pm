@@ -58,6 +58,8 @@ sub new
         metadata_module => undef,
         run_mode        => 'build',
         modules         => undef,
+        module_factory  => undef, # ref to sub that makes a new Module.
+                                  # See generateModuleList
         _base_pid       => $$, # See finish()
     }, $class;
 
@@ -512,7 +514,7 @@ sub _resolveSelectorsIntoModules
 }
 
 # Generates the build context and module list based on the command line options
-# and module selectors provided.
+# and module selectors provided, and sets up the module factory.
 #
 # After this function is called all module set selectors will have been
 # expanded, and we will know if we need to download kde-projects metadata or
@@ -614,6 +616,9 @@ sub generateModuleList
         delete @{$module->{options}}{@globalCmdlineArgs};
     };
 
+    # Called here since it depends on the closure above
+    $self->_defineNewModuleFactory($newModuleSub);
+
     if ($commandLineModules) {
         # select our modules and module-sets, and expand them out
         @modules = $self->_resolveSelectorsIntoModules(
@@ -698,8 +703,9 @@ sub _downloadKDEProjectMetadata
 # Returns a list of Modules in the proper build order according to the
 # kde-build-metadata dependency information.
 #
-# The kde-build-metadata repository must have already been updated. The Modules
-# to reorder must be passed as arguments.
+# The kde-build-metadata repository must have already been updated, and the
+# module factory must be setup. The Modules to reorder must be passed as
+# arguments.
 sub _resolveModuleDependencies
 {
     my $self = shift;
@@ -708,7 +714,7 @@ sub _resolveModuleDependencies
     my @modules = @_;
 
     @modules = eval {
-        my $dependencyResolver = ksb::DependencyResolver->new();
+        my $dependencyResolver = ksb::DependencyResolver->new($self->{module_factory});
         my $branchGroup = $ctx->effectiveBranchGroup();
 
         for my $file ('dependency-data-common', "dependency-data-$branchGroup")
@@ -2182,6 +2188,36 @@ sub _expandModuleSets
     my @moduleResults = map { &$filter } (@buildModuleList);
 
     return @moduleResults;
+}
+
+# This defines the factory function needed for lower-level code to properly be
+# able to create ksb::Module objects from just the module name, while still
+# having the options be properly set and having the module properly tied into a
+# context.
+sub _defineNewModuleFactory
+{
+    my ($self, $newModuleSub) = @_;
+    my $ctx = $self->context();
+    my $projSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-project auto-dep>');
+
+    $self->{module_factory} = sub {
+        my $name = shift;
+        $projSet->setModulesToFind($name);
+        my @results = $projSet->convertToModules($ctx);
+
+        # Thought experiment: a module depends on phonon/phonon, which gets duly
+        # shortened to 'phonon'. Our kde-project code expands that by default to
+        # 'phonon/*', which returns {phonon,phonon-vlc,phonon-gstreamer}, etc.
+        # We need to make sure to return only matching modules.
+        my @mods = grep { $_->name() eq $name } (@results);
+        if (@mods > 1) {
+            croak_runtime ("Too many modules match $name; results were " .
+                join(', ', @mods)."\nCandidates @results");
+        }
+
+        $newModuleSub->($mods[0]);
+        return $mods[0];
+    };
 }
 
 # This function converts any 'l10n' references on the command line to return a l10n

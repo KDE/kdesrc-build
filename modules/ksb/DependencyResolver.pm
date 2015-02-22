@@ -18,16 +18,23 @@ use List::Util qw(first);
 
 # Constructor: new
 #
-# Constructs a new <DependencyResolver>. No parameters are taken.
+# Constructs a new <DependencyResolver>.
+#
+# Parameters:
+#
+#   moduleFactoryRef - Reference to a sub that creates ksb::Modules from
+#     kde-project module names. Used for ksb::Modules for which the user
+#     requested recursive dependency inclusion.
 #
 # Synposis:
 #
-# > my $resolver = new DependencyResolver;
+# > my $resolver = new DependencyResolver($modNewRef);
 # > $resolver->readDependencyData(open my $fh, '<', 'file.txt');
 # > $resolver->resolveDependencies(@modules);
 sub new
 {
     my $class = shift;
+    my $moduleFactoryRef = shift;
 
     my $self = {
         # hash table mapping short module names (m) to a hashref key by branch
@@ -41,6 +48,11 @@ sub new
         # hash table mapping a wildcarded module name with no branch to a
         # listref of module:branch dependencies.
         catchAllDependencies => { },
+
+        # reference to a sub that will properly create a ksb::Module from a
+        # given kde-project module name. Used to support automatically adding
+        # dependencies to a build.
+        moduleFactoryRef => $moduleFactoryRef,
     };
 
     return bless $self, $class;
@@ -298,28 +310,30 @@ sub _getBranchOf
 #   module build list, module name to <ksb::Module> mapping, and auxiliary data
 #   to see if a module has already been visited.
 #  module - The <ksb::Module> to properly order in the build list.
+#  level - The level of recursion of this call.
+#  dependent - Identical to the same param as _visitDependencyItemAndDependencies
 #
 # Returns:
 #  Nothing. The proper build order can be read out from the optionsRef passed
 #  in.
 sub _visitModuleAndDependencies
 {
-    my ($optionsRef, $module, $level) = @_;
+    my ($optionsRef, $module, $level, $dependentName) = @_;
     assert_isa($module, 'ksb::Module');
 
     if ($module->scmType() eq 'proj') {
         my $item = _shortenModuleName($module->fullProjectPath());
         my $branch = _getBranchOf($module) // '*';
-        _visitDependencyItemAndDependencies($optionsRef, "$item:$branch", $level);
+
+        $dependentName //= $item if $module->getOption('include-dependencies');
+        _visitDependencyItemAndDependencies($optionsRef, "$item:$branch", $level, $dependentName);
+
+        $optionsRef->{visitedItems}->{$item} = 3; # Mark as also in build list
     }
 
-    # It's possible for _visitDependencyItemAndDependencies to add *this*
-    # module without it being a cycle, so make sure we don't duplicate.
-    if (! grep { $_->name() eq $module->name() } @{$optionsRef->{properBuildOrder}}) {
-        $module->setOption('#dependency-level', $level);
-        push @{$optionsRef->{properBuildOrder}}, $module;
-        --($optionsRef->{modulesNeeded});
-    }
+    $module->setOption('#dependency-level', $level);
+    push @{$optionsRef->{properBuildOrder}}, $module;
+    --($optionsRef->{modulesNeeded});
 
     return;
 }
@@ -345,18 +359,26 @@ sub _visitModuleAndDependencies
 #   ':', and the specific branch name for the dependency if needed. The branch
 #   name is '*' if the branch doesn't matter (or can be determined only by the
 #   branch-group in use). E.g. 'baloo:*' or 'akonadi:master'.
+#  level - Level of recursion of the current call.
+#  dependent - *if set*, is the name of the module that requires that all of its
+#   dependencies be added to the build list (properly ordered) even if not
+#   specifically selected in the configuration file or command line. If not set,
+#   recursive dependencies are not pulled into the build even if they are not
+#   in the build list.
 #
 # Returns:
 #  Nothing. The proper build order can be read out from the optionsRef passed
-#  in.
+#  in. Note that the generated build list might be longer than the build list that
+#  was input, in the case that recursive dependency inclusion was requested.
 sub _visitDependencyItemAndDependencies
 {
-    my ($optionsRef, $dependencyItem, $level) = @_;
+    my ($optionsRef, $dependencyItem, $level, $dependentName) = @_;
 
     my $visitedItemsRef     = $optionsRef->{visitedItems};
     my $properBuildOrderRef = $optionsRef->{properBuildOrder};
     my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
     my $modulesFromNameRef  = $optionsRef->{modulesFromName};
+    my $moduleFactoryRef    = $optionsRef->{moduleFactoryRef};
     $level //= 0;
 
     my ($item, $branch) = split(':', $dependencyItem, 2);
@@ -366,14 +388,20 @@ sub _visitDependencyItemAndDependencies
     $visitedItemsRef->{$item} //= 0;
 
     # This module may have already been added to build.
-    return if $visitedItemsRef->{$item} == 1;
+    # 0 == Not visited
+    # 1 == Currently visiting. Running into a module in visit state 1 indicates a cycle.
+    # 2 == Visited, but not in build (this may happen for common dependencies with siblings, or for
+    #      modules that are not in our build list but are part of dependency chain for other modules
+    #      that *are* in build list).
+    # 3 == Visited, placed in build queue.
+    return if $visitedItemsRef->{$item} >= 2;
 
     # But if the value is 2 that means we've detected a cycle.
-    if ($visitedItemsRef->{$item} > 1) {
+    if ($visitedItemsRef->{$item} == 1) {
         croak_internal("Somehow there is a dependency cycle involving $item! :(");
     }
 
-    $visitedItemsRef->{$item} = 2; # Mark as currently-visiting for cycle detection.
+    $visitedItemsRef->{$item} = 1; # Mark as currently-visiting for cycle detection.
 
     _makeCatchAllRules($optionsRef, $item);
 
@@ -385,28 +413,36 @@ sub _visitDependencyItemAndDependencies
 
         # This keeps us from doing a deep recursive search for dependencies
         # on an item we've already asked about.
-        next if (($visitedItemsRef->{$subItemName} // 0) == 1);
+        next if (($visitedItemsRef->{$subItemName} // 0) >= 2);
 
         debug ("\tdep-resolv: $item:$branch depends on $subItem");
 
         my $subModule = $modulesFromNameRef->{$subItemName};
-        if (!$subModule) {
+        if (!$subModule && !$dependentName) {
             whisper (" y[b[*] $dependencyItem depends on $subItem, but no module builds $subItem for this run.");
             _visitDependencyItemAndDependencies($optionsRef, $subItem, $level + 1);
         }
         else {
+            # Add in the dependent module if requested.
+            if (!$subModule) {
+                $subModule = $moduleFactoryRef->($subItemName);
+                $modulesFromNameRef->{$subModule->name()} = $subModule;
+                ++($optionsRef->{modulesNeeded});
+            }
+
             if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
                 my $wrongBranch = _getBranchOf($subModule) // '?';
                 error (" r[b[*] $item needs $subItem, not $subItemName:$wrongBranch");
             }
 
-            _visitModuleAndDependencies($optionsRef, $subModule, $level + 1);
+            _visitModuleAndDependencies($optionsRef, $subModule, $level + 1, $dependentName);
         }
 
         last if $optionsRef->{modulesNeeded} == 0;
     }
 
-    $visitedItemsRef->{$item} = 1; # Mark as done visiting.
+    # Mark as done visiting.
+    $visitedItemsRef->{$item} = 2;
     return;
 }
 
@@ -452,6 +488,8 @@ sub resolveDependencies
             grep { $_->scmType() eq 'proj' }
                 @modules
         },
+
+        moduleFactoryRef => $self->{moduleFactoryRef},
 
         # Help _visitModuleAndDependencies to optimize
         modulesNeeded => scalar @modules,
