@@ -325,6 +325,12 @@ sub _visitModuleAndDependencies
         my $item = _shortenModuleName($module->fullProjectPath());
         my $branch = _getBranchOf($module) // '*';
 
+        # Since the initial build list is visited start to finish it is
+        # possible for this module to already be in the ordered list if
+        # reordering has already happened or if dependencies are included (i.e.
+        # this was a dependency of some other module).
+        return if ($optionsRef->{visitedItems}->{$item} // 0) == 3;
+
         $dependentName //= $item if $module->getOption('include-dependencies');
         _visitDependencyItemAndDependencies($optionsRef, "$item:$branch", $level, $dependentName);
 
