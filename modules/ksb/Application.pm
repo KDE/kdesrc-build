@@ -758,7 +758,7 @@ sub runAllModulePhases
         my $branch = $_->isKDEProject()
             ? $resolver->findModuleBranch($_->fullProjectPath(), $branchGroup)
             : 1; # Just a placeholder truthy value
-        whisper ("Removing $_ due to branch-group") if (defined $branch and !$branch);
+        whisper ("Removing ", $_->fullProjectPath(), " due to branch-group") if (defined $branch and !$branch);
         (!defined $branch or $branch); # This is the actual test
     } (@modules);
 
