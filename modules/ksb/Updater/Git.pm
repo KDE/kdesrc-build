@@ -842,7 +842,7 @@ sub verifyGitConfig
     # If we make it here, I'm just going to assume git works from here on out
     # on this simple task.
     if ($configOutput !~ /^kde:\s*$/) {
-        info ("\tAdding git download kde: alias");
+        whisper ("\tAdding git download kde: alias");
         my $result = safe_system(
             qw(git config --global --add url.git://anongit.kde.org/.insteadOf kde:)
         ) >> 8;
@@ -853,7 +853,7 @@ sub verifyGitConfig
         qx'git config --global --get url.git@git.kde.org:.pushInsteadOf kde:';
 
     if ($configOutput !~ /^kde:\s*$/) {
-        info ("\tAdding git upload kde: alias");
+        whisper ("\tAdding git upload kde: alias");
         my $result = safe_system(
             qw(git config --global --add url.git@git.kde.org:.pushInsteadOf kde:)
         ) >> 8;

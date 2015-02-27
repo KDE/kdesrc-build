@@ -588,6 +588,7 @@ sub generateModuleList
     # metadata available. This used to be optional, but now everything needs
     # it, so download it unilaterally.
     $ctx->setKDEProjectMetadataModuleNeeded();
+    ksb::Updater::Git::verifyGitConfig();
     $self->_downloadKDEProjectMetadata();
 
     # The user might only want metadata to update to allow for a later
@@ -1532,10 +1533,6 @@ sub _handle_updates
     {
         $ipc->sendIPCMessage(ksb::IPC::ALL_FAILURE, "ssh-failure");
         return 1;
-    }
-
-    if (grep { $_->scm()->isa('ksb::Updater::Git') } @update_list) {
-        ksb::Updater::Git::verifyGitConfig();
     }
 
     if (not -e $kdesrc)
