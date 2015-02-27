@@ -347,6 +347,11 @@ sub updateExistingClone
 
     p_chdir($module->fullpath('source'));
 
+    # Try to save the user if they are doing a merge or rebase
+    if (-e '.git/MERGE_HEAD' || -e '.git/rebase-merge' || -e '.git/rebase-apply') {
+        croak_runtime ("Aborting git update for $module, you appear to have a rebase or merge in progress!");
+    }
+
     my $remoteName = $self->_setupBestRemote();
 
     # Download updated objects. This also updates remote heads so do this
