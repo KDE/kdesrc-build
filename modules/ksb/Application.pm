@@ -58,6 +58,8 @@ sub new
         metadata_module => undef,
         run_mode        => 'build',
         modules         => undef,
+        module_factory  => undef, # ref to sub that makes a new Module.
+                                  # See generateModuleList
         _base_pid       => $$, # See finish()
     }, $class;
 
@@ -320,7 +322,8 @@ DONE
 #
 # All pending options are set into each module. Global options are set by
 # removing any existing rc-file option value, so you must setup the build context
-# separately to have the needed option for this to work.
+# separately to have the needed option for this to work. Additionally, the
+# KDE project metadata must be available.
 #
 # Returns a list of <ksb::Modules> in build order.
 #
@@ -331,9 +334,7 @@ DONE
 #  initialization - Do not call <finish> from this function.
 #
 # Parameters:
-#  ctx - <BuildContext> in use. This function might call
-#    setKDEProjectMetadataModule on the build context. If so, the project
-#    metadata module should be updated before the build phase.
+#  ctx - <BuildContext> in use.
 #
 #  selectors - listref to hold the list of module or module-set selectors to
 #    build, in the order desired by the user. The value of this parameter
@@ -521,7 +522,7 @@ sub _resolveSelectorsIntoModules
 }
 
 # Generates the build context and module list based on the command line options
-# and module selectors provided.
+# and module selectors provided, and sets up the module factory.
 #
 # After this function is called all module set selectors will have been
 # expanded, and we will know if we need to download kde-projects metadata or
@@ -624,6 +625,9 @@ sub generateModuleList
         delete @{$module->{options}}{@globalCmdlineArgs};
     };
 
+    # Called here since it depends on the closure above
+    $self->_defineNewModuleFactory($newModuleSub);
+
     if ($commandLineModules) {
         # select our modules and module-sets, and expand them out
         @modules = $self->_resolveSelectorsIntoModules(
@@ -711,8 +715,9 @@ sub _downloadKDEProjectMetadata
 # Returns a list of Modules in the proper build order according to the
 # kde-build-metadata dependency information.
 #
-# The kde-build-metadata repository must have already been updated. The Modules
-# to reorder must be passed as arguments.
+# The kde-build-metadata repository must have already been updated, and the
+# module factory must be setup. The Modules to reorder must be passed as
+# arguments.
 sub _resolveModuleDependencies
 {
     my $self = shift;
@@ -721,7 +726,7 @@ sub _resolveModuleDependencies
     my @modules = @_;
 
     @modules = eval {
-        my $dependencyResolver = ksb::DependencyResolver->new();
+        my $dependencyResolver = ksb::DependencyResolver->new($self->{module_factory});
         my $branchGroup = $ctx->effectiveBranchGroup();
 
         for my $file ('dependency-data-common', "dependency-data-$branchGroup")
@@ -783,7 +788,9 @@ sub runAllModulePhases
 
     if ($ctx->getOption('print-modules')) {
         info (" * Module list", $metadataModule ? " in dependency order" : '');
-        say "$_" foreach @modules;
+        for my $m (@modules) {
+            say ((" " x ($m->getOption('#dependency-level', 'module') // 0)), "$m");
+        }
         return 0; # Abort execution early!
     }
 
@@ -2167,8 +2174,7 @@ EOF
 # processed.
 #
 # Parameters:
-#  $ctx - <BuildContext> in use for this script execution. Additionally this
-#    method might call setKDEProjectMetadataModuleNeeded on the $ctx.
+#  $ctx - <BuildContext> in use for this script execution.
 #  $modNew  - Reference to a subroutine to be run for every new <Module>
 #    created. See _resolveSelectorsIntoModules for full details.
 #  @modules - list of <Modules>, <ModuleSets> to be expanded.
@@ -2189,11 +2195,37 @@ sub _expandModuleSets
 
     my @moduleResults = map { &$filter } (@buildModuleList);
 
-    if (first { $_->scmType() eq 'proj' } @moduleResults) {
-        $ctx->setKDEProjectMetadataModuleNeeded();
-    }
-
     return @moduleResults;
+}
+
+# This defines the factory function needed for lower-level code to properly be
+# able to create ksb::Module objects from just the module name, while still
+# having the options be properly set and having the module properly tied into a
+# context.
+sub _defineNewModuleFactory
+{
+    my ($self, $newModuleSub) = @_;
+    my $ctx = $self->context();
+    my $projSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-project auto-dep>');
+
+    $self->{module_factory} = sub {
+        my $name = shift;
+        $projSet->setModulesToFind($name);
+        my @results = $projSet->convertToModules($ctx);
+
+        # Thought experiment: a module depends on phonon/phonon, which gets duly
+        # shortened to 'phonon'. Our kde-project code expands that by default to
+        # 'phonon/*', which returns {phonon,phonon-vlc,phonon-gstreamer}, etc.
+        # We need to make sure to return only matching modules.
+        my @mods = grep { $_->name() eq $name } (@results);
+        if (@mods > 1) {
+            croak_runtime ("Too many modules match $name; results were " .
+                join(', ', @mods)."\nCandidates @results");
+        }
+
+        $newModuleSub->($mods[0]);
+        return $mods[0];
+    };
 }
 
 # This function converts any 'l10n' references on the command line to return a l10n
