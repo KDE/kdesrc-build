@@ -412,7 +412,7 @@ sub _visitDependencyItemAndDependencies
     _makeCatchAllRules($optionsRef, $item);
 
     for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
-        my ($subItemName, $subItemBranch) = split(':', $subItem, 2);
+        my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
         croak_internal("Invalid dependency item: $subItem") if !$subItemName;
 
         next if $subItemName eq $item; # Catch-all deps might make this happen
