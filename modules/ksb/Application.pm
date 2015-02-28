@@ -674,23 +674,26 @@ sub _downloadKDEProjectMetadata
         super_mkdir($sourceDir);
 
         my $updateDesired = !$ctx->getOption('no-metadata') && $ctx->phases()->has('update');
-        $updateNeeded = (! -e "$sourceDir/dependency-data-common");
+        $updateNeeded = (! -e $metadataModule->fullpath('source') . "/dependency-data-common");
         my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
+        my $wasPretending = pretending();
 
         if (!$updateDesired && $updateNeeded && (time - ($lastUpdate)) >= 7200) {
             warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
         }
 
-        if ($updateNeeded && pretending() && ! -e $sourceDir) {
-            croak_runtime("\n\tCan't use --pretend without having metadata
-                available, and can't download it in pretend mode. Try running
-                \"kdesrc-build --metadata-only\" first and try again.");
+        if ($updateNeeded && pretending()) {
+            warning (" y[b[*] Ignoring y[b[--pretend] option to download required metadata\n" .
+                     " y[b[*] --pretend mode will resume after metadata is available.");
+            ksb::Debug::setPretending(0);
         }
 
         if ($updateDesired && (!pretending() || $updateNeeded)) {
             $metadataModule->scm()->updateInternal();
             $ctx->setPersistentOption('global', 'last-metadata-update', time);
         }
+
+        ksb::Debug::setPretending($wasPretending);
     };
 
     if ($@) {

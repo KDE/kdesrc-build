@@ -58,10 +58,16 @@ sub logicalModuleGroups
     my $fh = pretend_open($path) or
         croak_internal("Unable to read logical module structure: $!");
 
-    # The 'local $/' disables line-by-line reading; slurps the whole file
-    my $json_hashref = do { local $/; decode_json(<$fh>); };
-    close $fh;
+    my ($json_hashref, $e) = do {
+        local $/; # The 'local $/' disables line-by-line reading; slurps the whole file
+        undef $@;
+        my $json = eval { decode_json(<$fh>) };
+        close $fh;
 
+        ($json, $@); # Implicit return
+    };
+
+    croak_runtime ("Unable to load module group data! :(\n\t$e") if $e;
     return $json_hashref;
 }
 

@@ -897,24 +897,9 @@ sub getKDEProjectMetadataFilehandle
     my $updating = grep { /^update$/ } (@{$self->phases()});
     $updating &&= !$self->getOption('no-metadata');
 
-    if (!pretending() && $updating) {
+    if ($updating && (! -e $file || !pretending())) {
         info (" * Downloading projects.kde.org project database...");
         $result = download_file($url, $file, $self->getOption('http-proxy'));
-    }
-    elsif (! -e $file) {
-        if (pretending()) {
-            note (" * Downloading projects.kde.org project database (will not be saved due to pretend mode)...");
-        } else {
-            note (" * Downloading projects.kde.org project database");
-        }
-
-        # Unfortunately dumping the HTTP output straight to the XML parser is a
-        # wee bit more complicated than I feel like dealing with => use a temp
-        # file.
-        (undef, $file) = tempfile('kde_projectsXXXXXX',
-            SUFFIX=>'.xml', TMPDIR=>1, UNLINK=>0);
-        $result = download_file($url, $file, $self->getOption('http-proxy'));
-        open ($fileHandleResult, '<', $file) or croak_runtime("Unable to open KDE Project database $file: $!");
     }
     else {
         info (" * y[Using existing projects.kde.org project database], output may change");
