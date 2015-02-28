@@ -420,12 +420,20 @@ sub _resolveSelectorsIntoModules
             } @{$expandedModuleSets{$neededModuleSet}};
 
             if (!$selector) {
-                croak_internal("Didn't select a module that was here earlier in the code path. Please report a bug.");
+                # If the selector doesn't match a name exactly it probably matches
+                # a wildcard prefix. e.g. 'kdeedu' as a selector would pull in all kdeedu/*
+                # modules, but kdeedu is not a module-name itself anymore. We'd want to
+                # have kdesrc-build simply treat this as a module-set, but we can't use the
+                # expanded module list... instead we'll return the module set reference and
+                # it will be expanded later.
+                $selector = $neededModuleSet;
             }
 
-            $lookupTable{$selectorName} = $selector;
-            $selector->setOption('#selected-by',
-                'partial-expansion-' . $neededModuleSet->name());
+            # Can't use setOption since this might be a module-set
+            my $selectedReason = 'partial-expansion-' . $neededModuleSet->name();
+            $selector->{options}->{'#selected-by'} = $selectedReason;
+
+            $lookupTable{$selectorName} = $neededModuleSet;
         }
         elsif (ref $selector && $selector->isa('ksb::Module')) {
             # We couldn't find anything better than what we were provided,
