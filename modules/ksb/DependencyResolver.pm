@@ -424,7 +424,8 @@ sub _visitDependencyItemAndDependencies
         debug ("\tdep-resolv: $item:$branch depends on $subItem");
 
         my $subModule = $modulesFromNameRef->{$subItemName};
-        if (!$subModule && !$dependentName) {
+        # TODO: Properly handle 'virtual' dependencies.
+        if (!$subModule && (!$dependentName || $subItemName eq 'kf5umbrella')) {
             whisper (" y[b[*] $dependencyItem depends on $subItem, but no module builds $subItem for this run.");
             _visitDependencyItemAndDependencies($optionsRef, $subItem, $level + 1);
         }
