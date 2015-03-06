@@ -424,19 +424,23 @@ sub _visitDependencyItemAndDependencies
         debug ("\tdep-resolv: $item:$branch depends on $subItem");
 
         my $subModule = $modulesFromNameRef->{$subItemName};
-        # TODO: Properly handle 'virtual' dependencies.
-        if (!$subModule && (!$dependentName || $subItemName eq 'kf5umbrella')) {
+        if (!$subModule && $dependentName) {
+            # Dependent item not in the build, but we're including dependencies
+            $subModule = $moduleFactoryRef->($subItemName);
+
+            # May not exist, e.g. misspellings or 'virtual' dependencies like
+            # kf5umbrella. But if it does, update the admin for our visit.
+            if ($subModule) {
+                $modulesFromNameRef->{$subModule->name()} = $subModule;
+                ++($optionsRef->{modulesNeeded});
+            }
+        }
+
+        if (!$subModule) {
             whisper (" y[b[*] $dependencyItem depends on $subItem, but no module builds $subItem for this run.");
             _visitDependencyItemAndDependencies($optionsRef, $subItem, $level + 1);
         }
         else {
-            # Add in the dependent module if requested.
-            if (!$subModule) {
-                $subModule = $moduleFactoryRef->($subItemName);
-                $modulesFromNameRef->{$subModule->name()} = $subModule;
-                ++($optionsRef->{modulesNeeded});
-            }
-
             if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
                 my $wrongBranch = _getBranchOf($subModule) // '?';
                 error (" r[b[*] $item needs $subItem, not $subItemName:$wrongBranch");

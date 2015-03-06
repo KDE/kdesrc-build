@@ -19,6 +19,7 @@ use ksb::BuildSystem::QMake;
 use ksb::Module;
 use ksb::ModuleSet;
 use ksb::ModuleSet::KDEProjects;
+use ksb::ModuleSet::KDEDependencyIncluder;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
 use ksb::IPC::Pipe 0.20;
@@ -2206,7 +2207,7 @@ sub _defineNewModuleFactory
 {
     my ($self, $newModuleSub) = @_;
     my $ctx = $self->context();
-    my $projSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-project auto-dep>');
+    my $projSet = ksb::ModuleSet::KDEDependencyIncluder->new($ctx, '<kde-project auto-dep>');
 
     $self->{module_factory} = sub {
         my $name = shift;
@@ -2222,6 +2223,9 @@ sub _defineNewModuleFactory
             croak_runtime ("Too many modules match $name; results were " .
                 join(', ', @mods)."\nCandidates @results");
         }
+
+        # No modules found? Bail out.
+        return if (!@mods);
 
         $newModuleSub->($mods[0]);
         return $mods[0];
