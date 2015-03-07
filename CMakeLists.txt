@@ -51,6 +51,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
     install(FILES
         modules/ksb/ModuleSet/KDEProjects.pm
         modules/ksb/ModuleSet/Null.pm
+        modules/ksb/ModuleSet/KDEDependencyIncluder.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/ModuleSet)
 
     install(FILES
