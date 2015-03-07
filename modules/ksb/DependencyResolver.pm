@@ -438,7 +438,7 @@ sub _visitDependencyItemAndDependencies
 
         if (!$subModule) {
             whisper (" y[b[*] $dependencyItem depends on $subItem, but no module builds $subItem for this run.");
-            _visitDependencyItemAndDependencies($optionsRef, $subItem, $level + 1);
+            _visitDependencyItemAndDependencies($optionsRef, $subItem, $level + 1, $dependentName);
         }
         else {
             if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
