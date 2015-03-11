@@ -54,6 +54,7 @@ my %internalGlobalOptions = (
     "git-desired-protocol" => 'git', # protocol to grab from kde-projects
     "git-repository-base"  => {}, # Base path template for use multiple times.
     "ignore-modules"       => '', # See also: use-modules, kde-projects
+    "include-dependencies" => 0,  # Recursively include kde-projects module deps?
     "manual-build"         => "",
     "manual-update"        => "",
     "niceness"             => "10",

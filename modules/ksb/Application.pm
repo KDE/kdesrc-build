@@ -282,7 +282,7 @@ DONE
         'revision=i', 'resume-from=s', 'resume-after=s',
         'resume', 'stop-on-failure',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
-        'metadata-only',
+        'metadata-only', 'include-dependencies',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
         # for strings
@@ -630,6 +630,13 @@ sub generateModuleList
     $self->_defineNewModuleFactory($newModuleSub);
 
     if ($commandLineModules) {
+        if (!$pendingGlobalOptions->{'include-dependencies'}) {
+            # modules were manually selected on cmdline, so ignore module-based
+            # include-dependencies, unless include-dependencies also set on
+            # cmdline.
+            $ctx->setOption('#include-dependencies', 0);
+        }
+
         # select our modules and module-sets, and expand them out
         @modules = $self->_resolveSelectorsIntoModules(
             $ctx, \@selectors, $newModuleSub, \@optionModulesAndSets);
@@ -2873,6 +2880,9 @@ Options:
                          or create/delete files and directories.  Instead,
                          output what the script would have done.
     --refresh-build      Start the build from scratch.
+
+    --include-dependencies Also try to build known dependencies of the modules
+                           to be built.
 
     --verbose            Print verbose output
 
