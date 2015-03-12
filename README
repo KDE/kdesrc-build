@@ -1,4 +1,4 @@
-# kdesrc-build 1.16.1
+# kdesrc-build 1.16
 
 ## QUICK HOWTO
 
@@ -21,7 +21,7 @@
       copy kdesrc-buildrc-sample to ~/.kdesrc-buildrc and make any changes that
       you need.
 
-    - **For KDE Frameworks ("KF5") / Plasma Next**: Please see the
+    - **For KDE Frameworks ("KF5") / Plasma 5**: Please see the
       `kf5-qt5-build-include` file contained within the kdesrc-build directory.
       You will still end up generating a ~/.kdesrc-buildrc file but you will
       use the `branch-group` option to help kdesrc-build select the right
@@ -31,29 +31,37 @@
       what options are available, or look at the documentation at
       http://kdesrc-build.kde.org/documentation/conf-options-table.html
 
-3. From the kdesrc-build directory, run "./kdesrc-build --pretend".  This will
-   have kdesrc-build go through the steps that it would perform, but without
-   actually doing them. This is a good time to make sure that kdesrc-build is
-   set the way you want it.
+3. From the kdesrc-build directory, run "./kdesrc-build --metadata-only". This
+   will download some data that describes the KDE source repositories and their
+   dependencies, which will help kdesrc-build figure out what to build.
 
-4. When you're ready, run "./kdesrc-build". Hopefully everything will go well
+4. Now you can run "kdesrc-build --pretend" to have kdesrc-build go through the
+   steps that it would perform, but without actually doing them. This is a good
+   time to make sure that kdesrc-build is set the way you want it.
+
+5. When you're ready, run "./kdesrc-build". Hopefully everything will go well
    the first time, and kdesrc-build will be able to download and build all of
    the modules that you ask for. :)
 
 ## UPGRADING KDESRC-BUILD
 
-Upgrading is simple. You can delete your old kdesrc-build directory (make sure
-you don't have any local changes in there first, or your kdesrc-buildrc file!)
-and then install the new version where the old kdesrc-build directory used to
-be.
+Upgrading is simple.
 
-If you are tracking "KF5" development, it is probably best to run kdesrc-build
-itself from its git repository to automatically pick up bugfixes and needed
-feature additions. You can even use kdesrc-build to manage keeping kdesrc-build
-up to date (though remember if you do this that if kdesrc-build updates itself,
-those updates won't take effect until the next run).
+You can delete your old kdesrc-build directory (make sure you don't have any
+local changes in there first, or your kdesrc-buildrc file!) and then install
+the new version where the old kdesrc-build directory used to be.
 
-Either way, you may want to edit your ~/.kdesrc-buildrc to make sure any new
+In fact, it is recommended to use git to update kdesrc-build itself, so that
+kdesrc-build is kept upgraded automatically. This is mostly done in the sample
+configuration for KF5, where kdesrc-build is configured to update itself,
+however for the best success you should remember to add the kdesrc-build git
+repository to your PATH environment variable.
+
+One thing to keep in mind when using kdesrc-build to manage keeping itself
+up to date is that updates won't take effect until the *next* time you run
+kdesrc-build.
+
+You may want to edit your ~/.kdesrc-buildrc to make sure any new
 options are included. You should always read the changes for the new version
 however, as sometimes there are slight changes in behavior necessary to adapt
 to updates in the source repository. If you are running kdesrc-build from its
@@ -79,9 +87,17 @@ kdesrc-build includes a limited command-line description with the
 You can read the kdesrc-build handbook online at
 http://kdesrc-build.kde.org/documentation/.
 
-You can ask for help online on the #kde-devel channel of IRC (irc.kde.org).
+If you have already setup a KDE build environment then kdesrc-build itself can
+have its documentation compiled and installed.
+In this case the documentation is available in Konqueror (help:/kdesrc-build)
+or KHelpCenter. Additionally a man page will be installed, or you can run "man
+./kdesrc-build.1" in the "doc/" directory of kdesrc-build's own build
+directory.
 
-You can also ask on the KDE support mailing lists, such as kde-devel@kde.org
+You can also ask for help online on the #kde-devel channel of IRC (irc.kde.org).
+
+Additionally you can ask for help on the KDE support mailing lists, such as
+kde-devel@kde.org
 
 Finally you can drop me an email at mpyne@kde.org (although I have a job/family
 and therefore don't always have time to respond)
@@ -93,11 +109,13 @@ extragear/utils module: (You can also see the change log this way)
 
 https://projects.kde.org/projects/extragear/utils/kdesrc-build
 
+In fact, it is unlikely that future releases will be made. Though new versions
+will be tagged, they will not be released as source tarballs. You should run
+from git (it is likely a 'stable' branch will be setup to make this more
+feasible)
+
 If you find a bug, please report it at:
   http://bugs.kde.org/
 
 If you have any questions, feel free to let me know:
   Michael Pyne <mpyne@kde.org>
-
-If I don't respond in a couple of days I'm probably really busy, in which
-case I apologize and you should contact the kde-devel@kde.org mailing list.
