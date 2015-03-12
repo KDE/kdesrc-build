@@ -70,4 +70,3 @@ endif()
 
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${BIN_INSTALL_DIR})
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build-setup DESTINATION ${BIN_INSTALL_DIR})
-install(FILES kdesrc-buildrc.xml DESTINATION ${DATA_INSTALL_DIR}/katepart/syntax)
