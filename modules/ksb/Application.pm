@@ -2862,6 +2862,7 @@ Options:
 
     --stop-before=<pkg>  Skips the given package and all later packages.
     --stop-after=<pkg>   Skips all packages after the given package.
+    --stop-on-failure    Stops the build as soon as a package fails to build.
 
     --reconfigure        Run CMake/configure again, but don't clean the build
                          directory.
