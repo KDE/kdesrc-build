@@ -35,8 +35,9 @@ sub setSender
 
     $self->{fh}->writer();
 
-    # Disable buffering
+    # Disable buffering and any possibility of IO 'interpretation' of the bytes
     $self->{fh}->autoflush(1);
+    binmode($self->{fh})
 }
 
 sub setReceiver
@@ -45,8 +46,9 @@ sub setReceiver
 
     $self->{fh}->reader();
 
-    # Disable buffering
+    # Disable buffering and any possibility of IO 'interpretation' of the bytes
     $self->{fh}->autoflush(1);
+    binmode($self->{fh})
 }
 
 # Reimplementation of ksb::IPC::supportsConcurrency
