@@ -2895,6 +2895,9 @@ the online documentation.  If you have installed kdesrc-build you may also be
 able to view the documentation using KHelpCenter or Konqueror at the URL
 help:/kdesrc-build, or using the man page by typing "man kdesrc-build".
 
+The man page can also be found online at
+https://kdesrc-build.kde.org/documentation/kdesrc-build.1.html
+
 This help is not comprehensive, to see a listing of all options please visit:
 https://kdesrc-build.kde.org/documentation/conf-options-table.html
 
