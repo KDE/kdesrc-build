@@ -273,6 +273,13 @@ sub filter_program_output
 
     debug ("Slurping '$program' '", join("' '", @args), "'");
 
+    # Check early for whether an executable exists since otherwise
+    # it is possible for our fork-open below to "succeed" (i.e. fork()
+    # happens OK) and then fail when it gets to the exec(2) syscall.
+    if (!absPathToExecutable($program)) {
+        croak_runtime("Can't find $program in PATH!");
+    }
+
     my $pid = open(my $childOutput, '-|');
     croak_internal("Can't fork: $!") if ! defined($pid);
 
