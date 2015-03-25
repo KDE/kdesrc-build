@@ -280,14 +280,30 @@ sub filter_program_output
         croak_runtime("Can't find $program in PATH!");
     }
 
+    my $execFailedError = "\t - kdesrc-build - exec failed!\n";
     my $pid = open(my $childOutput, '-|');
     croak_internal("Can't fork: $!") if ! defined($pid);
 
     if ($pid) {
         # parent
         my @lines = grep { &$filterRef; } (<$childOutput>);
-        close $childOutput;
-        waitpid $pid, 0;
+        close $childOutput or do {
+            # $! indicates a rather grievous error
+            croak_internal("Unable to open pipe to read $program output: $!") if $!;
+
+            # we can pass serious errors back to ourselves too.
+            my $exitCode = $? >> 8;
+            if ($exitCode == 99 && @lines >= 1 && $lines[0] eq $execFailedError) {
+                croak_runtime("Failed to exec $program, is it installed?");
+            }
+
+            # other errors might still be serious but don't need a backtrace
+            if (pretending()) {
+                whisper ("$program gave error exit code $exitCode");
+            } else {
+                warning ("$program gave error exit code $exitCode");
+            }
+        };
 
         return @lines;
     }
@@ -297,8 +313,11 @@ sub filter_program_output
         # We don't want stderr output on tty.
         open (STDERR, '>', '/dev/null') or close (STDERR);
 
-        exec { $program } ($program, @args) or
-            croak_internal("Unable to exec $program: $!");
+        exec { $program } ($program, @args) or do {
+            # Send a message back to parent
+            print $execFailedError;
+            exit 99; # Helper proc, so don't use finish(), just die
+        };
     }
 }
 
