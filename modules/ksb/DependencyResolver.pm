@@ -241,28 +241,29 @@ sub _directDependenciesOf
 #
 # Internal:
 #
-# Given the internal dependency options data and a kde-project item, extracts
-# all "catch-all" rules that apply to the given item and converts them to
-# standard dependencies for that item. The dependency options are then
-# appropriately updated.
+# Given the internal dependency options data and a kde-project full path,
+# extracts all "catch-all" rules that apply to the given item and converts
+# them to standard dependencies for that item. The dependency options are
+# then appropriately updated.
 #
-# No checks are done for logical errors (e.g. having the item depend on itself)
-# and no provision is made to avoid updating a module that has already had its
-# catch-all rules generated.
+# No checks are done for logical errors (e.g. having the item depend on
+# itself) and no provision is made to avoid updating a module that has
+# already had its catch-all rules generated.
 #
 # Parameters:
 #  optionsRef - The hashref as provided to <_visitModuleAndDependencies>
-#  item - The kde-project short module name to generate dependencies for.
+#  fullName - The kde-project full project path to generate dependencies for.
 sub _makeCatchAllRules
 {
-    my ($optionsRef, $item) = @_;
+    my ($optionsRef, $fullName) = @_;
     my $dependenciesOfRef = $optionsRef->{dependenciesOf};
+    my $item = _shortenModuleName($fullName);
 
     while (my ($catchAll, $deps) = each %{$optionsRef->{catchAllDependencies}}) {
         my $prefix = $catchAll;
         $prefix =~ s/\*$//;
 
-        if (($item =~ /^$prefix/) || !$prefix) {
+        if (($fullName =~ /^$prefix/) || !$prefix) {
             my $depEntry = "$item:*";
             $dependenciesOfRef->{$depEntry} //= {
                 '-' => [ ],
@@ -322,7 +323,8 @@ sub _visitModuleAndDependencies
     assert_isa($module, 'ksb::Module');
 
     if ($module->scmType() eq 'proj') {
-        my $item = _shortenModuleName($module->fullProjectPath());
+        my $fullName = $module->fullProjectPath();
+        my $item = _shortenModuleName($fullName);
         my $branch = _getBranchOf($module) // '*';
 
         # Since the initial build list is visited start to finish it is
@@ -332,7 +334,7 @@ sub _visitModuleAndDependencies
         return if ($optionsRef->{visitedItems}->{$item} // 0) == 3;
 
         $dependentName //= $item if $module->getOption('include-dependencies');
-        _visitDependencyItemAndDependencies($optionsRef, "$item:$branch", $level, $dependentName);
+        _visitDependencyItemAndDependencies($optionsRef, $fullName, $branch, $level, $dependentName);
 
         $optionsRef->{visitedItems}->{$item} = 3; # Mark as also in build list
     }
@@ -361,10 +363,11 @@ sub _visitModuleAndDependencies
 #  optionsRef - hashref to the module dependencies, catch-all dependencies,
 #   module build list, module name to <ksb::Module> mapping, and auxiliary data
 #   to see if a module has already been visited.
-#  dependencyItem - a string containing the kde-projects short name for the module,
-#   ':', and the specific branch name for the dependency if needed. The branch
-#   name is '*' if the branch doesn't matter (or can be determined only by the
-#   branch-group in use). E.g. 'baloo:*' or 'akonadi:master'.
+#  dependencyFullItem - a string containing the full kde-projects path for the
+#   the module. The full path is needed to handle wildcarded dependencies.
+#  branch - The specific branch name for the dependency if
+#   needed. The branch name is '*' if the branch doesn't matter (or can be
+#   determined only by the branch-group in use). E.g. '*' or 'master'.
 #  level - Level of recursion of the current call.
 #  dependent - *if set*, is the name of the module that requires that all of its
 #   dependencies be added to the build list (properly ordered) even if not
@@ -378,7 +381,7 @@ sub _visitModuleAndDependencies
 #  was input, in the case that recursive dependency inclusion was requested.
 sub _visitDependencyItemAndDependencies
 {
-    my ($optionsRef, $dependencyItem, $level, $dependentName) = @_;
+    my ($optionsRef, $dependencyFullItem, $branch, $level, $dependentName) = @_;
 
     my $visitedItemsRef     = $optionsRef->{visitedItems};
     my $properBuildOrderRef = $optionsRef->{properBuildOrder};
@@ -387,7 +390,7 @@ sub _visitDependencyItemAndDependencies
     my $moduleFactoryRef    = $optionsRef->{moduleFactoryRef};
     $level //= 0;
 
-    my ($item, $branch) = split(':', $dependencyItem, 2);
+    my $item = _shortenModuleName($dependencyFullItem);
 
     debug ("dep-resolv: Visiting ", (' ' x $level), "$item");
 
@@ -409,7 +412,7 @@ sub _visitDependencyItemAndDependencies
 
     $visitedItemsRef->{$item} = 1; # Mark as currently-visiting for cycle detection.
 
-    _makeCatchAllRules($optionsRef, $item);
+    _makeCatchAllRules($optionsRef, $dependencyFullItem);
 
     for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
         my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
@@ -437,8 +440,8 @@ sub _visitDependencyItemAndDependencies
         }
 
         if (!$subModule) {
-            whisper (" y[b[*] $dependencyItem depends on $subItem, but no module builds $subItem for this run.");
-            _visitDependencyItemAndDependencies($optionsRef, $subItem, $level + 1, $dependentName);
+            whisper (" y[b[*] $item depends on $subItem, but no module builds $subItem for this run.");
+            _visitDependencyItemAndDependencies($optionsRef, $subItemName, $subItemBranch, $level + 1, $dependentName);
         }
         else {
             if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
