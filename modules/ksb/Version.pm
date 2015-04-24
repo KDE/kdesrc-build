@@ -8,7 +8,7 @@ use v5.10;
 
 # It is expected that future git tags will be in the form 'YY.MM' and will
 # be time-based instead of event-based as with previous releases.
-our $VERSION = '1.16';
+our $VERSION = '15.04';
 
 our $SCRIPT_VERSION = $VERSION;
 
