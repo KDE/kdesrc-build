@@ -33,12 +33,11 @@ sub new
 
     # Extract wildcarded groups separately as they are handled separately
     # later. Note that the specific catch-all group '*' is itself handled
-    # as a special case in findModuleBranch. This is important so that
-    # findModuleBranch can assume all these groups have at least '/*'.
+    # as a special case in findModuleBranch.
 
     $self->{wildcardedGroups} = {
         map { ($_, $self->{groups}->{$_}) }
-        grep { substr($_,-2) eq '/*' }
+        grep { substr($_,-1) eq '*' }
             keys %{$self->{groups}}
     };
 
@@ -68,7 +67,7 @@ sub findModuleBranch
 
     my %catchAllGroupStats = map {
         # Map module search spec to prefix string that is required for a match
-        $_ => substr($_, 0, rindex ($_, '/') + 1)
+        $_ => substr($_, 0, -1)
     } keys %{$self->{wildcardedGroups}};
 
     # Sort longest required-prefix to the top... first match that is valid will
