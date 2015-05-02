@@ -590,6 +590,9 @@ sub install
         # Remove builddir
         note ("\tRemoving b[r[$self build directory].");
         safe_rmtree($builddir);
+
+        # We're likely already in the builddir, so chdir back to the root
+        p_chdir('/');
     }
 
     return 1;
