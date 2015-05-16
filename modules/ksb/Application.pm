@@ -1,4 +1,4 @@
-package ksb::Application;
+package ksb::Application 0.20;
 
 # Class: Application
 #
@@ -7,17 +7,16 @@ package ksb::Application;
 
 use strict;
 use warnings;
-use v5.10;
+use 5.014;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
-
-our $VERSION = '0.10';
 
 use ksb::Debug;
 use ksb::Util;
 use ksb::BuildContext;
 use ksb::BuildSystem::QMake;
 use ksb::Module;
-use ksb::ModuleSet;
+use ksb::ModuleResolver;
+use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
 use ksb::ModuleSet::KDEDependencyIncluder;
 use ksb::RecursiveFH;
@@ -1132,15 +1131,12 @@ sub _parseModuleSetOptions
 
             $moduleSet->setModulesToIgnore(@modulesToIgnore);
         }
-        elsif ($option eq 'set-env') {
-            ksb::Module::processSetEnvOption(\%optionSet, $option, $value);
-        }
         else {
             $optionSet{$option} = $value;
         }
     }
 
-    $moduleSet->setOptions(\%optionSet);
+    $moduleSet->setOption(%optionSet);
 
     # Check before we use this module set whether the user did something silly.
     my $repoSet = $ctx->getOption('git-repository-base');

@@ -1,22 +1,24 @@
-package ksb::BuildContext;
+package ksb::BuildContext 0.30;
 
 # Class: BuildContext
 #
 # This contains the information needed about the build context, e.g.  list of
 # modules, what phases each module is in, the various options, etc.
 
-use strict;
+use 5.014;
 use warnings;
-use v5.10;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
-
-our $VERSION = '0.20';
 
 use Carp 'confess';
 use File::Basename; # dirname
 use IO::File;
 use POSIX qw(strftime);
 use Errno qw(:POSIX);
+
+# We derive from ksb::Module so that BuildContext acts like the 'global'
+# ksb::Module, with some extra functionality.
+# TODO: Derive from OptionsBase directly and remove getOption override
+use parent qw(ksb::Module);
 
 use ksb::Debug;
 use ksb::Util;
@@ -27,10 +29,6 @@ use ksb::Updater::KDEProjectMetadata;
 use ksb::Version qw(scriptVersion);
 use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
-
-# We derive from ksb::Module so that BuildContext acts like the 'global'
-# ksb::Module, with some extra functionality.
-our @ISA = qw(ksb::Module);
 
 my @DefaultPhases = qw/update build install/;
 my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
@@ -663,36 +661,15 @@ sub failedModulesInPhase
     return @{$self->{errors}{$phase} || []};
 }
 
-# Returns true if the build context has overridden the value of the given module
-# option key. Use getOption (on this object!) to get what the value actually is.
-sub hasStickyOption
-{
-    my ($self, $key) = @_;
-    $key =~ s/^#//; # Remove sticky marker.
-
-    return 1 if list_has([qw/pretend disable-agent-check/], $key);
-    return $self->hasOption("#$key");
-}
-
-# OVERRIDE: Returns one of the following:
-# 1. The sticky option overriding the option name given.
-# 2. The value of the option name given.
-# 3. The empty string (this function never returns undef).
-#
-# The first matching option is returned. See ksb::Module::getOption, which is
-# typically what you should be using.
+# OVERRIDE: Our immediate parent class Module overrides this, but we actually
+# want the OptionsBase version to be used instead, until we break the recursive
+# use of Module's own getOption calls on our getOption.
 sub getOption
 {
-    my ($self, $key) = @_;
-
-    foreach ("#$key", $key) {
-        return $self->{options}{$_} if exists $self->{options}{$_};
-    }
-
-    return '';
+    &ksb::OptionsBase::getOption;
 }
 
-# OVERRIDE: Overrides ksb::Module::setOption to handle some global-only options.
+# OVERRIDE: Overrides OptionsBase::setOption to handle some global-only options.
 sub setOption
 {
     my ($self, %options) = @_;

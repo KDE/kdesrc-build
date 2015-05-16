@@ -1,4 +1,4 @@
-package ksb::Module;
+package ksb::Module 0.20;
 
 # Class: Module
 #
@@ -6,12 +6,11 @@ package ksb::Module;
 # and installed. Includes a stringifying overload and can be sorted amongst
 # other ksb::Modules.
 
-use strict;
+use 5.014;
 use warnings;
-use v5.10;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
-our $VERSION = '0.10';
+use parent qw(ksb::OptionsBase);
 
 use ksb::IPC;
 use ksb::Debug;
@@ -45,7 +44,7 @@ use overload
 # We will 'mixin' various backend-specific classes, e.g. Updater::Git or Updater::Svn
 # TODO: I later used composition for the source update instead of inheritance, didn't
 # I also use composition for the build system backend? If so remove this. --mpyne
-our @ISA = qw(ksb::BuildSystem);
+#our @ISA = qw(ksb::BuildSystem);
 
 my $ModuleSource = 'config';
 
@@ -53,7 +52,9 @@ sub new
 {
     my ($class, $ctx, $name) = @_;
 
-    confess "Empty ksb::Module constructed" unless $name;
+    croak_internal ("Empty ksb::Module constructed") unless $name;
+
+    my $self = ksb::OptionsBase::new($class);
 
     # If building a BuildContext instead of a ksb::Module, then the context
     # can't have been setup yet...
@@ -61,29 +62,24 @@ sub new
     if ($class ne $contextClass &&
         (!blessed($ctx) || !$ctx->isa($contextClass)))
     {
-        confess "Invalid context $ctx";
+        croak_internal ("Invalid context $ctx");
     }
 
     # Clone the passed-in phases so we can be different.
-    my $phases = dclone($ctx->phases()) if $class eq 'ksb::Module';
+    my $phases = dclone($ctx->phases()) if $ctx;
 
-    # Use a sub-hash of the context's build options so that all
-    # global/module options are still in the same spot. The options might
-    # already be set by read_options, but in case they're not we assign { }
-    # if not already defined.
-    $ctx->{build_options}{$name} //= { };
-
-    my $module = {
+    my %newOptions = (
         name         => $name,
         scm_obj      => undef,
         build_obj    => undef,
         phases       => $phases,
         context      => $ctx,
-        options      => $ctx->{build_options}{$name},
         'module-set' => undef,
-    };
+    );
 
-    return bless $module, $class;
+    @{$self}{keys %newOptions} = values %newOptions;
+
+    return $self;
 }
 
 sub phases
@@ -824,6 +820,8 @@ sub update
     return $returnValue;
 }
 
+# OVERRIDE
+#
 # This subroutine returns an option value for a given module.  Some globals
 # can't be overridden by a module's choice (but see 2nd parameter below).
 # If so, the module's choice will be ignored, and a warning will be issued.
@@ -849,7 +847,6 @@ sub getOption
 {
     my ($self, $key, $levelLimit) = @_;
     my $ctx = $self->buildContext();
-    assert_isa($ctx, 'ksb::BuildContext');
     $levelLimit //= 'allow-inherit';
 
     # Some global options would probably make no sense applied to Qt.
@@ -875,79 +872,6 @@ sub getOption
     # Everything else overrides the global option, unless it's simply not
     # set at all.
     return $self->{options}{$key} // $ctx->getOption($key);
-}
-
-# Returns true if (and only if) the given option key value is set as an
-# option for this module, even if the corresponding value is empty or
-# undefined. In other words it is a way to see if the name of the key is
-# recognized in some fashion.
-#
-# First parameter: Key to lookup.
-# Returns: True if the option is set, false otherwise.
-sub hasOption
-{
-    my ($self, $key) = @_;
-    my $name = $self->name();
-
-    return exists $self->{options}{$key};
-}
-
-# Function: processSetEnvOption
-#
-# Handles setting set-env options in a format appropriate for a Module option
-# hash (a reference to which should be given as the first argument).
-#
-# Though part of the Module package, this is a simple sub, not a "method", so
-# call with Module::processSetEnvOption, not ->.
-#
-# Parameters:
-#
-# optionHash - hashref to the option hash where the set-env option(s) will be
-#   stored. The environment variable settings will be stored under the 'set-env'
-#   key, which will hold a hashref to the variables/values.
-# variable - Name of the environment variable to later set.
-# value - Value to give to the environment (can be empty).
-#
-# Returns:
-#
-# Boolean true if variable was processed, false otherwise.
-sub processSetEnvOption
-{
-    my ($href, $variable, $value) = @_;
-
-    return if $variable !~ /^#?set-env$/;
-
-    my ($var, @values) = split(' ', $value);
-
-    ${$href}{$variable} //= { };
-    ${$href}{$variable}->{$var} = join(' ', @values);
-
-    return 1;
-}
-
-# Sets the option refered to by the first parameter (a string) to the
-# scalar (e.g. references are OK too) value given as the second paramter.
-sub setOption
-{
-    my ($self, %options) = @_;
-    while (my ($key, $value) = each %options) {
-        # ref($value) checks if value is already a reference (i.e. a hashref)
-        # which means we should just copy it over, as all processSetEnvOption
-        # does is convert the string to the right hashref.
-        if (!ref($value) && processSetEnvOption($self->{options}, $key, $value))
-        {
-            return
-        }
-
-        $self->{options}{$key} = $value;
-    }
-}
-
-# Simply removes the given option and its value, if present
-sub deleteOption
-{
-    my ($self, $key) = @_;
-    delete $self->{options}{$key} if exists $self->{options}{$key};
 }
 
 # Gets persistent options set for this module. First parameter is the name
@@ -979,17 +903,6 @@ sub unsetPersistentOption
 {
     my ($self, $key) = @_;
     $self->buildContext()->unsetPersistentOption($self->name(), $key);
-}
-
-# Clones the options from the given ksb::Module (as handled by
-# hasOption/setOption/getOption). Options on this module will then be able
-# to be set independently from the other module.
-sub cloneOptionsFrom
-{
-    my $self = shift;
-    my $other = assert_isa(shift, 'ksb::Module');
-
-    $self->{options} = dclone($other->{options});
 }
 
 # Returns the path to the desired directory type (source or build),

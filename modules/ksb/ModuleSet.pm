@@ -1,4 +1,4 @@
-package ksb::ModuleSet;
+package ksb::ModuleSet 0.20;
 
 # Class: ModuleSet
 #
@@ -31,10 +31,10 @@ package ksb::ModuleSet;
 
 use strict;
 use warnings;
-use v5.10;
+use 5.014;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
-our $VERSION = '0.10';
+use parent qw(ksb::OptionsBase);
 
 use ksb::Debug;
 use ksb::Util;
@@ -48,15 +48,17 @@ sub new
     my ($class, $ctx, $name) = @_;
     $name //= '';
 
-    my $options = {
+    my $self = ksb::OptionsBase::new($class);
+
+    my %newOptions = (
         name => $name,
-        options => { },
         module_search_decls => [ ],
         module_ignore_decls => [ ],
         phase_list => ksb::PhaseList->new($ctx->phases()->phases()),
-    };
+    );
 
-    return bless $options, $class;
+    @{$self}{keys %newOptions} = values %newOptions;
+    return $self;
 }
 
 sub name
@@ -69,22 +71,6 @@ sub setName
 {
     my ($self, $name) = @_;
     $self->{name} = $name;
-    return;
-}
-
-# Returns a deep-copied hashref, not a hash.
-sub options
-{
-    my $self = shift;
-    return dclone($self->{options});
-}
-
-# Completely replaces stored options with the options given in the provided
-# hashref.
-sub setOptions
-{
-    my ($self, $hashref) = @_;
-    $self->{options} = $hashref;
     return;
 }
 
@@ -141,9 +127,7 @@ sub _initializeNewModule
     $newModule->setModuleSet($self);
     $newModule->setScmType('git');
     $newModule->phases->phases($self->phases()->phases());
-
-    # Dump all options into the existing ksb::Module's options.
-    $newModule->setOption(%{$self->options()});
+    $newModule->mergeOptionsFrom($self);
 }
 
 # This function should be called after options are read and build metadata is
