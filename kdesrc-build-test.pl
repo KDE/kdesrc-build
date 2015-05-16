@@ -11,7 +11,7 @@
 
 use strict;
 use warnings;
-use 5.010;
+use 5.014;
 use Getopt::Long;
 use Scalar::Util qw(blessed);
 use FindBin qw($RealBin $Bin);
