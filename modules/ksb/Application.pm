@@ -18,7 +18,6 @@ use ksb::Module;
 use ksb::ModuleResolver;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
-use ksb::ModuleSet::KDEDependencyIncluder;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
 use ksb::IPC::Pipe 0.20;
@@ -312,215 +311,6 @@ DONE
         = values %auxOptions;
 }
 
-# Method: _resolveSelectorsIntoModules
-#
-# Takes the provided list of module/module-set selectors, pending options to set,
-# and module/module-sets to choose from (as read from rc-file) and selects the
-# appropriate rc-file module/module-sets.
-#
-# Additionally the module-sets are expanded into modules.
-#
-# All pending options are set into each module. Global options are set by
-# removing any existing rc-file option value, so you must setup the build context
-# separately to have the needed option for this to work. Additionally, the
-# KDE project metadata must be available.
-#
-# Returns a list of <ksb::Modules> in build order.
-#
-# This is a package method, should be called as
-# $app->_resolveSelectorsIntoModules
-#
-# Phase:
-#  initialization - Do not call <finish> from this function.
-#
-# Parameters:
-#  ctx - <BuildContext> in use.
-#
-#  selectors - listref to hold the list of module or module-set selectors to
-#    build, in the order desired by the user. The value of this parameter
-#    WILL BE CHANGED by this function (each string name is replaced by matching
-#    <Module> or <ModuleSet>.
-#
-#  modNew - reference to a subroutine to run that will accept a newly-made
-#    <Module> and perform any needed setup. The idea is that this subroutine
-#    will also setup any pending options (either from the cmdline or as rc-file
-#    overlay). This could easily be an object except it doesn't seem to warrant
-#    a full separate class.
-#
-#  rcFileModulesAndModuleSets - listref to a list of <Module> or <ModuleSet> (and
-#    no other types) that can be selected from.
-#
-# Returns:
-#  A list of <Module> to build (all module-sets expanded), with options
-#  correctly setup from the rc-file and cmdline, in the same relative order as
-#  determined in selectors.
-#
-#  If any passed-in selector does not match a module or module set from
-#  rcFileModulesAndModuleSets then a <Module> will be created and assumed to
-#  come from the kde-projects repository. A special option flag
-#  '#guessed-kde-project' will be set for such modules.
-sub _resolveSelectorsIntoModules
-{
-    my ($self, $ctx, $selectorsRef, $modNewRef, $rcFileModulesAndModuleSetsRef)
-        = @_;
-    my @modules = @{$selectorsRef};
-
-    # Lookup modules/module-sets by name
-    my %lookupTable =
-        map { $_->name() => $_ } (@$rcFileModulesAndModuleSetsRef);
-
-    # Separate lookup table for the use-modules entries for module-sets to allow
-    # for partial module-set expansion. This and lookupTable *should* end up
-    # with disjoint sets of module-names, at least as long as the user declared
-    # their option-overriding module *after* the appropriate use-modules line.
-    my %setEntryLookupTable;
-    for my $moduleSet (grep { $_->isa('ksb::ModuleSet') } (@{$rcFileModulesAndModuleSetsRef}))
-    {
-        my @results = $moduleSet->moduleNamesToFind();
-
-        # Have each use-module item point to the source module-set. The
-        # parens in front of 'x' are semantically required for repetition!
-        @setEntryLookupTable{@results} = ($moduleSet) x scalar @results;
-    }
-
-    my %expandedModuleSets; # Holds module-sets expanded on-the-fly
-
-    # This is the meat of our procedure, so we wrap in a sub.
-    # If not for the dependency on almost all of our params and the lifetime
-    # requirements this could be a separate function.
-    my $lookupSelector = sub {
-        my $selector = shift;
-        my $selectorName = $selector;
-
-        # Module selectors beginning with '+' force treatment as a kde-projects
-        # module, which means they won't be matched here (we're only looking for
-        # sets).
-        my $forcedToKDEProject = substr($selectorName, 0, 1) eq '+';
-        substr($selectorName, 0, 1, '') if $forcedToKDEProject;
-
-        # This test applies for both modules and (entire) module-sets. Note
-        # that a partially-expanded module-set has its module results
-        # re-inserted into lookup table though.
-        if (exists $lookupTable{$selectorName}) {
-            $selector = $lookupTable{$selectorName};
-            $selector->{options}->{'#selected-by'} = 'name';
-        }
-        # This applies to module-sets when only a partial expansion is needed.
-        elsif (exists $setEntryLookupTable{$selectorName}) {
-            my $neededModuleSet = $setEntryLookupTable{$selectorName};
-
-            # _expandModuleSets applies pending/cmdline options.
-            if (!exists $expandedModuleSets{$neededModuleSet}) {
-                my @moduleResults = _expandModuleSets(
-                    $ctx, $modNewRef, $neededModuleSet);
-                $expandedModuleSets{$neededModuleSet} = \@moduleResults;
-            }
-
-            $selector = first {
-                $_->name() eq $selectorName
-            } @{$expandedModuleSets{$neededModuleSet}};
-
-            if (!$selector) {
-                # If the selector doesn't match a name exactly it probably matches
-                # a wildcard prefix. e.g. 'kdeedu' as a selector would pull in all kdeedu/*
-                # modules, but kdeedu is not a module-name itself anymore. We'd want to
-                # have kdesrc-build simply treat this as a module-set, but we can't use the
-                # expanded module list... instead we'll return the module set reference and
-                # it will be expanded later.
-                $selector = $neededModuleSet;
-            }
-
-            # Can't use setOption since this might be a module-set
-            my $selectedReason = 'partial-expansion-' . $neededModuleSet->name();
-            $selector->{options}->{'#selected-by'} = $selectedReason;
-
-            $lookupTable{$selectorName} = $neededModuleSet;
-        }
-        elsif (ref $selector && $selector->isa('ksb::Module')) {
-            # We couldn't find anything better than what we were provided,
-            # just give it back.
-            $selector = $selector;
-            $selector->setOption('#selected-by', 'best-guess-after-full-search');
-        }
-        elsif ($forcedToKDEProject) {
-            # Just assume it's a kde-projects module and expand away...
-            $selector = ksb::ModuleSet::KDEProjects->new($ctx, '_cmdline');
-            $selector->setModulesToFind($selectorName);
-        }
-        else {
-            # Neither a named Module, ModuleSet, or use-modules entry within a
-            # known ModuleSet. It's possible it might be a to-be-expanded
-            # ModuleSet entry though, so create a shell Module for now and mark
-            # it as a guess so we can see if it can be sorted out later.
-            $selector = ksb::Module->new($ctx, $selectorName);
-            $selector->phases()->phases($ctx->phases()->phases());
-
-            if ($selectorName eq 'l10n') {
-                $_->setScmType('l10n')
-            }
-
-            $selector->setScmType('proj');
-            $selector->setOption('#guessed-kde-project', 1);
-            $selector->setOption('#selected-by', 'initial-guess');
-        }
-
-        return $selector;
-    };
-
-    # We have to be careful to maintain order of selectors throughout.
-    for my $selector (@modules) {
-        $selector = $lookupSelector->($selector);
-        # Perform module option setup
-        $modNewRef->($selector) if $selector->isa('ksb::Module');
-    }
-
-    # Filter --resume-foo first so entire module-sets can be skipped.
-    # Wrap in eval to catch runtime errors
-    eval { @modules = _applyModuleFilters($ctx, @modules); };
-
-    @modules = _expandModuleSets($ctx, $modNewRef, @modules);
-
-    # If we have any 'guessed' modules then they had no obvious source in the
-    # rc-file. But they might still be implicitly from one of our module-sets.
-    # We want them to use ksb::Modules from the rc-file modules/module-sets
-    # instead of our shell Modules, if possible.
-    # But we didn't expand module-sets in rcFileModulesAndModuleSets
-    # unconditionally, only ones that had been selected via the selectors.
-    # Because of this we may need to go a step further and expand out all
-    # remaining module-sets in rcFileModulesAndModuleSets if we have 'guess'
-    # modules still left over, and see if we can then successfully match.
-    if (first { $_->getOption('#guessed-kde-project', 'module') } @modules) {
-        my @expandedOptionModules =
-            _expandModuleSets($ctx, $modNewRef, @$rcFileModulesAndModuleSetsRef);
-        %lookupTable = map { $_->name() => $_ } @expandedOptionModules;
-
-        for my $guessedModule (grep {
-            $_->getOption('#guessed-kde-project', 'module') } @modules)
-        {
-            # If the module we want could be found from within our rc-file
-            # module-sets (even implicitly), use it. Otherwise assume
-            # kde-projects and evaluate now.
-            if (exists $lookupTable{$guessedModule->name()}) {
-                $guessedModule = $lookupTable{$guessedModule->name()};
-            }
-            else {
-                my $set = ksb::ModuleSet::KDEProjects->new($ctx, "guessed_from_cmdline");
-                my $searchItem = $guessedModule->name();
-                $set->setModulesToFind($guessedModule->name());
-
-                my @results = _expandModuleSets($ctx, $modNewRef, $set);
-                $guessedModule = first { "$_" eq "$searchItem" } @results;
-                if (!$guessedModule) {
-                    # This is a misfeature, I know. This should support whole sets too.
-                    croak_runtime ("$searchItem doesn't match a single module, it matches many.");
-                }
-            }
-        }
-    }
-
-    return @modules;
-}
-
 # Generates the build context and module list based on the command line options
 # and module selectors provided, and sets up the module factory.
 #
@@ -611,43 +401,25 @@ sub generateModuleList
     # We also might have cmdline "selectors" to determine which modules or
     # module-sets to choose. First let's select module sets, and expand them.
 
-    my @modules;
     my @globalCmdlineArgs = keys %{$pendingGlobalOptions};
     my $commandLineModules = scalar @selectors;
 
-    my $newModuleSub = sub {
-        my $module = shift;
-        while (my ($k, $v) = each %{$pendingOptions->{$module->name()}}) {
-            $module->setOption($k, $v);
-        }
+    my $moduleResolver = ksb::ModuleResolver->new($ctx);
+    $moduleResolver->setPendingOptions($pendingOptions);
+    $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
+    $moduleResolver->setIgnoredSelectors(keys %ignoredSelectors);
 
-        # Just in case
-        delete @{$module->{options}}{@globalCmdlineArgs};
-    };
+    $self->_defineNewModuleFactory($moduleResolver);
 
-    # Called here since it depends on the closure above
-    $self->_defineNewModuleFactory($newModuleSub);
-
+    my @modules;
     if ($commandLineModules) {
-        if (!$pendingGlobalOptions->{'include-dependencies'}) {
-            # modules were manually selected on cmdline, so ignore module-based
-            # include-dependencies, unless include-dependencies also set on
-            # cmdline.
-            $ctx->setOption('#include-dependencies', 0);
-        }
-
-        # select our modules and module-sets, and expand them out
-        @modules = $self->_resolveSelectorsIntoModules(
-            $ctx, \@selectors, $newModuleSub, \@optionModulesAndSets);
+        @modules = $moduleResolver->resolveSelectorsIntoModules(@selectors);
 
         ksb::Module->setModuleSource('cmdline');
     }
     else {
         # Build everything in the rc-file, in the order specified.
-
-        # Check for ignored module-sets and modules (pre-expansion)
-        @optionModulesAndSets = grep { ! exists $ignoredSelectors{$_->name()} } @optionModulesAndSets;
-        @modules = _expandModuleSets($ctx, $newModuleSub, @optionModulesAndSets);
+        @modules = $moduleResolver->expandModuleSets(@optionModulesAndSets);
 
         if ($ctx->getOption('kde-languages')) {
             @modules = _expandl10nModules($ctx, @modules);
@@ -790,7 +562,7 @@ sub runAllModulePhases
 
     # Filter --resume-foo options. This might be a second pass, but that should
     # be OK since there's nothing different going on from the first pass (in
-    # _resolveSelectorsIntoModules) in that event.
+    # resolveSelectorsIntoModules) in that event.
     @modules = _applyModuleFilters($ctx, @modules);
 
     if ($ctx->getOption('print-modules')) {
@@ -2166,72 +1938,20 @@ EOF
     return @moduleList[$startIndex .. $stopIndex];
 }
 
-# Function: _expandModuleSets
-#
-# Replaces <ModuleSets> in an input list from the command line that name
-# module-sets listed in the configuration file, and returns the new list.
-#
-# <Modules> are ignored if found in the input list, and transferred to the
-# output list in the same relative order.
-#
-# This function may result in kde-projects metadata being downloaded and
-# processed.
-#
-# Parameters:
-#  $ctx - <BuildContext> in use for this script execution.
-#  $modNew  - Reference to a subroutine to be run for every new <Module>
-#    created. See _resolveSelectorsIntoModules for full details.
-#  @modules - list of <Modules>, <ModuleSets> to be expanded.
-#
-# Returns:
-#  @modules - List of <Modules> with any module-sets expanded into <Modules>.
-sub _expandModuleSets
-{
-    my ($ctx, $modNewSub, @buildModuleList) = @_;
-
-    my $filter = sub {
-        if ($_->isa('ksb::ModuleSet')) {
-            return map { $modNewSub->($_); $_ } ($_->convertToModules($ctx));
-        }
-
-        return $_;
-    };
-
-    my @moduleResults = map { &$filter } (@buildModuleList);
-
-    return @moduleResults;
-}
-
 # This defines the factory function needed for lower-level code to properly be
 # able to create ksb::Module objects from just the module name, while still
 # having the options be properly set and having the module properly tied into a
 # context.
 sub _defineNewModuleFactory
 {
-    my ($self, $newModuleSub) = @_;
+    my ($self, $resolver) = @_;
     my $ctx = $self->context();
-    my $projSet = ksb::ModuleSet::KDEDependencyIncluder->new($ctx, '<kde-project auto-dep>');
 
     $self->{module_factory} = sub {
-        my $name = shift;
-        $projSet->setModulesToFind($name);
-        my @results = $projSet->convertToModules($ctx);
-
-        # Thought experiment: a module depends on phonon/phonon, which gets duly
-        # shortened to 'phonon'. Our kde-project code expands that by default to
-        # 'phonon/*', which returns {phonon,phonon-vlc,phonon-gstreamer}, etc.
-        # We need to make sure to return only matching modules.
-        my @mods = grep { $_->name() eq $name } (@results);
-        if (@mods > 1) {
-            croak_runtime ("Too many modules match $name; results were " .
-                join(', ', @mods)."\nCandidates @results");
-        }
-
-        # No modules found? Bail out.
-        return if (!@mods);
-
-        $newModuleSub->($mods[0]);
-        return $mods[0];
+        # We used to need a special module-set to ignore virtual deps (they
+        # would throw errors if the name did not exist). But, the resolver
+        # handles that fine as well.
+        return $resolver->resolveModuleIfPresent(shift);
     };
 }
 
