@@ -1086,7 +1086,7 @@ sub _readConfigurationOptions
             next; # Skip all the stuff below
         }
         # Module override (for use-modules from a module-set), or option overrride?
-        elsif ($type eq 'options' || exists $seenModuleSetItems{$modulename}) {
+        elsif ($type eq 'options') {
             # Parse the modules...
             $newModule = _parseModuleOptions($ctx, $fileReader, "#overlay_$modulename");
 
@@ -1100,12 +1100,6 @@ sub _readConfigurationOptions
 
             # Don't mask global cmdline options.
             delete @{$moduleOptsRef}{@pendingOptsKeys};
-
-            # TODO: Remove compat handling of 'module $foo' as 'options $foo',
-            # probably 2014-04-01?
-            if ($type ne 'options') {
-                warning ("Don't use b[r[module $modulename] on line $., use b[g[options $modulename]");
-            }
 
             next; # Don't add to module list
         }
