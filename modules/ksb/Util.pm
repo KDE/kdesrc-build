@@ -22,7 +22,7 @@ use ksb::Version qw(scriptVersion);
 use ksb::BuildException;
 
 use Exporter qw(import); # Use Exporter's import method
-our @EXPORT = qw(list_has assert_isa assert_in any
+our @EXPORT = qw(list_has assert_isa assert_in any unique_items
                  croak_runtime croak_internal had_an_exception make_exception
                  download_file absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
@@ -662,6 +662,15 @@ sub any(&@)
     my ($subRef, $listRef) = @_;
     ($subRef->($_) && return 1) foreach @{$listRef};
     return 0;
+}
+
+# Returns unique items of the list. Order not guaranteed.
+sub unique_items
+{
+    # See perlfaq4
+    my %seen;
+    my @results = grep { ! $seen{$_}++; } @_;
+    return @results;
 }
 
 # Subroutine to delete a directory and all files and subdirectories within.
