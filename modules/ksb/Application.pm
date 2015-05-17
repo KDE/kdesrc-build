@@ -1159,35 +1159,6 @@ sub _executeCommandLineProgram
     };
 }
 
-# Function: _spliceOptionModules
-#
-# Replaces any modules in a given list that have a name matching that of a
-# "option module" with that option module inline. Modules that have no "option
-# module" match are unchanged.
-#
-# Parameters:
-#  @$modules - Listref of modules to potentially splice in replacements of.
-#  @$optionModules - Listref to list of the "option" modules (and module-sets),
-#  which should be of the same level of kde-project expansion as @$modules. A
-#  module-set might be spliced in to replace a named module.
-#
-# Returns:
-#  Nothing.
-sub _spliceOptionModules
-{
-    my ($modulesRef, $optionModulesRef) = @_;
-
-    for (my $i = 0; $i < scalar @{$modulesRef}; $i++) {
-        my $module = ${$modulesRef}[$i];
-
-        my ($optionModule) = grep {
-            $_->name() eq $module->name()
-        } @{$optionModulesRef};
-
-        splice @$modulesRef, $i, 1, $optionModule if defined $optionModule;
-    }
-}
-
 # Function: _split_url
 #
 # Subroutine to split a url into a protocol and host
