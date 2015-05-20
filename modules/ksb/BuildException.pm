@@ -3,7 +3,7 @@ package ksb::BuildException;
 # A class to wrap 'exception' messages for the script, allowing them to be
 # dispatch based on type and automatically stringified.
 
-use v5.10; # Needed for state keyword
+use 5.014; # Needed for state keyword
 use strict;
 use warnings;
 use overload

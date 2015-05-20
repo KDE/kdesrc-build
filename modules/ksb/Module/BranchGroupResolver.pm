@@ -8,7 +8,7 @@ package ksb::Module::BranchGroupResolver;
 
 use strict;
 use warnings;
-use v5.10;
+use 5.014;
 
 our $VERSION = '0.10';
 

@@ -8,7 +8,7 @@ package ksb::DependencyResolver;
 
 use strict;
 use warnings;
-use v5.10;
+use 5.014;
 
 our $VERSION = '0.20';
 

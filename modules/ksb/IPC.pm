@@ -7,7 +7,7 @@ package ksb::IPC;
 
 use strict;
 use warnings;
-use v5.10;
+use 5.014;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
 our $VERSION = '0.20';

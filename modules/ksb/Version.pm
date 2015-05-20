@@ -4,7 +4,7 @@ package ksb::Version;
 
 use strict;
 use warnings;
-use v5.10;
+use 5.014;
 
 # It is expected that future git tags will be in the form 'YY.MM' and will
 # be time-based instead of event-based as with previous releases.

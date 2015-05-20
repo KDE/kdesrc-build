@@ -2,7 +2,7 @@ package ksb::Util;
 
 # Useful utilities, which are exported into the calling module's namespace by default.
 
-use v5.10; # Needed for state keyword
+use 5.014; # Needed for state keyword
 use strict;
 use warnings;
 
