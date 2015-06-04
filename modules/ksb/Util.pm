@@ -15,7 +15,7 @@ use File::Find;
 use Cwd qw(getcwd);
 use Errno qw(:POSIX);
 use Digest::MD5;
-use LWP::UserAgent;
+use HTTP::Tiny;
 
 use ksb::Debug;
 use ksb::Version qw(scriptVersion);
@@ -598,31 +598,29 @@ sub download_file
 {
     my ($url, $filename, $proxy) = @_;
 
-    my $ua = LWP::UserAgent->new(timeout => 30);
     my $scriptVersion = scriptVersion();
-
-    # Trailing space adds the appropriate LWP info since the resolver is not
-    # my custom coding anymore.
-    $ua->agent("kdesrc-build/$scriptVersion ");
+    my %opts = (
+        # Trailing space adds lib version info
+        agent => "kdesrc-build/$scriptVersion ",
+        timeout => 30,
+    );
 
     if ($proxy) {
-        whisper ("Using proxy $proxy for FTP, HTTP downloads");
-        $ua->proxy(['http', 'ftp'], $proxy);
+        whisper ("Using proxy $proxy for HTTP downloads");
+        $opts{proxy} = $proxy;
     }
-    else {
-        whisper ("Using proxy as determined by environment");
-        $ua->env_proxy();
-    }
+
+    my $http_client = HTTP::Tiny->new(%opts);
 
     whisper ("Downloading g[$filename] from g[$url]");
-    my $response = $ua->mirror($url, $filename);
+    my $response = $http_client->mirror($url, $filename);
 
-    # LWP's mirror won't auto-convert "Unchanged" code to success, so check for
-    # both.
-    return 1 if $response->code == 304 || $response->is_success;
+    return 1 if $response->{success};
 
+    $response->{reason} .= " $response->{content}" if $response->{status} == 599;
     error ("Failed to download y[b[$url] to b[$filename]");
-    error ("Result was: y[b[" . $response->status_line . "]");
+    error ("Result was: y[b[$response->{status} $response->{reason}]");
+
     return 0;
 }
 

@@ -16,7 +16,6 @@ use File::Basename; # basename
 use File::Spec;     # tmpdir
 use POSIX qw(strftime);
 use List::Util qw(first);
-use URI;
 
 use ksb::IPC::Null;
 
@@ -454,6 +453,18 @@ sub _determinePreferredCheckoutSource
     return ($checkoutSource, $sourceTypeRef->[1]);
 }
 
+# Splits a URI up into its component parts. Taken from
+# http://search.cpan.org/~ether/URI-1.67/lib/URI.pm
+# Copyright Gisle Aas under the following terms:
+# "This program is free software; you can redistribute it and/or modify it
+# under the same terms as Perl itself."
+sub _splitUri
+{
+    my($scheme, $authority, $path, $query, $fragment) =
+        $_[0] =~ m|(?:([^:/?#]+):)?(?://([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?|;
+    return ($scheme, $authority, $path, $query, $fragment);
+}
+
 # Attempts to download and install a git snapshot for the given ksb::Module.
 # This requires the module to have the '#snapshot-tarball' option set,
 # normally done after KDEXMLReader is used to parse the projects.kde.org
@@ -488,7 +499,7 @@ sub installGitSnapshot
 
     info ("\tDownloading git snapshot for g[$module]");
 
-    my $filename = basename(URI->new($tarball)->path());
+    my $filename = basename( (_splitUri($tarball))[2] );
     my $tmpdir = File::Spec->tmpdir() // "/tmp";
     $filename = "$tmpdir/$filename"; # Make absolute
 
