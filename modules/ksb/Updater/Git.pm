@@ -94,6 +94,7 @@ sub clone
 
     if ((my $e = had_an_exception()) || !$result) {
         warning($e->message()) if $e;
+        note ("\tFalling back to clone of $module");
         if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
             croak_runtime("Failed to make initial clone of $module");
         }
@@ -503,6 +504,7 @@ sub installGitSnapshot
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
     my $module = $self->module();
+    my $baseDir = $module->getSourceDir();
     my $tarball = $module->getOption('#snapshot-tarball');
 
     return 0 if $module->getOption('disable-snapshots');
@@ -550,8 +552,9 @@ sub installGitSnapshot
     $result = log_command($module, 'init-git-repo', ['/bin/sh', './initrepo.sh']);
 
     if ($result) {
+        p_chdir($baseDir);
         safe_rmtree($sourceDir);
-        croak_runtime("Snapshot for $module extracted successfully, but failed to complete initrepo.sh");
+        croak_runtime("Snapshot for $module failed to complete initrepo.sh");
     }
 
     whisper ("\tConverting to kde:-style URL");
