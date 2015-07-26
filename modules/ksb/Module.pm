@@ -957,7 +957,7 @@ sub destDir
         $basePath ||= $self->name(); # Default if not provided in XML
     }
 
-    $destDir =~ s/(\${MODULE})|(\$MODULE\b)/$basePath/g;
+    $destDir =~ s/(\$\{MODULE})|(\$MODULE\b)/$basePath/g;
 
     return $destDir;
 }
@@ -978,7 +978,7 @@ sub installationPath
     }
 
     my $moduleName = $self->name();
-    $path =~ s/(\${MODULE})|(\$MODULE\b)/$moduleName/g;
+    $path =~ s/(\$\{MODULE})|(\$MODULE\b)/$moduleName/g;
 
     return $path;
 }
