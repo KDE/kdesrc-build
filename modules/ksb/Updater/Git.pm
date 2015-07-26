@@ -15,7 +15,7 @@ our @ISA = qw(ksb::Updater);
 use File::Basename; # basename
 use File::Spec;     # tmpdir
 use POSIX qw(strftime);
-use List::Util qw(first any);
+use List::Util qw(first);
 
 use ksb::IPC::Null;
 
@@ -137,7 +137,7 @@ sub _isDirectoryEmpty
     # whatever context the function is called in.
 
     opendir (my $dh, $dir) or return;
-    if (any { $_ ne '.' && $_ ne '..' } readdir($dh)) {
+    if (any { $_ ne '.' && $_ ne '..' } [readdir($dh)]) {
         close $dh;
         return;
     }
