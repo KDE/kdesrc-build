@@ -24,7 +24,8 @@ sub new
     # TODO: Support different localization branches?
 
     $module->setOption('module-base-path', 'trunk/l10n-kde4');
-    return bless { module => $module, needsRefreshed => 1 }, $class;
+    my $refreshMessage = "an update happened";
+    return bless { module => $module, needsRefreshed => $refreshMessage }, $class;
 }
 
 sub module
@@ -75,7 +76,7 @@ sub updateInternal
         $self->check_module_validity();
         my $count = $self->update_module_path(@dirs);
 
-        $self->{needsRefreshed} = 0 if $count == 0;
+        $self->{needsRefreshed} = '' if $count == 0;
         return $count;
     }
     else {
@@ -103,7 +104,7 @@ sub needsRefreshed
 {
     my $self = shift;
 
-    # Should be 1 except if no update happened.
+    # Should be a 'reason' string except if no update happened.
     return $self->{needsRefreshed};
 }
 

@@ -159,10 +159,11 @@ sub waitForModule
                 # Properly account for users manually doing --refresh-build or
                 # using .refresh-me.
                 $message = 'no files affected';
-                if ($module->buildSystem()->needsRefreshed())
+                my $refreshReason = $module->buildSystem()->needsRefreshed();
+                if ($refreshReason ne "")
                 {
                     $updated->{$buffer} = 'success';
-                    note ("\tNo source update, but g[$module] meets other building criteria.");
+                    note ("\tNo source update, but $refreshReason");
                 }
                 else
                 {

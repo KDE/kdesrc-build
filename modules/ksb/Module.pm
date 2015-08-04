@@ -473,7 +473,8 @@ sub setupBuildSystem
         croak_internal('Build system determination still pending when build attempted.');
     }
 
-    if ($buildSystem->needsRefreshed())
+    my $refreshReason = $buildSystem->needsRefreshed();
+    if ($refreshReason ne "")
     {
         # The build system needs created, either because it doesn't exist, or
         # because the user has asked that it be completely rebuilt.

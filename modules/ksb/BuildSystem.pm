@@ -60,7 +60,7 @@ sub module
 
 # Subroutine to determine if a given module needs to have the build system
 # recreated from scratch.
-# If so, it returns boolean true.
+# If so, it returns a non empty string
 sub needsRefreshed
 {
     my $self = assert_isa(shift, 'ksb::BuildSystem');
@@ -68,13 +68,23 @@ sub needsRefreshed
     my $builddir = $module->fullpath('build');
     my $confFileKey = $self->configuredModuleFileName();
 
-    return 1 if ((not -e "$builddir") ||
-        (-e "$builddir/.refresh-me") ||
-        $module->getOption("refresh-build") ||
-        (($module->getPersistentOption('failure-count') // 0) > 1) ||
-        (not -e "$builddir/$confFileKey"));
+    if (not -e "$builddir") {
+       return "the build directory doesn't exist";
+   }
+   if (-e "$builddir/.refresh-me") {
+       return "the last configure failed"; # see Module.pm
+   }
+   if ($module->getOption("refresh-build")) {
+       return "the option refresh-build was set";
+   }
+   if (($module->getPersistentOption('failure-count') // 0) > 1) {
+       return "the module has failed to build " . $module->getPersistentOption('failure-count') . " times in a row";
+   }
+   if (not -e "$builddir/$confFileKey") {
+       return "$builddir/$confFileKey is missing";
+   }
 
-    return 0;
+    return "";
 }
 
 # Returns true if the given subdirectory (reference from the module's root source directory)
