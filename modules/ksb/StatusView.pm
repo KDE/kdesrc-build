@@ -20,7 +20,6 @@ sub new
     my $defaultOpts = {
         cur_progress   => -1,
         progress_total => -1,
-        dirty          => 0, # True if we've muddied the tty
         status         => '',
     };
 
@@ -74,7 +73,6 @@ sub update
     }
 
     _clearLineAndUpdate($msg);
-    $self->{dirty} = 1;
 }
 
 # For TTY outputs, this clears the line (if we actually had dirtied it) so
@@ -82,16 +80,19 @@ sub update
 sub releaseTTY
 {
     my $self = shift;
-    if ($self->{dirty}) {
-        $self->{dirty} = 0;
-        _clearLineAndUpdate();
-    }
+    my $msg = shift // '';
+
+    _clearLineAndUpdate($msg);
 }
 
 sub _clearLineAndUpdate
 {
+    my $msg = shift;
+
     # Give escape sequence to return to column 1 and clear the entire line
-    print "\e[1G\e[K" . ($_[0] // '');
+    # Then print message and return to column 1 again in case somewhere else
+    # uses the tty.
+    print "\e[1G\e[K$msg\e[1G";
     STDOUT->flush;
 }
 
