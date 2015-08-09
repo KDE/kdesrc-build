@@ -8,10 +8,12 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
+our $VERSION = '0.20';
 
 use ksb::Debug;
 use ksb::Util;
+use ksb::StatusView;
+
 use List::Util qw(first);
 
 sub new
@@ -355,7 +357,8 @@ sub safe_make (@)
     push @args, $optsRef->{target} if $optsRef->{target};
     push @args, @{$optsRef->{'make-options'}};
 
-    info ("\t", $optsRef->{message});
+    # Will be output by _runBuildCommand
+    my $buildMessage = $optsRef->{message};
 
     # Here we're attempting to ensure that we either run the build command
     # in each subdirectory, *or* for the whole module, but not both.
@@ -379,11 +382,9 @@ sub safe_make (@)
 
             # Mention subdirectory that we're working on, move ellipsis
             # if present.
-            my $subdirMessage = $optsRef->{message};
-            if ($subdirMessage =~ /\.\.\.$/) {
-                $subdirMessage =~ s/(\.\.\.)?$/ subdirectory g[$subdir]$1/;
+            if ($buildMessage =~ /\.\.\.$/) {
+                $buildMessage =~ s/(\.\.\.)?$/ subdirectory g[$subdir]$1/;
             }
-            info ("\t$subdirMessage");
         }
 
         my $builddir = $module->fullpath('build') . "/$subdir";
@@ -391,7 +392,7 @@ sub safe_make (@)
 
         p_chdir ($builddir);
 
-        my $result = $self->runBuildCommand($logname, \@args);
+        my $result = $self->_runBuildCommand($buildMessage, $logname, \@args);
         return $result if $result;
     };
 
@@ -403,16 +404,17 @@ sub safe_make (@)
 # log_command() (described here as well), except that the callback argument
 # is not used.
 #
-# First parameter is the name of the log file to use (relative to the log
+# First parameter is the message to display to the user while the build
+#   happens.
+# Second parameter is the name of the log file to use (relative to the log
 #   directory).
-# Second parameter is a reference to an array with the command and its
+# Third parameter is a reference to an array with the command and its
 #   arguments.  i.e. ['command', 'arg1', 'arg2']
 # The return value is the shell return code, so 0 is success, and non-zero
 #   is failure.
-sub runBuildCommand
+sub _runBuildCommand
 {
-    my ($self, $filename, $argRef) = @_;
-    assert_isa($self, 'ksb::BuildSystem');
+    my ($self, $message, $filename, $argRef) = @_;
     my $module = $self->module();
 
     # There are situations when we don't want (or can't get) progress output:
@@ -424,41 +426,37 @@ sub runBuildCommand
         return log_command($module, $filename, $argRef);
     }
 
-    # Setup callback function for use by log_command.
-    my $last = -1;
+    my $statusViewer = ksb::StatusView->new();
+    $statusViewer->setStatus("\t$message");
+    $statusViewer->update();
 
     # w00t.  Check out the closure!  Maks would be so proud.
     my $log_command_callback = sub {
-        my ($input) = shift;
-
-        if (not defined $input)
-        {
+        my $input = shift;
+        if (not defined $input) {
             # End of input, cleanup.
-            print STDERR "\r\e[K";
+            $statusViewer->releaseTTY();
+            return;
         }
-        else
-        {
-            chomp($input);
 
-            my $percentage = '';
-
-            if ($input =~ /^\[\s*([0-9]+)%]/)
-            {
-                $percentage = $1;
+        my ($percentage) = ($input =~ /^\[\s*([0-9]+)%]/);
+        if ($percentage) {
+            $statusViewer->setProgressTotal(100);
+            $statusViewer->setProgress($percentage);
+        }
+        else {
+            my ($x, $y) = ($input =~ /^\[([0-9]+)\/([0-9]+)] /);
+            if ($x && $y) {
+                # ninja-syntax
+                $statusViewer->setProgressTotal($y);
+                $statusViewer->setProgress($x);
             }
-
-            # Update terminal (\e[K clears to the end of line) if the
-            # percentage changed.
-            if ($percentage and $percentage ne $last)
-            {
-                print STDERR "\r$percentage% \e[K";
-            }
-
-            $last = $percentage;
         }
     };
 
-    return log_command($module, $filename, $argRef, { callback => $log_command_callback });
+    return log_command($module, $filename, $argRef, {
+            callback => $log_command_callback
+        });
 }
 
 1;

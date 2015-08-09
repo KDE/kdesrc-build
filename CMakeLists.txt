@@ -32,6 +32,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/OptionsBase.pm
         modules/ksb/PhaseList.pm
         modules/ksb/RecursiveFH.pm
+        modules/ksb/StatusView.pm
         modules/ksb/Updater.pm
         modules/ksb/Util.pm
         modules/ksb/Version.pm

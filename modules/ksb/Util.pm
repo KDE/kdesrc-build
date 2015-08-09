@@ -450,19 +450,17 @@ sub log_command
         # Parent
         if (!$callbackRef && debugging()) {
             # If no other callback given, pass to debug() if debug-mode is on.
-            $callbackRef = sub {
-                return unless $_; chomp; debug($_);
-            };
+            while (<CHILD>) {
+                debug(chomp($_)) if $_;
+            }
         }
 
-        # Final fallback: Do nothing
-        $callbackRef //= sub { };
+        if ($callbackRef) {
+            &{$callbackRef}($_) while (<CHILD>);
 
-        # Filter each line
-        &{$callbackRef}($_) while (<CHILD>);
-
-        # Let callback know there is no more output.
-        &{$callbackRef}(undef) if defined $callbackRef;
+            # Let callback know there is no more output.
+            &{$callbackRef}(undef);
+        }
 
         # This implicitly does a waitpid() as well
         close CHILD or do {
@@ -509,10 +507,15 @@ sub log_command
         # that the user can't see.
 
         open (STDIN, '<', "/dev/null") unless exists $ENV{'KDESRC_BUILD_USE_TTY'};
-        open (STDOUT, "|tee $logdir/$filename.log") or do {
-            error ("Error opening pipe to tee command.");
-            # Don't abort, hopefully STDOUT still works.
-        };
+        if ($callbackRef) {
+            open (STDOUT, "|tee $logdir/$filename.log") or do {
+                error ("Error opening pipe to tee command.");
+                # Don't abort, hopefully STDOUT still works.
+            };
+        }
+        else {
+            open (STDOUT, '>', "$logdir/$filename.log");
+        }
 
         # Make sure we log everything.
         # In the case of Qt, we may have forced on progress output so let's
