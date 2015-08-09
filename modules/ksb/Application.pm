@@ -1514,6 +1514,10 @@ EOF
 
     info ("<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
 
+    my $successes = scalar @build_done;
+    # TODO: l10n
+    my $mods = $successes == 1 ? 'module' : 'modules';
+
     if (not pretending())
     {
         # Print out results, and output to a file
@@ -1521,15 +1525,22 @@ EOF
         open BUILT_LIST, ">$kdesrc/successfully-built";
         foreach my $module (@build_done)
         {
-            info ("$module");
+            info ("$module") if $successes <= 10;
             print BUILT_LIST "$module\n";
         }
         close BUILT_LIST;
+
+        info ("Built g[$successes] $mods") if $successes > 10;
     }
     else
     {
         # Just print out the results
-        info ('g[', join ("]\ng[", @build_done), ']');
+        if ($successes <= 10) {
+            info ('g[', join ("]\ng[", @build_done), ']');
+        }
+        else {
+            info ("Built g[$successes] $mods") if $successes > 10;
+        }
     }
 
     info (' '); # Space out nicely
