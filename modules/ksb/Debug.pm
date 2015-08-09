@@ -1,4 +1,4 @@
-package ksb::Debug;
+package ksb::Debug 0.20;
 
 # Debugging routines and constants for use with kdesrc-build
 
@@ -6,11 +6,10 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
-
 use Exporter qw(import); # Steal Exporter's import method
 our @EXPORT = qw(debug pretending debugging whisper
                  note info warning error pretend);
+our @EXPORT_OK = qw(colorize);
 
 # Debugging level constants.
 use constant {

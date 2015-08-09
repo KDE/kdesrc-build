@@ -1371,10 +1371,10 @@ sub _handle_build
 
     $ctx->unsetPersistentOption('global', 'resume-list');
 
-    my $outfile = pretending() ? undef
+    my $outfile = pretending() ? '/dev/null'
                                : $ctx->getLogDir() . '/build-status';
 
-    open (STATUS_FILE, '>', $outfile // '/dev/null') or do {
+    open (STATUS_FILE, '>', $outfile) or do {
         error (<<EOF);
 	Unable to open output status file r[b[$outfile]
 	You won't be able to use the g[--resume] switch next run.\n";

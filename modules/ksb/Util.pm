@@ -443,6 +443,12 @@ sub log_command
 
     debug ("log_command(): Module $module, Command: ", join(' ', @command));
 
+    if (pretending())
+    {
+        pretend ("\tWould have run g['" . join ("' '", @command) . "'");
+        return 0;
+    }
+
     # Fork a child, with its stdout connected to CHILD.
     my $pid = open(CHILD, '-|');
     if ($pid)
@@ -481,12 +487,6 @@ sub log_command
 
         # Apply altered environment variables.
         $module->buildContext()->commitEnvironmentChanges();
-
-        if (pretending())
-        {
-            pretend ("\tWould have run g['" . join ("' '", @command) . "'");
-            POSIX::_exit(0);
-        }
 
         my $logdir = $module->getLogDir();
         if (!$logdir || ! -e $logdir)

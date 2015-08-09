@@ -10,7 +10,7 @@ use strict;
 use warnings;
 use 5.014;
 
-use ksb::Debug;
+use ksb::Debug 0.20 qw(colorize);
 
 use IO::Handle;
 
@@ -68,7 +68,7 @@ sub update
         );
     }
     else {
-        $msg = $self->{status} .
+        $msg = $self->{status} . ' ' .
             substr($spinner, $self->{cur_progress} % length($spinner), 1);
     }
 
@@ -88,6 +88,8 @@ sub releaseTTY
 sub _clearLineAndUpdate
 {
     my $msg = shift;
+
+    $msg = colorize($msg);
 
     # Give escape sequence to return to column 1 and clear the entire line
     # Then print message and return to column 1 again in case somewhere else
