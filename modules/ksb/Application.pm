@@ -1324,6 +1324,55 @@ sub _handle_updates
     return $hadError;
 }
 
+# Builds the given module.
+#
+# Return value is the failure phase, or 0 on success.
+sub _buildSingleModule
+{
+    my ($ipc, $ctx, $module, $startTimeRef) = @_;
+
+    $ctx->resetEnvironment();
+    $module->setupEnvironment();
+
+    my $fail_count = $module->getPersistentOption('failure-count') // 0;
+    my ($resultStatus, $message) = $ipc->waitForModule($module);
+    if ($resultStatus eq 'failed') {
+        error ("\tUnable to update r[$module], build canceled.");
+        $module->setPersistentOption('failure-count', ++$fail_count);
+        return 'update';
+    }
+    elsif ($resultStatus eq 'success') {
+        note ("\tSource update complete for g[$module]: $message");
+    }
+    # Skip actually building a module if the user has selected to skip
+    # builds when the source code was not actually updated. But, don't skip
+    # if we didn't successfully build last time.
+    elsif ($resultStatus eq 'skipped' &&
+        !$module->getOption('build-when-unchanged') &&
+        $fail_count == 0)
+    {
+        note ("\tSkipping g[$module], its source code has not changed.");
+        return 0;
+    }
+    elsif ($resultStatus eq 'skipped') {
+        note ("\tNo changes to g[$module] source, proceeding to build.");
+    }
+
+    $$startTimeRef = time;
+    if ($module->build())
+    {
+        $module->setPersistentOption('last-build-rev', $module->currentScmRevision());
+        $fail_count = 0;
+    }
+    else {
+        ++$fail_count;
+    }
+
+    $module->setPersistentOption('failure-count', 0);
+
+    return $fail_count > 0 ? 'build' : 0;
+}
+
 # Function: _handle_build
 #
 # Subroutine to handle the build process.
@@ -1389,106 +1438,48 @@ EOF
     {
         my $moduleName = $module->name();
         my $moduleSet = $module->moduleSet()->name();
-        my $modOutput = "$module";
+        my $modOutput = $moduleName;
 
         if (debugging(ksb::Debug::WHISPER)) {
             $modOutput .= " (build system " . $module->buildSystemType() . ")"
         }
 
-        if ($moduleSet) {
-            note ("Building g[$modOutput] from g[$moduleSet] ($i/$num_modules)");
-        }
-        else {
-            note ("Building g[$modOutput] ($i/$num_modules)");
-        }
+        $moduleSet = " from g[$moduleSet]" if $moduleSet;
+        note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
 
-        if (debugging(ksb::Debug::WHISPER) && exists $module->{deps_were}) {
-            note ("\tDeps from current build were: b[", join(', ', @{$module->{deps_were}}));
-        }
+        my $start_time;
+        my $failedPhase = _buildSingleModule($ipc, $ctx, $module, \$start_time);
+        my $numSeconds = time - $start_time;
+        my $elapsed = prettify_seconds($numSeconds);
 
-        $ctx->resetEnvironment();
-        $module->setupEnvironment();
-
-        my $start_time = time;
-
-        # If using IPC, read in the contents of the message buffer, and wait
-        # for completion of the source update if necessary.
-
-        my ($resultStatus, $message) = $ipc->waitForModule($module);
-
-        if ($resultStatus eq 'failed') {
-            $result = 1;
-            $ctx->markModulePhaseFailed('update', $module);
-            print STATUS_FILE "$module: Failed on update.\n";
-
-            # Increment failed count to track when to start bugging the
-            # user to fix stuff.
-            my $fail_count = $module->getPersistentOption('failure-count') // 0;
-            ++$fail_count;
-            $module->setPersistentOption('failure-count', $fail_count);
-
-            error ("\tUnable to update r[$module], build canceled.");
-            next;
-        }
-        elsif ($resultStatus eq 'skipped') {
-            # i.e. build should be skipped.
-            info ("\tNo changes to source code.");
-        }
-        elsif ($resultStatus eq 'success') {
-            note ("\tSource update complete for g[$module]: $message");
-        }
-
-        # Skip actually building a module if the user has selected to skip
-        # builds when the source code was not actually updated. But, don't skip
-        # if we didn't successfully build last time.
-        if (!$module->getOption('build-when-unchanged') &&
-            $resultStatus eq 'skipped' &&
-            ($module->getPersistentOption('failure-count') // 0) == 0)
+        if ($failedPhase)
         {
-            note ("\tSkipping g[$module], its source code has not changed.");
-            $i++;
-            push @build_done, $moduleName; # Make it show up as a success
-            next;
-        }
-
-        if ($module->build())
-        {
-            my $elapsed = prettify_seconds(time - $start_time);
-            print STATUS_FILE "$module: Succeeded after $elapsed.\n";
-            $module->setPersistentOption('last-build-rev', $module->currentScmRevision());
-            $module->setPersistentOption('failure-count', 0);
-
-            info ("\tOverall time for g[$module] was g[$elapsed].");
-            push @build_done, $moduleName;
-        }
-        else
-        {
-            my $elapsed = prettify_seconds(time - $start_time);
-            print STATUS_FILE "$module: Failed after $elapsed.\n";
-
-            info ("\tOverall time for r[$module] was g[$elapsed].");
-            $ctx->markModulePhaseFailed('build', $module);
+            # FAILURE
+            $ctx->markModulePhaseFailed($failedPhase, $module);
+            print STATUS_FILE "$module: Failed on $failedPhase after $elapsed.\n";
+            info ("\tOverall time for r[$module] was g[$elapsed].")
+                if $numSeconds >= 10;
 
             if ($result == 0) {
                 # No failures yet, mark this as resume point
                 my $moduleList = join(', ', map { "$_" } ($module, @modules));
                 $ctx->setPersistentOption('global', 'resume-list', $moduleList);
             }
-
             $result = 1;
-
-            # Increment failed count to track when to start bugging the
-            # user to fix stuff.
-
-            my $fail_count = $module->getPersistentOption('failure-count') // 0;
-            ++$fail_count;
-            $module->setPersistentOption('failure-count', $fail_count);
 
             if ($module->getOption('stop-on-failure'))
             {
                 note ("\n$module didn't build, stopping here.");
                 return 1; # Error
             }
+        }
+        else {
+            # Success
+            print STATUS_FILE "$module: Succeeded after $elapsed.\n";
+            info ("\tOverall time for g[$module] was g[$elapsed].")
+                if $numSeconds >= 10;
+
+            push @build_done, $moduleName; # Make it show up as a success
         }
 
         $i++;
