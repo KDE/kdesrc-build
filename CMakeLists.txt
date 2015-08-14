@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6) # Pretty much nothing works without this
+cmake_minimum_required(VERSION 2.8.9)
 project(kdesrc-build)
 
 find_package(KDE4) # Needed for the docs, but optional.
