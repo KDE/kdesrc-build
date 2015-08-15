@@ -258,31 +258,42 @@ sub _resolveGuessedModules
 
     $self->_expandAllUnexpandedModuleSets();
 
+    my @results;
+
+    # We use foreach since we *want* to be able to replace the iterated variable
+    # if we find an existing module.
     for my $guessedModule (@modules)
     {
-        next if !$guessedModule->getOption('#guessed-kde-project', 'module');
+        if (!$guessedModule->getOption('#guessed-kde-project', 'module')) {
+            push @results, $guessedModule;
+            next;
+        }
 
         # If the module we want could be found from within our rc-file
         # module-sets (even implicitly), use it. Otherwise assume
         # kde-projects and evaluate now.
         if (exists $lookupTableRef->{$guessedModule->name()}) {
             $guessedModule = $lookupTableRef->{$guessedModule->name()};
+            push @results, $guessedModule;
         }
         else {
             my $set = ksb::ModuleSet::KDEProjects->new($ctx, "guessed_from_cmdline");
             $set->setModulesToFind($guessedModule->name());
 
-            my @results = $self->expandModuleSets($set);
+            my @setResults = $self->expandModuleSets($set);
             my $searchItem = $guessedModule->name();
-            $guessedModule = first { $_->name() eq $searchItem } @results;
-            if (!$guessedModule) {
-                # This is a misfeature, I know. This should support whole sets too.
-                croak_runtime ("$searchItem doesn't match a single module, it matches many.");
+            if (!@setResults) {
+                croak_runtime ("$searchItem doesn't match any modules.");
             }
+
+            my $foundModule = first { $_->name() eq $searchItem } @setResults;
+            $guessedModule = $foundModule if $foundModule;
+
+            push @results, @setResults;
         }
     }
 
-    return @modules;
+    return @results;
 }
 
 # Resolves already-stored module selectors into ksb::Modules, based on
