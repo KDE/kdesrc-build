@@ -457,7 +457,7 @@ sub log_command
         if (!$callbackRef && debugging()) {
             # If no other callback given, pass to debug() if debug-mode is on.
             while (<CHILD>) {
-                debug(chomp($_)) if $_;
+                print ($_) if $_;
             }
         }
 
@@ -507,7 +507,7 @@ sub log_command
         # that the user can't see.
 
         open (STDIN, '<', "/dev/null") unless exists $ENV{'KDESRC_BUILD_USE_TTY'};
-        if ($callbackRef) {
+        if ($callbackRef || debugging()) {
             open (STDOUT, "|tee $logdir/$filename.log") or do {
                 error ("Error opening pipe to tee command.");
                 # Don't abort, hopefully STDOUT still works.
