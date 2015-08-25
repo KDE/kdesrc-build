@@ -445,7 +445,7 @@ sub _runBuildCommand
         my $input = shift;
         if (not defined $input) {
             # End of input, cleanup.
-            $statusViewer->releaseTTY("\t$message done");
+            $statusViewer->releaseTTY("\t$message done\n");
             return;
         }
 
