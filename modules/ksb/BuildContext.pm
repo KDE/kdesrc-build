@@ -136,8 +136,8 @@ sub new
         # This one replaces ksb::Module::{phases}
         phases  => ksb::PhaseList->new(@DefaultPhases),
         errors  => {
-            # Phase names from phases map to a references to a list of failed Modules
-            # from that phase.
+            # A map from module *names* (as in modules[] above) to the
+            # phase name at which they failed.
         },
         logPaths=> {
             # Holds a hash table of log path bases as expanded by
@@ -201,6 +201,7 @@ sub addModule
     }
 }
 
+# Returns a listref of the modules to build
 sub moduleList
 {
     my $self = shift;
@@ -645,10 +646,7 @@ sub markModulePhaseFailed
     my ($self, $phase, $module) = @_;
     assert_isa($module, 'ksb::Module');
 
-    # Make a default empty list if we haven't already marked a module in this phase as
-    # failed.
-    $self->{errors}{$phase} //= [ ];
-    push @{$self->{errors}{$phase}}, $module;
+    $self->{errors}->{$module->name()} = $phase;
 }
 
 # Returns a list (i.e. not a reference to, but a real list) of Modules that failed to
@@ -657,8 +655,26 @@ sub failedModulesInPhase
 {
     my ($self, $phase) = @_;
 
-    # The || [] expands an empty array if we had no failures in the given phase.
-    return @{$self->{errors}{$phase} || []};
+    my @failures = grep {
+        ($self->{errors}->{$_->name()} // '') eq $phase
+    } (@{$self->moduleList()});
+
+    return @failures;
+}
+
+# Returns a list of modules that had a failure of some sort, in the order the modules
+# are listed in our current module list.
+sub listFailedModules
+{
+    my $self = shift;
+    my @modules = @{$self->moduleList()};
+
+    # grepping for failures instead of returning error list directly maintains ordering
+    @modules = grep {
+        exists $self->{errors}->{$_->name()}
+    } (@modules);
+
+    return @modules;
 }
 
 # OVERRIDE: Our immediate parent class Module overrides this, but we actually
