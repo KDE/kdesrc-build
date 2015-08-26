@@ -278,7 +278,7 @@ DONE
         'print-modules', 'pretend|dry-run|p', 'refresh-build',
         'start-program|run=s{,}',
         'revision=i', 'resume-from=s', 'resume-after=s',
-        'resume', 'stop-on-failure',
+        'rebuild-failures', 'resume', 'stop-on-failure',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
         'metadata-only', 'include-dependencies',
 
@@ -362,6 +362,17 @@ sub generateModuleList
             error ("b[--resume] specified, but unable to find resume point!");
             error ("Perhaps try b[--resume-from] or b[--resume-after]?");
             croak_runtime("Invalid --resume flag");
+        }
+
+        unshift @selectors, split(/,\s*/, $moduleList);
+    }
+
+    if (exists $pendingGlobalOptions->{'rebuild-failures'}) {
+        my $moduleList = $ctx->getPersistentOption('global', 'last-failed-module-list');
+        if (!$moduleList) {
+            error ("b[y[--rebuild-failures] was specified, but unable to determine");
+            error ("which modules have previously failed to build.");
+            croak_runtime("Invalid --rebuild-failures flag");
         }
 
         unshift @selectors, split(/,\s*/, $moduleList);
@@ -627,6 +638,17 @@ sub runAllModulePhases
 
     _cleanup_log_directory($ctx) if $ctx->getOption('purge-old-logs');
     _output_failed_module_lists($ctx);
+
+    # Record all failed modules. Unlike the 'resume-list' option this doesn't
+    # include any successfully-built modules in between failures.
+    my $failedModules = join(',', map { "$_" } $ctx->listFailedModules());
+    if ($failedModules) {
+        # We don't clear the list of failed modules on success so that
+        # someone can build one or two modules and still use
+        # --rebuild-failures
+        $ctx->setPersistentOption('global', 'last-failed-module-list', $failedModules);
+    }
+
     _installCustomSessionDriver($ctx) if $ctx->getOption('install-session-driver');
 
     my $color = 'g[b[';
