@@ -27,6 +27,8 @@ use ksb::Module;
 use ksb::Module::BranchGroupResolver;
 use ksb::Updater::KDEProjectMetadata;
 use ksb::Version qw(scriptVersion);
+use ksb::StatusView;
+
 use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
 
@@ -152,6 +154,7 @@ sub new
         kde_projects_filehandle => undef, # Filehandle to read database from.
         kde_projects_metadata   => undef, # See ksb::Module::KDEProjects
         logical_module_resolver => undef, # For branch-group option.
+        status_view => ksb::StatusView->new(),
     );
 
     # Merge all new options into our self-hash.
@@ -987,6 +990,12 @@ sub moduleBranchGroupResolver
     }
 
     return $self->{logical_module_resolver};
+}
+
+sub statusViewer
+{
+    my $self = shift;
+    return $self->{status_view};
 }
 
 1;

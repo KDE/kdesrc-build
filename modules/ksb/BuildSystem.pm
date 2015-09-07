@@ -426,6 +426,7 @@ sub _runBuildCommand
 {
     my ($self, $message, $filename, $argRef) = @_;
     my $module = $self->module();
+    my $ctx = $module->buildContext();
 
     # There are situations when we don't want (or can't get) progress output:
     # 1. Not using CMake (i.e. Qt)
@@ -436,7 +437,7 @@ sub _runBuildCommand
         return log_command($module, $filename, $argRef);
     }
 
-    my $statusViewer = ksb::StatusView->new();
+    my $statusViewer = $ctx->statusViewer();
     $statusViewer->setStatus("\t$message");
     $statusViewer->update();
 

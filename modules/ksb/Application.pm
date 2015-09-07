@@ -1454,6 +1454,7 @@ EOF
     };
 
     my $num_modules = scalar @modules;
+    my $statusViewer = $ctx->statusViewer();
     my $i = 1;
 
     while (my $module = shift @modules)
