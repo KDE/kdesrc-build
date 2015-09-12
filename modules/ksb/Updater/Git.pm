@@ -79,15 +79,6 @@ sub clone
 
     my $ipc = $self->{ipc} // croak_internal ('Missing IPC object');
 
-    # The -v forces progress output from git, which seems to work around either
-    # a gitorious.org bug causing timeout errors after cloning large
-    # repositories (such as Qt...)
-    if ($module->buildSystemType() eq 'Qt' &&
-        $module->buildSystem()->forceProgressOutput())
-    {
-        unshift (@args, '-v');
-    }
-
     note ("Cloning g[$module]");
 
     my $result = eval { $self->installGitSnapshot() };

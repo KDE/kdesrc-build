@@ -26,16 +26,6 @@ sub name
     return 'Qt';
 }
 
-# If coming from gitorious.org instead of KDE's mirror we should force on
-# progress output to work around a gitorious.org clone bug.
-sub forceProgressOutput
-{
-    my $self = assert_isa(shift, 'ksb::BuildSystem::Qt4');
-    my $module = $self->module();
-
-    return $module->getOption('repository') =~ /gitorious\.org\//;
-}
-
 # Return value style: boolean
 sub configureInternal
 {

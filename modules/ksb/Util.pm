@@ -518,13 +518,7 @@ sub log_command
         }
 
         # Make sure we log everything.
-        # In the case of Qt, we may have forced on progress output so let's
-        # leave that interactive to keep the logs sane.
-        if (!($module->buildSystemType() eq 'Qt' &&
-           $module->buildSystem()->forceProgressOutput()))
-        {
-            open (STDERR, ">&STDOUT");
-        }
+        open (STDERR, ">&STDOUT");
 
         # Call internal function, name given by $command[1]
         if ($command[0] eq 'kdesrc-build')
