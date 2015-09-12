@@ -117,6 +117,26 @@ sub clone
         }
     }
 
+    # Setup user configuration
+    if (my $name = $module->getOption('git-user')) {
+        my ($username, $email) = ($name =~ /^([^<]+) +<([^>]+)>$/);
+        if (!$username || !$email) {
+            croak_runtime("Invalid username or email for git-user option: $name".
+                " (should be in format 'User Name <username\@example.net>'");
+        }
+
+        whisper ("\tAdding git identity $name for new git module $module");
+        my $result = (safe_system(qw(git config --local user.name), $username)
+                        >> 8) == 0;
+
+        $result = (safe_system(qw(git config --local user.email), $email)
+                        >> 8 == 0) || $result;
+
+        if (!$result) {
+            warning ("Unable to set user.name and user.email git config for y[b[$module]!");
+        }
+    }
+
     return;
 }
 
