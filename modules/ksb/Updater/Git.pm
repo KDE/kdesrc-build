@@ -867,6 +867,10 @@ sub verifyGitConfig
         my %errors = (
             3   => 'Invalid config file (~/.gitconfig)',
             4   => 'Could not write to ~/.gitconfig',
+            2   => 'No section was provided to git-config',
+            1   => 'Invalid section or key',
+            5   => 'Tried to set option that had no (or multiple) values',
+            6   => 'Invalid regexp with git-config',
             128 => 'HOME environment variable is not set (?)',
         );
 
