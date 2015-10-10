@@ -199,7 +199,7 @@ sub installInternal
 
     return $self->safe_make ({
             target => 'install',
-            message => "Installing g[$module]",
+            message => 'Installing..',
             'prefix-options' => [@cmdPrefix],
             subdirs => [ split(' ', $module->getOption("checkout-only")) ],
            }) == 0;
@@ -437,6 +437,8 @@ sub _runBuildCommand
         return log_command($module, $filename, $argRef);
     }
 
+    my $time = time;
+
     my $statusViewer = $ctx->statusViewer();
     $statusViewer->setStatus("\t$message");
     $statusViewer->update();
@@ -445,8 +447,6 @@ sub _runBuildCommand
     my $log_command_callback = sub {
         my $input = shift;
         if (not defined $input) {
-            # End of input, cleanup.
-            $statusViewer->releaseTTY("\t$message done\n");
             return;
         }
 
@@ -465,9 +465,16 @@ sub _runBuildCommand
         }
     };
 
-    return log_command($module, $filename, $argRef, {
+    my $result = log_command($module, $filename, $argRef, {
             callback => $log_command_callback
         });
+
+    # Cleanup TTY output.
+    $time = prettify_seconds(time - $time);
+    my $status = $result == 0 ? "g[b[succeeded]" : "r[b[failed]";
+    $statusViewer->releaseTTY("\t$message $status (after $time)\n");
+
+    return $result;
 }
 
 1;

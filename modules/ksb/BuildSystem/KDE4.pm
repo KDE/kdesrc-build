@@ -111,7 +111,7 @@ sub installInternal
     return $self->safe_make ({
             target => $target,
             logfile => 'install',
-            message => "Installing g[$module]",
+            message => 'Installing..',
             'prefix-options' => [@cmdPrefix],
             subdirs => [ split(' ', $module->getOption("checkout-only")) ],
            }) == 0;

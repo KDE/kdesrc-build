@@ -1457,6 +1457,8 @@ EOF
     my $statusViewer = $ctx->statusViewer();
     my $i = 1;
 
+    $statusViewer->numberModulesTotal(scalar @modules);
+
     while (my $module = shift @modules)
     {
         my $moduleName = $module->name();
@@ -1470,18 +1472,15 @@ EOF
         $moduleSet = " from g[$moduleSet]" if $moduleSet;
         note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
 
-        my $start_time;
+        my $start_time = time;
         my $failedPhase = _buildSingleModule($ipc, $ctx, $module, \$start_time);
-        my $numSeconds = time - $start_time;
-        my $elapsed = prettify_seconds($numSeconds);
+        my $elapsed = prettify_seconds(time - $start_time);
 
         if ($failedPhase)
         {
             # FAILURE
             $ctx->markModulePhaseFailed($failedPhase, $module);
             print STATUS_FILE "$module: Failed on $failedPhase after $elapsed.\n";
-            info ("\tOverall time for r[$module] was g[$elapsed].")
-                if $numSeconds >= 10;
 
             if ($result == 0) {
                 # No failures yet, mark this as resume point
@@ -1495,14 +1494,16 @@ EOF
                 note ("\n$module didn't build, stopping here.");
                 return 1; # Error
             }
+
+            $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
         }
         else {
             # Success
             print STATUS_FILE "$module: Succeeded after $elapsed.\n";
-            info ("\tOverall time for g[$module] was g[$elapsed].")
-                if $numSeconds >= 10;
 
             push @build_done, $moduleName; # Make it show up as a success
+
+            $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
         }
 
         $i++;

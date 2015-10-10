@@ -408,7 +408,6 @@ sub build
     my $moduleName = $self->name();
     my %pathinfo = $self->getInstallPathComponents('build');
     my $builddir = $pathinfo{'fullpath'};
-    my $start_time = time;
     my $buildSystem = $self->buildSystem();
 
     if ($buildSystem->name() eq 'generic' && !pretending()) {
@@ -426,35 +425,23 @@ sub build
 
     if (!$buildSystem->buildInternal())
     {
-        # Build failed
-
-        my $elapsed = prettify_seconds (time - $start_time);
-
-        # Well we tried, but it isn't going to happen.
-        note ("\n\tUnable to build y[$self]!");
-        info ("\tTook g[$elapsed].");
         return 0;
+    }
+
+    # TODO: This should be a simple phase to run.
+    if ($self->getOption('run-tests'))
+    {
+        $self->buildSystem()->runTestsuite();
+    }
+
+    # TODO: Likewise this should be a phase to run.
+    if ($self->getOption('install-after-build'))
+    {
+        return 0 if !$self->install();
     }
     else
     {
-        my $elapsed = prettify_seconds (time - $start_time);
-        info ("\tBuild succeeded after g[$elapsed].");
-
-        # TODO: This should be a simple phase to run.
-        if ($self->getOption('run-tests'))
-        {
-            $self->buildSystem()->runTestsuite();
-        }
-
-        # TODO: Likewise this should be a phase to run.
-        if ($self->getOption('install-after-build'))
-        {
-            return 0 if !$self->install();
-        }
-        else
-        {
-            info ("\tSkipping install for y[$self]");
-        }
+        info ("\tSkipping install for y[$self]");
     }
 
     return 1;
