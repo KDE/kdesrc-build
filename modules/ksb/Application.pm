@@ -113,19 +113,15 @@ sub new
 #    $pendingOptions->{$moduleName} (it will be necessary to disambiguate
 #    later in the run whether it is a module set or a single module).
 #
-#    If the global option 'start-program' is set, then the selectors parameter
-#    (see below) will not be selector at all, but will be a list of command
-#    line options to pass to the chosen program to start (the program will be
-#    the value of the 'start-program' option mentioned above).
+#    If the global option 'start-program' is set, then the program to start and
+#    its options will be found in a listref pointed to under the
+#    'start-program' option.
 #
 #  selectors - listref to hold the list of module or module-set selectors to
 #    build, in the order desired by the user. These will just be strings, the
 #    caller will have to figure out whether the selector is a module or
 #    module-set, and create any needed objects, and then set the recommended
 #    options as listed in pendingOptions.
-#
-#    See pendingOptions for the special note about the value of this listref
-#    when start-options is in effect.
 #
 #  ctx - <BuildContext> to hold the global build state.
 #
@@ -339,7 +335,7 @@ sub generateModuleList
     my %ignoredSelectors;
     @ignoredSelectors{@{$pendingGlobalOptions->{'ignore-modules'}}} = undef;
 
-    my @startProgramArgs = @{$pendingGlobalOptions->{'start-program'}};
+    my @startProgramAndArgs = @{$pendingGlobalOptions->{'start-program'}};
     delete @{$pendingGlobalOptions}{qw/ignore-modules start-program/};
 
     # Everything else in pendingOptions should be OK to apply directly as a module
@@ -387,11 +383,11 @@ sub generateModuleList
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
 
-    if (@startProgramArgs)
+    if (@startProgramAndArgs)
     {
-        # @modules is the command line arguments to pass in this case.
-        # TODO: Have context setup environment variables here first.
-        _executeCommandLineProgram(@startProgramArgs); # noreturn
+        $ctx->setupEnvironment(); # Read options from set-env
+        $ctx->commitEnvironmentChanges(); # Apply env options to environment
+        _executeCommandLineProgram(@startProgramAndArgs); # noreturn
     }
 
     # Selecting modules or module sets would require having the KDE build
