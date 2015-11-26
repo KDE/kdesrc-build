@@ -97,12 +97,13 @@ sub setModulesToFind
 }
 
 # Same as modulesToFind, but strips away any path components to leave just
-# module names. E.g. a "use-modules kde/kdelibs juk" would give (kdelibs, juk)
-# as the result list.
+# module names.
+# E.g. a "use-modules kde/kdelibs juk.git" would give (kdelibs, juk) as the
+# result list.
 sub moduleNamesToFind
 {
     my $self = shift;
-    return map { s{([^/]+)$}{$1}; $_ } ($self->modulesToFind());
+    return map { s{([^/]+)$}{$1}; s{\.git$}{}; $_ } ($self->modulesToFind());
 }
 
 sub modulesToIgnore

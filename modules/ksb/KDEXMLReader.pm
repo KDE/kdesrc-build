@@ -104,10 +104,11 @@ sub getModulesForProject
         };
     };
 
-    # Wildcard matches happen as specified if asked for. Non-wildcard matches
-    # have an implicit "$proj/*" search as well for compatibility with previous
-    # use-modules
-    if ($proj !~ /\*/) {
+    # Wildcard matches happen as specified if asked for.
+    # Non-wildcard matches have an implicit "$proj/*" search as well for
+    # compatibility with previous use-modules
+    # Project specifiers ending in .git are forced to be non-wildcarded.
+    if ($proj !~ /\*/ && $proj !~ /\.git$/) {
         # We have to do a search to account for over-specified module names
         # like phonon/phonon
         $findResults->();
@@ -116,6 +117,8 @@ sub getModulesForProject
         # if just 'kdelibs' is asked for.
         $proj .= '/*';
     }
+
+    $proj =~ s/\.git$//;
 
     $findResults->();
 
