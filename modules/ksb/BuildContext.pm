@@ -381,7 +381,7 @@ sub takeLock
                 print ksb::Debug::colorize(" r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n");
                 print ksb::Debug::colorize("  (b[Q])uit, (b[P])roceed anyways?: ");
 
-                my $choice = <STDIN>;
+                my $choice = <STDIN> // '';
                 chomp $choice;
 
                 if (lc $choice ne 'p')
