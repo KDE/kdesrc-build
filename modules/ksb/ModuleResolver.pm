@@ -157,13 +157,17 @@ sub _resolveSingleSelector
 
     my $lookupTableRef = $self->{definedModules};
     my $setEntryLookupTableRef = $self->{referencedModules};
-    my $includingDeps = exists $self->{pendingOptions}->{'include-dependencies'};
 
     # Module selectors beginning with '+' force treatment as a kde-projects
     # module, which means they won't be matched here (we're only looking for
     # sets).
     my $forcedToKDEProject = substr($selectorName, 0, 1) eq '+';
     substr($selectorName, 0, 1, '') if $forcedToKDEProject;
+
+    # Checks cmdline options only
+    my $includingDeps =
+        exists $self->{pendingOptions}->{$selectorName}->{'include-dependencies'} ||
+        exists $self->{pendingOptions}->{'global'}->{'include-dependencies'};
 
     # See resolveSelectorsIntoModules for what the 3 "cases" mentioned below are.
 
@@ -208,6 +212,7 @@ sub _resolveSingleSelector
         # Just assume it's a kde-projects module and expand away...
         $selector = ksb::ModuleSet::KDEProjects->new($ctx, '_cmdline');
         $selector->setModulesToFind($selectorName);
+        $selector->setOption('#include-dependencies', $includingDeps);
     }
     else {
         # Case 3?
@@ -221,6 +226,7 @@ sub _resolveSingleSelector
         $selector->setScmType('proj');
         $selector->setOption('#guessed-kde-project', 1);
         $selector->setOption('#selected-by', 'initial-guess');
+        $selector->setOption('#include-dependencies', $includingDeps);
     }
 
     push @results, $selector unless @results;
@@ -355,6 +361,18 @@ sub resolveModuleIfPresent
 
     if (%{$self->{referencedModules}}) {
         $self->_expandAllUnexpandedModuleSets();
+    }
+
+    # We may not already know about modules that can be found in kde-projects,
+    # so double-check by resolving module name into a kde-projects module-set
+    # selector (the + syntax) and then expanding out the module-set so generated.
+    if (!defined $self->{definedModules}->{$moduleName}) {
+        # TODO: Probably better to just read in the entire XML once and then
+        # store the module list at this point.
+        eval {
+            $self->_expandSingleModuleSet(
+                $self->_resolveSingleSelector("+$moduleName"));
+        };
     }
 
     return $self->{definedModules}->{$moduleName} // undef;
