@@ -23,11 +23,16 @@ our @ISA = qw(ksb::ModuleSet);
 
 use ksb::Module;
 use ksb::Debug;
-use ksb::KDEXMLReader;
+use ksb::KDEXMLReader 0.20;
 use ksb::BuildContext 0.20;
 use ksb::Util;
 
-# A 'new' subroutine is not needed, ksb::ModuleSet's should do the right thing
+sub new
+{
+    my $self = ksb::ModuleSet::new(@_);
+    $self->{projectsDataReader} = undef; # Will be filled in when we get fh
+    return $self;
+}
 
 # Simple utility subroutine. See List::Util's perldoc
 sub none_true
@@ -107,19 +112,10 @@ sub _expandModuleCandidates
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $moduleSearchItem = shift;
 
-    my $databaseFile = $ctx->getKDEProjectMetadataFilehandle() or
-        croak_runtime("kde-projects repository information could not be downloaded: $!");
     my $srcdir = $ctx->getSourceDir();
 
-    my $protocol = $ctx->getOption('git-desired-protocol') || 'git';
-    if (!list_has(['git', 'http'], $protocol)) {
-        error (" b[y[*] Invalid b[git-desired-protocol] $protocol");
-        error (" b[y[*] Try setting this option to 'git' if you're not using a proxy");
-        croak_runtime ("Invalid git-desired-protocol: $protocol");
-    }
-
-    my $xmlReader = ksb::KDEXMLReader->new($databaseFile);
-    my @allXmlResults = $xmlReader->getModulesForProject($moduleSearchItem, $protocol);
+    my $xmlReader = $ctx->getProjectDataReader();
+    my @allXmlResults = $xmlReader->getModulesForProject($moduleSearchItem);
 
     croak_runtime ("Unknown KDE project: $moduleSearchItem") unless @allXmlResults;
 

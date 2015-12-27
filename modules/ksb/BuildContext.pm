@@ -28,6 +28,7 @@ use ksb::Module::BranchGroupResolver;
 use ksb::Updater::KDEProjectMetadata;
 use ksb::Version qw(scriptVersion);
 use ksb::StatusView;
+use ksb::KDEXMLReader 0.20;
 
 use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
@@ -155,6 +156,7 @@ sub new
         kde_projects_metadata   => undef, # See ksb::Module::KDEProjects
         logical_module_resolver => undef, # For branch-group option.
         status_view => ksb::StatusView->new(),
+        projects_db => undef, # See getProjectDataReader
     );
 
     # Merge all new options into our self-hash.
@@ -949,6 +951,29 @@ sub setKDEProjectMetadataModuleNeeded
 
     $self->{kde_projects_metadata} = $metadata;
     return;
+}
+
+# Returns a KDEXMLReader module, which has already read in the database and
+# is ready to be queried. Note that exceptions can be thrown in the process
+# of downloading and parsing the database information, so be ready for that.
+sub getProjectDataReader
+{
+    my $self = shift;
+
+    return $self->{projects_db} if $self->{projects_db};
+
+    my $databaseFile = $self->getKDEProjectMetadataFilehandle() or
+        croak_runtime("kde-projects repository information could not be downloaded: $!");
+
+    my $protocol = $self->getOption('git-desired-protocol') || 'git';
+    if (!list_has(['git', 'http'], $protocol)) {
+        error (" b[y[*] Invalid b[git-desired-protocol] $protocol");
+        error (" b[y[*] Try setting this option to 'git' if you're not using a proxy");
+        croak_runtime ("Invalid git-desired-protocol: $protocol");
+    }
+
+    $self->{projects_db} = ksb::KDEXMLReader->new($databaseFile, $protocol);
+    return $self->{projects_db};
 }
 
 # Returns the effective branch group to use for modules. You should not call

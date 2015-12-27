@@ -5,16 +5,13 @@ package ksb::KDEXMLReader;
 # kde_projects.xml module-handling code.
 # The core of this was graciously contributed by Allen Winter, and then
 # touched-up and kdesrc-build'ed by myself -mpyne.
-#
-# In C++ terms this would be a singleton-class (as it uses package variables
-# for everything due to XML::Parser limitations). So it is neither re-entrant
-# nor thread-safe.
+# (By late 2015 this is mostly mpyne's fault -mpyne).
 
 use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
+our $VERSION = '0.20';
 
 use XML::Parser;
 
@@ -27,30 +24,63 @@ use XML::Parser;
 # Parameters:
 #  $inputHandle - Ref to filehandle to read from. Must implement _readline_ and
 #  _eof_.
+#  $desiredProtocol - Normally 'git', but other protocols like 'http' can also
+#   be preferred (e.g. for proxy compliance).
 sub new
 {
     my $class = shift;
     my $inputHandle = shift;
+    my $desiredProtocol = shift;
 
     my $self = {
-        inputHandle => $inputHandle,
+        # Maps short names to repo info blocks
+        repositories => { },
     };
 
-    return bless ($self, $class);
+    $self = bless ($self, $class);
+    $self->_readProjectData($inputHandle, $desiredProtocol);
+
+    return $self;
 }
 
-sub inputHandle
+# XML tags which group repositories.
+my %xmlGroupingIds = (
+    component => 1,
+    module    => 1,
+    project   => 1,
+);
+
+# The 'main' method for this class. Reads in *all* KDE projects and notes
+# their details for later queries.
+# Be careful, can throw exceptions.
+sub _readProjectData
 {
-    my $self = shift;
-    return $self->{inputHandle};
-}
+    my ($self, $inputHandle, $desiredProtocol) = @_;
 
-my @nameStack = ();        # Used to assign full names to modules.
-my %xmlGroupingIds;        # XML tags which group repositories.
-my %repositories;          # Maps short names to repo info blocks
-my $curRepository;         # ref to hash table when we are in a repo
-my $inRepo = 0;            # >0 if we are actually in a repo element.
-my $desiredProtocol = '';  # URL protocol desired (normally 'git')
+    $desiredProtocol //= '';
+    my $auxRef = {
+        # Used to assign full names to modules.
+        nameStackRef    => [],
+        # >0 if we are actually in a repo element.
+        inRepo          => 0,
+        # ref to hash table entry for current XML element.
+        curRepository   => undef,
+        desiredProtocol => $desiredProtocol,
+        repositoryRef   => $self->{repositories},
+    };
+
+    my $parser = XML::Parser->new(
+        Handlers =>
+            {
+                Start => sub { _xmlTagStart($auxRef, @_); },
+                End   => sub { _xmlTagEnd  ($auxRef, @_); },
+                Char  => sub { _xmlCharData($auxRef, @_); },
+            },
+    );
+
+    # Will die if the XML is not well-formed.
+    $parser->parse($inputHandle);
+}
 
 # Note on $proj: A /-separated path is fine, in which case we look
 # for the right-most part of the full path which matches all of searchProject.
@@ -58,50 +88,16 @@ my $desiredProtocol = '';  # URL protocol desired (normally 'git')
 # "kdebase/kde-runtime" or simply "kde-runtime".
 sub getModulesForProject
 {
-    # These are the elements that can have <repo> under them AFAICS, and
-    # participate in module naming. e.g. kde/calligra or
-    # extragear/utils/kdesrc-build
-    @xmlGroupingIds{qw/component module project/} = 1;
+    my ($self, $proj) = @_;
 
-    my ($self, $proj, $protocol) = @_;
-
-    # Sanity-check
-    if ($proj eq '*' || !$proj) {
-        die "You are trying to import all modules. This is unwise. Ensure " .
-            "you do not have any use-module items with a bare '*'";
-    }
-
-    if (!%repositories) {
-        @nameStack = ();
-        $inRepo = 0;
-        $curRepository = undef;
-        $desiredProtocol = $protocol;
-
-        my $parser = XML::Parser->new(
-            Handlers =>
-                {
-                    Start => \&xmlTagStart,
-                    End => \&xmlTagEnd,
-                    Char => \&xmlCharData,
-                },
-        );
-
-        # Will die if the XML is not well-formed.
-        $parser->parse($self->inputHandle());
-    }
-
-    # A hash is used to hold results since the keys inherently form a set,
-    # since we don't want dups.
-    my %results;
+    my $repositoryRef = $self->{repositories};
+    my @results;
     my $findResults = sub {
-        for my $result (
+        push @results, (
             grep {
                 _projectPathMatchesWildcardSearch(
-                    $repositories{$_}->{'fullName'}, $proj)
-            } keys %repositories)
-        {
-            $results{$result} = 1;
-        };
+                    $repositoryRef->{$_}->{'fullName'}, $proj)
+            } (keys %{$repositoryRef}));
     };
 
     # Wildcard matches happen as specified if asked for.
@@ -120,18 +116,29 @@ sub getModulesForProject
 
     $proj =~ s/\.git$//;
 
-    $findResults->();
+    # If still no wildcard and no '/' then we can use direct lookup by module
+    # name.
+    if ($proj !~ /\*/ && $proj !~ /\// && exists $repositoryRef->{$proj}) {
+        push @results, $proj;
+    }
+    else {
+        $findResults->();
+    }
 
-    return @repositories{keys %results};
+    return @{$repositoryRef}{@results};
 }
 
-sub xmlTagStart
+sub _xmlTagStart
 {
-    my ($expat, $element, %attrs) = @_;
+    my ($aux, $expat, $element, %attrs) = @_;
 
+    my $nameStackRef = $aux->{nameStackRef};
     if (exists $xmlGroupingIds{$element}) {
-        push @nameStack, $attrs{'identifier'};
+        push @{$nameStackRef}, $attrs{'identifier'};
     }
+
+    my $curRepository = $aux->{curRepository};
+    my $inRepo = $aux->{inRepo};
 
     # This code used to check for direct descendants and filter them out.
     # Now there are better ways (kde-build-metadata/build-script-ignore and
@@ -144,11 +151,12 @@ sub xmlTagStart
         # logically impossible.
         die "We are already tracking a repository" if $inRepo > 0;
 
-        $inRepo = 1;
+        $aux->{inRepo} = 1;
+        my $name = ${$nameStackRef}[-1];
         $curRepository = {
-            'fullName' => join('/', @nameStack),
+            'fullName' => join('/', @{$nameStackRef}),
             'repo' => '',
-            'name' => $nameStack[-1],
+            'name' => $name,
             'active' => 'false',
             'tarball' => '',
             'branch'   => '',
@@ -156,12 +164,15 @@ sub xmlTagStart
             'branchtype' => '', # Either branch:stable or branch:trunk
         }; # Repo/Active/tarball to be added by char handler.
 
-        $repositories{$nameStack[-1]} = $curRepository;
+        $aux->{repositoryRef}->{$name} = $curRepository;
+        $aux->{curRepository} = $curRepository;
     }
 
     # Currently we only pull data while under a <repo> tag, so bail early if
     # we're not doing this to simplify later logic.
     return unless $inRepo;
+
+    my $desiredProtocol = $aux->{desiredProtocol};
 
     # Character data is integrated by the char handler. To avoid having it
     # dump all willy-nilly into our dict, we leave a flag for what the
@@ -189,13 +200,17 @@ sub xmlTagStart
     }
 }
 
-sub xmlTagEnd
+sub _xmlTagEnd
 {
-    my ($expat, $element) = @_;
+    my ($aux, $expat, $element) = @_;
 
+    my $nameStackRef = $aux->{nameStackRef};
     if (exists $xmlGroupingIds{$element}) {
-        pop @nameStack;
+        pop @{$nameStackRef};
     }
+
+    my $inRepo = $aux->{inRepo};
+    my $curRepository = $aux->{curRepository};
 
     # If gathering data for char handler, stop now.
     if ($inRepo && defined $curRepository->{'needs'}) {
@@ -215,18 +230,19 @@ sub xmlTagEnd
     }
 
     if ($element eq 'repo' && $inRepo) {
-        $inRepo = 0;
-        $curRepository = undef;
+        $aux->{inRepo} = 0;
+        $aux->{curRepository} = undef;
     }
 }
 
-sub xmlCharData
+sub _xmlCharData
 {
-    my ($expat, $utf8Data) = @_;
+    my ($aux, $expat, $utf8Data) = @_;
+    my $curRepository = $aux->{curRepository};
 
     # The XML::Parser manpage makes it clear that the char handler can be
     # called consecutive times with data for the same tag, so we use the
-    # append operator and then clear our flag in xmlTagEnd.
+    # append operator and then clear our flag in _xmlTagEnd.
     if ($curRepository && defined $curRepository->{'needs'}) {
         $curRepository->{$curRepository->{'needs'}} .= $utf8Data;
     }
