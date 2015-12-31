@@ -15,7 +15,7 @@ use ksb::Updater::KDEProject;
 
 our @ISA = qw(ksb::Updater::KDEProject);
 
-my $haveJson = eval { require JSON; JSON->import(); 1; };
+use JSON::PP;
 
 sub name
 {
@@ -51,9 +51,6 @@ sub logicalModuleGroups
 {
     my $self = shift;
     my $path = $self->module()->fullpath('source') . "/logical-module-structure";
-
-    croak_runtime("Logical module groups require the Perl JSON module")
-        unless $haveJson;
 
     my $fh = pretend_open($path) or
         croak_internal("Unable to read logical module structure: $!");
