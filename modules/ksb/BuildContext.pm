@@ -887,7 +887,7 @@ sub getKDEProjectMetadataFilehandle
 
     super_mkdir($srcdir) unless -d "$srcdir";
     my $file = "$srcdir/kde_projects.xml";
-    my $url = "http://projects.kde.org/kde_projects.xml";
+    my $url = "https://projects.kde.org/kde_projects.xml";
 
     my $result = 1;
 
