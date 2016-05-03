@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
-<!DOCTYPE book PUBLIC "-//KDE//DTD DocBook XML V4.2-Based Variant V1.1//EN" "dtd/kdex.dtd" [
+<!DOCTYPE book PUBLIC "-//KDE//DTD DocBook XML V4.5-Based Variant V1.1//EN" "dtd/kdedbx45.dtd" [
   <!--
     Documentation for kdesrc-build.
-    Copyright (c) 2005-2008, 2010-2015 Michael Pyne <mpyne@kde.org>
+    Copyright (c) 2005-2008, 2010-2016 Michael Pyne <mpyne@kde.org>
 
     Copyright (c) 2005 Carlos Leonhard Woelz <carloswoelz@imap-mail.com>
     Copyright (c) 2009 Burkhard Lück <lueck@hube-lueck.de>
@@ -100,6 +100,7 @@
 <year>2013</year>
 <year>2014</year>
 <year>2015</year>
+<year>2016</year>
 <holder>Michael Pyne</holder>
 </copyright>
 
@@ -110,8 +111,8 @@
 
 <legalnotice>&FDLNotice;</legalnotice>
 
-<date>2015-09-12</date>
-<releaseinfo>15.09</releaseinfo>
+<date>2016-05-02</date>
+<releaseinfo>16.05</releaseinfo>
 
 <abstract>
 <para>&kdesrc-build; is a script which builds and installs &kde; software
@@ -2997,6 +2998,66 @@ dumped to the standard output in addition to being logged in the log directory
 like normal. Also, many functions are much more verbose about what they are
 doing in debugging mode.
 </para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-query">
+<term><parameter>--query</parameter>=<userinput><replaceable>mode</replaceable></userinput></term>
+<listitem><para>
+This command causes &kdesrc-build; to query a parameter of the modules in the
+build list (either passed on the command line or read in from the configuration
+file), outputting the result to screen (one module per line).</para>
+
+<para>This option must be provided with a <quote>query mode</quote>, which should be
+one of the following:</para>
+    <itemizedlist>
+    <listitem><para><option>source-dir</option>, which causes &kdesrc-build; to
+        output the full path to where the module's source code is stored.
+        </para></listitem>
+    <listitem><para><option>build-dir</option>, which causes &kdesrc-build; to
+        output the full path to where the module build process occurs.
+        </para></listitem>
+    <listitem><para><option>install-dir</option>, which causes &kdesrc-build; to
+        output the full path to where the module will be installed.
+        </para></listitem>
+    <listitem><para><option>project-path</option>, which causes &kdesrc-build; to
+        output the location of the module within the hierarchy of KDE source
+        code repositories. See <xref linkend="kde-projects-module-sets"/> for
+        more information on this hierarchy.
+        </para></listitem>
+    <listitem><para><option>branch</option>, which causes &kdesrc-build; to
+        output the resolved git branch that will be used for each module, based
+        on the <link linkend="conf-tag">tag</link>, <link
+        linkend="conf-branch">branch</link> and <link
+        linkend="conf-branch-group">branch-group</link> settings in effect.
+        </para></listitem>
+    <listitem><para>Otherwise, option names that are valid for modules in the
+        <link linkend="conf-options-table">configuration file</link> can be
+        used, the resolved value of which will be listed for each module.
+        </para></listitem>
+    </itemizedlist>
+
+<para>
+If a single module is passed on the command line, then the output is simply the
+value of the parameter being queried. If multiple (or no) modules are passed on
+the command line, then each line is prefixed by the name of the module. Either way,
+&kdesrc-build; stops running once each value is output.
+</para>
+
+<para>This option was added with &kdesrc-build; 16.05.</para>
+
+<informalexample>
+<para>For example, the command <quote><command>kdesrc-build</command>
+    <parameter>--query</parameter>
+    <parameter><replaceable>branch</replaceable></parameter>
+    <parameter><replaceable>kactivities</replaceable></parameter>
+    <parameter><replaceable>kdepim</replaceable></parameter></quote>
+might end up with output like:</para>
+<screen>
+kactivities: master
+kdepim: master
+</screen>
+</informalexample>
+</listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-no-rebuild-on-fail">

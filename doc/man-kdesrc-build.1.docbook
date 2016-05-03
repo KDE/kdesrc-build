@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE refentry PUBLIC "-//KDE//DTD DocBook XML V4.2-Based Variant V1.1//EN" "dtd/kdex.dtd" [
+<!DOCTYPE refentry PUBLIC "-//KDE//DTD DocBook XML V4.5-Based Variant V1.1//EN" "dtd/kdedbx45.dtd" [
 <!ENTITY % English "INCLUDE">
 ]>
 
 <!--
     Man page for kdesrc-build.
-    Copyright (c) 2011, 2014, 2015 Michael Pyne <mpyne@kde.org>
+    Copyright (c) 2011, 2014-2016 Michael Pyne <mpyne@kde.org>
 
     Permission is granted to copy, distribute and/or modify this document under
     the terms of the GNU Free Documentation License, Version 1.2 or any later
@@ -22,13 +22,13 @@
     <email>mpyne@kde.org</email>
     <personblurb><para>Authored man page</para></personblurb>
 </author>
-<date>2015-03-07</date>
+<date>2016-05-02</date>
 </refentryinfo>
 
 <refmeta>
 <refentrytitle><command>kdesrc-build</command></refentrytitle>
 <manvolnum>1</manvolnum>
-<refmiscinfo class="version">1.16</refmiscinfo>
+<refmiscinfo class="version">16.05</refmiscinfo>
 </refmeta>
 
 <refnamediv>
@@ -579,6 +579,74 @@ combining short options into one at this point. (E.g. running
     line arguments present after this option are passed to
     <replaceable>foo</replaceable> as it is run.
 </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option>--query=<replaceable>mode</replaceable></option>
+</term>
+
+<listitem>
+<para>
+This command causes <command>kdesrc-build</command> to query a parameter of the
+modules in the build list (either passed on the command line or read in from
+the configuration file), outputting the result to screen (one module per line).
+</para>
+
+<para>
+This option must be provided with a <quote>query mode</quote>, which should be
+one of the following:</para>
+    <itemizedlist>
+    <listitem><para><option>source-dir</option>, which causes
+        <command>kdesrc-build</command> to output the full path to where the
+        module's source code is stored.
+        </para></listitem>
+    <listitem><para><option>build-dir</option>, which causes
+        <command>kdesrc-build</command> to output the full path to where the
+        module build process occurs.
+        </para></listitem>
+    <listitem><para><option>install-dir</option>, which causes
+        <command>kdesrc-build</command> to output the full path to where the
+        module will be installed.
+        </para></listitem>
+    <listitem><para><option>project-path</option>, which causes
+        <command>kdesrc-build</command> to output the location of the module
+        within the hierarchy of KDE source code repositories.
+        </para></listitem>
+    <listitem><para><option>branch</option>, which causes
+        <command>kdesrc-build</command> to output the resolved git branch that
+        will be used for each module, based on the <option>tag</option>,
+        <option>branch</option> and <option>branch-group</option> settings in
+        effect.
+        </para></listitem>
+    <listitem><para>Otherwise, option names that are valid for modules in the
+        configuration file can be used, the resolved value of which will be
+        listed for each module.
+        </para></listitem>
+    </itemizedlist>
+
+<para>
+If a single module is passed on the command line, then the output is simply the
+value of the parameter being queried. If multiple (or no) modules are passed on
+the command line, then each line is prefixed by the name of the module. Either
+way, <command>kdesrc-build</command> stops running once each value is output.
+</para>
+
+<para>This option was added with <command>kdesrc-build</command> 16.05.</para>
+
+<informalexample>
+<para>For example, the command <quote><command>kdesrc-build</command>
+    <parameter>--query</parameter>
+    <parameter><replaceable>branch</replaceable></parameter>
+    <parameter><replaceable>kactivities</replaceable></parameter>
+    <parameter><replaceable>kdepim</replaceable></parameter></quote>
+might end up with output like:</para>
+<screen>
+kactivities: master
+kdepim: master
+</screen>
+</informalexample>
 </listitem>
 </varlistentry>
 

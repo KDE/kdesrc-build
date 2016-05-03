@@ -203,6 +203,21 @@ DONE
             $foundOptions{kdedir} = $arg; #TODO: Still needed for compat?
             $foundOptions{reconfigure} = 1;
         },
+        query => sub {
+            my (undef, $arg) = @_;
+
+            my $validMode = qr/^[a-zA-Z0-9_][a-zA-Z0-9_-]*$/;
+            die("Invalid query mode $arg")
+                unless $arg =~ $validMode;
+
+            # Add useful aliases
+            $arg = 'source-dir'  if $arg =~ /^src-?dir$/;
+            $arg = 'build-dir'   if $arg =~ /^build-?dir$/;
+            $arg = 'install-dir' if $arg eq 'prefix';
+
+            $self->{run_mode} = 'query';
+            $auxOptions{query} = $arg;
+        },
         pretend => sub {
             # Set pretend mode but also force the build process to run.
             $auxOptions{pretend} = 1;
@@ -263,7 +278,7 @@ DONE
     }
 
     # Actually read the options.
-    GetOptionsFromArray(\@options, \%foundOptions,
+    my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
         'version', 'author', 'help', 'disable-snapshots|no-snapshots',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
@@ -272,7 +287,7 @@ DONE
         'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
         'print-modules', 'pretend|dry-run|p', 'refresh-build',
-        'start-program|run=s{,}',
+        'query=s', 'start-program|run=s{,}',
         'revision=i', 'resume-from=s', 'resume-after=s',
         'rebuild-failures', 'resume', 'stop-on-failure',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
@@ -287,6 +302,10 @@ DONE
 
         '<>', # Required to read non-option args
         );
+
+    if (!$optsSuccess) {
+        croak_runtime("Error reading command-line options.");
+    }
 
     $pendingOptionsRef->{'global'} //= { };
 
@@ -383,8 +402,7 @@ sub generateModuleList
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
 
-    if (@startProgramAndArgs)
-    {
+    if (@startProgramAndArgs) {
         $ctx->setupEnvironment(); # Read options from set-env
         $ctx->commitEnvironmentChanges(); # Apply env options to environment
         _executeCommandLineProgram(@startProgramAndArgs); # noreturn
@@ -584,13 +602,34 @@ sub runAllModulePhases
     $ctx->addModule($_) foreach @modules;
 
     my $runMode = $self->runMode();
+
+    if ($runMode eq 'query') {
+        my $queryMode = $ctx->getOption('query', 'module');
+
+        # Default to ->getOption as query method.
+        # $_[0] is short name for first param.
+        my $query = sub { $_[0]->getOption($queryMode) };
+        $query = sub { $_[0]->fullpath('source') } if $queryMode eq 'source-dir';
+        $query = sub { $_[0]->fullpath('build') }  if $queryMode eq 'build-dir';
+        $query = sub { $_[0]->installationPath() } if $queryMode eq 'install-dir';
+        $query = sub { $_[0]->fullProjectPath() }  if $queryMode eq 'project-path';
+        $query = sub { ($_[0]->scm()->_determinePreferredCheckoutSource())[0] // '' }
+            if $queryMode eq 'branch';
+
+        if (@modules == 1) {
+            # No leading module name, just the value
+            say $query->($modules[0]);
+        }
+        else {
+            for my $m (@modules) {
+                say "$m: ", $query->($m);
+            }
+        }
+
+        return 0;
+    }
+
     my $result;
-
-    my @update_list = map { $_->name() } ($ctx->modulesInPhase('update'));
-    my @build_list = map { $_->name() } ($ctx->modulesInPhase('build'));
-
-    debug ("Update list is ", join (', ', @update_list));
-    debug ("Build list is ", join (', ', @build_list));
 
     if ($runMode eq 'build')
     {

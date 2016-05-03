@@ -1,15 +1,29 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.0)
 project(kdesrc-build)
 
-find_package(KDE4) # Needed for the docs, but optional.
+# Needed for the docs, but optional. If not found, we will simply
+# defer to native CMake handling.
+find_package(ECM 5.10.0 NO_MODULE)
 
-if (KDE4_FOUND)
-  include(KDE4Defaults)
-  include(MacroLibrary)
-  macro_optional_add_subdirectory(doc)
+if (ECM_FOUND)
+    set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_DIR})
+
+    include(KDEInstallDirs)
+    include(KDECMakeSettings)
+    include(FeatureSummary)
+    include(ECMOptionalAddSubdirectory)
+
+    find_package(KF5 5.10.0 COMPONENTS DocTools)
+
+    if(KF5_DocTools_FOUND)
+        ecm_optional_add_subdirectory(doc)
+    else()
+        message(WARNING "Found ECM, but not KF5::DocTools; documentation will not be built")
+    endif()
 else()
-   set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share/apps" CACHE PATH "The parent directory where applications can install their data")
-   set(BIN_INSTALL_DIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
+    message(WARNING "Did not find extra-cmake-modules; documentation will not be built and install paths will be guessed based on CMake settings.")
+    set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share/apps" CACHE PATH "The parent directory where applications can install their data")
+    set(BIN_INSTALL_DIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
 endif()
 
 set(KDESRC_BUILD_INSTALL_MODULES TRUE CACHE BOOL "Controls whether to install the modules that make up the script. Leave enabled unless running straight from source")
@@ -72,3 +86,7 @@ endif()
 
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${BIN_INSTALL_DIR})
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build-setup DESTINATION ${BIN_INSTALL_DIR})
+
+if (ECM_FOUND)
+    feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
+endif()
