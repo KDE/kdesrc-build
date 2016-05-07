@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 2.8.9)
 project(kdesrc-build)
 
 # Needed for the docs, but optional. If not found, we will simply
