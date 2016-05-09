@@ -20,6 +20,9 @@ if (ECM_FOUND)
     else()
         message(WARNING "Found ECM, but not KF5::DocTools; documentation will not be built")
     endif()
+    # ECM sets DATA_INSTALL_DIR to PREFIX/share, the "/apps" is gone in KF5.
+    # To get a consistent install with and without ECM, override this:
+    set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share/apps" CACHE PATH "The parent directory where applications can install their data")
 else()
     message(WARNING "Did not find extra-cmake-modules; documentation will not be built and install paths will be guessed based on CMake settings.")
     set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share/apps" CACHE PATH "The parent directory where applications can install their data")
