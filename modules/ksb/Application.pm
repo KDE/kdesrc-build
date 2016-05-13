@@ -855,12 +855,14 @@ sub _parseModuleOptions
     {
         last if m/$endRE/;
 
+        my $current_file = $fileReader->currentFilename();
+
         # Sanity check, make sure the section is correctly terminated
         if(/^(module\s|module$)/)
         {
-            error ("Invalid configuration file $rcfile at line $.\nAdd an 'end $endWord' before " .
+            error ("Invalid configuration file $current_file at line $.\nAdd an 'end $endWord' before " .
                    "starting a new module.\n");
-            die make_exception('Config', "Invalid $rcfile");
+            die make_exception('Config', "Invalid file $current_file");
         }
 
         my ($option, $value) = _splitOptionAndValue($ctx, $_);
@@ -873,7 +875,7 @@ sub _parseModuleOptions
 
             if (!$repo || !$url) {
                 error (<<"EOF");
-The y[git-repository-base] option at y[b[$rcfile:$.]
+The y[git-repository-base] option at y[b[$current_file:$.]
 requires a repository name and URL.
 
 e.g. git-repository base y[b[kde] g[b[git://anongit.kde.org/]
@@ -924,7 +926,7 @@ sub _parseModuleSetOptions
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fileReader = shift;
     my $moduleSetName = shift || '';
-    my $rcfile = $ctx->rcFile();
+    my $rcfile = $fileReader->currentFilename();
 
     my $startLine = $.; # For later error messages
     my $internalModuleSetName =
@@ -1058,9 +1060,8 @@ sub _readConfigurationOptions
     my $rcfile = $ctx->rcFile();
     my ($option, %readModules);
 
-    my $fileReader = ksb::RecursiveFH->new();
-    $fileReader->pushBasePath(dirname($rcfile)); # rcfile should already be absolute
-    $fileReader->addFilehandle($fh);
+    my $fileReader = ksb::RecursiveFH->new($rcfile);
+    $fileReader->addFile($fh, $rcfile);
 
     # Read in global settings
     while ($_ = $fileReader->readLine())
@@ -1129,7 +1130,8 @@ sub _readConfigurationOptions
             # Overwrite options set for existing modules.
             # But allow duplicate 'options' declarations without error.
             if ($type ne 'options') {
-                warning ("Don't use b[r[module $modulename] on line $., use b[g[options $modulename]");
+                my $current_file = $fileReader->currentFilename();
+                warning ("Don't use b[r[module $modulename] on line $. of $current_file, use b[g[options $modulename]");
             }
 
             $newModule = $seenModules{$modulename};

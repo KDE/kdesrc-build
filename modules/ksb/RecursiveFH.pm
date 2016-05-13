@@ -12,14 +12,18 @@ use File::Basename; # dirname
 # TODO: Replace make_exception with appropriate croak_* function.
 sub new
 {
-    my ($class) = @_;
+    my ($class, $rcfile) = @_;
     my $data = {
         'filehandles' => [],    # Stack of filehandles to read
+        'filenames'   => [],    # Corresponding tack of filenames (full paths)
         'base_path'   => [],    # Base directory path for relative includes
         'current'     => undef, # Current filehandle to read
+        'current_fn'  => undef, # Current filename
     };
 
-    return bless($data, $class);
+    my $self = bless($data, $class);
+    $self->pushBasePath(dirname($rcfile)); # rcfile should already be absolute
+    return $self;
 }
 
 # Adds a new filehandle to read config data from.
@@ -27,21 +31,24 @@ sub new
 # This should be called in conjunction with pushBasePath to allow for recursive
 # includes from different folders to maintain the correct notion of the current
 # cwd at each recursion level.
-sub addFilehandle
+sub addFile
 {
-    my ($self, $fh) = @_;
+    my ($self, $fh, $fn) = @_;
     push @{$self->{filehandles}}, $fh;
-    $self->setCurrentFilehandle($fh);
+    push @{$self->{filenames}}, $fn;
+    $self->setCurrentFile($fh, $fn);
 }
 
 sub popFilehandle
 {
     my $self = shift;
-    my $result = pop @{$self->{filehandles}};
+    pop @{$self->{filehandles}};
+    pop @{$self->{filenames}};
     my $newFh = scalar @{$self->{filehandles}} ? ${$self->{filehandles}}[-1]
                                                : undef;
-    $self->setCurrentFilehandle($newFh);
-    return $result;
+    my $newFilename = scalar @{$self->{filenames}} ? ${$self->{filenames}}[-1]
+                                               : undef;
+    $self->setCurrentFile($newFh, $newFilename);
 }
 
 sub currentFilehandle
@@ -50,15 +57,22 @@ sub currentFilehandle
     return $self->{current};
 }
 
-sub setCurrentFilehandle
+sub currentFilename
 {
     my $self = shift;
-    $self->{current} = shift;
+    return $self->{current_fn};
+}
+
+sub setCurrentFile
+{
+    my ($self, $fh, $fn) = @_;
+    $self->{current} = $fh;
+    $self->{current_fn} = $fn;
 }
 
 # Sets the base directory to use for any future encountered include entries
 # that use relative notation, and saves the existing base path (as on a stack).
-# Use in conjunction with addFilehandle, and use popFilehandle and popBasePath
+# Use in conjunction with addFile, and use popFilehandle and popBasePath
 # when done with the filehandle.
 sub pushBasePath
 {
@@ -106,10 +120,8 @@ sub readLine
         return undef unless defined $fh;
 
         if (eof($fh) || !defined($line = <$fh>)) {
-            my $oldFh = $self->popFilehandle();
+            $self->popFilehandle();
             $self->popBasePath();
-
-            close $oldFh;
 
             my $fh = $self->currentFilehandle();
 
@@ -138,7 +150,7 @@ sub readLine
                     "Unable to open file $filename which was included from line $.");
 
             $prefix = dirname($filename); # Recalculate base path
-            $self->addFilehandle($newFh);
+            $self->addFile($newFh, $filename);
             $self->pushBasePath($prefix);
 
             redo READLINE;
