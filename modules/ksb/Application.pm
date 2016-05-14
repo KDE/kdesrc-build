@@ -794,12 +794,12 @@ sub _splitOptionAndValue
     {
         my $sub_var_value = $ctx->getOption($sub_var_name) || '';
         if(!$ctx->hasOption($sub_var_value)) {
-            warning (" *\n * WARNING: $sub_var_name is not set at line y[$.]\n *");
+            warning (" *\n * WARNING: $sub_var_name is not set at line y[$.]\n *");   ## TODO: filename is missing
         }
 
         debug ("Substituting \${$sub_var_name} with $sub_var_value");
 
-        $value =~ s/\${$sub_var_name}/$sub_var_value/g;
+        $value =~ s/\$\{$sub_var_name\}/$sub_var_value/g;
 
         # Replace other references as well.  Keep this RE up to date with
         # the other one.
