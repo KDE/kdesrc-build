@@ -788,7 +788,6 @@ sub update
         }
         else
         {
-            whisper ("This module will not be built. Nothing updated.");
             $message = "0 files affected.";
 
             $ipc->sendIPCMessage(ksb::IPC::MODULE_UPTODATE, $moduleName);

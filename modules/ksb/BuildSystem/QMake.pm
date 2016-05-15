@@ -44,7 +44,8 @@ sub configureInternal
     my $module = $self->module();
     my $builddir = $module->fullpath('build');
     my $sourcedir = $module->fullpath('source');
-    my @qmakeOpts = split(' ', $module->getOption('qmake-options'));
+    # -r forces recursive configuration
+    my @qmakeOpts = ('-r', split(' ', $module->getOption('qmake-options')));
     my @projectFiles = glob("$sourcedir/*.pro");
 
     if (!@projectFiles || !$projectFiles[0]) {
@@ -60,6 +61,8 @@ sub configureInternal
 
     my $qmake = absPathToQMake();
     return 0 unless $qmake;
+
+    info ("\tRunning g[qmake]...");
     return log_command($module, 'qmake', [ $qmake, @qmakeOpts, $projectFiles[0] ]) == 0;
 }
 
