@@ -793,7 +793,7 @@ sub _splitOptionAndValue
     while ($sub_var_name)
     {
         my $sub_var_value = $ctx->getOption($sub_var_name) || '';
-        if(!$ctx->hasOption($sub_var_value)) {
+        if(!$ctx->hasOption($sub_var_name)) {
             warning (" *\n * WARNING: $sub_var_name is not set at line y[$.]\n *");   ## TODO: filename is missing
         }
 
