@@ -132,7 +132,7 @@ sub readLine
         elsif ($line =~ /^\s*include\s+\S/) {
             # Include found, extract file name and open file.
             chomp $line;
-            my ($filename) = ($line =~ /^\s*include\s+(.+)$/);
+            my ($filename) = ($line =~ /^\s*include\s+(.+?)\s*$/);
 
             if (!$filename) {
                 die make_exception('Config',
