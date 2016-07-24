@@ -75,11 +75,15 @@ sub _applyCmdlineOptions
 
     foreach my $m (@modules) {
         my $name = $m->name();
+        my $moduleSetName = $m->moduleSet()->name();
 
         # Remove any options that would interfere with cmdline args
         delete @{$m->{options}}{@cmdlineArgs};
 
-        # Reapply module-specific cmdline args
+        # Reapply module-specific cmdline args (module-set first)
+        if ($moduleSetName && exists $self->{pendingOptions}->{$moduleSetName}) {
+            $m->setOption(%{$self->{pendingOptions}->{$moduleSetName}});
+        }
         $m->setOption(%{$self->{pendingOptions}->{$name}});
     }
 
