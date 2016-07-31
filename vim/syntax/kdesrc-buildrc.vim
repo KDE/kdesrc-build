@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language: kdesrc-build configuration file
 " Maintainer: Michael Pyne <mpyne@kde.org>
-" Latest Revision: 12 September 2015
+" Latest Revision: 31 July 2016
 
-" Copyright (c) 2014,2015 Michael Pyne <mpyne@kde.org>
+" Copyright (c) 2014-2016 Michael Pyne <mpyne@kde.org>
 " Redistribution and use in source and binary forms, with or without
 " modification, are permitted provided that the following conditions
 " are met:
@@ -68,13 +68,13 @@ syn keyword ksbrcBoolOption contained skipwhite nextgroup=ksbrcBoolValue
             \ use-clean-install
 
 syn keyword ksbrcGlobalBoolOption contained skipwhite nextgroup=ksbrcBoolValue
-            \ async colorful-output disable-agent-check disable-snapshot pretend
+            \ async colorful-output disable-agent-check disable-snapshots pretend
             \ purge-old-logs stop-on-failure use-idle-io-priority
 
 " MUST BE CONSISTENT WITH ABOVE. Used when a global option is used in the
 " wrong spot to highlight the error.
 syn keyword ksbrcErrorBoolOption contained skipwhite nextgroup=ksbrcBoolValue
-            \ async colorful-output disable-agent-check disable-snapshot pretend
+            \ async colorful-output disable-agent-check disable-snapshots pretend
             \ purge-old-logs stop-on-failure use-idle-io-priority
 
 " Matches
