@@ -76,6 +76,7 @@ our %defaultGlobalFlags = (
     "delete-my-patches"    => 0, # Should only be set from cmdline
     "delete-my-settings"   => 0, # Should only be set from cmdline
     "disable-agent-check"  => 0, # If true we don't check on ssh-agent
+    "disable-snapshots"    => 1, # 2016-07-31 Temp. disabled until kde.org fixed to supply snapshots
     "ignore-kde-structure" => 0, # Whether to use kde dir structure like extragear/network
     "install-after-build"  => 1,  # Default to true
     "install-session-driver" => 0,# Default to false
