@@ -980,7 +980,7 @@ of $rcfile.
 A repository is needed to determine where to download the source code from.
 
 Most will want to use the b[g[kde-projects] repository. See also
-https://docs.kde.org/trunk4/en/extragear-utils/kdesrc-build/kde-modules-and-selection.html#module-sets
+https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/kde-modules-and-selection.html#module-sets
 EOF
         die make_exception('Config', 'Missing repository option');
     }
@@ -2643,10 +2643,10 @@ The man page can also be found online at
 https://kdesrc-build.kde.org/documentation/kdesrc-build.1.html
 
 This help is not comprehensive, to see a listing of all options please visit:
-https://docs.kde.org/trunk4/en/extragear-utils/kdesrc-build/conf-options-table.html
+https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/conf-options-table.html
 
 For all command line options, please visit:
-https://docs.kde.org/trunk4/en/extragear-utils/kdesrc-build/supported-cmdline-params.html
+https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/supported-cmdline-params.html
 DONE
 }
 
