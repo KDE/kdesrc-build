@@ -812,6 +812,54 @@ sub _splitOptionAndValue
     return ($option, $value);
 }
 
+# Ensures that the given ModuleSet has at least a valid repository and
+# use-modules setting based on the given BuildContext.
+sub _validateModuleSet
+{
+    my ($ctx, $moduleSet) = @_;
+    my $name = $moduleSet->name() || 'unnamed';
+    my $rcSources = _getModuleSources($moduleSet);
+
+    # re-read option from module set since it may be pre-set
+    my $selectedRepo = $moduleSet->getOption('repository');
+    if (!$selectedRepo) {
+        error (<<EOF);
+
+There was no repository selected for the y[b[$name] module-set declared at
+    $rcSources
+
+A repository is needed to determine where to download the source code from.
+
+Most will want to use the b[g[kde-projects] repository. See also
+https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/kde-modules-and-selection.html#module-sets
+EOF
+        die make_exception('Config', 'Missing repository option');
+    }
+
+    my $repoSet = $ctx->getOption('git-repository-base');
+    if ($selectedRepo ne KDE_PROJECT_ID &&
+        not exists $repoSet->{$selectedRepo})
+    {
+        my $projectID = KDE_PROJECT_ID;
+        my $moduleSetName = $moduleSet->name();
+        my $moduleSetId = $moduleSetName ? "module-set ($moduleSetName)"
+                                         : "module-set";
+
+        error (<<EOF);
+There is no repository assigned to y[b[$selectedRepo] when assigning a
+$moduleSetId at $rcSources.
+
+These repositories are defined by g[b[git-repository-base] in the global
+section of your configuration.
+
+Make sure you spelled your repository name right, but you probably meant
+to use the magic b[$projectID] repository for your module-set instead.
+EOF
+
+        die make_exception('Config', 'Unknown repository base');
+    }
+}
+
 # Reads in the options from the config file and adds them to the option store.
 # The first parameter is a BuildContext object to use for creating the returned
 #     ksb::Module under.
@@ -894,6 +942,33 @@ EOF
     return $module;
 }
 
+# Marks the given OptionsBase subclass (i.e. Module or ModuleSet) as being
+# read in from the given string (filename:line). An OptionsBase can be
+# tagged under multiple files.
+sub _markModuleSource
+{
+    my ($optionsBase, $configSource) = @_;
+    my $key = '#defined-at';
+
+    my $sourcesRef = $optionsBase->hasOption($key)
+        ? $optionsBase->getOption($key)
+        : [];
+
+    push @$sourcesRef, $configSource;
+    $optionsBase->setOption($key, $sourcesRef);
+}
+
+# Returns rcfile sources for given OptionsBase (comma-separated).
+sub _getModuleSources
+{
+    my $optionsBase = shift;
+    my $key = '#defined-at';
+
+    my $sourcesRef = $optionsBase->getOption($key) || [];
+
+    return join(', ', @$sourcesRef);
+}
+
 # Reads in a "moduleset".
 #
 # First parameter is the build context.
@@ -944,52 +1019,12 @@ sub _parseModuleSetOptions
         }
     }
 
+    _markModuleSource($moduleSet, "$rcfile:$startLine") if %optionSet;
     $moduleSet->setOption(%optionSet);
 
-    # Check before we use this module set whether the user did something silly.
-
-    # re-read option from module set since it may be pre-set
-    my $selectedRepo = $moduleSet->getOption('repository');
-    if (!$selectedRepo) {
-        error (<<EOF);
-
-There was no repository selected for the module-set declared on line $startLine
-of $rcfile.
-
-A repository is needed to determine where to download the source code from.
-
-Most will want to use the b[g[kde-projects] repository. See also
-https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/kde-modules-and-selection.html#module-sets
-EOF
-        die make_exception('Config', 'Missing repository option');
-    }
-
-    my $repoSet = $ctx->getOption('git-repository-base');
-    if ($selectedRepo ne KDE_PROJECT_ID &&
-        not exists $repoSet->{$selectedRepo})
+    if ($moduleSet->getOption('repository') eq KDE_PROJECT_ID &&
+        !$moduleSet->isa('ksb::ModuleSet::KDEProjects'))
     {
-        my $projectID = KDE_PROJECT_ID;
-        my $moduleSetName = $moduleSet->name();
-        my $moduleSetId = $moduleSetName ? "module-set ($moduleSetName)"
-                                         : "module-set";
-
-        error (<<EOF);
-There is no repository assigned to y[b[$optionSet{repository}] when assigning a
-$moduleSetId on line $startLine of $rcfile.
-
-These repositories are defined by g[b[git-repository-base] in the global
-section of $rcfile.
-Make sure you spelled your repository name right!
-
-If you are trying to pull the module information from the KDE
-http://projects.kde.org/ website, please use b[$projectID] for the value of
-the b[repository] option.
-EOF
-
-        die make_exception('Config', 'Unknown repository base');
-    }
-
-    if ($selectedRepo eq KDE_PROJECT_ID && !$moduleSet->isa('ksb::ModuleSet::KDEProjects')) {
         # Perl-specific note! re-blessing the module set into the right 'class'
         # You'd probably have to construct an entirely new object and copy the
         # members over in other languages.
@@ -1179,6 +1214,10 @@ sub _readConfigurationOptions
 
         # Don't build default modules if user has their own wishes.
         $using_default = 0;
+    }
+
+    while (my ($name, $moduleSet) = each %seenModuleSets) {
+        _validateModuleSet($ctx, $moduleSet);
     }
 
     # If the user doesn't ask to build any modules, build a default set.
