@@ -947,8 +947,10 @@ sub _parseModuleSetOptions
     $moduleSet->setOption(%optionSet);
 
     # Check before we use this module set whether the user did something silly.
-    my $repoSet = $ctx->getOption('git-repository-base');
-    if (!exists $optionSet{'repository'}) {
+
+    # re-read option from module set since it may be pre-set
+    my $selectedRepo = $moduleSet->getOption('repository');
+    if (!$selectedRepo) {
         error (<<EOF);
 
 There was no repository selected for the module-set declared on line $startLine
@@ -962,8 +964,9 @@ EOF
         die make_exception('Config', 'Missing repository option');
     }
 
-    if (($optionSet{'repository'} ne KDE_PROJECT_ID) &&
-        not exists $repoSet->{$optionSet{'repository'}})
+    my $repoSet = $ctx->getOption('git-repository-base');
+    if ($selectedRepo ne KDE_PROJECT_ID &&
+        not exists $repoSet->{$selectedRepo})
     {
         my $projectID = KDE_PROJECT_ID;
         my $moduleSetName = $moduleSet->name();
@@ -986,7 +989,7 @@ EOF
         die make_exception('Config', 'Unknown repository base');
     }
 
-    if ($optionSet{'repository'} eq KDE_PROJECT_ID) {
+    if ($selectedRepo eq KDE_PROJECT_ID && !$moduleSet->isa('ksb::ModuleSet::KDEProjects')) {
         # Perl-specific note! re-blessing the module set into the right 'class'
         # You'd probably have to construct an entirely new object and copy the
         # members over in other languages.
