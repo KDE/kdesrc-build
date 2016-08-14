@@ -1069,6 +1069,7 @@ sub _readConfigurationOptions
     my $using_default = 1;
     my @pendingOptsKeys = keys %{$pendingOptionsRef->{global}};
     my %seenModules; # NOTE! *not* module-sets, *just* modules.
+    my %seenModuleSets; # and vice versa -- named sets only though!
     my %seenModuleSetItems; # To track option override modules.
 
     # Now read in module settings
@@ -1094,6 +1095,16 @@ sub _readConfigurationOptions
                 die make_exception('Config', 'Ungrouped/Unknown option');
             }
 
+            if ($modulename && exists $seenModuleSets{$modulename}) {
+                error ("Duplicate module-set $modulename at $rcfile:$.");
+                die make_exception('Config', "Duplicate module-set $modulename defined at $rcfile:$.");
+            }
+
+            if ($modulename && exists $seenModules{$modulename}) {
+                error ("Name $modulename for module-set at $rcfile:$. is already in use on a module");
+                die make_exception('Config', "Can't re-use name $modulename for module-set defined at $rcfile:$.");
+            }
+
             # A moduleset can give us more than one module to add.
             $newModule = _parseModuleSetOptions($ctx, $fileReader,
                 ksb::ModuleSet->new($ctx, $modulename || "<module-set at line $.>"));
@@ -1102,6 +1113,8 @@ sub _readConfigurationOptions
             # are overriding/overlaying their options.
             my @moduleSetItems = $newModule->moduleNamesToFind();
             @seenModuleSetItems{@moduleSetItems} = ($newModule) x scalar @moduleSetItems;
+
+            $seenModuleSets{$modulename} = $newModule if $modulename;
         }
         # Duplicate module entry? (Note, this must be checked before the check
         # below for 'options' sets)
@@ -1126,21 +1139,31 @@ sub _readConfigurationOptions
         # Module override (for use-modules from a module-set), or option overrride?
         elsif ($type eq 'options') {
             # Parse the modules...
-            $newModule = _parseModuleOptions($ctx, $fileReader,
-                ksb::Module->new($ctx, "#overlay_$modulename"));
+            if (exists $seenModuleSets{$modulename}) {
+                _parseModuleSetOptions($ctx, $fileReader, $seenModuleSets{$modulename});
+            }
+            else {
+                $newModule = _parseModuleOptions($ctx, $fileReader,
+                    ksb::Module->new($ctx, "#overlay_$modulename"));
 
-            # but only keep the options. Any existing pending options came from
-            # cmdline so do not overwrite existing keys.
-            $pendingOptionsRef->{$modulename} //= { };
-            my $moduleOptsRef = $pendingOptionsRef->{$modulename};
-            while (my ($k, $v) = each %{$newModule->{options}}) {
-                $moduleOptsRef->{$k} = $v unless exists $moduleOptsRef->{$k};
+                # but only keep the options. Any existing pending options came from
+                # cmdline so do not overwrite existing keys.
+                $pendingOptionsRef->{$modulename} //= { };
+                my $moduleOptsRef = $pendingOptionsRef->{$modulename};
+                while (my ($k, $v) = each %{$newModule->{options}}) {
+                    $moduleOptsRef->{$k} = $v unless exists $moduleOptsRef->{$k};
+                }
+
+                # Don't mask global cmdline options.
+                delete @{$moduleOptsRef}{@pendingOptsKeys};
             }
 
-            # Don't mask global cmdline options.
-            delete @{$moduleOptsRef}{@pendingOptsKeys};
-
             next; # Don't add to module list
+        }
+        # Must follow 'options' handling
+        elsif (exists $seenModuleSets{$modulename}) {
+            error ("Name $modulename for module at $rcfile:$. is already in use on a module-set");
+            die make_exception('Config', "Can't re-use name $modulename for module defined at $rcfile:$.");
         }
         else {
             $newModule = _parseModuleOptions($ctx, $fileReader,
