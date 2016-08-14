@@ -816,36 +816,18 @@ sub _splitOptionAndValue
 # The first parameter is a BuildContext object to use for creating the returned
 #     ksb::Module under.
 # The second parameter is a reference to the file handle to read from.
-# The third parameter is the module name. It can be either an
-# already-constructed ksb::Module object (in which case it is used directly and any
-# options read for the module are applied directly to the object), or it can be
-# a string containing the module name (in which case a new ksb::Module object will
-# be created). For global options the module name should be 'global', or just
-# pass in the BuildContext for this param as well.
+# The third parameter is the ksb::Module to use.
+#     For global options, just pass in the BuildContext for this param.
 #
-# The return value is the ksb::Module with options set as given in the configuration
-# file for that module. If global options were being read then a BuildContext
-# is returned (but that is-a ksb::Module anyways).
+# The return value is the ksb::Module provided, with options set as given in
+# the configuration file module section being processed.
 sub _parseModuleOptions
 {
-    my ($ctx, $fileReader, $moduleOrName) = @_;
+    my ($ctx, $fileReader, $module) = @_;
     assert_isa($ctx, 'ksb::BuildContext');
+    assert_isa($module, 'ksb::Module');
 
     my $rcfile = $ctx->rcFile();
-    my $module;
-
-    # Figure out what objects to store options into. If given, just use
-    # that, otherwise use context or a new ksb::Module depending on the name.
-    if (ref $moduleOrName) {
-        $module = $moduleOrName;
-        assert_isa($module, 'ksb::Module');
-    }
-    elsif ($moduleOrName eq 'global') {
-        $module = $ctx;
-    }
-    else {
-        $module = ksb::Module->new($ctx, $moduleOrName);
-    }
 
     my $endWord = $module->isa('ksb::BuildContext') ? 'global' : 'module';
     my $endRE = qr/^end[\w\s]*$/;
@@ -916,23 +898,18 @@ EOF
 #
 # First parameter is the build context.
 # Second parameter is the filehandle to the config file to read from.
-# Third parameter is the name of the moduleset, which is really the name
-# of the base repository to use (this can be left empty).
+# Third parameter is the ksb::ModuleSet to use.
 #
-# Returns a ksb::ModuleSet describing the module-set encountered, which may
-# need to be further expanded (see ksb::ModuleSet::convertToModules).
+# Returns the ksb::ModuleSet passed in with read-in options set, which may need
+# to be further expanded (see ksb::ModuleSet::convertToModules).
 sub _parseModuleSetOptions
 {
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $fileReader = shift;
-    my $moduleSetName = shift || '';
+    my ($ctx, $fileReader, $moduleSet) = @_;
+    assert_isa($ctx, 'ksb::BuildContext');
+
     my $rcfile = $fileReader->currentFilename();
-
     my $startLine = $.; # For later error messages
-    my $internalModuleSetName =
-        $moduleSetName || "<module-set at line $startLine>";
 
-    my $moduleSet = ksb::ModuleSet->new($ctx, $internalModuleSetName);
     my %optionSet; # We read all options, and apply them to all modules
 
     while($_ = _readNextLogicalLine($fileReader)) {
@@ -989,6 +966,7 @@ EOF
         not exists $repoSet->{$optionSet{'repository'}})
     {
         my $projectID = KDE_PROJECT_ID;
+        my $moduleSetName = $moduleSet->name();
         my $moduleSetId = $moduleSetName ? "module-set ($moduleSetName)"
                                          : "module-set";
 
@@ -1080,7 +1058,7 @@ sub _readConfigurationOptions
         }
 
         # Now read in each global option.
-        _parseModuleOptions($ctx, $fileReader, 'global');
+        _parseModuleOptions($ctx, $fileReader, $ctx);
         while (my ($k, $v) = each %{$pendingOptionsRef->{global}}) {
             $ctx->setOption($k, $v);
         }
@@ -1117,7 +1095,8 @@ sub _readConfigurationOptions
             }
 
             # A moduleset can give us more than one module to add.
-            $newModule = _parseModuleSetOptions($ctx, $fileReader, $modulename);
+            $newModule = _parseModuleSetOptions($ctx, $fileReader,
+                ksb::ModuleSet->new($ctx, $modulename || "<module-set at line $.>"));
 
             # Save 'use-modules' entries so we can see if later module decls
             # are overriding/overlaying their options.
@@ -1147,7 +1126,8 @@ sub _readConfigurationOptions
         # Module override (for use-modules from a module-set), or option overrride?
         elsif ($type eq 'options') {
             # Parse the modules...
-            $newModule = _parseModuleOptions($ctx, $fileReader, "#overlay_$modulename");
+            $newModule = _parseModuleOptions($ctx, $fileReader,
+                ksb::Module->new($ctx, "#overlay_$modulename"));
 
             # but only keep the options. Any existing pending options came from
             # cmdline so do not overwrite existing keys.
@@ -1163,7 +1143,8 @@ sub _readConfigurationOptions
             next; # Don't add to module list
         }
         else {
-            $newModule = _parseModuleOptions($ctx, $fileReader, $modulename);
+            $newModule = _parseModuleOptions($ctx, $fileReader,
+                ksb::Module->new($ctx, $modulename));
             $seenModules{$modulename} = $newModule;
         }
 
