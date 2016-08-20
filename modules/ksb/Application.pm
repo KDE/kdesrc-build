@@ -2634,10 +2634,13 @@ Options:
     --help               You\'re reading it. :-)
     --version            Output the program version.
 
-You can get more help by going online to http://kdesrc-build.kde.org/ to view
-the online documentation.  If you have installed kdesrc-build you may also be
-able to view the documentation using KHelpCenter or Konqueror at the URL
-help:/kdesrc-build, or using the man page by typing "man kdesrc-build".
+You can get more help by going online to
+https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/
+to view the online documentation.
+
+If you have installed kdesrc-build you may also be able to view the
+documentation using KHelpCenter or Konqueror at the URL help:/kdesrc-build, or
+using the man page by typing "man kdesrc-build".
 
 The man page can also be found online at
 https://kdesrc-build.kde.org/documentation/kdesrc-build.1.html
