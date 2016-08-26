@@ -41,11 +41,6 @@ use overload
     '<=>' => 'compare',
     ;
 
-# We will 'mixin' various backend-specific classes, e.g. Updater::Git or Updater::Svn
-# TODO: I later used composition for the source update instead of inheritance, didn't
-# I also use composition for the build system backend? If so remove this. --mpyne
-#our @ISA = qw(ksb::BuildSystem);
-
 my $ModuleSource = 'config';
 
 sub new
