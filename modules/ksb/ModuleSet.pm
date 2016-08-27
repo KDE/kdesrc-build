@@ -131,6 +131,42 @@ sub _initializeNewModule
     $newModule->mergeOptionsFrom($self);
 }
 
+# OVERRIDE
+#
+# Handles module-set specific options for OptionsBase's setOption
+#
+sub setOption
+{
+    my ($self, %options) = @_;
+
+    # Special-case handling
+    if (exists $options{'use-modules'}) {
+        my @modules = split(' ', $options{'use-modules'});
+        if (not @modules) {
+            error ("No modules were selected for module-set " . $self->name());
+            error ("in the y[use-modules] entry.");
+            die ksb::BuildException::Config->new('use-modules', 'Invalid use-modules');
+        }
+
+        $self->setModulesToFind(@modules);
+        delete $options{'use-modules'};
+    }
+    if (exists $options{'ignore-modules'}) {
+        my @modules = split(' ', $options{'ignore-modules'});
+        if (not @modules) {
+            error ("No modules were selected for module-set " . $self->name());
+            error ("in the y[ignore-modules] entry.");
+            die ksb::BuildException::Config->new('ignore-modules', 'Invalid ignore-modules');
+        }
+
+        $self->setModulesToIgnore(@modules);
+        delete $options{'ignore-modules'};
+    }
+
+    # Actually set options.
+    $self->SUPER::setOption(%options);
+}
+
 # This function should be called after options are read and build metadata is
 # available in order to convert this module set to a list of ksb::Module.
 # Any modules ignored by this module set are excluded from the returned list.

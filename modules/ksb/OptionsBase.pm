@@ -1,4 +1,4 @@
-package ksb::OptionsBase 0.10;
+package ksb::OptionsBase 0.20;
 
 # Common code for dealing with kdesrc-build module options
 # See POD docs below for more details.
@@ -90,8 +90,10 @@ sub processSetEnvOption
     return;
 }
 
-# Sets the option refered to by the first parameter (a string) to the
-# scalar (e.g. references are OK too) value given as the second paramter.
+# Sets the options in the provided hash to their respective values. If any
+# special handling is needed then be sure to reimplement this method
+# and to call this method with the resultant effective set of option-value
+# pairs.
 sub setOption
 {
     my ($self, %options) = @_;
@@ -183,6 +185,10 @@ Normally seen as simply:
 For the vast majority of possible options, setting the same option again
 overwrites any previous value. However for C<set-env> options, additional
 option sets instead will B<append> to previously-set values.
+
+If you need to perform special handling based on option values, subclass
+this function, but be sure to call B<this> setOption() with the resulting
+set of options (if any are left to set).
 
 =item deleteOption
 

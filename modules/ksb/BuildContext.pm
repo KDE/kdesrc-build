@@ -696,6 +696,24 @@ sub setOption
 {
     my ($self, %options) = @_;
 
+    # Special-case handling
+    my $repoOption = 'git-repository-base';
+    if (exists $options{$repoOption}) {
+        my $value = $options{$repoOption};
+        my ($repo, $url) = ($value =~ /^([a-zA-Z0-9_-]+)\s+(.+)$/);
+
+        # This will be a hash reference instead of a scalar
+        $value = $self->getOption($repoOption) || { };
+
+        if (!$repo || !$url) {
+            die ksb::BuildException::Config->new($repoOption,
+                "Invalid git-repository-base setting: $value");
+        }
+
+        $value->{$repo} = $url;
+        delete $options{$repoOption};
+    }
+
     # Actually set options.
     $self->SUPER::setOption(%options);
 

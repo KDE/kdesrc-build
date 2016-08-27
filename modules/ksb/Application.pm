@@ -14,6 +14,7 @@ use ksb::Debug;
 use ksb::Util;
 use ksb::BuildContext;
 use ksb::BuildSystem::QMake;
+use ksb::BuildException 0.20;
 use ksb::Module;
 use ksb::ModuleResolver;
 use ksb::ModuleSet 0.20;
@@ -864,31 +865,37 @@ EOF
 # The first parameter is a BuildContext object to use for creating the returned
 #     ksb::Module under.
 # The second parameter is a reference to the file handle to read from.
-# The third parameter is the ksb::Module to use.
+# The third parameter is the ksb::OptionsBase to use (module, module-set, ctx,
+#     etc.)
 #     For global options, just pass in the BuildContext for this param.
+# The fourth parameter is optional, if provided it should be a regexp for the
+#     terminator to use for the block being parsed in the rc file.
 #
-# The return value is the ksb::Module provided, with options set as given in
-# the configuration file module section being processed.
+# The return value is the ksb::OptionsBase provided, with options set as given in
+# the configuration file section being processed.
 sub _parseModuleOptions
 {
-    my ($ctx, $fileReader, $module) = @_;
+    my ($ctx, $fileReader, $module, $endRE) = @_;
     assert_isa($ctx, 'ksb::BuildContext');
-    assert_isa($module, 'ksb::Module');
+    assert_isa($module, 'ksb::OptionsBase');
 
-    my $rcfile = $ctx->rcFile();
+    my $endWord = $module->isa('ksb::BuildContext') ? 'global'     :
+                  $module->isa('ksb::ModuleSet')    ? 'module-set' :
+                  $module->isa('ksb::Module')       ? 'module'     :
+                                                      'options';
 
-    my $endWord = $module->isa('ksb::BuildContext') ? 'global' : 'module';
-    my $endRE = qr/^end[\w\s]*$/;
+    # Just look for an end marker if terminator not provided.
+    $endRE //= qr/^end[\w\s]*$/;
+
+    _markModuleSource($module, $fileReader->currentFilename() . ":$.");
 
     # Read in each option
-    while ($_ = _readNextLogicalLine($fileReader))
+    while (($_ = _readNextLogicalLine($fileReader)) && ($_ !~ $endRE))
     {
-        last if m/$endRE/;
-
         my $current_file = $fileReader->currentFilename();
 
         # Sanity check, make sure the section is correctly terminated
-        if(/^(module\s|module$)/)
+        if(/^(module\b|options\b)/)
         {
             error ("Invalid configuration file $current_file at line $.\nAdd an 'end $endWord' before " .
                    "starting a new module.\n");
@@ -897,46 +904,18 @@ sub _parseModuleOptions
 
         my ($option, $value) = _splitOptionAndValue($ctx, $_);
 
-        # Handle special options.
-        if ($module->isa('ksb::BuildContext') && $option eq 'git-repository-base') {
-            # This will be a hash reference instead of a scalar
-            my ($repo, $url) = ($value =~ /^([a-zA-Z0-9_-]+)\s+(.+)$/);
-            $value = $ctx->getOption($option) || { };
-
-            if (!$repo || !$url) {
-                error (<<"EOF");
-The y[git-repository-base] option at y[b[$current_file:$.]
-requires a repository name and URL.
-
-e.g. git-repository base y[b[kde] g[b[git://anongit.kde.org/]
-
-Use this in a "module-set" group:
-
-e.g.
-module-set kdesupport-set
-  repository y[b[kde]
-  use-modules automoc akonadi soprano attica
-end module-set
-EOF
-                die make_exception('Config', "Invalid git-repository-base");
+        eval { $module->setOption($option, $value); };
+        if (my $err = $@) {
+            if (blessed($err) && $err->isa('ksb::BuildException::Config'))
+            {
+                my $msg = "$current_file:$.: " . $err->message();
+                my $explanation = $err->optionUsageExplanation();
+                $msg = $msg . "\n" . $explanation if $explanation;
+                $err->setMessage($msg);
             }
 
-            $value->{$repo} = $url;
+            die; # re-throw
         }
-        # Read ~~ as "is in this list:"
-        elsif ($option ~~ [qw(git-repository-base use-modules ignore-modules)]) {
-            error (" r[b[*] module b[$module] (near line $.) should be declared as module-set to use b[$option]");
-            die make_exception('Config', "Option $option can only be used in module-set");
-        }
-        elsif ($option eq 'filter-out-phases') {
-            for my $phase (split(' ', $value)) {
-                $module->phases()->filterOutPhase($phase);
-            }
-
-            next; # Don't fallthrough to set the option
-        }
-
-        $module->setOption($option, $value);
     }
 
     return $module;
@@ -980,47 +959,8 @@ sub _getModuleSources
 sub _parseModuleSetOptions
 {
     my ($ctx, $fileReader, $moduleSet) = @_;
-    assert_isa($ctx, 'ksb::BuildContext');
 
-    my $rcfile = $fileReader->currentFilename();
-    my $startLine = $.; # For later error messages
-
-    my %optionSet; # We read all options, and apply them to all modules
-
-    while($_ = _readNextLogicalLine($fileReader)) {
-        last if /^end\s+module(-?set)?$/;
-
-        my ($option, $value) = _splitOptionAndValue($ctx, $_);
-
-        if ($option eq 'use-modules') {
-            my @modules = split(' ', $value);
-
-            if (not @modules) {
-                error ("No modules were selected for the current module-set");
-                error ("in the y[use-modules] on line $. of $rcfile");
-                die make_exception('Config', 'Invalid use-modules');
-            }
-
-            $moduleSet->setModulesToFind(@modules);
-        }
-        elsif ($option eq 'ignore-modules') {
-            my @modulesToIgnore = split(' ', $value);
-
-            if (not @modulesToIgnore) {
-                error ("No modules were selected for the current module-set");
-                error ("in the y[ignore-modules] on line $. of $rcfile");
-                die make_exception('Config', 'Invalid ignore-modules');
-            }
-
-            $moduleSet->setModulesToIgnore(@modulesToIgnore);
-        }
-        else {
-            $optionSet{$option} = $value;
-        }
-    }
-
-    _markModuleSource($moduleSet, "$rcfile:$startLine") if %optionSet;
-    $moduleSet->setOption(%optionSet);
+    $moduleSet = _parseModuleOptions($ctx, $fileReader, $moduleSet, qr/^end\s+module(-?set)?$/);
 
     if ($moduleSet->getOption('repository') eq KDE_PROJECT_ID &&
         !$moduleSet->isa('ksb::ModuleSet::KDEProjects'))

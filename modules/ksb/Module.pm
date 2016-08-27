@@ -24,6 +24,8 @@ use ksb::Updater::Bzr;
 use ksb::Updater::KDEProject;
 use ksb::Updater::KDEProjectMetadata;
 
+use ksb::BuildException 0.20;
+
 use ksb::BuildSystem;
 use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
@@ -800,6 +802,33 @@ sub update
 
     info (""); # Print empty line.
     return $returnValue;
+}
+
+# OVERRIDE
+#
+# This calls OptionsBase::setOption and performs any Module-specific
+# handling.
+sub setOption
+{
+    my ($self, %options) = @_;
+
+    # Ensure we don't accidentally get fed module-set options
+    for (qw(git-repository-base use-modules ignore-modules)) {
+        if (exists $options{$_}) {
+            error (" r[b[*] module b[$self] should be declared as module-set to use b[$_]");
+            die ksb::BuildException::Config->new($_, "Option $_ can only be used in module-set");
+        };
+    }
+
+    # Special case handling.
+    if (exists $options{'filter-out-phases'}) {
+        for my $phase (split(' ', $options{'filter-out-phases'})) {
+            $self->phases()->filterOutPhase($phase);
+        }
+        delete $options{'filter-out-phases'};
+    }
+
+    $self->SUPER::setOption(%options);
 }
 
 # OVERRIDE
