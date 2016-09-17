@@ -4,7 +4,7 @@ package ksb::Module::BranchGroupResolver;
 # to use for a given KDE project module and given desired logical branch group, using
 # supplied JSON data (from kde-build-metadata).
 #
-# See also http://community.kde.org/Infrastructure/Project_Metadata
+# See also https://community.kde.org/Infrastructure/Project_Metadata
 
 use strict;
 use warnings;

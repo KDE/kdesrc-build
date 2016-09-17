@@ -30,7 +30,7 @@ user_path=""  # Set to colon-separated PATH to add to the Qt/KDE paths.
 ### KDE-specific environment variables:
 # KDE supports various environment variables that might be useful for your
 # kdesrc-build desktop. See also:
-# http://techbase.kde.org/KDE_System_Administration/Environment_Variables
+# https://techbase.kde.org/KDE_System_Administration/Environment_Variables
 
 KDE_COLOR_DEBUG=1
 export KDE_COLOR_DEBUG # Be sure to "export" variables you set yourself.

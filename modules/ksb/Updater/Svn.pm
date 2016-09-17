@@ -250,7 +250,7 @@ EOF
 
         if ($url && (!$uid || $uid ne 'svn')) {
             error ("SVN login scheme has changed for y[b[$module] as of 2013-06-21");
-            error ("\tPlease see http://mail.kde.org/pipermail/kde-cvs-announce/2013/000112.html");
+            error ("\tPlease see https://mail.kde.org/pipermail/kde-cvs-announce/2013/000112.html");
             error ("\tPlease update your b[svn-server] option to be:");
             error ("\tb[g[svn+ssh://svn\@svn.kde.org/home/kde");
             error ("\n\tThen, re-run kdesrc-build with the b[--src-only] option to complete the repair.");

@@ -46,7 +46,7 @@ sub ignoredModules
 # If JSON support is present, and the metadata has already been downloaded
 # (e.g. with ->updateInternal), returns a hashref to the logical module group
 # data contained within the kde-build-metadata, decoded from its JSON format.
-# See http://community.kde.org/Infrastructure/Project_Metadata
+# See https://community.kde.org/Infrastructure/Project_Metadata
 sub logicalModuleGroups
 {
     my $self = shift;

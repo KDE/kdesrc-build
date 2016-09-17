@@ -1017,7 +1017,7 @@ sub effectiveBranchGroup
 # Returns a ksb::Module::BranchGroupResolver which can be used to efficiently
 # determine a git branch to use for a given kde-projects module (when the
 # branch-group option is in use), as specified at
-# http://community.kde.org/Infrastructure/Project_Metadata.
+# https://community.kde.org/Infrastructure/Project_Metadata.
 sub moduleBranchGroupResolver
 {
     my $self = shift;

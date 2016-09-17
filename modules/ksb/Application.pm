@@ -145,7 +145,7 @@ $version was written (mostly) by:
 
 Many people have contributed code, bugfixes, and documentation.
 
-Please report bugs using the KDE Bugzilla, at http://bugs.kde.org/
+Please report bugs using the KDE Bugzilla, at https://bugs.kde.org/
 DONE
 
     # Getopt::Long will store options in %foundOptions, since that is what we
@@ -2436,7 +2436,7 @@ Please ensure the development packages for
 $reqPackage are installed by using your distribution's package manager.
 
 You can also see the
-http://techbase.kde.org/Getting_Started/Build/Distributions page for
+https://techbase.kde.org/Getting_Started/Build/Distributions page for
 information specific to your distribution (although watch for outdated
 information :( ).
 EOF
@@ -2506,7 +2506,7 @@ sub _showHelpMessage
 {
     print <<DONE;
 kdesrc-build $SCRIPT_VERSION
-http://kdesrc-build.kde.org/
+https://kdesrc-build.kde.org/
 
 This script automates the download, build, and install process for KDE software
 using the latest available source code.

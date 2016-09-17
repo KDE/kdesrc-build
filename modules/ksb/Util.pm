@@ -584,10 +584,10 @@ sub split_quoted_on_whitespace
 
 # This subroutine downloads the file pointed to by the URL given in the
 # first parameter, saving to the given filename.  (FILENAME, not
-# directory). HTTP and FTP are supported, but this functionality requires
-# libwww-perl
+# directory). HTTP and HTTPS are supported, using Perl's built-in HTTP::Tiny (and for
+# HTTPS, IO::Socket::SSL must also be installed)
 #
-# First parameter: URL of link to download (i.e. http://kdesrc-build.kde.org/foo.tbz2)
+# First parameter: URL of link to download (i.e. https://kdesrc-build.kde.org/foo.tbz2)
 # Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
 # Third parameter: URL of a proxy to use (undef or empty means proxy as set in environment)
 # Return value is 0 for failure, non-zero for success.

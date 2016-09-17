@@ -112,7 +112,7 @@ path_add "STRIGI_PLUGIN_PATH" "$kde_prefix/$libname/strigi";
 # For Python bindings support.
 path_add "PYTHONPATH"         "$kde_prefix/$libname/site-packages";
 
-# http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+# https://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
 path_add "XDG_DATA_DIRS"      "$kde_prefix/share";
 path_add "XDG_CONFIG_DIRS"    "$kde_prefix/etc/xdg";
 
