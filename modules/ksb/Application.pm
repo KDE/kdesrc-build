@@ -1054,6 +1054,9 @@ sub _readConfigurationOptions
         my ($type, $modulename) = /^(options|module)\s+([-\/\.\w]+)\s*$/;
         my $newModule;
 
+        # 'include' directives can change the current file, so check where we're at
+        $rcfile = $fileReader->currentFilename();
+
         # Module-set?
         if (not $modulename) {
             my $moduleSetRE = qr/^module-set\s*([-\/\.\w]+)?\s*$/;
@@ -1090,9 +1093,8 @@ sub _readConfigurationOptions
         # Duplicate module entry? (Note, this must be checked before the check
         # below for 'options' sets)
         elsif (exists $seenModules{$modulename} && $type ne 'options') {
-            my $current_file = $fileReader->currentFilename();
-            error ("Duplicate module declaration b[r[$modulename] on line $. of $current_file");
-            die make_exception('Config', "Duplicate module $modulename declared at $current_file:$.");
+            error ("Duplicate module declaration b[r[$modulename] on line $. of $rcfile");
+            die make_exception('Config', "Duplicate module $modulename declared at $rcfile:$.");
         }
         # Module/module-set options overrides
         elsif ($type eq 'options') {
