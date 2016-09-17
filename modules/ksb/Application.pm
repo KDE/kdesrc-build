@@ -16,7 +16,7 @@ use ksb::BuildContext;
 use ksb::BuildSystem::QMake;
 use ksb::BuildException 0.20;
 use ksb::Module;
-use ksb::ModuleResolver;
+use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
 use ksb::RecursiveFH;
@@ -107,11 +107,11 @@ sub new
 #  initialization - Do not call <finish> from this function.
 #
 # Parameters:
-#  pendingOptions - hashref to hold parsed modules options to be applied later.
+#  cmdlineOptions - hashref to hold parsed modules options to be applied later.
 #    *Note* this must be done separately, it is not handled by this subroutine.
-#    Global options will be stored in a hashref at $pendingOptions->{global}.
+#    Global options will be stored in a hashref at $cmdlineOptions->{global}.
 #    Module or module-set options will be stored in a hashref at
-#    $pendingOptions->{$moduleName} (it will be necessary to disambiguate
+#    $cmdlineOptions->{$moduleName} (it will be necessary to disambiguate
 #    later in the run whether it is a module set or a single module).
 #
 #    If the global option 'start-program' is set, then the program to start and
@@ -122,7 +122,7 @@ sub new
 #    build, in the order desired by the user. These will just be strings, the
 #    caller will have to figure out whether the selector is a module or
 #    module-set, and create any needed objects, and then set the recommended
-#    options as listed in pendingOptions.
+#    options as listed in cmdlineOptions.
 #
 #  ctx - <BuildContext> to hold the global build state.
 #
@@ -135,7 +135,7 @@ sub new
 sub _readCommandLineOptionsAndSelectors
 {
     my $self = shift;
-    my ($pendingOptionsRef, $selectorsRef, $ctx, @options) = @_;
+    my ($cmdlineOptionsRef, $selectorsRef, $ctx, @options) = @_;
     my $phases = $ctx->phases();
     my @savedOptions = @options; # Copied for use in debugging.
     my $version = "kdesrc-build $SCRIPT_VERSION";
@@ -242,8 +242,8 @@ DONE
             my ($optName, $arg) = @_;
             my ($module, $option, $value) = split (',', $arg, 3);
             if ($module && $option) {
-                $pendingOptionsRef->{$module} //= { };
-                $pendingOptionsRef->{$module}->{$option} = $value;
+                $cmdlineOptionsRef->{$module} //= { };
+                $cmdlineOptionsRef->{$module}->{$option} = $value;
             }
         },
 
@@ -308,7 +308,7 @@ DONE
         croak_runtime("Error reading command-line options.");
     }
 
-    $pendingOptionsRef->{'global'} //= { };
+    $cmdlineOptionsRef->{'global'} //= { };
 
     # To store the values we found, need to strip out the values that are
     # subroutines, as those are the ones we created. Alternately, place the
@@ -320,10 +320,10 @@ DONE
 
     # Slice assignment: $left{$key} = $right{$key} foreach $key (@keys), but
     # with hashref syntax everywhere.
-    @{ $pendingOptionsRef->{'global'} }{@readOptionNames}
+    @{ $cmdlineOptionsRef->{'global'} }{@readOptionNames}
         = @foundOptions{@readOptionNames};
 
-    @{ $pendingOptionsRef->{'global'} }{keys %auxOptions}
+    @{ $cmdlineOptionsRef->{'global'} }{keys %auxOptions}
         = values %auxOptions;
 }
 
@@ -344,35 +344,35 @@ sub generateModuleList
     # doing.
 
     my $ctx = $self->context();
-    my $pendingOptions = { global => { }, };
-    my $pendingGlobalOptions = $pendingOptions->{global};
+    my $cmdlineOptions = { global => { }, };
+    my $cmdlineGlobalOptions = $cmdlineOptions->{global};
 
     # Process --help, --install, etc. first.
     my @selectors;
-    $self->_readCommandLineOptionsAndSelectors($pendingOptions, \@selectors,
+    $self->_readCommandLineOptionsAndSelectors($cmdlineOptions, \@selectors,
         $ctx, @argv);
 
     my %ignoredSelectors;
-    @ignoredSelectors{@{$pendingGlobalOptions->{'ignore-modules'}}} = undef;
+    @ignoredSelectors{@{$cmdlineGlobalOptions->{'ignore-modules'}}} = undef;
 
-    my @startProgramAndArgs = @{$pendingGlobalOptions->{'start-program'}};
-    delete @{$pendingGlobalOptions}{qw/ignore-modules start-program/};
+    my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
+    delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
 
-    # Everything else in pendingOptions should be OK to apply directly as a module
+    # Everything else in cmdlineOptions should be OK to apply directly as a module
     # or context option.
 
     # rc-file needs special handling.
-    if (exists $pendingGlobalOptions->{'rc-file'} && $pendingGlobalOptions->{'rc-file'}) {
-        $ctx->setRcFile($pendingGlobalOptions->{'rc-file'});
+    if (exists $cmdlineGlobalOptions->{'rc-file'} && $cmdlineGlobalOptions->{'rc-file'}) {
+        $ctx->setRcFile($cmdlineGlobalOptions->{'rc-file'});
     }
 
     # disable async if only running a single phase.
-    $pendingGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
+    $cmdlineGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
 
     my $fh = $ctx->loadRcFile();
     $ctx->loadPersistentOptions();
 
-    if (exists $pendingGlobalOptions->{'resume'}) {
+    if (exists $cmdlineGlobalOptions->{'resume'}) {
         my $moduleList = $ctx->getPersistentOption('global', 'resume-list');
         if (!$moduleList) {
             error ("b[--resume] specified, but unable to find resume point!");
@@ -383,7 +383,7 @@ sub generateModuleList
         unshift @selectors, split(/,\s*/, $moduleList);
     }
 
-    if (exists $pendingGlobalOptions->{'rebuild-failures'}) {
+    if (exists $cmdlineGlobalOptions->{'rebuild-failures'}) {
         my $moduleList = $ctx->getPersistentOption('global', 'last-failed-module-list');
         if (!$moduleList) {
             error ("b[y[--rebuild-failures] was specified, but unable to determine");
@@ -397,7 +397,7 @@ sub generateModuleList
     # _readConfigurationOptions will add pending global opts to ctx while ensuring
     # returned modules/sets have any such options stripped out. It will also add
     # module-specific options to any returned modules/sets.
-    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $pendingOptions);
+    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $cmdlineOptions);
     close $fh;
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
@@ -418,7 +418,7 @@ sub generateModuleList
 
     # The user might only want metadata to update to allow for a later
     # --pretend run, check for that here.
-    if (exists $pendingGlobalOptions->{'metadata-only'}) {
+    if (exists $cmdlineGlobalOptions->{'metadata-only'}) {
         return;
     }
 
@@ -427,11 +427,11 @@ sub generateModuleList
     # We also might have cmdline "selectors" to determine which modules or
     # module-sets to choose. First let's select module sets, and expand them.
 
-    my @globalCmdlineArgs = keys %{$pendingGlobalOptions};
+    my @globalCmdlineArgs = keys %{$cmdlineGlobalOptions};
     my $commandLineModules = scalar @selectors;
 
     my $moduleResolver = ksb::ModuleResolver->new($ctx);
-    $moduleResolver->setPendingOptions($pendingOptions);
+    $moduleResolver->setCmdlineOptions($cmdlineOptions);
     $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
     $moduleResolver->setIgnoredSelectors(keys %ignoredSelectors);
 
@@ -984,20 +984,20 @@ sub _parseModuleSetOptions
 #
 # Parameters:
 #  ctx - The <BuildContext> to update based on the configuration read and
-#  any pending options (see pendingGlobalOptions).
+#  any pending command-line options (see cmdlineGlobalOptions).
 #
 #  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
 #  methods (e.g. <IO::Handle> subclass).
 #
-#  pendingOptions - hashref holding key/value pairs of pending
+#  cmdlineOptions - hashref holding key/value pairs of pending command-line
 #  options. Any read-in global options matching a key in this hash will be
 #  ignored in the result list (i.e. the global options will mask the read-in
 #  ones), except for ctx, which will have its options modified to match the
 #  pending ones.
 #
-#  Conversely, any module/set options to be applied in pendingOptions are
+#  Conversely, any module/set options to be applied in cmdlineOptions are
 #  applied before this function returns. Options for a module are removed from
-#  pendingOptions when they are applied, so that you can tell which options have
+#  cmdlineOptions when they are applied, so that you can tell which options have
 #  not yet been applied.
 #
 # Returns:
@@ -1011,7 +1011,7 @@ sub _readConfigurationOptions
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fh = shift;
-    my $pendingOptionsRef = shift;
+    my $cmdlineOptionsRef = shift;
     my @module_list;
     my $rcfile = $ctx->rcFile();
     my ($option, %readModules);
@@ -1037,7 +1037,7 @@ sub _readConfigurationOptions
 
         # Now read in each global option.
         _parseModuleOptions($ctx, $fileReader, $ctx);
-        while (my ($k, $v) = each %{$pendingOptionsRef->{global}}) {
+        while (my ($k, $v) = each %{$cmdlineOptionsRef->{global}}) {
             $ctx->setOption($k, $v);
         }
 
@@ -1045,7 +1045,7 @@ sub _readConfigurationOptions
     }
 
     my $using_default = 1;
-    my @pendingOptsKeys = keys %{$pendingOptionsRef->{global}};
+    my @cmdlineOptsKeys = keys %{$cmdlineOptionsRef->{global}};
     my %seenModules; # NOTE! *not* module-sets, *just* modules.
     my %seenModuleSets; # and vice versa -- named sets only though!
     my %seenModuleSetItems; # To track option override modules.
@@ -1107,10 +1107,10 @@ sub _readConfigurationOptions
             $newModule = $seenModules{$modulename};
 
             # _parseModuleOptions will re-use newModule, but we still need to
-            # be careful not to mask cmdline options in pendingOptsKeys.
+            # be careful not to mask cmdline options in cmdlineOptsKeys.
             _parseModuleOptions($ctx, $fileReader, $newModule);
 
-            delete @{$newModule->{options}}{@pendingOptsKeys};
+            delete @{$newModule->{options}}{@cmdlineOptsKeys};
 
             next; # Skip all the stuff below
         }
@@ -1124,16 +1124,15 @@ sub _readConfigurationOptions
                 $newModule = _parseModuleOptions($ctx, $fileReader,
                     ksb::Module->new($ctx, "#overlay_$modulename"));
 
-                # but only keep the options. Any existing pending options came from
-                # cmdline so do not overwrite existing keys.
-                $pendingOptionsRef->{$modulename} //= { };
-                my $moduleOptsRef = $pendingOptionsRef->{$modulename};
+                # but only keep the non-cmdline options
+                $cmdlineOptionsRef->{$modulename} //= { };
+                my $moduleOptsRef = $cmdlineOptionsRef->{$modulename};
                 while (my ($k, $v) = each %{$newModule->{options}}) {
                     $moduleOptsRef->{$k} = $v unless exists $moduleOptsRef->{$k};
                 }
 
                 # Don't mask global cmdline options.
-                delete @{$moduleOptsRef}{@pendingOptsKeys};
+                delete @{$moduleOptsRef}{@cmdlineOptsKeys};
             }
 
             next; # Don't add to module list
@@ -1149,7 +1148,7 @@ sub _readConfigurationOptions
             $seenModules{$modulename} = $newModule;
         }
 
-        delete @{$newModule->{options}}{@pendingOptsKeys};
+        delete @{$newModule->{options}}{@cmdlineOptsKeys};
         push @module_list, $newModule;
 
         # Don't build default modules if user has their own wishes.

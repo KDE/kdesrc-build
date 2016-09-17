@@ -1,4 +1,4 @@
-package ksb::ModuleResolver 0.10;
+package ksb::ModuleResolver 0.20;
 
 # Handle proper resolution of module selectors, including option
 # handling. See POD docs below for more details.
@@ -25,9 +25,7 @@ sub new
 
         # Read in from rc-file
         inputModulesAndOptions => [ ],
-
-        # Read in from cmdline
-        pendingOptions         => { },
+        cmdlineOptions         => { },
 
         # Holds Modules defined in course of expanding module-sets
         definedModules         => { },
@@ -39,10 +37,10 @@ sub new
     return bless $self, $class;
 }
 
-sub setPendingOptions
+sub setCmdlineOptions
 {
-    my ($self, $pendingOptionsRef) = @_;
-    $self->{pendingOptions} = $pendingOptionsRef;
+    my ($self, $cmdlineOptionsRef) = @_;
+    $self->{cmdlineOptions} = $cmdlineOptionsRef;
     return;
 }
 
@@ -71,7 +69,7 @@ sub _applyCmdlineOptions
     my ($self, @modules) = @_;
 
     # These module options must be overridden, as a first step.
-    my @cmdlineArgs = keys %{$self->{pendingOptions}->{global}};
+    my @cmdlineArgs = keys %{$self->{cmdlineOptions}->{global}};
 
     foreach my $m (@modules) {
         my $name = $m->name();
@@ -81,10 +79,10 @@ sub _applyCmdlineOptions
         delete @{$m->{options}}{@cmdlineArgs};
 
         # Reapply module-specific cmdline args (module-set first)
-        if ($moduleSetName && exists $self->{pendingOptions}->{$moduleSetName}) {
-            $m->setOption(%{$self->{pendingOptions}->{$moduleSetName}});
+        if ($moduleSetName && exists $self->{cmdlineOptions}->{$moduleSetName}) {
+            $m->setOption(%{$self->{cmdlineOptions}->{$moduleSetName}});
         }
-        $m->setOption(%{$self->{pendingOptions}->{$name}});
+        $m->setOption(%{$self->{cmdlineOptions}->{$name}});
     }
 
     return;
@@ -170,8 +168,8 @@ sub _resolveSingleSelector
 
     # Checks cmdline options only
     my $includingDeps =
-        exists $self->{pendingOptions}->{$selectorName}->{'include-dependencies'} ||
-        exists $self->{pendingOptions}->{'global'}->{'include-dependencies'};
+        exists $self->{cmdlineOptions}->{$selectorName}->{'include-dependencies'} ||
+        exists $self->{cmdlineOptions}->{'global'}->{'include-dependencies'};
 
     # See resolveSelectorsIntoModules for what the 3 "cases" mentioned below are.
 
@@ -462,7 +460,7 @@ You should pass a listref of Modules or ModuleSets (as appropriate).
 =item resolveSelectorsIntoModules
 
 Resolves the given list of module selectors into ksb::Module objects,
-using the pending options, ignore-selectors and available
+using the pending command-line options, ignore-selectors and available
 modules/module-sets.
 
 Selectors always choose an available ksb::Module or ksb::ModuleSet if
@@ -589,7 +587,7 @@ lists of C<Module> objects, in the order they were selected (or mentioned
 in the rc-file). See expandModuleSets() and resolveSelectorsIntoModules().
 
 Each object so returned should already have the appropriate options
-included (based on the pendingOptions member, which should be constructed
+included (based on the cmdlineOptions member, which should be constructed
 as the union of rc-file and cmdline options).
 
 Note that dependency resolution is B<not> handled by this module, see
