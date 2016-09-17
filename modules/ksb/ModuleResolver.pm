@@ -26,6 +26,7 @@ sub new
         # Read in from rc-file
         inputModulesAndOptions => [ ],
         cmdlineOptions         => { },
+        deferredOptions        => { },
 
         # Holds Modules defined in course of expanding module-sets
         definedModules         => { },
@@ -41,6 +42,13 @@ sub setCmdlineOptions
 {
     my ($self, $cmdlineOptionsRef) = @_;
     $self->{cmdlineOptions} = $cmdlineOptionsRef;
+    return;
+}
+
+sub setDeferredOptions
+{
+    my ($self, $deferredOptionsRef) = @_;
+    $self->{deferredOptions} = $deferredOptionsRef;
     return;
 }
 
@@ -63,26 +71,34 @@ sub setInputModulesAndOptions
     return;
 }
 
-# Applies cmdline options to the given modules.
-sub _applyCmdlineOptions
+# Applies cmdline and deferred options to the given modules or module-sets.
+sub _applyOptions
 {
     my ($self, @modules) = @_;
-
-    # These module options must be overridden, as a first step.
-    my @cmdlineArgs = keys %{$self->{cmdlineOptions}->{global}};
+    my $cmdlineOptionsRef = $self->{cmdlineOptions};
+    my $deferredOptionsRef = $self->{deferredOptions};
 
     foreach my $m (@modules) {
         my $name = $m->name();
-        my $moduleSetName = $m->moduleSet()->name();
 
-        # Remove any options that would interfere with cmdline args
-        delete @{$m->{options}}{@cmdlineArgs};
+        # Apply deferred options first
+        $m->setOption(%{$deferredOptionsRef->{$name} // {}});
 
-        # Reapply module-specific cmdline args (module-set first)
-        if ($moduleSetName && exists $self->{cmdlineOptions}->{$moduleSetName}) {
-            $m->setOption(%{$self->{cmdlineOptions}->{$moduleSetName}});
+        # Most of time cmdline options will be empty
+        if (%$cmdlineOptionsRef) {
+            my %moduleCmdlineArgs = (
+                # order is important here
+                %{$cmdlineOptionsRef->{global} // {}},
+                %{$cmdlineOptionsRef->{$name}  // {}},
+            );
+
+            # Remove any options that would interfere with cmdline args
+            # to avoid any override behaviors in setOption()
+            delete @{$m->{options}}{keys %moduleCmdlineArgs};
+
+            # Reapply module-specific cmdline options
+            $m->setOption(%moduleCmdlineArgs);
         }
-        $m->setOption(%{$self->{cmdlineOptions}->{$name}});
     }
 
     return;
@@ -333,7 +349,7 @@ sub resolveSelectorsIntoModules
         my @newModules = $self->_resolveSingleSelector($selector);
         # Perform module option setup
         my @baseModules = grep { $_->isa('ksb::Module') } @newModules;
-        $self->_applyCmdlineOptions(@baseModules);
+        $self->_applyOptions(@baseModules);
 
         push @outputList, @newModules;
     }
@@ -392,8 +408,11 @@ sub expandModuleSets
     foreach my $set (@buildModuleList) {
         my @results = $set;
         if ($set->isa('ksb::ModuleSet')) {
+            # Need to update module-set first so it can then apply its settings
+            # to modules it creates.
+            $self->_applyOptions($set);
             @results = $set->convertToModules($ctx);
-            $self->_applyCmdlineOptions(@results);
+            $self->_applyOptions(@results);
         }
 
         push @returnList, @results;

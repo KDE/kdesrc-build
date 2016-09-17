@@ -346,6 +346,7 @@ sub generateModuleList
     my $ctx = $self->context();
     my $cmdlineOptions = { global => { }, };
     my $cmdlineGlobalOptions = $cmdlineOptions->{global};
+    my $deferredOptions = { }; # 'options' blocks
 
     # Process --help, --install, etc. first.
     my @selectors;
@@ -360,6 +361,7 @@ sub generateModuleList
 
     # Everything else in cmdlineOptions should be OK to apply directly as a module
     # or context option.
+    $ctx->setOption(%{$cmdlineGlobalOptions});
 
     # rc-file needs special handling.
     if (exists $cmdlineGlobalOptions->{'rc-file'} && $cmdlineGlobalOptions->{'rc-file'}) {
@@ -397,7 +399,7 @@ sub generateModuleList
     # _readConfigurationOptions will add pending global opts to ctx while ensuring
     # returned modules/sets have any such options stripped out. It will also add
     # module-specific options to any returned modules/sets.
-    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $cmdlineOptions);
+    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $deferredOptions);
     close $fh;
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
@@ -432,6 +434,7 @@ sub generateModuleList
 
     my $moduleResolver = ksb::ModuleResolver->new($ctx);
     $moduleResolver->setCmdlineOptions($cmdlineOptions);
+    $moduleResolver->setDeferredOptions($deferredOptions);
     $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
     $moduleResolver->setIgnoredSelectors(keys %ignoredSelectors);
 
@@ -989,16 +992,10 @@ sub _parseModuleSetOptions
 #  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
 #  methods (e.g. <IO::Handle> subclass).
 #
-#  cmdlineOptions - hashref holding key/value pairs of pending command-line
-#  options. Any read-in global options matching a key in this hash will be
-#  ignored in the result list (i.e. the global options will mask the read-in
-#  ones), except for ctx, which will have its options modified to match the
-#  pending ones.
-#
-#  Conversely, any module/set options to be applied in cmdlineOptions are
-#  applied before this function returns. Options for a module are removed from
-#  cmdlineOptions when they are applied, so that you can tell which options have
-#  not yet been applied.
+#  deferredOptions - An out paramter: a hashref holding the options set by any
+#  'options' blocks read in by this function. Each key (identified by the name
+#  of the 'options' block) will point to a hashref value holding the options to
+#  apply.
 #
 # Returns:
 #  @module - Heterogenous list of <Modules> and <ModuleSets> defined in the
@@ -1011,7 +1008,7 @@ sub _readConfigurationOptions
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fh = shift;
-    my $cmdlineOptionsRef = shift;
+    my $deferredOptionsRef = shift;
     my @module_list;
     my $rcfile = $ctx->rcFile();
     my ($option, %readModules);
@@ -1037,15 +1034,11 @@ sub _readConfigurationOptions
 
         # Now read in each global option.
         _parseModuleOptions($ctx, $fileReader, $ctx);
-        while (my ($k, $v) = each %{$cmdlineOptionsRef->{global}}) {
-            $ctx->setOption($k, $v);
-        }
 
         last;
     }
 
     my $using_default = 1;
-    my @cmdlineOptsKeys = keys %{$cmdlineOptionsRef->{global}};
     my %seenModules; # NOTE! *not* module-sets, *just* modules.
     my %seenModuleSets; # and vice versa -- named sets only though!
     my %seenModuleSetItems; # To track option override modules.
@@ -1096,44 +1089,17 @@ sub _readConfigurationOptions
         }
         # Duplicate module entry? (Note, this must be checked before the check
         # below for 'options' sets)
-        elsif (exists $seenModules{$modulename}) {
-            # Overwrite options set for existing modules.
-            # But allow duplicate 'options' declarations without error.
-            if ($type ne 'options') {
-                my $current_file = $fileReader->currentFilename();
-                warning ("Don't use b[r[module $modulename] on line $. of $current_file, use b[g[options $modulename]");
-            }
-
-            $newModule = $seenModules{$modulename};
-
-            # _parseModuleOptions will re-use newModule, but we still need to
-            # be careful not to mask cmdline options in cmdlineOptsKeys.
-            _parseModuleOptions($ctx, $fileReader, $newModule);
-
-            delete @{$newModule->{options}}{@cmdlineOptsKeys};
-
-            next; # Skip all the stuff below
+        elsif (exists $seenModules{$modulename} && $type ne 'options') {
+            my $current_file = $fileReader->currentFilename();
+            error ("Duplicate module declaration b[r[$modulename] on line $. of $current_file");
+            die make_exception('Config', "Duplicate module $modulename declared at $current_file:$.");
         }
-        # Module override (for use-modules from a module-set), or option overrride?
+        # Module/module-set options overrides
         elsif ($type eq 'options') {
-            # Parse the modules...
-            if (exists $seenModuleSets{$modulename}) {
-                _parseModuleSetOptions($ctx, $fileReader, $seenModuleSets{$modulename});
-            }
-            else {
-                $newModule = _parseModuleOptions($ctx, $fileReader,
-                    ksb::Module->new($ctx, "#overlay_$modulename"));
+            my $options = _parseModuleOptions($ctx, $fileReader,
+                ksb::OptionsBase->new());
 
-                # but only keep the non-cmdline options
-                $cmdlineOptionsRef->{$modulename} //= { };
-                my $moduleOptsRef = $cmdlineOptionsRef->{$modulename};
-                while (my ($k, $v) = each %{$newModule->{options}}) {
-                    $moduleOptsRef->{$k} = $v unless exists $moduleOptsRef->{$k};
-                }
-
-                # Don't mask global cmdline options.
-                delete @{$moduleOptsRef}{@cmdlineOptsKeys};
-            }
+            $deferredOptionsRef->{$modulename} = $options->{options};
 
             next; # Don't add to module list
         }
@@ -1148,10 +1114,8 @@ sub _readConfigurationOptions
             $seenModules{$modulename} = $newModule;
         }
 
-        delete @{$newModule->{options}}{@cmdlineOptsKeys};
         push @module_list, $newModule;
 
-        # Don't build default modules if user has their own wishes.
         $using_default = 0;
     }
 
