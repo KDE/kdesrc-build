@@ -1,4 +1,4 @@
-package ksb::BuildSystem;
+package ksb::BuildSystem 0.30;
 
 # Base module for the various build systems, includes built-in implementations of
 # generic functions and supports hooks for subclasses to provide needed detailed
@@ -7,8 +7,6 @@ package ksb::BuildSystem;
 use strict;
 use warnings;
 use 5.014;
-
-our $VERSION = '0.20';
 
 use ksb::Debug;
 use ksb::Util;
@@ -101,14 +99,12 @@ sub isProgressOutputSupported
     return 0;
 }
 
-# If this method returns a non-empty string, then that string is the name
-# of an environment variable to prepend the module's installation prefix
-# path to. Mostly a hack, but will have to do until there's a better scheme
-# for giving integration points for build systems into the actual build
-# process.
-sub prefixEnvironmentVariable
+# Called by the module being built before it runs its build/install process. Should
+# setup any needed environment variables, build context settings, etc., in preparation
+# for the build and install phases.
+sub prepareModuleBuildEnvironment
 {
-    return undef;
+    my ($self, $ctx, $module, $prefix) = @_;
 }
 
 # Returns true if the module should have make install run in order to be

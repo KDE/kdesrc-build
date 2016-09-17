@@ -1,4 +1,4 @@
-package ksb::BuildSystem::KDE4;
+package ksb::BuildSystem::KDE4 0.20;
 
 # Class responsible for building KDE4 CMake-based modules.
 
@@ -6,11 +6,10 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
-
 use ksb::Debug;
 use ksb::Util;
-use ksb::BuildSystem;
+use ksb::BuildContext 0.30;
+use ksb::BuildSystem 0.30;
 
 our @ISA = ('ksb::BuildSystem');
 
@@ -32,9 +31,21 @@ sub isProgressOutputSupported
     return 1;
 }
 
-sub prefixEnvironmentVariable
+# Called by the module being built before it runs its build/install process. Should
+# setup any needed environment variables, build context settings, etc., in preparation
+# for the build and install phases.
+sub prepareModuleBuildEnvironment
 {
-    return 'CMAKE_PREFIX_PATH';
+    my ($self, $ctx, $module, $prefix) = @_;
+
+    $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $prefix);
+    $ctx->prependEnvironmentValue('XDG_DATA_DIRS', "$prefix/share");
+
+    my $qtdir = $module->getOption('qtdir');
+    if ($qtdir && $qtdir ne $prefix) {
+        # Ensure we can find Qt5's own CMake modules
+        $ctx->prependEnvironmentValue('CMAKE_MODULE_PATH', "$qtdir/lib/cmake");
+    }
 }
 
 sub requiredPrograms

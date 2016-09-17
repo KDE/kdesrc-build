@@ -26,7 +26,7 @@ use ksb::Updater::KDEProjectMetadata;
 
 use ksb::BuildException 0.20;
 
-use ksb::BuildSystem;
+use ksb::BuildSystem 0.30;
 use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
 use ksb::BuildSystem::Qt4;
@@ -661,17 +661,10 @@ sub setupEnvironment
     my @ld_dirs = ("$kdedir/lib", "$qtdir/lib", $self->getOption('libpath'));
     $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
 
-    # Needed to find installed resources for KF5.
-    # TODO: Make this an integration point for the BuildSystem interface.
-    $ctx->prependEnvironmentValue('XDG_DATA_DIRS', "$kdedir/share");
+    my $buildSystem = $self->buildSystem();
+    $buildSystem->prepareModuleBuildEnvironment($ctx, $self, $prefix);
 
     my @path = ("$kdedir/bin", "$qtdir/bin", $self->getOption('binpath'));
-
-    if (my $prefixEnvVar = $self->buildSystem()->prefixEnvironmentVariable())
-    {
-        $ctx->prependEnvironmentValue($prefixEnvVar, $prefix);
-    }
-
     $ctx->prependEnvironmentValue('PATH', @path);
 
     # Set up the children's environment.  We use queueEnvironmentVariable since
@@ -680,23 +673,8 @@ sub setupEnvironment
 
     $ctx->queueEnvironmentVariable('QTDIR', $qtdir);
 
-    # If the module isn't kdelibs, also append kdelibs's KDEDIR setting.
-    if ($self->name() ne 'kdelibs')
-    {
-        my $kdelibsModule = $ctx->lookupModule('kdelibs');
-        my $kdelibsDir;
-        $kdelibsDir = $kdelibsModule->installationPath() if $kdelibsModule;
-
-        if ($kdelibsDir && $kdelibsDir ne $kdedir) {
-            whisper ("Module $self uses different KDEDIR than kdelibs, including kdelibs as well.");
-            $kdedir .= ":$kdelibsDir"
-        }
-    }
-
-    $ctx->queueEnvironmentVariable('KDEDIRS', $kdedir);
-
     # Read in user environment defines
-    $self->applyUserEnvironment() unless $self->name() eq 'global';
+    $self->applyUserEnvironment() unless $self == $ctx;
 }
 
 # Returns the path to the log directory used during this run for this

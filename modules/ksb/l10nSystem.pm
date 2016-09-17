@@ -58,9 +58,11 @@ sub isSubdirBuildable
     return ($subdir ne 'scripts' && $subdir ne 'templates');
 }
 
-sub prefixEnvironmentVariable
+sub prepareModuleBuildEnvironment
 {
-    return 'CMAKE_PREFIX_PATH';
+    my ($ctx, $module, $prefix) = @_;
+
+    $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $prefix);
 }
 
 # scm-specific update procedure.
