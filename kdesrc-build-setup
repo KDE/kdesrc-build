@@ -20,10 +20,12 @@
 # Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 use strict;
-use 5.014;
+use 5.018;
 use IO::Pipe;
 use File::Copy;
 use File::Temp qw/tempfile/;
+use File::Basename;
+use Cwd qw(abs_path);
 
 our $VERSION = 0.03; # Not user-visible yet.
 
@@ -210,10 +212,11 @@ installed to its final location, the "install directory".
 This program will only configure the install location, but
 all directories are configurable.
 
-The space requirements vary, but typically the build
-directory will require 3-5 times as much space as the
-corresponding source directory. The space required of
-installed software will be less than the build directory.
+The space requirements vary with the amount of software you choose
+to build, and whether you keep the build directories to speed up
+later builds.  You will probably need at least 20 GiB in total free
+space unless you take steps to customize your install to use fewer
+modules.
 EOF
 }
 
@@ -233,35 +236,34 @@ if ($proxy || getYesNoAnswer($proxyPrompt)) {
 
 my $installDir = getMenuOption('Where do you want to install the software?',
     [
-        home => "$ENV{HOME}/kde4 (default)",
+        home => "$ENV{HOME}/kde-latest (default)",
         custom => "Custom location, chosen next screen",
     ]);
 
 if ($installDir eq 'custom') {
-    $installDir = getDirectory('/usr/local/kde4');
+    $installDir = getDirectory('/usr/local/kde-latest');
 }
 else {
-    $installDir = "~/kde4";
+    $installDir = "~/kde-latest";
 }
 
 my @chosenModules = getListOptions(
     "Which major module groups do you want to build?",
     [
-        qt => 'The Qt library',
-        baselibs => 'KDE essential libraries/runtime (required)',
-        workspace => 'KDE Plasma Desktop and workspace',
-        base => 'Essential KDE applications',
+        frameworks => 'KDE Frameworks 5 - Essential libraries/runtime (required)',
+        workspace => 'KDE Plasma 5 Desktop and workspace',
+        base => 'Assorted useful KF5-based applications',
         pim => 'Personal Information Management software',
     ],
     {
-        baselibs => 1,
+        frameworks => 1,
         workspace => 1,
         base => 1,
     },
 );
 
 my $numCpus = getUserInput(
-    'How many CPU cores do you wish to use for building?', '2');
+    'How many CPU cores do you wish to use for building?', '4');
 
 my $outputFileName = "$ENV{HOME}/.kdesrc-buildrc";
 my $output; # Will be output filehandle.
@@ -320,23 +322,24 @@ global
 
 EOF
 
-if (grep { /^qt$/ } @chosenModules) {
-    print $output <<EOF;
-    # The path to your Qt installation.
-    qtdir ~/qt4
-
-EOF
-}
-
 print $output <<EOF;
-    # KDE install directory
+    # This option is used to switch development tracks for many modules at
+    # once. 'kf5-qt5' is the latest KF5 and Qt5-based software.
+    branch-group kf5-qt5
+
+    # The path to your Qt installation.
+    qtdir ~/qt5
+#   qtdir /usr # If system Qt
+
+    # Install directory for KDE software
     kdedir $installDir
 
     # Directory for downloaded source code
     source-dir ~/kdesrc
 
     # Directory to build KDE into before installing
-    build-dir build
+    # relative to source-dir by default
+    build-dir build     # ~/kdesrc/build
 
     # Use multiple cores for building. Other options to GNU make may also be
     # set.
@@ -346,8 +349,8 @@ EOF
 
 if ($dev) {
     print $output <<EOF;
-    # Login to use for SVN. Anonymous SVN can be used by just deleting this
-    # option.
+    # This sets the login to use for SVN (for the very few bits of code still using it).
+    # Anonymous SVN can be used by just deleting this option.
     # Note that ssh-agent must be running and loaded with the right key.
     svn-server svn+ssh://svn\@svn.kde.org/home/kde
 
@@ -359,13 +362,13 @@ if ($proxy) {
     # Proxy to use for HTTP downloads.
     http-proxy $proxy
 
-    # Prefer HTTP instead of Git-native protocol for git modules that come
+    # Prefer HTTPS instead of Git-native protocol for git modules that come
     # from 'kde-projects' repositories.
     #
     # Note that any git:// repositories you use will need to be
     # manually converted to http:// URLs if your network does not allow
     # git:// protcol.
-    git-desired-protocol http
+    git-desired-protocol https    # http is also valid
 EOF
 }
 
@@ -374,122 +377,46 @@ end global
 
 EOF
 
-if (grep /^qt$/, @chosenModules) {
-    print $output <<EOF;
-module qt
-    configure-flags -fast -debug -system-zlib -system-libpng -system-libjpeg \\
-                    -plugin-sql-mysql -no-phonon \\
-                    -dbus -webkit -nomake examples -nomake demos
-
-    # KDE's unmodified copy of Qt is used by default since git.kde.org supports
-    # cloning the module more reliably than gitorious. To use standard Qt as
-    # provided by Nokia, comment the following line and uncomment the next
-    # repository line.
-    repository kde:qt
-
-    # Nokia's Qt. Note that gitorious has had known issues checking out large
-    # git modules such as Qt. If there are failures try using KDE's qt (see
-    # above).
-    # repository git://gitorious.org/qt/qt.git
-
-    branch 4.8
-end module
-
-EOF
-}
+# Assume we can refer to files present alongside kdesrc-build in the source
+# directory
+my $basedir = dirname(abs_path($0));
 
 if (grep /^baselibs$/, @chosenModules) {
     print $output <<EOF;
-# These encompass modules that are not directly a part of KDE proper but are
-# required or highly recommended for the KDE framework and are developed in
-# the KDE source repository.
-module-set baselibs-support
-    repository kde-projects
 
-    use-modules extra-cmake-modules automoc cagibi attica soprano polkit-qt-1
-end module-set
-
-# Phonon provides the KDE multimedia layer. It requires an appropriate backend
-# to be installed to actually implement multimedia.
-module-set framework-phonon
-    repository kde-projects
-
-    use-modules phonon/phonon phonon-gstreamer phonon-vlc
-end module-set
-
-# Strigi provides file analysis tools for extracting information from files
-# (e.g. music length, picture size, etc.) It is split into several submodules
-# so do not alter the order in the use-modules below.
-module-set strigi
-    repository kde-projects
-
-    use-modules strigi/libstreams strigi/libstreamanalyzer strigi/strigiutils \\
-                strigi/strigidaemon strigi/strigiclient
-end module-set
-
-# libdbusmenu is needed to support new-style Plasma system tray icons and
-# support in the Unity shell. Installing a recent development package from your
-# distribution should be sufficient, but if you want to have the latest then
-# make sure you have the "Bazaar" program installed and uncomment the
-# following:
-#module libdbusmenu-qt
-    # The lp: prefix refers to Canonical's Launchpad repository
-#    repository bzr://lp:libdbusmenu-qt
-#end module
-
-# Base/essential KDE libraries and the required runtime programs.
-# Split into two module-sets to setup the right branch for kdelibs.
-module-set baselibs-kdelibs
-    repository kde-projects
-
-    use-modules kdelibs
-end module-set
-
-module-set baselibs-other
-    repository kde-projects
-
-    use-modules kactivities kde-runtime nepomuk-core
-end module-set
-
-module-set baselibs-pimlibs
-    repository kde-projects
-
-    use-modules akonadi kdepimlibs
-end module-set
+# Refers to the kf5-frameworks file included as part of kdesrc-build. The file
+# is simply read-in at this point as if you'd typed it in yourself.
+include $basedir/kf5-frameworks-build-include
 
 EOF
 }
 
 if (grep /^workspace$/, @chosenModules) {
     print $output <<EOF;
-module-set workspace
-    repository kde-projects
 
-    use-modules kde-workspace kdeplasma-addons
-end module-set
+# Refers to the kf5-workspace file included as part of kdesrc-build. The file
+# is simply read-in at this point as if you'd typed it in yourself.
+include $basedir/kf5-workspace-build-include
 
 EOF
 }
 
 if (grep /^base$/, @chosenModules) {
     print $output <<EOF;
-module-set base
-    repository kde-projects
 
-    # kde-baseapps requires kate to be built first.
-    use-modules kate kde-baseapps konsole
-end module-set
+# Refers to the kf5-applications file included as part of kdesrc-build. The file
+# is simply read-in at this point as if you'd typed it in yourself.
+include $basedir/kf5-applications-build-include
 
 EOF
 }
 
 if (grep /^pim$/, @chosenModules) {
     print $output <<EOF;
-module-set pim
-    repository kde-projects
 
-    use-modules nepomuk-widgets kdepim-runtime kdepim
-end module-set
+# Refers to the kf5-kdepim file included as part of kdesrc-build. The file
+# is simply read-in at this point as if you'd typed it in yourself.
+include $basedir/kf5-kdepim-build-include
 
 EOF
 }
