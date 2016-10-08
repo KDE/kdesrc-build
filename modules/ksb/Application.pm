@@ -411,10 +411,11 @@ sub generateModuleList
         _executeCommandLineProgram(@startProgramAndArgs); # noreturn
     }
 
-    # Selecting modules or module sets would require having the KDE build
-    # metadata available. This used to be optional, but now everything needs
-    # it, so download it unilaterally.
+    # Selecting modules or module sets would requires having the KDE
+    # build metadata (kde-build-metadata and sysadmin/repo-metadata)
+    # available.
     $ctx->setKDEDependenciesMetadataModuleNeeded();
+    $ctx->setKDEProjectsMetadataModuleNeeded();
     ksb::Updater::Git::verifyGitConfig();
     $self->_downloadKDEProjectMetadata();
 
@@ -503,20 +504,22 @@ sub _downloadKDEProjectMetadata
         if ($updateDesired && (!pretending() || $updateNeeded)) {
             $metadataModule->scm()->updateInternal();
             $ctx->setPersistentOption('global', 'last-metadata-update', time);
+
+            # Also grab sysadmin/repo-metadata
+            $metadataModule = $ctx->getKDEProjectsMetadataModule();
+            $metadataModule->scm()->updateInternal();
         }
 
         ksb::Debug::setPretending($wasPretending);
     };
 
     if ($@) {
-        if (!$updateNeeded) {
-            warning (" b[r[*] Unable to download required metadata for build process");
-            warning (" b[r[*] Will attempt to press onward...");
-            warning (" b[r[*] Exception message: $@");
-        }
-        else {
-            die;
-        }
+        die if $updateNeeded;
+
+        # Assume previously-updated metadata will work if not updating
+        warning (" b[r[*] Unable to download required metadata for build process");
+        warning (" b[r[*] Will attempt to press onward...");
+        warning (" b[r[*] Exception message: $@");
     }
 }
 

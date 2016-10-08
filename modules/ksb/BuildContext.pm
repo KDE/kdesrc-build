@@ -152,10 +152,11 @@ sub new
         rcFiles => [@rcfiles],
         rcFile  => undef,
         env     => { },
-        ignore_list => [ ], # List of XML paths to ignore completely.
-        kde_projects_filehandle   => undef, # Filehandle to read database from.
-        kde_dependencies_metadata => undef, # See ksb::Module::KDEProjects
-        logical_module_resolver   => undef, # For branch-group option.
+        ignore_list => [ ], # List of XML paths to ignore completely
+        kde_projects_filehandle   => undef, # Filehandle to read database from
+        kde_projects_metadata     => undef, # Enumeration of kde-projects
+        kde_dependencies_metadata => undef, # Dependency resolution of kde-projects
+        logical_module_resolver   => undef, # For branch-group option
         status_view => ksb::StatusView->new(),
         projects_db => undef, # See getProjectDataReader
     );
@@ -942,13 +943,26 @@ sub getKDEProjectMetadataFilehandle
 # kde-project metadata, so that other modules that need it can call into it if
 # necessary.
 #
-# Also may return undef, if such metadata are unneeded, unavailable, or have
-# not yet been set by setKDEDependenciesMetadataModule (this method does not
+# Also may return undef if the metadata is unavailable or has not yet
+# been set by setKDEDependenciesMetadataModule (this method does not
 # automatically create the needed module).
 sub getKDEDependenciesMetadataModule
 {
     my $self = shift;
     return $self->{kde_dependencies_metadata};
+}
+
+# Returns the ksb::Module (which has a 'metadata' scm type) that is used for
+# kde-project metadata, so that other modules that need it can call into it if
+# necessary.
+#
+# Also may return undef if the metadata is unavailable or has not yet
+# been set by setKDEProjectsMetadataModule (this method does not
+# automatically create the needed module).
+sub getKDEProjectsMetadataModule
+{
+    my $self = shift;
+    return $self->{kde_projects_metadata};
 }
 
 # Call this method to force this build context to pull in the kde-projects
@@ -969,6 +983,28 @@ sub setKDEDependenciesMetadataModuleNeeded
     assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
 
     $self->{kde_dependencies_metadata} = $metadata;
+    return;
+}
+
+# Call this method to force this build context to pull in the
+# sysadmin/repo-metadata metadata module. This is a one-time action,
+# subsequent calls to this method are ignored. Use
+# getKDEProjectsMetadataModule to see if this build context is using
+# a metadata module.
+#
+# This method should be called before setModuleList.
+sub setKDEProjectsMetadataModuleNeeded
+{
+    my $self = assert_isa(shift, 'ksb::BuildContext');
+
+    return if defined $self->{kde_projects_metadata};
+
+    my $metadata = ksb::ModuleSet::KDEProjects::getProjectMetadataModule($self);
+
+    debug ("Introducing project enumeration metadata into the build");
+    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
+
+    $self->{kde_projects_metadata} = $metadata;
     return;
 }
 
