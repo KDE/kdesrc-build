@@ -1,4 +1,4 @@
-package ksb::ModuleSet::KDEProjects;
+package ksb::ModuleSet::KDEProjects 0.20;
 
 # Class: ModuleSet::KDEProjects
 #
@@ -18,7 +18,6 @@ use warnings;
 use 5.014;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
-our $VERSION = '0.10';
 our @ISA = qw(ksb::ModuleSet);
 
 use ksb::Module;
@@ -41,19 +40,22 @@ sub none_true
     return 1;
 }
 
-# Function: getMetadataModule
+# Function: getDependenciesModule
 #
-# A 'static' method that returns a <Module> that should be included first in
-# the build context's module list. It will be configured to download required
-# updates to the build-metadata required for kde-projects module support.
-# It should only be included exactly once in the build context, if there are
+# A 'static' method that returns a <Module> that should be included
+# first in the build context's module list.
+#
+# It will be configured to download required updates to the
+# build-metadata required for kde-projects module support.
+#
+# It should be included exactly once in the build context, if there are
 # one or more ksb::ModuleSet::KDEProjects present in the module list.
 #
 # Parameters:
 #  ctx - the <ksb::BuildContext> for this script execution.
 #
 # Returns: The <Module> to added to the beginning of the update.
-sub getMetadataModule
+sub getDependenciesModule
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
 

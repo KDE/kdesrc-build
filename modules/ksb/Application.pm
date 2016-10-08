@@ -12,7 +12,7 @@ no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
 use ksb::Debug;
 use ksb::Util;
-use ksb::BuildContext;
+use ksb::BuildContext 0.35;
 use ksb::BuildSystem::QMake;
 use ksb::BuildException 0.20;
 use ksb::Module;
@@ -414,7 +414,7 @@ sub generateModuleList
     # Selecting modules or module sets would require having the KDE build
     # metadata available. This used to be optional, but now everything needs
     # it, so download it unilaterally.
-    $ctx->setKDEProjectMetadataModuleNeeded();
+    $ctx->setKDEDependenciesMetadataModuleNeeded();
     ksb::Updater::Git::verifyGitConfig();
     $self->_downloadKDEProjectMetadata();
 
@@ -479,7 +479,7 @@ sub _downloadKDEProjectMetadata
     my $self = shift;
     my $ctx = $self->context();
     my $updateNeeded;
-    my $metadataModule = $ctx->getKDEProjectMetadataModule();
+    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
 
     eval {
         my $sourceDir = $metadataModule->getSourceDir();
@@ -530,7 +530,7 @@ sub _resolveModuleDependencies
 {
     my $self = shift;
     my $ctx = $self->context();
-    my $metadataModule = $ctx->getKDEProjectMetadataModule();
+    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
     my @modules = @_;
 
     @modules = eval {
@@ -568,7 +568,7 @@ sub runAllModulePhases
 {
     my $self = shift;
     my $ctx = $self->context();
-    my $metadataModule = $ctx->getKDEProjectMetadataModule();
+    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
     my @modules = $self->modules();
 
     $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
