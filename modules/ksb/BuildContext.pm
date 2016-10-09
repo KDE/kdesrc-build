@@ -153,7 +153,6 @@ sub new
         rcFile  => undef,
         env     => { },
         ignore_list => [ ], # List of XML paths to ignore completely
-        kde_projects_filehandle   => undef, # Filehandle to read database from
         kde_projects_metadata     => undef, # Enumeration of kde-projects
         kde_dependencies_metadata => undef, # Dependency resolution of kde-projects
         logical_module_resolver   => undef, # For branch-group option
@@ -884,61 +883,6 @@ sub setPersistentOption
     $persistent_opts->{$moduleName}{$key} = $value;
 }
 
-# Tries to download the kde_projects.xml file needed to make XML module support
-# work. Only tries once per script run. If it does succeed, the result is saved
-# to $srcdir/kde_projects.xml
-#
-# Returns the file handle that the database can be retrieved from. May throw an
-# exception if an error occurred.
-sub getKDEProjectMetadataFilehandle
-{
-    my $self = assert_isa(shift, 'ksb::BuildContext');
-
-    # Return our current filehandle if one exists.
-    if (defined $self->{kde_projects_filehandle}) {
-        my $fh = $self->{kde_projects_filehandle};
-        $fh->seek(0, 0); # Return to start
-        return $fh;
-    }
-
-    # Not previously attempted, let's make a try.
-    my $srcdir = $self->getSourceDir();
-    my $fileHandleResult = IO::File->new();
-
-    super_mkdir($srcdir) unless -d "$srcdir";
-    my $file = "$srcdir/kde_projects.xml";
-    my $url = "https://projects.kde.org/kde_projects.xml";
-
-    my $result = 1;
-
-    # Must use ->phases() directly to tell if we will be updating since
-    # modules are not all processed until after this function is called...
-    my $updating = grep { /^update$/ } (@{$self->phases()});
-    $updating &&= !$self->getOption('no-metadata');
-
-    if ($updating && (! -e $file || !pretending())) {
-        info (" * Downloading projects.kde.org project database...");
-        $result = download_file($url, $file, $self->getOption('http-proxy'));
-    }
-    else {
-        info (" * y[Using existing projects.kde.org project database], output may change");
-        info (" * when database is updated next.");
-    }
-
-    if (!$result) {
-        unlink $file if -e $file;
-        croak_runtime("Unable to download kde_projects.xml for the kde-projects repository!");
-    }
-
-    if (!$fileHandleResult->opened()) {
-        open ($fileHandleResult, '<', $file) or die
-            make_exception('Runtime', "Unable to open $file: $!");
-    }
-
-    $self->{kde_projects_filehandle} = $fileHandleResult;
-    return $fileHandleResult;
-}
-
 # Returns the ksb::Module (which has a 'metadata' scm type) that is used for
 # kde-project metadata, so that other modules that need it can call into it if
 # necessary.
@@ -1017,7 +961,7 @@ sub getProjectDataReader
 
     return $self->{projects_db} if $self->{projects_db};
 
-    my $databaseFile = $self->getKDEProjectMetadataFilehandle() or
+    my $projectDatabaseModule = $self->getKDEProjectsMetadataModule() or
         croak_runtime("kde-projects repository information could not be downloaded: $!");
 
     my $protocol = $self->getOption('git-desired-protocol') || 'git';
@@ -1027,7 +971,7 @@ sub getProjectDataReader
         croak_runtime ("Invalid git-desired-protocol: $protocol");
     }
 
-    $self->{projects_db} = ksb::KDEXMLReader->new($databaseFile, $protocol);
+    $self->{projects_db} = ksb::KDEXMLReader->new($projectDatabaseModule, $protocol);
     return $self->{projects_db};
 }
 

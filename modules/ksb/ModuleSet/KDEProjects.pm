@@ -162,16 +162,19 @@ sub _expandModuleCandidates
 
     # It's possible to match modules which are marked as inactive on
     # projects.kde.org, elide those.
-    my @xmlResults = grep { $_->{'active'} ne 'false' } (@allXmlResults);
+    my @xmlResults = grep { $_->{'active'} } (@allXmlResults);
 
-    # Bug 307694
-    my $moduleSetBranch = $self->{'options'}->{'branch'} // '';
-    if ($moduleSetBranch && !exists $self->{'options'}->{'tag'}) {
-        debug ("Filtering kde-projects modules that don't have a $moduleSetBranch branch");
-        @xmlResults = grep {
-            list_has($_->{'branches'}, $moduleSetBranch)
-        } (@xmlResults);
-    }
+    # Base project metadata doesn't include information on which git branches
+    # are available, so we can't elide modules until they're actually downloaded
+    # and available (unless it's available on api.kde.org ?)
+#     # Bug 307694
+#     my $moduleSetBranch = $self->{'options'}->{'branch'} // '';
+#     if ($moduleSetBranch && !exists $self->{'options'}->{'tag'}) {
+#         debug ("Filtering kde-projects modules that don't have a $moduleSetBranch branch");
+#         @xmlResults = grep {
+#             list_has($_->{'branches'}, $moduleSetBranch)
+#         } (@xmlResults);
+#     }
 
     if (!@xmlResults) {
         warning (" y[b[*] Module y[$moduleSearchItem] is apparently XML-based, but contains no\n" .
