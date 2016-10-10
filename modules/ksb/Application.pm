@@ -479,42 +479,50 @@ sub _downloadKDEProjectMetadata
 {
     my $self = shift;
     my $ctx = $self->context();
-    my $updateNeeded;
-    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
+    my $updateStillNeeded = 0;
+
+    my $wasPretending = pretending();
 
     eval {
-        my $sourceDir = $metadataModule->getSourceDir();
-        super_mkdir($sourceDir);
+        for my $metadataModule (
+            $ctx->getKDEDependenciesMetadataModule(),
+            $ctx->getKDEProjectsMetadataModule())
+        {
+            my $sourceDir = $metadataModule->getSourceDir();
+            super_mkdir($sourceDir);
 
-        my $updateDesired = !$ctx->getOption('no-metadata') && $ctx->phases()->has('update');
-        $updateNeeded = (! -e $metadataModule->fullpath('source') . "/dependency-data-common");
-        my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
-        my $wasPretending = pretending();
+            my $moduleSource = $metadataModule->fullpath('source');
+            my $updateDesired = !$ctx->getOption('no-metadata') && $ctx->phases()->has('update');
+            my $updateNeeded = (! -e $moduleSource) || is_dir_empty($moduleSource);
+            my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
 
-        if (!$updateDesired && $updateNeeded && (time - ($lastUpdate)) >= 7200) {
-            warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
+            $updateStillNeeded ||= $updateNeeded;
+
+            if (!$updateDesired && $updateNeeded && (time - ($lastUpdate)) >= 7200) {
+                warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
+            }
+
+            if ($updateNeeded && pretending()) {
+                warning (" y[b[*] Ignoring y[b[--pretend] option to download required metadata\n" .
+                         " y[b[*] --pretend mode will resume after metadata is available.");
+                ksb::Debug::setPretending(0);
+            }
+
+            if ($updateDesired && (!pretending() || $updateNeeded)) {
+                $metadataModule->scm()->updateInternal();
+                $ctx->setPersistentOption('global', 'last-metadata-update', time);
+            }
+
+            ksb::Debug::setPretending($wasPretending);
         }
-
-        if ($updateNeeded && pretending()) {
-            warning (" y[b[*] Ignoring y[b[--pretend] option to download required metadata\n" .
-                     " y[b[*] --pretend mode will resume after metadata is available.");
-            ksb::Debug::setPretending(0);
-        }
-
-        if ($updateDesired && (!pretending() || $updateNeeded)) {
-            $metadataModule->scm()->updateInternal();
-            $ctx->setPersistentOption('global', 'last-metadata-update', time);
-
-            # Also grab sysadmin/repo-metadata
-            $metadataModule = $ctx->getKDEProjectsMetadataModule();
-            $metadataModule->scm()->updateInternal();
-        }
-
-        ksb::Debug::setPretending($wasPretending);
     };
 
-    if ($@) {
-        die if $updateNeeded;
+    my $err = $@;
+
+    ksb::Debug::setPretending($wasPretending);
+
+    if ($err) {
+        die $err if $updateStillNeeded;
 
         # Assume previously-updated metadata will work if not updating
         warning (" b[r[*] Unable to download required metadata for build process");
