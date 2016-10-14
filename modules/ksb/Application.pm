@@ -308,8 +308,6 @@ DONE
         croak_runtime("Error reading command-line options.");
     }
 
-    $cmdlineOptionsRef->{'global'} //= { };
-
     # To store the values we found, need to strip out the values that are
     # subroutines, as those are the ones we created. Alternately, place the
     # subs inline as an argument to the appropriate option in the
@@ -359,10 +357,6 @@ sub generateModuleList
     my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
     delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
 
-    # Everything else in cmdlineOptions should be OK to apply directly as a module
-    # or context option.
-    $ctx->setOption(%{$cmdlineGlobalOptions});
-
     # rc-file needs special handling.
     if (exists $cmdlineGlobalOptions->{'rc-file'} && $cmdlineGlobalOptions->{'rc-file'}) {
         $ctx->setRcFile($cmdlineGlobalOptions->{'rc-file'});
@@ -410,6 +404,10 @@ sub generateModuleList
         $ctx->commitEnvironmentChanges(); # Apply env options to environment
         _executeCommandLineProgram(@startProgramAndArgs); # noreturn
     }
+
+    # Everything else in cmdlineOptions should be OK to apply directly as a module
+    # or context option.
+    $ctx->setOption(%{$cmdlineGlobalOptions});
 
     # Selecting modules or module sets would require having the KDE build
     # metadata available. This used to be optional, but now everything needs
