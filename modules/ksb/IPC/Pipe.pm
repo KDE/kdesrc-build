@@ -87,14 +87,14 @@ sub _readNumberOfBytes
         $! = 0; # Reset errno
 
         my $curLength = $fh->sysread ($result, ($length - $readLength), $readLength);
-        if ($curLength > $length) {
-            croak_runtime("sysread read too much: $curLength vs $length")
-        }
 
         # EINTR is OK, but check early so we don't trip 0-length check
         next   if (!defined $curLength && $!{EINTR});
         return if (defined $curLength && $curLength == 0);
-        croak_runtime ("Error reading $length bytes from pipe: $!") if !$curLength;
+        croak_internal("Error reading $length bytes from pipe: $!")
+            if !$curLength;
+        croak_internal("sysread read too much: $curLength vs $length")
+            if ($curLength > $length);
 
         $readLength += $curLength;
     }
@@ -112,6 +112,10 @@ sub receiveMessage
     return if !$msgLength;
 
     $msgLength = unpack ("S", $msgLength); # Decode to Perl type
+    if (!$msgLength) {
+        croak_internal ("Failed to read $msgLength bytes as needed by earlier message!");
+    }
+
     return $self->_readNumberOfBytes($msgLength);
 }
 

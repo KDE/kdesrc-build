@@ -33,6 +33,8 @@ use constant {
     MODULE_LOGMSG   => 9, # Tagged message should be put to TTY for module.
 
     MODULE_PERSIST_OPT => 10, # Change to a persistent module option
+
+    ALL_DONE        => 11, # Affirmatively flags that all updates are done
 };
 
 sub new
@@ -43,6 +45,8 @@ sub new
         updated       => { },
         logged_module => 'global',
         messages      => { }, # Holds log output from update process
+        updates_done  => 0,
+        opt_update_handler => undef, # Callback for persistent option changes
     };
 
     # Must bless a hash ref since subclasses expect it.
@@ -96,6 +100,104 @@ sub _printLoggedMessage
     ksb::Debug::print_clr($msg);
 }
 
+sub _updateSeenModulesFromMessage
+{
+    my ($self, $ipcType, $buffer) = @_;
+
+    my $updated     = $self->{'updated'};
+    my $messagesRef = $self->{'messages'};
+    my $message;
+
+    croak_runtime("IPC failure: no IPC mechanism defined") unless $ipcType;
+
+    given ($ipcType) {
+        when (ksb::IPC::MODULE_SUCCESS) {
+            my ($ipcModuleName, $msg) = split(/,/, $buffer);
+            $message = $msg;
+            $updated->{$ipcModuleName} = 'success';
+
+        }
+        when (ksb::IPC::MODULE_SKIPPED) {
+            # The difference between success here and 'skipped' below
+            # is that success means we should build even though we
+            # didn't perform an update, while 'skipped' means the
+            # *build* should be skipped even though there was no
+            # failure.
+            $message = 'skipped';
+            $updated->{$buffer} = 'success';
+        }
+        when (ksb::IPC::MODULE_CONFLICT) {
+            $message = 'conflicts present';
+            $updated->{$buffer} = 'failed';
+        }
+        when (ksb::IPC::MODULE_FAILURE) {
+            $message = 'update failed';
+            $updated->{$buffer} = 'failed';
+        }
+        when (ksb::IPC::MODULE_UPTODATE) {
+            # Although the module source hasn't changed, the user might be forcing a
+            # rebuild, so our message should reflect what's actually going to happen.
+            $message = 'no files affected';
+            my ($ipcModuleName, $refreshReason) = split(',', $buffer);
+
+            if ($refreshReason)
+            {
+                $updated->{$ipcModuleName} = 'success';
+                note ("\tNo source update, but $refreshReason");
+            }
+            else
+            {
+                $updated->{$ipcModuleName} = 'skipped';
+            }
+        }
+        when (ksb::IPC::MODULE_PERSIST_OPT) {
+            my ($ipcModuleName, $optName, $value) = split(',', $buffer);
+            if ($self->{opt_update_handler}) {
+                # Call into callback to update persistent options
+                $self->{opt_update_handler}->($optName, $optName);
+            }
+        }
+        when (ksb::IPC::MODULE_LOGMSG) {
+            my ($ipcModuleName, $logMessage) = split(',', $buffer);
+
+            # Save it for later if we can't print it yet.
+            $messagesRef->{$ipcModuleName} //= [ ];
+            push @{$messagesRef->{$ipcModuleName}}, $logMessage;
+        }
+        when (ksb::IPC::ALL_DONE) {
+            $self->{updates_done} = 1;
+        }
+        default {
+            croak_internal("Unhandled IPC type: $ipcType");
+        }
+    };
+
+    return $message;
+}
+
+# Used to assign a callback / subroutine to use for updating persistent
+# options based on IPC update messages.  The sub should itself take a
+# key and value pair.
+sub setPersistentOptionHandler
+{
+    my ($self, $handler) = @_;
+    $self->{opt_update_handler} = $handler;
+}
+
+sub waitForEnd
+{
+    my ($self, $module) = @_;
+
+    $self->waitForStreamStart();
+    while(!$self->{no_update} && !$self->{updates_done}) {
+        my $buffer;
+        my $ipcType = $self->receiveIPCMessage(\$buffer);
+
+        # We ignore the return value in favor of ->{updates_done}
+        $self->_updateSeenModulesFromMessage($ipcType, $buffer);
+    }
+}
+
 # Waits for an update for a module with the given name.
 # Returns a list containing whether the module was successfully updated,
 # and any specific string message (e.g. for module update success you get
@@ -105,12 +207,9 @@ sub _printLoggedMessage
 sub waitForModule
 {
     my ($self, $module) = @_;
-    assert_isa($module, 'ksb::Module');
 
     my $moduleName = $module->name();
     my $updated = $self->{'updated'};
-    my $messagesRef = $self->{'messages'};
-    my $message;
 
     # Wait for for the initial phase to complete, if it hasn't.
     $self->waitForStreamStart();
@@ -121,84 +220,18 @@ sub waitForModule
         return ('success', 'Skipped');
     }
 
-    while(! defined $updated->{$moduleName}) {
+    my $message;
+    while(! defined $updated->{$moduleName} && !$self->{updates_done}) {
         my $buffer;
-
         my $ipcType = $self->receiveIPCMessage(\$buffer);
-        if (!$ipcType)
-        {
-            croak_runtime("IPC failure updating $moduleName: $!");
-        }
 
-        given ($ipcType) {
-            when (ksb::IPC::MODULE_SUCCESS) {
-                my ($ipcModuleName, $msg) = split(/,/, $buffer);
-                $message = $msg;
-                $updated->{$ipcModuleName} = 'success';
-
-            }
-            when (ksb::IPC::MODULE_SKIPPED) {
-                # The difference between success here and 'skipped' below
-                # is that success means we should build even though we
-                # didn't perform an update, while 'skipped' means the
-                # *build* should be skipped even though there was no
-                # failure.
-                $message = 'skipped';
-                $updated->{$buffer} = 'success';
-            }
-            when (ksb::IPC::MODULE_CONFLICT) {
-                $module->setPersistentOption('conflicts-present', 1);
-                $message = 'conflicts present';
-                $updated->{$buffer} = 'failed';
-            }
-            when (ksb::IPC::MODULE_FAILURE) {
-                $message = 'update failed';
-                $updated->{$buffer} = 'failed';
-            }
-            when (ksb::IPC::MODULE_UPTODATE) {
-                # Properly account for users manually doing --refresh-build or
-                # using .refresh-me.
-                $message = 'no files affected';
-                my $refreshReason = $module->buildSystem()->needsRefreshed();
-                if ($refreshReason ne "")
-                {
-                    $updated->{$buffer} = 'success';
-                    note ("\tNo source update, but $refreshReason");
-                }
-                else
-                {
-                    $updated->{$buffer} = 'skipped';
-                }
-            }
-            when (ksb::IPC::MODULE_PERSIST_OPT) {
-                my ($ipcModuleName, $optName, $value) = split(',', $buffer);
-                my $ctx = $module->buildContext();
-                $ctx->setPersistentOption($ipcModuleName, $optName, $value);
-            }
-            when (ksb::IPC::MODULE_LOGMSG) {
-                my ($ipcModuleName, $logMessage) = split(',', $buffer);
-
-                # Print now if we can (means the user's waiting)
-                if ($ipcModuleName ~~ ['global', $moduleName]) {
-                    _printLoggedMessage($logMessage);
-                }
-                else {
-                    # Save it for later if we can't print it yet.
-                    $messagesRef->{$ipcModuleName} //= [ ];
-                    push @{$messagesRef->{$ipcModuleName}}, $logMessage;
-                }
-            }
-            default {
-                croak_internal("Unhandled IPC type: $ipcType");
-            }
-        }
+        $message = $self->_updateSeenModulesFromMessage($ipcType, $buffer);
     }
-
-    # Out of while loop, should have a status now.
 
     # If we have 'global' messages they are probably for the first module and
     # include standard setup messages, etc. Print first and then print module's
     # messages.
+    my $messagesRef = $self->{'messages'};
     for my $item ('global', $moduleName) {
         for my $msg (@{$messagesRef->{$item}}) {
             _printLoggedMessage($msg);
@@ -221,12 +254,31 @@ sub outputPendingLoggedMessages
     while (my ($module, $logMessages) = each %{$messages}) {
         my @nonEmptyMessages = grep { !!$_ } @{$logMessages};
         if (@nonEmptyMessages) {
-            note ("Unhandled messages for module $module:");
+            debug ("Unhandled messages for module $module:");
             ksb::Debug::print_clr($_) foreach @nonEmptyMessages;
         }
     }
 
     $self->{messages} = { };
+}
+
+# Flags the given module as something that can be ignored from now on.  For use
+# after the module has been waited on
+sub forgetModule
+{
+    my ($self, $module) = @_;
+
+    my $modulename = $module->name();
+    delete $self->{'updated'}->{$modulename};
+}
+
+# Returns a hashref mapping module *names* to update statuses, for modules that
+# have not already been marked as ignorable using forgetModule()
+sub unacknowledgedModules
+{
+    my $self = shift;
+
+    return $self->{'updated'};
 }
 
 # Waits on the IPC connection until one of the ALL_* IPC codes is returned.
@@ -260,6 +312,7 @@ sub waitForStreamStart
         elsif ($ipcType == ksb::IPC::ALL_SKIPPED)
         {
             $self->{'no_update'} = 1;
+            $self->{'updates_done'} = 1;
         }
         elsif ($ipcType == ksb::IPC::MODULE_LOGMSG) {
             my ($ipcModuleName, $logMessage) = split(',', $buffer);
@@ -316,6 +369,7 @@ sub receiveIPCMessage
     my $self = shift;
     my $outBuffer = shift;
 
+    croak_internal("Trying to pull message from closed IPC channel!") if $self->{updates_done};
     my $msg = $self->receiveMessage();
 
     return ($msg ? unpackMsg($msg, $outBuffer) : undef);

@@ -764,8 +764,9 @@ sub update
         else
         {
             $message = "0 files affected.";
+            my $refreshReason = $self->buildSystem()->needsRefreshed();
 
-            $ipc->sendIPCMessage(ksb::IPC::MODULE_UPTODATE, $moduleName);
+            $ipc->sendIPCMessage(ksb::IPC::MODULE_UPTODATE, "$moduleName,$refreshReason");
         }
 
         # We doing e.g. --src-only, the build phase that normally outputs

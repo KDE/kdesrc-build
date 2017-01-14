@@ -47,6 +47,14 @@ sub configureInternal
         p_chdir($sourcedir);
         my $err = log_command($module, 'autogen', ["$sourcedir/$configureCommand"]);
         return 0 if $err != 0;
+
+        # We don't want a Makefile in the srcdir, so run make-distclean if that happened
+        # ... and hope that is enough to fix it
+        if (-e "$sourcedir/Makefile") {
+            $err = log_command($module, 'distclean', [qw(make distclean)]);
+            return 0 if $err != 0;
+        }
+
         # Now recheck
         $configureCommand = first { -e "$sourcedir/$_" } qw(configure autogen.sh);
     }

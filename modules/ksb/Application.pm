@@ -652,15 +652,22 @@ sub runAllModulePhases
         # updates while we build.  Setup for this first by initializing some
         # shared memory.
         my $ipc = 0;
+        my $updateOptsSub = sub {
+            my ($k, $v) = @_;
+            $ctx->setPersistentOption($k, $v);
+        };
 
         if ($ctx->getOption('async'))
         {
             $ipc = ksb::IPC::Pipe->new();
+            $ipc->setPersistentOptionHandler($updateOptsSub);
         }
 
         if (!$ipc)
         {
             $ipc = ksb::IPC::Null->new();
+            $ipc->setPersistentOptionHandler($updateOptsSub);
+
             whisper ("Using no IPC mechanism\n");
 
             note ("\n b[<<<  Update Process  >>>]\n");
@@ -672,7 +679,7 @@ sub runAllModulePhases
         else
         {
             $result = _handle_async_build ($ipc, $ctx);
-            $ipc->outputPendingLoggedMessages();
+            $ipc->outputPendingLoggedMessages() if debugging();
         }
     }
     elsif ($runMode eq 'install')
@@ -1304,6 +1311,7 @@ sub _handle_updates
     if (!@update_list)
     {
         $ipc->sendIPCMessage(ksb::IPC::ALL_UPDATING, "update-list-empty");
+        $ipc->sendIPCMessage(ksb::IPC::ALL_DONE,     "update-list-empty");
         return 0;
     }
 
@@ -1339,7 +1347,8 @@ sub _handle_updates
         $hadError = !$module->update($ipc, $ctx) || $hadError;
     }
 
-    $ipc->close();
+    $ipc->sendIPCMessage(ksb::IPC::ALL_DONE, "had_errors: $hadError");
+
     return $hadError;
 }
 
@@ -1355,6 +1364,8 @@ sub _buildSingleModule
 
     my $fail_count = $module->getPersistentOption('failure-count') // 0;
     my ($resultStatus, $message) = $ipc->waitForModule($module);
+    $ipc->forgetModule($module);
+
     if ($resultStatus eq 'failed') {
         error ("\tUnable to update r[$module], build canceled.");
         $module->setPersistentOption('failure-count', ++$fail_count);
@@ -1510,8 +1521,6 @@ EOF
         print "\n"; # Space things out
     }
 
-    $ipc->close();
-
     if ($outfile)
     {
         close STATUS_FILE;
@@ -1623,6 +1632,19 @@ sub _handle_async_build
         $result = _handle_build ($ipc, $ctx);
     }
 
+    $ipc->waitForEnd();
+    $ipc->close();
+
+    # Display a message for updated modules not listed because they were not
+    # built.
+    my $unseenModulesRef = $ipc->unacknowledgedModules();
+    if (%$unseenModulesRef) {
+        note ("The following modules were updated but not built:");
+        foreach my $modulename (keys %$unseenModulesRef) {
+            note ("\t$modulename");
+        }
+    }
+
     # It's possible if build fails on first module that git or svn is still
     # running. Make them stop too.
     if (waitpid ($monitorPid, WNOHANG) == 0) {
@@ -1630,9 +1652,8 @@ sub _handle_async_build
 
         # Exit code is in $?.
         waitpid ($monitorPid, 0);
+        $result = 1 if $? != 0;
     }
-
-    $result = 1 if $? != 0;
 
     return $result;
 }
@@ -1806,6 +1827,8 @@ sub _handle_monitoring
             return 1;
         }
     }
+
+    $ipcToBuild->close();
 
     return 0;
 }
