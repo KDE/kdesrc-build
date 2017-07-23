@@ -693,7 +693,12 @@ sub runAllModulePhases
         $ctx->setPersistentOption('global', 'last-failed-module-list', $failedModules);
     }
 
-    _installCustomSessionDriver($ctx) if $ctx->getOption('install-session-driver');
+    # env driver is just the ~/.config/kde-env-*.sh, session driver is that + ~/.xsession
+    if ($ctx->getOption('install-environment-driver') ||
+        $ctx->getOption('install-session-driver'))
+    {
+        _installCustomSessionDriver($ctx);
+    }
 
     my $color = 'g[b[';
     $color = 'r[b[' if $result;
@@ -2368,7 +2373,7 @@ sub _installCustomSessionDriver
     _installCustomFile($ctx, $envScript, "$destDir/kde-env-master.sh",
         'kde-env-master-digest');
     _installCustomFile($ctx, $sessionScript, "$ENV{HOME}/.xsession",
-        'xsession-digest');
+        'xsession-digest') if $ctx->getOption('install-session-driver');
 
     if (!pretending()) {
         if (! -e "$destDir/kde-env-user.sh") {
@@ -2378,7 +2383,7 @@ sub _installCustomSessionDriver
             };
         }
 
-        chmod (0744, "$ENV{HOME}/.xsession") or do {
+        if ($ctx->getOption('install-session-driver') && !chmod (0744, "$ENV{HOME}/.xsession")) {
             error ("\tb[r[*] Error making b[~/.xsession] executable: $!");
             error ("\tb[r[*] If this file is not executable you may not be able to login!");
         };
