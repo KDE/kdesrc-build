@@ -2,7 +2,7 @@
 #
 # This sets the various environment variables needed to start Plasma (or other KDE
 # software built by kdesrc-build), or to run programs/build programs/etc. in the
-# same environment.
+# same environment, ideally without clashing with system-built KDE or Qt.
 #
 # This should not produce any output in order to make it usable by
 # non-interactive scripts.
@@ -30,8 +30,8 @@ if ! test -n "$KDESRC_BUILD_TESTING"; then                     # kdesrc-build: f
 # Where KDE libraries and applications are installed to.
 kde_prefix="<% kdedir %>"  # E.g. "$HOME/kf5"
 
-# Where Qt is installed to. If using the system Qt, leave blank or set to
-# 'auto' and this script will try to auto-detect.
+# Where Qt is installed to. If using the system Qt, leave blank and this script
+# will try to auto-detect.
 qt_prefix="<% qtdir %>"    # E.g. "$HOME/qt5" or "/usr" on many systems.
 else                                                           # kdesrc-build: filter
 kde_prefix="$HOME/kf5"                                         # kdesrc-build: filter
@@ -40,13 +40,13 @@ fi                                                             # kdesrc-build: f
 
 # === End of modifiable variables.
 
-# Set defaults if these are unset or null. ':' is a null command
-: ${lib_suffix:=""}
+# Default qmake executable if we don't find a better one
+qmake=qmake
 
 # Find system Qt5
 if test -z "$qt_prefix"; then
-    # Find right qmake
-    for qmake_candidate in qmake-qt5 qmake5 qmake; do
+    # Find right qmake, look for specific executables first
+    for qmake_candidate in qmake-qt5 qmake5; do
         if ${qmake_candidate} --version >/dev/null 2>&1; then
             qmake="$qmake_candidate"
             break;
@@ -56,12 +56,6 @@ if test -z "$qt_prefix"; then
     qt_prefix=$(${qmake} -query QT_INSTALL_PREFIX 2>/dev/null)
 
     test -z "$qt_prefix" && qt_prefix="/usr" # Emergency fallback?
-fi
-
-# Try to auto-determine lib suffix if not set. This requires KDE to already
-# have been installed though.
-if test -z "$lib_suffix" && test -x "$kde_prefix/bin/kde5-config"; then
-    lib_suffix=$("$kde_prefix/bin/kde5-config" --libsuffix 2>/dev/null)
 fi
 
 # Add path elements to a colon-separated environment variable,
@@ -79,25 +73,35 @@ path_add()
     fi
 }
 
-libname="lib$lib_suffix"
-
 # Now add the necessary directories, starting with Qt (although we don't add Qt
 # if it's system Qt to avoid moving /usr up in the PATH.
 # Note that LD_LIBRARY_PATH *should* be extraneous with KF5 and Qt5
 if test "x$qt_prefix" != "x/usr"; then
-    path_add "PATH"               "$qt_prefix/bin";
-    path_add "PKG_CONFIG_PATH"    "$qt_prefix/$libname/pkgconfig";
-    path_add "MANPATH"            "$qt_prefix/share/man";
-#   Do we need path_add for CMAKE_MODULE_PATH for Qt CMake .config files?
+    path_add "PATH"               "$(${qmake} -query QT_INSTALL_BINS 2>/dev/null)";
+    path_add "PKG_CONFIG_PATH"    "$(${qmake} -query QT_INSTALL_LIBS 2>/dev/null)/pkgconfig";
+fi
+
+# There doesn't seem to be a great way to get this from CMake easily
+# but we can reason that if there's a /usr/lib64, there will likely end
+# up being a $kde_prefix/lib64 once kdesrc-build gets done installing it
+libname=lib
+if test -d /usr/lib64; then
+	libname=lib64
 fi
 
 # Now add KDE-specific paths.
 path_add "PATH"               "$kde_prefix/bin";
-path_add "PKG_CONFIG_PATH"    "$kde_prefix/$libname/pkgconfig";
+# For some reason I've seen both of lib and lib64 used.  I think due
+# to qmake vs. cmake modules
+if test $libname = lib64; then
+	path_add "PKG_CONFIG_PATH"    "$kde_prefix/lib64/pkgconfig";
+fi
+path_add "PKG_CONFIG_PATH"    "$kde_prefix/lib/pkgconfig";
 path_add "MANPATH"            "$kde_prefix/share/man";
 path_add "CMAKE_PREFIX_PATH"  "$kde_prefix";
-path_add "CMAKE_MODULE_PATH"  "$kde_prefix/share/cmake";
-path_add "QML_IMPORT_PATH"    "$kde_prefix/$libname/kde4/imports";
+path_add "QML2_IMPORT_PATH"   "$kde_prefix/$libname/qml";
+path_add "QT_PLUGIN_PATH"     "$kde_prefix/$libname/qt5/plugins" # phonon likes this one
+path_add "QT_PLUGIN_PATH"     "$kde_prefix/$libname/plugins"     # others like this more
 
 # For Python bindings support.
 path_add "PYTHONPATH"         "$kde_prefix/$libname/site-packages";
@@ -108,11 +112,11 @@ path_add "XDG_CONFIG_DIRS"    "$kde_prefix/etc/xdg";
 
 # Finally, export the variables.
 export CMAKE_PREFIX_PATH
-export CMAKE_MODULE_PATH
 export PATH
 export PKG_CONFIG_PATH
 export PYTHONPATH
-export QML_IMPORT_PATH
+export QML2_IMPORT_PATH
+export QT_PLUGIN_PATH
 export XDG_DATA_DIRS
 export XDG_CONFIG_DIRS
 export MANPATH
