@@ -72,10 +72,10 @@ path_add()
 {
     eval curVal=\$'{'$1'-}'
 
-    if [ -n "$curVal" ]; then
-        eval "$1"="$2:$curVal";
+    if test -n "$curVal"; then
+        eval "$1"="$2:'$curVal'";
     else
-        eval "$1"="$2"
+        eval "$1"="'$2'"
     fi
 }
 
