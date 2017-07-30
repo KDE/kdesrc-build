@@ -2357,9 +2357,6 @@ sub _installCustomSessionDriver
     my $sessionScript = first { -f $_ } (
         map { "$_/sample-xsession.sh" } @searchPaths
     );
-    my $userSample = first { -f $_ } (
-        map { "$_/sample-kde-env-user.sh" } @searchPaths
-    );
 
     if (!$envScript || !$sessionScript) {
         warning ("b[*] Unable to find helper files to setup a login session.");
@@ -2376,13 +2373,6 @@ sub _installCustomSessionDriver
         'xsession-digest') if $ctx->getOption('install-session-driver');
 
     if (!pretending()) {
-        if (! -e "$destDir/kde-env-user.sh") {
-            copy($userSample, "$destDir/kde-env-user.sh") or do {
-                warning ("b[*] Unable to install b[$userSample]: $!");
-                warning ("b[*] You should create b[~/.config/kde-env-user.sh] yourself or fix the error and re-run");
-            };
-        }
-
         if ($ctx->getOption('install-session-driver') && !chmod (0744, "$ENV{HOME}/.xsession")) {
             error ("\tb[r[*] Error making b[~/.xsession] executable: $!");
             error ("\tb[r[*] If this file is not executable you may not be able to login!");

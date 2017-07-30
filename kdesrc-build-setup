@@ -220,9 +220,6 @@ modules.
 EOF
 }
 
-my $dev = getYesNoAnswer('Do you already have commit ' .
-    'access to the KDE repositories?');
-
 # If the user appears to be using a proxy, ask for it directly, otherwise
 # prompt for one.
 my $proxy = $ENV{http_proxy} // '';
@@ -345,17 +342,14 @@ print $output <<EOF;
     # set.
     make-options -j$numCpus
 
-EOF
+    # kdesrc-build can install a sample .xsession file for "Custom"
+    # (or "XSession") logins,
+    install-session-driver false
 
-if ($dev) {
-    print $output <<EOF;
-    # This sets the login to use for SVN (for the very few bits of code still using it).
-    # Anonymous SVN can be used by just deleting this option.
-    # Note that ssh-agent must be running and loaded with the right key.
-    svn-server svn+ssh://svn\@svn.kde.org/home/kde
-
+    # or add a environment variable-setting script to
+    # ~/.config/kde-env-master.sh
+    install-environment-driver true
 EOF
-}
 
 if ($proxy) {
     print $output <<EOF;
