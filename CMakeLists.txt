@@ -90,7 +90,6 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build-setup DESTINATION ${BI
 
 install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/sample-kde-env-master.sh
-            ${CMAKE_SOURCE_DIR}/sample-kde-env-user.sh
             ${CMAKE_SOURCE_DIR}/sample-xsession.sh
         DESTINATION ${DATA_INSTALL_DIR}/kdesrc-build)
 
