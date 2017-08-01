@@ -22,8 +22,8 @@ if (ECM_FOUND)
     endif()
 else()
     message(WARNING "Did not find extra-cmake-modules; documentation will not be built and install paths will be guessed based on CMake settings.")
-    # ECM sets DATA_INSTALL_DIR to PREFIX/share, try to match
-    set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share" CACHE PATH "The parent directory where applications can install their data")
+    # ECM sets DATA_INSTALL_DIR to PREFIX/share/apps, try to match
+    set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share/apps" CACHE PATH "The parent directory where applications can install their data")
     set(BIN_INSTALL_DIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
 endif()
 

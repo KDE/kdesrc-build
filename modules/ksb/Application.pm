@@ -2346,7 +2346,7 @@ sub _installCustomSessionDriver
     my $xdgDataHome = $ENV{XDG_DATA_HOME} || "$ENV{HOME}/.local/share";
 
     # First we have to find the source
-    my @searchPaths = ($RealBin, map { "$_/kdesrc-build" } ($xdgDataHome, @xdgDataDirs));
+    my @searchPaths = ($RealBin, map { "$_/apps/kdesrc-build" } ($xdgDataHome, @xdgDataDirs));
 
     s{/+$}{}   foreach @searchPaths; # Remove trailing slashes
     s{//+}{/}g foreach @searchPaths; # Remove duplicate slashes
