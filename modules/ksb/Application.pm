@@ -2260,7 +2260,7 @@ sub _installTemplatedFile
                 \s*%>     # remaining whitespace and closing bracket
               }
               {
-                  $ctx->getOption($1, 'module') ||
+                  $ctx->getOption($1, 'module') //
                       croak_runtime("Invalid variable $1")
               }gxe;
               # Replace all matching expressions, use extended regexp w/

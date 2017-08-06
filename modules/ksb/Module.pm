@@ -647,31 +647,23 @@ sub setupEnvironment
     my $self = assert_isa(shift, 'ksb::Module');
     my $ctx = $self->buildContext();
     my $kdedir = $self->getOption('kdedir');
-    my $qtdir = $self->getOption('qtdir');
     my $prefix = $self->installationPath();
 
-    # Add global set-envs
+    # Add global set-envs and context
     $self->buildContext()->applyUserEnvironment();
 
-    # Add some standard directories for pkg-config support.  Include env settings.
-    my @pkg_config_dirs = ("$kdedir/lib/pkgconfig", "$qtdir/lib/pkgconfig");
+    my @pkg_config_dirs = ("$kdedir/lib/pkgconfig");
     $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @pkg_config_dirs);
 
-    # Likewise, add standard directories that should be in LD_LIBRARY_PATH.
-    my @ld_dirs = ("$kdedir/lib", "$qtdir/lib", $self->getOption('libpath'));
+    my @ld_dirs = ("$kdedir/lib", $self->getOption('libpath'));
     $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
 
-    my $buildSystem = $self->buildSystem();
-    $buildSystem->prepareModuleBuildEnvironment($ctx, $self, $prefix);
-
-    my @path = ("$kdedir/bin", "$qtdir/bin", $self->getOption('binpath'));
+    my @path = ("$kdedir/bin", $self->getOption('binpath'));
     $ctx->prependEnvironmentValue('PATH', @path);
 
-    # Set up the children's environment.  We use queueEnvironmentVariable since
-    # it won't set an environment variable to nothing.  (e.g, setting QTDIR to
-    # a blank string might confuse Qt or KDE.
-
-    $ctx->queueEnvironmentVariable('QTDIR', $qtdir);
+    # Build system's environment injection
+    my $buildSystem = $self->buildSystem();
+    $buildSystem->prepareModuleBuildEnvironment($ctx, $self, $prefix);
 
     # Read in user environment defines
     $self->applyUserEnvironment() unless $self == $ctx;
