@@ -89,6 +89,9 @@ sub clone
         if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
             croak_runtime("Failed to make initial clone of $module");
         }
+        if (0 != log_command($module, 'git-fetch-tags', ['git', 'fetch', '--tags'])) {
+            croak_runtime("Failed to fetch tags for $module");
+        }
     }
 
     $ipc->notifyPersistentOptionChange(
@@ -384,8 +387,8 @@ sub updateExistingClone
 
     # Download updated objects. This also updates remote heads so do this
     # before we start comparing branches and such.
-    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', $remoteName])) {
-        croak_runtime ("Unable to perform git fetch for $remoteName, which should be $cur_repo");
+    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', '--tags', $remoteName])) {
+        croak_runtime ("Unable to perform git fetch for $remoteName ($cur_repo)");
     }
 
     # Now we need to figure out if we should update a branch, or simply
