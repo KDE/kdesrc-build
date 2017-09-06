@@ -2542,7 +2542,7 @@ module set (as set with a module-set declaration).
 If you don\'t specify any particular module names, then every module you have
 listed in your configuration will be built, in the order listed.
 
-Copyright (c) 2003 - 2015 Michael Pyne <mpyne\@kde.org>, and others.
+Copyright (c) 2003 - 2017 Michael Pyne <mpyne\@kde.org>, and others.
 
 The script is distributed under the terms of the GNU General Public License
 v2, and includes ABSOLUTELY NO WARRANTY!!!
