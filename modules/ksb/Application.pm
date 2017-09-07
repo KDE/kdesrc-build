@@ -36,8 +36,6 @@ use IO::Select;
 
 ### Package-specific variables (not shared outside this file).
 
-my $SCRIPT_VERSION = scriptVersion();
-
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
 
@@ -138,7 +136,7 @@ sub _readCommandLineOptionsAndSelectors
     my ($cmdlineOptionsRef, $selectorsRef, $ctx, @options) = @_;
     my $phases = $ctx->phases();
     my @savedOptions = @options; # Copied for use in debugging.
-    my $version = "kdesrc-build $SCRIPT_VERSION";
+    my $version = "kdesrc-build " . scriptVersion();
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <mpyne\@kde.org>
@@ -2520,8 +2518,9 @@ sub _installSignalHandlers
 # Shows a help message and version. Does not exit.
 sub _showHelpMessage
 {
+    my $scriptVersion = scriptVersion();
     print <<DONE;
-kdesrc-build $SCRIPT_VERSION
+kdesrc-build $scriptVersion
 https://kdesrc-build.kde.org/
 
 This script automates the download, build, and install process for KDE software
