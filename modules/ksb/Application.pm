@@ -1381,15 +1381,8 @@ sub _buildSingleModule
     }
 
     $$startTimeRef = time;
-    if ($module->build())
-    {
-        $fail_count = 0;
-    }
-    else {
-        ++$fail_count;
-    }
-
-    $module->setPersistentOption('failure-count', 0);
+    $fail_count = $module->build() ? 0 : $fail_count + 1;
+    $module->setPersistentOption('failure-count', $fail_count);
 
     return $fail_count > 0 ? 'build' : 0;
 }
