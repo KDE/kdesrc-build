@@ -89,9 +89,6 @@ sub clone
         if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
             croak_runtime("Failed to make initial clone of $module");
         }
-        if (0 != log_command($module, 'git-fetch-tags', ['git', 'fetch', '--tags'])) {
-            croak_runtime("Failed to fetch tags for $module");
-        }
     }
 
     $ipc->notifyPersistentOptionChange(
