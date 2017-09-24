@@ -86,7 +86,8 @@ sub clone
     if ((my $e = had_an_exception()) || !$result) {
         warning($e->message()) if $e;
         note ("\tFalling back to clone of $module");
-        p_chdir($srcdir);
+        p_chdir($module->getSourceDir());
+
         if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
             croak_runtime("Failed to make initial clone of $module");
         }
@@ -94,6 +95,8 @@ sub clone
 
     $ipc->notifyPersistentOptionChange(
         $module->name(), 'git-cloned-repository', $git_repo);
+
+    p_chdir($srcdir);
 
     my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
 
