@@ -425,6 +425,8 @@ sub build
         return 0;
     }
 
+    $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
+
     # TODO: This should be a simple phase to run.
     if ($self->getOption('run-tests'))
     {

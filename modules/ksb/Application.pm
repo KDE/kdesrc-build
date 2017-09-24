@@ -1383,7 +1383,6 @@ sub _buildSingleModule
     $$startTimeRef = time;
     if ($module->build())
     {
-        $module->setPersistentOption('last-build-rev', $module->currentScmRevision());
         $fail_count = 0;
     }
     else {
