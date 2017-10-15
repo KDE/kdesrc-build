@@ -261,16 +261,29 @@ sub cleanBuildSystem
     return 1;
 }
 
+sub needsBuilddirHack
+{
+    return 0; # By default all build systems are assumed to be sane
+}
+
 # Return convention: boolean
 sub createBuildSystem
 {
     my $self = assert_isa(shift, 'ksb::BuildSystem');
     my $module = $self->module();
     my $builddir = $module->fullpath('build');
+    my $srcdir   = $module->fullpath('source');
 
     if (! -e "$builddir" && !super_mkdir("$builddir"))
     {
         error ("\tUnable to create build directory for r[$module]!!");
+        return 0;
+    }
+
+    if ($builddir ne $srcdir && $self->needsBuilddirHack() && 0 != log_command($module, 'lndir',
+            ['kdesrc-build', 'main::safe_lndir', $srcdir, $builddir]))
+    {
+        error ("\tUnable to setup symlinked build directory for r[$module]!!");
         return 0;
     }
 
