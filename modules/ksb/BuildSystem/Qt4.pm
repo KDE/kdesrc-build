@@ -26,6 +26,11 @@ sub name
     return 'Qt';
 }
 
+sub needsBuilddirHack
+{
+    return 1;
+}
+
 # Return value style: boolean
 sub configureInternal
 {
