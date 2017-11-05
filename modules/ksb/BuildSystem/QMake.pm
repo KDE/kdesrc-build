@@ -59,8 +59,7 @@ sub configureInternal
             ? $builddir
             : $module->fullpath('source');
 
-    # -r forces recursive configuration
-    my @qmakeOpts = ('-r', split(' ', $module->getOption('qmake-options')));
+    my @qmakeOpts = split(' ', $module->getOption('qmake-options'));
     my @projectFiles = glob("$sourcedir/*.pro");
 
     @projectFiles = ("$module.pro") if (!@projectFiles && pretending());
