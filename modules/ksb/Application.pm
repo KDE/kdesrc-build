@@ -432,7 +432,7 @@ sub generateModuleList
     $moduleResolver->setCmdlineOptions($cmdlineOptions);
     $moduleResolver->setDeferredOptions($deferredOptions);
     $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
-    $moduleResolver->setIgnoredSelectors(keys %ignoredSelectors);
+    $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
 
     $self->_defineNewModuleFactory($moduleResolver);
 
