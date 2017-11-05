@@ -63,6 +63,8 @@ sub configureInternal
     my @qmakeOpts = ('-r', split(' ', $module->getOption('qmake-options')));
     my @projectFiles = glob("$sourcedir/*.pro");
 
+    @projectFiles = ("$module.pro") if (!@projectFiles && pretending());
+
     if (!@projectFiles || !$projectFiles[0]) {
         croak_internal("No *.pro files could be found for $module");
     }
