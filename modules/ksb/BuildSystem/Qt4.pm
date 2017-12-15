@@ -26,6 +26,11 @@ sub name
     return 'Qt';
 }
 
+sub needsBuilddirHack
+{
+    return 1;
+}
+
 # Return value style: boolean
 sub configureInternal
 {
@@ -48,6 +53,12 @@ sub configureInternal
     $module->buildContext()->queueEnvironmentVariable('CXXFLAGS', $cxxflags);
 
     my $prefix = $module->getOption('qtdir');
+
+    if (!$prefix)
+    {
+        error ("\tThe b[qtdir] option must be set to determine where to install r[b[$module]");
+        return 0;
+    }
 
     # Some users have added -prefix manually to their flags, they
     # probably shouldn't anymore. :)

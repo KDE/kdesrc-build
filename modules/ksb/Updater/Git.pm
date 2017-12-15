@@ -86,6 +86,8 @@ sub clone
     if ((my $e = had_an_exception()) || !$result) {
         warning($e->message()) if $e;
         note ("\tFalling back to clone of $module");
+        p_chdir($module->getSourceDir());
+
         if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
             croak_runtime("Failed to make initial clone of $module");
         }
@@ -94,9 +96,9 @@ sub clone
     $ipc->notifyPersistentOptionChange(
         $module->name(), 'git-cloned-repository', $git_repo);
 
-    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
-
     p_chdir($srcdir);
+
+    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
 
     # Switch immediately to user-requested tag or branch now.
     if ($commitType eq 'tag') {
@@ -384,8 +386,8 @@ sub updateExistingClone
 
     # Download updated objects. This also updates remote heads so do this
     # before we start comparing branches and such.
-    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', $remoteName])) {
-        croak_runtime ("Unable to perform git fetch for $remoteName, which should be $cur_repo");
+    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', '--tags', $remoteName])) {
+        croak_runtime ("Unable to perform git fetch for $remoteName ($cur_repo)");
     }
 
     # Now we need to figure out if we should update a branch, or simply

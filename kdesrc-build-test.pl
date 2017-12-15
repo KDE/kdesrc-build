@@ -570,11 +570,6 @@ do {
     is(system('/bin/sh', '-u', "$RealBin/sample-kde-env-master.sh"), 0,
         'env-master unset variable check');
 
-    # Deliberately after env-master, env-master should have no unset variables if user doesn't set
-    # this up.
-    ok(File::Copy::copy("$RealBin/sample-kde-env-user.sh", "$testSourceDirName/kde-env-user.sh"),
-        'env-user   sample installation');
-
     # Ensure this function can run without throwing exception.
     ok(installTemplatedFile("$RealBin/sample-kde-env-master.sh", "$testSourceDirName/kde-env-master.sh", $ctx) || 1,
         'env-master template installation');

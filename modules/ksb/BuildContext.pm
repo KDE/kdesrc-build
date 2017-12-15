@@ -73,20 +73,20 @@ my %internalGlobalOptions = (
 
 # Holds boolean flags that could be altered from cmdline.
 our %defaultGlobalFlags = (
-    "delete-my-patches"    => 0, # Should only be set from cmdline
-    "delete-my-settings"   => 0, # Should only be set from cmdline
-    "disable-agent-check"  => 0, # If true we don't check on ssh-agent
-    "disable-snapshots"    => 1, # 2016-07-31 Temp. disabled until kde.org fixed to supply snapshots
-    "ignore-kde-structure" => 0, # Whether to use kde dir structure like extragear/network
-    "install-after-build"  => 1,  # Default to true
-    "install-session-driver" => 0,# Default to false
-    "purge-old-logs"       => 1,
-    "run-tests"            => 0,  # 1 = make test, upload = make Experimental
-    "stop-on-failure"      => 0,
-    "use-clean-install"    => 0,
-    "use-idle-io-priority" => 0,
-    # Controls whether to build "stable" branches instead of "master"
-    "use-stable-kde"       => 0,
+    "delete-my-patches"          => 0, # Should only be set from cmdline
+    "delete-my-settings"         => 0, # Should only be set from cmdline
+    "disable-agent-check"        => 0, # If true we don't check on ssh-agent
+    "disable-snapshots"          => 1, # 2016-07-31 Temp. disabled until kde.org fixed to supply snapshots
+    "ignore-kde-structure"       => 0, # Whether to use kde dir structure like extragear/network
+    "install-after-build"        => 1,
+    "install-environment-driver" => 1, # Setup ~/.config/kde-env-*.sh for login scripts
+    "install-session-driver"     => 0, # Above, + ~/.xsession
+    "purge-old-logs"             => 1,
+    "run-tests"                  => 0,  # 1 = make test, upload = make Experimental
+    "stop-on-failure"            => 0,
+    "use-clean-install"          => 0,
+    "use-idle-io-priority"       => 0,
+    "use-stable-kde"             => 0,
 );
 
 # Holds other cmdline-accessible options that aren't simply binary flags.
@@ -112,7 +112,7 @@ our %defaultGlobalOptions = (
     "override-build-system"=> "",
     "override-url"         => "",
     "persistent-data-file" => "",
-    "qtdir"                => "$ENV{HOME}/qt4",
+    "qtdir"                => "",
     "remove-after-install" => "none", # { none, builddir, all }
     "source-dir"           => "$ENV{HOME}/kdesrc",
     "svn-server"           => "svn://anonsvn.kde.org/home/kde",

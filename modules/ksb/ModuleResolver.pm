@@ -83,6 +83,7 @@ sub _applyOptions
 
         # Apply deferred options first
         $m->setOption(%{$deferredOptionsRef->{$name} // {}});
+        $m->getLogDir() if $m->isa('ksb::Module');
 
         # Most of time cmdline options will be empty
         if (%$cmdlineOptionsRef) {
@@ -345,13 +346,7 @@ sub resolveSelectorsIntoModules
     my @outputList;
     for my $selector (@selectors) {
         next if list_has ($self->{ignoredSelectors}, $selector);
-
-        my @newModules = $self->_resolveSingleSelector($selector);
-        # Perform module option setup
-        my @baseModules = grep { $_->isa('ksb::Module') } @newModules;
-        $self->_applyOptions(@baseModules);
-
-        push @outputList, @newModules;
+        push @outputList, $self->_resolveSingleSelector($selector);
     }
 
     my @modules = $self->expandModuleSets(@outputList);
@@ -407,10 +402,12 @@ sub expandModuleSets
     my @returnList;
     foreach my $set (@buildModuleList) {
         my @results = $set;
+
+        # If a module-set, need to update first so it can then apply its
+        # settings to modules it creates, otherwise update Module directly.
+        $self->_applyOptions($set);
+
         if ($set->isa('ksb::ModuleSet')) {
-            # Need to update module-set first so it can then apply its settings
-            # to modules it creates.
-            $self->_applyOptions($set);
             @results = $set->convertToModules($ctx);
             $self->_applyOptions(@results);
         }

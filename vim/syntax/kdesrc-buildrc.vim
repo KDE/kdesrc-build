@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language: kdesrc-build configuration file
 " Maintainer: Michael Pyne <mpyne@kde.org>
-" Latest Revision: 31 July 2016
+" Latest Revision: 23 July 2017
 
-" Copyright (c) 2014-2016 Michael Pyne <mpyne@kde.org>
+" Copyright (c) 2014-2017 Michael Pyne <mpyne@kde.org>
 " Redistribution and use in source and binary forms, with or without
 " modification, are permitted provided that the following conditions
 " are met:
@@ -63,19 +63,21 @@ syn keyword ksbrcErrorModuleSetOption contained skipwhite nextgroup=ksbrcStringV
 
 syn keyword ksbrcBoolOption contained skipwhite nextgroup=ksbrcBoolValue
             \ build-system-only build-when-unchanged ignore-kde-structure
-            \ install-after-build install-session-driver manual-build manual-update
+            \ install-after-build manual-build manual-update
             \ no-src reconfigure recreate-configure refresh-build run-tests
             \ use-clean-install
 
 syn keyword ksbrcGlobalBoolOption contained skipwhite nextgroup=ksbrcBoolValue
             \ async colorful-output disable-agent-check disable-snapshots pretend
-            \ purge-old-logs stop-on-failure use-idle-io-priority
+            \ purge-old-logs stop-on-failure use-idle-io-priority install-session-driver
+            \ install-environment-driver
 
 " MUST BE CONSISTENT WITH ABOVE. Used when a global option is used in the
 " wrong spot to highlight the error.
 syn keyword ksbrcErrorBoolOption contained skipwhite nextgroup=ksbrcBoolValue
             \ async colorful-output disable-agent-check disable-snapshots pretend
-            \ purge-old-logs stop-on-failure use-idle-io-priority
+            \ purge-old-logs stop-on-failure use-idle-io-priority install-session-driver
+            \ install-environment-driver
 
 " Matches
 syn match ksbrcKeyword "\<end\s\+global\>"

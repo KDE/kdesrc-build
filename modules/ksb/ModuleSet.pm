@@ -112,10 +112,11 @@ sub modulesToIgnore
     return @{$self->{module_ignore_decls}};
 }
 
-sub setModulesToIgnore
+sub addModulesToIgnore
 {
     my ($self, @moduleDecls) = @_;
-    $self->{module_ignore_decls} = [@moduleDecls];
+    $self->{module_ignore_decls} //= [];
+    push @{$self->{module_ignore_decls}}, @moduleDecls;
     return;
 }
 
@@ -159,7 +160,7 @@ sub setOption
             die ksb::BuildException::Config->new('ignore-modules', 'Invalid ignore-modules');
         }
 
-        $self->setModulesToIgnore(@modules);
+        $self->addModulesToIgnore(@modules);
         delete $options{'ignore-modules'};
     }
 

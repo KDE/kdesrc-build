@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.0)
 project(kdesrc-build)
 
 # Needed for the docs, but optional. If not found, we will simply
@@ -20,11 +20,9 @@ if (ECM_FOUND)
     else()
         message(WARNING "Found ECM, but not KF5::DocTools; documentation will not be built")
     endif()
-    # ECM sets DATA_INSTALL_DIR to PREFIX/share, the "/apps" is gone in KF5.
-    # To get a consistent install with and without ECM, override this:
-    set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share/apps" CACHE PATH "The parent directory where applications can install their data")
 else()
     message(WARNING "Did not find extra-cmake-modules; documentation will not be built and install paths will be guessed based on CMake settings.")
+    # ECM sets DATA_INSTALL_DIR to PREFIX/share/apps, try to match
     set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share/apps" CACHE PATH "The parent directory where applications can install their data")
     set(BIN_INSTALL_DIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
 endif()
@@ -89,6 +87,11 @@ endif()
 
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${BIN_INSTALL_DIR})
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build-setup DESTINATION ${BIN_INSTALL_DIR})
+
+install(PROGRAMS
+            ${CMAKE_SOURCE_DIR}/sample-kde-env-master.sh
+            ${CMAKE_SOURCE_DIR}/sample-xsession.sh
+        DESTINATION ${DATA_INSTALL_DIR}/kdesrc-build)
 
 if (ECM_FOUND)
     feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)

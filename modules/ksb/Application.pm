@@ -36,8 +36,6 @@ use IO::Select;
 
 ### Package-specific variables (not shared outside this file).
 
-my $SCRIPT_VERSION = scriptVersion();
-
 # This is a hash since Perl doesn't have a "in" keyword.
 my %ignore_list;  # List of packages to refuse to include in the build list.
 
@@ -138,7 +136,7 @@ sub _readCommandLineOptionsAndSelectors
     my ($cmdlineOptionsRef, $selectorsRef, $ctx, @options) = @_;
     my $phases = $ctx->phases();
     my @savedOptions = @options; # Copied for use in debugging.
-    my $version = "kdesrc-build $SCRIPT_VERSION";
+    my $version = "kdesrc-build " . scriptVersion();
     my $author = <<DONE;
 $version was written (mostly) by:
   Michael Pyne <mpyne\@kde.org>
@@ -435,7 +433,7 @@ sub generateModuleList
     $moduleResolver->setCmdlineOptions($cmdlineOptions);
     $moduleResolver->setDeferredOptions($deferredOptions);
     $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
-    $moduleResolver->setIgnoredSelectors(keys %ignoredSelectors);
+    $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
 
     $self->_defineNewModuleFactory($moduleResolver);
 
@@ -704,7 +702,12 @@ sub runAllModulePhases
         $ctx->setPersistentOption('global', 'last-failed-module-list', $failedModules);
     }
 
-    _installCustomSessionDriver($ctx) if $ctx->getOption('install-session-driver');
+    # env driver is just the ~/.config/kde-env-*.sh, session driver is that + ~/.xsession
+    if ($ctx->getOption('install-environment-driver') ||
+        $ctx->getOption('install-session-driver'))
+    {
+        _installCustomSessionDriver($ctx);
+    }
 
     my $color = 'g[b[';
     $color = 'r[b[' if $result;
@@ -1389,16 +1392,8 @@ sub _buildSingleModule
     }
 
     $$startTimeRef = time;
-    if ($module->build())
-    {
-        $module->setPersistentOption('last-build-rev', $module->currentScmRevision());
-        $fail_count = 0;
-    }
-    else {
-        ++$fail_count;
-    }
-
-    $module->setPersistentOption('failure-count', 0);
+    $fail_count = $module->build() ? 0 : $fail_count + 1;
+    $module->setPersistentOption('failure-count', $fail_count);
 
     return $fail_count > 0 ? 'build' : 0;
 }
@@ -2266,7 +2261,7 @@ sub _installTemplatedFile
                 \s*%>     # remaining whitespace and closing bracket
               }
               {
-                  $ctx->getOption($1, 'module') ||
+                  $ctx->getOption($1, 'module') //
                       croak_runtime("Invalid variable $1")
               }gxe;
               # Replace all matching expressions, use extended regexp w/
@@ -2352,7 +2347,7 @@ sub _installCustomSessionDriver
     my $xdgDataHome = $ENV{XDG_DATA_HOME} || "$ENV{HOME}/.local/share";
 
     # First we have to find the source
-    my @searchPaths = ($RealBin, map { "$_/kdesrc-build" } ($xdgDataHome, @xdgDataDirs));
+    my @searchPaths = ($RealBin, map { "$_/apps/kdesrc-build" } ($xdgDataHome, @xdgDataDirs));
 
     s{/+$}{}   foreach @searchPaths; # Remove trailing slashes
     s{//+}{/}g foreach @searchPaths; # Remove duplicate slashes
@@ -2362,9 +2357,6 @@ sub _installCustomSessionDriver
     );
     my $sessionScript = first { -f $_ } (
         map { "$_/sample-xsession.sh" } @searchPaths
-    );
-    my $userSample = first { -f $_ } (
-        map { "$_/sample-kde-env-user.sh" } @searchPaths
     );
 
     if (!$envScript || !$sessionScript) {
@@ -2379,17 +2371,10 @@ sub _installCustomSessionDriver
     _installCustomFile($ctx, $envScript, "$destDir/kde-env-master.sh",
         'kde-env-master-digest');
     _installCustomFile($ctx, $sessionScript, "$ENV{HOME}/.xsession",
-        'xsession-digest');
+        'xsession-digest') if $ctx->getOption('install-session-driver');
 
     if (!pretending()) {
-        if (! -e "$destDir/kde-env-user.sh") {
-            copy($userSample, "$destDir/kde-env-user.sh") or do {
-                warning ("b[*] Unable to install b[$userSample]: $!");
-                warning ("b[*] You should create b[~/.config/kde-env-user.sh] yourself or fix the error and re-run");
-            };
-        }
-
-        chmod (0744, "$ENV{HOME}/.xsession") or do {
+        if ($ctx->getOption('install-session-driver') && !chmod (0744, "$ENV{HOME}/.xsession")) {
             error ("\tb[r[*] Error making b[~/.xsession] executable: $!");
             error ("\tb[r[*] If this file is not executable you may not be able to login!");
         };
@@ -2536,8 +2521,9 @@ sub _installSignalHandlers
 # Shows a help message and version. Does not exit.
 sub _showHelpMessage
 {
+    my $scriptVersion = scriptVersion();
     print <<DONE;
-kdesrc-build $SCRIPT_VERSION
+kdesrc-build $scriptVersion
 https://kdesrc-build.kde.org/
 
 This script automates the download, build, and install process for KDE software
@@ -2558,7 +2544,7 @@ module set (as set with a module-set declaration).
 If you don\'t specify any particular module names, then every module you have
 listed in your configuration will be built, in the order listed.
 
-Copyright (c) 2003 - 2015 Michael Pyne <mpyne\@kde.org>, and others.
+Copyright (c) 2003 - 2017 Michael Pyne <mpyne\@kde.org>, and others.
 
 The script is distributed under the terms of the GNU General Public License
 v2, and includes ABSOLUTELY NO WARRANTY!!!

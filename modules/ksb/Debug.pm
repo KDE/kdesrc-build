@@ -185,7 +185,7 @@ sub error(@)
 
 sub pretend(@)
 {
-    if (pretending()) {
+    if (pretending() && $debugLevel <= WHISPER) {
         my @lines = @_;
         s/(\w)/d[$1/ foreach @lines; # Add dim prefix
                                      # Clear suffix is actually implicit
