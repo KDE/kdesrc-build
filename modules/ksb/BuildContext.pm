@@ -884,7 +884,7 @@ sub setPersistentOption
 }
 
 # Returns the ksb::Module (which has a 'metadata' scm type) that is used for
-# kde-project metadata, so that other modules that need it can call into it if
+# kde-build-metadata, so that other modules that need it can call into it if
 # necessary.
 #
 # Also may return undef if the metadata is unavailable or has not yet
@@ -909,8 +909,8 @@ sub getKDEProjectsMetadataModule
     return $self->{kde_projects_metadata};
 }
 
-# Call this method to force this build context to pull in the kde-projects
-# metadata module. This is a one-time action, subsequent calls to this method
+# Call this method to force this build context to pull in the kde-build-metadata
+# module. This is a one-time action, subsequent calls to this method
 # are ignored. Use getKDEDependenciesMetadataModule to see if this build context is
 # using a metadata module.
 #
@@ -931,7 +931,7 @@ sub setKDEDependenciesMetadataModuleNeeded
 }
 
 # Call this method to force this build context to pull in the
-# sysadmin/repo-metadata metadata module. This is a one-time action,
+# sysadmin/repo-metadata module. This is a one-time action,
 # subsequent calls to this method are ignored. Use
 # getKDEProjectsMetadataModule to see if this build context is using
 # a metadata module.

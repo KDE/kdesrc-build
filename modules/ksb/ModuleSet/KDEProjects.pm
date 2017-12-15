@@ -40,31 +40,14 @@ sub none_true
     return 1;
 }
 
-# Function: getDependenciesModule
-#
-# A 'static' method that returns a <Module> that should be included
-# first in the build context's module list.
-#
-# It will be configured to download required updates to the
-# build metadata required for kde-projects module support. The module
-# returned can be used to resolve dependencies amongst KDE modules.
-#
-# It should be included exactly once in the build context, if there are
-# one or more ksb::ModuleSet::KDEProjects present in the module list.
-#
-# Parameters:
-#  ctx - the <ksb::BuildContext> for this script execution.
-#
-# Returns: The <Module> to added to the beginning of the update.
-sub getDependenciesModule
+sub _createMetadataModule
 {
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-
-    my $metadataModule = ksb::Module->new($ctx, 'kde-build-metadata');
+    my ($ctx, $moduleName) = @_;
+    my $metadataModule = ksb::Module->new($ctx, $moduleName =~ s,/,-,r);
 
     # Hardcode the results instead of expanding out the project info
-    $metadataModule->setOption('repository', 'kde:kde-build-metadata');
-    $metadataModule->setOption('#xml-full-path', 'kde-build-metadata');
+    $metadataModule->setOption('repository', "kde:$moduleName");
+    $metadataModule->setOption('#xml-full-path', $moduleName);
     $metadataModule->setOption('#branch:stable', 'master');
     $metadataModule->setScmType('metadata');
     $metadataModule->setOption('disable-snapshots', 1);
@@ -75,45 +58,37 @@ sub getDependenciesModule
 
     # Ensure we only ever try to update source, not build.
     $metadataModule->phases()->phases('update');
+
     return $metadataModule;
+}
+
+# Function: getDependenciesModule
+#
+# Static. Returns a <Module> that can be used to download the
+# 'kde-build-metadata' module, which itself contains module dependencies
+# in the KDE build system.  The module is meant to be held by the <BuildContext>
+#
+# Parameters:
+#  ctx - the <ksb::BuildContext> for this script execution.
+sub getDependenciesModule
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    return _createMetadataModule($ctx, 'kde-build-metadata');
 }
 
 # Function: getProjectMetadataModule
 #
-# A 'static' method that returns a <Module> that should be included
-# first in the build context's module list.
-#
-# It will be configured to download required updates to the
-# build metadata required for kde-projects module support. The module
-# returned can be used to enumerate the list of KDE projects.
-#
-# It should be included exactly once in the build context, if there are
-# one or more ksb::ModuleSet::KDEProjects present in the module list.
+# Static. Returns a <Module> that can be used to download the
+# 'repo-metadata' module, which itself contains information on each
+# repository in the KDE build system (though currently not
+# dependencies).  The module is meant to be held by the <BuildContext>
 #
 # Parameters:
 #  ctx - the <ksb::BuildContext> for this script execution.
-#
-# Returns: The <Module> to added to the beginning of the update.
 sub getProjectMetadataModule
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-
-    my $metadataModule = ksb::Module->new($ctx, 'repo-metadata');
-
-    # Hardcode the results instead of expanding out the project info
-    $metadataModule->setOption('repository', 'kde:sysadmin/repo-metadata');
-    $metadataModule->setOption('#xml-full-path', 'sysadmin/repo-metadata');
-    $metadataModule->setOption('#branch:stable', 'master');
-    $metadataModule->setScmType('metadata');
-    $metadataModule->setOption('disable-snapshots', 1);
-    $metadataModule->setOption('branch', 'master');
-
-    my $moduleSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-projects metadata>');
-    $metadataModule->setModuleSet($moduleSet);
-
-    # Ensure we only ever try to update source, not build.
-    $metadataModule->phases()->phases('update');
-    return $metadataModule;
+    return _createMetadataModule($ctx, 'sysadmin/repo-metadata');
 }
 
 # Function: _expandModuleCandidates
