@@ -113,43 +113,20 @@ sub clone
 
     note ("Cloning g[$module]");
 
-    my $result = eval { $self->installGitSnapshot() };
+    p_chdir($module->getSourceDir());
 
-    if ((my $e = had_an_exception()) || !$result) {
-        warning($e->message()) if $e;
-        note ("\tFalling back to clone of $module");
-        p_chdir($module->getSourceDir());
+    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+    $commitId = "refs/tags/$commitId" if $commitType eq 'tag';
+    unshift @args, '-b', $commitId; # Checkout branch right away
 
-        if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
-            croak_runtime("Failed to make initial clone of $module");
-        }
+    if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
+        croak_runtime("Failed to make initial clone of $module");
     }
 
     $ipc->notifyPersistentOptionChange(
         $module->name(), 'git-cloned-repository', $git_repo);
 
     p_chdir($srcdir);
-
-    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
-
-    # Switch immediately to user-requested tag or branch now.
-    if ($commitType eq 'tag') {
-        info ("\tSwitching to specific commit g[$commitId]");
-        if (0 != log_command($module, 'git-checkout-commit',
-                ['git', 'checkout', $commitId]))
-        {
-            croak_runtime("Failed to checkout desired commit $commitId");
-        }
-    }
-    # If not a tag, it's a defined branch
-    elsif ($commitId ne 'master') {
-        info ("\tSwitching to branch g[$commitId]");
-        if (0 != log_command($module, 'git-checkout',
-                ['git', 'checkout', '-b', $commitId, "origin/$commitId"]))
-        {
-            croak_runtime("Failed to checkout desired branch $commitId");
-        }
-    }
 
     # Setup user configuration
     if (my $name = $module->getOption('git-user')) {
