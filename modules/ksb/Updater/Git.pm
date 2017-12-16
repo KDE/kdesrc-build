@@ -4,6 +4,8 @@ package ksb::Updater::Git;
 # have some features overridden by subclassing (see ksb::Updater::KDEProject
 # for an example).
 
+use 5.014;
+
 use ksb::Debug;
 use ksb::Util;
 use ksb::Updater;
@@ -16,6 +18,7 @@ use File::Basename; # basename
 use File::Spec;     # tmpdir
 use POSIX qw(strftime);
 use List::Util qw(first);
+use IPC::Cmd qw(run_forked);
 
 use ksb::IPC::Null;
 
@@ -65,6 +68,27 @@ sub commit_id
     return $id;
 }
 
+sub _verifyRefPresent
+{
+    my ($self, $module, $repo) = @_;
+    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+
+    return 1 if pretending();
+
+    my $ref = (($commitType eq 'branch') ? 'refs/heads/'
+            : ($commitType eq 'tag')    ? 'refs/tags/'
+            : '') . $commitId;
+
+    my $hashref = run_forked("git ls-remote --exit-code $repo $ref",
+        { timeout => 10, discard_output => 1, terminate_on_parent_sudden_death => 1});
+    my $result = $hashref->{exit_code};
+
+    return 0 if ($result == 2); # Connection successful, but ref not found
+    return 1 if ($result == 0); # Ref is present
+
+    croak_runtime("git had error exit $result when verifying $ref present in repository at $repo");
+}
+
 # Perform a git clone to checkout the latest branch of a given git module
 #
 # First parameter is the repository (typically URL) to use.
@@ -78,6 +102,14 @@ sub clone
     my @args = ('--', $git_repo, $srcdir);
 
     my $ipc = $self->{ipc} // croak_internal ('Missing IPC object');
+
+    if (!$self->_verifyRefPresent($module, $git_repo)) {
+        # Ignore silently unless specifically requested.  See ModuleResolver.pm
+        # for '#selected-by' logic, this is blank if no cmdline selectors at all
+        info ("\tSkipping, no matching remote branch exists");
+        return if (($module->getOption('#selected-by', 'module') // 'prefix') eq 'prefix');
+        croak_runtime("The desired git reference is not available for $module");
+    };
 
     note ("Cloning g[$module]");
 

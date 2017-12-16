@@ -208,7 +208,11 @@ sub _resolveSingleSelector
         # a wildcard prefix. e.g. 'kdeedu' as a selector would pull in all kdeedu/*
         # modules, but kdeedu is not a module-name itself anymore. In this
         # case just return all the modules in the expanded list.
-        push @results, @moduleResults unless $selector;
+        if (!$selector) {
+            push @results, map {
+                $_->setOption('#selected-by', 'prefix'); $_
+            } (@moduleResults);
+        }
     }
     # Case 1
     elsif (exists $lookupTableRef->{$selectorName}) {
