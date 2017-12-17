@@ -176,11 +176,9 @@ sub _expandModuleCandidates
         $self->_initializeNewModule($newModule);
         $newModule->setOption('repository', $repo);
         $newModule->setOption('#xml-full-path', $result->{'fullName'});
-        $newModule->setOption('#branch:stable', $result->{'branch:stable'});
+        $newModule->setOption('#branch:stable', undef);
+        $newModule->setOption('#found-by', $result->{found_by});
         $newModule->setScmType('proj');
-
-        my $tarball = $result->{'tarball'};
-        $newModule->setOption('#snapshot-tarball', $tarball) if $tarball;
 
         if (none_true(
                 map {

@@ -99,16 +99,8 @@ sub _readYAML
         'repo' => $repoPath,
         'name' => $repoName,
         'active' => !!$proj_data->{repoactive},
-        # Hardcoded from common/urls_gitrepo.json
-        # 'tarball' => "https://anongit.kde.org/$repoName/$repoName-latest.tar.gz",
-        'tarball' => '',
-
-        # Branch data was entered into XML by reading git repo directly, so we must
-        # wait for git repo to be loaded or use dependency data/logical module groups
-        # 'branch'   => '',
-        # 'branches' => [ ],
-        # 'branchtype' => '', # Either branch:stable or branch:trunk
-    }; # Repo/Active/tarball to be added by char handler.
+        'found_by' => 'direct', # can be changed in getModulesForProject
+    };
 
     $self->{repositories}->{$repoName} = $curRepository;
 }
@@ -124,11 +116,17 @@ sub getModulesForProject
     my $repositoryRef = $self->{repositories};
     my @results;
     my $findResults = sub {
-        push @results, (
+        my @matchList =
             grep {
                 _projectPathMatchesWildcardSearch(
                     $repositoryRef->{$_}->{'fullName'}, $proj)
-            } (keys %{$repositoryRef}));
+            } (keys %{$repositoryRef});
+
+        if ($proj =~ m/\*/) {
+            $repositoryRef->{$_}->{found_by} = 'wildcard' foreach @matchList;
+        }
+
+        push @results, @matchList;
     };
 
     # Wildcard matches happen as specified if asked for.
