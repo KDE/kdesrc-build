@@ -93,7 +93,7 @@ sub _verifyRefPresent
 #
 # First parameter is the repository (typically URL) to use.
 # Throws an exception if it fails.
-sub clone
+sub _clone
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
     my $git_repo = shift;
@@ -102,14 +102,6 @@ sub clone
     my @args = ('--', $git_repo, $srcdir);
 
     my $ipc = $self->{ipc} // croak_internal ('Missing IPC object');
-
-    if (!$self->_verifyRefPresent($module, $git_repo)) {
-        # Ignore silently unless specifically requested.  See ModuleResolver.pm
-        # for '#selected-by' logic, this is blank if no cmdline selectors at all
-        info ("\tSkipping, no matching remote branch exists");
-        return if (($module->getOption('#selected-by', 'module') // 'prefix') eq 'prefix');
-        croak_runtime("The desired git reference is not available for $module");
-    };
 
     note ("Cloning g[$module]");
 
@@ -225,13 +217,28 @@ EOF
             croak_internal("Unable to checkout $module, you must specify a repository to use.");
         }
 
-        $self->clone($git_repo);
+        if (!$self->_verifyRefPresent($module, $git_repo)) {
+            if (!$self->_moduleIsNeeded()) {
+                note ("Skipping g[$module], this module was not in the containing module-set at this branch");
+                return 0;
+            }
+
+            croak_runtime("The desired git reference is not available for $module");
+        }
+
+        $self->_clone($git_repo);
 
         return 1 if pretending();
         return count_command_output('git', '--git-dir', "$srcdir/.git", 'ls-files');
     }
 
     return 0;
+}
+
+# Intended to be reimplemented
+sub _moduleIsNeeded
+{
+    return 1;
 }
 
 # Selects a git remote for the user's selected repository (preferring a
