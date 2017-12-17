@@ -94,20 +94,17 @@ sub getProjectMetadataModule
 # Function: _expandModuleCandidates
 #
 # A class method which goes through the modules in our search list (assumed to
-# be found in the kde-projects XML database) and expands them into their
-# equivalent git modules, and returns the fully expanded list. Non kde-projects
-# modules cause an error, as do modules that do not exist at all within the
-# database.
+# be found in kde-projects), expands them into their equivalent git modules,
+# and returns the fully expanded list. Non kde-projects modules cause an error,
+# as do modules that do not exist at all within the database.
 #
 # *Note*: Before calling this function, the kde-projects database itself must
-# have been downloaded first. Additionally a <Module> handling build support
-# metadata must be included at the beginning of the module list, see
-# getMetadataModule() for details.
+# have been downloaded first. See getProjectMetadataModule, which ties to the
+# BuildContext.
 #
-# *Note*: Any modules that are part of a module-set requiring a specific
-# branch, that don't have that branch, are also elided with only a debug
-# message. This allows for building older branches of KDE even when newer
-# modules are eventually put into the database.
+# Modules that are part of a module-set requiring a specific branch, that don't
+# have that branch, are still listed in the return result since there's no way
+# to tell that the branch won't be there.  These should be removed later.
 #
 # Parameters:
 #  ctx - The <BuildContext> in use.
@@ -138,18 +135,6 @@ sub _expandModuleCandidates
     # It's possible to match modules which are marked as inactive on
     # projects.kde.org, elide those.
     my @xmlResults = grep { $_->{'active'} } (@allXmlResults);
-
-    # Base project metadata doesn't include information on which git branches
-    # are available, so we can't elide modules until they're actually downloaded
-    # and available (unless it's available on api.kde.org ?)
-#     # Bug 307694
-#     my $moduleSetBranch = $self->{'options'}->{'branch'} // '';
-#     if ($moduleSetBranch && !exists $self->{'options'}->{'tag'}) {
-#         debug ("Filtering kde-projects modules that don't have a $moduleSetBranch branch");
-#         @xmlResults = grep {
-#             list_has($_->{'branches'}, $moduleSetBranch)
-#         } (@xmlResults);
-#     }
 
     if (!@xmlResults) {
         warning (" y[b[*] Module y[$moduleSearchItem] is apparently XML-based, but contains no\n" .
