@@ -209,15 +209,17 @@ sub _resolveSingleSelector
         # modules, but kdeedu is not a module-name itself anymore. In this
         # case just return all the modules in the expanded list.
         if (!$selector) {
-            push @results, map {
-                $_->setOption('#selected-by', 'prefix'); $_
-            } (@moduleResults);
+            push @results, @moduleResults;
+        }
+        else {
+            $selector->setOption('#selected-by', 'name');
         }
     }
     # Case 1
     elsif (exists $lookupTableRef->{$selectorName}) {
         $selector = $lookupTableRef->{$selectorName};
-        $selector->setOption('#selected-by', 'name');
+        $selector->setOption('#selected-by', 'name')
+            unless $selector->isa('ksb::ModuleSet');
 
         if (!$selector->isa('ksb::ModuleSet') && !$includingDeps) {
             # modules were manually selected on cmdline, so ignore
