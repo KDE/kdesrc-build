@@ -143,23 +143,6 @@ sub _clone
     return;
 }
 
-sub _isDirectoryEmpty
-{
-    my $dir = shift;
-
-    # Empty returns are OK -- they are automatically the 'false' equivalent for
-    # whatever context the function is called in.
-
-    opendir (my $dh, $dir) or return;
-    if (any { $_ ne '.' && $_ ne '..' } [readdir($dh)]) {
-        close $dh;
-        return;
-    }
-
-    close $dh;
-    return 1;
-}
-
 # Either performs the initial checkout or updates the current git checkout
 # for git-using modules, as appropriate.
 #
@@ -178,7 +161,7 @@ sub updateCheckout
     }
     else {
         # Check if an existing source directory is there somehow.
-        if (-e "$srcdir" && !_isDirectoryEmpty($srcdir)) {
+        if (-e "$srcdir" && !is_dir_empty($srcdir)) {
             if ($module->getOption('#delete-my-patches')) {
                 warning ("\tRemoving conflicting source directory " .
                          "as allowed by --delete-my-patches");

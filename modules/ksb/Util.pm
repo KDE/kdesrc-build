@@ -1,12 +1,10 @@
-package ksb::Util;
+package ksb::Util 0.20;
 
 # Useful utilities, which are exported into the calling module's namespace by default.
 
 use 5.014; # Needed for state keyword
 use strict;
 use warnings;
-
-our $VERSION = '0.10';
 
 use Carp qw(cluck);
 use Scalar::Util qw(blessed);
@@ -749,14 +747,14 @@ sub is_dir_empty
 {
     my $dir = shift;
 
-    opendir my $dirh, $dir or croak_runtime("Dir $dir doesn't exist when checking if empty");
+    opendir my $dirh, $dir or return;
 
     # while-readdir needs Perl 5.12
     while (readdir $dirh) {
         next if ($_ eq '.' || $_ eq '..');
 
         closedir ($dirh);
-        return 0; # not empty
+        return; # not empty
     }
 
     closedir ($dirh);
