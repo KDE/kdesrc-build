@@ -4,6 +4,8 @@ package ksb::Updater::Git;
 # have some features overridden by subclassing (see ksb::Updater::KDEProject
 # for an example).
 
+use 5.014;
+
 use ksb::Debug;
 use ksb::Util;
 use ksb::Updater;
@@ -16,6 +18,7 @@ use File::Basename; # basename
 use File::Spec;     # tmpdir
 use POSIX qw(strftime);
 use List::Util qw(first);
+use IPC::Cmd qw(run_forked);
 
 use ksb::IPC::Null;
 
@@ -65,11 +68,32 @@ sub commit_id
     return $id;
 }
 
+sub _verifyRefPresent
+{
+    my ($self, $module, $repo) = @_;
+    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+
+    return 1 if pretending();
+
+    my $ref = (($commitType eq 'branch') ? 'refs/heads/'
+            : ($commitType eq 'tag')    ? 'refs/tags/'
+            : '') . $commitId;
+
+    my $hashref = run_forked("git ls-remote --exit-code $repo $ref",
+        { timeout => 10, discard_output => 1, terminate_on_parent_sudden_death => 1});
+    my $result = $hashref->{exit_code};
+
+    return 0 if ($result == 2); # Connection successful, but ref not found
+    return 1 if ($result == 0); # Ref is present
+
+    croak_runtime("git had error exit $result when verifying $ref present in repository at $repo");
+}
+
 # Perform a git clone to checkout the latest branch of a given git module
 #
 # First parameter is the repository (typically URL) to use.
 # Throws an exception if it fails.
-sub clone
+sub _clone
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
     my $git_repo = shift;
@@ -81,43 +105,20 @@ sub clone
 
     note ("Cloning g[$module]");
 
-    my $result = eval { $self->installGitSnapshot() };
+    p_chdir($module->getSourceDir());
 
-    if ((my $e = had_an_exception()) || !$result) {
-        warning($e->message()) if $e;
-        note ("\tFalling back to clone of $module");
-        p_chdir($module->getSourceDir());
+    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+    $commitId = "refs/tags/$commitId" if $commitType eq 'tag';
+    unshift @args, '-b', $commitId; # Checkout branch right away
 
-        if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
-            croak_runtime("Failed to make initial clone of $module");
-        }
+    if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
+        croak_runtime("Failed to make initial clone of $module");
     }
 
     $ipc->notifyPersistentOptionChange(
         $module->name(), 'git-cloned-repository', $git_repo);
 
     p_chdir($srcdir);
-
-    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
-
-    # Switch immediately to user-requested tag or branch now.
-    if ($commitType eq 'tag') {
-        info ("\tSwitching to specific commit g[$commitId]");
-        if (0 != log_command($module, 'git-checkout-commit',
-                ['git', 'checkout', $commitId]))
-        {
-            croak_runtime("Failed to checkout desired commit $commitId");
-        }
-    }
-    # If not a tag, it's a defined branch
-    elsif ($commitId ne 'master') {
-        info ("\tSwitching to branch g[$commitId]");
-        if (0 != log_command($module, 'git-checkout',
-                ['git', 'checkout', '-b', $commitId, "origin/$commitId"]))
-        {
-            croak_runtime("Failed to checkout desired branch $commitId");
-        }
-    }
 
     # Setup user configuration
     if (my $name = $module->getOption('git-user')) {
@@ -142,23 +143,6 @@ sub clone
     return;
 }
 
-sub _isDirectoryEmpty
-{
-    my $dir = shift;
-
-    # Empty returns are OK -- they are automatically the 'false' equivalent for
-    # whatever context the function is called in.
-
-    opendir (my $dh, $dir) or return;
-    if (any { $_ ne '.' && $_ ne '..' } [readdir($dh)]) {
-        close $dh;
-        return;
-    }
-
-    close $dh;
-    return 1;
-}
-
 # Either performs the initial checkout or updates the current git checkout
 # for git-using modules, as appropriate.
 #
@@ -177,7 +161,7 @@ sub updateCheckout
     }
     else {
         # Check if an existing source directory is there somehow.
-        if (-e "$srcdir" && !_isDirectoryEmpty($srcdir)) {
+        if (-e "$srcdir" && !is_dir_empty($srcdir)) {
             if ($module->getOption('#delete-my-patches')) {
                 warning ("\tRemoving conflicting source directory " .
                          "as allowed by --delete-my-patches");
@@ -216,13 +200,28 @@ EOF
             croak_internal("Unable to checkout $module, you must specify a repository to use.");
         }
 
-        $self->clone($git_repo);
+        if (!$self->_verifyRefPresent($module, $git_repo)) {
+            if (!$self->_moduleIsNeeded()) {
+                note ("Skipping g[$module], this module was not in the containing module-set at this branch");
+                return 0;
+            }
+
+            croak_runtime("The desired git reference is not available for $module");
+        }
+
+        $self->_clone($git_repo);
 
         return 1 if pretending();
         return count_command_output('git', '--git-dir', "$srcdir/.git", 'ls-files');
     }
 
     return 0;
+}
+
+# Intended to be reimplemented
+sub _moduleIsNeeded
+{
+    return 1;
 }
 
 # Selects a git remote for the user's selected repository (preferring a

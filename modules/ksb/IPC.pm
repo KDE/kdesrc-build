@@ -158,7 +158,7 @@ sub _updateSeenModulesFromMessage
             }
         }
         when (ksb::IPC::MODULE_LOGMSG) {
-            my ($ipcModuleName, $logMessage) = split(',', $buffer);
+            my ($ipcModuleName, $logMessage) = split(',', $buffer, 2);
 
             # Save it for later if we can't print it yet.
             $messagesRef->{$ipcModuleName} //= [ ];

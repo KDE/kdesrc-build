@@ -1,4 +1,4 @@
-package ksb::BuildContext 0.30;
+package ksb::BuildContext 0.35;
 
 # Class: BuildContext
 #
@@ -25,7 +25,7 @@ use ksb::Util;
 use ksb::PhaseList;
 use ksb::Module;
 use ksb::Module::BranchGroupResolver;
-use ksb::Updater::KDEProjectMetadata;
+use ksb::Updater::KDEProjectMetadata 0.20;
 use ksb::Version qw(scriptVersion);
 use ksb::StatusView;
 use ksb::KDEXMLReader 0.20;
@@ -152,10 +152,10 @@ sub new
         rcFiles => [@rcfiles],
         rcFile  => undef,
         env     => { },
-        ignore_list => [ ], # List of XML paths to ignore completely.
-        kde_projects_filehandle => undef, # Filehandle to read database from.
-        kde_projects_metadata   => undef, # See ksb::Module::KDEProjects
-        logical_module_resolver => undef, # For branch-group option.
+        ignore_list => [ ], # List of XML paths to ignore completely
+        kde_projects_metadata     => undef, # Enumeration of kde-projects
+        kde_dependencies_metadata => undef, # Dependency resolution of kde-projects
+        logical_module_resolver   => undef, # For branch-group option
         status_view => ksb::StatusView->new(),
         projects_db => undef, # See getProjectDataReader
     );
@@ -883,89 +883,69 @@ sub setPersistentOption
     $persistent_opts->{$moduleName}{$key} = $value;
 }
 
-# Tries to download the kde_projects.xml file needed to make XML module support
-# work. Only tries once per script run. If it does succeed, the result is saved
-# to $srcdir/kde_projects.xml
+# Returns the ksb::Module (which has a 'metadata' scm type) that is used for
+# kde-build-metadata, so that other modules that need it can call into it if
+# necessary.
 #
-# Returns the file handle that the database can be retrieved from. May throw an
-# exception if an error occurred.
-sub getKDEProjectMetadataFilehandle
+# Also may return undef if the metadata is unavailable or has not yet
+# been set by setKDEDependenciesMetadataModule (this method does not
+# automatically create the needed module).
+sub getKDEDependenciesMetadataModule
 {
-    my $self = assert_isa(shift, 'ksb::BuildContext');
-
-    # Return our current filehandle if one exists.
-    if (defined $self->{kde_projects_filehandle}) {
-        my $fh = $self->{kde_projects_filehandle};
-        $fh->seek(0, 0); # Return to start
-        return $fh;
-    }
-
-    # Not previously attempted, let's make a try.
-    my $srcdir = $self->getSourceDir();
-    my $fileHandleResult = IO::File->new();
-
-    super_mkdir($srcdir) unless -d "$srcdir";
-    my $file = "$srcdir/kde_projects.xml";
-    my $url = "https://projects.kde.org/kde_projects.xml";
-
-    my $result = 1;
-
-    # Must use ->phases() directly to tell if we will be updating since
-    # modules are not all processed until after this function is called...
-    my $updating = grep { /^update$/ } (@{$self->phases()});
-    $updating &&= !$self->getOption('no-metadata');
-
-    if ($updating && (! -e $file || !pretending())) {
-        info (" * Downloading projects.kde.org project database...");
-        $result = download_file($url, $file, $self->getOption('http-proxy'));
-    }
-    else {
-        info (" * y[Using existing projects.kde.org project database], output may change");
-        info (" * when database is updated next.");
-    }
-
-    if (!$result) {
-        unlink $file if -e $file;
-        croak_runtime("Unable to download kde_projects.xml for the kde-projects repository!");
-    }
-
-    if (!$fileHandleResult->opened()) {
-        open ($fileHandleResult, '<', $file) or die
-            make_exception('Runtime', "Unable to open $file: $!");
-    }
-
-    $self->{kde_projects_filehandle} = $fileHandleResult;
-    return $fileHandleResult;
+    my $self = shift;
+    return $self->{kde_dependencies_metadata};
 }
 
 # Returns the ksb::Module (which has a 'metadata' scm type) that is used for
 # kde-project metadata, so that other modules that need it can call into it if
 # necessary.
 #
-# Also may return undef, if such metadata are unneeded, unavailable, or have
-# not yet been set by setKDEProjectMetadataModule (this method does not
+# Also may return undef if the metadata is unavailable or has not yet
+# been set by setKDEProjectsMetadataModule (this method does not
 # automatically create the needed module).
-sub getKDEProjectMetadataModule
+sub getKDEProjectsMetadataModule
 {
     my $self = shift;
     return $self->{kde_projects_metadata};
 }
 
-# Call this method to force this build context to pull in the kde-projects
-# metadata module. This is a one-time action, subsequent calls to this method
-# are ignored. Use getKDEProjectMetadataModule to see if this build context is
+# Call this method to force this build context to pull in the kde-build-metadata
+# module. This is a one-time action, subsequent calls to this method
+# are ignored. Use getKDEDependenciesMetadataModule to see if this build context is
 # using a metadata module.
 #
 # This method should be called before setModuleList.
-sub setKDEProjectMetadataModuleNeeded
+sub setKDEDependenciesMetadataModuleNeeded
+{
+    my $self = assert_isa(shift, 'ksb::BuildContext');
+
+    return if defined $self->{kde_dependencies_metadata};
+
+    my $metadata = ksb::ModuleSet::KDEProjects::getDependenciesModule($self);
+
+    debug ("Introducing dependency metadata into the build");
+    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
+
+    $self->{kde_dependencies_metadata} = $metadata;
+    return;
+}
+
+# Call this method to force this build context to pull in the
+# sysadmin/repo-metadata module. This is a one-time action,
+# subsequent calls to this method are ignored. Use
+# getKDEProjectsMetadataModule to see if this build context is using
+# a metadata module.
+#
+# This method should be called before setModuleList.
+sub setKDEProjectsMetadataModuleNeeded
 {
     my $self = assert_isa(shift, 'ksb::BuildContext');
 
     return if defined $self->{kde_projects_metadata};
 
-    my $metadata = ksb::ModuleSet::KDEProjects::getMetadataModule($self);
+    my $metadata = ksb::ModuleSet::KDEProjects::getProjectMetadataModule($self);
 
-    debug ("Introducing metadata module into the build");
+    debug ("Introducing project enumeration metadata into the build");
     assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
 
     $self->{kde_projects_metadata} = $metadata;
@@ -981,7 +961,7 @@ sub getProjectDataReader
 
     return $self->{projects_db} if $self->{projects_db};
 
-    my $databaseFile = $self->getKDEProjectMetadataFilehandle() or
+    my $projectDatabaseModule = $self->getKDEProjectsMetadataModule() or
         croak_runtime("kde-projects repository information could not be downloaded: $!");
 
     my $protocol = $self->getOption('git-desired-protocol') || 'git';
@@ -991,13 +971,13 @@ sub getProjectDataReader
         croak_runtime ("Invalid git-desired-protocol: $protocol");
     }
 
-    $self->{projects_db} = ksb::KDEXMLReader->new($databaseFile, $protocol);
+    $self->{projects_db} = ksb::KDEXMLReader->new($projectDatabaseModule, $protocol);
     return $self->{projects_db};
 }
 
 # Returns the effective branch group to use for modules. You should not call
 # this unless kde-build-metadata is also in use (see
-# setKDEProjectMetadataModule and moduleBranchGroupResolver).
+# setKDEDependenciesMetadataModule and moduleBranchGroupResolver).
 sub effectiveBranchGroup
 {
     my $self = shift;
@@ -1023,7 +1003,7 @@ sub moduleBranchGroupResolver
     my $self = shift;
 
     if (!$self->{logical_module_resolver}) {
-        my $metadataModule = $self->getKDEProjectMetadataModule();
+        my $metadataModule = $self->getKDEDependenciesMetadataModule();
 
         croak_internal("Tried to use branch-group, but needed data wasn't loaded!")
             unless $metadataModule;

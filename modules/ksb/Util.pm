@@ -1,12 +1,10 @@
-package ksb::Util;
+package ksb::Util 0.20;
 
 # Useful utilities, which are exported into the calling module's namespace by default.
 
 use 5.014; # Needed for state keyword
 use strict;
 use warnings;
-
-our $VERSION = '0.10';
 
 use Carp qw(cluck);
 use Scalar::Util qw(blessed);
@@ -27,7 +25,7 @@ our @EXPORT = qw(list_has assert_isa assert_in any unique_items
                  download_file absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
-                 pretend_open safe_rmtree get_list_digest
+                 pretend_open safe_rmtree get_list_digest is_dir_empty
                  super_mkdir filter_program_output prettify_seconds);
 
 # Function to work around a Perl language limitation.
@@ -742,6 +740,25 @@ sub get_list_digest
     use Digest::MD5 "md5_base64"; # Included standard with Perl 5.8
 
     return md5_base64(@_);
+}
+
+# Utility function to see if a directory path is empty or not
+sub is_dir_empty
+{
+    my $dir = shift;
+
+    opendir my $dirh, $dir or return;
+
+    # while-readdir needs Perl 5.12
+    while (readdir $dirh) {
+        next if ($_ eq '.' || $_ eq '..');
+
+        closedir ($dirh);
+        return; # not empty
+    }
+
+    closedir ($dirh);
+    return 1;
 }
 
 1;

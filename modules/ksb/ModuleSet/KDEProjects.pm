@@ -1,4 +1,4 @@
-package ksb::ModuleSet::KDEProjects;
+package ksb::ModuleSet::KDEProjects 0.20;
 
 # Class: ModuleSet::KDEProjects
 #
@@ -18,7 +18,6 @@ use warnings;
 use 5.014;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
-our $VERSION = '0.10';
 our @ISA = qw(ksb::ModuleSet);
 
 use ksb::Module;
@@ -41,57 +40,71 @@ sub none_true
     return 1;
 }
 
-# Function: getMetadataModule
-#
-# A 'static' method that returns a <Module> that should be included first in
-# the build context's module list. It will be configured to download required
-# updates to the build-metadata required for kde-projects module support.
-# It should only be included exactly once in the build context, if there are
-# one or more ksb::ModuleSet::KDEProjects present in the module list.
-#
-# Parameters:
-#  ctx - the <ksb::BuildContext> for this script execution.
-#
-# Returns: The <Module> to added to the beginning of the update.
-sub getMetadataModule
+sub _createMetadataModule
 {
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-
-    my $metadataModule = ksb::Module->new($ctx, 'kde-build-metadata');
+    my ($ctx, $moduleName) = @_;
+    my $metadataModule = ksb::Module->new($ctx, $moduleName =~ s,/,-,r);
 
     # Hardcode the results instead of expanding out the project info
-    $metadataModule->setOption('repository', 'kde:kde-build-metadata');
-    $metadataModule->setOption('#xml-full-path', 'kde-build-metadata');
+    $metadataModule->setOption('repository', "kde:$moduleName");
+    $metadataModule->setOption('#xml-full-path', $moduleName);
     $metadataModule->setOption('#branch:stable', 'master');
     $metadataModule->setScmType('metadata');
     $metadataModule->setOption('disable-snapshots', 1);
     $metadataModule->setOption('branch', 'master');
 
-    my $moduleSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-projects metadata>');
+    my $moduleSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-projects dependencies>');
     $metadataModule->setModuleSet($moduleSet);
 
     # Ensure we only ever try to update source, not build.
     $metadataModule->phases()->phases('update');
+
     return $metadataModule;
+}
+
+# Function: getDependenciesModule
+#
+# Static. Returns a <Module> that can be used to download the
+# 'kde-build-metadata' module, which itself contains module dependencies
+# in the KDE build system.  The module is meant to be held by the <BuildContext>
+#
+# Parameters:
+#  ctx - the <ksb::BuildContext> for this script execution.
+sub getDependenciesModule
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    return _createMetadataModule($ctx, 'kde-build-metadata');
+}
+
+# Function: getProjectMetadataModule
+#
+# Static. Returns a <Module> that can be used to download the
+# 'repo-metadata' module, which itself contains information on each
+# repository in the KDE build system (though currently not
+# dependencies).  The module is meant to be held by the <BuildContext>
+#
+# Parameters:
+#  ctx - the <ksb::BuildContext> for this script execution.
+sub getProjectMetadataModule
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    return _createMetadataModule($ctx, 'sysadmin/repo-metadata');
 }
 
 # Function: _expandModuleCandidates
 #
 # A class method which goes through the modules in our search list (assumed to
-# be found in the kde-projects XML database) and expands them into their
-# equivalent git modules, and returns the fully expanded list. Non kde-projects
-# modules cause an error, as do modules that do not exist at all within the
-# database.
+# be found in kde-projects), expands them into their equivalent git modules,
+# and returns the fully expanded list. Non kde-projects modules cause an error,
+# as do modules that do not exist at all within the database.
 #
 # *Note*: Before calling this function, the kde-projects database itself must
-# have been downloaded first. Additionally a <Module> handling build support
-# metadata must be included at the beginning of the module list, see
-# getMetadataModule() for details.
+# have been downloaded first. See getProjectMetadataModule, which ties to the
+# BuildContext.
 #
-# *Note*: Any modules that are part of a module-set requiring a specific
-# branch, that don't have that branch, are also elided with only a debug
-# message. This allows for building older branches of KDE even when newer
-# modules are eventually put into the database.
+# Modules that are part of a module-set requiring a specific branch, that don't
+# have that branch, are still listed in the return result since there's no way
+# to tell that the branch won't be there.  These should be removed later.
 #
 # Parameters:
 #  ctx - The <BuildContext> in use.
@@ -121,16 +134,7 @@ sub _expandModuleCandidates
 
     # It's possible to match modules which are marked as inactive on
     # projects.kde.org, elide those.
-    my @xmlResults = grep { $_->{'active'} ne 'false' } (@allXmlResults);
-
-    # Bug 307694
-    my $moduleSetBranch = $self->{'options'}->{'branch'} // '';
-    if ($moduleSetBranch && !exists $self->{'options'}->{'tag'}) {
-        debug ("Filtering kde-projects modules that don't have a $moduleSetBranch branch");
-        @xmlResults = grep {
-            list_has($_->{'branches'}, $moduleSetBranch)
-        } (@xmlResults);
-    }
+    my @xmlResults = grep { $_->{'active'} } (@allXmlResults);
 
     if (!@xmlResults) {
         warning (" y[b[*] Module y[$moduleSearchItem] is apparently XML-based, but contains no\n" .
@@ -157,11 +161,9 @@ sub _expandModuleCandidates
         $self->_initializeNewModule($newModule);
         $newModule->setOption('repository', $repo);
         $newModule->setOption('#xml-full-path', $result->{'fullName'});
-        $newModule->setOption('#branch:stable', $result->{'branch:stable'});
+        $newModule->setOption('#branch:stable', undef);
+        $newModule->setOption('#found-by', $result->{found_by});
         $newModule->setScmType('proj');
-
-        my $tarball = $result->{'tarball'};
-        $newModule->setOption('#snapshot-tarball', $tarball) if $tarball;
 
         if (none_true(
                 map {

@@ -1,4 +1,4 @@
-package ksb::Updater::KDEProject;
+package ksb::Updater::KDEProject 0.20;
 
 # An update class for KDE Project modules (i.e. those that use "repository
 # kde-projects" in the configuration file).
@@ -7,10 +7,7 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
-
-use ksb::Updater::Git;
-our @ISA = qw(ksb::Updater::Git);
+use parent qw(ksb::Updater::Git);
 
 use ksb::Debug;
 
@@ -32,6 +29,25 @@ sub _resolveBranchGroup
     my $resolver = $ctx->moduleBranchGroupResolver();
     my $modulePath = $module->fullProjectPath();
     return $resolver->findModuleBranch($modulePath, $branchGroup);
+}
+
+# Reimplementation
+sub _moduleIsNeeded
+{
+    my $self = shift;
+    my $module = $self->module();
+
+    # selected-by looks at cmdline options, found-by looks at how we read
+    # module info from rc-file in first place to select it from cmdline.
+    # Basically if user asks for it on cmdline directly or in rc-file directly
+    # then we need to try to grab it...
+    if (($module->getOption('#selected-by', 'module') // '') ne 'name' &&
+        ($module->getOption('#found-by',    'module') // '') eq 'wildcard')
+    {
+        return 0;
+    }
+
+    return 1;
 }
 
 1;
