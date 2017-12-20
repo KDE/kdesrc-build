@@ -443,6 +443,7 @@ sub _runBuildCommand
     # 3. When we're debugging (we'd interfere with debugging output).
     if (!$self->isProgressOutputSupported() || ! -t STDERR || debugging())
     {
+        note("\t$message");
         return log_command($module, $filename, $argRef);
     }
 
