@@ -22,13 +22,13 @@ if (ECM_FOUND)
     endif()
 else()
     message(WARNING "Did not find extra-cmake-modules; documentation will not be built and install paths will be guessed based on CMake settings.")
-    # ECM sets DATA_INSTALL_DIR to PREFIX/share/apps, try to match
-    set(DATA_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/share/apps" CACHE PATH "The parent directory where applications can install their data")
-    set(BIN_INSTALL_DIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
+    # ECM now sets KDE_INSTALL_DATADIR to PREFIX/share, try to match
+    set(KDE_INSTALL_DATADIR  "${CMAKE_INSTALL_PREFIX}/share" CACHE PATH "The parent directory where applications can install their data")
+    set(KDE_INSTALL_BINDIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
 endif()
 
 set(KDESRC_BUILD_INSTALL_MODULES TRUE CACHE BOOL "Controls whether to install the modules that make up the script. Leave enabled unless running straight from source")
-set(KDESRC_BUILD_MODULE_INSTALL_PREFIX "${DATA_INSTALL_DIR}/kdesrc-build/modules" CACHE PATH "Prefix to install the component Perl modules to. (This is only an option to allow for installing to vendor_perl or similar)")
+set(KDESRC_BUILD_MODULE_INSTALL_PREFIX "${KDE_INSTALL_DATADIR}/kdesrc-build/modules" CACHE PATH "Prefix to install the component Perl modules to. (This is only an option to allow for installing to vendor_perl or similar)")
 
 if (KDESRC_BUILD_INSTALL_MODULES)
     message(STATUS "Installing component modules to ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}")
@@ -85,13 +85,13 @@ if (KDESRC_BUILD_INSTALL_MODULES)
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/Updater)
 endif()
 
-install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${BIN_INSTALL_DIR})
-install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build-setup DESTINATION ${BIN_INSTALL_DIR})
+install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${KDE_INSTALL_BINDIR})
+install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build-setup DESTINATION ${KDE_INSTALL_BINDIR})
 
 install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/sample-kde-env-master.sh
             ${CMAKE_SOURCE_DIR}/sample-xsession.sh
-        DESTINATION ${DATA_INSTALL_DIR}/kdesrc-build)
+        DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
 if (ECM_FOUND)
     feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
