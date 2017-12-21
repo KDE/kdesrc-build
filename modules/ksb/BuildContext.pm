@@ -29,7 +29,7 @@ use ksb::Module::BranchGroupResolver;
 use ksb::Updater::KDEProjectMetadata 0.20;
 use ksb::Version qw(scriptVersion);
 use ksb::StatusView;
-use ksb::KDEXMLReader 0.20;
+use ksb::KDEProjectsReader 0.50;
 
 use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
@@ -219,7 +219,7 @@ sub moduleList
 # Parameters should simply be a list of KDE project paths to ignore,
 # e.g. 'extragear/utils/kdesrc-build'. Partial paths are acceptable, matches
 # are determined by comparing the path provided to the suffix of the full path
-# of modules being compared.  See KDEXMLReader::_projectPathMatchesWildcardSearch
+# of modules being compared.  See KDEProjectsReader::_projectPathMatchesWildcardSearch
 #
 # Existing items on the ignore list are not removed.
 sub addToIgnoreList
@@ -958,7 +958,7 @@ sub setKDEProjectsMetadataModuleNeeded
     return;
 }
 
-# Returns a KDEXMLReader module, which has already read in the database and
+# Returns a KDEProjectsReader module, which has already read in the database and
 # is ready to be queried. Note that exceptions can be thrown in the process
 # of downloading and parsing the database information, so be ready for that.
 sub getProjectDataReader
@@ -977,7 +977,7 @@ sub getProjectDataReader
         croak_runtime ("Invalid git-desired-protocol: $protocol");
     }
 
-    $self->{projects_db} = ksb::KDEXMLReader->new($projectDatabaseModule, $protocol);
+    $self->{projects_db} = ksb::KDEProjectsReader->new($projectDatabaseModule, $protocol);
     return $self->{projects_db};
 }
 

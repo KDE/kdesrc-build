@@ -1,6 +1,6 @@
-package ksb::KDEXMLReader 0.40;
+package ksb::KDEProjectsReader 0.50;
 
-# Class: KDEXMLReader
+# Class: KDEProjectsReader
 #
 # Enumerates and provides basic metadata of KDE projects, based on
 # the YAML metadata included in sysadmin/repo-management.
@@ -31,9 +31,9 @@ if (!$success) {
 
 # Method: new
 #
-# Constructs a new KDEXMLReader. This doesn't contradict any part of the class
+# Constructs a new KDEProjectsReader. This doesn't contradict any part of the class
 # documentation which claims this class is a singleton however. This should be
-# called as a method (e.g. KDEXMLReader->new(...)).
+# called as a method (e.g. KDEProjectsReader->new(...)).
 #
 # Parameters:
 #  $projectMetadataModule - ksb::Module reference to the repo-metadata module.

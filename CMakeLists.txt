@@ -40,7 +40,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/Debug.pm
         modules/ksb/DependencyResolver.pm
         modules/ksb/IPC.pm
-        modules/ksb/KDEXMLReader.pm
+        modules/ksb/KDEProjectsReader.pm
         modules/ksb/Module.pm
         modules/ksb/ModuleResolver.pm
         modules/ksb/ModuleSet.pm
