@@ -47,6 +47,7 @@ use Carp;
 use Data::Dumper;
 use File::Find; # For our lndir reimplementation.
 use File::Path qw(remove_tree);
+use List::Util qw(any);
 
 use ksb::Debug;
 use ksb::Util;
@@ -194,7 +195,56 @@ sub prune_under_directory
     return 1;
 }
 
+sub findMissingModules
+{
+    # should be either strings of module names to be found or a listref containing
+    # a list of modules where any one of which will work.
+    my @requiredModules = (
+        'HTTP::Tiny',
+        'IO::Socket::SSL',
+        [qw(JSON::XS JSON::PP)],
+        [qw(YAML::XS YAML::PP YAML::Syck)]
+    );
+    my @missingModules;
+    my $validateMod = sub {
+        return eval "require $_[0]; 1;";
+    };
+
+    my $description;
+    foreach my $neededModule (@requiredModules) {
+        if (ref $neededModule) { # listref of options
+            my @moduleOptions = @$neededModule;
+            next if (List::Util::any { $validateMod->($_); } @moduleOptions);
+            $description = 'one of (' . join(', ', @moduleOptions) . ')';
+        }
+        else {
+            next if $validateMod->($neededModule);
+            $description = $neededModule;
+        }
+
+        push @missingModules, $description;
+    }
+
+    return @missingModules;
+}
+
 # Script starts.
+
+# Ensure some critical Perl modules are available so that the user isn't surprised
+# later with a Perl exception
+if(my @missingModuleDescriptions = findMissingModules()) {
+    say <<EOF;
+kdesrc-build requires some minimal support to operate, including support
+from the Perl runtime that kdesrc-build is built upon.
+
+Some mandatory Perl modules are missing, and kdesrc-build cannot operate
+without them.  Please ensure these modules are installed and available to Perl:
+EOF
+    say "\t$_" foreach @missingModuleDescriptions;
+
+    # TODO: Built-in mapping to popular distro package names??
+    exit 1;
+}
 
 # Adding in a way to load all the functions without running the program to
 # enable some kind of automated QA testing.
