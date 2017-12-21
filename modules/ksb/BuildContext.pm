@@ -153,7 +153,7 @@ sub new
         rcFiles => [@rcfiles],
         rcFile  => undef,
         env     => { },
-        ignore_list => [ ], # List of XML paths to ignore completely
+        ignore_list => [ ], # List of KDE project paths to ignore completely
         kde_projects_metadata     => undef, # Enumeration of kde-projects
         kde_dependencies_metadata => undef, # Dependency resolution of kde-projects
         logical_module_resolver   => undef, # For branch-group option
@@ -216,10 +216,10 @@ sub moduleList
 }
 
 # Adds a list of modules to ignore processing on completely.
-# Parameters should simply be a list of XML repository paths to ignore,
+# Parameters should simply be a list of KDE project paths to ignore,
 # e.g. 'extragear/utils/kdesrc-build'. Partial paths are acceptable, matches
 # are determined by comparing the path provided to the suffix of the full path
-# of modules being compared.
+# of modules being compared.  See KDEXMLReader::_projectPathMatchesWildcardSearch
 #
 # Existing items on the ignore list are not removed.
 sub addToIgnoreList

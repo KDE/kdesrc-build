@@ -938,7 +938,7 @@ sub destDir
         $basePath = $self->name();
     } else {
         $basePath = shift // $self->getOption('#xml-full-path');
-        $basePath ||= $self->name(); # Default if not provided in XML
+        $basePath ||= $self->name(); # Default if not provided in repo-metadata
     }
 
     $destDir =~ s/(\$\{MODULE})|(\$MODULE\b)/$basePath/g;

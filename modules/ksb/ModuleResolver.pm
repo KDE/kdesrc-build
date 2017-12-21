@@ -386,8 +386,6 @@ sub resolveModuleIfPresent
     # so double-check by resolving module name into a kde-projects module-set
     # selector (the + syntax) and then expanding out the module-set so generated.
     if (!defined $self->{definedModules}->{$moduleName}) {
-        # TODO: Probably better to just read in the entire XML once and then
-        # store the module list at this point.
         eval {
             $self->_expandSingleModuleSet(
                 $self->_resolveSingleSelector("+$moduleName"));

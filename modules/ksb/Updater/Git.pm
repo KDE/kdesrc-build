@@ -497,8 +497,8 @@ sub _splitUri
 
 # Attempts to download and install a git snapshot for the given ksb::Module.
 # This requires the module to have the '#snapshot-tarball' option set,
-# normally done after KDEXMLReader is used to parse the projects.kde.org
-# XML database.  This function should be called with the current directory
+# normally done after KDEXMLReader is used to parse the sysadmin/repo-metadata
+# project database.  This function should be called with the current directory
 # set to the source directory.
 #
 # After installing the tarball, an immediate git pull will be run to put the
