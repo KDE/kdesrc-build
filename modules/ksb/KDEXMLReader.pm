@@ -11,27 +11,22 @@ use 5.014;
 
 use File::Find;
 
-# Load YAML if available without causing compile error if it isn't
+# Load YAML-reading module if available without causing compile error if it
+# isn't.  Note that YAML::Tiny and YAML do not work since some metadata files
+# use features it doesn't support
 my @YAML_Opts = qw(Dump Load LoadFile);
+my @YAML_Mods = qw(YAML::XS YAML::Syck YAML::PP);
+my $success = 0;
 
-my $success = eval {
-    require YAML::XS;
-    YAML::XS->import(@YAML_Opts);
-    1;
-};
-
-# Note that YAML::Tiny does not work since some metadata files use
-# features it doesn't support
-if (!$success) {
-    $success = eval {
-        require YAML; # Hope that an appropriate module is mapped to this entry point
-        YAML->import(@YAML_Opts);
-        1;
-    };
+foreach my $mod (@YAML_Mods) {
+    $success ||= eval "require $mod; $mod->import(\@YAML_Opts); 1;";
+    last if $success;
 }
 
 if (!$success) {
-    die "Unable to load YAML::Tiny or YAML::XS modules, one of which is needed to handle KDE project data.";
+    die "Unable to load one of " .
+        join(', ', @YAML_Mods) .
+        " modules, one of which is needed to handle KDE project data.";
 }
 
 # Method: new
