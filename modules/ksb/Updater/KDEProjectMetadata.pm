@@ -1,4 +1,4 @@
-package ksb::Updater::KDEProjectMetadata;
+package ksb::Updater::KDEProjectMetadata 0.20;
 
 # Updater used only to specifically update the "kde-build-metadata" module
 # used for storing dependency information, among other things.
@@ -7,13 +7,10 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.20';
+use parent qw(ksb::Updater::KDEProject);
 
 use ksb::Util;
 use ksb::Debug;
-use ksb::Updater::KDEProject;
-
-our @ISA = qw(ksb::Updater::KDEProject);
 
 use JSON::PP;
 

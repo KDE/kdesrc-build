@@ -1,4 +1,4 @@
-package ksb::ModuleSet::Null;
+package ksb::ModuleSet::Null 0.10;
 
 # Class: ModuleSet::Null
 #
@@ -9,8 +9,7 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
-our @ISA = qw(ksb::ModuleSet);
+use parent qw(ksb::ModuleSet);
 
 use ksb::Util;
 

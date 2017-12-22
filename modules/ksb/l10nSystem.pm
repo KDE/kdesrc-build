@@ -1,4 +1,4 @@
-package ksb::l10nSystem;
+package ksb::l10nSystem 0.10;
 
 # This class is an implementation of both the source and build interfaces needed to
 # support building KDE l10n modules.
@@ -7,14 +7,10 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
+use parent qw(ksb::Updater::Svn ksb::BuildSystem);
 
 use ksb::Debug;
 use ksb::Util;
-use ksb::Updater::Svn;
-use ksb::BuildSystem;
-
-our @ISA = ('ksb::Updater::Svn', 'ksb::BuildSystem');
 
 sub new
 {

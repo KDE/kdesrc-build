@@ -1,26 +1,24 @@
-package ksb::Updater::Git;
+package ksb::Updater::Git 0.15;
 
 # Module which is responsible for updating git-based source code modules. Can
 # have some features overridden by subclassing (see ksb::Updater::KDEProject
 # for an example).
 
+use strict;
+use warnings;
 use 5.014;
 
+use parent qw(ksb::Updater);
+
 use ksb::Debug;
+use ksb::IPC::Null;
 use ksb::Util;
-use ksb::Updater;
-
-our $VERSION = '0.10';
-
-our @ISA = qw(ksb::Updater);
 
 use File::Basename; # basename
 use File::Spec;     # tmpdir
 use POSIX qw(strftime);
 use List::Util qw(first);
 use IPC::Cmd qw(run_forked);
-
-use ksb::IPC::Null;
 
 use constant {
     DEFAULT_GIT_REMOTE => 'origin',

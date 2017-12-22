@@ -1,4 +1,4 @@
-package ksb::BuildSystem::Qt4;
+package ksb::BuildSystem::Qt4 0.10;
 
 # Build system for the Qt4 toolkit
 
@@ -6,13 +6,10 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
+use parent qw(ksb::BuildSystem);
 
 use ksb::Debug;
 use ksb::Util;
-use ksb::BuildSystem;
-
-our @ISA = ('ksb::BuildSystem');
 
 sub needsInstalled
 {

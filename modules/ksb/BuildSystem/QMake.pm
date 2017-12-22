@@ -1,4 +1,4 @@
-package ksb::BuildSystem::QMake;
+package ksb::BuildSystem::QMake 0.10;
 
 # A build system used to build modules that use qmake
 
@@ -6,15 +6,12 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
-
-use List::Util qw(first);
+use parent qw(ksb::BuildSystem);
 
 use ksb::Debug;
 use ksb::Util;
-use ksb::BuildSystem;
 
-our @ISA = ('ksb::BuildSystem');
+use List::Util qw(first);
 
 sub name
 {

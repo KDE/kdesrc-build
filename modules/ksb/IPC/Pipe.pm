@@ -1,4 +1,4 @@
-package ksb::IPC::Pipe;
+package ksb::IPC::Pipe 0.20;
 
 # IPC class that uses pipes in addition to forking for IPC.
 
@@ -6,10 +6,7 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.20';
-
-use ksb::IPC;
-our @ISA = qw(ksb::IPC);
+use parent qw(ksb::IPC);
 
 use ksb::Util qw(croak_internal croak_runtime);
 

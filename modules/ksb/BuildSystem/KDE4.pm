@@ -6,12 +6,11 @@ use strict;
 use warnings;
 use 5.014;
 
+use parent qw(ksb::BuildSystem);
+
+use ksb::BuildContext 0.30;
 use ksb::Debug;
 use ksb::Util;
-use ksb::BuildContext 0.30;
-use ksb::BuildSystem 0.30;
-
-our @ISA = ('ksb::BuildSystem');
 
 sub needsInstalled
 {

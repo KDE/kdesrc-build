@@ -1,4 +1,4 @@
-package ksb::BuildSystem::Autotools;
+package ksb::BuildSystem::Autotools 0.10;
 
 # This is a module used to support configuring with autotools.
 
@@ -6,15 +6,12 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
-
-use List::Util qw(first);
+use parent qw(ksb::BuildSystem);
 
 use ksb::Debug;
 use ksb::Util;
-use ksb::BuildSystem;
 
-our @ISA = ('ksb::BuildSystem');
+use List::Util qw(first);
 
 sub name
 {

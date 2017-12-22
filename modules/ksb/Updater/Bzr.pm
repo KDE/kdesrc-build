@@ -1,4 +1,4 @@
-package ksb::Updater::Bzr;
+package ksb::Updater::Bzr 0.10;
 
 # Support the bazaar source control manager for libdbusmenu-qt
 
@@ -6,14 +6,10 @@ use strict;
 use warnings;
 use 5.014;
 
-our $VERSION = '0.10';
+use parent qw(ksb::Updater);
 
 use ksb::Debug;
 use ksb::Util;
-use ksb::Updater;
-
-# Our superclass
-our @ISA = qw(ksb::Updater);
 
 # scm-specific update procedure.
 # May change the current directory as necessary.
