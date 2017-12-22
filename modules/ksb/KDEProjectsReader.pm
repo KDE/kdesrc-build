@@ -11,22 +11,25 @@ use 5.014;
 
 use File::Find;
 
+sub _verifyYAMLModuleLoaded
+{
 # Load YAML-reading module if available without causing compile error if it
 # isn't.  Note that YAML::Tiny and YAML do not work since some metadata files
 # use features it doesn't support
-my @YAML_Opts = qw(Dump Load LoadFile);
-my @YAML_Mods = qw(YAML::XS YAML::Syck YAML::PP);
-my $success = 0;
+    my @YAML_Opts = qw(Dump Load LoadFile);
+    my @YAML_Mods = qw(YAML::XS YAML::Syck YAML::PP);
+    my $success = 0;
 
-foreach my $mod (@YAML_Mods) {
-    $success ||= eval "require $mod; $mod->import(\@YAML_Opts); 1;";
-    last if $success;
-}
+    foreach my $mod (@YAML_Mods) {
+        $success ||= eval "require $mod; $mod->import(\@YAML_Opts); 1;";
+        last if $success;
+    }
 
-if (!$success) {
-    die "Unable to load one of " .
-        join(', ', @YAML_Mods) .
-        " modules, one of which is needed to handle KDE project data.";
+    if (!$success) {
+        die "Unable to load one of " .
+            join(', ', @YAML_Mods) .
+            " modules, one of which is needed to handle KDE project data.";
+    }
 }
 
 # Method: new
@@ -44,6 +47,8 @@ sub new
     my $class = shift;
     my $projectMetadataModule = shift;
     my $desiredProtocol = shift;
+
+    _verifyYAMLModuleLoaded();
 
     my $self = {
         # Maps short names to repo info blocks
