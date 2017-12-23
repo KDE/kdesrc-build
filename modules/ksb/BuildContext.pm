@@ -153,6 +153,7 @@ sub new
         rcFiles => [@rcfiles],
         rcFile  => undef,
         env     => { },
+        persistent_options => { } # These are kept across multiple script runs
         ignore_list => [ ], # List of KDE project paths to ignore completely
         kde_projects_metadata     => undef, # Enumeration of kde-projects
         kde_dependencies_metadata => undef, # Dependency resolution of kde-projects
@@ -827,7 +828,6 @@ sub storePersistentOptions
     }
 
     my $encodedJSON = $json->encode($self->{persistent_options});
-
     print $fh $encodedJSON;
     undef $fh; # Closes the file
 }
