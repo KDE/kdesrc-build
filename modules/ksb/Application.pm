@@ -216,6 +216,7 @@ DONE
 
             $self->{run_mode} = 'query';
             $auxOptions{query} = $arg;
+            $auxOptions{pretend} = 1; # Implied pretend mode
         },
         pretend => sub {
             # Set pretend mode but also force the build process to run.
