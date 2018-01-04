@@ -7,7 +7,7 @@
 # Please also see the documentation that should be included with this program,
 # in the doc/ directory.
 #
-# Copyright © 2003 - 2017 Michael Pyne. <mpyne@kde.org>
+# Copyright © 2003 - 2018 Michael Pyne. <mpyne@kde.org>
 # Home page: https://kdesrc-build.kde.org/
 #
 # Copyright © 2005, 2006, 2008 - 2011 David Faure <faure@kde.org>
@@ -47,7 +47,6 @@ use Carp;
 use Data::Dumper;
 use File::Find; # For our lndir reimplementation.
 use File::Path qw(remove_tree);
-use List::Util qw(any);
 
 use ksb::Debug;
 use ksb::Util;
@@ -214,7 +213,7 @@ sub findMissingModules
     foreach my $neededModule (@requiredModules) {
         if (ref $neededModule) { # listref of options
             my @moduleOptions = @$neededModule;
-            next if (List::Util::any { $validateMod->($_); } @moduleOptions);
+            next if (ksb::Util::any (sub { $validateMod->($_); }, $neededModule));
             $description = 'one of (' . join(', ', @moduleOptions) . ')';
         }
         else {
