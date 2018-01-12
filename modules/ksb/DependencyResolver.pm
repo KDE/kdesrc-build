@@ -440,7 +440,7 @@ sub _visitDependencyItemAndDependencies
         }
 
         if (!$subModule) {
-            whisper (" y[b[*] $item depends on $subItem, but no module builds $subItem for this run.");
+            debug (" y[b[*] $item depends on $subItem, but no module builds $subItem for this run.");
             _visitDependencyItemAndDependencies($optionsRef, $subItemName, $subItemBranch, $level + 1, $dependentName);
         }
         else {
