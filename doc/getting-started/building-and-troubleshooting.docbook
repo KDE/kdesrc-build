@@ -1,48 +1,98 @@
 <sect1 id="building-and-troubleshooting">
 <title>Using the &kdesrc-build; script</title>
+<para>With the configuration data established, now you are ready to run the
+script.  Even if you still have some tweaking or other reading you wish to do,
+it is a good idea to at least load the &kde; project metadata.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title>Loading project metadata</title>
 
 <para>
-Now you are ready to run the script. From a terminal window,
-log in to the user you are using to compile &kde; and execute
-the script:
+From a terminal window, log in to the user you are using to compile &kde; and
+execute the script:
+</para>
+<screen>
+    <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--metadata-only</option></userinput>
+</screen>
+
+<para>This command will setup the source directory and connect to the KDE &git;
+repositories to download the database of &kde; git repositories, and the
+database of dependency metadata, without making any further changes.  It is
+useful to run this separately as this metadata is useful for other
+&kdesrc-build; commands. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title>Previewing what will happen when kdesrc-build runs</title>
+
+<para>With the project metadata installed, it is possible to preview what
+&kdesrc-build; will do when launched.  This can be done with the <option><link
+linkend="cmdline-pretend">--pretend</link></option> command line option.</para>
+
+<screen>
+    <prompt>&percnt; </prompt><command>./kdesrc-build</command> <option>--pretend</option>
+</screen>
+
+<para>You should see a message saying that some packages were successfully built (although
+    nothing was actually built).  If there were no significant problems shown, you can proceed
+    to actually running the script.</para>
+
+</sect2>
+
+<screen>
+    <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--stop-on-failure</option></userinput>
+</screen>
+
+<para>This command will download the appropriate source code, and build and install each module in order, but will stop if a module fails to build (due to the <option>--stop-on-failure</option> option).  Afterwards, you should see output similar to that in <xref
+linkend="example-build-sequence"/>:</para>
+
+<example id="example-build-sequence">
+<title>Example output of a kdesrc-build run</title>
 <screen>
 <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command></userinput>
-</screen>
-</para>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
 
-<para>Afterwards, you should see output similar to that in <xref
-linkend="example-single-module"/>:</para>
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
 
-<example id="example-single-module">
-<title>Example output of building a single module</title>
-<screen>
-<prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>kdelibs</option></userinput>
-Script started processing at Wed Dec 22 13:21:45 2010
-&lt;&lt;&lt;  Build Process  &gt;&gt;&gt;
-Building kdelibs (1/1)
-        Waiting for source code update.
-        Source update complete for kdelibs: 48 files affected.
-        Checking for source conflicts...
-        Compiling...
-        Build succeeded after 13 minutes, and 6 seconds.
-        Installing kdelibs.
-        Overall time for kdelibs was 13 minutes, and 53 seconds.
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
 
-&lt;&lt;&lt;  Build Done  &gt;&gt;&gt;
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
 
 &lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
-kdelibs
+Built 200 modules
 
-Script finished processing at Wed Dec 22 13:35:38 2010
-Your logs are saved in /home/kde-src/log-kdesrc-build/2010-12-22-01
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
 </screen>
 </example>
 
+<sect2 id="fixing-build-failures">
+<title>Resolving build failures</title>
+
 <para>
-At this point, &kdesrc-build; should start downloading the sources and
-compiling them. Depending on how many modules you are downloading, it is
-possible that &kdesrc-build; will not succeed the first time you compile &kde;.
-Do not despair!
+Depending on how many modules you are downloading, it is possible that
+&kdesrc-build; will not succeed the first time you compile &kde;. Do not
+despair!
 </para>
 
 <para>&kdesrc-build; logs the output of every command it runs. By default,
@@ -78,6 +128,8 @@ solutions, as well as general tips and strategies to build &kde; in the
 <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source">
 Build from Source</ulink>.
 </para>
+
+</sect2>
 
 <para>On the other hand, assuming everything went well, you should have a new
 &kde; install on your computer, and now it is simply a matter of running

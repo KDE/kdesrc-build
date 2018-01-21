@@ -1,0 +1,62 @@
+<sect1 id="building-specific-modules">
+<title>Building specific modules</title>
+
+<para>Rather than building every module all the time, you may only want to build a single
+    module, or other small subset.  Rather than editing your configuration file, you can simply
+    pass the names of modules or module sets to build to the command line.</para>
+
+<example id="example-subset-build">
+<title>Example output of a kdesrc-build specific module build</title>
+<screen>
+    <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--include-dependencies</option> <replaceable>dolphin</replaceable></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building extra-cmake-modules from frameworks-set (1/79)
+        Updating extra-cmake-modules (to branch master)
+        No changes to extra-cmake-modules source, proceeding to build.
+        Running cmake...
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building phonon from phonon (2/79)
+        Updating phonon (to branch master)
+        No changes to phonon source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building attica from frameworks-set (3/79)
+        Updating attica (to branch master)
+        No changes to attica source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building dolphin from base-apps (79/79)
+        Updating dolphin (to branch master)
+        No changes to dolphin source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 79 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+
+<para>In this case, although only the <replaceable>dolphin</replaceable>
+application was specified, the <option>--include-dependencies</option> flag
+caused &kdesrc-build; to include the dependencies listed for
+<replaceable>dolphin</replaceable> (by setting the <link
+linkend="conf-include-dependencies">include-dependencies</link> option).
+</para>
+
+<note><para>The dependency resolution worked in this case only becase
+<replaceable>dolphin</replaceable> happened to be specified in a
+<literal>kde-projects</literal>-based module set (in this example, named
+<literal>base-apps</literal>). See <xref linkend="module-sets-kde"/>.
+</para></note>
+
+</sect1>
