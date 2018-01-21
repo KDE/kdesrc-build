@@ -224,24 +224,17 @@ EOF
 # prompt for one.
 my $proxy = $ENV{http_proxy} // '';
 
-my $proxyPrompt =
-    "Do you use an HTTP proxy? (If you don't know, you probably don't)";
-
-if ($proxy || getYesNoAnswer($proxyPrompt)) {
-    $proxy = getUserInput("What is the URL for your HTTP proxy?", $proxy);
-}
-
 my $installDir = getMenuOption('Where do you want to install the software?',
     [
-        home => "$ENV{HOME}/kde-latest (default)",
+        home => "$ENV{HOME}/kde/usr (default)",
         custom => "Custom location, chosen next screen",
     ]);
 
 if ($installDir eq 'custom') {
-    $installDir = getDirectory('/usr/local/kde-latest');
+    $installDir = getDirectory('/usr/local/kde');
 }
 else {
-    $installDir = "~/kde-latest";
+    $installDir = "~/kde/usr";
 }
 
 my @chosenModules = getListOptions(
@@ -328,15 +321,21 @@ print $output <<EOF;
     # by system)
 #   qtdir ~/qt5
 
+    # Finds and includes *KDE*-based dependencies into the build.  This makes
+    # it easier to ensure that you have all the modules needed, but the
+    # dependencies are not very fine-grained so this can result in quite a few
+    # modules being installed that you didn't need.
+    include-dependencies true
+
     # Install directory for KDE software
     kdedir $installDir
 
     # Directory for downloaded source code
-    source-dir ~/kdesrc
+    source-dir ~/kde/src
 
     # Directory to build KDE into before installing
     # relative to source-dir by default
-    build-dir build     # ~/kdesrc/build
+    build-dir ~/kde/build
 
     # Use multiple cores for building. Other options to GNU make may also be
     # set.
@@ -353,6 +352,7 @@ EOF
 
 if ($proxy) {
     print $output <<EOF;
+
     # Proxy to use for HTTP downloads.
     http-proxy $proxy
 
