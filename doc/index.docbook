@@ -141,30 +141,31 @@ directly from the &kde; project's source code repositories.</para>
 <title>What is &kdesrc-build;?</title>
 
 <para>
-&kdesrc-build; is a script to help users install <ulink
+&kdesrc-build; is a script to help the &kde; community install <ulink
 url="https://www.kde.org/">&kde;</ulink> software from its <ulink
-url="http://subversion.tigris.org/">&subversion;</ulink> and <ulink
-url="https://git-scm.com/">&git;</ulink> source repositories.
-<!-- Deliberately not KDE SC, we can also install Extragear, amarok, etc. -->
+url="https://git-scm.com/">&git;</ulink> and <ulink
+url="http://subversion.tigris.org/">&subversion;</ulink> source repositories,
+and continue to update that software afterwards.
+It is particularly intended to support those who need to supporting testing and
+development of &kde; software, including users testing bugfixes and developers
+working on new features.
 </para>
 
-<para>In addition to simply installing &kde; software, the script can also be
-used to update the installed &kde; software after it is installed. This allows
-you to keep up-to-date with &kde; development.
+<para>The &kdesrc-build; script can be configured to maintain a single individual
+module, a full &plasma; desktop with &kde; application set, or somewhere in between.
 </para>
 
-<para>The &kdesrc-build; script can be used to maintain a single individual
-module or an entire &kde; desktop depending on how it is configured.
+<para>To get started, see <xref linkend="getting-started"/>, or continue reading for more
+detail on how &kdesrc-build; works and what is covered in this documentation.
 </para>
 </sect2>
 
 <sect2 id="operation-in-a-nutshell">
 <title>&kdesrc-build; operation <quote>in a nutshell</quote></title>
 
-<para>&kdesrc-build; intentionally works by using the same tools available to
-the user at the command-line. When &kdesrc-build; is run, the following
-sequence is followed:
-</para>
+<para>&kdesrc-build; works by using the tools available to the user at the
+command-line, using the same interfaces available to the user. When
+&kdesrc-build; is run, the following sequence is followed: </para>
 
 <orderedlist>
 <listitem><para>&kdesrc-build; reads in the <link linkend="cmdline">command
@@ -177,7 +178,21 @@ linkend="module-concept">module</link>. The update continues until all modules
 have been updated. Modules that fail to update normally do not stop the build
 &ndash; you will be notified at the end which modules did not
 update.</para></listitem>
+
+<listitem><para>Modules that were successfully updated are built, have their
+test suite run, and are then installed.  To reduce the overall time spent,
+&kdesrc-build; will by default start building the code as soon as the first
+module has completed updating, and allow the remaining updates to continue
+behind the scenes.
+</para></listitem>
 </orderedlist>
+
+<tip><para>A <emphasis>very good</emphasis> overview of how &kde; modules are
+built, including informative diagrams, is provided on <ulink
+url="https://www.davidrevoy.com/article193/guide-building-krita-on-linux-for-
+cats">an online article discussing &kde;'s &krita; application</ulink>.  This
+workflow is what &kdesrc-build; automates for all &kde; modules.</para>
+</tip>
 
 </sect2>
 </sect1>
@@ -200,8 +215,7 @@ and options.</para></listitem>
 </itemizedlist>
 
 <para>Also documented are the steps which you should perform using
-other tools, (in other words, steps that are not automatically performed by
-&kdesrc-build;).
+other tools (&ie; steps that are not automatically performed by &kdesrc-build;).
 </para>
 
 </sect1>
@@ -243,15 +257,14 @@ would be to create a different (dedicated) user to build and run the new &kde;.
 </para>
 
 <tip><para>Leaving your system &kde; untouched also allows you to have an
-emergency fallback in case a compiled &kde; is unstable for whatever reason.
+emergency fallback in case a coding mistake causes your latest software build
+to be unusable.
 </para></tip>
 
 <para>
-Later, you can do a system installation if you wish. This document
-does not cover a system installation. If you are performing a system
-wide install, you should already know what you are doing. If not, then you
-may want to consult the documentation, or help sites, for your distribution
-in order to prepare and use the system installation correctly.
+You can do also setup to install to a system-wide directory (&eg; <filename
+type="directory">/usr/src/local</filename>) if you wish. This document
+does not cover this installation type, since we assume you know what you are doing.
 </para>
 
 </sect2>
@@ -268,26 +281,21 @@ Community Wiki Build Requirements</ulink> page.
 <para>Here is a list of some of the things you will need:</para>
 <itemizedlist>
 
-<listitem><para>You will need &cmake;.  The required version will vary
-depending on what version of &kde; 4 you are building, see TechBase for
-specifics, however a good bet is to have the most recent available version.
-&cmake; is the program used by &kdesrc-build; to handle the actual
-configuration and build steps for the vast majority of &kde; software.
+<listitem><para>You will need &cmake;, this software is what &kde; uses to handle
+build-time configuration of the source code and generation of the specific build
+commands for your system.  The required version will vary
+depending on what versions of &kde; software you are building (see TechBase for
+specifics), but with modern distributions the &cmake; included with your distribution
+should be quite sufficient.
 </para></listitem>
 
-<listitem><para>You must also install the client software used to checkout
+<listitem><para>You must also install the source control clients needed to checkout
 the &kde; source code. This means you need at least the following:</para>
 
 <itemizedlist>
-<listitem><para>&subversion;, which used to be the only source code manager in use, and is still
-used for some modules with large data files.  You can check
-if you have it by running <userinput><command>svn
-<option>--version</option></command></userinput>.</para></listitem>
-
-<listitem><para>You will need the <ulink url="https://git-scm.com/">Git
-source control manager</ulink> installed as well, for &kde;'s <ulink
-url=" https://commits.kde.org/">git-based projects.
-</ulink></para></listitem>
+<listitem><para>The <ulink url="https://git-scm.com/">Git
+source control manager</ulink>, which is used for all &kde; <ulink
+url=" https://commits.kde.org/">source code</ulink></para></listitem>
 
 <listitem><para>Although it is not required, the <ulink
 url="http://bazaar.canonical.com/">Bazaar</ulink> source control manager is
@@ -295,18 +303,45 @@ used for a single module (libdbusmenu-qt) that is required for the &kde;
 libraries. Most users can install this library through their distribution
 packages but &kdesrc-build; supports building it as well if you desire. But to
 build libdbusmenu-qt, you must have Bazaar installed.</para></listitem>
-
 </itemizedlist></listitem>
 
-<listitem><para>You will need a full C++ development environment. GCC 4.6 or <!--FIXME update? -->
-later is recommended.</para></listitem>
+<listitem><para>The Perl scripting language is required for &kdesrc-build;, some &kde;
+repositories, and &Qt; (if you build that from source).</para>
 
-<listitem><para>Finally, you will need a <quote>make</quote> tool. GNU Make is
-recommended and should be available through your package manager. After
-<command>cmake</command> has been run by &kdesrc-build;,
-<command>make</command> handles actually running the build process, which is
-why it is required.</para></listitem>
+<para>The Perl that comes with your distribution should be suitable (it needs to be at
+least Perl 5.14), but you will also need some additional modules (&kdesrc-build;
+will warn if they are not present):</para>
 
+<itemizedlist>
+    <listitem>IO::Socket::SSL</listitem>
+    <listitem>JSON::PP or JSON::XS</listitem>
+    <listitem>YAML::PP, YAML::XS, or YAML::Syck</listitem>
+</itemizedlist>
+</listitem>
+
+<listitem><para>You will need a full C++ development environment (compiler, standard library, runtime,
+and any required development packages).  The minimum required versions vary based on the &kde; module:
+the &kde; Frameworks 5 collection supports the oldest compilers, while &kde; Plasma 5 and &kde; Applications
+tend to require more recent compilers.</para>
+<para>The GCC 4.8 or Clang 4 compilers are the minimum recommended.  Many distributions support easily
+installing these tools using a <quote>build-essentials</quote> package, an option to install
+"build dependencies" with &Qt;, or similar features.  The KDE Community Wiki has a page <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/Install_the_dependencies">tracking
+recommended packages for major distributions</ulink>.
+</para>
+</listitem>
+
+<listitem><para>You will need a build tool that actually performs the
+compilation steps (as generated by &cmake;). GNU Make is recommended and should
+be available through your package manager. &cmake; does support others options, such
+as the "ninja" build tool, which can be used by &kdesrc-build; using the
+<link linkend="conf-custom-build-command">custom-build-command</link> configuration file
+option.
+</para></listitem>
+
+<listitem><para>Finally, you will need the appropriate &Qt; libraries (including development packages)
+for the version of &kde; software you are building.  &kdesrc-build; does not officially support building &Qt; 5 (the current major version), so it is recommended to use your distribution's development packages or to
+see the KDE Community wiki page on <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/OwnQt5">self-building Qt 5</ulink>.
+</para></listitem>
 </itemizedlist>
 
 <note><para>Most operating system distributions include a method of easily
@@ -315,46 +350,10 @@ url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_r
 >Required devel packages</ulink> to see
 if these instructions are already available.</para></note>
 
-<para>One exception to the required libraries is the &Qt; library.
-&kdesrc-build; will normally install a copy of &Qt; whether you have it
-installed or not, so it is not necessary for you to have it. If you do not want
-to use the &Qt; copy, you need to do these things:</para>
-
-<itemizedlist>
-<listitem>
-  <para>Make sure to remove the qt module from your <link
-  linkend="configure-data">configuration file</link>, as you will not need it,
-  and having it would add extra time to your build.</para>
-</listitem>
-
-<listitem>
-  <para>Change the setting of the <link linkend="conf-qtdir">qtdir</link>
-  option in your <link linkend="configure-data">configuration file</link> to
-  point to your system &Qt;. The location of your system &Qt; can be found
-  by running <userinput><command>qmake</command> <option>-query</option>
-  <option>QT_INSTALL_PREFIX</option></userinput>.</para>
-
-  <note><para>The <command>qmake</command> command might be called
-  <command>qmake4</command> or <command>qmake-qt4</command> on your
-  distribution.</para></note>
-</listitem>
-
-<listitem>
-  <para>If you do not already have &Qt; installed, install it, including any
-  relevant -dev or -devel packages. You will need at least
-  &Qt; 4.7 if you are building &kde; 4.</para>
-</listitem>
-</itemizedlist>
-
 <important><para>
 Some of these packages are divided into libraries (or programs or utilities),
 and development packages. You will need at least the program or library
-<emphasis>and</emphasis> its development package. The libraries you need will
-change depending on the modules you intend to build, as each module has its own
-requirements. The <ulink
-url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source">&kde;
-Community wiki</ulink> has more details about the specific tools and techniques used
-to install and find the required software.
+<emphasis>and</emphasis> its development package.
 </para></important>
 
 </sect2>
@@ -365,41 +364,32 @@ to install and find the required software.
 <sect3 id="get-kdesrc-build">
 <title>Install &kdesrc-build;</title>
 <para>
-You probably already have a version of the &kdesrc-build; script installed
-in your system. However, if you do not, you can download it from
-<ulink url="https://kdesrc-build.kde.org/">&kdesrc-build; home page</ulink>,
-or you can find it from its home in the &kde; source repository.</para>
+The &kde; developers make frequent changes to &kdesrc-build; to keep it in
+sync with advances in &kde; development, including improvements to the
+recommended &kdesrc-build; configuration, added modules, improving &cmake;
+flags, &etc;</para>
 
-<tip><para>If you use a more recent &kdesrc-build; by downloading from its
-website, you should remember to run the &kdesrc-build; script you downloaded.
-You can use the <option>--version</option> option to &kdesrc-build; as a quick
-way to verify this.</para></tip>
+<para>Because of this, we recommend obtaining &kdesrc-build; directly from its
+source repository and then periodically updating it.</para>
 
-<orderedlist>
-<listitem><para>To download &kdesrc-build; from its home page, simply go to the
-<ulink url="https://kdesrc-build.kde.org/">&kdesrc-build; home page</ulink> and download the latest appropriate release. The release is
-packaged as a compressed tarball archive, which you can extract using &ark; or
-<command>tar</command>. The contents of the archive include the actual
-&kdesrc-build; script, a sample configuration file
-(<filename>kdesrc-buildrc-sample</filename>), and a quick-setup
-program.</para></listitem>
-
-<listitem><para>Or, you can obtain &kdesrc-build; from its source repository,
-by running:</para>
+<para>You can obtain &kdesrc-build; from its source repository by running:</para>
 <programlisting>
 <prompt>$ </prompt><userinput><command>git <option>clone</option> <option>git://anongit.kde.org/kdesrc-build</option> <option><filename class="directory"><replaceable>~/kdesrc-build</replaceable></filename></option></command></userinput>
 </programlisting>
 
 <para>Replace <option><replaceable>~/kdesrc-build</replaceable></option> with
 the directory you would like to install to.
-</para></listitem>
-</orderedlist>
+</para>
 
-<para>No matter which technique you use, you need to make sure that the
-<filename>kdesrc-build</filename> file is executable. For convenience you
-should make sure it is in a directory contained in the <envar>PATH</envar>
-environment variable, otherwise you may get messages saying that the command
-was not found, or you may run a previously-installed version by mistake.</para>
+<para>You can update &kdesrc-build; later by running:</para>
+<programlisting>
+<prompt>$ </prompt><userinput><command>cd <option><filename class="directory"><replaceable>~/kdesrc-build</replaceable></filename></option></command></userinput>
+<prompt>$ </prompt><userinput><command>git <option>pull</option></command></userinput>
+</programlisting>
+
+<tip><para>We recommend adding the &kdesrc-build; installation directory to
+your <envar>PATH</envar> environment variable, so that you can run &kdesrc-build;
+without having to fully specify its path every time.</para></tip>
 </sect3>
 
 <sect3 id="setup-rcfile">
@@ -419,12 +409,26 @@ fit.</para>
 (instead of using a graphical interface), just like &kdesrc-build;, so you can
 use it even if you have no graphical interface available yet.</para>
 
-<tip><para>You can use the included <filename>kdesrc-buildrc-sample</filename>
-sample configuration to get explanations as to the various options available.
-</para></tip>
+<sect4 id="setup-rcfile-manually">
+<title>Manual setup of configuration file</title>
 
-<para>You can find more information about the syntax of the <link linkend="configure-data">configuration file</link>
-in <xref linkend="configure-data" /> and in <xref linkend="kdesrc-buildrc" />.
+<para>You can also setup your configuration file manually, by copying the
+included sample configuration file
+<filename>kdesrc-buildrc-kf5-sample</filename> to
+<filename>~/.kdesrc-buildrc</filename> and then editing the file.  <xref
+linkend="kdesrc-buildrc"/> will be a useful reference for this, especially its
+<link linkend="conf-options-table">table of configuration options</link>.
+</para>
+</sect4>
+
+<para>&kdesrc-build; contains many recommended configuration files to support
+&kde; Frameworks 5, &plasma; 5, and other &kde; applications.  The <application>kdesrc-build-setup</application> refers to these files in the configuration file it generates, but you can also use them
+yourself.  See <xref linkend="kdesrc-buildrc-including"/> for information on how
+to use other configuration files from your own <filename>~/.kdesrc-buildrc</filename>.</para>
+
+<para>You can find more information about the syntax of the <link
+linkend="configure-data">configuration file</link> in <xref
+linkend="configure-data" /> and in <xref linkend="kdesrc-buildrc" />.
 </para>
 
 </sect3>
@@ -447,445 +451,186 @@ configuration is stored in <filename>~/.kdesrc-buildrc</filename>.</para></note>
 
 <para>
 The easiest way to proceed is to use the
-<filename>kdesrc-buildrc-sample</filename> file as a template, changing global
+<filename>kdesrc-buildrc-kf5-sample</filename> file as a template, changing global
 options to match your wants, and also change the list of modules you want to
 build.
 </para>
 
 <para>
-The default settings should actually already be appropriate to perform a
+The default settings should be appropriate to perform a
 &kde; build. Some settings that you may wish to alter include:
+</para>
 
 <itemizedlist>
-<listitem><para><link linkend="conf-use-stable-kde">use-stable-kde</link> to
-change the default version of &kde; modules to build. By default &kdesrc-build;
-will build the trunk version of &kde;. If you want to build
-the latest stable release of &kde; instead of using your distribution packages
-you would set this option to <replaceable>true</replaceable>.
-</para>
-
-<tip><para>Note that this option relies on information available from the
-&kde; project database, so this feature only works for these modules.
-See also <xref linkend="kde-projects-module-sets"/>.
-</para></tip>
-</listitem>
-
 <listitem><para><link linkend="conf-kdedir">kdedir</link>, which changes the
-destination directory that &kde; is installed to. This defaults to
-<filename class="directory">~/kde</filename>, which is a single-user installation.</para></listitem>
+destination directory that your &kde; software is installed to. This defaults to
+<filename class="directory">~/kde</filename>, which is a single-user
+installation.</para></listitem>
 
-<listitem><para><link linkend="conf-qtdir">qtdir</link>, which controls the
-path to the installation of &Qt; to use. The default is to use a &Qt; compiled
-by &kdesrc-build;, using the special qt module and the latest available
-source code.
-(<filename class="directory">~/kdesrc/build/qt</filename>).</para>
+<listitem><para><link linkend="conf-branch-group">branch-group</link>, which can
+be
+used to choose the appropriate branch of development for the &kde; modules as a
+whole. There are many supported build configurations but you will likely want to
+choose <option>kf5-qt5</option> so that &kdesrc-build; downloads the latest code
+based on &Qt; 5 and &kde; Frameworks 5.</para>
 
-<note><para>This also controls where to install qt.</para></note>
+<tip><para>&kdesrc-build; will use a default branch group if you do not choose
+one, but this default will change over time, so it's better to choose one so
+that the branch group does not change unexpectedly.</para></tip>
 </listitem>
 
-<listitem><para><link linkend="conf-svn-server">svn-server</link>, which
-selects what &url; to download the sources from. This is useful if you are a
-developer with a <ulink url="https://community.kde.org/Infrastructure/First_Steps_with_your_Contributor_Account">&kde;
-contributor account</ulink>.</para></listitem>
+<listitem><para><link linkend="conf-source-dir">source-dir</link>, to control the directory
+&kdesrc-build; uses for downloading the source code, running the build process, and saving
+logs.
+This defaults to <filename class="directory">~/kdesrc</filename>.</para></listitem>
 
-<listitem><para>You will probably want to select different modules to build, which
-is described in <xref linkend="selecting-modules"/>.</para></listitem>
-</itemizedlist>
-</para>
-</sect1>
+<listitem><para><link linkend="conf-cmake-options">cmake-options</link>, which
+sets the options to pass to the &cmake; command when building each module.
+Typically this is used to set between <quote>debug</quote> or
+<quote>release</quote> builds, to enable (or disable) optional features, or to
+pass information to the build process about the location of required libraries.
+</para></listitem>
 
-<sect1 id="kde-modules-and-selection">
-<title>Module Organization and selection</title>
-
-<sect2 id="kde-layers">
-<title>KDE Software Organization</title>
-
-<para>
-&kde; software is split into different components, many of which can be built
-by &kdesrc-build;. Understanding this organization will help you properly
-select the software modules that you want built.
+<listitem><para><link linkend="conf-make-options">make-options</link>, which
+sets the options used when actually running the <application>make</application>
+command to build each module (once &cmake; has established the build system).
 </para>
 
-<orderedlist>
-<listitem><para>At the lowest level comes the &Qt; library, which is a
-very powerful, cross-platform <quote>toolkit</quote> library. &kde; is based on
-&Qt;, and some of the non-&kde; libraries required by &kde; are also based on
-&Qt;. &kdesrc-build; can build &Qt;, or use the one already installed on your
-system if it is a recent enough version.</para></listitem>
-
-<listitem><para>On top of &Qt; are required libraries that are necessary for
-&kde; software to work. Some of these libraries are not considered part of
-&kde; itself due to their generic nature, but are still essential to the &kde;
-Platform. These libraries tended to get combined into a single
-<literal>kdesupport</literal> module.</para>
-
-<note><para>As of &kde; Platform 4.6, many of the libraries in the kdesupport <!--FIXME this is outdated ->frameworks, workspace/Plasma, applications-->
-module are being migrated over to the <ulink
-url=" https://commits.kde.org/">&kde; git archive</ulink>, although they are still not
-considered part of the Platform.</para></note>
-</listitem>
-
-<listitem><para>On top of these essential libraries comes the &kde; Platform.
-These are the libraries that are required for &kde; applications to work. A
-full desktop environment is not provided by the Platform however.
+<para>The most typical option is <option>-j<replaceable>N</replaceable></option>,
+where <replaceable>N</replaceable> should be replaced with the maximum number of
+compile jobs you wish to allow.  A higher number (up to the number of logical CPUs
+your system has available) leads to quicker builds, but requires more system resources.
 </para>
 
-<para>For &kdesrc-build;, the Platform layer consists of the <literal>kdelibs</literal>,
-<literal>kdepimlibs</literal>, and <literal>kde-runtime</literal> modules.</para>
-</listitem>
-
-<listitem><para>On top of the Platform, come several different things:</para>
-    <itemizedlist>
-        <listitem><para><quote>Third-party</quote> applications. These are
-        applications that use the &kde; Platform but are not authored by or in
-        association with the &kde; project.</para></listitem>
-
-        <listitem><para>A full <quote>workspace</quote> desktop environment.
-        This is what users normally see when they <quote>log-in to
-        &kde;</quote>.  This is provided by the &plasma; Desktop, mostly in
-        <literal>kde-workspace</literal>.  </para></listitem>
-
-        <listitem><para>The &kde; Software Compilation. This is a collection of
-        useful software included with the Platform and &plasma; Desktop,
-        grouped into individual modules. These are the modules that have names
-        starting with <literal>kde</literal>. For example,
-        <literal>kdepim</literal> is a component of the Software Compilation
-        that contains email, news-reading, calendar/organizational software,
-        &etc;, while <literal>kdegames</literal> contains a collection of
-        high-quality games to while away the time.</para></listitem>
-
-        <listitem><para>Finally, there is a collection of software (also
-        collected in modules) whose development is supported by &kde; resources
-        (such as translation, source control, bug tracking, &etc;) but is not
-        released by &kde; or considered part of the Software Compilation. These
-        modules are known as <quote>Extragear</quote>, and have module names
-        such as <literal>extragear/network</literal>. As with
-        <literal>kdesupport</literal>, some of these Extragear applications are
-        migrating to the <ulink
-        url=" https://commits.kde.org/">&kde; git archive</ulink>.</para></listitem>
-    </itemizedlist>
-</listitem>
-</orderedlist>
-</sect2>
-
-<sect2 id="selecting-modules">
-<title>Selecting modules to build</title>
-
-<para>Selecting which of the possible modules to build is controlled by
-<link linkend="kdesrc-buildrc">the configuration file</link>.
-After the <literal>global</literal> section is a list of modules to build,
-bracketed by module ... end module lines. An example entry for a module is
-shown in <xref linkend="conf-module-example"/>.</para>
-
-<example id="conf-module-example">
-<title>Example module entry in the configuration file</title>
-<programlisting>
-module <replaceable>module-name</replaceable>
-    # Options for this module go here, example:
-    <link linkend="conf-make-options">make-options</link> -j4 # Run 4 compiles at a time
-end module
-</programlisting>
-</example>
-
-<tip><para>It is possible to declare a module with no options. In fact, most of
-your modules will likely be declared this way.</para></tip>
-
-<para>&kdesrc-build; only builds the modules you have listed in your configuration
-file. In addition, the modules are built in the order specified in the configuration
-file. For this reason you should ensure that the order of modules in your
-configuration file is consistent with the organization given in
-<xref linkend="kde-layers"/>.</para>
-
-<para>There is a sample file that comes with &kdesrc-build; called
-<filename>kdesrc-buildrc-sample</filename>. It is recommended to copy this file
-to a file called <filename>~/.kdesrc-buildrc</filename> (<emphasis>Note the
-leading period in front of kdesrc-buildrc!</emphasis>). Afterwards, edit the
-new file to adjust the default options to your liking. (Each option is described
-in more detail in <xref linkend="kdesrc-buildrc"/>). The default modules
-should be enough to ensure a fairly complete &kde; installation, however you
-can remove many of the modules that show up after <literal>kdebase</literal>
-if you'd like to save disk space or build time.</para>
-
-</sect2>
-
-<sect2 id="module-sets">
-<title>Module Sets</title>
-
-<para>&kdesrc-build; is usually able to guess where to download the source code
-for a given module quite easily, by using your setting for <link
-linkend="conf-svn-server">svn-server</link> and the module name for each module
-to create a single Subversion URL, which describes exactly where to download
-the source code from.</para>
-
-<para>With the move to Git, many larger Subversion modules were further
-sub-divided in the process, and there was no guarantee of where to find a
-module based just on the module name. Because of this, a concept called
-<quote>module sets</quote> was developed for &kdesrc-build; 1.12.1.</para>
-
-<para>By using a module set, you can quickly declare many Git modules to be
-downloaded and built, as if you'd typed out a separate module declaration for
-each one. The <link linkend="conf-repository">repository</link> option is
-handled specially to setup where each module is downloaded from, which every
-other option contained in the module set is copied to every module generated
-in this fashion.</para>
-
-<example id="example-using-module-sets">
-<title>Using module sets</title>
-<programlisting>
+<example id="make-options-example">
+<title>Configuring Make for 4 compiles at once, with exceptions</title>
+<screen>
 global
-    <option><link linkend="conf-git-repository-base">git-repository-base</link></option> <replaceable>kde-git</replaceable> <replaceable>kde:</replaceable>
+    make-options -j4
+    &hellip;
 end global
 
-module <replaceable>qt</replaceable>
-    # Options removed for brevity
-end module
+&hellip;
 
-module-set <replaceable>kde-support-libs</replaceable>
-    <option><link linkend="conf-repository">repository</link></option> <replaceable>kde-git</replaceable>
-    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>automoc</replaceable> <replaceable>attica</replaceable> <replaceable>akonadi</replaceable>
+module-set <replaceable>big-module-set</replaceable>
+    repository kde-projects
+    use-modules <replaceable>calligra</replaceable>
+    make-options -j2 # Reduced number of build jobs for just these modules
 end module-set
-
-# Other modules as necessary...
-module <replaceable>kdesupport</replaceable>
-end module
-</programlisting>
+</screen>
 </example>
 
-<para>In <xref linkend="example-using-module-sets"/> a brief module set is
-shown.  When &kdesrc-build; encounters this module set, it acts as if, for
-every module given in <option>use-modules</option>, that an individual module
-has been declared, with its <option>repository</option> equal to the
-module-set's <option>repository</option> followed immediately by the given
-module name.</para>
+<note><para>Some very large Git repositories may swamp your system if you try to
+compile with a too many build jobs at one time, especially repositories like the
+&Qt; WebKit and &Qt; WebEngine repositories.  To maintain system interactivity
+you may have to reduce the number of build jobs for specific modules.</para>
+<para><xref linkend="make-options-example"/> gives an example of how to do
+this.</para>
+</note>
 
-<para>In addition, other options can be passed in a module set, which are
-copied to every new module that is created this way. By using module-set it is
-possible to quickly declare many Git modules that are all based on the same
-repository URL. In addition, since &kdesrc-build; 1.13, it is possible to
-give module-sets a name (as shown in the example), which allows you to quickly
-refer to the entire group of modules from the command line.</para>
-
-<note><para>Module sets are used in supporting module downloads from
-the &kde; <ulink url="https://commits.kde.org/">&kde; git archive</ulink>
-module database. See also <xref linkend="kde-projects-module-sets"/>.
-</para></note>
-
-<para>Module sets use the options <simplelist><member><link
-linkend="conf-git-repository-base">git-repository-base</link></member>
-<member><link
-linkend="conf-use-modules">use-modules</link></member></simplelist></para>
-</sect2>
-
-<sect2 id="kde-projects-module-sets">
-<title>Automatically finding modules from the official &kde; module
-database</title>
-
-<para>With the migration of &kde; source code to be hosted on git.kde.org,
-there has been an explosive growth in the number of modules (for instance,
-a single Subversion module called <literal>kdegraphics</literal> becomes
-16 different Git modules).</para>
-
-<para>This was done mostly because each Git module contains the entire project
-history (this is actually less wasteful of disk space than it sounds for the
-vast majority of &kde; repositories as &git; is highly efficient at storing
-repositories).</para>
-
-<para>&kde; allows for grouping Git repositories into collections
-of related modules (e.g. kdegraphics). These modules can themselves be grouped
-(e.g. &kde; Software Compilation). Git doesn't recognize these groupings, but
-&kdesrc-build; can be configured to handle these groups.</para>
-
-<para>The way this is done is by using <link linkend="module-sets">module
-sets</link>. Instead of using a specific <literal>git://</literal> repository,
-or a repository name created by <link
-linkend="conf-git-repository-base">git-repository-base</link>, a special
-repository name, <quote><literal>kde-projects</literal></quote> is used.</para>
-
-<para>&kdesrc-build; will recognize that the <literal>kde-projects</literal>
-repository requires special handling, and adjust the build process
-appropriately.  Among other things, &kdesrc-build; will:</para>
-
-<itemizedlist>
-
-<listitem><para>Download the latest module database from <ulink
-url=" https://commits.kde.org/">&kde; git archive</ulink>.</para></listitem>
-
-<listitem><para>Try to find a module with the name given in the module set's
-<option>use-modules</option> setting.</para></listitem>
-
-<listitem><para>For every module that is found, &kdesrc-build; will see if a
-repository setting exists for that module in the database. If there is a
-repository, &kdesrc-build; will automatically use that to download or update
-the source code. If there is no repository, &kdesrc-build; treats that module
-like a group, and tries to include all &git; source repositories that it finds
-in that group.</para></listitem>
-
+</listitem>
 </itemizedlist>
 
-<note><para>In the current database, some module groups not only have a
-collection of modules, but they <emphasis>also</emphasis> declare their own
-&git; repository. In these situations &kdesrc-build; will currently prefer the
-group's &git; repository instead of including the childrens' repositories.
-</para></note>
-
-<para>The following example shows how to use the &kde; module database to
-install the Phonon multimedia library.</para>
-
-<informalexample>
-<programlisting>
-module-set <replaceable>media-support</replaceable>
-    # This option must be kde-projects to use the module database.
-    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
-
-    # This option chooses what modules to look for in the database.
-    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>phonon/phonon</replaceable> <replaceable>phonon-gstreamer</replaceable> <replaceable>phonon-vlc</replaceable>
-end module-set
-</programlisting>
-</informalexample>
-
-<tip><para><literal>phonon/phonon</literal> is used since (with the current
-project database) &kdesrc-build; would otherwise have to decide between the
-group of projects called <quote>phonon</quote> or the individual project named
-<quote>phonon</quote>. Currently &kdesrc-build; would pick the former, which
-would build many more backends than needed.</para></tip>
-
-<para>The following example is perhaps more realistic, and shows a feature only
-available with the &kde; module database: Building all of the &kde; graphics
-applications with only a single declaration.</para>
-
-<informalexample>
-<programlisting>
-module-set <replaceable>kdegraphics</replaceable>
-    # This option must be kde-projects to use the module database.
-    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
-
-    # This option chooses what modules to look for in the database.
-    <option><link linkend="conf-use-modules">use-modules</link></option> <literal>kdegraphics/libs</literal> <literal>kdegraphics/*</literal>
-end module-set
-</programlisting>
-</informalexample>
-
-<para>There are two important abilities demonstrated here:</para>
-
-<orderedlist>
-
-<listitem><para>&kdesrc-build; allows you to specify modules that are
-descendents of a given module, without building the parent module, by using the
-syntax <userinput><replaceable>module-name</replaceable>/*</userinput>. It is
-actually required in this case since the base module, kdegraphics, is marked as
-inactive so that it is not accidentally built along with its children modules.
-Specifying the descendent modules allows &kdesrc-build; to skip around the
-disabled module.
-</para></listitem>
-
-<listitem><para>&kdesrc-build; will also not add a given module to the build
-list more than once. This allows us to manually set
-<literal>kdegraphics/libs</literal> to build first, before the rest of
-<literal>kdegraphics</literal>, without trying to build
-<literal>kdegraphics/libs</literal> twice.
-</para></listitem>
-</orderedlist>
-
-<note><para>It is worth noting that &kdesrc-build; will try to build modules
-in the right order, such as if only <literal>kdegraphics/*</literal> had been
-listed above, but this depends on other databases being kept up-to-date.  You
-can manually list modules in the proper order if necessary by using the
-technique described above.
-</para></note>
-</sect2>
-
-<sect2 id="ignoring-project-modules">
-<title>Filtering out &kde; project modules</title>
-
-<para>You might decide that you'd like to build all programs within a &kde;
-module grouping <emphasis>except</emphasis> for a given program.</para>
-
-<para>For instance, the <literal>kdeutils</literal> group includes a program
-named <application>kremotecontrol</application>. If your computer does not have
-the proper hardware to receive the signals sent by remote controls then you may
-decide that you'd rather not download, build, and install
-<application>kremotecontrol</application> every time you update
-<literal>kdeutils</literal>.</para>
-
-<para>As of &kdesrc-build; 1.16, you can achieve this by using the <link
-linkend="conf-ignore-modules">ignore-modules</link> configuration option.</para>
-
-<example id="example-ignoring-a-module">
-<title>Example for ignoring a kde-project module in a group</title>
-<programlisting>
-module-set <replaceable>utils</replaceable>
-    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
-
-    # This option chooses what modules to look for in the database.
-    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>kdeutils</replaceable>
-
-    # This option "subtracts out" modules from the modules chosen by use-modules, above.
-    <option><link linkend="conf-ignore-modules">ignore-modules</link></option> <replaceable>kremotecontrol</replaceable>
-end module-set
-
-module-set <replaceable>graphics</replaceable>
-    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
-
-    # This option chooses what modules to look for in the database.
-    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>extragear/graphics</replaceable>
-
-    # This option "subtracts out" modules from the modules chosen by use-modules, above.
-    # In this case, *both* extragear/graphics/kipi-plugins and
-    # extragear/graphics/kipi-plugins/kipi-plugins-docs are ignored
-    <option><link linkend="conf-ignore-modules">ignore-modules</link></option> <replaceable>extragear/graphics/kipi-plugins</replaceable>
-end module-set
-</programlisting>
-</example>
-
-</sect2>
+<para>You may want to select different modules to build,
+which is described in <xref linkend="selecting-modules"/>.</para>
 
 </sect1>
 
 <sect1 id="building-and-troubleshooting">
 <title>Using the &kdesrc-build; script</title>
+<para>With the configuration data established, now you are ready to run the
+script.  Even if you still have some tweaking or other reading you wish to do,
+it is a good idea to at least load the &kde; project metadata.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title>Loading project metadata</title>
 
 <para>
-Now you are ready to run the script. From a terminal window,
-log in to the user you are using to compile &kde; and execute
-the script:
+From a terminal window, log in to the user you are using to compile &kde; and
+execute the script:
+</para>
+<screen>
+    <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--metadata-only</option></userinput>
+</screen>
+
+<para>This command will setup the source directory and connect to the KDE &git;
+repositories to download the database of &kde; git repositories, and the
+database of dependency metadata, without making any further changes.  It is
+useful to run this separately as this metadata is useful for other
+&kdesrc-build; commands. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title>Previewing what will happen when kdesrc-build runs</title>
+
+<para>With the project metadata installed, it is possible to preview what
+&kdesrc-build; will do when launched.  This can be done with the <option><link
+linkend="cmdline-pretend">--pretend</link></option> command line option.</para>
+
+<screen>
+    <prompt>&percnt; </prompt><command>./kdesrc-build</command> <option>--pretend</option>
+</screen>
+
+<para>You should see a message saying that some packages were successfully built (although
+    nothing was actually built).  If there were no significant problems shown, you can proceed
+    to actually running the script.</para>
+
+</sect2>
+
+<screen>
+    <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--stop-on-failure</option></userinput>
+</screen>
+
+<para>This command will download the appropriate source code, and build and install each module in order, but will stop if a module fails to build (due to the <option>--stop-on-failure</option> option).  Afterwards, you should see output similar to that in <xref
+linkend="example-build-sequence"/>:</para>
+
+<example id="example-build-sequence">
+<title>Example output of a kdesrc-build run</title>
 <screen>
 <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command></userinput>
-</screen>
-</para>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
 
-<para>Afterwards, you should see output similar to that in <xref
-linkend="example-single-module"/>:</para>
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
 
-<example id="example-single-module">
-<title>Example output of building a single module</title>
-<screen>
-<prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>kdelibs</option></userinput>
-Script started processing at Wed Dec 22 13:21:45 2010
-&lt;&lt;&lt;  Build Process  &gt;&gt;&gt;
-Building kdelibs (1/1)
-        Waiting for source code update.
-        Source update complete for kdelibs: 48 files affected.
-        Checking for source conflicts...
-        Compiling...
-        Build succeeded after 13 minutes, and 6 seconds.
-        Installing kdelibs.
-        Overall time for kdelibs was 13 minutes, and 53 seconds.
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
 
-&lt;&lt;&lt;  Build Done  &gt;&gt;&gt;
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
 
 &lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
-kdelibs
+Built 200 modules
 
-Script finished processing at Wed Dec 22 13:35:38 2010
-Your logs are saved in /home/kde-src/log-kdesrc-build/2010-12-22-01
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
 </screen>
 </example>
 
+<sect2 id="fixing-build-failures">
+<title>Resolving build failures</title>
+
 <para>
-At this point, &kdesrc-build; should start downloading the sources and
-compiling them. Depending on how many modules you are downloading, it is
-possible that &kdesrc-build; will not succeed the first time you compile &kde;.
-Do not despair!
+Depending on how many modules you are downloading, it is possible that
+&kdesrc-build; will not succeed the first time you compile &kde;. Do not
+despair!
 </para>
 
 <para>&kdesrc-build; logs the output of every command it runs. By default,
@@ -922,12 +667,77 @@ solutions, as well as general tips and strategies to build &kde; in the
 Build from Source</ulink>.
 </para>
 
+</sect2>
+
 <para>On the other hand, assuming everything went well, you should have a new
 &kde; install on your computer, and now it is simply a matter of running
 it, described next in <xref linkend="environment"/>.</para>
 
 <note><para>For more information about &kdesrc-build;'s logging features,
 please see <xref linkend="kdesrc-build-logging"/>.</para></note>
+
+</sect1>
+
+<sect1 id="building-specific-modules">
+<title>Building specific modules</title>
+
+<para>Rather than building every module all the time, you may only want to build a single
+    module, or other small subset.  Rather than editing your configuration file, you can simply
+    pass the names of modules or module sets to build to the command line.</para>
+
+<example id="example-subset-build">
+<title>Example output of a kdesrc-build specific module build</title>
+<screen>
+    <prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--include-dependencies</option> <replaceable>dolphin</replaceable></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building extra-cmake-modules from frameworks-set (1/79)
+        Updating extra-cmake-modules (to branch master)
+        No changes to extra-cmake-modules source, proceeding to build.
+        Running cmake...
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building phonon from phonon (2/79)
+        Updating phonon (to branch master)
+        No changes to phonon source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building attica from frameworks-set (3/79)
+        Updating attica (to branch master)
+        No changes to attica source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building dolphin from base-apps (79/79)
+        Updating dolphin (to branch master)
+        No changes to dolphin source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 79 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+
+<para>In this case, although only the <replaceable>dolphin</replaceable>
+application was specified, the <option>--include-dependencies</option> flag
+caused &kdesrc-build; to include the dependencies listed for
+<replaceable>dolphin</replaceable> (by setting the <link
+linkend="conf-include-dependencies">include-dependencies</link> option).
+</para>
+
+<note><para>The dependency resolution worked in this case only becase
+<replaceable>dolphin</replaceable> happened to be specified in a
+<literal>kde-projects</literal>-based module set (in this example, named
+<literal>base-apps</literal>). See <xref linkend="module-sets-kde"/>.
+</para></note>
 
 </sect1>
 
@@ -1056,6 +866,374 @@ appendix or view the <filename>sample-kde-env-master.sh</filename> file
 included with the &kdesrc-build; source.</para>
 
 </sect2>
+
+</sect1>
+
+<sect1 id="kde-modules-and-selection">
+<title>Module Organization and selection</title>
+
+<sect2 id="kde-layers">
+<title>KDE Software Organization</title>
+
+<para>
+&kde; software is split into different components, many of which can be built
+by &kdesrc-build;. Understanding this organization will help you properly
+select the software modules that you want built.
+</para>
+
+<orderedlist>
+<listitem><para>At the lowest level comes the &Qt; library, which is a
+very powerful, cross-platform <quote>toolkit</quote> library. &kde; is based on
+&Qt;, and some of the non-&kde; libraries required by &kde; are also based on
+&Qt;. &kdesrc-build; can build &Qt;, or use the one already installed on your
+system if it is a recent enough version.</para></listitem>
+
+<listitem><para>On top of &Qt; are required libraries that are necessary for
+&kde; software to work. Some of these libraries are not considered part of
+&kde; itself due to their generic nature, but are still essential to the &kde;
+Platform. These libraries are collected under a <literal>kdesupport</literal>
+module grouping but are not considered part of the <quote>Frameworks</quote>
+libraries.</para>
+</listitem>
+
+<listitem><para>On top of these essential libraries come the <ulink
+url="https://community.kde.org/Frameworks">&kde; Frameworks</ulink>, sometimes
+abbreviated as KF5, which are essential libraries for the &kde; Plasma desktop,
+&kde; Applications, and other third-party software.
+</para> </listitem>
+
+<listitem><para>On top of the Frameworks, come several different things:</para>
+    <itemizedlist>
+        <listitem><para><quote>Third-party</quote> applications. These are
+        applications that use the &kde; Frameworks or are designed to run under
+        &kde; Plasma but are not authored by or in association with the &kde;
+        project.</para></listitem>
+
+        <listitem><para>Plasma, which is a full <quote>workspace</quote> desktop
+        environment. This is what users normally see when they <quote>log-in to
+        &kde;</quote>.</para></listitem>
+
+        <listitem><para>The &kde; Application suite. This is a collection of
+        useful software included with the Platform and &plasma; Desktop, grouped into
+        individual modules, including utilities like &dolphin;, games like
+        <application>KSudoku</application>, and productivity software released by &kde;
+        such as &kontact;.</para></listitem>
+
+        <listitem><para>Finally, there is a collection of software (also
+        collected in modules) whose development is supported by &kde; resources
+        (such as translation, source control, bug tracking, &etc;) but is not
+        released by &kde; as part of Plasma or the Application suite. These
+        modules are known as <quote>Extragear</quote>.
+        </para></listitem>
+    </itemizedlist>
+</listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="selecting-modules">
+<title>Selecting modules to build</title>
+
+<para>Selecting which of the possible modules to build is controlled by
+<link linkend="kdesrc-buildrc">the configuration file</link>.
+After the <literal>global</literal> section is a list of modules to build,
+bracketed by module ... end module lines. An example entry for a module is
+shown in <xref linkend="conf-module-example"/>.</para>
+
+<example id="conf-module-example">
+<title>Example module entry in the configuration file</title>
+<programlisting>
+module <replaceable>kdesrc-build-git</replaceable>
+    # Options for this module go here, example:
+    <link linkend="conf-repository">repository</link> kde:kdesrc-build
+    <link linkend="conf-make-options">make-options</link> -j4 # Run 4 compiles at a time
+end module
+</programlisting>
+</example>
+
+<note><para>In practice, this module construct is not usually used directly.  Instead
+most modules are specified via module-sets as described below.</para></note>
+
+<para>When using only <literal>module</literal> entries, &kdesrc-build; builds them in the order
+you list, and does not attempt to download any other repositories other than what you specify
+directly.
+</para>
+
+</sect2>
+
+<sect2 id="module-sets">
+<title>Module Sets</title>
+
+<para>The &kde; source code is decomposed into a great number of relatively
+small Git-based repositories. To make it easier to manage the large number of
+repositories involved in any useful &kde;-based install, &kdesrc-build; supports
+grouping multiple modules and treating the group as a <quote>module set</quote>.
+</para>
+
+<sect3 id="module-set-concept">
+<title>The basic module set concept</title>
+
+<para>By using a module set, you can quickly declare many Git modules to be
+downloaded and built, as if you'd typed out a separate module declaration for
+each one. The <link linkend="conf-repository">repository</link> option is
+handled specially to setup where each module is downloaded from, and every
+other option contained in the module set is copied to every module generated
+in this fashion.</para>
+
+<example id="example-using-module-sets">
+<title>Using module sets</title>
+<programlisting>
+global
+    <option><link linkend="conf-git-repository-base">git-repository-base</link></option> <replaceable>kde-git</replaceable> <replaceable>kde:</replaceable>
+end global
+
+module <replaceable>qt</replaceable>
+    # Options removed for brevity
+end module
+
+module-set <replaceable>kde-support-libs</replaceable>
+    <option><link linkend="conf-repository">repository</link></option> <replaceable>kde-git</replaceable>
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>automoc</replaceable> <replaceable>attica</replaceable> <replaceable>akonadi</replaceable>
+end module-set
+
+# Other modules as necessary...
+module <replaceable>kdesupport</replaceable>
+end module
+</programlisting>
+</example>
+
+<para>In <xref linkend="example-using-module-sets"/> a brief module set is
+shown.  When &kdesrc-build; encounters this module set, it acts as if, for
+every module given in <option>use-modules</option>, that an individual module
+has been declared, with its <option>repository</option> equal to the
+module-set's <option>repository</option> followed immediately by the given
+module name.</para>
+
+<para>In addition, other options can be passed in a module set, which are
+copied to every new module that is created this way. By using module-set it is
+possible to quickly declare many Git modules that are all based on the same
+repository URL. In addition, it is possible to give module-sets a name (as shown
+in the example), which allows you to quickly refer to the entire group of
+modules from the command line.</para>
+
+</sect3>
+<sect3 id="module-sets-kde">
+<title>Special Support for KDE module sets</title>
+
+<para>The module set support described so far is general to any Git-based
+modules. For the &kde; Git repositories, &kdesrc-build; includes additional
+features to make things easier for users and developers.  This support is
+enabled by specifying <literal>kde-projects</literal> as the
+<option>repository</option> for the module set.
+</para>
+
+<para>&kdesrc-build; normally only builds the modules you have listed in your
+configuration file, in the order you list them.  But with a
+<literal>kde-projects</literal> module set, &kdesrc-build; can do dependency
+resolution of &kde;-specific modules, and in addition automatically include
+modules into the build even if only indirectly specified.</para>
+
+<example id="example-using-kde-module-sets">
+<title>Using kde-projects module sets</title>
+<programlisting>
+# Only adds a module for juk (the kde/kdemultimedia/juk repo)
+module-set <replaceable>juk-set</replaceable>
+    <option>repository</option> kde-projects
+    <option>use-modules</option> <replaceable>juk</replaceable>
+end module-set
+
+# Adds all modules that are in kde/multimedia/*, including juk,
+# but no other dependencies
+module-set <replaceable>multimedia-set</replaceable>
+    <option>repository</option> kde-projects
+    <option>use-modules</option> <replaceable>kde/multimedia</replaceable>
+end module-set
+
+# Adds all modules that are in kde/multimedia/*, and all kde-projects
+# dependencies from outside of kde/kdemultimedia
+module-set <replaceable>multimedia-deps-set</replaceable>
+    <option>repository</option> kde-projects
+    <option>use-modules</option> <replaceable>kde/multimedia</replaceable>
+    <option>include-dependencies</option> <replaceable>true</replaceable>
+end module-set
+
+# All modules created out of these three module sets are automatically put in
+# proper dependency order, regardless of the setting for include-dependencies
+</programlisting>
+</example>
+
+<tip><para>This <literal>kde-projects</literal> module set construct is the main method
+of declaring which modules you want to build.</para></tip>
+</sect3>
+
+<para>All module sets use the <link linkend="conf-repository">repository</link>
+and <link linkend="conf-use-modules">use-modules</link> options.  <link
+linkend="kde-projects-module-sets"><literal>kde-projects</literal></link> module
+sets have a predefined <option>repository</option> value, but other types of
+module sets also will use the <link
+linkend="conf-git-repository-base">git-repository-base</link> option.
+</para>
+
+</sect2>
+
+<sect2 id="kde-projects-module-sets">
+<title>The official &kde; module database</title>
+
+<para>&kde;'s Git repositories allow for grouping related Git modules into
+collections of related modules (e.g. kdegraphics). Git doesn't recognize these
+groupings, but &kdesrc-build; can understand these groups, using <link
+linkend="module-sets">module sets</link> with a <option>repository</option>
+option set to <quote><literal>kde-projects</literal></quote>.</para>
+
+<para>&kdesrc-build; will recognize that the <literal>kde-projects</literal>
+repository requires special handling, and adjust the build process
+appropriately.  Among other things, &kdesrc-build; will:</para>
+
+<itemizedlist>
+
+<listitem><para>Download the latest module database from the <ulink
+url=" https://commits.kde.org/">&kde; git archive</ulink>.</para></listitem>
+
+<listitem><para>Try to find a module with the name given in the module set's
+<option>use-modules</option> setting in that database.</para></listitem>
+
+<listitem><para>For every module that is found, &kdesrc-build; will lookup the
+appropriate repository in the database, based upon the <link
+linkend="conf-branch-group">branch-group</link> setting in effect.  If a
+repository exists and is active for the branch group, &kdesrc-build; will
+automatically use that to download or update the source code.
+</para></listitem>
+
+</itemizedlist>
+
+<note><para>In the current database, some module groups not only have a
+collection of modules, but they <emphasis>also</emphasis> declare their own
+&git; repository. In these situations &kdesrc-build; will currently prefer the
+group's &git; repository instead of including the childrens' repositories.
+</para></note>
+
+<para>The following example shows how to use the &kde; module database to
+install the Phonon multimedia library.</para>
+
+<informalexample>
+<programlisting>
+module-set <replaceable>media-support</replaceable>
+    # This option must be kde-projects to use the module database.
+    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
+
+    # This option chooses what modules to look for in the database.
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>phonon/phonon</replaceable> <replaceable>phonon-gstreamer</replaceable> <replaceable>phonon-vlc</replaceable>
+end module-set
+</programlisting>
+</informalexample>
+
+<tip><para><literal>phonon/phonon</literal> is used since (with the current
+project database) &kdesrc-build; would otherwise have to decide between the
+group of projects called <quote>phonon</quote> or the individual project named
+<quote>phonon</quote>. Currently &kdesrc-build; would pick the former, which
+would build many more backends than needed.</para></tip>
+
+<para>The following example is perhaps more realistic, and shows a feature only
+available with the &kde; module database: Building all of the &kde; graphics
+applications with only a single declaration.</para>
+
+<informalexample>
+<programlisting>
+module-set <replaceable>kdegraphics</replaceable>
+    # This option must be kde-projects to use the module database.
+    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
+
+    # This option chooses what modules to look for in the database.
+    <option><link linkend="conf-use-modules">use-modules</link></option> <literal>kdegraphics/libs</literal> <literal>kdegraphics/*</literal>
+end module-set
+</programlisting>
+</informalexample>
+
+<para>There are two important abilities demonstrated here:</para>
+
+<orderedlist>
+
+<listitem><para>&kdesrc-build; allows you to specify modules that are
+descendents of a given module, without building the parent module, by using the
+syntax <userinput><replaceable>module-name</replaceable>/*</userinput>. It is
+actually required in this case since the base module, kdegraphics, is marked as
+inactive so that it is not accidentally built along with its children modules.
+Specifying the descendent modules allows &kdesrc-build; to skip around the
+disabled module.
+</para></listitem>
+
+<listitem><para>&kdesrc-build; will also not add a given module to the build
+list more than once. This allows us to manually set
+<literal>kdegraphics/libs</literal> to build first, before the rest of
+<literal>kdegraphics</literal>, without trying to build
+<literal>kdegraphics/libs</literal> twice.  This used to be required for proper
+dependency handling, and today remains a fallback option in case the &kde;
+project database is missing dependency metadata.
+</para></listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="ignoring-project-modules">
+<title>Filtering out &kde; project modules</title>
+
+<para>You might decide that you'd like to build all programs within a &kde;
+module grouping <emphasis>except</emphasis> for a given program.</para>
+
+<para>For instance, the <literal>kdeutils</literal> group includes a program
+named <application>kremotecontrol</application>. If your computer does not have
+the proper hardware to receive the signals sent by remote controls then you may
+decide that you'd rather not download, build, and install
+<application>kremotecontrol</application> every time you update
+<literal>kdeutils</literal>.</para>
+
+<para>You can achieve this by using the <link
+linkend="conf-ignore-modules">ignore-modules</link> configuration option.</para>
+
+<example id="example-ignoring-a-module">
+<title>Example for ignoring a kde-project module in a group</title>
+<programlisting>
+module-set <replaceable>utils</replaceable>
+    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
+
+    # This option chooses what modules to look for in the database.
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>kdeutils</replaceable>
+
+    # This option "subtracts out" modules from the modules chosen by use-modules, above.
+    <option><link linkend="conf-ignore-modules">ignore-modules</link></option> <replaceable>kremotecontrol</replaceable>
+end module-set
+
+module-set <replaceable>graphics</replaceable>
+    <option><link linkend="conf-repository">repository</link></option> <literal>kde-projects</literal>
+
+    # This option chooses what modules to look for in the database.
+    <option><link linkend="conf-use-modules">use-modules</link></option> <replaceable>extragear/graphics</replaceable>
+
+    # This option "subtracts out" modules from the modules chosen by use-modules, above.
+    # In this case, *both* extragear/graphics/kipi-plugins and
+    # extragear/graphics/kipi-plugins/kipi-plugins-docs are ignored
+    <option><link linkend="conf-ignore-modules">ignore-modules</link></option> <replaceable>extragear/graphics/kipi-plugins</replaceable>
+end module-set
+</programlisting>
+</example>
+
+</sect2>
+
+</sect1>
+
+<sect1 id="quick-start-conclusion">
+<title>Getting Started Conclusion</title>
+<para>These are the major features and concepts needed to get started with
+&kdesrc-build;</para>
+
+<para>For additional information, you could keep reading through this
+documentation. In particular, the <link linkend="supported-cmdline-params">list
+of command-line options</link> and the <link linkend="conf-options-table">table
+of configuration file options</link> are useful references.</para>
+
+<para>The &kde; Community also maintains <ulink
+url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source">an
+online Wiki reference for how to build the source code</ulink>, which refers to
+&kdesrc-build; and includes tips and other guidelines on how to use the
+tool.</para>
 
 </sect1>
 
@@ -1579,9 +1757,9 @@ option.</para></listitem>
 <entry>apidox</entry>
 <entry></entry>
 <entry><para>This option was used to allow for building KDE module API documentation.
-It was removed in &kdesrc-build; 1.6.3 due to it not being supported in KDE 4.  Online
+It was removed in &kdesrc-build; 1.6.3 due to lack of support.  Online
 API documentation is available from <ulink url="https://api.kde.org/">kde.org</ulink>.
-In addition it is possible to build KDE 4's API documentation using the
+In addition it is possible to build KDE API documentation using the
 <command>kdedoxygen.sh</command> script included in the kde-dev-scripts module.
 See <ulink url="https://techbase.kde.org/Development/Tools/apidox">KDE
 TechBase</ulink> for more details.</para>
@@ -1813,7 +1991,7 @@ creating the build system for the module. When this is used as a global-option,
 it is applied to all modules that this script builds. <emphasis>This option
 only works for qt.</emphasis></para>
 
-<para>To change configuration settings for KDE 4 modules, see
+<para>To change configuration settings for KDE modules, see
 <link linkend="conf-cmake-options">cmake-options</link>.
 </para>
 </entry>
@@ -4289,14 +4467,14 @@ end global
 </chapter>
 
 <chapter id="kde-cmake">
-<title>&cmake;, the &kde; 4 build system</title>
+<title>&cmake;, the &kde; build system</title>
 
 <sect1 id="kde-cmake-intro">
 <title>Introduction to &cmake;</title>
 
 <para>In March 2006, the &cmake; program
 beat out several competitors and was selected to be the build system for &kde; 4, replacing the
-autotools-based system that &kde; has used from the beginning.</para>
+autotools-based system that &kde; had used from the beginning.</para>
 
 <para>A introduction to &cmake; page is available on the <ulink
 url="https://community.kde.org/Guidelines_HOWTOs/CMake">&kde; Community Wiki</ulink>.
