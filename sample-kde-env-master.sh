@@ -107,8 +107,8 @@ path_add "QT_PLUGIN_PATH"     "$kde_prefix/$libname/plugins"     # others like t
 path_add "PYTHONPATH"         "$kde_prefix/$libname/site-packages";
 
 # https://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
-path_add "XDG_DATA_DIRS"      "$kde_prefix/share";
-path_add "XDG_CONFIG_DIRS"    "$kde_prefix/etc/xdg";
+path_add "XDG_DATA_DIRS"      "$kde_prefix/share:/usr/share";
+path_add "XDG_CONFIG_DIRS"    "$kde_prefix/etc/xdg:/etc/xdg";
 
 # Finally, export the variables.
 export CMAKE_PREFIX_PATH
