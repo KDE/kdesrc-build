@@ -1744,6 +1744,8 @@ sub _handle_uninstall
 # Returns 0 on success, non-zero on failure.
 sub _handle_monitoring
 {
+    use Mojo::Reactor::Poll;
+
     my ($ipcToBuild, $ipcFromUpdater) = @_;
 
     my @msgs;  # Message queue.
@@ -1753,80 +1755,65 @@ sub _handle_monitoring
     my $sendFH = $ipcToBuild->{fh}     || croak_runtime('??? missing pipe to build proc');
     my $recvFH = $ipcFromUpdater->{fh} || croak_runtime('??? missing pipe from monitor');
 
-    my $readSelector  = IO::Select->new($recvFH);
-    my $writeSelector = IO::Select->new($sendFH);
+    my $readHandle  = IO::Handle->new_from_fd($recvFH, 'r');
+    my $writeHandle = IO::Handle->new_from_fd($sendFH, 'w');
+    my $reactor = Mojo::Reactor::Poll->new;
 
-    # Start the loop.  We will be waiting on either read or write ends.
-    # Whenever select() returns we must check both sets.
-    while (
-        my ($readReadyRef, $writeReadyRef) =
-            IO::Select->select($readSelector, $writeSelector, undef))
-    {
-        if (!$readReadyRef && !$writeReadyRef) {
-            # Some kind of error occurred.
-            return 1;
-        }
+    my $error = 0;
+    my $done  = 0;
 
-        # Check for source updates first.
-        if (@{$readReadyRef})
+    $reactor->io($readHandle => sub {
+        my ($reactor, $writable) = @_;
+        my $msg = eval { $ipcFromUpdater->receiveMessage(); };
+
+        # undef can be returned on EOF as well as error.  EOF means the
+        # other side is presumably done.
+        if ($@)
         {
-            undef $@;
-            my $msg = eval { $ipcFromUpdater->receiveMessage(); };
-
-            # undef msg indicates EOF, so check for exception obj specifically
-            die $@ if $@;
-
-            # undef can be returned on EOF as well as error.  EOF means the
-            # other side is presumably done.
-            if (! defined $msg)
-            {
-                $readSelector->remove($recvFH);
-                last; # Select no longer needed, just output to build.
-            }
-            else
-            {
-                push @msgs, $msg;
-
-                # We may not have been waiting for write handle to be ready if
-                # we were blocking on an update from updater thread.
-                $writeSelector->add($sendFH) unless $writeSelector->exists($sendFH);
-            }
+            $error = "$@";
+            $reactor->stop;
+            return;
         }
 
-        # Now check for build updates.
-        if (@{$writeReadyRef})
+        if (!defined $msg)
         {
-            # If we're here the update is still going.  If we have no messages
-            # to send wait for that first.
-            if (not @msgs)
-            {
-                $writeSelector->remove($sendFH);
-            }
-            else
-            {
-                # Send the message (if we got one).
-                if (!$ipcToBuild->sendMessage(shift @msgs))
-                {
-                    error ("r[mon]: Build process stopped too soon! r[$!]");
-                    return 1;
-                }
-            }
+            # write handler will fully stop reactor when it sees $done
+            $reactor->remove($readHandle);
+            $done = 1;
+            return;
         }
-    }
 
-    # Send all remaining messages.
-    while (@msgs)
-    {
+        push @msgs, $msg;
+
+        # Start watching for writability (if we haven't already)
+        $reactor->watch($writeHandle, 0, 1);
+    })->watch($readHandle, 1, 0);
+
+    # Setup write handle watcher and immediately pause watching.  The read
+    # handler will start it up again, after we have something to write.
+    $reactor->io($writeHandle => sub {
+        my ($reactor, $writable) = @_;
+
+        # If we have no messages to send wait for that first.  If there are
+        # no messages to send because we're done and we've sent them all, bail
+        if (!@msgs) {
+            $reactor->stop if $done;
+            return;
+        }
+
         if (!$ipcToBuild->sendMessage(shift @msgs))
         {
-            error ("r[mon]: Build process stopped too soon! r[$!]");
-            return 1;
+            $error = "r[mon]: Build process stopped too soon! r[$!]";
+            return;
         }
-    }
+    })->watch($writeHandle, 0, 0);
 
+    # Callback city
+    $reactor->start;
     $ipcToBuild->close();
 
-    return 0;
+    error ($error) if $error;
+    return ($error ? 1 : 0);
 }
 
 # Function: _applyModuleFilters
