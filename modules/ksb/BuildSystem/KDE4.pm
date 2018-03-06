@@ -25,11 +25,6 @@ sub name
     return 'KDE';
 }
 
-sub isProgressOutputSupported
-{
-    return 1;
-}
-
 # Called by the module being built before it runs its build/install process. Should
 # setup any needed environment variables, build context settings, etc., in preparation
 # for the build and install phases.

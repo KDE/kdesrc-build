@@ -92,13 +92,6 @@ sub isSubdirBuildable
     return 1;
 }
 
-# Returns true if the buildsystem will give percentage-completion updates on its output.
-# Such percentage updates will be searched for to update the kdesrc-build status.
-sub isProgressOutputSupported
-{
-    return 0;
-}
-
 # Called by the module being built before it runs its build/install process. Should
 # setup any needed environment variables, build context settings, etc., in preparation
 # for the build and install phases.
@@ -437,11 +430,10 @@ sub _runBuildCommand
     my $module = $self->module();
     my $ctx = $module->buildContext();
 
-    # There are situations when we don't want (or can't get) progress output:
-    # 1. Not using CMake (i.e. Qt)
-    # 2. If we're not printing to a terminal.
-    # 3. When we're debugging (we'd interfere with debugging output).
-    if (!$self->isProgressOutputSupported() || ! -t STDERR || debugging())
+    # There are situations when we don't want progress output:
+    # 1. If we're not printing to a terminal.
+    # 2. When we're debugging (we'd interfere with debugging output).
+    if (! -t STDERR || debugging())
     {
         note("\t$message");
         return log_command($module, $filename, $argRef);
