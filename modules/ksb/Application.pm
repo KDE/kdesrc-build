@@ -26,8 +26,10 @@ use ksb::IPC::Null;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
-use Mojo::Reactor;
 use Mojo::IOLoop;
+use Mojo::Message::Request;
+use Mojo::JSON qw(encode_json);
+use Mojo::Promise;
 
 use List::Util qw(first min);
 use File::Basename; # basename, dirname
@@ -1763,6 +1765,39 @@ sub _handle_monitoring
     my $error = 0;
     my $done  = 0;
 
+    my %module_updates;
+
+    # Setup a simple server to respond to requests about kdesrc-build status
+    my $srv_id = Mojo::IOLoop->server(
+        { path => qq(/tmp/kdesrc-build-uds) },
+        sub {
+            # Called for each new connection accepted by the listening server
+            my ($loop, $stream, $id) = @_;
+            my $req = Mojo::Message::Request->new;
+
+            # emitted for each chunk
+            $stream->on(read => sub {
+                my ($stream, $bytes_read) = @_;
+                $req->parse($bytes_read);
+
+                if ($req->is_finished) {
+                    return if $req->error;
+
+                    my $body = $req->param('mod');
+                    my $resp = Mojo::Message::Response->new;
+
+                    $resp->code(200);
+                    $resp->headers->content_type('application/json');
+                    $resp->body(Mojo::JSON::encode_json(\%module_updates));
+
+                    $stream->write($resp->to_string, sub { # callback on finished write
+                        my ($stream) = @_;
+                        $stream->close_gracefully;
+                    });
+                }
+            });
+        });
+
     $reactor->io($readHandle => sub {
         my ($reactor, $writable) = @_;
         my $msg = eval { $ipcFromUpdater->receiveMessage(); };
@@ -1772,7 +1807,7 @@ sub _handle_monitoring
         if ($@)
         {
             $error = "$@";
-            $reactor->stop;
+            Mojo::IOLoop->stop;
             return;
         }
 
@@ -1786,9 +1821,25 @@ sub _handle_monitoring
 
         push @msgs, $msg;
 
+        # TODO: Layering violation... but let's peek into the message buf
+        # and see if it's a type we recognize.  See IPC.pm, waitForModule
+        my $out_buf;
+        my $ipc_type = ksb::IPC::unpackMsg($msg, \$out_buf);
+        $out_buf =~ s/,.*$//; # Strip a comma and everything after
+        my %reasons = (
+            ksb::IPC::MODULE_SUCCESS => 'update-ok',
+            ksb::IPC::MODULE_SKIPPED => 'skipped',
+            ksb::IPC::MODULE_CONFLICT => 'scm conflict',
+            ksb::IPC::MODULE_UPTODATE => 'no new updates',
+        );
+        my $reason = $reasons{$ipc_type} // '?';
+        $module_updates{$out_buf} = $reason unless $reason eq '?';
+
         # Start watching for writability (if we haven't already)
         $reactor->watch($writeHandle, 0, 1);
     })->watch($readHandle, 1, 0);
+
+    my $done_promise = Mojo::Promise->new;
 
     # Setup write handle watcher and immediately pause watching.  The read
     # handler will start it up again, after we have something to write.
@@ -1798,7 +1849,14 @@ sub _handle_monitoring
         # If we have no messages to send wait for that first.  If there are
         # no messages to send because we're done and we've sent them all, bail
         if (!@msgs) {
-            $reactor->stop if $done;
+            # stop checking for writability, read handler will restart
+            $reactor->watch($writeHandle, 0, 0);
+
+            if ($done) {
+                $reactor->remove($writeHandle);
+                $done_promise->resolve;
+            }
+
             return;
         }
 
@@ -1809,8 +1867,21 @@ sub _handle_monitoring
         }
     })->watch($writeHandle, 0, 0);
 
-    # Callback city
-    $reactor->start;
+    # useful for debugging to ensure server is available for at least a few
+    # seconds.
+    my $delay = Mojo::IOLoop->delay(
+        sub {
+            my $delay = shift;
+            Mojo::IOLoop->timer(10, $delay->begin);
+        });
+
+    # Callback city... waiting on this 'promise' will automatically start an
+    # event loop if necessary.
+
+    Mojo::Promise->all($delay, $done_promise)->then(sub {
+            Mojo::IOLoop->stop;
+        })->wait;
+
     $ipcToBuild->close();
 
     error ($error) if $error;
