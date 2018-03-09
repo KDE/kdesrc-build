@@ -26,6 +26,9 @@ use ksb::IPC::Null;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
+use Mojo::Reactor;
+use Mojo::IOLoop;
+
 use List::Util qw(first min);
 use File::Basename; # basename, dirname
 use File::Glob ':glob';
@@ -1744,8 +1747,6 @@ sub _handle_uninstall
 # Returns 0 on success, non-zero on failure.
 sub _handle_monitoring
 {
-    use Mojo::Reactor::Poll;
-
     my ($ipcToBuild, $ipcFromUpdater) = @_;
 
     my @msgs;  # Message queue.
@@ -1757,7 +1758,7 @@ sub _handle_monitoring
 
     my $readHandle  = IO::Handle->new_from_fd($recvFH, 'r');
     my $writeHandle = IO::Handle->new_from_fd($sendFH, 'w');
-    my $reactor = Mojo::Reactor::Poll->new;
+    my $reactor = Mojo::IOLoop->singleton->reactor;
 
     my $error = 0;
     my $done  = 0;
