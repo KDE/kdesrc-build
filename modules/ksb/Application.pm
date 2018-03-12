@@ -1775,6 +1775,12 @@ sub _handle_monitoring
             my ($loop, $stream, $id) = @_;
             my $req = Mojo::Message::Request->new;
 
+            $stream->on(error => sub {
+                my ($stream, $err) = @_;
+                whisper("Error involving Mojo stream ID: $err");
+                $stream->close;
+            });
+
             # emitted for each chunk
             $stream->on(read => sub {
                 my ($stream, $bytes_read) = @_;
@@ -1783,12 +1789,24 @@ sub _handle_monitoring
                 if ($req->is_finished) {
                     return if $req->error;
 
-                    my $body = $req->param('mod');
+                    my $path = $req->url->path;
                     my $resp = Mojo::Message::Response->new;
-
                     $resp->code(200);
                     $resp->headers->content_type('application/json');
-                    $resp->body(Mojo::JSON::encode_json(\%module_updates));
+
+                    if ($path->contains('/list')) {
+                        $resp->body(Mojo::JSON::encode_json([keys %module_updates]));
+                    }
+                    elsif ($path->contains('/status')) {
+                        my $mod = $path->[1]; # part after /status/
+                        if ($mod && exists $module_updates{$mod}) {
+                            $resp->body(Mojo::JSON::encode_json({$mod => $module_updates{$mod}}));
+                        } else {
+                            $resp->code(400);
+                            $resp->headers->content_type('text/plain');
+                            $resp->body('You dun goofed');
+                        }
+                    }
 
                     $stream->write($resp->to_string, sub { # callback on finished write
                         my ($stream) = @_;
