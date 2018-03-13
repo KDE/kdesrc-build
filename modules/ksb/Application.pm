@@ -653,38 +653,21 @@ sub runAllModulePhases
         # No packages to install, we're in build mode
 
         # What we're going to do is fork another child to perform the source
-        # updates while we build.  Setup for this first by initializing some
-        # shared memory.
-        my $ipc = 0;
+        # updates while we build.
         my $updateOptsSub = sub {
             my ($k, $v) = @_;
             $ctx->setPersistentOption($k, $v);
         };
 
-        if ($ctx->getOption('async'))
-        {
-            $ipc = ksb::IPC::Pipe->new();
-            $ipc->setPersistentOptionHandler($updateOptsSub);
-        }
+        my $ipc = ksb::IPC::Pipe->new();
+        croak_runtime('Support for concurrent IPC is now required.')
+            unless $ipc;
 
-        if (!$ipc)
-        {
-            $ipc = ksb::IPC::Null->new();
-            $ipc->setPersistentOptionHandler($updateOptsSub);
+        $ipc->setPersistentOptionHandler($updateOptsSub);
 
-            whisper ("Using no IPC mechanism\n");
+        $result = _handle_async_build ($ipc, $ctx);
 
-            note ("\n b[<<<  Update Process  >>>]\n");
-            $result = _handle_updates ($ipc, $ctx);
-
-            note (" b[<<<  Build Process  >>>]\n");
-            $result = _handle_build ($ipc, $ctx) || $result;
-        }
-        else
-        {
-            $result = _handle_async_build ($ipc, $ctx);
-            $ipc->outputPendingLoggedMessages() if debugging();
-        }
+        $ipc->outputPendingLoggedMessages() if debugging();
     }
     elsif ($runMode eq 'install')
     {
