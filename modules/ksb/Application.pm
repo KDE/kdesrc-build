@@ -21,8 +21,6 @@ use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
-use ksb::IPC::Pipe 0.20;
-use ksb::IPC::Null;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
@@ -659,15 +657,9 @@ sub runAllModulePhases
             $ctx->setPersistentOption($k, $v);
         };
 
-        my $ipc = ksb::IPC::Pipe->new();
-        croak_runtime('Support for concurrent IPC is now required.')
-            unless $ipc;
+        $result = _handle_async_build ($ctx);
 
-        $ipc->setPersistentOptionHandler($updateOptsSub);
-
-        $result = _handle_async_build ($ipc, $ctx);
-
-        $ipc->outputPendingLoggedMessages() if debugging();
+#       $ipc->outputPendingLoggedMessages() if debugging();
     }
     elsif ($runMode eq 'install')
     {
@@ -1282,66 +1274,101 @@ EOF
 
 # Function: _handle_updates
 #
-# Subroutine to update a list of modules.
+# Subroutine to update a list of modules.  Uses a Mojolicious event loop
+# to run each update in a subprocess to avoid blocking the script.  Only
+# one update process will exist at a given time.
 #
 # Parameters:
-# 1. IPC module to pass results to.
-# 2. Build Context, which will be used to determine the module update list.
+# 1. Build Context, which will be used to determine the module update list.
+# 2. A hashref mapping module names to Mojo::Promises.  This function generates
+#    a promise for each module update, which can be waited on.
 #
-# The ipc parameter contains an object that is responsible for communicating
-# the status of building the modules.  This function must account for every
-# module in $ctx's update phase to the ipc object before returning.
+# This function accounts for every module in $ctx's update phase.  See
+# module_promises hashref.
 #
-# Returns 0 on success, non-zero on error.
+# Returns a Mojo::Promise that can be waited on.  The Promise should continue
+# to update every applicable module even if errors occur -- you must still
+# check for errors even if the promise successfully resolves.
 sub _handle_updates
 {
-    my ($ipc, $ctx) = @_;
+    my ($ctx, $module_promises) = @_;
     my $kdesrc = $ctx->getSourceDir();
     my @update_list = $ctx->modulesInPhase('update');
 
+    $module_promises->{'global'} = Mojo::Promise->new;
+
     # No reason to print out the text if we're not doing anything.
-    if (!@update_list)
-    {
-        $ipc->sendIPCMessage(ksb::IPC::ALL_UPDATING, "update-list-empty");
-        $ipc->sendIPCMessage(ksb::IPC::ALL_DONE,     "update-list-empty");
+    if (!@update_list) {
+        $module_promises->{'global'}->resolve(1);
         return 0;
     }
 
-    if (not _check_for_ssh_agent($ctx))
-    {
-        $ipc->sendIPCMessage(ksb::IPC::ALL_FAILURE, "ssh-failure");
+    if (not _check_for_ssh_agent($ctx)) {
+        $module_promises->{'global'}->reject('ssh-failure');
         return 1;
     }
 
-    if (not -e $kdesrc)
-    {
-        whisper ("KDE source download directory doesn't exist, creating.\n");
-        if (not super_mkdir ($kdesrc))
-        {
-            error ("Unable to make directory r[$kdesrc]!");
-            $ipc->sendIPCMessage(ksb::IPC::ALL_FAILURE, "no-source-dir");
-
-            return 1;
-        }
+    whisper ("Creating source directory") unless -e $kdesrc;
+    if (! -e $kdesrc && !super_mkdir ($kdesrc)) {
+        error ("Unable to make directory r[$kdesrc]!");
+        $module_promises->{'global'}->reject("Could not mkdir $kdesrc");
+        return 1;
     }
+
+    # Create promises for each module to update.
+    $module_promises->{"$_"} = Mojo::Promise->new foreach @update_list;
 
     # Once at this point, any errors we get should be limited to a module,
     # which means we can tell the build thread to start.
-    $ipc->sendIPCMessage(ksb::IPC::ALL_UPDATING, "starting-updates");
+    $module_promises->{'global'}->resolve(1);
 
-    my $hadError = 0;
-    foreach my $module (@update_list)
-    {
-        $ipc->setLoggedModule($module->name());
+    my @steps = map {
+        my $module = $_;
 
-        # Note that this must be in this order to avoid accidentally not
-        # running ->update() from short-circuiting if an error is noted.
-        $hadError = !$module->update($ipc, $ctx) || $hadError;
-    }
+        # This sub is called *LATER*, by Mojo::IOLoop::Delay->steps
+        # it needs to be in the loop to close over $module
+        # note: implicit return to `map`, using return keyword breaks immediately,
+        # not later.
+        sub {
+            my ($delay, $last_err) = @_; # fed in from a prior IOLoop::Delay step
+            my $end = $delay->begin(0);     # This controls when the Delay proceeds
 
-    $ipc->sendIPCMessage(ksb::IPC::ALL_DONE, "had_errors: $hadError");
+            Mojo::IOLoop->subprocess(
+                sub {
+                    # called in child process, can block
+                    $SIG{INT} = sub { POSIX::_exit(EINTR); };
+                    $0 = 'kdesrc-build-updater';
+                    ksb::Debug::setDebugLevel(ksb::Debug::ERROR);
 
-    return $hadError;
+                    return $module->update($ctx);
+                },
+                sub {
+                    # called in this process, with results
+                    # in this case the only result is whether there's an error or not
+                    my ($subprocess, $err, $resultCode) = @_;
+                    $module_promises->{"$module"}->resolve($module)
+                        if exists $module_promises->{"$module"};
+
+                    $end->(!$err && $resultCode && !$last_err); # proceed to next step
+                }
+            );
+        };
+    } (@update_list);
+
+    my $delay = Mojo::IOLoop->delay(
+        sub {
+            my $delay = shift;
+            $delay->pass(0); # kick off process with defined last_err
+        },
+        @steps,  # meat of the updates
+        sub {
+            my ($delay, $hadError) = @_;
+            # all done
+            die "had errors" if $hadError;
+        }
+    );
+
+    return $delay;
 }
 
 # Builds the given module.
@@ -1349,15 +1376,16 @@ sub _handle_updates
 # Return value is the failure phase, or 0 on success.
 sub _buildSingleModule
 {
-    my ($ipc, $ctx, $module, $startTimeRef) = @_;
+    my ($ctx, $module, $startTimeRef) = @_;
 
     $ctx->resetEnvironment();
     $module->setupEnvironment();
 
     my $fail_count = $module->getPersistentOption('failure-count') // 0;
-    my ($resultStatus, $message) = $ipc->waitForModule($module);
-    $ipc->forgetModule($module);
+    my $resultStatus = 'success';
+    my $message = 'TODO';
 
+    # TODO: move to _handle_build.  Or move wait logic here, whichever
     if ($resultStatus eq 'failed') {
         error ("\tUnable to update r[$module], build canceled.");
         $module->setPersistentOption('failure-count', ++$fail_count);
@@ -1381,8 +1409,24 @@ sub _buildSingleModule
     }
 
     $$startTimeRef = time;
-    $fail_count = $module->build() ? 0 : $fail_count + 1;
-    $module->setPersistentOption('failure-count', $fail_count);
+
+    Mojo::IOLoop->subprocess(
+        sub {
+            # called in child process, can block
+            $SIG{INT} = sub { POSIX::_exit(EINTR); };
+            $0 = 'kdesrc-build-builder';
+            #ksb::Debug::setIPC($ipc);  # TODO: Fix this to use pipe
+
+            return $module->build();
+        },
+        sub {
+            # called in this process, with results
+            # in this case the only result is whether there's an error or not
+            my ($subprocess, $err, $result) = @_;
+            $fail_count = $result ? 0 : $fail_count + 1;
+            $module->setPersistentOption('failure-count', $fail_count);
+        }
+    );
 
     return $fail_count > 0 ? 'build' : 0;
 }
@@ -1392,8 +1436,10 @@ sub _buildSingleModule
 # Subroutine to handle the build process.
 #
 # Parameters:
-# 1. IPC object to receive results from.
-# 2. Build Context, which is used to determine list of modules to build.
+# 1. Build Context, which is used to determine list of modules to build.
+# 2. hashref mapping module names to Mojo::Promises (from update phase).
+#    This sub will wait on a promise if present before starting the build for
+#    a given module.
 #
 # If the packages are not already checked-out and/or updated, this
 # subroutine WILL NOT do so for you.
@@ -1408,7 +1454,7 @@ sub _buildSingleModule
 # Returns 0 for success, non-zero for failure.
 sub _handle_build
 {
-    my ($ipc, $ctx) = @_;
+    my ($ctx, $module_promises) = @_;
     my @build_done;
     my @modules = $ctx->modulesInPhase('build');
     my $result = 0;
@@ -1428,9 +1474,17 @@ sub _handle_build
         return 1;
     }
 
-    # IPC queue should have a message saying whether or not to bother with the
-    # build.
-    $ipc->waitForStreamStart();
+    my $proceed = 0;
+    $module_promises->{'global'}->then(
+        sub { $proceed = 1; }, # success
+        # failed
+        sub {
+            my $reason = shift;
+            error(" Failed to start updates: r[b[$reason]");
+        },
+    )->wait;
+
+    croak_internal ("Unable to get updates") unless $proceed;
 
     $ctx->unsetPersistentOption('global', 'resume-list');
 
@@ -1451,106 +1505,120 @@ EOF
 
     $statusViewer->numberModulesTotal(scalar @modules);
 
-    while (my $module = shift @modules)
-    {
-        my $moduleName = $module->name();
-        my $moduleSet = $module->moduleSet()->name();
-        my $modOutput = $moduleName;
+    my @steps = map {
+        my $module = $_;
+        # Implicit return value
+        sub {
+            my $delay = shift;
+            my $end = $delay->begin;
 
-        if (debugging(ksb::Debug::WHISPER)) {
-            $modOutput .= " (build system " . $module->buildSystemType() . ")"
-        }
+            my $moduleName = $module->name();
 
-        $moduleSet = " from g[$moduleSet]" if $moduleSet;
-        note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
+            # Wait for update to be done.
+            $module_promises->{"$module"}->wait;
 
-        my $start_time = time;
-        my $failedPhase = _buildSingleModule($ipc, $ctx, $module, \$start_time);
-        my $elapsed = prettify_seconds(time - $start_time);
+            my $moduleSet = $module->moduleSet()->name();
+            my $modOutput = $moduleName;
 
-        if ($failedPhase)
-        {
-            # FAILURE
-            $ctx->markModulePhaseFailed($failedPhase, $module);
-            print STATUS_FILE "$module: Failed on $failedPhase after $elapsed.\n";
-
-            if ($result == 0) {
-                # No failures yet, mark this as resume point
-                my $moduleList = join(', ', map { "$_" } ($module, @modules));
-                $ctx->setPersistentOption('global', 'resume-list', $moduleList);
+            if (debugging(ksb::Debug::WHISPER)) {
+                $modOutput .= " (build system " . $module->buildSystemType() . ")"
             }
-            $result = 1;
 
-            if ($module->getOption('stop-on-failure'))
+            $moduleSet = " from g[$moduleSet]" if $moduleSet;
+            note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
+
+            my $start_time = time;
+            my $failedPhase = _buildSingleModule($ctx, $module, \$start_time);
+            my $elapsed = prettify_seconds(time - $start_time);
+
+            if ($failedPhase)
             {
-                note ("\n$module didn't build, stopping here.");
-                return 1; # Error
+                # FAILURE
+                $ctx->markModulePhaseFailed($failedPhase, $module);
+                print STATUS_FILE "$module: Failed on $failedPhase after $elapsed.\n";
+
+                if ($result == 0) {
+                    # No failures yet, mark this as resume point
+                    my $moduleList = join(', ', map { "$_" } ($module, @modules));
+                    $ctx->setPersistentOption('global', 'resume-list', $moduleList);
+                }
+                $result = 1;
+
+                if ($module->getOption('stop-on-failure'))
+                {
+                    note ("\n$module didn't build, stopping here.");
+                    return 1; # Error
+                }
+
+                $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
+            }
+            else {
+                # Success
+                print STATUS_FILE "$module: Succeeded after $elapsed.\n";
+
+                push @build_done, $moduleName; # Make it show up as a success
+
+                $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
             }
 
-            $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
-        }
-        else {
-            # Success
-            print STATUS_FILE "$module: Succeeded after $elapsed.\n";
+            $i++;
 
-            push @build_done, $moduleName; # Make it show up as a success
+            $end->(); # Kick off next step
+        };
+    } (@modules);
 
-            $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
-        }
+    # Concurrency magic
+    my $delay = Mojo::IOLoop->delay(@steps);
 
-        $i++;
-    }
-    continue # Happens at the end of each loop and on next
-    {
-        print "\n"; # Space things out
-    }
-
-    if ($outfile)
-    {
-        close STATUS_FILE;
-
-        # Update the symlink in latest to point to this file.
-        my $logdir = $ctx->getSubdirPath('log-dir');
-        if (-l "$logdir/latest/build-status") {
-            safe_unlink("$logdir/latest/build-status");
-        }
-        symlink($outfile, "$logdir/latest/build-status");
-    }
-
-    info ("<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
-
-    my $successes = scalar @build_done;
-    # TODO: l10n
-    my $mods = $successes == 1 ? 'module' : 'modules';
-
-    if (not pretending())
-    {
-        # Print out results, and output to a file
-        my $kdesrc = $ctx->getSourceDir();
-        open BUILT_LIST, ">$kdesrc/successfully-built";
-        foreach my $module (@build_done)
+    $delay->then(sub {
+        if ($outfile)
         {
-            info ("$module") if $successes <= 10;
-            print BUILT_LIST "$module\n";
-        }
-        close BUILT_LIST;
+            close STATUS_FILE;
 
-        info ("Built g[$successes] $mods") if $successes > 10;
-    }
-    else
-    {
-        # Just print out the results
-        if ($successes <= 10) {
-            info ('g[', join ("]\ng[", @build_done), ']');
+            # Update the symlink in latest to point to this file.
+            my $logdir = $ctx->getSubdirPath('log-dir');
+            if (-l "$logdir/latest/build-status") {
+                safe_unlink("$logdir/latest/build-status");
+            }
+            symlink($outfile, "$logdir/latest/build-status");
         }
-        else {
+
+        info ("<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
+
+        my $successes = scalar @build_done;
+        # TODO: l10n
+        my $mods = $successes == 1 ? 'module' : 'modules';
+
+        if (not pretending())
+        {
+            # Print out results, and output to a file
+            my $kdesrc = $ctx->getSourceDir();
+            open BUILT_LIST, ">$kdesrc/successfully-built";
+            foreach my $module (@build_done)
+            {
+                info ("$module") if $successes <= 10;
+                print BUILT_LIST "$module\n";
+            }
+            close BUILT_LIST;
+
             info ("Built g[$successes] $mods") if $successes > 10;
         }
-    }
+        else
+        {
+            # Just print out the results
+            if ($successes <= 10) {
+                info ('g[', join ("]\ng[", @build_done), ']');
+            }
+            else {
+                info ("Built g[$successes] $mods") if $successes > 10;
+            }
+        }
 
-    info (' '); # Space out nicely
+        info (' '); # Space out nicely
+        return $result;
+    });
 
-    return $result;
+    return $delay;
 }
 
 # Function: _handle_async_build
@@ -1574,69 +1642,39 @@ EOF
 # Returns 0 on success, non-zero on failure.
 sub _handle_async_build
 {
-    # The exact method for async is that two children are forked.  One child
-    # is a source update process.  The other child is a monitor process which will
-    # hold status updates from the update process so that the updates may
-    # happen without waiting for us to be ready to read.
+    my ($ctx) = @_;
 
-    my ($ipc, $ctx) = @_;
-
-    print "\n"; # Space out from metadata messages.
+    my $kdesrc = $ctx->getSourceDir();
+    my @updateList = $ctx->modulesInPhase('update');
 
     my $result = 0;
-    my $monitorPid = fork;
-    if ($monitorPid == 0) {
-        # child
-        my $updaterToMonitorIPC = ksb::IPC::Pipe->new();
-        my $updaterPid = fork;
+    my $module_promises = { };
+    my $updater_delay = _handle_updates ($ctx, $module_promises);
+    my $build_delay   = _handle_build   ($ctx, $module_promises);
 
-        $SIG{INT} = sub { POSIX::_exit(EINTR); };
+    my $promise = Mojo::Promise->all($updater_delay, $build_delay);
+    $promise->then(
+        sub {
+            say "Done with event loop";
+        })->catch(
+        sub {
+            my $err = shift;
+            say "Error received! $err";
+        })->finally(
+        sub {
+            say "Something happened with the promise.";
+        })->wait;
 
-        if ($updaterPid) {
-            $0 = 'kdesrc-build-updater';
-            $updaterToMonitorIPC->setSender();
-            ksb::Debug::setIPC($updaterToMonitorIPC);
-
-            POSIX::_exit (_handle_updates ($updaterToMonitorIPC, $ctx));
-        }
-        else {
-            $0 = 'kdesrc-build-monitor';
-            $ipc->setSender();
-            $updaterToMonitorIPC->setReceiver();
-
-            $ipc->setLoggedModule('#monitor#'); # This /should/ never be used...
-            ksb::Debug::setIPC($ipc);
-
-            POSIX::_exit (_handle_monitoring ($ipc, $updaterToMonitorIPC));
-        }
-    }
-    else {
-        # Still the parent, let's do the build.
-        $ipc->setReceiver();
-        $result = _handle_build ($ipc, $ctx);
-    }
-
-    $ipc->waitForEnd();
-    $ipc->close();
+    say "Finished waiting on progress.";
 
     # Display a message for updated modules not listed because they were not
     # built.
-    my $unseenModulesRef = $ipc->unacknowledgedModules();
+    my $unseenModulesRef = {}; # = $ipc->unacknowledgedModules();
     if (%$unseenModulesRef) {
         note ("The following modules were updated but not built:");
         foreach my $modulename (keys %$unseenModulesRef) {
             note ("\t$modulename");
         }
-    }
-
-    # It's possible if build fails on first module that git or svn is still
-    # running. Make them stop too.
-    if (waitpid ($monitorPid, WNOHANG) == 0) {
-        kill 'INT', $monitorPid;
-
-        # Exit code is in $?.
-        waitpid ($monitorPid, 0);
-        $result = 1 if $? != 0;
     }
 
     return $result;
@@ -1712,181 +1750,6 @@ sub _handle_uninstall
     }
 
     return $result;
-}
-
-# Function: _handle_monitoring
-#
-# This is the main subroutine for the monitoring process when using IPC::Pipe.
-# It reads in all status reports from the source update process and then holds
-# on to them.  When the build process is ready to read information we send what
-# we have.  Otherwise we're waiting on the update process to send us something.
-#
-# This convoluted arrangement is required to allow the source update
-# process to go from start to finish without undue interruption on it waiting
-# to write out its status to the build process (which is usually busy).
-#
-# Parameters:
-# 1. the IPC object to use to send to build process.
-# 2. the IPC object to use to receive from update process.
-#
-# Returns 0 on success, non-zero on failure.
-sub _handle_monitoring
-{
-    my ($ipcToBuild, $ipcFromUpdater) = @_;
-
-    my @msgs;  # Message queue.
-
-    # We will write to the build process and read from the update process.
-
-    my $sendFH = $ipcToBuild->{fh}     || croak_runtime('??? missing pipe to build proc');
-    my $recvFH = $ipcFromUpdater->{fh} || croak_runtime('??? missing pipe from monitor');
-
-    my $readHandle  = IO::Handle->new_from_fd($recvFH, 'r');
-    my $writeHandle = IO::Handle->new_from_fd($sendFH, 'w');
-    my $reactor = Mojo::IOLoop->singleton->reactor;
-
-    my $error = 0;
-    my $done  = 0;
-
-    my %module_updates;
-
-    # Setup a simple server to respond to requests about kdesrc-build status
-    my $srv_id = Mojo::IOLoop->server(
-        { path => qq(/tmp/kdesrc-build-uds) },
-        sub {
-            # Called for each new connection accepted by the listening server
-            my ($loop, $stream, $id) = @_;
-            my $req = Mojo::Message::Request->new;
-
-            $stream->on(error => sub {
-                my ($stream, $err) = @_;
-                whisper("Error involving Mojo stream ID: $err");
-                $stream->close;
-            });
-
-            # emitted for each chunk
-            $stream->on(read => sub {
-                my ($stream, $bytes_read) = @_;
-                $req->parse($bytes_read);
-
-                if ($req->is_finished) {
-                    return if $req->error;
-
-                    my $path = $req->url->path;
-                    my $resp = Mojo::Message::Response->new;
-                    $resp->code(200);
-                    $resp->headers->content_type('application/json');
-
-                    if ($path->contains('/list')) {
-                        $resp->body(Mojo::JSON::encode_json([keys %module_updates]));
-                    }
-                    elsif ($path->contains('/status')) {
-                        my $mod = $path->[1]; # part after /status/
-                        if ($mod && exists $module_updates{$mod}) {
-                            $resp->body(Mojo::JSON::encode_json({$mod => $module_updates{$mod}}));
-                        } else {
-                            $resp->code(400);
-                            $resp->headers->content_type('text/plain');
-                            $resp->body('You dun goofed');
-                        }
-                    }
-
-                    $stream->write($resp->to_string, sub { # callback on finished write
-                        my ($stream) = @_;
-                        $stream->close_gracefully;
-                    });
-                }
-            });
-        });
-
-    $reactor->io($readHandle => sub {
-        my ($reactor, $writable) = @_;
-        my $msg = eval { $ipcFromUpdater->receiveMessage(); };
-
-        # undef can be returned on EOF as well as error.  EOF means the
-        # other side is presumably done.
-        if ($@)
-        {
-            $error = "$@";
-            Mojo::IOLoop->stop;
-            return;
-        }
-
-        if (!defined $msg)
-        {
-            # write handler will fully stop reactor when it sees $done
-            $reactor->remove($readHandle);
-            $done = 1;
-            return;
-        }
-
-        push @msgs, $msg;
-
-        # TODO: Layering violation... but let's peek into the message buf
-        # and see if it's a type we recognize.  See IPC.pm, waitForModule
-        my $out_buf;
-        my $ipc_type = ksb::IPC::unpackMsg($msg, \$out_buf);
-        $out_buf =~ s/,.*$//; # Strip a comma and everything after
-        my %reasons = (
-            ksb::IPC::MODULE_SUCCESS => 'update-ok',
-            ksb::IPC::MODULE_SKIPPED => 'skipped',
-            ksb::IPC::MODULE_CONFLICT => 'scm conflict',
-            ksb::IPC::MODULE_UPTODATE => 'no new updates',
-        );
-        my $reason = $reasons{$ipc_type} // '?';
-        $module_updates{$out_buf} = $reason unless $reason eq '?';
-
-        # Start watching for writability (if we haven't already)
-        $reactor->watch($writeHandle, 0, 1);
-    })->watch($readHandle, 1, 0);
-
-    my $done_promise = Mojo::Promise->new;
-
-    # Setup write handle watcher and immediately pause watching.  The read
-    # handler will start it up again, after we have something to write.
-    $reactor->io($writeHandle => sub {
-        my ($reactor, $writable) = @_;
-
-        # If we have no messages to send wait for that first.  If there are
-        # no messages to send because we're done and we've sent them all, bail
-        if (!@msgs) {
-            # stop checking for writability, read handler will restart
-            $reactor->watch($writeHandle, 0, 0);
-
-            if ($done) {
-                $reactor->remove($writeHandle);
-                $done_promise->resolve;
-            }
-
-            return;
-        }
-
-        if (!$ipcToBuild->sendMessage(shift @msgs))
-        {
-            $error = "r[mon]: Build process stopped too soon! r[$!]";
-            return;
-        }
-    })->watch($writeHandle, 0, 0);
-
-    # useful for debugging to ensure server is available for at least a few
-    # seconds.
-    my $delay = Mojo::IOLoop->delay(
-        sub {
-            my $delay = shift;
-            Mojo::IOLoop->timer(10, $delay->begin);
-        });
-
-    # Callback city... waiting on this 'promise' will automatically start an
-    # event loop if necessary.
-
-    Mojo::Promise->all($delay, $done_promise)->then(sub {
-            Mojo::IOLoop->stop;
-        })->wait;
-
-    $ipcToBuild->close();
-
-    error ($error) if $error;
-    return ($error ? 1 : 0);
 }
 
 # Function: _applyModuleFilters

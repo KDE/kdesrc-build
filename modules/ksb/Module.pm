@@ -12,7 +12,6 @@ no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
 use parent qw(ksb::OptionsBase);
 
-use ksb::IPC;
 use ksb::Debug;
 use ksb::Util;
 
@@ -696,48 +695,37 @@ sub compare
 
 sub update
 {
-    my ($self, $ipc, $ctx) = @_;
+    my ($self, $ctx) = @_;
 
     my $moduleName = $self->name();
     my $module_src_dir = $self->getSourceDir();
     my $kdesrc = $ctx->getSourceDir();
 
-    if ($kdesrc ne $module_src_dir)
+    if ($kdesrc ne $module_src_dir && !super_mkdir($module_src_dir))
     {
         # This module has a different source directory, ensure it exists.
-        if (!super_mkdir($module_src_dir))
-        {
-            error ("Unable to create separate source directory for r[$self]: $module_src_dir");
-            $ipc->sendIPCMessage(ksb::IPC::MODULE_FAILURE, $moduleName);
-            next;
-        }
+        error ("Unable to create separate source directory for r[$self]: $module_src_dir");
+        return 0;
     }
 
     my $fullpath = $self->fullpath('source');
     my $count;
     my $returnValue;
 
-    eval { $count = $self->scm()->updateInternal($ipc) };
+    eval { $count = $self->scm()->updateInternal() };
 
+    # TODO: Just let the exception pass as it has the detail we need
+    # Let calling code worry about updating $ctx
     if ($@)
     {
-        my $reason = ksb::IPC::MODULE_FAILURE;
-
         if (had_an_exception()) {
-            if ($@->{'exception_type'} eq 'ConflictPresent') {
-                $reason = ksb::IPC::MODULE_CONFLICT;
-            }
-            else {
-                $ctx->markModulePhaseFailed('build', $self);
-            }
-
+            $ctx->markModulePhaseFailed('build', $self);
             $@ = $@->{'message'};
         }
 
         error ("Error updating r[$self], removing from list of packages to build.");
         error (" > y[$@]");
 
-        $ipc->sendIPCMessage($reason, $moduleName);
         $self->phases()->filterOutPhase('build');
         $returnValue = 0;
     }
@@ -747,27 +735,16 @@ sub update
         if (not defined $count)
         {
             $message = ksb::Debug::colorize ("b[y[Unknown changes].");
-            $ipc->notifyUpdateSuccess($moduleName, $message);
         }
         elsif ($count)
         {
             $message = "1 file affected." if $count == 1;
             $message = "$count files affected." if $count != 1;
-            $ipc->notifyUpdateSuccess($moduleName, $message);
         }
         else
         {
             $message = "0 files affected.";
             my $refreshReason = $self->buildSystem()->needsRefreshed();
-
-            $ipc->sendIPCMessage(ksb::IPC::MODULE_UPTODATE, "$moduleName,$refreshReason");
-        }
-
-        # We doing e.g. --src-only, the build phase that normally outputs
-        # number of files updated doesn't get run, so manually mention it
-        # here.
-        if (!$ipc->supportsConcurrency()) {
-            info ("\t$self update complete, $message");
         }
 
         $returnValue = 1;

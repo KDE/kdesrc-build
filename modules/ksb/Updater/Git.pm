@@ -11,7 +11,6 @@ use 5.014;
 use parent qw(ksb::Updater);
 
 use ksb::Debug;
-use ksb::IPC::Null;
 use ksb::Util;
 
 use File::Basename; # basename
@@ -29,11 +28,8 @@ use constant {
 sub updateInternal
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
-    my $ipc  = shift;
 
-    $self->{ipc} = $ipc // ksb::IPC::Null->new();
     return $self->updateCheckout();
-    delete $self->{ipc};
 }
 
 sub name
@@ -99,8 +95,6 @@ sub _clone
     my $srcdir = $module->fullpath('source');
     my @args = ('--', $git_repo, $srcdir);
 
-    my $ipc = $self->{ipc} // croak_internal ('Missing IPC object');
-
     note ("Cloning g[$module]");
 
     p_chdir($module->getSourceDir());
@@ -113,8 +107,7 @@ sub _clone
         croak_runtime("Failed to make initial clone of $module");
     }
 
-    $ipc->notifyPersistentOptionChange(
-        $module->name(), 'git-cloned-repository', $git_repo);
+    #$ipc->notifyPersistentOptionChange($module->name(), 'git-cloned-repository', $git_repo);
 
     p_chdir($srcdir);
 
@@ -237,7 +230,6 @@ sub _setupBestRemote
     my $self     = assert_isa(shift, 'ksb::Updater::Git');
     my $module   = $self->module();
     my $cur_repo = $module->getOption('repository');
-    my $ipc      = $self->{ipc} // croak_internal ('Missing IPC object');
 
     # Search for an existing remote name first. If none, add our alias.
     my @remoteNames = $self->bestRemoteName($cur_repo);
@@ -273,8 +265,7 @@ sub _setupBestRemote
         note (" y[b[*]\tThe git remote named b[", DEFAULT_GIT_REMOTE, "] has been updated");
 
         # Update what we think is the current repository on-disk.
-        $ipc->notifyPersistentOptionChange(
-            $module->name(), 'git-cloned-repository', $cur_repo);
+        #$ipc->notifyPersistentOptionChange($module->name(), 'git-cloned-repository', $cur_repo);
     }
 
     return $remoteNames[0];
