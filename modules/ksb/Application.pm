@@ -1373,7 +1373,8 @@ sub _handle_updates
 
 # Builds the given module.
 #
-# Return value is the failure phase, or 0 on success.
+# Return value is a promise which will eventually resolve to either a
+# string noting failure reason (if promise rejects) or a true value
 sub _buildSingleModule
 {
     my ($ctx, $module, $startTimeRef) = @_;
@@ -1409,26 +1410,34 @@ sub _buildSingleModule
     }
 
     $$startTimeRef = time;
+    my $build_promise = Mojo::Promise->new;
 
     Mojo::IOLoop->subprocess(
         sub {
             # called in child process, can block
             $SIG{INT} = sub { POSIX::_exit(EINTR); };
             $0 = 'kdesrc-build-builder';
-            #ksb::Debug::setIPC($ipc);  # TODO: Fix this to use pipe
 
             return $module->build();
         },
         sub {
             # called in this process, with results
             # in this case the only result is whether there's an error or not
-            my ($subprocess, $err, $result) = @_;
-            $fail_count = $result ? 0 : $fail_count + 1;
+            my ($subprocess, $err, $was_successful) = @_;
+
+            $fail_count = $was_successful ? 0 : $fail_count + 1;
             $module->setPersistentOption('failure-count', $fail_count);
+
+            if ($was_successful) {
+                $build_promise->resolve(1);
+            }
+            else {
+                $build_promise->reject('build');
+            }
         }
     );
 
-    return $fail_count > 0 ? 'build' : 0;
+    return $build_promise;
 }
 
 # Function: _handle_build
@@ -1501,6 +1510,7 @@ EOF
 
     my $num_modules = scalar @modules;
     my $statusViewer = $ctx->statusViewer();
+    my $everFailed = 0;
     my $i = 1;
 
     $statusViewer->numberModulesTotal(scalar @modules);
@@ -1528,42 +1538,43 @@ EOF
             note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
 
             my $start_time = time;
-            my $failedPhase = _buildSingleModule($ctx, $module, \$start_time);
-            my $elapsed = prettify_seconds(time - $start_time);
+            my $build_promise = _buildSingleModule($ctx, $module, \$start_time);
 
-            if ($failedPhase)
-            {
-                # FAILURE
-                $ctx->markModulePhaseFailed($failedPhase, $module);
-                print STATUS_FILE "$module: Failed on $failedPhase after $elapsed.\n";
+            $build_promise->then(sub {
+                my $elapsed = prettify_seconds(time - $start_time);
 
-                if ($result == 0) {
-                    # No failures yet, mark this as resume point
-                    my $moduleList = join(', ', map { "$_" } ($module, @modules));
-                    $ctx->setPersistentOption('global', 'resume-list', $moduleList);
-                }
-                $result = 1;
-
-                if ($module->getOption('stop-on-failure'))
-                {
-                    note ("\n$module didn't build, stopping here.");
-                    return 1; # Error
-                }
-
-                $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
-            }
-            else {
-                # Success
                 print STATUS_FILE "$module: Succeeded after $elapsed.\n";
 
                 push @build_done, $moduleName; # Make it show up as a success
 
                 $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
-            }
+            })->catch(sub {
+                my $failedPhase = shift;
+                my $elapsed = prettify_seconds(time - $start_time);
 
-            $i++;
+                $ctx->markModulePhaseFailed($failedPhase, $module);
+                print STATUS_FILE "$module: Failed on $failedPhase after $elapsed.\n";
 
-            $end->(); # Kick off next step
+                if (!$everFailed) {
+                    # No failures yet, mark this as resume point
+                    $everFailed = 1;
+                    my $moduleList = join(', ', map { "$_" } ($module, @modules));
+                    $ctx->setPersistentOption('global', 'resume-list', $moduleList);
+                }
+
+                if ($module->getOption('stop-on-failure'))
+                {
+                    note ("\n$module didn't build, stopping here.");
+                    # TODO: Fix this
+                    die "Early stop";
+                }
+
+                $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
+            })->finally(sub {
+                $i++;
+                note (""); # Blank line
+                $end->(); # Kick off next step
+            });
         };
     } (@modules);
 
@@ -1653,22 +1664,16 @@ sub _handle_async_build
     my $build_delay   = _handle_build   ($ctx, $module_promises);
 
     my $promise = Mojo::Promise->all($updater_delay, $build_delay);
-    $promise->then(
-        sub {
-            say "Done with event loop";
-        })->catch(
-        sub {
-            my $err = shift;
-            say "Error received! $err";
-        })->finally(
-        sub {
-            say "Something happened with the promise.";
-        })->wait;
 
-    say "Finished waiting on progress.";
+    $promise->ioloop->stop; # Force the next wait to actually wait
+    $promise->catch(sub {
+        my $err = shift;
+        say "Error received! $err";
+    })->wait;
 
     # Display a message for updated modules not listed because they were not
     # built.
+    # TODO: Fix (if broken?)
     my $unseenModulesRef = {}; # = $ipc->unacknowledgedModules();
     if (%$unseenModulesRef) {
         note ("The following modules were updated but not built:");
