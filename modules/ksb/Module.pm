@@ -693,6 +693,8 @@ sub compare
     return $self->name() cmp $other->name();
 }
 
+# returns false if an error, otherwise a string containing information about
+# number of files/commits/etc affected
 sub update
 {
     my ($self, $ctx) = @_;
@@ -731,6 +733,8 @@ sub update
     }
     else
     {
+        # TODO: Require updateInternal to set appropriate msg for scm (files, commits, etc.)
+
         my $message;
         if (not defined $count)
         {
@@ -747,7 +751,7 @@ sub update
             my $refreshReason = $self->buildSystem()->needsRefreshed();
         }
 
-        $returnValue = 1;
+        $returnValue = $message;
     }
 
     info (""); # Print empty line.
