@@ -1330,7 +1330,7 @@ sub _handle_updates
         # note: implicit return to `map`, using return keyword breaks immediately,
         # not later.
         sub {
-            my ($delay, $last_err) = @_; # fed in from a prior IOLoop::Delay step
+            my ($delay, $last_step_successful) = @_; # fed in from a prior IOLoop::Delay step
             my $end = $delay->begin(0);     # This controls when the Delay proceeds
 
             Mojo::IOLoop->subprocess(
@@ -1345,11 +1345,11 @@ sub _handle_updates
                 sub {
                     # called in this process, with results
                     # in this case the only result is whether there's an error or not
-                    my ($subprocess, $err, $resultCode) = @_;
-                    $module_promises->{"$module"}->resolve($module)
+                    my ($subprocess, $err, $updateMsg) = @_;
+                    $module_promises->{"$module"}->resolve($updateMsg)
                         if exists $module_promises->{"$module"};
 
-                    $end->(!$err && $resultCode && !$last_err); # proceed to next step
+                    $end->(!$err && $updateMsg && $last_step_successful); # proceed to next step
                 }
             );
         };
@@ -1358,13 +1358,14 @@ sub _handle_updates
     my $delay = Mojo::IOLoop->delay(
         sub {
             my $delay = shift;
-            $delay->pass(0); # kick off process with defined last_err
+            $delay->pass(1); # kick off process with defined success code
         },
         @steps,  # meat of the updates
         sub {
-            my ($delay, $hadError) = @_;
+            my ($delay, $success) = @_;
             # all done
-            die "had errors" if $hadError;
+            $delay->reject('update failed') unless $success;
+            $delay->resolve($success) if $success;
         }
     );
 
