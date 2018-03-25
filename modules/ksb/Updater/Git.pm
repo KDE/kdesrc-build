@@ -73,9 +73,7 @@ sub _verifyRefPresent
 
     return 1 if pretending();
 
-    my $ref = (($commitType eq 'branch') ? 'refs/heads/'
-            : ($commitType eq 'tag')    ? 'refs/tags/'
-            : '') . $commitId;
+    my $ref = $commitId;
 
     my $hashref = run_forked("git ls-remote --exit-code $repo $ref",
         { timeout => 10, discard_output => 1, terminate_on_parent_sudden_death => 1});
