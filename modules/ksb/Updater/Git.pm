@@ -106,6 +106,7 @@ sub _clone
     p_chdir($module->getSourceDir());
 
     my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+    $commitId =~ s,^refs/tags/,,;   # git-clone -b doesn't like refs/tags/
     unshift @args, '-b', $commitId; # Checkout branch right away
 
     if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
