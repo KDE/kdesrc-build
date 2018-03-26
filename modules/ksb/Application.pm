@@ -1343,8 +1343,14 @@ sub _handle_updates
                     # called in this process, with results
                     # in this case the only result is whether there's an error or not
                     my ($subprocess, $err, $updateMsg) = @_;
-                    $module_promises->{"$module"}->resolve($updateMsg)
-                        if exists $module_promises->{"$module"};
+
+                    my $promise = $module_promises->{"$module"};
+                    if ($err || !$updateMsg) {
+                        $promise->reject($err || "$module failed to update");
+                    }
+                    else {
+                        $promise->resolve($updateMsg);
+                    }
 
                     $end->(!$err && $updateMsg && $last_step_successful); # proceed to next step
                 }
@@ -1503,7 +1509,7 @@ sub _handle_build
             $promise = Mojo::Promise->new->reject('No changes to source, no need to build');
         }
         else {
-            $promise = Mojo::Promise->new->resolve('0 update(s) (update was skipped)');
+            $promise = Mojo::Promise->new->resolve('update was skipped');
         }
 
         $module_promises->{"$skipped"} = $promise;
@@ -1526,49 +1532,50 @@ sub _handle_build
             my $delay = shift;
             my $end = $delay->begin;
 
-            my $moduleName = $module->name();
             my $start_time = time;
             my $fail_count = $module->getPersistentOption('failure-count') // 0;
 
-            # Wait for update to be done.
-            $module_promises->{"$module"}->then(sub {
+            my $moduleName = $module->name();
+
+            if ($everFailed && $module->getOption('stop-on-failure')) {
+                # Wait for update to be done then continue
+                return $module_promises->{"$module"}->then(sub {
+                        $i++;
+                        $end->();
+                    });
+            }
+
+            my $moduleSet = $module->moduleSet()->name();
+            my $modOutput = $moduleName;
+
+            if (debugging(ksb::Debug::WHISPER)) {
+                $modOutput .= " (build system " . $module->buildSystemType() . ")"
+            }
+
+            $moduleSet = " from g[$moduleSet]" if $moduleSet;
+            note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
+
+            $module_promises->{"$module"}->catch(sub {
+                my $reason = shift;
+                error ("\tUnable to update r[$module]: $reason, build canceled.");
+
+                ++$fail_count;
+                $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
+                return Mojo::Promise->new->reject('failed update');
+            })->then(sub {
                 my $updateMsg = shift;
-                my $moduleSet = $module->moduleSet()->name();
-                my $modOutput = $moduleName;
-
-                if (debugging(ksb::Debug::WHISPER)) {
-                    $modOutput .= " (build system " . $module->buildSystemType() . ")"
-                }
-
-                $moduleSet = " from g[$moduleSet]" if $moduleSet;
-                note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
                 note ("\tSource update complete for g[$module]: $updateMsg");
 
-                if ($everFailed && $module->getOption('stop-on-failure')) {
-                    return Mojo::Promise->new->reject(
-                        "$module build aborted due to previous failure");
-                }
-                else {
-                    return _buildSingleModule($ctx, $module, \$start_time);
-                }
-            })->then(sub {
-                my $built_module = shift;
-                my $elapsed = prettify_seconds(time - $start_time);
-
-                print $statusFile "$module: Succeeded after $elapsed.\n";
-
-                push @build_done, $moduleName; # Make it show up as a success
-
-                $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
+                # TODO: Split install into a separate phase so that exception
+                # handler knows which phase had the failure
+                return _buildSingleModule($ctx, $module, \$start_time);
             })->catch(sub {
-                my $failedPhase = shift;
+                my $failureReason = shift;
                 my $elapsed = prettify_seconds(time - $start_time);
 
-                $ctx->markModulePhaseFailed($failedPhase, $module);
-                print $statusFile "$module: Failed on $failedPhase after $elapsed.\n";
-
-                error ("\tUnable to update r[$module], build canceled.");
-                $module->setPersistentOption('failure-count', ++$fail_count);
+                $ctx->markModulePhaseFailed('build', $module);
+                print $statusFile "$module: Failed on build after $elapsed.\n";
+                note ("\tFailed to build $module: $failureReason");
 
                 if (!$everFailed) {
                     # No failures yet, mark this as resume point
@@ -1577,17 +1584,25 @@ sub _handle_build
                     $ctx->setPersistentOption('global', 'resume-list', $moduleList);
                 }
 
-                if ($module->getOption('stop-on-failure'))
-                {
-                    note ("\n$module didn't build, stopping here.");
-                    # TODO: Fix this
-                    die "Early stop";
-                }
-
+                ++$fail_count;
                 $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
+
+                # Force this promise chain to stay dead
+                return Mojo::Promise->new->reject('build');
+            })->then(sub {
+                my $built_module = shift;
+                my $elapsed = prettify_seconds(time - $start_time);
+
+                print $statusFile "$module: Succeeded after $elapsed.\n";
+
+                $fail_count = 0;
+                push @build_done, $moduleName; # Make it show up as a success
+                $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
             })->finally(sub {
                 $i++;
                 note (""); # Blank line
+                $module->setPersistentOption('failure-count', $fail_count);
+
                 $end->(); # Kick off next step
             });
         };
@@ -1688,7 +1703,7 @@ sub _handle_async_build
     my $mark_update_done_p = $updater_delay->then(sub { $update_done = 1; });
     my $build_done_msg_p   = $build_delay->then(sub {
             # This can happen with a build failure under stop-on-failure
-            note("Build finished, still waiting for updates") unless $update_done;
+            note("All builds finished, but still waiting for updates") unless $update_done;
         });
 
     my @all_promises = ($updater_delay, $build_delay, $mark_update_done_p, $build_done_msg_p);
@@ -1697,20 +1712,8 @@ sub _handle_async_build
     $promise->ioloop->stop; # Force the next wait to actually wait
     $promise->catch(sub {
         my $err = shift;
-        say "Error received: $err";
         $result = 1;
     })->wait;
-
-    # Display a message for updated modules not listed because they were not
-    # built.
-    # TODO: Fix (if broken?)
-    my $unseenModulesRef = {}; # = $ipc->unacknowledgedModules();
-    if (%$unseenModulesRef) {
-        note ("The following modules were updated but not built:");
-        foreach my $modulename (keys %$unseenModulesRef) {
-            note ("\t$modulename");
-        }
-    }
 
     return $result;
 }
