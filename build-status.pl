@@ -87,7 +87,7 @@ Mojo::IOLoop->recurring(2 => sub {
         sub {
             # next promise resolved, with the tx and mod
             my ($delay, $tx, $mod) = @_;
-            my $last_status = decode_json($tx->result->body)->{$mod};
+            my $last_status = $tx->result->body;
 
             say "Last $mod update status: $last_status";
         },

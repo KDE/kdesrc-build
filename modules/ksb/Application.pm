@@ -1291,7 +1291,7 @@ EOF
 # check for errors even if the promise successfully resolves.
 sub _handle_updates
 {
-    my ($ctx, $module_promises) = @_;
+    my ($ctx, $module_promises, $module_updates_ref) = @_;
     my $kdesrc = $ctx->getSourceDir();
     my @update_list = $ctx->modulesInPhase('update');
 
@@ -1344,11 +1344,14 @@ sub _handle_updates
                     # in this case the only result is whether there's an error or not
                     my ($subprocess, $err, $updateMsg) = @_;
 
+                    $module_updates_ref->{"$module"} //= { };
                     my $promise = $module_promises->{"$module"};
                     if ($err || !$updateMsg) {
+                        $module_updates_ref->{"$module"}->{update} = 'failed';
                         $promise->reject($err || "$module failed to update");
                     }
                     else {
+                        $module_updates_ref->{"$module"}->{update} = 'success';
                         $promise->resolve($updateMsg);
                     }
 
@@ -1488,7 +1491,7 @@ EOF
 # Returns a Mojo::Promise that completes when the build is done
 sub _handle_build
 {
-    my ($ctx, $module_promises) = @_;
+    my ($ctx, $module_promises, $module_updates_ref) = @_;
     my @build_done;
     my @modules = $ctx->modulesInPhase('build');
     my $result = 0;
@@ -1536,6 +1539,7 @@ sub _handle_build
             my $fail_count = $module->getPersistentOption('failure-count') // 0;
 
             my $moduleName = $module->name();
+            $module_updates_ref->{$moduleName} //= { };
 
             if ($everFailed && $module->getOption('stop-on-failure')) {
                 # Wait for update to be done then continue
@@ -1586,6 +1590,7 @@ sub _handle_build
 
                 ++$fail_count;
                 $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
+                $module_updates_ref->{$moduleName}->{build} = 'failed';
 
                 # Force this promise chain to stay dead
                 return Mojo::Promise->new->reject('build');
@@ -1598,10 +1603,12 @@ sub _handle_build
                 $fail_count = 0;
                 push @build_done, $moduleName; # Make it show up as a success
                 $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
+                $module_updates_ref->{$moduleName}->{build} = 'success';
             })->finally(sub {
                 $i++;
                 note (""); # Blank line
                 $module->setPersistentOption('failure-count', $fail_count);
+                $module_updates_ref->{$moduleName}->{done} = 'true';
 
                 $end->(); # Kick off next step
             });
@@ -1673,6 +1680,80 @@ sub _handle_build
     return $build_promise;
 }
 
+# Launches a server to handle responding to status requests.
+#
+# - $module_updates_ref should be a hashref mapping module *names* to status
+# information, maintained by calling code.
+# - $done_promise should be a promise that, once resolved, should indicate that
+# it is time to shut the server down.
+#
+# returns a promise that can be waited on until the server is shut down
+sub _handle_monitoring
+{
+    my ($module_updates_ref, $done_promise) = @_;
+
+    # Setup a simple server to respond to requests about kdesrc-build status
+    my $srv_id = Mojo::IOLoop->server(
+        { path => qq(/tmp/kdesrc-build-uds) },
+        sub {
+            # Called for each new connection accepted by the listening server
+            my ($loop, $stream, $id) = @_;
+            my $req = Mojo::Message::Request->new;
+
+            $stream->on(error => sub {
+                my ($stream, $err) = @_;
+                whisper("Error involving Mojo stream ID: $err");
+                $stream->close;
+            });
+
+            # emitted for each chunk
+            $stream->on(read => sub {
+                my ($stream, $bytes_read) = @_;
+                $req->parse($bytes_read);
+
+                return unless $req->is_finished;
+                return if $req->error;
+
+                my $path = $req->url->path;
+                my $resp = Mojo::Message::Response->new;
+                $resp->code(200);
+                $resp->headers->content_type('application/json');
+
+                if ($path->contains('/list')) {
+                    $resp->body(Mojo::JSON::encode_json([keys %{$module_updates_ref}]));
+                }
+                elsif ($path->contains('/status')) {
+                    my $mod = $path->[1]; # part after /status/
+                    if ($mod && exists $module_updates_ref->{$mod}) {
+                        $resp->body(Mojo::JSON::encode_json({$mod => $module_updates_ref->{$mod}}));
+                    } else {
+                        $resp->code(400);
+                        $resp->headers->content_type('text/plain');
+                        $resp->body('You dun goofed');
+                    }
+                }
+
+                $stream->write($resp->to_string, sub { # callback on finished write
+                    my ($stream) = @_;
+                    $stream->close_gracefully;
+                });
+            });
+        });
+
+    my $time_promise = Mojo::Promise->new;
+
+    # useful for debugging to ensure server is available for at least a few
+    # seconds.
+    # Mojo::IOLoop->timer(10, sub { $time_promise->resolve; });
+    Mojo::IOLoop->timer(0, sub { $time_promise->resolve; });
+
+    my $stop_promise = Mojo::Promise->all($done_promise, $time_promise)->then(sub {
+            Mojo::IOLoop->acceptor($srv_id)->stop;
+        });
+
+    return $stop_promise;
+}
+
 # Function: _handle_async_build
 #
 # This subroutine special-cases the handling of the update and build phases, by
@@ -1696,8 +1777,12 @@ sub _handle_async_build
     my $result = 0;
     my $update_done = 0;
     my $module_promises = { };
-    my $updater_delay = _handle_updates ($ctx, $module_promises);
-    my $build_delay   = _handle_build   ($ctx, $module_promises);
+    my $module_updates_ref = { };
+    my $stop_everything_p = Mojo::Promise->new;
+
+    my $updater_delay = _handle_updates ($ctx, $module_promises, $module_updates_ref);
+    my $build_delay   = _handle_build   ($ctx, $module_promises, $module_updates_ref);
+    my $monitor_p     = _handle_monitoring ($module_updates_ref, $stop_everything_p);
 
     # If build finishes first, note that later
     my $mark_update_done_p = $updater_delay->then(sub { $update_done = 1; });
@@ -1707,13 +1792,20 @@ sub _handle_async_build
         });
 
     my @all_promises = ($updater_delay, $build_delay, $mark_update_done_p, $build_done_msg_p);
-    my $promise = Mojo::Promise->all(@all_promises);
+    my $promise = Mojo::Promise->all(@all_promises)->then(sub {
+            $stop_everything_p->resolve;
+        });
 
-    $promise->ioloop->stop; # Force the next wait to actually wait
     $promise->catch(sub {
         my $err = shift;
+        say "Caught error $err";
         $result = 1;
-    })->wait;
+    });
+
+    Mojo::IOLoop->stop; # Force the wait below to block
+    $monitor_p->then(sub {
+            Mojo::IOLoop->stop; # FIN
+        })->wait;
 
     return $result;
 }
