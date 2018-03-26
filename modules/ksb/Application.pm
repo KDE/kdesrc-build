@@ -1679,11 +1679,20 @@ sub _handle_async_build
     my @updateList = $ctx->modulesInPhase('update');
 
     my $result = 0;
+    my $update_done = 0;
     my $module_promises = { };
     my $updater_delay = _handle_updates ($ctx, $module_promises);
     my $build_delay   = _handle_build   ($ctx, $module_promises);
 
-    my $promise = Mojo::Promise->all($updater_delay, $build_delay);
+    # If build finishes first, note that later
+    my $mark_update_done_p = $updater_delay->then(sub { $update_done = 1; });
+    my $build_done_msg_p   = $build_delay->then(sub {
+            # This can happen with a build failure under stop-on-failure
+            note("Build finished, still waiting for updates") unless $update_done;
+        });
+
+    my @all_promises = ($updater_delay, $build_delay, $mark_update_done_p, $build_done_msg_p);
+    my $promise = Mojo::Promise->all(@all_promises);
 
     $promise->ioloop->stop; # Force the next wait to actually wait
     $promise->catch(sub {
