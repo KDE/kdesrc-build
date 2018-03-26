@@ -1369,7 +1369,8 @@ sub _handle_updates
     return $delay;
 }
 
-# Builds the given module.
+# Builds the given module.  This should only be called if the module
+# successfully updated and is ready for build.
 #
 # Return value is a promise which will eventually resolve to either a
 # string noting which phase the failure occurred in (if promise rejects)
@@ -1378,44 +1379,19 @@ sub _buildSingleModule
 {
     my ($ctx, $module, $startTimeRef) = @_;
 
-    $ctx->resetEnvironment();
-    $module->setupEnvironment();
-
-    my $fail_count = $module->getPersistentOption('failure-count') // 0;
-    my $resultStatus = 'success';
-    my $message = 'TODO';
-
-    # TODO: move to _handle_build.  Or move wait logic here, whichever
-    if ($resultStatus eq 'failed') {
-        error ("\tUnable to update r[$module], build canceled.");
-        $module->setPersistentOption('failure-count', ++$fail_count);
-        return Mojo::Promise->new->reject('update');
-    }
-    elsif ($resultStatus eq 'success') {
-        note ("\tSource update complete for g[$module]: $message");
-    }
-    # Skip actually building a module if the user has selected to skip
-    # builds when the source code was not actually updated. But, don't skip
-    # if we didn't successfully build last time.
-    elsif ($resultStatus eq 'skipped' &&
-        !$module->getOption('build-when-unchanged') &&
-        $fail_count == 0)
-    {
-        note ("\tSkipping g[$module], its source code has not changed.");
-        return Mojo::Promise->new->resolve($module);
-    }
-    elsif ($resultStatus eq 'skipped') {
-        note ("\tNo changes to g[$module] source, proceeding to build.");
-    }
-
     $$startTimeRef = time;
     my $build_promise = Mojo::Promise->new;
+
+    my $fail_count = $module->getPersistentOption('failure-count') // 0;
 
     Mojo::IOLoop->subprocess(
         sub {
             # called in child process, can block
             $SIG{INT} = sub { POSIX::_exit(EINTR); };
             $0 = 'kdesrc-build-builder';
+
+            $ctx->resetEnvironment();
+            $module->setupEnvironment();
 
             return $module->build();
         },
@@ -1515,6 +1491,24 @@ sub _handle_build
         return $promise;
     }
 
+    # Modules in the build phase but not in the update phase were skipped
+    # so we need to create a shell promise to wait upon
+    my @skippedModules = grep { !exists $module_promises->{"$_"} } (@modules);
+    foreach my $skipped (@skippedModules) {
+        my $promise;
+        my $fail_count = $skipped->getPersistentOption('failure-count') // 0;
+
+        if (!$skipped->getOption('build-when-unchanged') && $fail_count == 0) {
+            # skip the build too, if it didn't fail last time and not overridden by --no-src
+            $promise = Mojo::Promise->new->reject('No changes to source, no need to build');
+        }
+        else {
+            $promise = Mojo::Promise->new->resolve('0 update(s) (update was skipped)');
+        }
+
+        $module_promises->{"$skipped"} = $promise;
+    }
+
     my $num_modules = scalar @modules;
     my ($statusFile, $outfile) = _openStatusFileHandle($ctx);
     my $statusViewer = $ctx->statusViewer();
@@ -1534,6 +1528,7 @@ sub _handle_build
 
             my $moduleName = $module->name();
             my $start_time = time;
+            my $fail_count = $module->getPersistentOption('failure-count') // 0;
 
             # Wait for update to be done.
             $module_promises->{"$module"}->then(sub {
@@ -1547,6 +1542,7 @@ sub _handle_build
 
                 $moduleSet = " from g[$moduleSet]" if $moduleSet;
                 note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
+                note ("\tSource update complete for g[$module]: $updateMsg");
 
                 if ($everFailed && $module->getOption('stop-on-failure')) {
                     return Mojo::Promise->new->reject(
@@ -1570,6 +1566,9 @@ sub _handle_build
 
                 $ctx->markModulePhaseFailed($failedPhase, $module);
                 print $statusFile "$module: Failed on $failedPhase after $elapsed.\n";
+
+                error ("\tUnable to update r[$module], build canceled.");
+                $module->setPersistentOption('failure-count', ++$fail_count);
 
                 if (!$everFailed) {
                     # No failures yet, mark this as resume point
