@@ -1299,20 +1299,17 @@ sub _handle_updates
 
     # No reason to print out the text if we're not doing anything.
     if (!@update_list) {
-        $module_promises->{'global'}->resolve(1);
-        return 0;
+        return $module_promises->{'global'}->resolve(1);
     }
 
     if (not _check_for_ssh_agent($ctx)) {
-        $module_promises->{'global'}->reject('ssh-failure');
-        return 1;
+        return $module_promises->{'global'}->reject('ssh-failure');
     }
 
     whisper ("Creating source directory") unless -e $kdesrc;
     if (! -e $kdesrc && !super_mkdir ($kdesrc)) {
         error ("Unable to make directory r[$kdesrc]!");
-        $module_promises->{'global'}->reject("Could not mkdir $kdesrc");
-        return 1;
+        return $module_promises->{'global'}->reject("Could not mkdir $kdesrc");
     }
 
     # Create promises for each module to update.
