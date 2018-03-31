@@ -1389,40 +1389,26 @@ sub _buildSingleModule
     my ($ctx, $module, $startTimeRef) = @_;
 
     $$startTimeRef = time;
-    my $build_promise = Mojo::Promise->new;
+    my $build_promise = $module->build();
 
     my $fail_count = $module->getPersistentOption('failure-count') // 0;
 
-    Mojo::IOLoop->subprocess(
-        sub {
-            # called in child process, can block
-            $SIG{INT} = sub { POSIX::_exit(EINTR); };
-            $0 = 'kdesrc-build-builder';
+    # TODO: Move the elapsed timer stuff in here?
+    my $promise = $build_promise
+        ->catch(sub {
+            my $err = shift;
 
-            $ctx->resetEnvironment();
-            $module->setupEnvironment();
-
-            return $module->build();
-        },
-        sub {
-            # called in this process, with results
-            # in this case the only result is whether there's an error or not
-            my ($subprocess, $err, $was_successful) = @_;
-
-            $fail_count = $was_successful ? 0 : $fail_count + 1;
+            # build failed
+            $err //= 'Unknown reason (kdesrc-build bug)';
+            error ("\tr[b[$module] failed to build: $err");
+            $fail_count++;
+        })->then(sub {
+            $fail_count = 0;
+        })->finally(sub {
             $module->setPersistentOption('failure-count', $fail_count);
+        });
 
-            if ($was_successful && !$err) {
-                $build_promise->resolve($module);
-            }
-            else {
-                error ("Failed to build $module due to $err") if $err;
-                $build_promise->reject('build');
-            }
-        }
-    );
-
-    return $build_promise;
+    return $promise;
 }
 
 # Returns undef if build should proceed, otherwise a Promise that will resolve

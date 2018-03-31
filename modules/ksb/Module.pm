@@ -34,6 +34,10 @@ use ksb::BuildSystem::CMakeBootstrap;
 
 use ksb::ModuleSet::Null;
 
+use Mojo::Promise;
+use Mojo::IOLoop;
+
+use POSIX qw(_exit :errno_h);
 use Storable 'dclone';
 use Carp 'confess';
 use Scalar::Util 'blessed';
@@ -397,7 +401,8 @@ sub buildSystemType
 }
 
 # Subroutine to build this module.
-# Returns boolean false on failure, boolean true on success.
+# Returns a promise that resolves to true (on success) or rejects with a error
+# string
 sub build
 {
     my $self = assert_isa(shift, 'ksb::Module');
@@ -406,43 +411,68 @@ sub build
     my $builddir = $pathinfo{'fullpath'};
     my $buildSystem = $self->buildSystem();
 
-    if ($buildSystem->name() eq 'generic' && !pretending()) {
-        error ("\tr[b[$self] does not seem to have a build system to use.");
-        return 0;
-    }
+    return Mojo::Promise->new->reject('There is no build system to use')
+        if ($buildSystem->name() eq 'generic' && !pretending());
 
     # Ensure we're in a known directory before we start; some options remove
     # the old build directory that a previous module might have been using.
     super_mkdir($pathinfo{'path'});
     p_chdir($pathinfo{'path'});
 
-    return 0 if !$self->setupBuildSystem();
-    return 1 if $self->getOption('build-system-only');
+    # TODO: Turn this into a promise too
+    return Mojo::Promise->new->reject('Unable to setup build system')
+        if !$self->setupBuildSystem();
+    return Mojo::Promise->new->resolve
+        if $self->getOption('build-system-only');
 
-    if (!$buildSystem->buildInternal())
-    {
-        return 0;
-    }
+    my $promise = Mojo::Promise->new;
+    Mojo::IOLoop->subprocess(
+        sub {
+            # called in child process, can block
+            $SIG{INT} = sub { POSIX::_exit(EINTR); };
+            $0 = 'kdesrc-build-builder';
 
-    $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
+            $self->buildContext->resetEnvironment();
+            $self->setupEnvironment();
 
-    # TODO: This should be a simple phase to run.
-    if ($self->getOption('run-tests'))
-    {
-        $self->buildSystem()->runTestsuite();
-    }
+            return 0 if !$buildSystem->buildInternal();
 
-    # TODO: Likewise this should be a phase to run.
-    if ($self->getOption('install-after-build'))
-    {
-        return 0 if !$self->install();
-    }
-    else
-    {
-        info ("\tSkipping install for y[$self]");
-    }
+            # TODO: This should be a simple phase to run.
+            if ($self->getOption('run-tests'))
+            {
+                $self->buildSystem()->runTestsuite();
+            }
 
-    return 1;
+            # TODO: Likewise this should be a phase to run.
+            if ($self->getOption('install-after-build'))
+            {
+                return 0 if !$self->install();
+            }
+            else
+            {
+                info ("\tSkipping install for y[$self]");
+            }
+
+            return 1; # Success
+        },
+        sub {
+            # called in this process, with results
+            my ($subprocess, $err, $was_successful) = @_;
+            $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
+
+            if ($err) {
+                $promise->reject($err);
+            } elsif ($was_successful) {
+                $promise->resolve(1);
+            } else {
+                $promise->reject('Build failed');
+            }
+
+            return $promise;
+        }
+    );
+
+    return $promise;
 }
 
 # Subroutine to setup the build system in a directory.
