@@ -426,15 +426,9 @@ sub build
         if $self->getOption('build-system-only');
 
     my $promise = Mojo::Promise->new;
-    Mojo::IOLoop->subprocess(
+    $self->runPhase_p('build', $promise,
         sub {
             # called in child process, can block
-            $SIG{INT} = sub { POSIX::_exit(EINTR); };
-            $0 = 'kdesrc-build-builder';
-
-            $self->buildContext->resetEnvironment();
-            $self->setupEnvironment();
-
             return 0 if !$buildSystem->buildInternal();
 
             # TODO: This should be a simple phase to run.
@@ -457,18 +451,11 @@ sub build
         },
         sub {
             # called in this process, with results
-            my ($subprocess, $err, $was_successful) = @_;
+            my $was_successful = shift;
             $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
 
-            if ($err) {
-                $promise->reject($err);
-            } elsif ($was_successful) {
-                $promise->resolve(1);
-            } else {
-                $promise->reject('Build failed');
-            }
-
-            return $promise;
+            return $promise->resolve(1) if $was_successful;
+            return $promise->reject('Build failed');
         }
     );
 
@@ -976,6 +963,40 @@ sub installationPath
     $path =~ s/(\$\{MODULE})|(\$MODULE\b)/$moduleName/g;
 
     return $path;
+}
+
+# Runs the given phase (with associated promise) in a separate subprocess,
+# using provided sub references
+sub runPhase_p
+{
+    my ($self, $phaseName, $promise, $blocking_coderef, $completion_coderef) = @_;
+
+    Mojo::IOLoop->subprocess(
+        sub {
+            # blocks, runs in separate process
+            $SIG{INT} = sub { POSIX::_exit(EINTR); };
+            $0 = "kdesrc-build[$phaseName]";
+
+            $self->buildContext->resetEnvironment();
+            $self->setupEnvironment();
+
+            # This coderef should return a normal value (something you could
+            # stick in a plain JSON object)
+            return scalar $blocking_coderef->();
+        },
+
+        sub {
+            # runs in this process once subprocess is done
+            my ($subprocess, $err, $result) = @_;
+
+            do { $promise->reject($err); return $promise }
+                if $err;
+
+            # This coderef should resolve or reject the promise
+            $completion_coderef->($result);
+            return $promise;
+        }
+    );
 }
 
 1;
