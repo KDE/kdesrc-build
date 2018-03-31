@@ -426,28 +426,10 @@ sub build
         if $self->getOption('build-system-only');
 
     my $promise = Mojo::Promise->new;
-    $self->runPhase_p('build', $promise,
+    return $self->runPhase_p('build',
         sub {
             # called in child process, can block
-            return 0 if !$buildSystem->buildInternal();
-
-            # TODO: This should be a simple phase to run.
-            if ($self->getOption('run-tests'))
-            {
-                $self->buildSystem()->runTestsuite();
-            }
-
-            # TODO: Likewise this should be a phase to run.
-            if ($self->getOption('install-after-build'))
-            {
-                return 0 if !$self->install();
-            }
-            else
-            {
-                info ("\tSkipping install for y[$self]");
-            }
-
-            return 1; # Success
+            return $buildSystem->buildInternal();
         },
         sub {
             # called in this process, with results
@@ -457,9 +439,31 @@ sub build
             return $promise->resolve(1) if $was_successful;
             return $promise->reject('Build failed');
         }
-    );
+    )->then(sub {
+        return $self->runPhase_p('install',
+            sub {
+                # TODO: This should be a simple phase to run.
+                if ($self->getOption('run-tests')) {
+                    $self->buildSystem()->runTestsuite();
+                }
 
-    return $promise;
+                # TODO: Likewise this should be a phase to run.
+                if ($self->getOption('install-after-build')) {
+                    return 0 if !$self->install();
+                }
+                else {
+                    info ("\tSkipping install for y[$self]");
+                }
+
+                return 1;
+            },
+            sub {
+                my $was_successful = shift;
+                return Mojo::Promise->new->reject unless $was_successful;
+                return $was_successful;
+            }
+        );
+    });
 }
 
 # Subroutine to setup the build system in a directory.
@@ -965,11 +969,17 @@ sub installationPath
     return $path;
 }
 
-# Runs the given phase (with associated promise) in a separate subprocess,
-# using provided sub references
+# Runs the given phase in a separate subprocess, using provided sub references.
+# Assumes use of promises for the provided sub references -- if launching the
+# subprocess fails, then a rejected promise is returned in the completion sub
+# reference
+# Returns a promise that yields the return value of the completion sub
+# reference.
 sub runPhase_p
 {
-    my ($self, $phaseName, $promise, $blocking_coderef, $completion_coderef) = @_;
+    my ($self, $phaseName, $blocking_coderef, $completion_coderef) = @_;
+
+    my $promise = Mojo::Promise->new;
 
     Mojo::IOLoop->subprocess(
         sub {
@@ -989,14 +999,14 @@ sub runPhase_p
             # runs in this process once subprocess is done
             my ($subprocess, $err, $result) = @_;
 
-            do { $promise->reject($err); return $promise }
-                if $err;
+            return Mojo::Promise->new->reject($err) if $err;
 
-            # This coderef should resolve or reject the promise
-            $completion_coderef->($result);
-            return $promise;
+            # This coderef should resolve or reject the promise, if used
+            $promise->resolve($completion_coderef->($result));
         }
     );
+
+    return $promise;
 }
 
 1;
