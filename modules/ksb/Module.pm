@@ -419,35 +419,56 @@ sub build
     super_mkdir($pathinfo{'path'});
     p_chdir($pathinfo{'path'});
 
-    # TODO: Turn this into a promise too
-    return Mojo::Promise->new->reject('Unable to setup build system')
-        if !$self->setupBuildSystem();
-    return Mojo::Promise->new->resolve
-        if $self->getOption('build-system-only');
-
-    my $promise = Mojo::Promise->new;
-    return $self->runPhase_p('build',
+    my $buildSystemPromise = $self->runPhase_p('buildsystem',
         sub {
-            # called in child process, can block
-            return $buildSystem->buildInternal();
+            return $self->setupBuildSystem();
         },
         sub {
-            # called in this process, with results
             my $was_successful = shift;
-            $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
 
-            return $promise->resolve(1) if $was_successful;
-            return $promise->reject('Build failed');
-        }
-    )->then(sub {
-        return $self->runPhase_p('install',
+            return Mojo::Promise->new->reject('Unable to setup build system')
+                unless $was_successful;
+
+            return $was_successful;
+        });
+
+    return $buildSystemPromise if $self->getOption('build-system-only');
+
+    # If we don't stop with the build system only, then keep extending that
+    # promise chain to complete the build, test, and install
+
+    return $buildSystemPromise->then(sub {
+        return $self->runPhase_p('build',
             sub {
-                # TODO: This should be a simple phase to run.
+                # called in child process, can block
+                return $buildSystem->buildInternal();
+            },
+            sub {
+                # called in this process, with results
+                my $was_successful = shift;
+                $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
+
+                return 1 if $was_successful;
+                return Mojo::Promise->new->reject('Build failed');
+            }
+        );
+    })->then(sub {
+        return $self->runPhase_p('test',
+            sub {
                 if ($self->getOption('run-tests')) {
+                    # TODO: Make test failure a blocker for install?
                     $self->buildSystem()->runTestsuite();
                 }
-
-                # TODO: Likewise this should be a phase to run.
+                return 1;
+            },
+            sub {
+                my $was_successful = shift;
+                return $was_successful;
+            }
+        );
+    })->then(sub {
+        return $self->runPhase_p('install',
+            sub {
                 if ($self->getOption('install-after-build')) {
                     return 0 if !$self->install();
                 }
