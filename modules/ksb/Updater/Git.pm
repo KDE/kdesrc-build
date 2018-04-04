@@ -197,12 +197,11 @@ EOF
         }
 
         if (!$self->_verifyRefPresent($module, $git_repo)) {
-            if (!$self->_moduleIsNeeded()) {
-                note ("Skipping g[$module], this module was not in the containing module-set at this branch");
-                return 0;
-            }
-
-            croak_runtime("The desired git reference is not available for $module");
+            croak_runtime(
+                $self->_moduleIsNeeded()
+                    ? "$module build was requested, but it has no source code at the requested git branch"
+                    : "The required git branch does not exist at the source repository"
+            );
         }
 
         $self->_clone($git_repo);
