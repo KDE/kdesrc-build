@@ -29,6 +29,7 @@ use Mojo::Message::Request;
 use Mojo::JSON qw(encode_json);
 use Mojo::Promise;
 
+use Fcntl; # For sysopen
 use List::Util qw(first min);
 use File::Basename; # basename, dirname
 use File::Glob ':glob';
@@ -1666,6 +1667,42 @@ sub _handle_build
     return $build_promise;
 }
 
+# Finds a decent port for the monitoring server, creates a file at a known
+# location with the URL that will match the server, and returns the port and
+# path to the file (so that it may be unlinked once the server is shutdown)
+sub _find_open_monitor_port
+{
+    # Ensure the file containing our listen URL is available.
+    my $run = $ENV{XDG_RUNTIME_DIR};
+    if (!$run) {
+        note (" b[r[*] b[y[XDG_RUNTIME_DIR] is not set, using /tmp for now");
+        $run = '/tmp';
+    }
+
+    my $path = "$run/kdesrc-build-status-server";
+    error (" b[r[*] stale status server runtime socket file leftover, removing.")
+        if (-e $path);
+
+    # We set sticky bit (in the 01666) to indicate this file should not be
+    # removed during long-running builds (e.g. by systemd).
+    sysopen (my $fh, $path, O_CREAT | O_WRONLY, 01666) or do {
+        error (" b[r[*] Unable to open status server runtime socket file, external viewers won't work.");
+        return;
+    };
+
+    # With the file open we can generate a port and create a URL
+    my $port = Mojo::IOLoop::Server->generate_port;
+
+    say $fh "http://localhost:$port";
+    close $fh or do {
+        error (" b[y[*] Received an error closing runtime socket file: $!");
+        unlink ($path);
+        return;
+    };
+
+    return ($port, $path);
+}
+
 # Launches a server to handle responding to status requests.
 #
 # - $module_updates_ref should be a hashref mapping module *names* to status
@@ -1678,9 +1715,14 @@ sub _handle_monitoring
 {
     my ($module_updates_ref, $done_promise) = @_;
 
+    my ($port, $server_url_path) = _find_open_monitor_port();
+
+    # If we can't find a port to listen on, don't hold up the rest of the run
+    return Mojo::Promise->new->accept if !$port;
+
     # Setup a simple server to respond to requests about kdesrc-build status
     my $srv_id = Mojo::IOLoop->server(
-        { path => qq(/tmp/kdesrc-build-uds) },
+        { port => $port },
         sub {
             # Called for each new connection accepted by the listening server
             my ($loop, $stream, $id) = @_;
@@ -1735,6 +1777,7 @@ sub _handle_monitoring
 
     my $stop_promise = Mojo::Promise->all($done_promise, $time_promise)->then(sub {
             Mojo::IOLoop->acceptor($srv_id)->stop;
+            unlink($server_url_path);
         });
 
     return $stop_promise;

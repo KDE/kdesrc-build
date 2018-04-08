@@ -16,13 +16,22 @@
 
 use v5.14;
 use strict;
+use autodie;
 use Mojo::UserAgent;
 use Mojo::URL;
 use Mojo::IOLoop;
 use Mojo::JSON qw(decode_json);
 
+my $run = $ENV{XDG_RUNTIME_DIR} // '/tmp';
+my $server_url_path = "$run/kdesrc-build-status-server";
+open my $server_url_fh, '<', $server_url_path;
+
+my $path = <$server_url_fh>;
+chomp $path; # remove any trailing \n
+close $server_url_fh;
+
 my $ua = Mojo::UserAgent->new;
-my $base = Mojo::URL->new('http+unix://%2Ftmp%2Fkdesrc-build-uds/');
+my $base = Mojo::URL->new($path);
 my $seen_srv = 0; # used to ignore errors until after first success
 
 # Lower timeouts since these shouldn't take long on a local machine.
