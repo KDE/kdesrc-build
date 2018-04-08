@@ -25,6 +25,7 @@ use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
 use Mojo::IOLoop;
+use Mojo::Server::Daemon;
 use Mojo::Message::Request;
 use Mojo::JSON qw(encode_json);
 use Mojo::Promise;
@@ -1721,52 +1722,49 @@ sub _handle_monitoring
     return Mojo::Promise->new->accept if !$port;
 
     # Setup a simple server to respond to requests about kdesrc-build status
-    my $srv_id = Mojo::IOLoop->server(
-        { port => $port },
-        sub {
-            # Called for each new connection accepted by the listening server
-            my ($loop, $stream, $id) = @_;
-            my $req = Mojo::Message::Request->new;
+    my $daemon = Mojo::Server::Daemon->new(
+        # IPv4 and IPv6 localhost-only
+        listen => ["http://127.0.0.1:$port", "http://[::1]:$port"]
+    );
+    $daemon->silent(!ksb::Debug::debugging());
 
-            $stream->on(error => sub {
-                my ($stream, $err) = @_;
-                whisper("Error involving Mojo stream ID: $err");
-                $stream->close;
-            });
+    # Remove existing default handler and install our own
+    $daemon->unsubscribe('request')->on(request => sub {
+        my ($daemon, $tx) = @_;
 
-            # emitted for each chunk
-            $stream->on(read => sub {
-                my ($stream, $bytes_read) = @_;
-                $req->parse($bytes_read);
+        my $method = $tx->req->method;
+        my $path   = $tx->req->url->path;
 
-                return unless $req->is_finished;
-                return if $req->error;
+        if ($method eq 'GET') {
+            $tx->res->code(200);
+            $tx->res->headers->content_type('application/json');
 
-                my $path = $req->url->path;
-                my $resp = Mojo::Message::Response->new;
-                $resp->code(200);
-                $resp->headers->content_type('application/json');
-
-                if ($path->contains('/list')) {
-                    $resp->body(Mojo::JSON::encode_json([keys %{$module_updates_ref}]));
+            if ($path->contains('/list')) {
+                $tx->res->body(Mojo::JSON::encode_json([keys %{$module_updates_ref}]));
+            }
+            elsif ($path->contains('/status')) {
+                my $mod = $path->[1]; # part after /status/
+                if ($mod && exists $module_updates_ref->{$mod}) {
+                    $tx->res->body(Mojo::JSON::encode_json({$mod => $module_updates_ref->{$mod}}));
+                } else {
+                    $tx->res->code(400);
+                    $tx->res->headers->content_type('text/plain');
+                    $tx->res->body('You dun goofed');
                 }
-                elsif ($path->contains('/status')) {
-                    my $mod = $path->[1]; # part after /status/
-                    if ($mod && exists $module_updates_ref->{$mod}) {
-                        $resp->body(Mojo::JSON::encode_json({$mod => $module_updates_ref->{$mod}}));
-                    } else {
-                        $resp->code(400);
-                        $resp->headers->content_type('text/plain');
-                        $resp->body('You dun goofed');
-                    }
-                }
-
-                $stream->write($resp->to_string, sub { # callback on finished write
-                    my ($stream) = @_;
-                    $stream->close_gracefully;
-                });
+            }
+        }
+        else {
+            $tx->error({
+                message => 'Invalid method',
+                code    => '500',
             });
-        });
+        }
+
+        # Mojolicious will complete processing and send response
+        $tx->resume;
+    });
+
+    $daemon->start;
 
     my $time_promise = Mojo::Promise->new;
 
@@ -1776,7 +1774,7 @@ sub _handle_monitoring
     Mojo::IOLoop->timer(0, sub { $time_promise->resolve; });
 
     my $stop_promise = Mojo::Promise->all($done_promise, $time_promise)->then(sub {
-            Mojo::IOLoop->acceptor($srv_id)->stop;
+            $daemon->stop;
             unlink($server_url_path);
         });
 
