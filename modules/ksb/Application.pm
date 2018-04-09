@@ -1556,8 +1556,6 @@ sub _handle_build
                 my $reason = shift;
                 error ("\tUnable to update r[$module]: $reason, build canceled.");
 
-                ++$fail_count;
-                $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
                 return Mojo::Promise->new->reject('failed update');
             })->then(sub {
                 my $updateMsg = shift;
