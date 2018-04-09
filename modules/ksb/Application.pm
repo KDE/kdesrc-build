@@ -713,6 +713,11 @@ sub finish
     my $ctx = $self->context();
     my $exitcode = shift // 0;
 
+    # This is created even under --pretend, make sure it's removed
+    my $run = $ENV{XDG_RUNTIME_DIR} // 'tmp';
+    my $path = "$run/kdesrc-build-status-server";
+    unlink $path if -e $path;
+
     if (pretending() || $self->{_base_pid} != $$) {
         # Abort early if pretending or if we're not the same process
         # that was started by the user (e.g. async mode, forked pipe-opens
