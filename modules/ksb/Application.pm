@@ -1636,7 +1636,9 @@ sub _handle_build
         }
 
         info (' '); # Space out nicely
-        return $result;
+
+        return Mojo::Promise->new->reject if $everFailed;
+        return 0;
     });
 
     return $build_promise;
@@ -1834,13 +1836,20 @@ sub _handle_async_build
     my $monitor_p     = _handle_monitoring ($statusMonitor, $stop_everything_p);
 
     # If build finishes first, note that later
-    my $mark_update_done_p = $updater_delay->then(sub { $update_done = 1; });
-    my $build_done_msg_p   = $build_delay->then(sub {
-            # This can happen with a build failure under stop-on-failure
-            note("All builds finished, but still waiting for updates") unless $update_done;
-        });
+    my $mark_update_done_p = $updater_delay->then(sub {
+        $update_done = 1;
+    })->catch(sub {
+        $result = 1;
+    });
 
-    my @all_promises = ($updater_delay, $build_delay, $mark_update_done_p, $build_done_msg_p);
+    my $build_done_msg_p   = $build_delay->then(sub {
+        # This can happen with a build failure under stop-on-failure
+        note("All builds finished, but still waiting for updates") unless $update_done;
+    })->catch(sub {
+        $result = 1;
+    });
+
+    my @all_promises = ($mark_update_done_p, $build_done_msg_p);
     my $promise = Mojo::Promise->all(@all_promises)->then(sub {
             $statusMonitor->markBuildDone();
             $stop_everything_p->resolve;
