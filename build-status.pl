@@ -51,15 +51,31 @@ $ua->websocket_p($base_ws->clone->path("events"))
         $ws->on(finish => sub { $promise->resolve });
         $ws->on(json => sub {
             my ($ws, $resultRef) = @_;
-            foreach my $modRef (@{$resultRef->{updates}}) {
-                say $modRef->{module}, " done with phase ", $modRef->{phase}, ":",
-                    $modRef->{result};
+            foreach my $modRef (@{$resultRef}) {
+                if ($modRef->{event} eq 'phase_completed') {
+                    my $mr = $modRef->{phase_completed};
+                    say $mr->{module}, " done with phase ", $mr->{phase}, ":",
+                        $mr->{result};
+                }
+                elsif ($modRef->{event} eq 'build_plan') {
+                    my @modules = @{$modRef->{build_plan}};
+                    say "Received build plan";
+                    foreach my $m (@modules) {
+                        say "Will build ", $m->{name}, " with phases: ", join(', ', @{$m->{phases}});
+                    }
+                }
+                elsif ($modRef->{event} eq 'build_done') {
+                    say "BUILD DONE";
+                }
+                else {
+                    say "Unhandled event ", $modRef->{event};
+                }
             }
         });
 
         return $promise;
     })
     ->then(sub {
-            say "Done";
+            say "Connection closed";
         })
     ->wait;

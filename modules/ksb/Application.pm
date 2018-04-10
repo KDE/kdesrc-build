@@ -1713,7 +1713,7 @@ sub _find_open_monitor_port
 
 # Launches a server to handle responding to status requests.
 #
-# - $statusMonitor should be a ksb::StatusMonitor, whose 'phaseComplete' event
+# - $statusMonitor should be a ksb::StatusMonitor, whose 'newEvent' event
 # will be subscribed to if we have waiting clients
 # - $done_promise should be a promise that, once resolved, should indicate that
 # it is time to shut the server down.
@@ -1752,7 +1752,7 @@ sub _handle_monitoring
 
             # Bring the other side up to speed...
             my @events = $statusMonitor->events();
-            $tx->send({json => { updates => \@events }});
+            $tx->send({ json => \@events });
 
             # ... and add them to the list of clients to update later
             $subscribers{$tx->connection} = $tx;
@@ -1796,12 +1796,26 @@ sub _handle_monitoring
 
     $daemon->start;
 
+    my $stop_sent = Mojo::Promise->new;
+
     # Announce changes as they happen to subscribers
-    $statusMonitor->on(phaseComplete => sub {
+    $statusMonitor->on(newEvent => sub {
         my ($statusMonitor, $resultRef) = @_;
+
+        if ($resultRef->{event} eq 'build_done' && !%subscribers) {
+            # Resolve this early if no one is waiting on us, otherwise we'll
+            # block forever waiting to let someone know we're done
+            $stop_sent->resolve;
+        }
+
         foreach my $tx (values %subscribers) {
+            if ($resultRef->{event} eq 'build_done') {
+                # Don't exit until we've sent the last event
+                $tx->on(drain => sub { $stop_sent->resolve });
+            }
+
             # Should match schema for initial send as above
-            $tx->send({json => { updates => [ $resultRef ] }});
+            $tx->send({json => [ $resultRef ] });
         }
     });
 
@@ -1812,11 +1826,7 @@ sub _handle_monitoring
     # Mojo::IOLoop->timer(10, sub { $time_promise->resolve; });
     Mojo::IOLoop->timer(0, sub { $time_promise->resolve; });
 
-    # TODO: Convert done_promise into a promise that fires when statusMonitor
-    # gives an update on all events to prevent timing issues with the very last
-    # build event.
-    my $stop_promise = Mojo::Promise->all($done_promise, $time_promise)->then(sub {
-            $statusMonitor->unsubscribe('phaseComplete');
+    my $stop_promise = Mojo::Promise->all($stop_sent, $done_promise, $time_promise)->then(sub {
             $daemon->stop;
             unlink($server_url_path);
         });
@@ -1850,6 +1860,8 @@ sub _handle_async_build
     my $statusMonitor = ksb::StatusMonitor->new;
     my $stop_everything_p = Mojo::Promise->new;
 
+    $statusMonitor->createBuildPlan($ctx);
+
     my $updater_delay = _handle_updates ($ctx, $module_promises, $statusMonitor);
     my $build_delay   = _handle_build   ($ctx, $module_promises, $statusMonitor);
     my $monitor_p     = _handle_monitoring ($statusMonitor, $stop_everything_p);
@@ -1863,6 +1875,7 @@ sub _handle_async_build
 
     my @all_promises = ($updater_delay, $build_delay, $mark_update_done_p, $build_done_msg_p);
     my $promise = Mojo::Promise->all(@all_promises)->then(sub {
+            $statusMonitor->markBuildDone();
             $stop_everything_p->resolve;
         });
 
