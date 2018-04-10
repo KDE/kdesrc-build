@@ -49,14 +49,14 @@ sub createBuildPlan
 
 sub markPhaseComplete
 {
-    my ($self, $moduleName, $phase, $wasSuccessful) = @_;
+    my ($self, $moduleName, $phase, $resultDescription) = @_;
 
     my $result = {
         event => 'phase_completed',
         phase_completed => {
             module => $moduleName,
             phase  => $phase,
-            result => $wasSuccessful ? 'success' : 'error',
+            result => $resultDescription,
         },
         # TODO: Add some useful stats
     };
