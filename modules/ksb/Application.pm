@@ -1851,20 +1851,14 @@ sub _handle_async_build
 
     my @all_promises = ($mark_update_done_p, $build_done_msg_p);
     my $promise = Mojo::Promise->all(@all_promises)->then(sub {
-            $statusMonitor->markBuildDone();
-            $stop_everything_p->resolve;
-        });
-
-    $promise->catch(sub {
-        my $err = shift;
-        say "Caught error $err";
-        $result = 1;
+        $statusMonitor->markBuildDone();
+        $stop_everything_p->resolve;
     });
 
     Mojo::IOLoop->stop; # Force the wait below to block
     $monitor_p->then(sub {
-            Mojo::IOLoop->stop; # FIN
-        })->wait;
+        Mojo::IOLoop->stop; # FIN
+    })->wait;
 
     return $result;
 }
