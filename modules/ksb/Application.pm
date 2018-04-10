@@ -1387,39 +1387,6 @@ sub _handle_updates
     return $delay;
 }
 
-# Builds the given module.  This should only be called if the module
-# successfully updated and is ready for build.
-#
-# Return value is a promise which will eventually resolve to either a
-# string noting which phase the failure occurred in (if promise rejects)
-# or the ksb::Module itself (if promise resolves)
-sub _buildSingleModule
-{
-    my ($ctx, $module, $startTimeRef) = @_;
-
-    $$startTimeRef = time;
-    my $build_promise = $module->build();
-
-    my $fail_count = $module->getPersistentOption('failure-count') // 0;
-
-    # TODO: Move the elapsed timer stuff in here?
-    my $promise = $build_promise
-        ->catch(sub {
-            my $err = shift;
-
-            # build failed
-            $err //= 'Unknown reason (kdesrc-build bug)';
-            error ("\tr[b[$module] failed to build: $err");
-            $fail_count++;
-        })->then(sub {
-            $fail_count = 0;
-        })->finally(sub {
-            $module->setPersistentOption('failure-count', $fail_count);
-        });
-
-    return $promise;
-}
-
 # Returns undef if build should proceed, otherwise a Promise that will resolve
 # or reject as appropriate
 sub _checkForEarlyBuildExit
@@ -1568,7 +1535,7 @@ sub _handle_build
 
                 # TODO: Split install into a separate phase so that exception
                 # handler knows which phase had the failure
-                return _buildSingleModule($ctx, $module, \$start_time);
+                return $module->build();
             })->catch(sub {
                 my $failureReason = shift;
                 my $elapsed = prettify_seconds(time - $start_time);
