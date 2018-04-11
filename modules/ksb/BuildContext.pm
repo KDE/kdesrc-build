@@ -29,6 +29,7 @@ use ksb::Module::BranchGroupResolver;
 use ksb::Updater::KDEProjectMetadata 0.20;
 use ksb::Version qw(scriptVersion);
 use ksb::StatusView;
+use ksb::StatusMonitor;
 use ksb::KDEProjectsReader 0.50;
 
 use File::Temp qw(tempfile);
@@ -159,6 +160,7 @@ sub new
         kde_dependencies_metadata => undef, # Dependency resolution of kde-projects
         logical_module_resolver   => undef, # For branch-group option
         status_view => ksb::StatusView->new(),
+        status_monitor => ksb::StatusMonitor->new(),
         projects_db => undef, # See getProjectDataReader
     );
 
@@ -649,12 +651,23 @@ sub lookupModule
     return $options[0];
 }
 
+sub markModulePhaseSucceeded
+{
+    my ($self, $phase, $module) = @_;
+    assert_isa($module, 'ksb::Module');
+
+    my $name = $module->name();
+    $self->{status_monitor}->markPhaseComplete($name, $phase, 'success');
+}
+
 sub markModulePhaseFailed
 {
     my ($self, $phase, $module) = @_;
     assert_isa($module, 'ksb::Module');
 
-    $self->{errors}->{$module->name()} = $phase;
+    my $name = $module->name();
+    $self->{status_monitor}->markPhaseComplete($name, $phase, 'error');
+    $self->{errors}->{$name} = $phase;
 }
 
 # Returns a list (i.e. not a reference to, but a real list) of Modules that failed to
@@ -668,6 +681,14 @@ sub failedModulesInPhase
     } (@{$self->moduleList()});
 
     return @failures;
+}
+
+# Returns true if the given module had a failure in any phase
+sub hasModuleFailed
+{
+    my ($self, $module) = @_;
+
+    return exists $self->{errors}->{$module->name()};
 }
 
 # Returns a list of modules that had a failure of some sort, in the order the modules
@@ -1022,10 +1043,19 @@ sub moduleBranchGroupResolver
     return $self->{logical_module_resolver};
 }
 
+# Manages the output of the TTY to keep the user in the know
 sub statusViewer
 {
     my $self = shift;
     return $self->{status_view};
+}
+
+# An event-based aggregator for update events, to be used by user interfaces,
+# including remote interfaces.
+sub statusMonitor
+{
+    my $self = shift;
+    return $self->{status_monitor};
 }
 
 1;
