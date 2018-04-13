@@ -660,8 +660,6 @@ sub runAllModulePhases
         };
 
         $result = _handle_async_build ($ctx);
-
-#       $ipc->outputPendingLoggedMessages() if debugging();
     }
     elsif ($runMode eq 'install')
     {
