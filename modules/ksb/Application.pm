@@ -24,6 +24,7 @@ use ksb::DependencyResolver 0.20;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
+use Mojo::File;
 use Mojo::IOLoop;
 use Mojo::JSON qw(encode_json);
 use Mojo::Message::Request;
@@ -294,6 +295,7 @@ DONE
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
         'print-modules', 'pretend|dry-run|p', 'refresh-build',
         'query=s', 'start-program|run=s{,}',
+        'launch-browser',
         'revision=i', 'resume-from=s', 'resume-after=s',
         'rebuild-failures', 'resume', 'stop-on-failure',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
@@ -358,6 +360,10 @@ sub generateModuleList
 
     my %ignoredSelectors;
     @ignoredSelectors{@{$cmdlineGlobalOptions->{'ignore-modules'}}} = undef;
+
+    if (exists $cmdlineGlobalOptions->{'launch-browser'}) {
+        _launchStatusViewerBrowser(); # does not return
+    }
 
     my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
     delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
@@ -2735,6 +2741,25 @@ sub _reachableModuleLogs
     @tempHash{@dirs} = ();
 
     return keys %tempHash;
+}
+
+# Runs xdg-open to the URL at $XDG_RUNTIME_DIR/kdesrc-build-status-server, if
+# that file exists and is readable.  Otherwise lets the user know there was an
+# error.  Either way this function always exits the process immediately.
+sub _launchStatusViewerBrowser
+{
+    my $run = $ENV{XDG_RUNTIME_DIR} // '/tmp';
+    my $file = "$run/kdesrc-build-status-server";
+    my $url = eval { Mojo::File->new($file)->slurp };
+
+    if ($url) {
+        exec { 'xdg-open' } 'xdg-open', $url or die
+            "Failed to launch browser, couldn't run xdg-open: $!";
+    }
+    else {
+        say "Unable to launch browser for the status server, couldn't find right URL";
+        exit 1;
+    }
 }
 
 # Installs the given subroutine as a signal handler for a set of signals which
