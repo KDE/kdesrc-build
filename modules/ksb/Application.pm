@@ -25,10 +25,11 @@ use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
 use Mojo::IOLoop;
-use Mojo::Server::Daemon;
-use Mojo::Message::Request;
 use Mojo::JSON qw(encode_json);
+use Mojo::Message::Request;
 use Mojo::Promise;
+use Mojo::Server::Daemon;
+use Mojo::Template;
 
 use Fcntl; # For sysopen
 use List::Util qw(first min);
@@ -1677,6 +1678,31 @@ sub _find_open_monitor_port
     return ($port, $path);
 }
 
+# Returns an HTML page suitable for display in a modern browser, that can read
+# status events over a WebSocket
+sub _generate_status_viewer_page
+{
+    my $url = shift;
+    my $templater = Mojo::Template->new;
+
+    my $template = <<'EOF';
+% my $url = shift;
+<!DOCTYPE html>
+<html>
+<head>
+<title>kdesrc-build status viewer</title>
+<script>
+</script>
+</head>
+<body>
+Hello from kdesrc-build.  WebSocket status available from <%= $url %>.
+</body>
+</html>
+EOF
+
+    return $templater->render($template, $url);
+}
+
 # Launches a server to handle responding to status requests.
 #
 # - $ctx, the build context
@@ -1745,6 +1771,13 @@ sub _handle_monitoring
                 $tx->res->code(200);
                 $tx->res->headers->content_type('application/json');
                 $tx->res->body(Mojo::JSON::encode_json(\@modules));
+            }
+            elsif ($path->to_string eq '/') {
+                my $response = _generate_status_viewer_page("http://localhost:$port");
+
+                $tx->res->code(200);
+                $tx->res->headers->content_type('text/html');
+                $tx->res->body($response);
             }
             else {
                 $tx->error({
