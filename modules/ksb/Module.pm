@@ -77,6 +77,9 @@ sub new
         'module-set' => undef,
     );
 
+    # alias our options into the build context for global vis
+    $ctx->{build_options}->{$name} = $self->{options};
+
     @{$self}{keys %newOptions} = values %newOptions;
 
     return $self;
@@ -824,6 +827,15 @@ sub setOption
         delete $options{'filter-out-phases'};
     }
 
+    # When running in a subprocess, option changes will be forgotten unless they are fed
+    # back to parent process, so store those in a special array also.
+    if (exists $self->buildContext()->{'#pending'}) {
+        # Only forward 'plain' options, just a sanity check
+        my @keys = grep { !ref($options{$_}) } (keys %options);
+        $self->{options}->{'#pending'} //= { };
+        @{$self->{options}->{'#pending'}}{@keys} = @options{@keys};
+    }
+
     $self->SUPER::setOption(%options);
 }
 
@@ -1001,6 +1013,7 @@ sub runPhase_p
     my ($self, $phaseName, $blocking_coderef, $completion_coderef) = @_;
 
     my $promise = Mojo::Promise->new;
+    my $ctx = $self->buildContext();
 
     pipe (my $reader, my $writer)
         or croak_runtime("Couldn't open pipe to subprocess for $phaseName: $!");
@@ -1036,6 +1049,10 @@ sub runPhase_p
             $SIG{INT} = sub { POSIX::_exit(EINTR); };
             $0 = "kdesrc-build[$phaseName]";
 
+            # This causes setOption to record changes, and is deliberately not
+            # within ctx->{options}
+            $ctx->{'#pending'} = { };
+
             $writer->autoflush(1);
             close $reader; # we can't use this anyways
             ksb::Debug::setOutputHandle($writer);
@@ -1045,12 +1062,27 @@ sub runPhase_p
 
             # This coderef should return a normal value (something you could
             # stick in a plain JSON object)
-            return scalar $blocking_coderef->();
+            my $result = $blocking_coderef->();
+            my %newOptions;
+
+            # Grab any newly-set options to feed back to parent
+            my @affectedMods = grep {
+                exists $ctx->{build_options}->{$_}->{'#pending'};
+            } (keys %{$ctx->{build_options}});
+
+            foreach my $affected (@affectedMods) {
+                $newOptions{$affected} = $ctx->{build_options}->{$affected}->{'#pending'};
+            }
+
+            return {
+                result     => $result,
+                newOptions => \%newOptions,
+            };
         },
 
         sub {
             # runs in this process once subprocess is done
-            my ($subprocess, $err, $result) = @_;
+            my ($subprocess, $err, $resultsRef) = @_;
 
             $reactor->remove($reader);
             close $reader;
@@ -1058,8 +1090,16 @@ sub runPhase_p
 
             return Mojo::Promise->new->reject($err) if $err;
 
+            # Apply options that may have changed during child proc execution.
+            if (%{$resultsRef->{newOptions}}) {
+                while(my ($k, $v) = each %{$resultsRef->{newOptions}}) {
+                    my %modulesNewOptions = %{$v};
+                    @{$ctx->{build_options}->{$k}}{keys %modulesNewOptions} = values %modulesNewOptions;
+                }
+            }
+
             # This coderef should resolve or reject the promise, if used
-            $promise->resolve($completion_coderef->($result));
+            $promise->resolve($completion_coderef->($resultsRef->{result}));
         }
     );
 

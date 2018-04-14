@@ -154,6 +154,7 @@ sub new
         rcFiles => [@rcfiles],
         rcFile  => undef,
         env     => { },
+      # pending => { }, #  exists only under a subprocess
         persistent_options => { }, # These are kept across multiple script runs
         ignore_list => [ ], # List of KDE project paths to ignore completely
         kde_projects_metadata     => undef, # Enumeration of kde-projects
