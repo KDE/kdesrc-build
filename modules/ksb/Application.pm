@@ -1730,9 +1730,6 @@ sub _handle_monitoring
         }
         elsif ($method eq 'GET') {
             # HTTP or WS
-            $tx->res->code(200);
-            $tx->res->headers->content_type('application/json');
-
             if ($path->contains('/list')) {
                 my %seen;
                 my @modules;
@@ -1745,7 +1742,15 @@ sub _handle_monitoring
                     $seen{$m} = 1;
                 }
 
+                $tx->res->code(200);
+                $tx->res->headers->content_type('application/json');
                 $tx->res->body(Mojo::JSON::encode_json(\@modules));
+            }
+            else {
+                $tx->error({
+                    message => 'Resource not found',
+                    code    => 404,
+                });
             }
         }
         else {
