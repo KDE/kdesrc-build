@@ -1690,13 +1690,91 @@ sub _generate_status_viewer_page
 <!DOCTYPE html>
 <html>
 <head>
-<title>kdesrc-build status viewer</title>
-<script>
-</script>
+    <meta charset="utf-8"/>
+    <title>kdesrc-build status viewer</title>
+
+    <style>
+td.pending {
+    background-color: white;
+}
+
+td.done {
+    background-color: gray;
+}
+    </style>
 </head>
+
 <body>
-Hello from kdesrc-build.  WebSocket status available from <%= $url %>.
+    <h1>kdesrc-build status</h1>
+    <div id="divStatus">
+        Building...
+    </div>
+    <table id="tblResult">
+        <tr><th>Module</th><th>Update</th><th>Build / Install</th></tr>
+    </table>
 </body>
+
+<script>
+    let addRow = (moduleName) => {
+        let eventTable = document.getElementById('tblResult');
+        let newRow = document.createElement('tr');
+        let moduleNameCell = document.createElement('td');
+        let updateDoneCell = document.createElement('td');
+        let buildDoneCell  = document.createElement('td');
+
+        moduleNameCell.textContent = moduleName;
+        updateDoneCell.id = 'updateCell_' + moduleName;
+        updateDoneCell.className = 'pending';
+        buildDoneCell.id  = 'buildCell_'  + moduleName;
+        buildDoneCell.className  = 'pending';
+
+        newRow.appendChild(moduleNameCell);
+        newRow.appendChild(updateDoneCell);
+        newRow.appendChild(buildDoneCell);
+        eventTable.appendChild(newRow);
+    }
+
+    let handleEvent = (ev) => {
+        if (ev.event === "build_plan") {
+            for (const module of ev.build_plan) {
+                addRow(module.name);
+            }
+        }
+        else if (ev.event === "build_done") {
+            document.getElementById('divStatus').textContent = 'Build complete';
+        }
+        else if (ev.event === "phase_completed") {
+            const phase  = ev.phase_completed.phase;
+            const module = ev.phase_completed.module;
+            let cell = document.getElementById(phase + "Cell_" + module);
+            if (cell) {
+                cell.textContent = ev.phase_completed.result;
+                cell.className = 'done';
+            }
+        }
+        else {
+            console.log("Unhandled event ", ev.event);
+            console.dir(ev);
+        }
+    }
+
+    let ws = new WebSocket('<%= "$url/" %>');
+
+    ws.onmessage = (msg_event) => {
+        const events = JSON.parse(msg_event.data);
+        console.dir(msg_event);
+
+        if (!events) {
+            console.log(`Received invalid JSON object in WebSocket handler ${msg_event}`);
+            return;
+        }
+
+        // event should be an array of JSON objects
+        for (const e of events) {
+            handleEvent(e);
+        }
+    }
+</script>
 </html>
 EOF
 
@@ -1773,7 +1851,7 @@ sub _handle_monitoring
                 $tx->res->body(Mojo::JSON::encode_json(\@modules));
             }
             elsif ($path->to_string eq '/') {
-                my $response = _generate_status_viewer_page("http://localhost:$port");
+                my $response = _generate_status_viewer_page("ws://localhost:$port");
 
                 $tx->res->code(200);
                 $tx->res->headers->content_type('text/html');
