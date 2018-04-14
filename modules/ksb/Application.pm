@@ -1695,11 +1695,19 @@ sub _generate_status_viewer_page
 
     <style>
 td.pending {
-    background-color: white;
+    background-color: lightgray;
 }
 
 td.done {
-    background-color: gray;
+    background-color: lightblue;
+}
+
+td.done.success {
+    background-color: lightgreen;
+}
+
+td.done.error {
+    background-color: pink;
 }
     </style>
 </head>
@@ -1750,6 +1758,11 @@ td.done {
             if (cell) {
                 cell.textContent = ev.phase_completed.result;
                 cell.className = 'done';
+                if (['success', 'error'].
+                    includes(ev.phase_completed.result))
+                {
+                    cell.classList.add(ev.phase_completed.result);
+                }
             }
         }
         else {
