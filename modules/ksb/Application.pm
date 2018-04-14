@@ -10,7 +10,7 @@ use warnings;
 use 5.014;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
-use ksb::Debug;
+use ksb::Debug 0.30;
 use ksb::Util;
 use ksb::BuildContext 0.35;
 use ksb::BuildSystem::QMake;
@@ -29,6 +29,7 @@ use Mojo::IOLoop;
 use Mojo::JSON qw(encode_json);
 use Mojo::Message::Request;
 use Mojo::Promise;
+use Mojo::Reactor;
 use Mojo::Server::Daemon;
 use Mojo::Template;
 
@@ -1341,33 +1342,28 @@ sub _handle_updates
             my ($delay, $last_step_successful) = @_; # fed in from a prior IOLoop::Delay step
             my $end = $delay->begin(0);     # This controls when the Delay proceeds
 
-            Mojo::IOLoop->subprocess(
+            return $module->runPhase_p('update',
                 sub {
                     # called in child process, can block
-                    $SIG{INT} = sub { POSIX::_exit(EINTR); };
-                    $0 = 'kdesrc-build-updater';
-                    ksb::Debug::setDebugLevel(ksb::Debug::ERROR);
-
                     return $module->update($ctx);
                 },
                 sub {
                     # called in this process, with results
                     # in this case the only result is whether there's an error or not
-                    my ($subprocess, $err, $updateMsg) = @_;
+                    my ($updateMsg) = @_;
 
                     my $promise = $module_promises->{"$module"};
-                    my $description = 'success';
 
-                    if ($err || !$updateMsg) {
-                        $description = 'failed';
-                        $promise->reject($err || "$module failed to update");
+                    if ($updateMsg) {
+                        $promise->resolve($updateMsg);
+                        $ctx->markModulePhaseSucceeded('update', $module);
                     }
                     else {
-                        $promise->resolve($updateMsg);
+                        $promise->reject("$module failed to update");
+                        $ctx->markModulePhaseFailed('update', $module);
                     }
 
-                    $ctx->markModulePhaseSucceeded('update', $module);
-                    $end->(!$err && $updateMsg && $last_step_successful); # proceed to next step
+                    $end->($updateMsg && $last_step_successful); # proceed to next step
                 }
             );
         };
@@ -1726,6 +1722,8 @@ td.done.error {
     <table id="tblResult">
         <tr><th>Module</th><th>Update</th><th>Build / Install</th></tr>
     </table>
+    <div id="logEntries">
+    </div>
 </body>
 
 <script>
@@ -1771,6 +1769,21 @@ td.done.error {
                 }
             }
         }
+        else if (ev.event === "log_entries") {
+            const phase  = ev.log_entries.phase;
+            const module = ev.log_entries.module;
+            const entries = ev.log_entries.entries;
+
+            console.dir(ev);
+
+            let newText = '<br>';
+            for(const entry of entries) {
+                newText += module + ": " + entry + "<br>";
+            }
+
+            let entriesDiv = document.getElementById('logEntries');
+            entriesDiv.innerHTML = entriesDiv.innerHTML + newText;
+        }
         else {
             console.log("Unhandled event ", ev.event);
             console.dir(ev);
@@ -1781,7 +1794,6 @@ td.done.error {
 
     ws.onmessage = (msg_event) => {
         const events = JSON.parse(msg_event.data);
-        console.dir(msg_event);
 
         if (!events) {
             console.log(`Received invalid JSON object in WebSocket handler ${msg_event}`);

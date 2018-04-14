@@ -1,10 +1,12 @@
-package ksb::Debug 0.20;
+package ksb::Debug 0.30;
 
 # Debugging routines and constants for use with kdesrc-build
 
 use strict;
 use warnings;
 use 5.014;
+
+use Storable qw(freeze);
 
 use Exporter qw(import); # Steal Exporter's import method
 our @EXPORT = qw(debug pretending debugging whisper
@@ -42,6 +44,17 @@ sub colorize
     $str =~ s/r\[/$RED/g;
     $str =~ s/b\[/$BOLD/g;
     $str =~ s/d\[/$DIM/g;
+
+    return $str;
+}
+
+# Removes color decorators, whether colorful output is enabled or not
+sub stripDecorators
+{
+    my $str = shift;
+
+    $str =~ s/[gyrbd]\[//g;
+    $str =~ s/]//g;
 
     return $str;
 }
@@ -105,10 +118,10 @@ sub setLogFile
 # Sets an IPC object to use to proxy logged messages over, to avoid having
 # multiple procs fighting over the same TTY. Needless to say, you should only
 # bother with this if the IPC method is actually concurrent.
-sub setIPC
+sub setOutputHandle
 {
     $ipc = shift;
-    die "$ipc isn't an IPC obj!" if (!ref ($ipc) || !$ipc->isa('ksb::IPC'));
+    die "$ipc isn't an IO handle!" if (!$ipc->can('syswrite'));
 }
 
 # The next few subroutines are used to print output at different importance
@@ -116,8 +129,8 @@ sub setIPC
 # from least to most important:
 # debug, whisper, info (default), note (quiet), warning (very-quiet), and error.
 #
-# You can also use the pretend output subroutine, which is emitted if, and only
-# if pretend mode is enabled.
+# You can also use the pretend output subroutine, which is emitted if pretend
+# mode is enabled.
 #
 # ksb::Debug::colorize is automatically run on the input for all of those
 # functions.  Also, the terminal color is automatically reset to normal as
@@ -126,30 +139,29 @@ sub setIPC
 # Subroutine used to actually display the data, calls ksb::Debug::colorize on each entry first.
 sub print_clr(@)
 {
-    # If we have an IPC object that means there's multiple procs trying to
-    # share the same TTY. Just forward messages to the one proc that should be
-    # managing the TTY.
-    if ($ipc) {
-        my $msg = join('', @_);
-        $ipc->sendLogMessage($msg);
-        return;
+    my @items = @_;
+
+    if (defined $screenLog || $ipc) {
+        my $msg = join('', map { +stripDecorators($_) } (@items));
+
+        if (defined $screenLog) {
+            say $screenLog $msg;
+        }
+
+        # If we have an IPC object that means the real kdesrc-build is a different proc
+        # and we should forward log entries back to it, unless used for line-spacing only
+        if ($ipc && $msg) {
+            my $msgs = freeze([$msg]);
+            $ipc->syswrite($msgs) or say "Couldn't write to debugging output handle: $!";
+        }
+        return if $ipc; # don't concurrently spam to TTY
     }
 
     # Leading + prevents Perl from assuming the plain word "colorize" is actually
     # a filehandle or future reserved word.
-    print +colorize($_) foreach (@_);
+    print +colorize($_) foreach (@items);
     print +colorize("]\n");
 
-    if (defined $screenLog) {
-        my @savedColors = ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD);
-        # Remove color but still extract codes
-        ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = ("") x 5;
-
-        print ($screenLog colorize($_)) foreach (@_);
-        print ($screenLog "\n");
-
-        ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD) = @savedColors;
-    }
 }
 
 sub debug(@)

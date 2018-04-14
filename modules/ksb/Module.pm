@@ -38,7 +38,7 @@ use Mojo::Promise;
 use Mojo::IOLoop;
 
 use POSIX qw(_exit :errno_h);
-use Storable 'dclone';
+use Storable qw(dclone thaw);
 use Carp 'confess';
 use Scalar::Util 'blessed';
 use overload
@@ -1002,11 +1002,43 @@ sub runPhase_p
 
     my $promise = Mojo::Promise->new;
 
+    pipe (my $reader, my $writer)
+        or croak_runtime("Couldn't open pipe to subprocess for $phaseName: $!");
+
+    # Setup a pipe from child to parent so we can get updates as the phase
+    # progresses, logs, etc.
+    my $reactor = Mojo::IOLoop->singleton->reactor;
+    my $buffer;
+
+    $reactor->io($reader => sub {
+        my ($reactor) = @_;
+
+        my $lengthRead = $reader->sysread($buffer, 8192);
+        if ($lengthRead == 0) {
+            # eof
+            $reactor->remove($reader);
+            close $reader;
+        }
+        elsif ($lengthRead > 0) {
+            my $linesRef = eval { thaw($buffer) } || [$@];
+            $self->buildContext()->statusMonitor()->noteLogEvents(
+                "$self", $phaseName, $linesRef);
+        }
+        else {
+            error("Error reading from pipe: $!");
+        }
+    });
+    $reactor->watch($reader, 1, 0); # watch for pipe readability only
+
     Mojo::IOLoop->subprocess(
         sub {
             # blocks, runs in separate process
             $SIG{INT} = sub { POSIX::_exit(EINTR); };
             $0 = "kdesrc-build[$phaseName]";
+
+            $writer->autoflush(1);
+            close $reader; # we can't use this anyways
+            ksb::Debug::setOutputHandle($writer);
 
             $self->buildContext->resetEnvironment();
             $self->setupEnvironment();
@@ -1019,6 +1051,10 @@ sub runPhase_p
         sub {
             # runs in this process once subprocess is done
             my ($subprocess, $err, $result) = @_;
+
+            $reactor->remove($reader);
+            close $reader;
+            close $writer; # can't close it earlier because must be open at fork
 
             return Mojo::Promise->new->reject($err) if $err;
 

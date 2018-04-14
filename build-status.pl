@@ -43,7 +43,7 @@ $ua->max_redirects(0);
 $ua->max_connections(0); # disable keepalive to avoid server closing connection on us
 $ua->max_response_size(16384);
 
-$ua->websocket_p($base_ws->clone->path("events"))
+$ua->websocket_p($base_ws->clone->path("ok"))
     ->then(sub {
         my $ws = shift;
         my $promise = Mojo::Promise->new;
@@ -66,6 +66,13 @@ $ua->websocket_p($base_ws->clone->path("events"))
                 }
                 elsif ($modRef->{event} eq 'build_done') {
                     say "BUILD DONE";
+                }
+                elsif ($modRef->{event} eq 'log_entries') {
+                    my @entries = @{$modRef->{log_entries}->{entries}};
+                    my ($module, $phase) = @{$modRef->{log_entries}}{qw(module phase)};
+                    foreach my $entry (@entries) {
+                        say "$module: $phase: $entry";
+                    }
                 }
                 else {
                     say "Unhandled event ", $modRef->{event};

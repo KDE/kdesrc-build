@@ -1,4 +1,4 @@
-package ksb::StatusMonitor 0.10;
+package ksb::StatusMonitor 0.20;
 
 # A class that records the result of executing the various build phases for
 # each module, and can be subscribed to by interested recipients.
@@ -59,6 +59,23 @@ sub markPhaseComplete
             result => $resultDescription,
         },
         # TODO: Add some useful stats
+    };
+
+    return $self->_announceEvent($result);
+}
+
+# Used for forward debugging logs to our subscribers
+sub noteLogEvents
+{
+    my ($self, $moduleName, $phase, $eventsRef) = @_;
+
+    my $result = {
+        event => 'log_entries',
+        log_entries => {
+            module  => $moduleName,
+            phase   => $phase,
+            entries => $eventsRef,
+        },
     };
 
     return $self->_announceEvent($result);
