@@ -352,7 +352,10 @@ sub buildSystem
         $buildType = ksb::BuildSystem::KDE4->new($self);
     }
 
-    if (!$buildType && (glob ("$sourceDir/*.pro"))) {
+    # We have to assign to an array to force glob to return all results,
+    # otherwise it acts like a non-reentrant generator whose output depends on
+    # how many times it's been called...
+    if (!$buildType && (my @files = glob ("$sourceDir/*.pro"))) {
         $buildType = ksb::BuildSystem::QMake->new($self);
     }
 
