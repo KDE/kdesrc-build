@@ -26,9 +26,15 @@ my $run = $ENV{XDG_RUNTIME_DIR} // '/tmp';
 my $server_url_path = "$run/kdesrc-build-status-server";
 open my $server_url_fh, '<', $server_url_path;
 
-my $path = <$server_url_fh>;
-chomp $path; # remove any trailing \n
+# remove any trailing \n
+chomp(my $path = <$server_url_fh>);
 close $server_url_fh;
+
+# Used by update_output
+my %num_phases_todo;
+my %num_phases_done;
+my %current_module_for_phase;
+my %module_failures;
 
 my $ua = Mojo::UserAgent->new;
 my $base = Mojo::URL->new($path);
@@ -52,26 +58,52 @@ $ua->websocket_p($base_ws->clone->path("ok"))
         $ws->on(json => sub {
             my ($ws, $resultRef) = @_;
             foreach my $modRef (@{$resultRef}) {
-                if ($modRef->{event} eq 'phase_completed') {
+                if ($modRef->{event} eq 'phase_started') {
+                    my $module = $modRef->{phase_started}->{module};
+                    my $phase  = $modRef->{phase_started}->{phase};
+
+                    $current_module_for_phase{$phase} = $module;
+
+                    update_output();
+                }
+                elsif ($modRef->{event} eq 'phase_completed') {
                     my $mr = $modRef->{phase_completed};
-                    say $mr->{module}, " done with phase ", $mr->{phase}, ":",
-                        $mr->{result};
+                    my $phase = $mr->{phase};
+                    $module_failures{$mr->{module}} = $phase
+                        if ($mr->{result} eq 'error');
+
+                    $num_phases_done{$phase} //= 0;
+                    $num_phases_done{$phase}++;
+                    $current_module_for_phase{$phase} =
+                        ($num_phases_todo{$phase} == $num_phases_done{$phase})
+                            ? '---' : '';
+
+                    update_output();
                 }
                 elsif ($modRef->{event} eq 'build_plan') {
                     my @modules = @{$modRef->{build_plan}};
-                    say "Received build plan";
+
                     foreach my $m (@modules) {
-                        say "Will build ", $m->{name}, " with phases: ", join(', ', @{$m->{phases}});
+                        foreach my $phase (@{$m->{phases}}) {
+                            $num_phases_todo{$phase} //= 0;
+                            $num_phases_todo{$phase}++;
+                        }
                     }
                 }
                 elsif ($modRef->{event} eq 'build_done') {
-                    say "BUILD DONE";
+                    print "\n";
+
+                    while (my ($module, $phase) = each %module_failures) {
+                        say "$module failed to $phase";
+                    }
+
+                    $ws->finish;
                 }
                 elsif ($modRef->{event} eq 'log_entries') {
                     my @entries = @{$modRef->{log_entries}->{entries}};
                     my ($module, $phase) = @{$modRef->{log_entries}}{qw(module phase)};
                     foreach my $entry (@entries) {
-                        say "$module: $phase: $entry";
+                        # say "$module: $phase: $entry";
                     }
                 }
                 else {
@@ -81,8 +113,76 @@ $ua->websocket_p($base_ws->clone->path("ok"))
         });
 
         return $promise;
-    })
-    ->then(sub {
-            say "Connection closed";
-        })
-    ->wait;
+    })->wait;
+
+exit 0 unless %module_failures;
+exit 1;
+
+sub phase_progress_string
+{
+    my @phases = @_;
+    my $result = '';
+    my $base   = '';
+
+    foreach my $phase (@phases) {
+        my $cur = $num_phases_done{$phase} // 0;
+        my $max = $num_phases_todo{$phase}
+            or die "No phase $phase";
+
+        my $strWidth = length("$max");
+        my $progress = sprintf("%0*s/$max", $strWidth, $cur);
+
+        $result .= "$base$phase [$progress]";
+        $base = ' ';
+    }
+
+    return $result;
+}
+
+sub current_module_status
+{
+    my @phases = @_;
+    my $result = '';
+    my $base   = '';
+
+    foreach my $phase (@phases) {
+        my $curModule = $current_module_for_phase{$phase} // '???';
+
+        $result .= "$base$phase: $curModule";
+        $base = ' ';
+    }
+
+    return $result;
+}
+
+sub update_output
+{
+    state $term_width = get_terminal_size();
+    my @phases = grep { $_ ne 'install' } (sort keys %num_phases_todo);
+    my $progress = phase_progress_string(@phases);
+    my $current_modules = current_module_status(@phases);
+
+    my $width = $term_width / 2 - 1;
+    my $msg;
+
+    if (length($current_modules) <= $width) {
+        $msg = sprintf("%*s %*s", -$width, $progress, -$width, $current_modules);
+    } else {
+        $msg = "$progress $current_modules";
+    }
+
+    # Give escape sequence to return to column 1 and clear the entire line
+    # Then print message and return to column 1 again in case somewhere else
+    # uses the tty.
+    print "\e[1G\e[K$msg\e[1G";
+    STDOUT->flush;
+}
+
+sub get_terminal_size
+{
+    my $width;
+    chomp($width = `tput cols`);
+    $width //= $ENV{COLUMNS} // 80;
+
+    return int($width);
+}

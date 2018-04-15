@@ -47,6 +47,41 @@ sub createBuildPlan
     return $self->_announceEvent($result);
 }
 
+# Marks the a given build phase has begun.
+sub markPhaseStart
+{
+    my ($self, $moduleName, $phase) = @_;
+
+    my $result = {
+        event => 'phase_started',
+        phase_started => {
+            module => $moduleName,
+            phase  => $phase,
+        },
+    };
+
+    return $self->_announceEvent($result);
+}
+
+# Marks progress made within a phase.  Try to avoid calling with redundant
+# progresses though!
+# The progress given should be in the range [0-1] (as a percentage).
+sub markPhaseProgress
+{
+    my ($self, $moduleName, $phase, $progress) = @_;
+
+    my $result = {
+        event => 'phase_progress',
+        phase_progress => {
+            module   => $moduleName,
+            phase    => $phase,
+            progress => $progress,
+        },
+    };
+
+    return $self->_announceEvent($result);
+}
+
 # Marks that a phase has completed.  Additional details can be passed
 # in as a hash table.
 sub markPhaseComplete

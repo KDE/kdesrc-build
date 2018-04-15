@@ -1343,6 +1343,10 @@ sub _handle_updates
             my ($delay, $last_step_successful) = @_; # fed in from a prior IOLoop::Delay step
             my $end = $delay->begin(0);     # This controls when the Delay proceeds
 
+            $module->buildContext()->statusMonitor()->markPhaseStart(
+                $module->name(), 'update'
+            );
+
             return $module->runPhase_p('update',
                 sub {
                     # called in child process, can block
@@ -1534,6 +1538,11 @@ sub _handle_build
 
                 # TODO: Split install into a separate phase so that exception
                 # handler knows which phase had the failure
+
+                $module->buildContext()->statusMonitor()->markPhaseStart(
+                    $module->name(), 'build'
+                );
+
                 return $module->build();
             })->catch(sub {
                 my $failureReason = shift;
@@ -1756,24 +1765,39 @@ td.done.error {
         else if (ev.event === "build_done") {
             document.getElementById('divStatus').textContent = 'Build complete';
         }
+        else if (ev.event === "phase_started") {
+            const phase  = ev.phase_started.phase;
+            const module = ev.phase_started.module;
+
+            let cell = document.getElementById(phase + "Cell_" + module);
+            if (!cell) {
+                return;
+            }
+
+            cell.className = 'working';
+            cell.textContent = 'Working...';
+        }
         else if (ev.event === "phase_completed") {
             const phase  = ev.phase_completed.phase;
             const module = ev.phase_completed.module;
-            let cell = document.getElementById(phase + "Cell_" + module);
-            if (cell) {
-                cell.className = 'done';
-                if (['success', 'error'].
-                    includes(ev.phase_completed.result))
-                {
-                    cell.classList.add(ev.phase_completed.result);
-                }
 
-                if (ev.phase_completed.error_log) {
-                    const logUrl = ev.phase_completed.error_log;
-                    cell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
-                } else {
-                    cell.innerHTML = ev.phase_completed.result;
-                }
+            let cell = document.getElementById(phase + "Cell_" + module);
+            if (!cell) {
+                return;
+            }
+
+            cell.className = 'done';
+            if (['success', 'error'].
+                includes(ev.phase_completed.result))
+            {
+                cell.classList.add(ev.phase_completed.result);
+            }
+
+            if (ev.phase_completed.error_log) {
+                const logUrl = ev.phase_completed.error_log;
+                cell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
+            } else {
+                cell.innerHTML = ev.phase_completed.result;
             }
         }
         else if (ev.event === "log_entries") {
