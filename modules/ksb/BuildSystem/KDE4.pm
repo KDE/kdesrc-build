@@ -172,6 +172,12 @@ sub _safe_run_cmake
 
     push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
 
+    # Add custom Qt to the prefix
+    my $qtdir = $module->getOption('qtdir');
+    if ($qtdir && $qtdir ne $prefix) {
+        push @commands, "-DCMAKE_PREFIX_PATH=$qtdir";
+    }
+
     if ($module->getOption('run-tests') &&
         !grep { /^\s*-DKDE4_BUILD_TESTS(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
        )

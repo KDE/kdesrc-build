@@ -69,9 +69,7 @@ sub _verifyRefPresent
 
     return 1 if pretending();
 
-    my $ref = (($commitType eq 'branch') ? 'refs/heads/'
-            : ($commitType eq 'tag')    ? 'refs/tags/'
-            : '') . $commitId;
+    my $ref = $commitId;
 
     my $hashref = run_forked("git ls-remote --exit-code $repo $ref",
         { timeout => 10, discard_output => 1, terminate_on_parent_sudden_death => 1});
@@ -100,7 +98,7 @@ sub _clone
     p_chdir($module->getSourceDir());
 
     my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
-    $commitId = "refs/tags/$commitId" if $commitType eq 'tag';
+    $commitId =~ s,^refs/tags/,,;   # git-clone -b doesn't like refs/tags/
     unshift @args, '-b', $commitId; # Checkout branch right away
 
     if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
@@ -192,12 +190,11 @@ EOF
         }
 
         if (!$self->_verifyRefPresent($module, $git_repo)) {
-            if (!$self->_moduleIsNeeded()) {
-                note ("Skipping g[$module], this module was not in the containing module-set at this branch");
-                return 0;
-            }
-
-            croak_runtime("The desired git reference is not available for $module");
+            croak_runtime(
+                $self->_moduleIsNeeded()
+                    ? "$module build was requested, but it has no source code at the requested git branch"
+                    : "The required git branch does not exist at the source repository"
+            );
         }
 
         $self->_clone($git_repo);
