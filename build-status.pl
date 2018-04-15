@@ -21,6 +21,7 @@ use Mojo::UserAgent;
 use Mojo::URL;
 use Mojo::IOLoop;
 use Mojo::JSON qw(encode_json decode_json);
+use List::Util qw(min max);
 
 my $run = $ENV{XDG_RUNTIME_DIR} // '/tmp';
 my $server_url_path = "$run/kdesrc-build-status-server";
@@ -34,6 +35,7 @@ close $server_url_fh;
 my %num_phases_todo;
 my %num_phases_done;
 my %current_module_for_phase;
+my $longest_module_name = '';
 my %module_failures;
 
 my $ua = Mojo::UserAgent->new;
@@ -84,6 +86,9 @@ $ua->websocket_p($base_ws->clone->path("ok"))
                     my @modules = @{$modRef->{build_plan}};
 
                     foreach my $m (@modules) {
+                        $longest_module_name = $m
+                            if length($m) > length($longest_module_name);
+
                         foreach my $phase (@{$m->{phases}}) {
                             $num_phases_todo{$phase} //= 0;
                             $num_phases_todo{$phase}++;
@@ -155,20 +160,54 @@ sub current_module_status
     return $result;
 }
 
+sub get_min_output_width
+{
+    my @phases = qw(update build);
+    my %temp_current = %current_module_for_phase;
+
+    # fake that the worst-case module is set and find resultant length
+    $current_module_for_phase{$_} = $longest_module_name
+        foreach @phases;
+
+    my $str = phase_progress_string(@phases) . " " . current_module_status(@phases);
+
+    %current_module_for_phase = %temp_current;
+
+    return length($str);
+}
+
 sub update_output
 {
     state $term_width = get_terminal_size();
-    my @phases = grep { $_ ne 'install' } (sort keys %num_phases_todo);
+    state $min_width  = get_min_output_width();
+
+    my @phases = qw(update build);
     my $progress = phase_progress_string(@phases);
     my $current_modules = current_module_status(@phases);
 
     my $width = $term_width / 2 - 1;
     my $msg;
 
-    if (length($current_modules) <= $width) {
-        $msg = sprintf("%*s %*s", -$width, $progress, -$width, $current_modules);
-    } else {
+    if ($min_width >= ($term_width - 12)) {
         $msg = "$progress $current_modules";
+    } else {
+        my $max_prog_width = ($term_width - $min_width) - 2;
+        my $num_all_done  = min(@num_phases_done{@phases});
+        my $num_some_done = max(@num_phases_done{@phases}, 0);
+        my $max_todo      = max(@num_phases_todo{@phases}, 1);
+
+        my $width = $max_prog_width * $num_all_done / $max_todo;
+        # Leave at least one empty space if we're not fully done
+        $width-- if ($width == $max_prog_width && $num_all_done < $max_todo);
+
+        my $bar = ('=' x $width);
+
+        if ($num_some_done > $num_all_done) {
+            $width = $max_prog_width * $num_some_done / $max_todo;
+            $bar .= ('.' x ($width - length ($bar)));
+        }
+
+        $msg = sprintf("%s [%*s] %s", $progress, -$max_prog_width, $bar, $current_modules);
     }
 
     # Give escape sequence to return to column 1 and clear the entire line
