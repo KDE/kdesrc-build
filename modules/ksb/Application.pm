@@ -24,6 +24,7 @@ use ksb::DependencyResolver 0.20;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
+use Mojo::Asset::File;
 use Mojo::File;
 use Mojo::IOLoop;
 use Mojo::JSON qw(encode_json);
@@ -1760,12 +1761,18 @@ td.done.error {
             const module = ev.phase_completed.module;
             let cell = document.getElementById(phase + "Cell_" + module);
             if (cell) {
-                cell.textContent = ev.phase_completed.result;
                 cell.className = 'done';
                 if (['success', 'error'].
                     includes(ev.phase_completed.result))
                 {
                     cell.classList.add(ev.phase_completed.result);
+                }
+
+                if (ev.phase_completed.error_log) {
+                    const logUrl = ev.phase_completed.error_log;
+                    cell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
+                } else {
+                    cell.innerHTML = ev.phase_completed.result;
                 }
             }
         }
@@ -1776,7 +1783,7 @@ td.done.error {
 
             console.dir(ev);
 
-            let newText = '<br>';
+            let newText = '';
             for(const entry of entries) {
                 newText += module + ": " + entry + "<br>";
             }
@@ -1888,18 +1895,32 @@ sub _handle_monitoring
                 $tx->res->headers->content_type('text/html');
                 $tx->res->body($response);
             }
+            elsif ($path->contains('/error_log')) {
+                my $moduleName = $path->[1] // '';
+                my $module = $ctx->lookupModule($moduleName);
+                my $logfile;
+
+                $logfile = $module->getOption('#error-log-file', 'module') if $module;
+
+                if ($logfile && -f $logfile) {
+                    my $asset = Mojo::Asset::File->new(path => $logfile);
+                    $tx->res->content->asset($asset);
+                    $tx->res->headers->content_type('text/plain');
+                    $tx->res->code(200);
+                }
+                elsif ($module && !$logfile) {
+                    $tx->res->code(404);
+                }
+                else {
+                    $tx->res->code(400);
+                }
+            }
             else {
-                $tx->error({
-                    message => 'Resource not found',
-                    code    => 404,
-                });
+                $tx->res->code(404);
             }
         }
         else {
-            $tx->error({
-                message => 'Invalid method',
-                code    => '500',
-            });
+            $tx->res->code(500);
         }
 
         # Mojolicious will complete processing and send response

@@ -47,9 +47,11 @@ sub createBuildPlan
     return $self->_announceEvent($result);
 }
 
+# Marks that a phase has completed.  Additional details can be passed
+# in as a hash table.
 sub markPhaseComplete
 {
-    my ($self, $moduleName, $phase, $resultDescription) = @_;
+    my ($self, $moduleName, $phase, $resultDescription, %details) = @_;
 
     my $result = {
         event => 'phase_completed',
@@ -57,6 +59,7 @@ sub markPhaseComplete
             module => $moduleName,
             phase  => $phase,
             result => $resultDescription,
+            %details,
         },
         # TODO: Add some useful stats
     };
