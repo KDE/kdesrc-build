@@ -151,7 +151,7 @@ sub print_clr(@)
         # If we have an IPC object that means the real kdesrc-build is a different proc
         # and we should forward log entries back to it, unless used for line-spacing only
         if ($ipc && $msg) {
-            my $msgs = freeze([$msg]);
+            my $msgs = freeze({ message => $msg});
             $ipc->syswrite($msgs) or say "Couldn't write to debugging output handle: $!";
         }
         return if $ipc; # don't concurrently spam to TTY
@@ -162,6 +162,15 @@ sub print_clr(@)
     print +colorize($_) foreach (@items);
     print +colorize("]\n");
 
+}
+
+# Subroutine to forward information back to a listening parent.
+sub reportProgressToParent
+{
+    croak_internal("Missing IPC receiver") unless $ipc;
+
+    my ($module, $x, $y) = @_;
+    $ipc->syswrite(freeze({ progress => [ $x, $y ], module => "$module" }));
 }
 
 sub debug(@)

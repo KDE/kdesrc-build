@@ -1036,9 +1036,17 @@ sub runPhase_p
             close $reader;
         }
         elsif ($lengthRead > 0) {
-            my $linesRef = eval { thaw($buffer) } || [$@];
-            $self->buildContext()->statusMonitor()->noteLogEvents(
-                "$self", $phaseName, $linesRef);
+            my $monitor = $self->buildContext()->statusMonitor();
+            my $linesRef = eval { thaw($buffer) };
+            croak_internal($@) unless $linesRef;
+
+            if (exists $linesRef->{message}) {
+                $monitor->noteLogEvents("$self", $phaseName, [$linesRef->{message}]);
+            } elsif (exists $linesRef->{progress}) {
+                $monitor->markPhaseProgress("$self", $phaseName, $linesRef->{progress});
+            } else {
+                croak_internal("Read unexpected message $buffer from child.");
+            }
         }
         else {
             error("Error reading from pipe: $!");

@@ -8,7 +8,7 @@ use strict;
 use warnings;
 use 5.014;
 
-use ksb::Debug;
+use ksb::Debug 0.30;
 use ksb::Util;
 use ksb::StatusView;
 
@@ -445,25 +445,33 @@ sub _runBuildCommand
     $statusViewer->setStatus("\t$message");
     $statusViewer->update();
 
-    # w00t.  Check out the closure!  Maks would be so proud.
+    # Run for every line of build output
     my $log_command_callback = sub {
+        state $oldX = -1;
+        state $oldY = -1;
+
         my $input = shift;
         if (not defined $input) {
             return;
         }
 
+        my ($x, $y);
         my ($percentage) = ($input =~ /^\[\s*([0-9]+)%]/);
         if ($percentage) {
-            $statusViewer->setProgressTotal(100);
-            $statusViewer->setProgress($percentage);
+            $x = int $percentage; $y = 100;
         }
         else {
-            my ($x, $y) = ($input =~ /^\[([0-9]+)\/([0-9]+)] /);
-            if ($x && $y) {
-                # ninja-syntax
-                $statusViewer->setProgressTotal($y);
-                $statusViewer->setProgress($x);
-            }
+            # ninja-syntax
+            my ($newX, $newY) = ($input =~ /^\[([0-9]+)\/([0-9]+)] /);
+            return unless ($newX && $newY);
+
+            ($x, $y) = (int $newX, int $newY);
+        }
+
+        if ($x != $oldX || $y != $oldY) {
+            $statusViewer->setProgress     ($oldX = $x);
+            $statusViewer->setProgressTotal($oldY = $y);
+            ksb::Debug::reportProgressToParent($module, $x, $y);
         }
     };
 

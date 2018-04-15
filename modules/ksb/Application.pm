@@ -1777,6 +1777,18 @@ td.done.error {
             cell.className = 'working';
             cell.textContent = 'Working...';
         }
+        else if (ev.event === "phase_progress") {
+            const phase  = ev.phase_progress.phase;
+            const module = ev.phase_progress.module;
+            const progressAry = ev.phase_progress.progress;
+
+            let cell = document.getElementById(phase + "Cell_" + module);
+            if (!cell) {
+                return;
+            }
+
+            cell.textContent = `${progressAry[0]} / ${progressAry[1]}`;
+        }
         else if (ev.event === "phase_completed") {
             const phase  = ev.phase_completed.phase;
             const module = ev.phase_completed.module;
