@@ -68,6 +68,10 @@ $ua->websocket_p($base_ws->clone->path("ok"))
 
                     update_output();
                 }
+                elsif ($modRef->{event} eq 'phase_progress') {
+                    # Could update a spinner or something?
+                    ;
+                }
                 elsif ($modRef->{event} eq 'phase_completed') {
                     my $mr = $modRef->{phase_completed};
                     my $phase = $mr->{phase};
@@ -86,8 +90,8 @@ $ua->websocket_p($base_ws->clone->path("ok"))
                     my @modules = @{$modRef->{build_plan}};
 
                     foreach my $m (@modules) {
-                        $longest_module_name = $m
-                            if length($m) > length($longest_module_name);
+                        $longest_module_name = $m->{name}
+                            if length($m->{name}) > length($longest_module_name);
 
                         foreach my $phase (@{$m->{phases}}) {
                             $num_phases_todo{$phase} //= 0;
