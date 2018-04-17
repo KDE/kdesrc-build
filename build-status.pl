@@ -22,6 +22,7 @@ use Mojo::URL;
 use Mojo::IOLoop;
 use Mojo::JSON qw(encode_json decode_json);
 use List::Util qw(min max);
+use Term::ANSIColor qw(color);
 
 my $run = $ENV{XDG_RUNTIME_DIR} // '/tmp';
 my $server_url_path = "$run/kdesrc-build-status-server";
@@ -83,6 +84,23 @@ $ua->websocket_p($base_ws->clone->path("ok"))
                     $current_module_for_phase{$phase} =
                         ($num_phases_todo{$phase} == $num_phases_done{$phase})
                             ? '---' : '';
+
+                    if (exists $mr->{error_file}) {
+                        my $module = $mr->{module};
+                        my $file   = $mr->{error_file};
+
+                        # Clear line
+                        print "\e[1G\e[K";
+                        say color('bright_yellow'), $module, color('reset'), " failed to ",
+                            color('bright_yellow'), $phase, color('reset'), ", details at ",
+                            color('bright_red'), $file, color('reset');
+                    }
+                    elsif ($mr->{result} eq 'error') {
+                        # No log, but still an error
+                        print "\e[1G\e[K";
+                        say color('bright_yellow'), $module, color('reset'), " failed to ",
+                            color('bright_yellow'), $phase, color('reset'), ", but no details available.";
+                    }
 
                     update_output();
                 }

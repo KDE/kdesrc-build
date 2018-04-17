@@ -667,7 +667,12 @@ sub markModulePhaseFailed
     assert_isa($module, 'ksb::Module');
 
     my $name = $module->name();
-    my %details = (error_log => "/error_log/$name");
+    my %details;
+
+    if ((my $log = $module->getOption('#error-log-file', 'module'))) {
+        $details{error_log}  = "/error_log/$name";
+        $details{error_file} = $log;
+    }
 
     $self->{status_monitor}->markPhaseComplete($name, $phase, 'error', %details);
     $self->{errors}->{$name} = $phase;
