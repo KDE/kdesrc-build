@@ -76,6 +76,7 @@ $ua->websocket_p($base_ws->clone->path("ok"))
                 elsif ($modRef->{event} eq 'phase_completed') {
                     my $mr = $modRef->{phase_completed};
                     my $phase = $mr->{phase};
+                    my $module = $mr->{module};
                     $module_failures{$mr->{module}} = $phase
                         if ($mr->{result} eq 'error');
 
@@ -86,7 +87,6 @@ $ua->websocket_p($base_ws->clone->path("ok"))
                             ? '---' : '';
 
                     if (exists $mr->{error_file}) {
-                        my $module = $mr->{module};
                         my $file   = $mr->{error_file};
 
                         # Clear line
