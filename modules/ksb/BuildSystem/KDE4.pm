@@ -32,8 +32,11 @@ sub prepareModuleBuildEnvironment
 {
     my ($self, $ctx, $module, $prefix) = @_;
 
-    $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $prefix);
-    $ctx->prependEnvironmentValue('XDG_DATA_DIRS', "$prefix/share");
+    # Avoid moving /usr up in env vars
+    if ($prefix ne '/usr') {
+        $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $prefix);
+        $ctx->prependEnvironmentValue('XDG_DATA_DIRS', "$prefix/share");
+    }
 
     my $qtdir = $module->getOption('qtdir');
     if ($qtdir && $qtdir ne $prefix) {

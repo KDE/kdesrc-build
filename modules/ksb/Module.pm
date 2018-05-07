@@ -657,14 +657,17 @@ sub setupEnvironment
     # Add global set-envs and context
     $self->buildContext()->applyUserEnvironment();
 
-    my @pkg_config_dirs = ("$kdedir/lib/pkgconfig");
-    $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @pkg_config_dirs);
+    # Avoid moving /usr up in env vars
+    if ($kdedir ne '/usr') {
+        my @pkg_config_dirs = ("$kdedir/lib/pkgconfig");
+        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @pkg_config_dirs);
 
-    my @ld_dirs = ("$kdedir/lib", $self->getOption('libpath'));
-    $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
+        my @ld_dirs = ("$kdedir/lib", $self->getOption('libpath'));
+        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
 
-    my @path = ("$kdedir/bin", $self->getOption('binpath'));
-    $ctx->prependEnvironmentValue('PATH', @path);
+        my @path = ("$kdedir/bin", $self->getOption('binpath'));
+        $ctx->prependEnvironmentValue('PATH', @path);
+    }
 
     # Build system's environment injection
     my $buildSystem = $self->buildSystem();
