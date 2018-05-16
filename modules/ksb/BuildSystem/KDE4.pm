@@ -34,13 +34,17 @@ sub prepareModuleBuildEnvironment
 
     # Avoid moving /usr up in env vars
     if ($prefix ne '/usr') {
+        # Find the normal CMake "config" mode files for find_package()
         $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $prefix);
+        # Try to ensure that older "module" mode find_package() calls also point to right directory
+        $ctx->prependEnvironmentValue('CMAKE_MODULE_PATH', "$prefix/lib64/cmake:$prefix/lib/cmake");
         $ctx->prependEnvironmentValue('XDG_DATA_DIRS', "$prefix/share");
     }
 
     my $qtdir = $module->getOption('qtdir');
     if ($qtdir && $qtdir ne $prefix) {
         # Ensure we can find Qt5's own CMake modules
+        $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $qtdir);
         $ctx->prependEnvironmentValue('CMAKE_MODULE_PATH', "$qtdir/lib/cmake");
     }
 }
