@@ -36,9 +36,6 @@ use IO::Select;
 
 ### Package-specific variables (not shared outside this file).
 
-# This is a hash since Perl doesn't have a "in" keyword.
-my %ignore_list;  # List of packages to refuse to include in the build list.
-
 use constant {
     # We use a named remote to make some git commands work that don't accept the
     # full path.
@@ -56,6 +53,7 @@ sub new
         metadata_module => undef,
         run_mode        => 'build',
         modules         => undef,
+        ignored_selectors => [ ],
         module_factory  => undef, # ref to sub that makes a new Module.
                                   # See generateModuleList
         _base_pid       => $$, # See finish()
@@ -350,8 +348,11 @@ sub generateModuleList
     $self->_readCommandLineOptionsAndSelectors($cmdlineOptions, \@selectors,
         $ctx, @argv);
 
+    # NOTE these are both listrefs
+    $self->{ignored_selectors} = $cmdlineGlobalOptions->{'ignore-modules'};
+
     my %ignoredSelectors;
-    @ignoredSelectors{@{$cmdlineGlobalOptions->{'ignore-modules'}}} = undef;
+    @ignoredSelectors{@{$self->{ignored_selectors}}} = undef;
 
     my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
     delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
@@ -434,7 +435,7 @@ sub generateModuleList
     $moduleResolver->setCmdlineOptions($cmdlineOptions);
     $moduleResolver->setDeferredOptions($deferredOptions);
     $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
-    $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
+    $moduleResolver->setIgnoredSelectors($self->{ignored_selectors});
 
     $self->_defineNewModuleFactory($moduleResolver);
 
@@ -601,6 +602,13 @@ sub runAllModulePhases
     # be OK since there's nothing different going on from the first pass (in
     # resolveSelectorsIntoModules) in that event.
     @modules = _applyModuleFilters($ctx, @modules);
+
+    # Remove any ignored modules that crept back in as a dependency
+    do { # new scope
+        my %ignoredSelectors;
+        @ignoredSelectors{@{$self->{ignored_selectors}}} = undef;
+        @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
+    };
 
     if ($ctx->getOption('print-modules')) {
         info (" * Module list", $metadataModule ? " in dependency order" : '');
