@@ -53,7 +53,6 @@ sub new
         metadata_module => undef,
         run_mode        => 'build',
         modules         => undef,
-        ignored_selectors => [ ],
         module_factory  => undef, # ref to sub that makes a new Module.
                                   # See generateModuleList
         _base_pid       => $$, # See finish()
@@ -323,11 +322,11 @@ DONE
 }
 
 # Generates the build context and module list based on the command line options
-# and module selectors provided, and sets up the module factory.
+# and module selectors provided, resolves dependencies on those modules if needed,
+# filters out ignored or skipped modules, and sets up the module factory.
 #
 # After this function is called all module set selectors will have been
-# expanded, and we will know if we need to download kde-projects metadata or
-# not. Dependency resolution has not occurred.
+# expanded, and we will have downloaded kde-projects metadata.
 #
 # Returns: List of Modules to build.
 sub generateModuleList
@@ -348,11 +347,9 @@ sub generateModuleList
     $self->_readCommandLineOptionsAndSelectors($cmdlineOptions, \@selectors,
         $ctx, @argv);
 
-    # NOTE these are both listrefs
-    $self->{ignored_selectors} = $cmdlineGlobalOptions->{'ignore-modules'};
-
-    my %ignoredSelectors;
-    @ignoredSelectors{@{$self->{ignored_selectors}}} = undef;
+    # Convert list to hash for lookup
+    my %ignoredSelectors =
+        map { $_, 1 } @{$cmdlineGlobalOptions->{'ignore-modules'}};
 
     my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
     delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
@@ -414,8 +411,13 @@ sub generateModuleList
     # available.
     $ctx->setKDEDependenciesMetadataModuleNeeded();
     $ctx->setKDEProjectsMetadataModuleNeeded();
-    ksb::Updater::Git::verifyGitConfig();
-    $self->_downloadKDEProjectMetadata();
+
+    if (!exists $ENV{HARNESS_ACTIVE}) {
+        # Running in a test harness, avoid downloading metadata which will be
+        # ignored in the test or making changes to git config
+        ksb::Updater::Git::verifyGitConfig();
+        $self->_downloadKDEProjectMetadata();
+    }
 
     # The user might only want metadata to update to allow for a later
     # --pretend run, check for that here.
@@ -435,7 +437,7 @@ sub generateModuleList
     $moduleResolver->setCmdlineOptions($cmdlineOptions);
     $moduleResolver->setDeferredOptions($deferredOptions);
     $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
-    $moduleResolver->setIgnoredSelectors($self->{ignored_selectors});
+    $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
 
     $self->_defineNewModuleFactory($moduleResolver);
 
@@ -456,14 +458,39 @@ sub generateModuleList
         ksb::Module->setModuleSource('config');
     }
 
-    # Check for ignored modules (post-expansion)
-    @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
-
     # If modules were on the command line then they are effectively forced to
     # process unless overridden by command line options as well. If phases
     # *were* overridden on the command line, then no update pass is required
     # (all modules already have correct phases)
     @modules = _updateModulePhases(@modules) unless $commandLineModules;
+
+    # TODO: Verify this does anything still
+    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
+    $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
+
+    # Remove modules that are explicitly blanked out in their branch-group
+    # i.e. those modules where they *have* a branch-group, and it's set to
+    # be empty ("").
+    my $resolver = $ctx->moduleBranchGroupResolver();
+    my $branchGroup = $ctx->effectiveBranchGroup();
+
+    @modules = grep {
+        my $branch = $_->isKDEProject()
+            ? $resolver->findModuleBranch($_->fullProjectPath(), $branchGroup)
+            : 1; # Just a placeholder truthy value
+        whisper ("Removing ", $_->fullProjectPath(), " due to branch-group") if (defined $branch and !$branch);
+        (!defined $branch or $branch); # This is the actual test
+    } (@modules);
+
+    @modules = $self->_resolveModuleDependencies(@modules);
+
+    # Filter --resume-foo options. This might be a second pass, but that should
+    # be OK since there's nothing different going on from the first pass (in
+    # resolveSelectorsIntoModules) in that event.
+    @modules = _applyModuleFilters($ctx, @modules);
+
+    # Check for ignored modules (post-expansion)
+    @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
 
     return @modules;
 }
@@ -577,41 +604,9 @@ sub runAllModulePhases
 {
     my $self = shift;
     my $ctx = $self->context();
-    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
     my @modules = $self->modules();
 
-    $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
-
-    # Remove modules that are explicitly blanked out in their branch-group
-    # i.e. those modules where they *have* a branch-group, and it's set to
-    # be empty ("").
-    my $resolver = $ctx->moduleBranchGroupResolver();
-    my $branchGroup = $ctx->effectiveBranchGroup();
-
-    @modules = grep {
-        my $branch = $_->isKDEProject()
-            ? $resolver->findModuleBranch($_->fullProjectPath(), $branchGroup)
-            : 1; # Just a placeholder truthy value
-        whisper ("Removing ", $_->fullProjectPath(), " due to branch-group") if (defined $branch and !$branch);
-        (!defined $branch or $branch); # This is the actual test
-    } (@modules);
-
-    @modules = $self->_resolveModuleDependencies(@modules);
-
-    # Filter --resume-foo options. This might be a second pass, but that should
-    # be OK since there's nothing different going on from the first pass (in
-    # resolveSelectorsIntoModules) in that event.
-    @modules = _applyModuleFilters($ctx, @modules);
-
-    # Remove any ignored modules that crept back in as a dependency
-    do { # new scope
-        my %ignoredSelectors;
-        @ignoredSelectors{@{$self->{ignored_selectors}}} = undef;
-        @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
-    };
-
     if ($ctx->getOption('print-modules')) {
-        info (" * Module list", $metadataModule ? " in dependency order" : '');
         for my $m (@modules) {
             say ((" " x ($m->getOption('#dependency-level', 'module') // 0)), "$m");
         }
