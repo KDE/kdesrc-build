@@ -179,9 +179,12 @@ sub _safe_run_cmake
 
     push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
 
-    # Add custom Qt to the prefix
+    # Add custom Qt to the prefix (but don't overwrite a user-set prefix)
     my $qtdir = $module->getOption('qtdir');
-    if ($qtdir && $qtdir ne $prefix) {
+    if ($qtdir && $qtdir ne $prefix &&
+        !grep { /^\s*-DCMAKE_PREFIX_PATH/ } (@commands)
+       )
+    {
         push @commands, "-DCMAKE_PREFIX_PATH=$qtdir";
     }
 
