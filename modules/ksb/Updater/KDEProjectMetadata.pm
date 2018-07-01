@@ -49,7 +49,8 @@ sub logicalModuleGroups
     my $self = shift;
     my $path = $self->module()->fullpath('source') . "/logical-module-structure";
 
-    my $fh = pretend_open($path) or
+    # The {} is an empty JSON obj to support pretend mode
+    my $fh = pretend_open($path, '{}') or
         croak_internal("Unable to read logical module structure: $!");
 
     my ($json_hashref, $e) = do {
@@ -61,7 +62,7 @@ sub logicalModuleGroups
         ($json, $@); # Implicit return
     };
 
-    croak_runtime ("Unable to load module group data! :(\n\t$e") if $e;
+    croak_runtime ("Unable to load module group data from $path! :(\n\t$e") if $e;
     return $json_hashref;
 }
 
