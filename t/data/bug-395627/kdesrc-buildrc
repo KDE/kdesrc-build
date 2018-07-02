@@ -1,0 +1,26 @@
+global
+    source-dir /tmp
+    qtdir /tmp/qt5
+    git-repository-base fake git://localhost/git-set/
+    override-build-system KDE # Use CMake everywhere w/out source probing
+end global
+
+module-set test
+    repository fake
+    use-modules sample1 sample2
+    # Should have auto-set CMAKE_PREFIX_PATH
+end module-set
+
+module-set test2-set
+    repository fake
+    use-modules sample3 sample4
+    cmake-options -DCMAKE_PREFIX_PATH=FOO
+    # Should not auto-set CMAKE_PREFIX_PATH since it's already set
+end module-set
+
+module-set test3-set
+    repository fake
+    use-modules sample5 sample6
+    cmake-options -DCMAKE_PREFIX_PATH:PATH=BAR
+    # Uses a slightly different syntax, should still be retained
+end module-set

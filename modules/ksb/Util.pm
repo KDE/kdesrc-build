@@ -628,6 +628,7 @@ sub download_file
 #
 # Parameters:
 #  filename - Path to the file to open.
+#  default  - String to use if the file doesn't exist in pretend mode
 #
 # Returns:
 #  filehandle on success (supports readline() and eof()), can return boolean
@@ -636,11 +637,11 @@ sub download_file
 sub pretend_open
 {
     my $path = shift;
+    my $defaultText = shift // '';
     my $fh;
 
     if (pretending() && ! -e $path) {
-        my $simulatedFile = '';
-        open $fh, '<', \$simulatedFile or return;
+        open $fh, '<', \$defaultText or return;
     }
     else {
         open $fh, '<', $path or return;
