@@ -28,7 +28,7 @@ use ksb::Module;
 use ksb::Module::BranchGroupResolver;
 use ksb::Updater::KDEProjectMetadata 0.20;
 use ksb::Version qw(scriptVersion);
-use ksb::StatusView;
+use ksb::StatusView 0.30;
 use ksb::StatusMonitor;
 use ksb::KDEProjectsReader 0.50;
 

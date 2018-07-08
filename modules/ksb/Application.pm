@@ -19,7 +19,6 @@ use ksb::Module;
 use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
-use ksb::StatusView 0.30;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
 use ksb::Updater::Git;
@@ -1483,11 +1482,8 @@ sub _handle_build
 
     my $num_modules = scalar @modules;
     my ($statusFile, $outfile) = _openStatusFileHandle($ctx);
-    my $statusViewer = $ctx->statusViewer();
     my $everFailed = 0;
     my $i = 1;
-
-    $statusViewer->numberModulesTotal(scalar @modules);
 
     # This generates a bunch of subs but doesn't call them yet
     # See Mojo::IOLoop->delay() below for where they get used
@@ -1558,7 +1554,6 @@ sub _handle_build
                 }
 
                 ++$fail_count;
-                $statusViewer->numberModulesFailed(1 + $statusViewer->numberModulesFailed);
 
                 # Force this promise chain to stay dead
                 return Mojo::Promise->new->reject('build');
@@ -1567,7 +1562,6 @@ sub _handle_build
 
                 $fail_count = 0;
                 push @build_done, $moduleName; # Make it show up as a success
-                $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
                 $ctx->markModulePhaseSucceeded('build', $module);
             })->finally(sub {
                 $i++;
@@ -2008,7 +2002,7 @@ sub _handle_ui
     # promise handlers below.
 
     my $ua = Mojo::UserAgent->new;
-    my $ui = ksb::StatusView->new;
+    my $ui = $ctx->statusViewer();
     my $url_ws = Mojo::URL->new($path)->clone->scheme('ws');
     $ua->connect_timeout(5);
     $ua->request_timeout(20);
