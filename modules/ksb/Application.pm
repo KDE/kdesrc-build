@@ -1835,6 +1835,9 @@ sub _handle_monitoring
     # Clients which have open websocket subscriptions to event updates
     my %subscribers;
 
+    # Clients who are current on events. Normally should be same as above.
+    my %currentSubscribers;
+
     # If we can't find a port to listen on, don't hold up the rest of the run
     return Mojo::Promise->new->accept if !$port;
 
@@ -1857,15 +1860,15 @@ sub _handle_monitoring
             # WebSocket request comes in, which must be manually accepted and
             # upgraded
 
-            # Bring the other side up to speed...
-            my @events = $ctx->statusMonitor()->events();
-            $tx->send({ json => \@events });
-
-            # ... and add them to the list of clients to update later
+            # Add to the list of subscribers. The 'newEvent' handler below
+            # will make them current (so that we don't potentially miss events
+            # already pending in the event loop).
             $subscribers{$tx->connection} = $tx;
+
             $tx->on(finish => sub {
                 my $tx = shift;
                 delete $subscribers{$tx->connection};
+                delete $currentSubscribers{$tx->connection};
             });
 
             $tx->res->code(101); # Signal to Mojolicious to accept the upgrade
@@ -1947,8 +1950,15 @@ sub _handle_monitoring
                 $tx->on(drain => sub { $stop_sent->resolve });
             }
 
-            # Should match schema for initial send as above
-            $tx->send({json => [ $resultRef ] });
+            if (exists $currentSubscribers{$tx->connection}) {
+                # Should match schema for send below
+                $tx->send({ json => [ $resultRef ] });
+            } else {
+                # This includes the new event we just recv'd
+                my @events = $ctx->statusMonitor()->events();
+                $tx->send({ json => \@events });
+                $currentSubscribers{$tx->connection} = 1;
+            }
         }
     });
 
@@ -2011,17 +2021,9 @@ sub _handle_ui
     $ua->max_connections(0); # disable keepalive to avoid server closing connection on us
     $ua->max_response_size(16384);
 
-    return $ua->websocket_p($url_ws->clone->path("ok"))
+    return $ua->websocket_p($url_ws->clone->path("events"))
         ->then(sub {
             my $ws = shift;
-
-            # The 'stop' promise is resolved when update/build done.
-            $stop_promise->then(sub {
-                # Keep UserAgent alive until we close the WebSocket.
-                my $lifetime_extender = \$ua;
-
-                $ws->finish;
-            });
 
             $ws->on(json => sub {
                 my ($ws, $resultRef) = @_;
@@ -2046,6 +2048,14 @@ sub _handle_ui
             $ws->on(finish => sub {
                 # Shouldn't happen in a normal build but it's probably possible
                 $stop_promise->resolve;
+            });
+
+            # The 'stop' promise is resolved when update/build done.
+            $stop_promise->then(sub {
+                # Keep UserAgent alive until we close the WebSocket.
+                my $lifetime_extender = \$ua;
+
+                $ws->finish;
             });
 
             return;
@@ -2079,13 +2089,14 @@ sub _handle_async_build
 
     $ctx->statusMonitor()->createBuildPlan($ctx);
 
-    my $updater_delay = _handle_updates ($ctx, $module_promises);
-    my $build_delay   = _handle_build   ($ctx, $module_promises);
     # The U/I will declare when we're done, which will cause monitor to halt
     my $monitor_p     = _handle_monitoring ($ctx, $stop_everything_p);
     # Keep a reference to U/I promise since that's where the U/I code will actually
     # run, allowing the ref to be GC'd stops the U/I updates.
     my $ui_ready      = _handle_ui($ctx, $stop_everything_p);
+
+    my $updater_delay = _handle_updates ($ctx, $module_promises);
+    my $build_delay   = _handle_build   ($ctx, $module_promises);
 
     # If build finishes first, note that later
     my $mark_update_done_p = $updater_delay->then(sub {
