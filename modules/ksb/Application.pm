@@ -19,6 +19,7 @@ use ksb::Module;
 use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
+use ksb::StatusView 0.30;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
 use ksb::Updater::Git;
@@ -1513,13 +1514,6 @@ sub _handle_build
             my $moduleSet = $module->moduleSet()->name();
             my $modOutput = $moduleName;
 
-            if (debugging(ksb::Debug::WHISPER)) {
-                $modOutput .= " (build system " . $module->buildSystemType() . ")"
-            }
-
-            $moduleSet = " from g[$moduleSet]" if $moduleSet;
-            note ("Building g[$modOutput]$moduleSet ($i/$num_modules)");
-
             $module_promises->{"$module"}->catch(sub {
                 my $reason = shift;
                 error ("\tUnable to update r[$module]: $reason, build canceled.");
@@ -1536,8 +1530,6 @@ sub _handle_build
                 {
                     return Mojo::Promise->new->resolve('skipped');
                 }
-
-                note ("\tSource update complete for g[$module]: $updateMsg");
 
                 # TODO: Split install into a separate phase so that exception
                 # handler knows which phase had the failure
@@ -1556,7 +1548,6 @@ sub _handle_build
                     my $elapsed = prettify_seconds(time - $start_time);
                     $ctx->markModulePhaseFailed('build', $module);
                     print $statusFile "$module: Failed on build after $elapsed.\n";
-                    note ("\tFailed to build $module: $failureReason");
                 }
 
                 if (!$everFailed) {
@@ -1574,15 +1565,12 @@ sub _handle_build
             })->then(sub {
                 my $elapsed = prettify_seconds(time - $start_time);
 
-                print $statusFile "$module: Succeeded after $elapsed.\n";
-
                 $fail_count = 0;
                 push @build_done, $moduleName; # Make it show up as a success
                 $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
                 $ctx->markModulePhaseSucceeded('build', $module);
             })->finally(sub {
                 $i++;
-                note (""); # Blank line
                 $module->setPersistentOption('failure-count', $fail_count);
 
                 $end->(); # Kick off next step
@@ -1617,12 +1605,6 @@ sub _handle_build
             symlink($outfile, "$logdir/latest/build-status");
         }
 
-        info ("<<<  g[PACKAGES SUCCESSFULLY BUILT]  >>>") if scalar @build_done > 0;
-
-        my $successes = scalar @build_done;
-        # TODO: l10n
-        my $mods = $successes == 1 ? 'module' : 'modules';
-
         if (not pretending())
         {
             # Print out results, and output to a file
@@ -1630,25 +1612,10 @@ sub _handle_build
             open my $buildList, ">$kdesrc/successfully-built";
             foreach my $module (@build_done)
             {
-                info ("$module") if $successes <= 10;
                 print $buildList "$module\n";
             }
             close $buildList;
-
-            info ("Built g[$successes] $mods") if $successes > 10;
         }
-        else
-        {
-            # Just print out the results
-            if ($successes <= 10) {
-                info ('g[', join ("]\ng[", @build_done), ']');
-            }
-            else {
-                info ("Built g[$successes] $mods") if $successes > 10;
-            }
-        }
-
-        info (' '); # Space out nicely
 
         return Mojo::Promise->new->reject if $everFailed;
         return 0;
@@ -2066,7 +2033,17 @@ sub _handle_ui
                 my ($ws, $resultRef) = @_;
                 foreach my $modRef (@{$resultRef}) {
                     $ui->notifyEvent($modRef);
+                    if ($modRef->{event} eq 'build_done') {
+                        # We've reported the build is complete, activate the
+                        # promise holding things together
+                        $stop_promise->resolve;
+                    }
                 }
+            });
+
+            $ws->on(finish => sub {
+                # Shouldn't happen in a normal build but it's probably possible
+                $stop_promise->resolve;
             });
 
             return;
@@ -2102,10 +2079,11 @@ sub _handle_async_build
 
     my $updater_delay = _handle_updates ($ctx, $module_promises);
     my $build_delay   = _handle_build   ($ctx, $module_promises);
+    # The U/I will declare when we're done, which will cause monitor to halt
     my $monitor_p     = _handle_monitoring ($ctx, $stop_everything_p);
     # Keep a reference to U/I promise since that's where the U/I code will actually
     # run, allowing the ref to be GC'd stops the U/I updates.
-    my $temp = _handle_ui($ctx, $stop_everything_p);
+    my $ui_ready      = _handle_ui($ctx, $stop_everything_p);
 
     # If build finishes first, note that later
     my $mark_update_done_p = $updater_delay->then(sub {
@@ -2124,11 +2102,10 @@ sub _handle_async_build
     my @all_promises = ($mark_update_done_p, $build_done_msg_p);
     my $promise = Mojo::Promise->all(@all_promises)->then(sub {
         $ctx->statusMonitor()->markBuildDone();
-        $stop_everything_p->resolve;
     });
 
     Mojo::IOLoop->stop; # Force the wait below to block
-    Mojo::Promise->all($temp, $monitor_p)->then(sub {
+    Mojo::Promise->all($ui_ready, $monitor_p)->then(sub {
         Mojo::IOLoop->stop; # FIN
     })->wait;
 

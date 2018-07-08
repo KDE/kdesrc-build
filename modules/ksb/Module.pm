@@ -1046,7 +1046,9 @@ sub runPhase_p
             if (exists $linesRef->{message}) {
                 $monitor->noteLogEvents("$self", $phaseName, [$linesRef->{message}]);
             } elsif (exists $linesRef->{progress}) {
-                $monitor->markPhaseProgress("$self", $phaseName, $linesRef->{progress});
+                my ($x, $y) = @{$linesRef->{progress}};
+                $monitor->markPhaseProgress("$self", $phaseName, $x / $y)
+                    if $y > 0;
             } else {
                 croak_internal("Read unexpected message $buffer from child.");
             }

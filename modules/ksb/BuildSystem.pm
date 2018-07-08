@@ -372,6 +372,9 @@ sub safe_make (@)
     # Will be output by _runBuildCommand
     my $buildMessage = $optsRef->{message};
 
+# TODO: Remove all this nonsense about per-subdir builds. The last time this really helped was when
+# this script was called kdecvs-build...
+
     # Here we're attempting to ensure that we either run the build command
     # in each subdirectory, *or* for the whole module, but not both.
     my @dirs = @{$optsRef->{subdirs}};
@@ -435,17 +438,11 @@ sub _runBuildCommand
     # 2. When we're debugging (we'd interfere with debugging output).
     if (! -t STDERR || debugging())
     {
-        note("\t$message");
         return log_command($module, $filename, $argRef);
     }
 
-    my $time = time;
-
-    my $statusViewer = $ctx->statusViewer();
-    $statusViewer->setStatus("\t$message");
-    $statusViewer->update();
-
-    # Run for every line of build output
+    # Run for every line of build output to do things like scrape for progress
+    # output.
     my $log_command_callback = sub {
         state $oldX = -1;
         state $oldY = -1;
@@ -469,22 +466,13 @@ sub _runBuildCommand
         }
 
         if ($x != $oldX || $y != $oldY) {
-            $statusViewer->setProgress     ($oldX = $x);
-            $statusViewer->setProgressTotal($oldY = $y);
             ksb::Debug::reportProgressToParent($module, $x, $y);
         }
     };
 
-    my $result = log_command($module, $filename, $argRef, {
+    return log_command($module, $filename, $argRef, {
             callback => $log_command_callback
         });
-
-    # Cleanup TTY output.
-    $time = prettify_seconds(time - $time);
-    my $status = $result == 0 ? "g[b[succeeded]" : "r[b[failed]";
-    $statusViewer->releaseTTY("\t$message $status (after $time)\n");
-
-    return $result;
 }
 
 1;

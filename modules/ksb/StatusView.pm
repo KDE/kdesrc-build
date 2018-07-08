@@ -61,7 +61,9 @@ sub notifyEvent
 sub onPhaseStarted
 {
     my ($self, $ev) = @_;
-    say "Received event ", $ev->{event};
+    my ($moduleName, $phase) =
+        @{$ev->{phase_started}}{qw/module phase/};
+    say "$moduleName started to $phase";
 }
 
 # Progress has been made within a phase of a module build. Only supported for
@@ -69,14 +71,19 @@ sub onPhaseStarted
 sub onPhaseProgress
 {
     my ($self, $ev) = @_;
-    say "Received event ", $ev->{event};
+    my ($moduleName, $phase, $progress) =
+        @{$ev->{phase_progress}}{qw/module phase progress/};
+    $progress = sprintf ("%3.1f", 100.0 * $progress);
+    # say(...)
 }
 
 # A phase of a module build is finished
 sub onPhaseCompleted
 {
     my ($self, $ev) = @_;
-    say "Received event ", $ev->{event};
+    my ($moduleName, $phase, $result) =
+        @{$ev->{phase_completed}}{qw/module phase result/};
+    say "$moduleName finished with $phase ($result)";
 }
 
 # The one-time build plan has been given, can be used for deciding best way to
@@ -84,21 +91,29 @@ sub onPhaseCompleted
 sub onBuildPlan
 {
     my ($self, $ev) = @_;
-    say "Received event ", $ev->{event};
+    my (@modules) =
+        @{$ev->{build_plan}};
+    say "*** Received build plan for ", scalar @modules, " modules";
 }
 
 # The whole build/install process has completed.
 sub onBuildDone
 {
     my ($self, $ev) = @_;
-    say "Received event ", $ev->{event};
+    my ($statsRef) =
+        %{$ev->{build_done}};
+    say "*** Build done!";
 }
 
 # The build/install process has forwarded new notices that should be shown.
 sub onLogEntries
 {
     my ($self, $ev) = @_;
-    say "Received event ", $ev->{event};
+    my ($module, $phase, $entriesRef) =
+        @{$ev->{log_entries}}{qw/module phase entries/};
+    for my $entry (@$entriesRef) {
+        say "$module($phase): $entry";
+    }
 }
 
 # Sets the 'base' message to show as part of the update. E.g. "Compiling..."
