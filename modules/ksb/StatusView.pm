@@ -112,11 +112,6 @@ sub onPhaseCompleted
     my $phaseKey = $phase eq 'update' ? 'cur_update' : 'cur_working';
     $self->{$phaseKey} = $phase_done ? '---' : '';
 
-    if ($phase ne 'update') {
-        _clearLine();
-        say "Done with $moduleName";
-    }
-
     # See if we have any phases left to do, displaying an update block w/out
     # work to do just looks messy.
     my $phases_left = reduce {
@@ -148,8 +143,6 @@ sub onBuildPlan
     $self->{done_in_phase}->{$_} = 0 foreach keys %num_todo;
     $self->{todo_in_phase}  = \%num_todo;
     $self->{max_name_width} = $max_name_width;
-
-    say "*** Received build plan for ", scalar @modules, " modules";
 }
 
 # The whole build/install process has completed.

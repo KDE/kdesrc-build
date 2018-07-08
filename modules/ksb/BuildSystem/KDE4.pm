@@ -76,8 +76,6 @@ sub runTestsuite
         $make_target = 'Experimental';
     }
 
-    info ("\tRunning test suite...");
-
     # Step 2: Run the tests.
     my $numTests = -1;
     my $countCallback = sub {
@@ -101,9 +99,6 @@ sub runTestsuite
         }
 
         return 0;
-    }
-    else {
-        info ("\tAll tests ran successfully.");
     }
 
     return 1;
@@ -218,8 +213,6 @@ sub _safe_run_cmake
         ! -e "$builddir/CMakeCache.txt" # File should exist only on successful cmake run
        )
     {
-        info ("\tRunning g[cmake]...");
-
         # Remove any stray CMakeCache.txt
         safe_unlink ("$srcdir/CMakeCache.txt")   if -e "$srcdir/CMakeCache.txt";
         safe_unlink ("$builddir/CMakeCache.txt") if -e "$builddir/CMakeCache.txt";

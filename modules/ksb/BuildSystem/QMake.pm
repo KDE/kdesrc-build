@@ -75,7 +75,6 @@ sub configureInternal
     my $qmake = absPathToQMake();
     return 0 unless $qmake;
 
-    info ("\tRunning g[qmake]...");
     return log_command($module, 'qmake', [ $qmake, @qmakeOpts, $projectFiles[0] ]) == 0;
 }
 

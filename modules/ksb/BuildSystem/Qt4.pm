@@ -85,8 +85,6 @@ EOF
     {
         note ("\tb[r[LGPL license selected for Qt].  See $srcdir/LICENSE.LGPL");
 
-        info ("\tRunning g[configure]...");
-
         $module->setPersistentOption('last-configure-flags', $cur_flags);
         return log_command($module, "configure", \@commands) == 0;
     }

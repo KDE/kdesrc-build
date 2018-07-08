@@ -379,7 +379,8 @@ sub updateExistingClone
     # checkout a specific tag/SHA1/etc.
     my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
 
-    note ("Updating g[$module] (to $commitType b[$commitId])");
+    note ("Updating (to $commitType b[$commitId])")
+        if ($commitType ne 'branch' || $commitId ne 'master');
     my $start_commit = $self->commit_id('HEAD');
 
     my $updateSub;
