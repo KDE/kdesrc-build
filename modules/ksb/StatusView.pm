@@ -12,7 +12,7 @@ use 5.014;
 
 use ksb::Debug 0.20 qw(colorize);
 use ksb::Util;
-use List::Util qw(max reduce);
+use List::Util qw(min max reduce);
 
 use IO::Handle;
 
@@ -98,6 +98,8 @@ sub onPhaseCompleted
     my ($moduleName, $phase, $result) =
         @{$ev->{phase_completed}}{qw/module phase result/};
 
+    $self->_checkForBuildPlan();
+
     if ($result eq 'error') {
         $self->{failed_at_phase}->{$moduleName} = $phase;
     }
@@ -119,7 +121,7 @@ sub onPhaseCompleted
     # work to do just looks messy.
     my $phases_left = reduce {
         $a +
-        ($self->{todo_in_phase}->{$b} - $self->{done_in_phase}->{$b})
+        ($self->{todo_in_phase}->{$b} - ($self->{done_in_phase}->{$b} // 0))
     } 0, keys %{$self->{todo_in_phase}};
 
     $self->update() if $phases_left;
@@ -143,6 +145,10 @@ sub onBuildPlan
         $num_todo{$_}++ foreach (@{$m->{phases}});
     }
 
+    $self->{done_in_phase}->{$_} = 0 foreach keys %num_todo;
+    $self->{todo_in_phase}  = \%num_todo;
+    $self->{max_name_width} = $max_name_width;
+
     say "*** Received build plan for ", scalar @modules, " modules";
 }
 
@@ -153,13 +159,9 @@ sub onBuildDone
     my ($statsRef) =
         %{$ev->{build_done}};
 
-    say "\n*** Build done!";
+    $self->_checkForBuildPlan();
 
-    while (my ($phase, $v) = each %{$self->{todo_in_phase}}) {
-        if ($self->{done_in_phase}->{$phase} != $v) {
-            say " !!!! Not every phase was accounted for in $phase!";
-        }
-    }
+    say "\n*** Build done!";
 }
 
 # The build/install process has forwarded new notices that should be shown.
@@ -178,17 +180,113 @@ sub onLogEntries
 
 # TTY helpers
 
-sub update
+sub _checkForBuildPlan
 {
     my $self = shift;
-    my $up   = $self->{cur_update}   || '???';
-    my $work = $self->{cur_working}  || '???';
-    my $prog = $self->{cur_progress} || '??';
 
-    $up = 'N/A' unless ($self->{todo_in_phase}->{update} // 0) > 0;
+    croak_internal ("Did not receive build plan!")
+        unless keys %{$self->{todo_in_phase}};
+}
 
-    my $msg = "Updating: [$up]. Working on [$work], $prog% done";
-    _clearLineAndUpdate("$msg");
+# Generates a string like "update [20/74] build [02/74]" for the requested
+# phases.
+sub _progressStringForPhases
+{
+    my ($self, @phases) = @_;
+    my $result = '';
+    my $base   = '';
+
+    foreach my $phase (@phases) {
+        my $cur = $self->{done_in_phase}->{$phase} // 0;
+        my $max = $self->{todo_in_phase}->{$phase} // 0;
+
+        my $strWidth = length("$max");
+        my $progress = sprintf("%0*s/$max", $strWidth, $cur);
+
+        $result .= "$base$phase [$progress]";
+        $base = ' ';
+    }
+
+    return $result;
+}
+
+# Generates a string like "update: kcoreaddons build: kconfig" for the
+# requested phases. You must pass in a hash mapping each phase name to the
+# current module name.
+sub _currentModuleStringForPhases
+{
+    my ($self, %currentModules) = @_;
+    my $result = '';
+    my $base   = '';
+
+    while (my ($phase, $curModule) = each %currentModules) {
+        $curModule //= '???';
+        $result .= "$base$phase: $curModule";
+        $base = ' ';
+    }
+
+    return $result;
+}
+
+# Returns integer length of the worst-case output line (i.e. the one with a
+# long module name for each of the given phases).
+sub _getMinimumOutputWidth
+{
+    my ($self, @phases) = @_;
+    my $longestName = 'x' x $self->{max_name_width};
+    my %mockModules = map { ($_, $longestName) } @phases;
+
+    # fake that the worst-case module is set and find resultant length
+    my $str
+        = $self->_progressStringForPhases(@phases)
+        . " "
+        . $self->_currentModuleStringForPhases(%mockModules);
+
+    return length($str);
+}
+
+sub update
+{
+    my @phases = qw(update build);
+
+    my $self = shift;
+    my $term_width = $self->{tty_width};
+    $self->{min_output} //= $self->_getMinimumOutputWidth(@phases);
+    my $min_width = $self->{min_output};
+
+    my $progress = $self->_progressStringForPhases(@phases);
+    my $current_modules = $self->_currentModuleStringForPhases(
+        update => $self->{cur_update} // '??', build => $self->{cur_working} // '??'
+        );
+
+    my $msg;
+
+    if ($min_width >= ($term_width - 12)) {
+        # No room for fancy progress, just display what we can
+        $msg = "$progress $current_modules";
+    } else {
+        my $max_prog_width = ($term_width - $min_width) - 2;
+        my $num_all_done  = min(@{$self->{done_in_phase}}{@phases}) // 0;
+        my $num_some_done = max(@{$self->{done_in_phase}}{@phases}, 0) // 0;
+        my $max_todo      = max(@{$self->{todo_in_phase}}{@phases}, 1) // 1;
+
+        my $width = $max_prog_width * $num_all_done / $max_todo;
+        # Leave at least one empty space if we're not fully done
+        $width-- if ($width == $max_prog_width && $num_all_done < $max_todo);
+
+        my $bar = ('=' x $width);
+
+        # Show a smaller character entry for updates that are done before the
+        # corresponding build/install.
+        if ($num_some_done > $num_all_done) {
+            $width = $max_prog_width * $num_some_done / $max_todo;
+            $bar .= ('.' x ($width - length ($bar)));
+        }
+
+        $msg = sprintf("%s [%*s] %s", $progress, -$max_prog_width, $bar, $current_modules);
+    }
+
+    _clearLineAndUpdate($msg);
 }
 
 sub _clearLine

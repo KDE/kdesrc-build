@@ -2026,7 +2026,15 @@ sub _handle_ui
             $ws->on(json => sub {
                 my ($ws, $resultRef) = @_;
                 foreach my $modRef (@{$resultRef}) {
-                    $ui->notifyEvent($modRef);
+                    eval { $ui->notifyEvent($modRef); };
+
+                    if ($@) {
+                        error ("Failure encountered $@");
+                        $ws->finish;
+                        undef $ua;
+                        $stop_promise->reject($@);
+                    }
+
                     if ($modRef->{event} eq 'build_done') {
                         # We've reported the build is complete, activate the
                         # promise holding things together
