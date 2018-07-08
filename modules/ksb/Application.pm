@@ -2006,6 +2006,73 @@ sub _handle_monitoring
     return $stop_promise;
 }
 
+sub getStatusServerURL
+{
+    my $run = $ENV{XDG_RUNTIME_DIR} // '/tmp';
+    open my $fh, '<', "$run/kdesrc-build-status-server"
+        or croak_internal("Couldn't find status server");
+    my $path = <$fh>;
+    croak_internal("Error reading status server URL: $!")
+        unless defined $path;
+    close $fh
+        or croak_internal("I/O error reading status server URL: $!");
+
+    chomp($path);
+    return $path;
+}
+
+sub _handle_ui
+{
+    my ($ctx, $stop_promise) = @_;
+    my $path = getStatusServerURL();
+
+    # Note on object lifetimes: Perl is convenient like C++ in that it will
+    # typically destroy 'lexical' objects (declared with 'my') when no scope
+    # has a reference to that object.
+    #
+    # What this means for callback-heavy code is that the object creating the
+    # events being fed to callbacks needs to outlive the callbacks somehow,
+    # otherwise the death of the controller will close all the connections it
+    # had created.
+    #
+    # Since the UserAgent we create is controlling the callbacks being fed to
+    # our U/I handler, it needs to outlive this function in the chain of
+    # callbacks that we return to the caller. This is handled in one of the
+    # promise handlers below.
+
+    my $ua = Mojo::UserAgent->new;
+    my $ui = ksb::StatusView->new;
+    my $url_ws = Mojo::URL->new($path)->clone->scheme('ws');
+    $ua->connect_timeout(5);
+    $ua->request_timeout(20);
+    $ua->inactivity_timeout(0); # Allow long-poll
+    $ua->max_redirects(0);
+    $ua->max_connections(0); # disable keepalive to avoid server closing connection on us
+    $ua->max_response_size(16384);
+
+    return $ua->websocket_p($url_ws->clone->path("ok"))
+        ->then(sub {
+            my $ws = shift;
+
+            # The 'stop' promise is resolved when update/build done.
+            $stop_promise->then(sub {
+                # Keep UserAgent alive until we close the WebSocket.
+                my $lifetime_extender = \$ua;
+
+                $ws->finish;
+            });
+
+            $ws->on(json => sub {
+                my ($ws, $resultRef) = @_;
+                foreach my $modRef (@{$resultRef}) {
+                    $ui->notifyEvent($modRef);
+                }
+            });
+
+            return;
+        });
+}
+
 # Function: _handle_async_build
 #
 # This subroutine special-cases the handling of the update and build phases, by
@@ -2036,6 +2103,9 @@ sub _handle_async_build
     my $updater_delay = _handle_updates ($ctx, $module_promises);
     my $build_delay   = _handle_build   ($ctx, $module_promises);
     my $monitor_p     = _handle_monitoring ($ctx, $stop_everything_p);
+    # Keep a reference to U/I promise since that's where the U/I code will actually
+    # run, allowing the ref to be GC'd stops the U/I updates.
+    my $temp = _handle_ui($ctx, $stop_everything_p);
 
     # If build finishes first, note that later
     my $mark_update_done_p = $updater_delay->then(sub {
@@ -2058,7 +2128,7 @@ sub _handle_async_build
     });
 
     Mojo::IOLoop->stop; # Force the wait below to block
-    $monitor_p->then(sub {
+    Mojo::Promise->all($temp, $monitor_p)->then(sub {
         Mojo::IOLoop->stop; # FIN
     })->wait;
 

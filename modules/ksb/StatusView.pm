@@ -1,4 +1,4 @@
-package ksb::StatusView 0.20;
+package ksb::StatusView 0.30;
 
 # Helper used to handle a generic 'progress update' status for the module
 # build, update, install, etc. processes.
@@ -30,6 +30,75 @@ sub new
 
     # Must bless a hash ref since subclasses expect it.
     return bless $defaultOpts, $class;
+}
+
+# Accepts a single event, as a hashref decoded from its source JSON format (as
+# described in ksb::StatusMonitor), and updates the user interface
+# appropriately.
+sub notifyEvent
+{
+    my ($self, $ev) = @_;
+    state $handlers = {
+        phase_started   => \&onPhaseStarted,
+        phase_progress  => \&onPhaseProgress,
+        phase_completed => \&onPhaseCompleted,
+        build_plan      => \&onBuildPlan,
+        build_done      => \&onBuildDone,
+        log_entries     => \&onLogEntries,
+    };
+    state $err = sub { croak_internal("Invalid event! $_[1]"); };
+
+    my $handler = $handlers->{$ev->{event}} // $err;
+
+    # This is a method call though we don't use normal Perl method call syntax
+    $handler->($self, $ev);
+}
+
+# Event handlers
+
+# A module has started on a given phase. Multiple phases can be in-flight at
+# once!
+sub onPhaseStarted
+{
+    my ($self, $ev) = @_;
+    say "Received event ", $ev->{event};
+}
+
+# Progress has been made within a phase of a module build. Only supported for
+# the build phase, currently.
+sub onPhaseProgress
+{
+    my ($self, $ev) = @_;
+    say "Received event ", $ev->{event};
+}
+
+# A phase of a module build is finished
+sub onPhaseCompleted
+{
+    my ($self, $ev) = @_;
+    say "Received event ", $ev->{event};
+}
+
+# The one-time build plan has been given, can be used for deciding best way to
+# show progress
+sub onBuildPlan
+{
+    my ($self, $ev) = @_;
+    say "Received event ", $ev->{event};
+}
+
+# The whole build/install process has completed.
+sub onBuildDone
+{
+    my ($self, $ev) = @_;
+    say "Received event ", $ev->{event};
+}
+
+# The build/install process has forwarded new notices that should be shown.
+sub onLogEntries
+{
+    my ($self, $ev) = @_;
+    say "Received event ", $ev->{event};
 }
 
 # Sets the 'base' message to show as part of the update. E.g. "Compiling..."
