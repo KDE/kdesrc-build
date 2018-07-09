@@ -33,6 +33,8 @@ sub new
         done_in_phase   => { }, # $phase -> int
         todo_in_phase   => { }, # $phase -> int
         failed_at_phase => { }, # $moduleName -> $phase
+        last_mod_entry  => '',  # $moduleName/$phase, see onLogEntries
+        last_msg_type   => '',  # If 'progress' we can clear line
     };
 
     # Must bless a hash ref since subclasses expect it.
@@ -112,14 +114,7 @@ sub onPhaseCompleted
     my $phaseKey = $phase eq 'update' ? 'cur_update' : 'cur_working';
     $self->{$phaseKey} = $phase_done ? '---' : '';
 
-    # See if we have any phases left to do, displaying an update block w/out
-    # work to do just looks messy.
-    my $phases_left = reduce {
-        $a +
-        ($self->{todo_in_phase}->{$b} - ($self->{done_in_phase}->{$b} // 0))
-    } 0, keys %{$self->{todo_in_phase}};
-
-    $self->update() if $phases_left;
+    $self->update();
 }
 
 # The one-time build plan has been given, can be used for deciding best way to
@@ -152,9 +147,15 @@ sub onBuildDone
     my ($statsRef) =
         %{$ev->{build_done}};
 
-    $self->_checkForBuildPlan();
+    my $numModules = max(
+        map { $self->{todo_in_phase}->{$_} } (
+            keys %{$self->{todo_in_phase}}));
 
-    say "\n*** Build done!";
+    _clearLineAndUpdate (colorize("\nBuilt b[$numModules] modules\n"));
+
+    while (my ($module, $phase) = each %{$self->{failed_at_phase}}) {
+        say colorize("\tr[b[$module] failed to r[b[$phase]");
+    }
 }
 
 # The build/install process has forwarded new notices that should be shown.
@@ -164,11 +165,23 @@ sub onLogEntries
     my ($module, $phase, $entriesRef) =
         @{$ev->{log_entries}}{qw/module phase entries/};
 
-    _clearLine(); # Current line may have a transient update msg still
+    my $lastUpdateType = $self->{last_msg_type};
+
+    # Current line may have a transient update msg still
+    _clearLine() unless $lastUpdateType eq 'log';
+
+    if ("$module/$phase" ne $self->{last_mod_entry} && @$entriesRef) {
+        say colorize(" b[y[*] b[$module] $phase:");
+        $self->{last_mod_entry} = "$module/$phase";
+        $lastUpdateType = 'log';
+    }
 
     for my $entry (@$entriesRef) {
-        say "$module($phase): $entry";
+        say $entry;
+        $lastUpdateType = 'log';
     }
+
+    $self->{last_msg_type} = $lastUpdateType;
 }
 
 # TTY helpers
@@ -281,6 +294,7 @@ sub update
     }
 
     _clearLineAndUpdate($msg);
+    $self->{last_msg_type} = 'progress';
 }
 
 sub _clearLine
