@@ -204,16 +204,16 @@ sub _progressStringForPhases
 }
 
 # Generates a string like "update: kcoreaddons build: kconfig" for the
-# requested phases. You must pass in a hash mapping each phase name to the
+# requested phases. You must pass in a hashref mapping each phase name to the
 # current module name.
 sub _currentModuleStringForPhases
 {
-    my ($self, %currentModules) = @_;
+    my ($self, $currentModulesRef, @phases) = @_;
     my $result = '';
     my $base   = '';
 
-    while (my ($phase, $curModule) = each %currentModules) {
-        $curModule //= '???';
+    for my $phase (@phases) {
+        my $curModule = $currentModulesRef->{$phase} // '???';
         $result .= "$base$phase: $curModule";
         $base = ' ';
     }
@@ -233,7 +233,7 @@ sub _getMinimumOutputWidth
     my $str
         = $self->_progressStringForPhases(@phases)
         . " "
-        . $self->_currentModuleStringForPhases(%mockModules);
+        . $self->_currentModuleStringForPhases(\%mockModules, @phases);
 
     return length($str);
 }
@@ -249,7 +249,8 @@ sub update
 
     my $progress = $self->_progressStringForPhases(@phases);
     my $current_modules = $self->_currentModuleStringForPhases(
-        update => $self->{cur_update} // '??', build => $self->{cur_working} // '??'
+        { update => $self->{cur_update}, build => $self->{cur_working} },
+        @phases
         );
 
     my $msg;
