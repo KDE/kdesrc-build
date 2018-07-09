@@ -467,10 +467,6 @@ sub build
                 }
                 return 1;
             },
-            sub {
-                my $was_successful = shift;
-                return $was_successful;
-            }
         );
     })->then(sub {
         return $self->runPhase_p('install',
@@ -478,17 +474,9 @@ sub build
                 if ($self->getOption('install-after-build')) {
                     return 0 if !$self->install();
                 }
-                else {
-                    info ("\tSkipping install for y[$self]");
-                }
 
                 return 1;
             },
-            sub {
-                my $was_successful = shift;
-                return Mojo::Promise->new->reject unless $was_successful;
-                return $was_successful;
-            }
         );
     });
 }
@@ -509,10 +497,6 @@ sub setupBuildSystem
     my $refreshReason = $buildSystem->needsRefreshed();
     if ($refreshReason ne "")
     {
-        # The build system needs created, either because it doesn't exist, or
-        # because the user has asked that it be completely rebuilt.
-        info ("\tPreparing build system for y[$self].");
-
         # Check to see if we're actually supposed to go through the
         # cleaning process.
         if (!$self->getOption('#cancel-clean') &&
@@ -805,7 +789,6 @@ sub update
         $returnValue = $message;
     }
 
-    info (""); # Print empty line.
     return $returnValue;
 }
 
@@ -1027,6 +1010,7 @@ sub runPhase_p
     # Setup a pipe from child to parent so we can get updates as the phase
     # progresses, logs, etc.
     my $reactor = Mojo::IOLoop->singleton->reactor;
+    my $monitor = $self->buildContext()->statusMonitor();
     my $buffer;
 
     $reactor->io($reader => sub {
@@ -1039,7 +1023,6 @@ sub runPhase_p
             close $reader;
         }
         elsif ($lengthRead > 0) {
-            my $monitor = $self->buildContext()->statusMonitor();
             my $linesRef = eval { thaw($buffer) };
             croak_internal($@) unless $linesRef;
 
@@ -1058,6 +1041,8 @@ sub runPhase_p
         }
     });
     $reactor->watch($reader, 1, 0); # watch for pipe readability only
+
+    $monitor->markPhaseStart($self->name(), $phaseName);
 
     Mojo::IOLoop->subprocess(
         sub {
@@ -1104,7 +1089,10 @@ sub runPhase_p
             close $reader;
             close $writer; # can't close it earlier because must be open at fork
 
-            return Mojo::Promise->new->reject($err) if $err;
+            if ($err) {
+                $ctx->markModulePhaseFailed($phaseName, $self);
+                return Mojo::Promise->new->reject($err);
+            }
 
             # Apply options that may have changed during child proc execution.
             if (%{$resultsRef->{newOptions}}) {
@@ -1114,8 +1102,20 @@ sub runPhase_p
                 }
             }
 
-            # This coderef should resolve or reject the promise, if used
-            $promise->resolve($completion_coderef->($resultsRef->{result}));
+            if ($resultsRef->{result}) {
+                $ctx->markModulePhaseSucceeded($phaseName, $self);
+            } else {
+                $ctx->markModulePhaseFailed($phaseName, $self);
+            }
+
+            my $result = $resultsRef->{result};
+            if ($completion_coderef) {
+                # This coderef should resolve or reject the promise, if used
+                $promise->resolve($completion_coderef->($result));
+            } else {
+                $promise->resolve($result) if $result;
+                $promise->reject       unless $result;
+            }
         }
     );
 

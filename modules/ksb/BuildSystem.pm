@@ -173,7 +173,7 @@ sub runTestsuite
     my $self = shift;
     my $module = $self->module();
 
-    info ("\ty[$module] does not support the b[run-tests] option");
+    whisper ("\ty[$module] does not support the b[run-tests] option");
     return 0;
 }
 
@@ -230,7 +230,7 @@ sub cleanBuildSystem
     # Use an existing directory
     if (-e $builddir && $builddir ne $srcdir)
     {
-        info ("\tRemoving files in build directory for g[$module]");
+        whisper ("\tCleaning out build directory");
 
         # This variant of log_command runs the sub prune_under_directory($builddir)
         # in a forked child, so that we can log its output.

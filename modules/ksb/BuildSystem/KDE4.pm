@@ -131,13 +131,7 @@ sub configureInternal
 
     # Use cmake to create the build directory (sh script return value
     # semantics).
-    if (_safe_run_cmake ($module))
-    {
-        error ("\tUnable to configure r[$module] with CMake!");
-        return 0;
-    }
-
-    return 1;
+    return (_safe_run_cmake ($module) == 0);
 }
 
 ### Internal package functions.

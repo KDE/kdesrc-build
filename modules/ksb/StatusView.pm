@@ -33,6 +33,7 @@ sub new
         done_in_phase   => { }, # $phase -> int
         todo_in_phase   => { }, # $phase -> int
         failed_at_phase => { }, # $moduleName -> $phase
+        log_entries     => { }, # $moduleName -> $phase -> [ $entry ... ]
         last_mod_entry  => '',  # $moduleName/$phase, see onLogEntries
         last_msg_type   => '',  # If 'progress' we can clear line
     };
@@ -127,7 +128,12 @@ sub onBuildPlan
 
     croak_internal ("Empty build plan!") unless @modules;
 
-    my %num_todo;
+    my %num_todo = (
+        # These are the 'core' phases we expect to be here even with
+        # --no-src, --no-build, etc.
+        update => 0,
+        build  => 0,
+    );
     my $max_name_width = 0;
 
     for my $m (@modules) {
@@ -154,7 +160,14 @@ sub onBuildDone
     _clearLineAndUpdate (colorize("\nBuilt b[$numModules] modules\n"));
 
     while (my ($module, $phase) = each %{$self->{failed_at_phase}}) {
-        say colorize("\tr[b[$module] failed to r[b[$phase]");
+        my @logEntries = @{$self->{log_entries}->{$module}->{$phase} // [ ]};
+        if (@logEntries) {
+            say colorize("\tr[b[$module] failed to r[b[$phase], with messages:");
+            say foreach @logEntries;
+        }
+        else {
+            say colorize("\tr[b[$module] failed to r[b[$phase]");
+        }
     }
 }
 
@@ -178,6 +191,10 @@ sub onLogEntries
 
     for my $entry (@$entriesRef) {
         say $entry;
+
+        $self->{log_entries}->{$module} //= { build => [ ], update => [ ] };
+        $self->{log_entries}->{$module}->{$phase} //= [ ];
+        push @{$self->{log_entries}->{$module}->{$phase}}, $entry;
         $lastUpdateType = 'log';
     }
 

@@ -1346,10 +1346,6 @@ sub _handle_updates
             my ($delay, $last_step_successful) = @_; # fed in from a prior IOLoop::Delay step
             my $end = $delay->begin(0);     # This controls when the Delay proceeds
 
-            $module->buildContext()->statusMonitor()->markPhaseStart(
-                $module->name(), 'update'
-            );
-
             return $module->runPhase_p('update',
                 sub {
                     # called in child process, can block
@@ -1364,11 +1360,9 @@ sub _handle_updates
 
                     if ($updateMsg) {
                         $promise->resolve($updateMsg);
-                        $ctx->markModulePhaseSucceeded('update', $module);
                     }
                     else {
                         $promise->reject("$module failed to update");
-                        $ctx->markModulePhaseFailed('update', $module);
                     }
 
                     $end->($updateMsg && $last_step_successful); # proceed to next step
@@ -1461,7 +1455,6 @@ EOF
 sub _handle_build
 {
     my ($ctx, $module_promises) = @_;
-    my @build_done;
     my @modules = $ctx->modulesInPhase('build');
     my $result = 0;
 
@@ -1483,7 +1476,6 @@ sub _handle_build
     my $num_modules = scalar @modules;
     my ($statusFile, $outfile) = _openStatusFileHandle($ctx);
     my $everFailed = 0;
-    my $i = 1;
 
     # This generates a bunch of subs but doesn't call them yet
     # See Mojo::IOLoop->delay() below for where they get used
@@ -1501,10 +1493,7 @@ sub _handle_build
 
             if ($everFailed && $module->getOption('stop-on-failure')) {
                 # Wait for update to be done then continue
-                return $module_promises->{"$module"}->then(sub {
-                        $i++;
-                        $end->();
-                    });
+                return $module_promises->{"$module"}->then(sub { $end->(); });
             }
 
             my $moduleSet = $module->moduleSet()->name();
@@ -1530,21 +1519,9 @@ sub _handle_build
                 # TODO: Split install into a separate phase so that exception
                 # handler knows which phase had the failure
 
-                $module->buildContext()->statusMonitor()->markPhaseStart(
-                    $module->name(), 'build'
-                );
-
                 return $module->build();
             })->catch(sub {
                 my $failureReason = shift;
-
-                # Only print build-related detail if we actually attempted
-                # to build
-                if (!$ctx->hasModuleFailed($module)) {
-                    my $elapsed = prettify_seconds(time - $start_time);
-                    $ctx->markModulePhaseFailed('build', $module);
-                    print $statusFile "$module: Failed on build after $elapsed.\n";
-                }
 
                 if (!$everFailed) {
                     # No failures yet, mark this as resume point
@@ -1558,15 +1535,9 @@ sub _handle_build
                 # Force this promise chain to stay dead
                 return Mojo::Promise->new->reject('build');
             })->then(sub {
-                my $elapsed = prettify_seconds(time - $start_time);
-
                 $fail_count = 0;
-                push @build_done, $moduleName; # Make it show up as a success
-                $ctx->markModulePhaseSucceeded('build', $module);
             })->finally(sub {
-                $i++;
                 $module->setPersistentOption('failure-count', $fail_count);
-
                 $end->(); # Kick off next step
             });
         };
@@ -1597,18 +1568,6 @@ sub _handle_build
                 safe_unlink("$logdir/latest/build-status");
             }
             symlink($outfile, "$logdir/latest/build-status");
-        }
-
-        if (not pretending())
-        {
-            # Print out results, and output to a file
-            my $kdesrc = $ctx->getSourceDir();
-            open my $buildList, ">$kdesrc/successfully-built";
-            foreach my $module (@build_done)
-            {
-                print $buildList "$module\n";
-            }
-            close $buildList;
         }
 
         return Mojo::Promise->new->reject if $everFailed;
