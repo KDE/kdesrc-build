@@ -241,9 +241,13 @@ sub _currentModuleStringForPhases
     my ($self, $currentModulesRef, @phases) = @_;
     my $result = '';
     my $base   = '';
+    my $longestNameWidth = $self->{max_name_width};
 
     for my $phase (@phases) {
         my $curModule = $currentModulesRef->{$phase} // '???';
+
+        $curModule .= (' ' x ($longestNameWidth - length ($curModule)));
+
         $result .= "$base$phase: $curModule";
         $base = ' ';
     }
@@ -289,7 +293,7 @@ sub update
         # No room for fancy progress, just display what we can
         $msg = "$progress $current_modules";
     } else {
-        my $max_prog_width = ($term_width - $min_width) - 2;
+        my $max_prog_width = ($term_width - $min_width) - 5;
         my $num_all_done  = min(@{$self->{done_in_phase}}{@phases}) // 0;
         my $num_some_done = max(@{$self->{done_in_phase}}{@phases}, 0) // 0;
         my $max_todo      = max(@{$self->{todo_in_phase}}{@phases}, 1) // 1;
