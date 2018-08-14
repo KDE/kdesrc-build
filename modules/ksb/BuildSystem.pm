@@ -449,6 +449,9 @@ sub _runBuildCommand
     $statusViewer->setStatus("\t$message");
     $statusViewer->update();
 
+    # TODO More details
+    my $warnings = 0;
+
     # w00t.  Check out the closure!  Maks would be so proud.
     my $log_command_callback = sub {
         my $input = shift;
@@ -467,17 +470,29 @@ sub _runBuildCommand
                 $statusViewer->setProgress($x);
             }
         }
+
+        $warnings++ if ($input =~ /warning: /);
     };
 
     $resultRef->{was_successful} =
         (0 == log_command($module, $filename, $argRef, {
             callback => $log_command_callback
         }));
+    $resultRef->{warnings} = $warnings;
 
     # Cleanup TTY output.
     $time = prettify_seconds(time - $time);
     my $status = $resultRef->{was_successful} ? "g[b[succeeded]" : "r[b[failed]";
     $statusViewer->releaseTTY("\t$message $status (after $time)\n");
+
+    if ($warnings) {
+        my $count = ($warnings < 3  ) ? 1 :
+                    ($warnings < 10 ) ? 2 :
+                    ($warnings < 30 ) ? 3 : 4;
+        my $msg = sprintf("%s b[y[$warnings] %s", '-' x $count, '-' x $count);
+        note ("\tNote: $msg compile warnings");
+        $self->{module}->setPersistentOption('last-compile-warnings', $warnings);
+    }
 
     return $resultRef;
 }
