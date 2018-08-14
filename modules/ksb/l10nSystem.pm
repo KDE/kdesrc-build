@@ -111,14 +111,12 @@ sub buildInternal
     my $self = assert_isa(shift, 'ksb::l10nSystem');
     my $builddir = $self->module()->fullpath('build');
     my @langs = $self->languages();
-    my $result = 0;
-
-    $result = ($self->safe_make({
+    my $result = ($self->safe_make({
         target => undef,
         message => "Building localization for language...",
         logbase => "build",
         subdirs => \@langs,
-    }) == 0) || $result;
+    }))->{was_successful};
 
     return $result;
 }

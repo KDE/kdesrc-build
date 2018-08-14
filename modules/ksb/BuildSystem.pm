@@ -144,7 +144,7 @@ sub buildInternal
         subdirs => [
             split(' ', $self->module()->getOption("checkout-only"))
         ],
-    }) == 0;
+    })->{was_successful};
 }
 
 # Return value style: boolean
@@ -191,7 +191,7 @@ sub installInternal
             message => 'Installing..',
             'prefix-options' => [@cmdPrefix],
             subdirs => [ split(' ', $module->getOption("checkout-only")) ],
-           }) == 0;
+           })->{was_successful};
 }
 
 # Used to uninstall a previously installed module.
@@ -208,7 +208,7 @@ sub uninstallInternal
             message => "Uninstalling g[$module]",
             'prefix-options' => [@cmdPrefix],
             subdirs => [ split(' ', $module->getOption("checkout-only")) ],
-           }) == 0;
+           })->{was_successful};
 }
 
 # Subroutine to clean the build system for the given module.  Works by
@@ -319,7 +319,10 @@ sub createBuildSystem
 # The first argument should be the ksb::Module object to be made.
 # The second argument should be the reference to the hash described above.
 #
-# Returns 0 on success, non-zero on failure (shell script style)
+# Returns a hashref:
+# {
+#   was_successful => $bool, (if successful)
+# }
 sub safe_make (@)
 {
     my ($self, $optsRef) = @_;
@@ -343,7 +346,7 @@ sub safe_make (@)
     if (!$buildCommand) {
         $buildCommand = $userCommand || $self->buildCommands();
         error (" r[b[*] Unable to find the g[$buildCommand] executable!");
-        return 1;
+        return { was_successful => 0 };
     }
 
     # Make it prettier if pretending (Remove leading directories).
@@ -404,11 +407,10 @@ sub safe_make (@)
 
         p_chdir ($builddir);
 
-        my $result = $self->_runBuildCommand($buildMessage, $logname, \@args);
-        return $result if $result;
+        return $self->_runBuildCommand($buildMessage, $logname, \@args);
     };
 
-    return 0;
+    return { was_successful => 1 };
 }
 
 # Subroutine to run make and process the build process output in order to
@@ -422,12 +424,13 @@ sub safe_make (@)
 #   directory).
 # Third parameter is a reference to an array with the command and its
 #   arguments.  i.e. ['command', 'arg1', 'arg2']
-# The return value is the shell return code, so 0 is success, and non-zero
-#   is failure.
+#
+# The return value is a hashref as defined by safe_make
 sub _runBuildCommand
 {
     my ($self, $message, $filename, $argRef) = @_;
     my $module = $self->module();
+    my $resultRef = { was_successful => 0 };
     my $ctx = $module->buildContext();
 
     # There are situations when we don't want progress output:
@@ -436,7 +439,8 @@ sub _runBuildCommand
     if (! -t STDERR || debugging())
     {
         note("\t$message");
-        return log_command($module, $filename, $argRef);
+        $resultRef->{was_successful} = (0 == log_command($module, $filename, $argRef));
+        return $resultRef;
     }
 
     my $time = time;
@@ -448,9 +452,7 @@ sub _runBuildCommand
     # w00t.  Check out the closure!  Maks would be so proud.
     my $log_command_callback = sub {
         my $input = shift;
-        if (not defined $input) {
-            return;
-        }
+        return if not defined $input;
 
         my ($percentage) = ($input =~ /^\[\s*([0-9]+)%]/);
         if ($percentage) {
@@ -467,16 +469,17 @@ sub _runBuildCommand
         }
     };
 
-    my $result = log_command($module, $filename, $argRef, {
+    $resultRef->{was_successful} =
+        (0 == log_command($module, $filename, $argRef, {
             callback => $log_command_callback
-        });
+        }));
 
     # Cleanup TTY output.
     $time = prettify_seconds(time - $time);
-    my $status = $result == 0 ? "g[b[succeeded]" : "r[b[failed]";
+    my $status = $resultRef->{was_successful} ? "g[b[succeeded]" : "r[b[failed]";
     $statusViewer->releaseTTY("\t$message $status (after $time)\n");
 
-    return $result;
+    return $resultRef;
 }
 
 1;
