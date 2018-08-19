@@ -447,6 +447,9 @@ sub log_command
         return 0;
     }
 
+    # Do this before we fork so we can see errors
+    my $logpath = $module->getLogPath("$filename.log");
+
     # Fork a child, with its stdout connected to CHILD.
     my $pid = open(CHILD, '-|');
     if ($pid)
@@ -486,13 +489,6 @@ sub log_command
         # Apply altered environment variables.
         $module->buildContext()->commitEnvironmentChanges();
 
-        my $logdir = $module->getLogDir();
-        if (!$logdir || ! -e $logdir)
-        {
-            # Error creating directory for some reason.
-            error ("\tLogging to std out due to failure creating log dir.");
-        }
-
         $SIG{PIPE} = "IGNORE";
         $SIG{INT} = sub {
             close (STDOUT); # This should be a pipe
@@ -506,13 +502,15 @@ sub log_command
 
         open (STDIN, '<', "/dev/null") unless exists $ENV{'KDESRC_BUILD_USE_TTY'};
         if ($callbackRef || debugging()) {
-            open (STDOUT, "|tee $logdir/$filename.log") or do {
+            open (STDOUT, "|tee $logpath") or do {
                 error ("Error opening pipe to tee command.");
                 # Don't abort, hopefully STDOUT still works.
             };
         }
         else {
-            open (STDOUT, '>', "$logdir/$filename.log");
+            open (STDOUT, '>', $logpath) or do {
+                error ("Error $! opening log to $logpath!");
+            };
         }
 
         # Make sure we log everything.

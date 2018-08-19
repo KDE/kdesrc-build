@@ -121,7 +121,7 @@ sub installInternal
             message => 'Installing..',
             'prefix-options' => [@cmdPrefix],
             subdirs => [ split(' ', $module->getOption("checkout-only")) ],
-           }) == 0;
+           })->{was_successful};
 }
 
 sub configureInternal

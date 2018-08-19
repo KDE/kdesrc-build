@@ -230,8 +230,6 @@ sub addToIgnoreList
 {
     my $self = shift;
     push @{$self->{ignore_list}}, @_;
-
-    debug ("Set context ignore list to ", join(', ', @_));
 }
 
 sub setupOperatingEnvironment
@@ -264,7 +262,6 @@ sub setupOperatingEnvironment
 sub resetEnvironment
 {
     my $self = assert_isa(shift, 'ksb::BuildContext');
-
     $self->{env} = { };
 }
 
@@ -477,19 +474,31 @@ sub getLogDirFor
     }
 
     $logDir = $self->{logPaths}{$baseLogPath};
-    return $logDir if pretending();
+    super_mkdir($logDir);
 
-    super_mkdir($logDir) unless -e $logDir;
+    # global logs go to basedir directly
+    $logDir .= "/$module" unless $module->isa('ksb::BuildContext');
 
-    # No symlink munging or module-name-adding is needed for the default
-    # log dir.
-    return $logDir if $module->isa('ksb::BuildContext');
+    return $logDir;
+}
 
-    # Add a symlink to the latest run for this module.  'latest' itself is
-    # a directory under the default log directory that holds module
-    # symlinks, pointing to the last log directory run for that module.  We
-    # do need to be careful of modules that have multiple directory names
-    # though (like extragear/foo).
+# Constructs the appropriate full path to a log file based on the given
+# basename (including extensions). Use this instead of getLogDirFor when you
+# actually intend to create a log, as this function will also adjust the
+# 'latest' symlink properly.
+sub getLogPathFor
+{
+    my ($self, $module, $path) = @_;
+
+    my $baseLogPath = $module->getSubdirPath('log-dir');
+    my $logDir = $self->getLogDirFor($module);
+
+    # We create this here to avoid needless empty module directories everywhere
+    super_mkdir($logDir);
+
+    # Add a symlink to the latest run for this module. 'latest' itself is
+    # a directory under the base log directory that holds symlinks mapping
+    # each module name to the specific log directoy most recently used.
 
     my $latestPath = "$baseLogPath/latest";
 
@@ -499,22 +508,20 @@ sub getLogDirFor
 
     super_mkdir($latestPath);
 
-    my $symlinkTarget = "$logDir/$moduleName";
     my $symlink = "$latestPath/$moduleName";
 
-    if (-l $symlink and readlink($symlink) ne $symlinkTarget)
+    if (-l $symlink and readlink($symlink) ne $logDir)
     {
         unlink($symlink);
-        symlink($symlinkTarget, $symlink);
+        symlink($logDir, $symlink);
     }
     elsif(not -e $symlink)
     {
         # Create symlink initially if we've never done it before.
-        symlink($symlinkTarget, $symlink);
+        symlink($logDir, $symlink);
     }
 
-    super_mkdir($symlinkTarget);
-    return $symlinkTarget;
+    return "$logDir/$path";
 }
 
 # Returns rc file in use. Call loadRcFile first.

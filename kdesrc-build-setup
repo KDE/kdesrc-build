@@ -374,6 +374,16 @@ EOF
 # Assume we can refer to files present alongside kdesrc-build in the source
 # directory
 my $basedir = dirname(abs_path($0));
+if (! -e "$basedir/kf5-frameworks-build-include") {
+    # Check if it's installed to a share/ prefix
+    $basedir = abs_path(dirname($0) . "/../share/kdesrc-build/");
+
+    if (! -e "$basedir/kf5-frameworks-build-include") {
+        close $output;
+        showInfo("Unable to find kdesrc-build installation to build a configuration!");
+        exit 1;
+    }
+}
 
 if (grep /^frameworks$/, @chosenModules) {
     print $output <<EOF;

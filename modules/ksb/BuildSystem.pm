@@ -144,7 +144,7 @@ sub buildInternal
         subdirs => [
             split(' ', $self->module()->getOption("checkout-only"))
         ],
-    }) == 0;
+    })->{was_successful};
 }
 
 # Return value style: boolean
@@ -191,7 +191,7 @@ sub installInternal
             message => 'Installing..',
             'prefix-options' => [@cmdPrefix],
             subdirs => [ split(' ', $module->getOption("checkout-only")) ],
-           }) == 0;
+           })->{was_successful};
 }
 
 # Used to uninstall a previously installed module.
@@ -208,7 +208,7 @@ sub uninstallInternal
             message => "Uninstalling g[$module]",
             'prefix-options' => [@cmdPrefix],
             subdirs => [ split(' ', $module->getOption("checkout-only")) ],
-           }) == 0;
+           })->{was_successful};
 }
 
 # Subroutine to clean the build system for the given module.  Works by
@@ -319,7 +319,10 @@ sub createBuildSystem
 # The first argument should be the ksb::Module object to be made.
 # The second argument should be the reference to the hash described above.
 #
-# Returns 0 on success, non-zero on failure (shell script style)
+# Returns a hashref:
+# {
+#   was_successful => $bool, (if successful)
+# }
 sub safe_make (@)
 {
     my ($self, $optsRef) = @_;
@@ -343,7 +346,7 @@ sub safe_make (@)
     if (!$buildCommand) {
         $buildCommand = $userCommand || $self->buildCommands();
         error (" r[b[*] Unable to find the g[$buildCommand] executable!");
-        return 1;
+        return { was_successful => 0 };
     }
 
     # Make it prettier if pretending (Remove leading directories).
@@ -407,11 +410,10 @@ sub safe_make (@)
 
         p_chdir ($builddir);
 
-        my $result = $self->_runBuildCommand($buildMessage, $logname, \@args);
-        return $result if $result;
+        return $self->_runBuildCommand($buildMessage, $logname, \@args);
     };
 
-    return 0;
+    return { was_successful => 1 };
 }
 
 # Subroutine to run make and process the build process output in order to
@@ -425,12 +427,13 @@ sub safe_make (@)
 #   directory).
 # Third parameter is a reference to an array with the command and its
 #   arguments.  i.e. ['command', 'arg1', 'arg2']
-# The return value is the shell return code, so 0 is success, and non-zero
-#   is failure.
+#
+# The return value is a hashref as defined by safe_make
 sub _runBuildCommand
 {
     my ($self, $message, $filename, $argRef) = @_;
     my $module = $self->module();
+    my $resultRef = { was_successful => 0 };
     my $ctx = $module->buildContext();
 
     # There are situations when we don't want progress output:
@@ -438,19 +441,19 @@ sub _runBuildCommand
     # 2. When we're debugging (we'd interfere with debugging output).
     if (! -t STDERR || debugging())
     {
-        return log_command($module, $filename, $argRef);
+        $resultRef->{was_successful} = (0 == log_command($module, $filename, $argRef));
+        return $resultRef;
     }
 
-    # Run for every line of build output to do things like scrape for progress
-    # output.
+    # TODO More details
+    my $warnings = 0;
+
     my $log_command_callback = sub {
         state $oldX = -1;
         state $oldY = -1;
 
         my $input = shift;
-        if (not defined $input) {
-            return;
-        }
+        return if not defined $input;
 
         my ($x, $y);
         my ($percentage) = ($input =~ /^\[\s*([0-9]+)%]/);
@@ -468,11 +471,26 @@ sub _runBuildCommand
         if ($x != $oldX || $y != $oldY) {
             ksb::Debug::reportProgressToParent($module, $x, $y);
         }
+
+        $warnings++ if ($input =~ /warning: /);
     };
 
-    return log_command($module, $filename, $argRef, {
+    $resultRef->{was_successful} =
+        (0 == log_command($module, $filename, $argRef, {
             callback => $log_command_callback
-        });
+        }));
+    $resultRef->{warnings} = $warnings;
+
+    if ($warnings) {
+        my $count = ($warnings < 3  ) ? 1 :
+                    ($warnings < 10 ) ? 2 :
+                    ($warnings < 30 ) ? 3 : 4;
+        my $msg = sprintf("%s b[y[$warnings] %s", '-' x $count, '-' x $count);
+        note ("\tNote: $msg compile warnings");
+        $self->{module}->setPersistentOption('last-compile-warnings', $warnings);
+    }
+
+    return $resultRef;
 }
 
 1;

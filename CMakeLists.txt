@@ -92,7 +92,13 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build-setup DESTINATION ${KD
 install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/sample-kde-env-master.sh
             ${CMAKE_SOURCE_DIR}/sample-xsession.sh
-        DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
+            ${CMAKE_SOURCE_DIR}/kf5-applications-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-extragear-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-frameworks-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-kdepim-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-qt5-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-workspace-build-include
+    DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
 if (ECM_FOUND)
     feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
