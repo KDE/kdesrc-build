@@ -199,6 +199,7 @@ sub onLogEntries
     }
 
     $self->{last_msg_type} = $lastUpdateType;
+    $self->update();
 }
 
 # TTY helpers
