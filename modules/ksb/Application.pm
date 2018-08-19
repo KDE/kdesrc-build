@@ -1349,12 +1349,13 @@ sub _handle_updates
             return $module->runPhase_p('update',
                 sub {
                     # called in child process, can block
-                    return $module->update($ctx);
+                    my $self = shift;
+                    return $self->update($ctx);
                 },
                 sub {
                     # called in this process, with results
                     # in this case the only result is whether there's an error or not
-                    my ($updateMsg) = @_;
+                    my ($self, $updateMsg) = @_;
 
                     my $promise = $module_promises->{"$module"};
 
@@ -1362,7 +1363,7 @@ sub _handle_updates
                         $promise->resolve($updateMsg);
                     }
                     else {
-                        $promise->reject("$module failed to update");
+                        $promise->reject("$self failed to update");
                     }
 
                     $end->($updateMsg && $last_step_successful); # proceed to next step

@@ -77,6 +77,8 @@ sub new
         'module-set' => undef,
     );
 
+    $self->installPhasePromises() if $class eq 'ksb::Module';
+
     # alias our options into the build context for global vis
     $ctx->{build_options}->{$name} = $self->{options};
 
@@ -406,6 +408,88 @@ sub buildSystemType
     return $self->buildSystem()->name();
 }
 
+# Creates the Mojo::Promises corresponding to each named phase.
+# E.g. the 'update' phase would be mapped to a sequence of subs to be executed
+# for the update.
+sub installPhasePromises
+{
+    # Make our normal "self" a name unlikely to be used in a closure
+    # below by mistake
+    my $misnamedSelf = shift;
+
+    # Each phase either maps directly to a subroutine which can
+    # block (and whose return value will have a default handler),
+    # or can map to an array of exactly 2 subroutines. The first
+    # sub would be the blocking handler, the second sub is a
+    # custom handler for the result.
+    # Both subs are passed the module as the first param
+    my %phaseBuilders = (
+        # Always runs, always first, the appropriate subsequent phase will
+        # be linked to this one (based on --no-src, --install-only, etc.)
+        start => sub {
+            my $self = shift;
+            my %pathinfo = $self->getInstallPathComponents('build');
+            super_mkdir($pathinfo{'path'});
+            return 1;
+        },
+
+        # update => [
+        # See Application.pm for its custom runPhase_p
+        # ],
+
+        buildsystem => [
+            sub {
+                my $self = shift;
+                return $self->setupBuildSystem();
+            },
+            sub {
+                my ($self, $was_successful) = @_;
+
+                return Mojo::Promise->new->reject('Unable to setup build system')
+                    unless $was_successful;
+
+                return $was_successful;
+            }
+        ],
+
+        build => [
+            sub {
+                # called in child process, can block
+                my $self = shift;
+                return $self->buildSystem()->buildInternal();
+            },
+            sub {
+                # called in this process, with results
+                my ($self, $was_successful) = @_;
+                $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
+
+                return 1 if $was_successful;
+                return Mojo::Promise->new->reject('Build failed');
+            },
+        ],
+
+        test => sub {
+            my $self = shift;
+            if ($self->getOption('run-tests')) {
+                # TODO: Make test failure a blocker for install?
+                $self->buildSystem()->runTestsuite();
+            }
+            return 1;
+        },
+
+        install => sub {
+            my $self = shift;
+            if ($self->getOption('install-after-build')) {
+                return 0 if !$self->install();
+            }
+
+            return 1;
+        },
+    );
+
+    $misnamedSelf->{builders} = \%phaseBuilders;
+}
+
 # Subroutine to build this module.
 # Returns a promise that resolves to true (on success) or rejects with a error
 # string
@@ -425,59 +509,20 @@ sub build
     super_mkdir($pathinfo{'path'});
     p_chdir($pathinfo{'path'});
 
-    my $buildSystemPromise = $self->runPhase_p('buildsystem',
-        sub {
-            return $self->setupBuildSystem();
-        },
-        sub {
-            my $was_successful = shift;
+    my $buildSystemPromise = $self->runPhase_p('buildsystem');
 
-            return Mojo::Promise->new->reject('Unable to setup build system')
-                unless $was_successful;
-
-            return $was_successful;
-        });
-
-    return $buildSystemPromise if $self->getOption('build-system-only');
+    return $buildSystemPromise
+        if $self->getOption('build-system-only');
 
     # If we don't stop with the build system only, then keep extending that
     # promise chain to complete the build, test, and install
 
     return $buildSystemPromise->then(sub {
-        return $self->runPhase_p('build',
-            sub {
-                # called in child process, can block
-                return $buildSystem->buildInternal();
-            },
-            sub {
-                # called in this process, with results
-                my $was_successful = shift;
-                $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
-
-                return 1 if $was_successful;
-                return Mojo::Promise->new->reject('Build failed');
-            }
-        );
+        return $self->runPhase_p('build');
     })->then(sub {
-        return $self->runPhase_p('test',
-            sub {
-                if ($self->getOption('run-tests')) {
-                    # TODO: Make test failure a blocker for install?
-                    $self->buildSystem()->runTestsuite();
-                }
-                return 1;
-            },
-        );
+        return $self->runPhase_p('test');
     })->then(sub {
-        return $self->runPhase_p('install',
-            sub {
-                if ($self->getOption('install-after-build')) {
-                    return 0 if !$self->install();
-                }
-
-                return 1;
-            },
-        );
+        return $self->runPhase_p('install');
     });
 }
 
@@ -1000,6 +1045,27 @@ sub installationPath
 sub runPhase_p
 {
     my ($self, $phaseName, $blocking_coderef, $completion_coderef) = @_;
+    my $phaseSubs = $self->{builders}->{$phaseName};
+
+    if (ref($phaseSubs) eq 'CODE') {
+        $blocking_coderef //= $phaseSubs;
+    }
+    elsif (ref($phaseSubs) eq 'ARRAY') {
+        ($blocking_coderef, $completion_coderef) = @{$phaseSubs};
+        croak_internal("Missing subs for $phaseName")
+            unless ($blocking_coderef && $completion_coderef);
+    }
+    else {
+        croak_internal("self->builders->{$phaseName} should not be set")
+            if defined $phaseSubs;
+    }
+
+    # Default handler
+    $completion_coderef //= sub {
+        my ($module, $result) = (@_);
+        return Mojo::Promise->new->reject unless $result;
+        return $result;
+    };
 
     my $promise = Mojo::Promise->new;
     my $ctx = $self->buildContext();
@@ -1063,7 +1129,7 @@ sub runPhase_p
 
             # This coderef should return a normal value (something you could
             # stick in a plain JSON object)
-            my $result = $blocking_coderef->();
+            my $result = $blocking_coderef->($self);
             my %newOptions;
 
             # Grab any newly-set options to feed back to parent
@@ -1090,6 +1156,7 @@ sub runPhase_p
             close $writer; # can't close it earlier because must be open at fork
 
             if ($err) {
+                say "$err";
                 $ctx->markModulePhaseFailed($phaseName, $self);
                 return Mojo::Promise->new->reject($err);
             }
@@ -1102,20 +1169,15 @@ sub runPhase_p
                 }
             }
 
-            if ($resultsRef->{result}) {
+            my $result = $resultsRef->{result};
+            if ($result) {
                 $ctx->markModulePhaseSucceeded($phaseName, $self);
             } else {
                 $ctx->markModulePhaseFailed($phaseName, $self);
             }
 
-            my $result = $resultsRef->{result};
-            if ($completion_coderef) {
-                # This coderef should resolve or reject the promise, if used
-                $promise->resolve($completion_coderef->($result));
-            } else {
-                $promise->resolve($result) if $result;
-                $promise->reject       unless $result;
-            }
+            # This coderef should resolve or reject the promise, if used
+            $promise->resolve($completion_coderef->($self, $result));
         }
     );
 
