@@ -666,7 +666,7 @@ sub unique_items
 }
 
 # Subroutine to delete a directory and all files and subdirectories within.
-# Does nothing in pretend mode.  An analogue to "rm -rf" from Linux.
+# Does nothing in pretend mode.  An analog to "rm -rf" from Linux.
 # Requires File::Find module.
 #
 # First parameter: Path to delete

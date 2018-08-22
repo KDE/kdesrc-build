@@ -1015,7 +1015,7 @@ sub _parseModuleSetOptions
 #  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
 #  methods (e.g. <IO::Handle> subclass).
 #
-#  deferredOptions - An out paramter: a hashref holding the options set by any
+#  deferredOptions - An out parameter: a hashref holding the options set by any
 #  'options' blocks read in by this function. Each key (identified by the name
 #  of the 'options' block) will point to a hashref value holding the options to
 #  apply.

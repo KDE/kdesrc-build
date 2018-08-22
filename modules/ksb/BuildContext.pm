@@ -310,7 +310,7 @@ sub commitEnvironmentChanges
 # queued. Either way the current environment will be unmodified afterward.
 #
 # First parameter is the name of the environment variable to modify
-# All remaining paramters are prepended to the current environment path, in
+# All remaining parameters are prepended to the current environment path, in
 # the order given. (i.e. param1, param2, param3 ->
 # param1:param2:param3:existing)
 sub prependEnvironmentValue
@@ -495,7 +495,7 @@ sub getLogPathFor
 
     # Add a symlink to the latest run for this module. 'latest' itself is
     # a directory under the base log directory that holds symlinks mapping
-    # each module name to the specific log directoy most recently used.
+    # each module name to the specific log directory most recently used.
 
     my $latestPath = "$baseLogPath/latest";
 
