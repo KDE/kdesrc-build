@@ -774,7 +774,7 @@ sub hasRemote
 sub verifyGitConfig
 {
     my $configOutput =
-        qx'git config --global --get url.git://anongit.kde.org/.insteadOf kde:';
+        qx'git config --global --get url.https://anongit.kde.org/.insteadOf kde:';
 
     # 0 means no error, 1 means no such section exists -- which is OK
     if ((my $errNum = $? >> 8) >= 2) {
@@ -799,7 +799,7 @@ sub verifyGitConfig
     if ($configOutput !~ /^kde:\s*$/) {
         whisper ("\tAdding git download kde: alias");
         my $result = safe_system(
-            qw(git config --global --add url.git://anongit.kde.org/.insteadOf kde:)
+            qw(git config --global --add url.https://anongit.kde.org/.insteadOf kde:)
         ) >> 8;
         return 0 if $result != 0;
     }
