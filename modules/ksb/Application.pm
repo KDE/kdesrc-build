@@ -19,6 +19,7 @@ use ksb::Module;
 use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
+use ksb::PromiseChain;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
 use ksb::Updater::Git;
@@ -1297,107 +1298,54 @@ EOF
 #
 # Parameters:
 # 1. Build Context, which will be used to determine the module update list.
-# 2. A hashref mapping module names to Mojo::Promises.  This function generates
-#    a promise for each module update, which can be waited on.
+# 2. A PromiseChain for adding work items and dependencies.
+# 3. A "start promise" that can be waited on for pre-update steps.
 #
 # This function accounts for every module in $ctx's update phase.
 #
-# Returns a Mojo::Promise that can be waited on.  The Promise should continue
-# to update every applicable module even if errors occur -- you must still
-# check for errors even if the promise successfully resolves.
+# Returns an updated start promise and can also throw exception on error
 sub _handle_updates
 {
-    my ($ctx, $module_promises) = @_;
+    my ($ctx, $promiseChain, $start_promise) = @_;
     my $kdesrc = $ctx->getSourceDir();
     my @update_list = $ctx->modulesInPhase('update');
 
-    $module_promises->{'global'} = Mojo::Promise->new;
+    return $start_promise unless @update_list;
 
-    # No reason to print out the text if we're not doing anything.
-    if (!@update_list) {
-        return $module_promises->{'global'}->resolve(1);
-    }
+    croak_runtime("SSH agent is not running but should be")
+        unless _check_for_ssh_agent($ctx);
 
-    if (not _check_for_ssh_agent($ctx)) {
-        return $module_promises->{'global'}->reject('ssh-failure');
-    }
-
+    # TODO: Extract this to a setup function that all updates/build depend upon
     whisper ("Creating source directory") unless -e $kdesrc;
-    if (! -e $kdesrc && !super_mkdir ($kdesrc)) {
-        error ("Unable to make directory r[$kdesrc]!");
-        return $module_promises->{'global'}->reject("Could not mkdir $kdesrc");
-    }
+    croak_runtime ("Unable to make directory r[$kdesrc]! $!")
+        if (! -e $kdesrc && !super_mkdir ($kdesrc));
 
-    # Create promises for each module to update.
-    $module_promises->{"$_"} = Mojo::Promise->new foreach @update_list;
-
-    # Once at this point, any errors we get should be limited to a module,
-    # which means we can tell the build thread to start.
-    $module_promises->{'global'}->resolve(1);
-
-    my @steps = map {
-        my $module = $_;
-
-        # This sub is called *LATER*, by Mojo::IOLoop::Delay->steps
-        # it needs to be in the loop to close over $module
-        # note: implicit return to `map`, using return keyword breaks immediately,
-        # not later.
-        sub {
-            my ($delay, $last_step_successful) = @_; # fed in from a prior IOLoop::Delay step
-            my $end = $delay->begin(0);     # This controls when the Delay proceeds
-
+    for my $module (@update_list) {
+        # sub must be defined here to capture $module in the loop
+        my $updateSub = sub {
             return $module->runPhase_p('update',
+                # called in child process, can block
+                sub { return $module->update($ctx) },
+                # called in this process, with results
                 sub {
-                    # called in child process, can block
-                    my $self = shift;
-                    return $self->update($ctx);
-                },
-                sub {
-                    # called in this process, with results
                     # in this case the only result is whether there's an error or not
-                    my ($self, $updateMsg) = @_;
-
-                    my $promise = $module_promises->{"$module"};
-
-                    if ($updateMsg) {
-                        $promise->resolve($updateMsg);
-                    }
-                    else {
-                        $promise->reject("$self failed to update");
-                    }
-
-                    $end->($updateMsg && $last_step_successful); # proceed to next step
+                    my ($updateMsg) = @_;
+                    # TODO Stuff in module somewhere for display later? or too noisy?
                 }
             );
         };
-    } (@update_list);
 
-    my $delay = Mojo::IOLoop->delay(
-        sub {
-            my $delay = shift;
-            $delay->pass(1); # kick off process with defined success code
-        },
-        @steps,  # meat of the updates
-        sub {
-            my ($delay, $success) = @_;
-            # all done
-            $delay->reject('update failed') unless $success;
-            $delay->resolve($success) if $success;
-        }
-    );
+        $promiseChain->addItem("$module/update", "network-queue", $updateSub);
+    }
 
-    return $delay;
+    return $start_promise;
 }
 
-# Returns undef if build should proceed, otherwise a Promise that will resolve
-# or reject as appropriate
+# Throws an exception if essential build programs are missing as a sanity check.
 sub _checkForEarlyBuildExit
 {
     my $ctx = shift;
     my @modules = $ctx->modulesInPhase('build');
-
-    # No reason to print building messages if we're not building.
-    return Mojo::Promise->new->resolve(0) if scalar @modules == 0;
 
     # Check for absolutely essential programs now.
     if (!_checkForEssentialBuildPrograms($ctx) &&
@@ -1408,10 +1356,8 @@ sub _checkForEarlyBuildExit
         error (" r[b[*] to continue anyways. If this check was in error please report a bug against");
         error (" y[b[*] kdesrc-build at https://bugs.kde.org/");
 
-        return Mojo::Promise->new->reject('local-setup');
+        croak_runtime ("Essential build programs are missing!");
     }
-
-    return undef;
 }
 
 sub _openStatusFileHandle
@@ -1438,90 +1384,54 @@ EOF
 #
 # Parameters:
 # 1. Build Context, which is used to determine list of modules to build.
-# 2. hashref mapping module names to Mojo::Promises (from update phase).
-#    This sub will wait on a promise if present before starting the build for
-#    a given module.
+# 2. A PromiseChain, which will have build items inserted and dependencies
+#    added to the update phase as necessary.
+# 3. A "start promise" that can be waited on for pre-build steps
 #
-# If the packages are not already checked-out and/or updated, this
-# subroutine WILL NOT do so for you.
+# Assumes basic directory layout setup and updates completed
 #
-# This subroutine assumes that the source directory has already been set up.
-# It will create the build directory if it doesn't already exist.
+# If $builddir/$module/.refresh-me exists, the subroutine will completely
+# rebuild the module (as if --refresh-build were passed for that module).
 #
-# If $builddir/$module/.refresh-me exists, the subroutine will
-# completely rebuild the module (as if --refresh-build were passed for that
-# module).
-#
-# Returns a Mojo::Promise that completes when the build is done
+# Returns a new start promise, and can also throw exceptions on error
 sub _handle_build
 {
-    my ($ctx, $module_promises) = @_;
+    my ($ctx, $promiseChain, $start_promise) = @_;
     my @modules = $ctx->modulesInPhase('build');
     my $result = 0;
 
-    if (my $promise = _checkForEarlyBuildExit($ctx)) {
-        return $promise;
-    }
-
-    # Modules in the build phase but not in the update phase were skipped
-    # so we need to create a shell promise to wait upon
-    my @skippedModules = grep { !exists $module_promises->{"$_"} } (@modules);
-    foreach my $skipped (@skippedModules) {
-        # The later build handler will check for the update reason and use that
-        # to decide whether to skip or not.
-        my $promise = Mojo::Promise->new->resolve('skipped');
-
-        $module_promises->{"$skipped"} = $promise;
-    }
+    _checkForEarlyBuildExit($ctx); # exception-thrower
 
     my $num_modules = scalar @modules;
     my ($statusFile, $outfile) = _openStatusFileHandle($ctx);
     my $everFailed = 0;
 
     # This generates a bunch of subs but doesn't call them yet
-    # See Mojo::IOLoop->delay() below for where they get used
-    my @steps = map {
-        my $module = $_;
-        # Implicit return value
-        sub {
-            my $delay = shift;
-            my $end = $delay->begin;
+    foreach my $module (@modules) {
+        # Needs to happen in this loop to capture $module
+        my $buildSub = sub {
+            return if ($everFailed && $module->getOption('stop-on-failure'));
 
             my $start_time = time;
             my $fail_count = $module->getPersistentOption('failure-count') // 0;
-
             my $moduleName = $module->name();
-
-            if ($everFailed && $module->getOption('stop-on-failure')) {
-                # Wait for update to be done then continue
-                return $module_promises->{"$module"}->then(sub { $end->(); });
-            }
-
             my $moduleSet = $module->moduleSet()->name();
             my $modOutput = $moduleName;
 
-            $module_promises->{"$module"}->catch(sub {
-                my $reason = shift;
-                error ("\tUnable to update r[$module]: $reason, build canceled.");
-
-                return Mojo::Promise->new->reject('failed update');
-            })->then(sub {
-                my $updateMsg = shift;
-
+            # TODO: Add 'skipped' handling by having update process update the module
+            # object directly (which is now possible in runPhase_p
                 # check for skipped updates, --no-src forces
                 # build-when-unchanged by default
-                if ($updateMsg eq 'skipped' &&
-                    !$module->getOption('build-when-unchanged') &&
-                    $fail_count == 0)
-                {
-                    return Mojo::Promise->new->resolve('skipped');
-                }
+#                if ($updateMsg eq 'skipped' &&
+#                    !$module->getOption('build-when-unchanged') &&
+#                    $fail_count == 0)
+#                {
+#                    return Mojo::Promise->new->resolve('skipped');
+#                }
 
-                # TODO: Split install into a separate phase so that exception
-                # handler knows which phase had the failure
-
-                return $module->build();
-            })->catch(sub {
+            # Can't build w/out blocking so return a promise instead, which ->build
+            # already supplies
+            return $module->build()->catch(sub {
                 my $failureReason = shift;
 
                 if (!$everFailed) {
@@ -1539,26 +1449,25 @@ sub _handle_build
                 $fail_count = 0;
             })->finally(sub {
                 $module->setPersistentOption('failure-count', $fail_count);
-                $end->(); # Kick off next step
             });
         };
-    } (@modules);
 
-    my $build_promise = $module_promises->{'global'}->then(
-        sub {
-            # success
-            $ctx->unsetPersistentOption('global', 'resume-list');
-            return Mojo::IOLoop->delay(@steps);
-        },
-        sub {
-            # failed
-            my $reason = shift;
+        $promiseChain->addItem("$module/build", 'cpu-queue', $buildSub);
 
-            error(" Failed to start updates: r[b[$reason]");
-            return $reason;
-        },
-    )->then(sub {
-        # after ->delay(@steps) completes above...
+        # If there's an update phase we need to depend on it and show status
+        if (my $updatePromise = $promiseChain->promiseFor("$module/update")) {
+            $promiseChain->addDep("$module/build", "$module/update");
+            $updatePromise->catch(sub {
+                my $err = shift;
+                error ("\ty[b[$module] failed to update! $err");
+                return $updatePromise; # Don't change the promise we're just whining
+            });
+        }
+    };
+
+    # Add to the build 'queue' for promise chain so that this runs only after all
+    # other build jobs
+    $promiseChain->addDep('@postBuild', 'cpu-queue', sub {
         if ($statusFile)
         {
             close $statusFile;
@@ -1575,7 +1484,8 @@ sub _handle_build
         return 0;
     });
 
-    return $build_promise;
+    return $start_promise->then(
+        sub { $ctx->unsetPersistentOption('global', 'resume-list') });
 }
 
 # Finds a decent port for the monitoring server, creates a file at a known
@@ -2055,30 +1965,28 @@ sub _handle_async_build
     # run, allowing the ref to be GC'd stops the U/I updates.
     my $ui_ready      = _handle_ui($ctx, $stop_everything_p);
 
-    my $updater_delay = _handle_updates ($ctx, $module_promises);
-    my $build_delay   = _handle_build   ($ctx, $module_promises);
+    my $promiseChain = ksb::PromiseChain->new;
+    my $start_promise = Mojo::Promise->new;
 
-    # If build finishes first, note that later
-    my $mark_update_done_p = $updater_delay->then(sub {
-        $update_done = 1;
-    })->catch(sub {
-        $result = 1;
-    });
+    # These succeed or die outright
+    eval {
+        $start_promise = _handle_updates ($ctx, $promiseChain, $start_promise);
+        $start_promise = _handle_build   ($ctx, $promiseChain, $start_promise);
+    };
 
-    my $build_done_msg_p   = $build_delay->then(sub {
-        # This can happen with a build failure under stop-on-failure
-        note("All builds finished, but still waiting for updates") unless $update_done;
-    })->catch(sub {
-        $result = 1;
-    });
+    if ($@) {
+        error ("Caught an error $@ setting up to build");
+        return 1;
+    }
 
-    my @all_promises = ($mark_update_done_p, $build_done_msg_p);
-    my $promise = Mojo::Promise->all(@all_promises)->then(sub {
+    my $chain = $promiseChain->makePromiseChain($start_promise)->then(sub {
         $ctx->statusMonitor()->markBuildDone();
     });
 
+    $start_promise->resolve;
+
     Mojo::IOLoop->stop; # Force the wait below to block
-    Mojo::Promise->all($ui_ready, $monitor_p)->then(sub {
+    Mojo::Promise->all($chain, $ui_ready, $monitor_p)->then(sub {
         Mojo::IOLoop->stop; # FIN
     })->wait;
 

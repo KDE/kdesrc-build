@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-package PromiseChain 0.10;
+package ksb::PromiseChain 0.10;
 
 use Mojo::Base -base;
 use Mojo::Promise;
@@ -198,8 +198,10 @@ sub promiseFor {
     # Items start building immediately
     my $result_promise = $deps->makePromiseChain;
 
-    # Call $start_promise->resolve when you're ready to go
-    my ($start_promise, $result_promise) = $deps->makePromiseChain;
+    # Use your own start_promise, build waits until you're ready
+    my $start_promise = Mojo::Promise->new;
+    my $result_promise = $deps->makePromiseChain($start_promise);
+    $start_promise->resolve;
 
 This method is the real point to this whole class. Call it to return a promise
 that waits for all work items (added using L<PromiseChain::addItem>), ensuring
@@ -213,9 +215,9 @@ There are two forms for this function. The first form returns the promise you
 can wait on and immediately starts executing worker item jobs.
 
 Use the second form if you wish to be able to control when the worker items
-start executing: they all carry a dependency on the returned C<$start_promise>
-(potentially only an indirect dependency) and will not run until you resolve
-the C<$start_promise>).
+start executing: they all carry a dependency on the C<$start_promise> you
+provide (potentially only an indirect dependency) and will not run until you
+resolve the C<$start_promise>).
 
 IMPORTANT: No checks are currently done to verify that the dependency graph you
 build is actually a directed acyclic graph (DAG). If it is not you risk
@@ -225,8 +227,8 @@ deadlocks or other serious problems.
 
 sub makePromiseChain {
     my $self = shift;
+    my $start_promise = shift // Mojo::Promise->new->resolve;
     my @all_promises;
-    my $start_promise = Mojo::Promise->new;
 
     foreach my $itemName (keys %{$self->items}) {
         my $item = $self->items->{$itemName}
@@ -252,8 +254,6 @@ sub makePromiseChain {
     return ($start_promise, $all_promise)
         if wantarray; # second calling form
 
-    # Things should start once we return to event loop
-    $start_promise->resolve;
     return $all_promise; # first calling form
 }
 
