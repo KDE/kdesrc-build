@@ -46,6 +46,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/ModuleSet.pm
         modules/ksb/OptionsBase.pm
         modules/ksb/PhaseList.pm
+        modules/ksb/PromiseChain.pm
         modules/ksb/RecursiveFH.pm
         modules/ksb/StatusMonitor.pm
         modules/ksb/StatusView.pm
