@@ -1459,7 +1459,7 @@ sub _handle_build
             $promiseChain->addDep("$module/build", "$module/update");
             $updatePromise->catch(sub {
                 my $err = shift;
-                error ("\ty[b[$module] failed to update! $err");
+                error ("\n\ty[b[$module] failed to update! $err");
                 return $updatePromise; # Don't change the promise we're just whining
             });
         }
@@ -1979,10 +1979,16 @@ sub _handle_async_build
         return 1;
     }
 
-    my $chain = $promiseChain->makePromiseChain($start_promise)->then(sub {
-        $ctx->statusMonitor()->markBuildDone();
-    });
+    my $chain = $promiseChain->makePromiseChain($start_promise)
+        ->finally(sub {
+            # Fail if we had a zero-valued result (indicates error)
+            my @results = @_;
+            $result = 1 if defined first { $_->[0] == 0 } @results;
 
+            $ctx->statusMonitor()->markBuildDone();
+        });
+
+    # Start the update/build process
     $start_promise->resolve;
 
     Mojo::IOLoop->stop; # Force the wait below to block

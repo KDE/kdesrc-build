@@ -781,68 +781,31 @@ sub compare
     return $self->name() cmp $other->name();
 }
 
-# returns false if an error, otherwise a string containing information about
-# number of files/commits/etc affected
+# Throws an exception on error, otherwise returns number of updates known to
+# have occurred. Only returns 0 if we positively know from the scm that no
+# update occurred.
 sub update
 {
     my ($self, $ctx) = @_;
 
-    my $moduleName = $self->name();
     my $module_src_dir = $self->getSourceDir();
     my $kdesrc = $ctx->getSourceDir();
 
     if ($kdesrc ne $module_src_dir && !super_mkdir($module_src_dir))
     {
         # This module has a different source directory, ensure it exists.
-        error ("Unable to create separate source directory for r[$self]: $module_src_dir");
-        return 0;
+        croak_runtime ("Unable to create separate source directory for $self at $module_src_dir");
     }
 
-    my $fullpath = $self->fullpath('source');
-    my $count;
-    my $returnValue;
 
-    eval { $count = $self->scm()->updateInternal() };
+    # Use 1 as default value to force a rebuild if we can't determine there
+    # were truly *no* updates
+    my $count = $self->scm()->updateInternal() // 1;
 
-    # TODO: Just let the exception pass as it has the detail we need
-    # Let calling code worry about updating $ctx
-    if ($@)
-    {
-        if (had_an_exception()) {
-            $ctx->markModulePhaseFailed('build', $self);
-            $@ = $@->{'message'};
-        }
-
-        error ("Error updating r[$self], removing from list of packages to build.");
-        error (" > y[$@]");
-
-        $self->phases()->filterOutPhase('build');
-        $returnValue = 0;
-    }
-    else
-    {
-        # TODO: Require updateInternal to set appropriate msg for scm (files, commits, etc.)
-
-        my $message;
-        if (not defined $count)
-        {
-            $message = ksb::Debug::colorize ("b[y[Unknown changes].");
-        }
-        elsif ($count)
-        {
-            $message = "1 file affected." if $count == 1;
-            $message = "$count files affected." if $count != 1;
-        }
-        else
-        {
-            $message = "0 files affected.";
-            my $refreshReason = $self->buildSystem()->needsRefreshed();
-        }
-
-        $returnValue = $message;
-    }
-
-    return $returnValue;
+    # Need to help calling code figure out that 0 is an OK return value from this method.
+    # TODO: Consistently use exceptions in runPhase-based code so this isn't needed.
+    # TODO: Require updateInternal to set appropriate msg for scm (files, commits, etc.)
+    return $count ? $count : '0 but true';
 }
 
 # OVERRIDE
@@ -1164,9 +1127,8 @@ sub runPhase_p
             close $writer; # can't close it earlier because must be open at fork
 
             if ($err) {
-                say "$err";
                 $ctx->markModulePhaseFailed($phaseName, $self);
-                return Mojo::Promise->new->reject($err);
+                return $promise->reject($err);
             }
 
             # Apply options that may have changed during child proc execution.
