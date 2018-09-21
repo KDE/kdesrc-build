@@ -1329,8 +1329,8 @@ sub _handle_updates
                 # called in this process, with results
                 sub {
                     # in this case the only result is whether there's an error or not
-                    my ($updateMsg) = @_;
-                    # TODO Stuff in module somewhere for display later? or too noisy?
+                    my (undef, $numUpdates) = @_;
+                    $module->setOption('#numUpdates', $numUpdates);
                 }
             );
         };
@@ -1412,22 +1412,21 @@ sub _handle_build
         my $buildSub = sub {
             return if ($everFailed && $module->getOption('stop-on-failure'));
 
-            my $start_time = time;
             my $fail_count = $module->getPersistentOption('failure-count') // 0;
-            my $moduleName = $module->name();
-            my $moduleSet = $module->moduleSet()->name();
-            my $modOutput = $moduleName;
+            my $num_updates = int ($module->getOption('#numUpdates', 'module') // 1);
 
-            # TODO: Add 'skipped' handling by having update process update the module
-            # object directly (which is now possible in runPhase_p
-                # check for skipped updates, --no-src forces
-                # build-when-unchanged by default
-#                if ($updateMsg eq 'skipped' &&
-#                    !$module->getOption('build-when-unchanged') &&
-#                    $fail_count == 0)
-#                {
-#                    return Mojo::Promise->new->resolve('skipped');
-#                }
+            # check for skipped updates, --no-src forces build-when-unchanged
+            # even when ordinarily disabled
+            if ($num_updates == 0
+                && !$module->getOption('build-when-unchanged')
+                && $fail_count == 0)
+            {
+                # TODO: Why is the param order reversed for these two?
+                $ctx->statusMonitor()->markPhaseStart("$module", 'build');
+                $ctx->markModulePhaseSucceeded('build', $module);
+
+                return 'skipped';
+            }
 
             # Can't build w/out blocking so return a promise instead, which ->build
             # already supplies
@@ -1459,7 +1458,8 @@ sub _handle_build
             $promiseChain->addDep("$module/build", "$module/update");
             $updatePromise->catch(sub {
                 my $err = shift;
-                error ("\n\ty[b[$module] failed to update! $err");
+                $ctx->statusViewer()->_clearLine();
+                error ("\ty[b[$module] failed to update! $err");
                 return $updatePromise; # Don't change the promise we're just whining
             });
         }
