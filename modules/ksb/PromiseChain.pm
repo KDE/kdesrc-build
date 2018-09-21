@@ -7,6 +7,7 @@ use Mojo::Promise;
 
 has 'items'        => sub { return {} }; # nodes
 has 'dependencies' => sub { return {} }; # edges
+has 'orderings'    => sub { return {} }; # semi-edges for queuing
 
 # Maps each queue to the last item entered in that queue for dependencies
 # This imparts an implicit ordering. Maybe better to do it explicitly?
@@ -102,6 +103,10 @@ item is defined to run C<$code> to complete its task. $code should return its
 result directly -- if it must block, it should instead return a
 L<Mojo::Promise> that resolves to the proper result.
 
+The worker item provided is run within a work queue named by C<queue-name>,
+which needs no further setup besides naming the queue. Each queue will only
+ever run one item at a time.
+
 A L<Mojo::Promise> is created to await the result of running C<$code>. See
 L<PromiseChain::promiseFor>.
 
@@ -126,7 +131,7 @@ sub addItem {
 
     # Add implicit dep here, though maybe it's better in calling code?
     my $lastItemInQueue = $self->last_queue_item->{$queue};
-    $self->addDep($name, $lastItemInQueue)
+    $self->addOrdering($name, $lastItemInQueue)
         if $lastItemInQueue;
     $self->last_queue_item->{$queue} = $name;
 
@@ -156,6 +161,32 @@ sub addDep {
     my $depRef = $self->dependencies;
     $depRef->{$name} //= [];
     push @{$depRef->{$name}}, @deps;
+    return $self;
+}
+
+=head2 addOrdering
+
+    # now the worker named 'job-name' will wait until 'other-job-name' has
+    # finished (whatever its result) before proceeding.
+    $deps->addOrdering('job-name', 'other-job-name');
+
+Adds an ordering (not a dependency!) from a named worker item (as named when
+defined with L<PromiseChain::addItem>) to a single other named worker item.
+
+This simply means that the listed job is forced to wait for the other job to
+finish, but any errors in the other job are ignored. Used for the queuing
+feature.
+
+This method merely updates internal bookkeeping, to do something with these
+orderings see L<PromiseChain::makePromiseChain>.
+
+=cut
+
+# Each entry in @deps is the NAME of an ITEM.
+# $name is the NAME of an existing ITEM (see addItems)
+sub addOrdering {
+    my ($self, $name, $beforeItemName) = @_;
+    $self->orderings->{$name} = $beforeItemName;
     return $self;
 }
 
@@ -236,25 +267,37 @@ sub makePromiseChain {
         my $sub = $item->{job};
         my @deps =
             map { $_->{promise} }
-            map { $self->items->{$_} or die "No dep item $itemName" }
+            map { $self->items->{$_} or die "No dep item $_" }
             $self->depsFor($itemName);
+
+        # Add error-eating catch statements for order-only dependencies so that
+        # the promises not affected by rejection can still continue
+        if (my $priorItemName = $self->orderings->{$itemName} // '') {
+            my $priorItem = $self->items->{$priorItemName}
+                or die "No ordering item $priorItemName";
+            my $priorItemPromise = $priorItem->{promise}->catch(sub {
+                    0; # eat error so execution continues
+                });
+            push @deps, $priorItemPromise;
+        }
 
         # What *has* to finish before we should start?
         my $base_promise =
             @deps
-                ? Mojo::Promise->all(@deps)
+                ? @deps == 1 ? $deps[0] : Mojo::Promise->all(@deps)
                 : $start_promise;
 
         # $sub will itself return a promise when called, which is needed
         # for this chain to work
-        push @all_promises, $base_promise->then($sub);
+        push @all_promises, $base_promise->then($sub)->catch(sub {
+            # err handler, return a value to keep Promise->all from failing
+            # fast, force reject the item promise since $sub may not have run
+            $item->{promise}->reject;
+            0; # Failure
+        });
     }
 
-    my $all_promise = Mojo::Promise->all(@all_promises);
-    return ($start_promise, $all_promise)
-        if wantarray; # second calling form
-
-    return $all_promise; # first calling form
+    return Mojo::Promise->all(@all_promises);
 }
 
 1;
