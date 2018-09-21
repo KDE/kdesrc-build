@@ -2345,14 +2345,6 @@ sub _cleanup_log_directory
     my %needed_table;
     @needed_table{@needed} = (1) x @needed;
 
-    my $length = scalar @dirs - scalar @needed;
-    if ($length > 15) { # Arbitrary man is arbitrary
-        note ("Removing y[b[$length] out of g[b[$#dirs] old log directories (this may take some time)...");
-    }
-    elsif ($length > 0) {
-        info ("Removing g[b[$length] out of g[b[$#dirs] old log directories...");
-    }
-
     for my $dir (@dirs) {
         my ($id) = ($dir =~ m/(\d\d\d\d-\d\d-\d\d-\d\d)/);
         safe_rmtree($dir) unless $needed_table{$id};
