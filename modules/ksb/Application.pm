@@ -1458,6 +1458,7 @@ sub _handle_build
             $promiseChain->addDep("$module/build", "$module/update");
             $updatePromise->catch(sub {
                 my $err = shift;
+                # TODO: The error msg needs to be handled by status viewer.
                 $ctx->statusViewer()->_clearLine();
                 error ("\ty[b[$module] failed to update! $err");
                 return $updatePromise; # Don't change the promise we're just whining
@@ -1709,7 +1710,7 @@ sub _handle_monitoring
     my %currentSubscribers;
 
     # If we can't find a port to listen on, don't hold up the rest of the run
-    return Mojo::Promise->new->accept if !$port;
+    return Mojo::Promise->new->resolve if !$port;
 
     # Setup a simple server to respond to requests about kdesrc-build status
     my $daemon = Mojo::Server::Daemon->new(
@@ -1983,7 +1984,7 @@ sub _handle_async_build
         ->finally(sub {
             # Fail if we had a zero-valued result (indicates error)
             my @results = @_;
-            $result = 1 if defined first { $_->[0] == 0 } @results;
+            $result = 1 if defined first { $_->[0] // 1 == 0 } @results;
 
             $ctx->statusMonitor()->markBuildDone();
         });
