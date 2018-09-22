@@ -158,17 +158,6 @@ sub onBuildDone
             keys %{$self->{todo_in_phase}}));
 
     _clearLineAndUpdate (colorize("\nBuilt b[$numModules] modules\n"));
-
-    while (my ($module, $phase) = each %{$self->{failed_at_phase}}) {
-        my @logEntries = @{$self->{log_entries}->{$module}->{$phase} // [ ]};
-        if (@logEntries) {
-            say colorize("\tr[b[$module] failed to r[b[$phase], with messages:");
-            say foreach @logEntries;
-        }
-        else {
-            say colorize("\tr[b[$module] failed to r[b[$phase]");
-        }
-    }
 }
 
 # The build/install process has forwarded new notices that should be shown.
