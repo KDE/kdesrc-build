@@ -1328,9 +1328,9 @@ sub _handle_updates
                 sub { return $module->update($ctx) },
                 # called in this process, with results
                 sub {
-                    # in this case the only result is whether there's an error or not
                     my (undef, $numUpdates) = @_;
-                    $module->setOption('#numUpdates', $numUpdates);
+                    $module->setOption('#numUpdates', $numUpdates + 0);
+                    1; # Declare victory
                 }
             );
         };
@@ -1984,7 +1984,9 @@ sub _handle_async_build
         ->finally(sub {
             # Fail if we had a zero-valued result (indicates error)
             my @results = @_;
-            $result = 1 if defined first { $_->[0] // 1 == 0 } @results;
+
+            # Must use ! here to make '0 but true' hack work
+            $result = 1 if defined first { !($_->[0] // 1) } @results;
 
             $ctx->statusMonitor()->markBuildDone();
         });

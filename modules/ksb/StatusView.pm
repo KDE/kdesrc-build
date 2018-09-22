@@ -153,11 +153,14 @@ sub onBuildDone
     my ($statsRef) =
         %{$ev->{build_done}};
 
-    my $numModules = max(
+    my $numFailedModules = keys %{$self->{failed_at_phase}};
+    my $numBuiltModules = max(
         map { $self->{todo_in_phase}->{$_} } (
             keys %{$self->{todo_in_phase}}));
 
-    _clearLineAndUpdate (colorize("\nBuilt b[$numModules] modules\n"));
+    my $built = $numFailedModules == 0 ? 'Built all' : 'Worked on';
+    my $msg = "\n$built b[$numBuiltModules] modules\n";
+    _clearLineAndUpdate (colorize($msg));
 }
 
 # The build/install process has forwarded new notices that should be shown.
