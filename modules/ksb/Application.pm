@@ -273,7 +273,7 @@ DONE
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
         'verbose|v', 'quiet|quite|q', 'really-quiet', 'debug',
-        'reconfigure', 'colorful-output|color!', 'async!',
+        'reconfigure', 'colorful-output|color!',
         'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
         'print-modules', 'pretend|dry-run|p', 'refresh-build',
@@ -360,9 +360,6 @@ sub establishContext
     if (exists $cmdlineGlobalOptions->{'rc-file'} && $cmdlineGlobalOptions->{'rc-file'}) {
         $ctx->setRcFile($cmdlineGlobalOptions->{'rc-file'});
     }
-
-    # disable async if only running a single phase.
-    $cmdlineGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
 
     my $fh = $ctx->loadRcFile();
     $ctx->loadPersistentOptions();
@@ -690,19 +687,14 @@ sub runAllModulePhases
 
     if ($runMode eq 'build')
     {
-        # No packages to install, we're in build mode
-
-        # What we're going to do is fork another child to perform the source
-        # updates while we build.
-        my $updateOptsSub = sub {
-            my ($k, $v) = @_;
-            $ctx->setPersistentOption($k, $v);
-        };
-
+        # Build then install packages
         $result = _handle_async_build ($ctx);
     }
     elsif ($runMode eq 'install')
     {
+        # Install directly
+        # TODO: Merge with previous by splitting 'install' into a separate
+        # phase
         $result = _handle_install ($ctx);
     }
     elsif ($runMode eq 'uninstall')
@@ -758,7 +750,7 @@ sub finish
 
     if (pretending() || $self->{_base_pid} != $$) {
         # Abort early if pretending or if we're not the same process
-        # that was started by the user (e.g. async mode, forked pipe-opens
+        # that was started by the user (for async mode)
         exit $exitcode;
     }
 
@@ -1978,7 +1970,6 @@ sub _handle_async_build
     my ($ctx) = @_;
 
     my $kdesrc = $ctx->getSourceDir();
-    my @updateList = $ctx->modulesInPhase('update');
 
     my $result = 0;
     my $update_done = 0;
@@ -2405,9 +2396,10 @@ sub _output_failed_module_list
         {
             $logfile = $module->getOption('#error-log-file');
 
-            # async updates may cause us not to have a error log file stored.  There's only
-            # one place it should be though, take advantage of side-effect of log_command()
-            # to find it.
+            # async updates may cause us not to have a error log file stored
+            # (though this should now only happen due to other bugs). Since
+            # there's only one place it should be, take advantage of
+            # side-effect of log_command() to find it.
             if (not $logfile) {
                 my $logdir = $module->getLogDir() . "/error.log";
                 $logfile = $logdir if -e $logdir;

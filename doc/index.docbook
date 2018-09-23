@@ -1774,11 +1774,17 @@ linkend="conf-repository">repository</link> option.</entry>
 <row id="conf-async">
 <entry>async</entry>
 <entry>Cannot be overridden</entry>
-<entry><para>This option enables the asynchronous mode of operation, where the source
-code update and the build process will be performed in parallel, instead of waiting for
-all of the source code updates before starting the build process.  This option defaults
-to enabling asynchronous mode.  To disable, set this option to <userinput>false</userinput></para>
-<para>This option is available since the 1.6 release.</para></entry>
+<entry><para>This option used to control the asynchronous mode of operation,
+permitting source code updates to happen at the same time as the build process
+when possible, instead of waiting for all of the source code updates before
+starting the build process.</para>
+<para>Asynchronous is the only supported mode of operation, though you can
+still use separate <link linkend="cmdline-no-src">--no-src</link> and <link
+linkend="cmdline-no-build">--no-build</link> script runs to achieve the same
+effect.</para>
+<para>This option was available since the 1.6 release and removed late
+2018.</para>
+</entry>
 </row>
 
 <row id="conf-binpath">
@@ -2977,16 +2983,6 @@ The script accepts the following command-line options:
 
 <variablelist>
 
-<varlistentry id="cmdline-async">
-<term><parameter>--async</parameter></term>
-<listitem><para>
-Enables the <link linkend="conf-async">asynchronous mode</link>, which can
-perform the source code updates and module builds at the same time.  This is
-the default, this option only needs specified if you have disabled it in the
-configuration.
-</para></listitem>
-</varlistentry>
-
 <varlistentry id="cmdline-help">
 <term><parameter>--help</parameter></term>
 <listitem><para>
@@ -3029,11 +3025,9 @@ to 10.
 <varlistentry id="cmdline-no-async">
 <term><parameter>--no-async</parameter></term>
 <listitem><para>
-Disables the <link linkend="conf-async">asynchronous mode</link> of updating.
-Instead the update will be performed in its entirety before the build starts.
-This option will slow down the overall process, but if you encounter IPC errors
-while running &kdesrc-build; try using this option, and submitting a
-<ulink url="https://bugs.kde.org/">bug report</ulink>.
+This option used to disables the asynchronous mode of updating. Due to lack of
+testing and the reliability of the asynchronous mode, this option has been
+disabled and asynchronous builds are always in effect.
 </para></listitem>
 </varlistentry>
 
@@ -3592,10 +3586,7 @@ linkend="conf-log-dir">log-dir</link> option, you would do:
 
 <note><para>This feature can only be used for option names already recognized
 by &kdesrc-build;, that are not already supported by relevant command line
-options.  For example the <link linkend="conf-async">async</link> configuration
-file option has specific <link linkend="cmdline-async">--async</link> and <link
-linkend="cmdline-no-async">--no-async</link> command line options that are
-preferred by &kdesrc-build;.
+options.
 </para></note>
 
 </listitem>

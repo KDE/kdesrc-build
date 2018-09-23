@@ -39,7 +39,6 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/BuildSystem.pm
         modules/ksb/Debug.pm
         modules/ksb/DependencyResolver.pm
-        modules/ksb/IPC.pm
         modules/ksb/KDEProjectsReader.pm
         modules/ksb/Module.pm
         modules/ksb/ModuleResolver.pm
@@ -72,11 +71,6 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/ModuleSet/KDEProjects.pm
         modules/ksb/ModuleSet/Null.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/ModuleSet)
-
-    install(FILES
-        modules/ksb/IPC/Null.pm
-        modules/ksb/IPC/Pipe.pm
-    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/IPC)
 
     install(FILES
         modules/ksb/Updater/Bzr.pm
