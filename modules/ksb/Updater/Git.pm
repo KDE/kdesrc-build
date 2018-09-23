@@ -815,6 +815,18 @@ sub verifyGitConfig
         return 0 if $result != 0;
     }
 
+    # Remove old kdesrc-build installed aliases (kde: -> git://anongit.kde.org/)
+    $configOutput =
+        qx'git config --global --get url.git://anongit.kde.org/.insteadOf kde:';
+
+    if ($configOutput =~ /^kde:\s*$/) {
+        whisper ("\tRemoving outdated kde: alias");
+        my $result = safe_system(
+            qw(git config --global --unset-all url.git://anongit.kde.org/.insteadOf kde:)
+        ) >> 8;
+        return 0 if $result != 0;
+    }
+
     return 1;
 }
 
