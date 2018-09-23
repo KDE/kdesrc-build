@@ -270,7 +270,16 @@ END {
 # Use some exception handling to avoid ucky error messages
 eval
 {
-    $app = ksb::Application->new(@ARGV);
+    $app = ksb::Application->new;
+
+    my @selectors = $app->establishContext(@ARGV);
+    my @modules = $app->modulesFromSelectors(@selectors);
+    if (!@modules) {
+        say "Nothing to build";
+        exit 0;
+    }
+
+    $app->setModulesToProcess(@modules);
 
     # Hack for debugging current state.
     if (exists $ENV{KDESRC_BUILD_DUMP_CONTEXT}) {

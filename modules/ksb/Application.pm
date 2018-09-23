@@ -63,40 +63,23 @@ sub new
         metadata_module => undef,
         run_mode        => 'build',
         modules         => undef,
-        module_factory  => undef, # ref to sub that makes a new Module.
-                                  # See generateModuleList
+        module_resolver => undef, # ksb::ModuleResolver but see below
         _base_pid       => $$, # See finish()
     }, $class;
 
     # Default to colorized output if sending to TTY
     ksb::Debug::setColorfulOutput(-t STDOUT);
 
-    my @moduleList = $self->generateModuleList(@options);
-    $self->{modules} = \@moduleList;
-
-    if (!@moduleList) {
-        print "No modules to build, exiting.\n";
-        exit 0;
-    }
-
-    $self->context()->setupOperatingEnvironment(); # i.e. niceness, ulimits, etc.
-
-    # After this call, we must run the finish() method
-    # to cleanly complete process execution.
-    if (!pretending() && !$self->context()->takeLock())
-    {
-        print "$0 is already running!\n";
-        exit 1; # Don't finish(), it's not our lockfile!!
-    }
-
-    # Install signal handlers to ensure that the lockfile gets closed.
-    _installSignalHandlers(sub {
-        note ("Signal received, terminating.");
-        @main::atexit_subs = (); # Remove their finish, doin' it manually
-        $self->finish(5);
-    });
-
     return $self;
+}
+
+sub setModulesToProcess
+{
+    my ($self, @modules) = @_;
+    $self->{modules} = \@modules;
+
+    $self->context()->addModule($_)
+        foreach @modules;
 }
 
 # Method: _readCommandLineOptionsAndSelectors
@@ -332,15 +315,19 @@ DONE
         = values %auxOptions;
 }
 
-# Generates the build context and module list based on the command line options
-# and module selectors provided, resolves dependencies on those modules if needed,
-# filters out ignored or skipped modules, and sets up the module factory.
+# Generates the build context, builds various module, dependency and branch
+# group resolvers, and splits up the provided option/selector mix read from
+# cmdline into selectors (returned to caller, if any) and pre-built context and
+# resolvers.
+#
+# Use "modulesFromSelectors" to further generate the list of ksb::Modules in
+# dependency order.
 #
 # After this function is called all module set selectors will have been
 # expanded, and we will have downloaded kde-projects metadata.
 #
-# Returns: List of Modules to build.
-sub generateModuleList
+# Returns: List of Selectors to build.
+sub establishContext
 {
     my $self = shift;
     my @argv = @_;
@@ -448,23 +435,45 @@ sub generateModuleList
     my @globalCmdlineArgs = keys %{$cmdlineGlobalOptions};
     my $commandLineModules = scalar @selectors;
 
-    my $moduleResolver = ksb::ModuleResolver->new($ctx);
+    my $moduleResolver
+        = $self->{module_resolver}
+        = ksb::ModuleResolver->new($ctx);
     $moduleResolver->setCmdlineOptions($cmdlineOptions);
     $moduleResolver->setDeferredOptions($deferredOptions);
     $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
     $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
 
-    $self->_defineNewModuleFactory($moduleResolver);
+    return @selectors;
+}
+
+# Requires establishContext to have been called first. Converts string-based
+# "selectors" for modules or module-sets into a list of ksb::Modules (only
+# modules, no sets).
+#
+# After this function is called all module set selectors will have been
+# expanded, and we will have downloaded kde-projects metadata.
+#
+# The modules returns must still be added (using setModulesToProcess) to the
+# context if you intend to build. This is a separate step to allow for some
+# introspection prior to making choice to build.
+#
+# Returns: List of Modules to build.
+sub modulesFromSelectors
+{
+    my ($self, @selectors) = @_;
+    my $moduleResolver = $self->{module_resolver};
+    my $ctx = $self->context();
 
     my @modules;
-    if ($commandLineModules) {
+    if (@selectors) {
         @modules = $moduleResolver->resolveSelectorsIntoModules(@selectors);
 
         ksb::Module->setModuleSource('cmdline');
     }
     else {
         # Build everything in the rc-file, in the order specified.
-        @modules = $moduleResolver->expandModuleSets(@optionModulesAndSets);
+        my @rcfileModules = @{$moduleResolver->{inputModulesAndOptions}};
+        @modules = $moduleResolver->expandModuleSets(@rcfileModules);
 
         if ($ctx->getOption('kde-languages')) {
             @modules = _expandl10nModules($ctx, @modules);
@@ -477,7 +486,8 @@ sub generateModuleList
     # process unless overridden by command line options as well. If phases
     # *were* overridden on the command line, then no update pass is required
     # (all modules already have correct phases)
-    @modules = _updateModulePhases(@modules) unless $commandLineModules;
+    @modules = _updateModulePhases(@modules)
+        unless @selectors;
 
     # TODO: Verify this does anything still
     my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
@@ -503,9 +513,6 @@ sub generateModuleList
     # be OK since there's nothing different going on from the first pass (in
     # resolveSelectorsIntoModules) in that event.
     @modules = _applyModuleFilters($ctx, @modules);
-
-    # Check for ignored modules (post-expansion)
-    @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
 
     return @modules;
 }
@@ -585,7 +592,13 @@ sub _resolveModuleDependencies
     my @modules = @_;
 
     @modules = eval {
-        my $dependencyResolver = ksb::DependencyResolver->new($self->{module_factory});
+        my $moduleResolver = $self->{module_resolver};
+        my $dependencyResolver = ksb::DependencyResolver->new(sub {
+            # Maps module names (what dep resolver has) to built ksb::Modules
+            # (which we need), needs to include all option handling (cmdline,
+            # rc-file, module-sets, etc)
+            return $moduleResolver->resolveModuleIfPresent(shift);
+        });
         my $branchGroup = $ctx->effectiveBranchGroup();
 
         for my $file ('dependency-data-common', "dependency-data-$branchGroup")
@@ -628,8 +641,22 @@ sub runAllModulePhases
         return 0; # Abort execution early!
     }
 
-    # Add to global module list now that we've filtered everything.
-    $ctx->addModule($_) foreach @modules;
+    $self->context()->setupOperatingEnvironment(); # i.e. niceness, ulimits, etc.
+
+    # After this call, we must run the finish() method
+    # to cleanly complete process execution.
+    if (!pretending() && !$self->context()->takeLock())
+    {
+        print "$0 is already running!\n";
+        exit 1; # Don't finish(), it's not our lockfile!!
+    }
+
+    # Install signal handlers to ensure that the lockfile gets closed.
+    _installSignalHandlers(sub {
+        note ("Signal received, terminating.");
+        @main::atexit_subs = (); # Remove their finish, doin' it manually
+        $self->finish(5);
+    });
 
     my $runMode = $self->runMode();
 
@@ -2188,23 +2215,6 @@ EOF
     }
 
     return @moduleList[$startIndex .. $stopIndex];
-}
-
-# This defines the factory function needed for lower-level code to properly be
-# able to create ksb::Module objects from just the module name, while still
-# having the options be properly set and having the module properly tied into a
-# context.
-sub _defineNewModuleFactory
-{
-    my ($self, $resolver) = @_;
-    my $ctx = $self->context();
-
-    $self->{module_factory} = sub {
-        # We used to need a special module-set to ignore virtual deps (they
-        # would throw errors if the name did not exist). But, the resolver
-        # handles that fine as well.
-        return $resolver->resolveModuleIfPresent(shift);
-    };
 }
 
 # This function converts any 'l10n' references on the command line to return a l10n

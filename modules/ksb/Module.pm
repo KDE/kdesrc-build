@@ -797,7 +797,6 @@ sub update
         croak_runtime ("Unable to create separate source directory for $self at $module_src_dir");
     }
 
-
     # Use 1 as default value to force a rebuild if we can't determine there
     # were truly *no* updates
     my $count = $self->scm()->updateInternal() // 1;

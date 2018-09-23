@@ -8,8 +8,10 @@ use Test::More;
 
 use ksb::Application;
 
-my $app = ksb::Application->new(qw(--pretend --rc-file t/data/branch-time-based/kdesrc-buildrc));
-my @moduleList = $app->generateModuleList();
+my @args = qw(--pretend --rc-file t/data/branch-time-based/kdesrc-buildrc);
+my $app = ksb::Application->new;
+my @selectors = $app->establishContext(@args);
+my @moduleList = $app->modulesFromSelectors(@selectors);
 
 is(scalar @moduleList, 3, 'Right number of modules');
 

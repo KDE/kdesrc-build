@@ -139,7 +139,7 @@ sub _expandSingleModuleSet
     # expandModuleSets applies pending/cmdline options already.
     my @moduleResults = $self->expandModuleSets($neededModuleSet);
     if (!@moduleResults) {
-        croak_runtime ("$neededModuleSet->name() expanded to an empty list of modules!");
+        croak_internal ("$neededModuleSet->name() expanded to an empty list of modules!");
     }
 
     $_->setOption('#selected-by', $selectedReason) foreach @moduleResults;
@@ -364,6 +364,9 @@ sub resolveSelectorsIntoModules
     # instead of our shell Modules, if possible.
     @modules = $self->_resolveGuessedModules(@modules);
 
+    my %ignoredSelectors = map { ($_, 1) } @{$self->{ignoredSelectors}};
+    @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
+
     return @modules;
 }
 
@@ -399,9 +402,8 @@ sub resolveModuleIfPresent
 # returns the new list.
 sub expandModuleSets
 {
-    my $self      = shift;
-    my $ctx       = $self->{context};
-    my @buildModuleList = @_;
+    my ($self, @buildModuleList) = @_;
+    my $ctx = $self->{context};
 
     my @returnList;
     foreach my $set (@buildModuleList) {

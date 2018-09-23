@@ -16,11 +16,16 @@ use ksb::Module;
 package ksb::Application {
     no warnings 'redefine';
 
+    our $IGNORE_ON = 0;
+
+    # simulate effect of --include-dependencies, using ksb::Application's
+    # built-in module-name to ksb::Module resolver.
     sub _resolveModuleDependencies {
         my ($self, @modules) = @_;
-        # simulate effect of --include-dependencies, using ksb::Application's
-        # built-in module-name to ksb::Module resolver.
-        my $newModule = $self->{module_factory}->('setmod2');
+
+        return @modules if $IGNORE_ON; # Simulate setmod2 being ignored in the base resolver
+
+        my ($newModule) = $self->{module_resolver}->resolveSelectorsIntoModules('setmod2');
         splice @modules, 1, 0, $newModule;
         return @modules;
     }
@@ -29,8 +34,9 @@ package ksb::Application {
 my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --include-dependencies setmod1 setmod3);
 
 {
-    my $app = ksb::Application->new(@args);
-    my @moduleList = @{$app->{modules}};
+    my $app = ksb::Application->new;
+    my @selectors = $app->establishContext(@args);
+    my @moduleList = $app->modulesFromSelectors(@selectors);
 
     is (scalar @moduleList, 3, 'Right number of modules (include-dependencies)');
     is ($moduleList[0]->name(), 'setmod1', 'mod list[0] == setmod1');
@@ -40,8 +46,11 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --include-depe
 
 {
     push @args, '--ignore-modules', 'setmod2';
-    my $app = ksb::Application->new(@args);
-    my @moduleList = @{$app->{modules}};
+    $ksb::Application::IGNORE_ON = 1;
+
+    my $app = ksb::Application->new;
+    my @selectors = $app->establishContext(@args);
+    my @moduleList = $app->modulesFromSelectors(@selectors);
 
     is (scalar @moduleList, 2, 'Right number of modules (include-dependencies+ignore-modules)');
     is ($moduleList[0]->name(), 'setmod1', 'mod list[0] == setmod1');

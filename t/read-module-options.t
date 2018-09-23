@@ -8,8 +8,10 @@ use Test::More;
 
 use ksb::Application;
 
-my $app = ksb::Application->new(qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc));
-my @moduleList = @{$app->{modules}};
+my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc);
+my $app = ksb::Application->new;
+my @selectors = $app->establishContext(@args);
+my @moduleList = $app->modulesFromSelectors(@selectors);
 
 is(scalar @moduleList, 4, 'Right number of modules');
 is($moduleList[3]->name(), 'module2', 'Right module name');
