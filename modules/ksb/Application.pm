@@ -73,6 +73,10 @@ sub new
     return $self;
 }
 
+# Call after establishContext (to read in config file and do one-time metadata
+# reading).
+#
+# Need to call this before you call startHeadlessBuild
 sub setModulesToProcess
 {
     my ($self, @modules) = @_;
@@ -80,6 +84,18 @@ sub setModulesToProcess
 
     $self->context()->addModule($_)
         foreach @modules;
+
+    # i.e. niceness, ulimits, etc.
+    $self->context()->setupOperatingEnvironment();
+}
+
+# Sets the application to be non-interactive, intended to make this suitable as
+# a backend for a Mojolicious-based web server with a separate U/I.
+sub setHeadless
+{
+    my $self = shift;
+    $self->{run_mode} = 'headless';
+    return $self;
 }
 
 # Method: _readCommandLineOptionsAndSelectors
@@ -348,10 +364,6 @@ sub establishContext
     # Convert list to hash for lookup
     my %ignoredSelectors =
         map { $_, 1 } @{$cmdlineGlobalOptions->{'ignore-modules'}};
-
-    if (exists $cmdlineGlobalOptions->{'launch-browser'}) {
-        _launchStatusViewerBrowser(); # does not return
-    }
 
     my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
     delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
@@ -622,31 +634,26 @@ sub _resolveModuleDependencies
     return @modules;
 }
 
-# Runs all update, build, install, etc. phases. Basically this *is* the
-# script.
-# The metadata module must already have performed its update by this point.
-sub runAllModulePhases
+# Similar to the old interactive runAllModulePhases. Actually performs the
+# build for the modules selected by setModulesToProcess.
+#
+# Returns a Mojo::Promise that must be waited on. The promise resolves to
+# return a single success/failure result; use the event handler for now to get
+# more detail during a build.
+sub startHeadlessBuild
 {
     my $self = shift;
     my $ctx = $self->context();
-    my @modules = $self->modules();
+    $ctx->statusMonitor()->createBuildPlan($ctx);
 
-    if ($ctx->getOption('print-modules')) {
-        for my $m (@modules) {
-            say ((" " x ($m->getOption('#dependency-level', 'module') // 0)), "$m");
-        }
-        return 0; # Abort execution early!
-    }
+    my $promiseChain = ksb::PromiseChain->new;
+    my $startPromise = Mojo::Promise->new;
 
-    $self->context()->setupOperatingEnvironment(); # i.e. niceness, ulimits, etc.
+    # These succeed or die outright
+    $startPromise = _handle_updates ($ctx, $promiseChain, $startPromise);
+    $startPromise = _handle_build   ($ctx, $promiseChain, $startPromise);
 
-    # After this call, we must run the finish() method
-    # to cleanly complete process execution.
-    if (!pretending() && !$self->context()->takeLock())
-    {
-        print "$0 is already running!\n";
-        exit 1; # Don't finish(), it's not our lockfile!!
-    }
+    die "Can't obtain build lock" unless $ctx->takeLock();
 
     # Install signal handlers to ensure that the lockfile gets closed.
     _installSignalHandlers(sub {
@@ -655,79 +662,32 @@ sub runAllModulePhases
         $self->finish(5);
     });
 
-    my $runMode = $self->runMode();
+    $startPromise->resolve; # allow build to start
+    my $promise = $promiseChain->makePromiseChain($startPromise)->finally(sub {
+        my @results = @_;
+        my $result = 0; # success, non-zero is failure
 
-    if ($runMode eq 'query') {
-        my $queryMode = $ctx->getOption('query', 'module');
+        # Must use ! here to make '0 but true' hack work
+        $result = 1 if defined first { !($_->[0] // 1) } @results;
 
-        # Default to ->getOption as query method.
-        # $_[0] is short name for first param.
-        my $query = sub { $_[0]->getOption($queryMode) };
-        $query = sub { $_[0]->fullpath('source') } if $queryMode eq 'source-dir';
-        $query = sub { $_[0]->fullpath('build') }  if $queryMode eq 'build-dir';
-        $query = sub { $_[0]->installationPath() } if $queryMode eq 'install-dir';
-        $query = sub { $_[0]->fullProjectPath() }  if $queryMode eq 'project-path';
-        $query = sub { ($_[0]->scm()->_determinePreferredCheckoutSource())[0] // '' }
-            if $queryMode eq 'branch';
+        $ctx->statusMonitor()->markBuildDone();
+        $ctx->closeLock();
 
-        if (@modules == 1) {
-            # No leading module name, just the value
-            say $query->($modules[0]);
-        }
-        else {
-            for my $m (@modules) {
-                say "$m: ", $query->($m);
-            }
+        my $failedModules = join(',', map { "$_" } $ctx->listFailedModules());
+        if ($failedModules) {
+            # We don't clear the list of failed modules on success so that
+            # someone can build one or two modules and still use
+            # --rebuild-failures
+            $ctx->setPersistentOption('global', 'last-failed-module-list', $failedModules);
         }
 
-        return 0;
-    }
+        $ctx->storePersistentOptions();
+        _cleanup_log_directory($ctx);
 
-    my $result;
+        return $result;
+    });
 
-    if ($runMode eq 'build')
-    {
-        # Build then install packages
-        $result = _handle_async_build ($ctx);
-    }
-    elsif ($runMode eq 'install')
-    {
-        # Install directly
-        # TODO: Merge with previous by splitting 'install' into a separate
-        # phase
-        $result = _handle_install ($ctx);
-    }
-    elsif ($runMode eq 'uninstall')
-    {
-        $result = _handle_uninstall ($ctx);
-    }
-
-    _cleanup_log_directory($ctx) if $ctx->getOption('purge-old-logs');
-    _output_failed_module_lists($ctx);
-
-    # Record all failed modules. Unlike the 'resume-list' option this doesn't
-    # include any successfully-built modules in between failures.
-    my $failedModules = join(',', map { "$_" } $ctx->listFailedModules());
-    if ($failedModules) {
-        # We don't clear the list of failed modules on success so that
-        # someone can build one or two modules and still use
-        # --rebuild-failures
-        $ctx->setPersistentOption('global', 'last-failed-module-list', $failedModules);
-    }
-
-    # env driver is just the ~/.config/kde-env-*.sh, session driver is that + ~/.xsession
-    if ($ctx->getOption('install-environment-driver') ||
-        $ctx->getOption('install-session-driver'))
-    {
-        _installCustomSessionDriver($ctx);
-    }
-
-    my $color = 'g[b[';
-    $color = 'r[b[' if $result;
-
-    info ("${color}", $result ? ":-(" : ":-)") unless pretending();
-
-    return $result;
+    return $promise;
 }
 
 # Method: finish
@@ -742,11 +702,6 @@ sub finish
     my $self = shift;
     my $ctx = $self->context();
     my $exitcode = shift // 0;
-
-    # This is created even under --pretend, make sure it's removed
-    my $run = $ENV{XDG_RUNTIME_DIR} // 'tmp';
-    my $path = "$run/kdesrc-build-status-server";
-    unlink $path if -e $path;
 
     if (pretending() || $self->{_base_pid} != $$) {
         # Abort early if pretending or if we're not the same process
@@ -1475,13 +1430,6 @@ sub _handle_build
         # If there's an update phase we need to depend on it and show status
         if (my $updatePromise = $promiseChain->promiseFor("$module/update")) {
             $promiseChain->addDep("$module/build", "$module/update");
-            $updatePromise->catch(sub {
-                my $err = shift;
-                # TODO: The error msg needs to be handled by status viewer.
-                $ctx->statusViewer()->_clearLine();
-                error ("\ty[b[$module] failed to update! $err");
-                return $updatePromise; # Don't change the promise we're just whining
-            });
         }
     };
 
@@ -1508,450 +1456,6 @@ sub _handle_build
         sub { $ctx->unsetPersistentOption('global', 'resume-list') });
 }
 
-# Finds a decent port for the monitoring server, creates a file at a known
-# location with the URL that will match the server, and returns the port and
-# path to the file (so that it may be unlinked once the server is shutdown)
-sub _find_open_monitor_port
-{
-    # Ensure the file containing our listen URL is available.
-    my $run = $ENV{XDG_RUNTIME_DIR};
-    if (!$run) {
-        note (" b[r[*] b[y[XDG_RUNTIME_DIR] is not set, using /tmp for now");
-        $run = '/tmp';
-    }
-
-    my $path = "$run/kdesrc-build-status-server";
-    error (" b[r[*] stale status server runtime socket file leftover, removing.")
-        if (-e $path);
-
-    # We set sticky bit (in the 01666) to indicate this file should not be
-    # removed during long-running builds (e.g. by systemd).
-    sysopen (my $fh, $path, O_CREAT | O_WRONLY, 01666) or do {
-        error (" b[r[*] Unable to open status server runtime socket file, external viewers won't work.");
-        return;
-    };
-
-    # With the file open we can generate a port and create a URL
-    my $port = Mojo::IOLoop::Server->generate_port;
-
-    say $fh "http://localhost:$port";
-    close $fh or do {
-        error (" b[y[*] Received an error closing runtime socket file: $!");
-        unlink ($path);
-        return;
-    };
-
-    return ($port, $path);
-}
-
-# Returns an HTML page suitable for display in a modern browser, that can read
-# status events over a WebSocket
-sub _generate_status_viewer_page
-{
-    my $url = shift;
-    my $templater = Mojo::Template->new;
-
-    my $template = <<'EOF';
-% my $url = shift;
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>kdesrc-build status viewer</title>
-
-    <style>
-td.pending {
-    background-color: lightgray;
-}
-
-td.done {
-    background-color: lightblue;
-}
-
-td.done.success {
-    background-color: lightgreen;
-}
-
-td.done.error {
-    background-color: pink;
-}
-    </style>
-</head>
-
-<body>
-    <h1>kdesrc-build status</h1>
-    <div id="divStatus">
-        Building...
-    </div>
-    <table id="tblResult">
-        <tr><th>Module</th><th>Update</th><th>Build / Install</th></tr>
-    </table>
-    <div id="logEntries">
-    </div>
-</body>
-
-<script>
-    let addRow = (moduleName) => {
-        let eventTable = document.getElementById('tblResult');
-        let newRow = document.createElement('tr');
-        let moduleNameCell = document.createElement('td');
-        let updateDoneCell = document.createElement('td');
-        let buildDoneCell  = document.createElement('td');
-
-        moduleNameCell.textContent = moduleName;
-        updateDoneCell.id = 'updateCell_' + moduleName;
-        updateDoneCell.className = 'pending';
-        buildDoneCell.id  = 'buildCell_'  + moduleName;
-        buildDoneCell.className  = 'pending';
-
-        newRow.appendChild(moduleNameCell);
-        newRow.appendChild(updateDoneCell);
-        newRow.appendChild(buildDoneCell);
-        eventTable.appendChild(newRow);
-    }
-
-    let handleEvent = (ev) => {
-        if (ev.event === "build_plan") {
-            for (const module of ev.build_plan) {
-                addRow(module.name);
-            }
-        }
-        else if (ev.event === "build_done") {
-            document.getElementById('divStatus').textContent = 'Build complete';
-        }
-        else if (ev.event === "phase_started") {
-            const phase  = ev.phase_started.phase;
-            const module = ev.phase_started.module;
-
-            let cell = document.getElementById(phase + "Cell_" + module);
-            if (!cell) {
-                return;
-            }
-
-            cell.className = 'working';
-            cell.textContent = 'Working...';
-        }
-        else if (ev.event === "phase_progress") {
-            const phase  = ev.phase_progress.phase;
-            const module = ev.phase_progress.module;
-            const progressAry = ev.phase_progress.progress;
-
-            let cell = document.getElementById(phase + "Cell_" + module);
-            if (!cell) {
-                return;
-            }
-
-            cell.textContent = `${progressAry[0]} / ${progressAry[1]}`;
-        }
-        else if (ev.event === "phase_completed") {
-            const phase  = ev.phase_completed.phase;
-            const module = ev.phase_completed.module;
-
-            let cell = document.getElementById(phase + "Cell_" + module);
-            if (!cell) {
-                return;
-            }
-
-            cell.className = 'done';
-            if (['success', 'error'].
-                includes(ev.phase_completed.result))
-            {
-                cell.classList.add(ev.phase_completed.result);
-            }
-
-            if (ev.phase_completed.error_log) {
-                const logUrl = ev.phase_completed.error_log;
-                cell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
-            } else {
-                cell.innerHTML = ev.phase_completed.result;
-            }
-        }
-        else if (ev.event === "log_entries") {
-            const phase  = ev.log_entries.phase;
-            const module = ev.log_entries.module;
-            const entries = ev.log_entries.entries;
-
-            console.dir(ev);
-
-            let newText = '';
-            for(const entry of entries) {
-                newText += module + ": " + entry + "<br>";
-            }
-
-            let entriesDiv = document.getElementById('logEntries');
-            entriesDiv.innerHTML = entriesDiv.innerHTML + newText;
-        }
-        else {
-            console.log("Unhandled event ", ev.event);
-            console.dir(ev);
-        }
-    }
-
-    let ws = new WebSocket('<%= "$url/" %>');
-
-    ws.onmessage = (msg_event) => {
-        const events = JSON.parse(msg_event.data);
-
-        if (!events) {
-            console.log(`Received invalid JSON object in WebSocket handler ${msg_event}`);
-            return;
-        }
-
-        // event should be an array of JSON objects
-        for (const e of events) {
-            handleEvent(e);
-        }
-    }
-</script>
-</html>
-EOF
-
-    return $templater->render($template, $url);
-}
-
-# Launches a server to handle responding to status requests.
-#
-# - $ctx, the build context
-# - $done_promise should be a promise that, once resolved, should indicate that
-# it is time to shut the server down.
-#
-# returns a promise that can be waited on until the server is shut down
-sub _handle_monitoring
-{
-    my ($ctx, $done_promise) = @_;
-
-    my ($port, $server_url_path) = _find_open_monitor_port();
-
-    # Clients which have open websocket subscriptions to event updates
-    my %subscribers;
-
-    # Clients who are current on events. Normally should be same as above.
-    my %currentSubscribers;
-
-    # If we can't find a port to listen on, don't hold up the rest of the run
-    return Mojo::Promise->new->resolve if !$port;
-
-    # Setup a simple server to respond to requests about kdesrc-build status
-    my $daemon = Mojo::Server::Daemon->new(
-        # IPv4 and IPv6 localhost-only
-        listen => ["http://127.0.0.1:$port", "http://[::1]:$port"]
-    );
-    $daemon->silent(!ksb::Debug::debugging());
-    $daemon->inactivity_timeout(0); # Disable timeouts to allow long polling
-
-    # Remove existing default handler and install our own
-    $daemon->unsubscribe('request')->on(request => sub {
-        my ($daemon, $tx) = @_;
-
-        my $method = $tx->req->method;
-        my $path   = $tx->req->url->path;
-
-        if ($tx->is_websocket && !$tx->established) {
-            # WebSocket request comes in, which must be manually accepted and
-            # upgraded
-
-            # Add to the list of subscribers. The 'newEvent' handler below
-            # will make them current (so that we don't potentially miss events
-            # already pending in the event loop).
-            $subscribers{$tx->connection} = $tx;
-
-            $tx->on(finish => sub {
-                my $tx = shift;
-                delete $subscribers{$tx->connection};
-                delete $currentSubscribers{$tx->connection};
-            });
-
-            $tx->res->code(101); # Signal to Mojolicious to accept the upgrade
-        }
-        elsif ($method eq 'GET') {
-            # HTTP or WS
-            if ($path->contains('/list')) {
-                my %seen;
-                my @modules;
-                my @events = $ctx->statusMonitor()->events();
-
-                # unique items, preserve order
-                foreach my $result (@events) {
-                    my $m = $result->{module};
-                    push @modules, $m unless exists $seen{$m};
-                    $seen{$m} = 1;
-                }
-
-                $tx->res->code(200);
-                $tx->res->headers->content_type('application/json');
-                $tx->res->body(Mojo::JSON::encode_json(\@modules));
-            }
-            elsif ($path->to_string eq '/') {
-                my $response = _generate_status_viewer_page("ws://localhost:$port");
-
-                $tx->res->code(200);
-                $tx->res->headers->content_type('text/html');
-                $tx->res->body($response);
-            }
-            elsif ($path->contains('/error_log')) {
-                my $moduleName = $path->[1] // '';
-                my $module = $ctx->lookupModule($moduleName);
-                my $logfile;
-
-                $logfile = $module->getOption('#error-log-file', 'module') if $module;
-
-                if ($logfile && -f $logfile) {
-                    my $asset = Mojo::Asset::File->new(path => $logfile);
-                    $tx->res->content->asset($asset);
-                    $tx->res->headers->content_type('text/plain');
-                    $tx->res->code(200);
-                }
-                elsif ($module && !$logfile) {
-                    $tx->res->code(404);
-                }
-                else {
-                    $tx->res->code(400);
-                }
-            }
-            else {
-                $tx->res->code(404);
-            }
-        }
-        else {
-            $tx->res->code(500);
-        }
-
-        # Mojolicious will complete processing and send response
-        $tx->resume;
-    });
-
-    $daemon->start;
-
-    my $stop_sent = Mojo::Promise->new;
-
-    # Announce changes as they happen to subscribers
-    $ctx->statusMonitor()->on(newEvent => sub {
-        my ($statusMonitor, $resultRef) = @_;
-
-        if ($resultRef->{event} eq 'build_done' && !%subscribers) {
-            # Resolve this early if no one is waiting on us, otherwise we'll
-            # block forever waiting to let someone know we're done
-            $stop_sent->resolve;
-        }
-
-        foreach my $tx (values %subscribers) {
-            if ($resultRef->{event} eq 'build_done') {
-                # Don't exit until we've sent the last event
-                $tx->on(drain => sub { $stop_sent->resolve });
-            }
-
-            if (exists $currentSubscribers{$tx->connection}) {
-                # Should match schema for send below
-                $tx->send({ json => [ $resultRef ] });
-            } else {
-                # This includes the new event we just recv'd
-                my @events = $ctx->statusMonitor()->events();
-                $tx->send({ json => \@events });
-                $currentSubscribers{$tx->connection} = 1;
-            }
-        }
-    });
-
-    my $time_promise = Mojo::Promise->new;
-
-    # useful for debugging to ensure server is available for at least a few
-    # seconds.
-    # Mojo::IOLoop->timer(10, sub { $time_promise->resolve; });
-    Mojo::IOLoop->timer(0, sub { $time_promise->resolve; });
-
-    my $stop_promise = Mojo::Promise->all($stop_sent, $done_promise, $time_promise)->then(sub {
-            $daemon->stop;
-            unlink($server_url_path);
-        });
-
-    return $stop_promise;
-}
-
-sub getStatusServerURL
-{
-    my $run = $ENV{XDG_RUNTIME_DIR} // '/tmp';
-    open my $fh, '<', "$run/kdesrc-build-status-server"
-        or croak_internal("Couldn't find status server");
-    my $path = <$fh>;
-    croak_internal("Error reading status server URL: $!")
-        unless defined $path;
-    close $fh
-        or croak_internal("I/O error reading status server URL: $!");
-
-    chomp($path);
-    return $path;
-}
-
-sub _handle_ui
-{
-    my ($ctx, $stop_promise) = @_;
-    my $path = getStatusServerURL();
-
-    # Note on object lifetimes: Perl is convenient like C++ in that it will
-    # typically destroy 'lexical' objects (declared with 'my') when no scope
-    # has a reference to that object.
-    #
-    # What this means for callback-heavy code is that the object creating the
-    # events being fed to callbacks needs to outlive the callbacks somehow,
-    # otherwise the death of the controller will close all the connections it
-    # had created.
-    #
-    # Since the UserAgent we create is controlling the callbacks being fed to
-    # our U/I handler, it needs to outlive this function in the chain of
-    # callbacks that we return to the caller. This is handled in one of the
-    # promise handlers below.
-
-    my $ua = Mojo::UserAgent->new;
-    my $ui = $ctx->statusViewer();
-    my $url_ws = Mojo::URL->new($path)->clone->scheme('ws');
-    $ua->connect_timeout(5);
-    $ua->request_timeout(20);
-    $ua->inactivity_timeout(0); # Allow long-poll
-    $ua->max_redirects(0);
-    $ua->max_connections(0); # disable keepalive to avoid server closing connection on us
-    $ua->max_response_size(16384);
-
-    return $ua->websocket_p($url_ws->clone->path("events"))
-        ->then(sub {
-            my $ws = shift;
-
-            $ws->on(json => sub {
-                my ($ws, $resultRef) = @_;
-                foreach my $modRef (@{$resultRef}) {
-                    eval { $ui->notifyEvent($modRef); };
-
-                    if ($@) {
-                        error ("Failure encountered $@");
-                        $ws->finish;
-                        undef $ua;
-                        $stop_promise->reject($@);
-                    }
-
-                    if ($modRef->{event} eq 'build_done') {
-                        # We've reported the build is complete, activate the
-                        # promise holding things together
-                        $stop_promise->resolve;
-                    }
-                }
-            });
-
-            $ws->on(finish => sub {
-                # Shouldn't happen in a normal build but it's probably possible
-                $stop_promise->resolve;
-            });
-
-            # The 'stop' promise is resolved when update/build done.
-            $stop_promise->then(sub {
-                # Keep UserAgent alive until we close the WebSocket.
-                my $lifetime_extender = \$ua;
-
-                $ws->finish;
-            });
-
-            return;
-        });
-}
-
 # Function: _handle_async_build
 #
 # This subroutine special-cases the handling of the update and build phases, by
@@ -1968,21 +1472,9 @@ sub _handle_ui
 sub _handle_async_build
 {
     my ($ctx) = @_;
-
-    my $kdesrc = $ctx->getSourceDir();
-
     my $result = 0;
-    my $update_done = 0;
-    my $module_promises = { };
-    my $stop_everything_p = Mojo::Promise->new;
 
     $ctx->statusMonitor()->createBuildPlan($ctx);
-
-    # The U/I will declare when we're done, which will cause monitor to halt
-    my $monitor_p     = _handle_monitoring ($ctx, $stop_everything_p);
-    # Keep a reference to U/I promise since that's where the U/I code will actually
-    # run, allowing the ref to be GC'd stops the U/I updates.
-    my $ui_ready      = _handle_ui($ctx, $stop_everything_p);
 
     my $promiseChain = ksb::PromiseChain->new;
     my $start_promise = Mojo::Promise->new;
@@ -2013,9 +1505,7 @@ sub _handle_async_build
     $start_promise->resolve;
 
     Mojo::IOLoop->stop; # Force the wait below to block
-    Mojo::Promise->all($chain, $ui_ready, $monitor_p)->then(sub {
-        Mojo::IOLoop->stop; # FIN
-    })->wait;
+    $chain->wait;
 
     return $result;
 }
@@ -2744,25 +2234,6 @@ sub _reachableModuleLogs
     @tempHash{@dirs} = ();
 
     return keys %tempHash;
-}
-
-# Runs xdg-open to the URL at $XDG_RUNTIME_DIR/kdesrc-build-status-server, if
-# that file exists and is readable.  Otherwise lets the user know there was an
-# error.  Either way this function always exits the process immediately.
-sub _launchStatusViewerBrowser
-{
-    my $run = $ENV{XDG_RUNTIME_DIR} // '/tmp';
-    my $file = "$run/kdesrc-build-status-server";
-    my $url = eval { Mojo::File->new($file)->slurp };
-
-    if ($url) {
-        exec { 'xdg-open' } 'xdg-open', $url or die
-            "Failed to launch browser, couldn't run xdg-open: $!";
-    }
-    else {
-        say "Unable to launch browser for the status server, couldn't find right URL";
-        exit 1;
-    }
 }
 
 # Installs the given subroutine as a signal handler for a set of signals which

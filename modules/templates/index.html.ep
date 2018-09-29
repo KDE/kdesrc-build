@@ -1,0 +1,112 @@
+% layout 'default';
+% title 'kdesrc-build';
+<h1>kdesrc-build <%= $app %></h1>
+
+<label for="modules_list">List of modules to build:</label>
+<input id="modules_list"/><br />
+<button id="btnSubmitModuleList">Enter modules to build:</button>
+
+<div class="module_list_div">
+    <label for="module_select">Or use the dropdown to select</label>
+    <select multiple id="module_select" size="15">
+        <option value="">All</option>
+        <option value="###">--- Module names loading ---</option>
+    </select>
+</div>
+
+<div id="modules_result_div"></div>
+<br/>
+<button id="btnStartBuild" disabled>Start Build!</button>
+
+<script defer>
+const btnSubmitModuleList = lkup('btnSubmitModuleList');
+btnSubmitModuleList.addEventListener('click', (ev) => {
+    const modList = lkup('modules_list');
+    const modArray = modList.value.split(/[, ]+/);
+    console.dir(modArray);
+    if (modArray) {
+        const postUrl = '<%= url_for q(post_modules) %>';
+        fetch(postUrl, {
+            method: 'POST',
+            body: JSON.stringify(modArray),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(resp => resp.json())
+        .then(resp => {
+            console.log(`Response received ${resp}`);
+            lkup('btnStartBuild').disabled = false;
+
+            const lookupUrl = '<%= url_for q(module_lookup) %>';
+            return fetch(lookupUrl); // TODO Merge with the result we already get?
+        })
+        .then(mod_list_resp => mod_list_resp.json())
+        .then(mod_list => {
+            const strOfMods = mod_list.join("<br/>");
+            lkup('modules_result_div').innerHTML = "Building: " + strOfMods;
+        })
+        .catch(err => console.error(err));
+    }
+}, { passive: false });
+
+const btnStartBuild = lkup('btnStartBuild');
+btnStartBuild.addEventListener('click', (ev) => {
+    const postUrl = '<%= url_for q(build) %>';
+    fetch(postUrl, {
+        method: 'POST',
+    })
+    .then(resp => {
+        if(!resp.ok) {
+            console.error(resp);
+            throw new Error ('Invalid response!');
+        }
+        return resp.text()
+    })
+    .then(text => {
+        console.log(`Response received ${text}`)
+        document.location.assign(text);
+    })
+    .catch(err => console.error(err));
+}, { passive: false });
+
+// Load the list of all modules to see where we're at
+fetch('<%= url_for q(known_modules) %>')
+.then(resp => resp.json())
+.then(mod_list => {
+    console.dir(mod_list);
+    const selList = lkup('module_select');
+    while (selList.firstChild) {
+        selList.removeChild(selList.firstChild);
+    }
+
+    const optTag = (name) => {
+        const newOpt = document.createElement('option');
+        const newText = document.createTextNode(name);
+        newOpt.appendChild(newText);
+        return newOpt;
+    }
+
+    console.group();
+    for (const module of mod_list) {
+        var tagToAdd;
+        if (typeof module === "string") {
+            console.log("Adding " + module);
+            tagToAdd = optTag(module);
+        }
+        else {
+            // module is really an array with [ set-name, @module-names ]
+            const setName = module.shift();
+            console.log("Adding module set " + setName);
+            tagToAdd = document.createElement('optgroup');
+            tagToAdd.setAttribute('label', setName);
+            module.forEach(name => tagToAdd.appendChild(optTag(name)));
+        }
+
+        selList.appendChild(tagToAdd);
+    }
+    console.groupEnd();
+})
+.catch(error => console.error(error));
+
+</script>

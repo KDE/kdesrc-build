@@ -1,0 +1,206 @@
+% layout 'default';
+% title 'kdesrc-build status viewer';
+
+<h1>kdesrc-build status</h1>
+<div id="divBanner"></div>
+<div id="divStatus">
+    Building...
+</div>
+<table id="tblResult">
+    <tr><th>Module</th><th>Update</th><th>Build / Install</th></tr>
+</table>
+<div class="progress_div" style="float: right">
+    <label for="update_progress_bar">Update progress:</label>
+    <progress id="update_progress_bar" max="100"></progress> <br/>
+
+    <label for="build_progress_bar">Build progress:</label>
+    <progress id="build_progress_bar" max="100"></progress>
+</div>
+
+<textarea id="logEntries" cols="80" rows="50">
+</textarea>
+
+<script defer>
+let addRow = (moduleName) => {
+    if (!moduleName) {
+        console.trace("Stupidity afoot");
+        return;
+    }
+
+    let eventTable = lkup('tblResult');
+    let newRow = document.createElement('tr');
+    let moduleNameCell = document.createElement('td');
+    let updateDoneCell = document.createElement('td');
+    let buildDoneCell  = document.createElement('td');
+
+    newRow.id = 'row_' + moduleName;
+    moduleNameCell.textContent = moduleName;
+    updateDoneCell.id = 'updateCell_' + moduleName;
+    updateDoneCell.className = 'pending';
+    buildDoneCell.id  = 'buildCell_'  + moduleName;
+    buildDoneCell.className  = 'pending';
+
+    newRow.appendChild(moduleNameCell);
+    newRow.appendChild(updateDoneCell);
+    newRow.appendChild(buildDoneCell);
+    eventTable.appendChild(newRow);
+}
+
+const divStatus = document.getElementById('divStatus');
+let entriesDiv  = document.getElementById('logEntries');
+
+const logEvent = (module, event) => {
+    newText = `${module}: ${event}\n`;
+    entriesDiv.value += newText;
+}
+
+let updates_complete = 0;
+let builds_complete  = 0;
+let handleEvent = (ev) => {
+
+    if (ev.event === "build_plan") {
+        const text = "Working on " + ev.build_plan.length + " modules";
+
+        let num_updates = 0;
+        let num_builds  = 0;
+        ev.build_plan.forEach((module_plan) => {
+            module_plan.phases.forEach((phase) => {
+                num_updates += phase === "update" ? 1 : 0;
+                num_builds  += phase === "build"  ? 1 : 0;
+            });
+        });
+
+        lkup('update_progress_bar').setAttribute('max', num_updates);
+        lkup('build_progress_bar' ).setAttribute('max', num_builds );
+    }
+    else if (ev.event === "build_done") {
+        const resetLink = '<%= url_for q(reset) %>';
+        const homeLink = '<%= url_for q(index) %>';
+
+        divStatus.innerHTML = `Build complete, <button id="btnReset">click to reset</button>`;
+
+        const btnReset = document.getElementById('btnReset');
+        btnReset.addEventListener('click', (ev) => {
+            fetch(resetLink, {
+                method: 'POST'
+            })
+            .then(resp => {
+                if (!resp.ok) {
+                    throw new Error("Invalid response resetting kdesrc-build");
+                }
+                return resp.json();
+            })
+            .then(last_result => {
+                console.log("Last result was ", last_result.last_result)
+                document.location.assign (homeLink);
+            })
+            .catch(error => console.error(error));
+        }, { passive: false });
+    }
+    else if (ev.event === "phase_started") {
+        const phase  = ev.phase_started.phase;
+        const module = ev.phase_started.module;
+
+        let row = lkup("row_" + module);
+        if (!row) {
+            addRow(module);
+        }
+
+        let cell = lkup(phase + "Cell_" + module);
+        if (!cell) {
+            return;
+        }
+
+        cell.className = 'working';
+        cell.textContent = 'Working...';
+    }
+    else if (ev.event === "phase_progress") {
+        const phase  = ev.phase_progress.phase;
+        const module = ev.phase_progress.module;
+        const progressAry = ev.phase_progress.progress;
+
+        let cell = lkup(phase + "Cell_" + module);
+        if (!cell) {
+            return;
+        }
+
+        if (progressAry[1] == 0) {
+            cell.textContent = "???????";
+        } else {
+            cell.textContent = `${progressAry[0]} / ${progressAry[1]}`;
+        }
+    }
+    else if (ev.event === "phase_completed") {
+        const phase  = ev.phase_completed.phase;
+        const module = ev.phase_completed.module;
+
+        let cell = lkup(phase + "Cell_" + module);
+        if (!cell) {
+            return;
+        }
+
+        if (phase === "update") {
+            updates_complete++;
+        } else {
+            builds_complete++;
+        }
+
+        lkup('update_progress_bar').setAttribute('value', updates_complete);
+        lkup('build_progress_bar' ).setAttribute('value', builds_complete );
+
+        cell.className = 'done';
+        if (['success', 'error'].
+            includes(ev.phase_completed.result))
+        {
+            cell.classList.add(ev.phase_completed.result);
+        }
+
+        if (ev.phase_completed.error_log) {
+            const logUrl = ev.phase_completed.error_log;
+            cell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
+            logEvent(module, 'Failed to ' + phase);
+        } else if (phase !== 'update') {
+            // If all successful for the module, remove the row
+            const updateResult = lkup('updateCell_' + module);
+            if (updateResult && updateResult.classList.contains('success')) {
+                const moduleRow = lkup('row_' + module);
+                if (moduleRow) {
+                    moduleRow.remove(); // "Experimental" ChildNode iface
+                }
+                logEvent(module, 'Success');
+            }
+        } else {
+            cell.innerHTML = ev.phase_completed.result;
+        }
+    }
+    else if (ev.event === "log_entries") {
+        const phase  = ev.log_entries.phase;
+        const module = ev.log_entries.module;
+        const entries = ev.log_entries.entries;
+
+        for(const entry of entries) {
+            logEvent(module, entry);
+        }
+    }
+    else {
+        console.error("Unhandled event ", ev.event);
+        console.error(ev);
+    }
+}
+
+let ws = new WebSocket('<%= url_for("events")->to_abs %>');
+
+ws.onmessage = (msg_event) => {
+    const events = JSON.parse(msg_event.data);
+
+    if (!events) {
+        console.log(`Received invalid JSON object in WebSocket handler ${msg_event}`);
+        return;
+    }
+
+    // event should be an array of JSON objects
+    for (const e of events) {
+        handleEvent(e);
+    }
+}
+</script>

@@ -1,4 +1,4 @@
-package ksb::BuildContext 0.35;
+package ksb::BuildContext 0.36;
 
 # Class: BuildContext
 #
@@ -154,13 +154,11 @@ sub new
         rcFiles => [@rcfiles],
         rcFile  => undef,
         env     => { },
-      # pending => { }, #  exists only under a subprocess
         persistent_options => { }, # These are kept across multiple script runs
         ignore_list => [ ], # List of KDE project paths to ignore completely
         kde_projects_metadata     => undef, # Enumeration of kde-projects
         kde_dependencies_metadata => undef, # Dependency resolution of kde-projects
         logical_module_resolver   => undef, # For branch-group option
-        status_view => ksb::StatusView->new(),
         status_monitor => ksb::StatusMonitor->new(),
         projects_db => undef, # See getProjectDataReader
     );
@@ -1056,13 +1054,6 @@ sub moduleBranchGroupResolver
     }
 
     return $self->{logical_module_resolver};
-}
-
-# Manages the output of the TTY to keep the user in the know
-sub statusViewer
-{
-    my $self = shift;
-    return $self->{status_view};
 }
 
 # An event-based aggregator for update events, to be used by user interfaces,

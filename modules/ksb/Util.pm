@@ -83,7 +83,8 @@ sub make_exception
     # Remove this subroutine from the backtrace
     local $Carp::CarpLevel = 1 + $levels;
 
-    $message = Carp::cluck($message) if $exception_type eq 'Internal';
+    $message = Carp::longmess($message)
+        if $exception_type eq 'Internal';
     return ksb::BuildException->new($exception_type, $message);
 }
 
