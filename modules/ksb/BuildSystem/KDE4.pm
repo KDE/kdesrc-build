@@ -120,7 +120,6 @@ sub installInternal
             logfile => 'install',
             message => 'Installing..',
             'prefix-options' => [@cmdPrefix],
-            subdirs => [ split(' ', $module->getOption("checkout-only")) ],
            })->{was_successful};
 }
 

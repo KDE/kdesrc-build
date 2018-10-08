@@ -477,10 +477,6 @@ sub modulesFromSelectors
         my @rcfileModules = @{$moduleResolver->{inputModulesAndOptions}};
         @modules = $moduleResolver->expandModuleSets(@rcfileModules);
 
-        if ($ctx->getOption('kde-languages')) {
-            @modules = _expandl10nModules($ctx, @modules);
-        }
-
         ksb::Module->setModuleSource('config');
     }
 
@@ -1689,52 +1685,6 @@ EOF
     }
 
     return @moduleList[$startIndex .. $stopIndex];
-}
-
-# This function converts any 'l10n' references on the command line to return a l10n
-# module with the proper build system, scm type, etc.
-#
-# The languages are selected using global/kde-languages (which should be used
-# exclusively from the configuration file).
-sub _expandl10nModules
-{
-    my ($ctx, @modules) = @_;
-    my $l10n = 'l10n-kde4';
-
-    assert_isa($ctx, 'ksb::BuildContext');
-
-    # Only filter if 'l10n' is actually present in list.
-    my @matches = grep {$_->name() =~ /^(?:$l10n|l10n)$/} @modules;
-    my @langs = split(' ', $ctx->getOption('kde-languages'));
-
-    return @modules if (!@matches || !@langs);
-
-    my $l10nModule;
-    for my $match (@matches)
-    {
-        # Remove all instances of l10n.
-        @modules = grep {$_->name() ne $match->name()} @modules;
-
-        # Save l10n module if user had it in config. We only save the first
-        # one encountered though.
-        $l10nModule //= $match;
-    }
-
-    # No l10n module? Just create one.
-    $l10nModule //= ksb::Module->new($ctx, $l10n);
-
-    whisper ("\tAdding languages ", join(';', @langs), " to build.");
-
-    $l10nModule->setScmType('l10n');
-    my $scm = $l10nModule->scm();
-
-    # Add all required directories to the l10n module. Its buildsystem should
-    # know to skip scripts and templates.
-    $scm->setLanguageDirs(qw/scripts templates/, @langs);
-    $l10nModule->setBuildSystem($scm);
-
-    push @modules, $l10nModule;
-    return @modules;
 }
 
 # Updates the built-in phase list for all Modules passed into this function in

@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: kdesrc-build configuration file
 " Maintainer: Michael Pyne <mpyne@kde.org>
-" Latest Revision: 23 September 2018
+" Latest Revision: 8 October 2018
 
 " Copyright (c) 2014-2018 Michael Pyne <mpyne@kde.org>
 " Redistribution and use in source and binary forms, with or without
@@ -36,7 +36,7 @@ setlocal iskeyword+=-
 
 " Keywords
 syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
-            \ binpath branch build-dir checkout-only cmake-options configure-flags
+            \ binpath branch build-dir cmake-options configure-flags
             \ custom-build-command cxxflags dest-dir do-not-compile kdedir
             \ libpath log-dir make-install-prefix make-options module-base-path
             \ override-build-system override-url prefix qtdir repository
@@ -45,7 +45,7 @@ syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
 
 syn keyword ksbrcGlobalOption contained skipwhite nextgroup=ksbrcStringValue
             \ branch-group git-desired-protocol git-repository-base http-proxy
-            \ kde-languages niceness debug-level persistent-data-file set-env
+            \ niceness debug-level persistent-data-file set-env
 
 " MUST BE CONSISTENT WITH ABOVE. Used when a module-set option is used in the
 " wrong spot to highlight the error.

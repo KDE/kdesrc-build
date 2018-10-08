@@ -85,13 +85,6 @@ sub needsRefreshed
     return "";
 }
 
-# Returns true if the given subdirectory (reference from the module's root source directory)
-# can be built or not. Should be reimplemented by subclasses as appropriate.
-sub isSubdirBuildable
-{
-    return 1;
-}
-
 # Called by the module being built before it runs its build/install process. Should
 # setup any needed environment variables, build context settings, etc., in preparation
 # for the build and install phases.
@@ -141,9 +134,6 @@ sub buildInternal
             split(' ', $self->module()->getOption('make-options')),
         ],
         logbase => 'build',
-        subdirs => [
-            split(' ', $self->module()->getOption("checkout-only"))
-        ],
     })->{was_successful};
 }
 
@@ -190,7 +180,6 @@ sub installInternal
             target => 'install',
             message => 'Installing..',
             'prefix-options' => [@cmdPrefix],
-            subdirs => [ split(' ', $module->getOption("checkout-only")) ],
            })->{was_successful};
 }
 
@@ -207,7 +196,6 @@ sub uninstallInternal
             target => 'uninstall',
             message => "Uninstalling g[$module]",
             'prefix-options' => [@cmdPrefix],
-            subdirs => [ split(' ', $module->getOption("checkout-only")) ],
            })->{was_successful};
 }
 
@@ -286,11 +274,8 @@ sub createBuildSystem
 # Subroutine to run the build command with the arguments given by the
 # passed hash.
 #
-# In addition to finding the proper executable, this function handles the
-# step of running the build command for individual subdirectories (as
-# specified by the checkout-only option to the module).  Due to the various
-# ways the build command is called by this script, it is required to pass
-# customization options in a hash:
+# Due to the various ways the build command is called by this script, it is
+# required to pass customization options in a hash:
 # {
 #    target         => undef, or a valid build target e.g. 'install',
 #    message        => 'Compiling.../Installing.../etc.'
@@ -300,8 +285,6 @@ sub createBuildSystem
 #                        make command, used for make-install-prefix support for
 #                        e.g. sudo ],
 #    logbase        => 'base-log-filename',
-#    subdirs        => [ list of subdirectories of the module to build,
-#                        relative to the module's own build directory. ]
 # }
 #
 # target and message are required. logbase is required if target is left
@@ -356,7 +339,6 @@ sub safe_make (@)
     # Simplify code by forcing lists to exist.
     $optsRef->{'prefix-options'} //= [ ];
     $optsRef->{'make-options'} //= [ ];
-    $optsRef->{'subdirs'} //= [ ];
 
     my @prefixOpts = @{$optsRef->{'prefix-options'}};
 
@@ -374,46 +356,10 @@ sub safe_make (@)
 
     # Will be output by _runBuildCommand
     my $buildMessage = $optsRef->{message};
+    my $logname = $optsRef->{logbase} // $optsRef->{logfile} // $optsRef->{target};
+    p_chdir ($module->fullpath('build'));
 
-# TODO: Remove all this nonsense about per-subdir builds. The last time this really helped was when
-# this script was called kdecvs-build...
-
-    # Here we're attempting to ensure that we either run the build command
-    # in each subdirectory, *or* for the whole module, but not both.
-    my @dirs = @{$optsRef->{subdirs}};
-    push (@dirs, "") if scalar @dirs == 0;
-
-    for my $subdir (@dirs)
-    {
-        # Some subdirectories shouldn't have the build command run within
-        # them.
-        next unless $self->isSubdirBuildable($subdir);
-
-        my $logname = $optsRef->{logbase} // $optsRef->{logfile} // $optsRef->{target};
-
-        if ($subdir ne '')
-        {
-            $logname = $logname . "-$subdir";
-
-            # Remove slashes in favor of something else.
-            $logname =~ tr{/}{-};
-
-            # Mention subdirectory that we're working on, move ellipsis
-            # if present.
-            if ($buildMessage =~ /\.\.\.$/) {
-                $buildMessage =~ s/(\.\.\.)?$/ subdirectory g[$subdir]$1/;
-            }
-        }
-
-        my $builddir = $module->fullpath('build') . "/$subdir";
-        $builddir =~ s/\/*$//; # Remove trailing /
-
-        p_chdir ($builddir);
-
-        return $self->_runBuildCommand($buildMessage, $logname, \@args);
-    };
-
-    return { was_successful => 1 };
+    return $self->_runBuildCommand($buildMessage, $logname, \@args);
 }
 
 # Subroutine to run make and process the build process output in order to

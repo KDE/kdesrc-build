@@ -15,8 +15,6 @@ use parent qw(ksb::OptionsBase);
 use ksb::Debug;
 use ksb::Util;
 
-use ksb::l10nSystem;
-
 use ksb::Updater::Svn;
 use ksb::Updater::Git;
 use ksb::Updater::Bzr;
@@ -275,7 +273,7 @@ sub setScmType
         when('git')  { $newType = ksb::Updater::Git->new($self); }
         when('proj') { $newType = ksb::Updater::KDEProject->new($self); }
         when('metadata') { $newType = ksb::Updater::KDEProjectMetadata->new($self); }
-        when('l10n') { $newType = ksb::l10nSystem->new($self); }
+#       when('l10n') { $newType = ksb::l10nSystem->new($self); }
         when('svn')  { $newType = ksb::Updater::Svn->new($self); }
         when('bzr')  { $newType = ksb::Updater::Bzr->new($self); }
         default      { $newType = undef; }
