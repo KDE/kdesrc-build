@@ -12,7 +12,7 @@ use parent qw(ksb::Updater::KDEProject);
 use ksb::Util;
 use ksb::Debug;
 
-use JSON::PP;
+use Mojo::JSON qw(decode_json);
 
 sub name
 {

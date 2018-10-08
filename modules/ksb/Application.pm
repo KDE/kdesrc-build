@@ -25,15 +25,8 @@ use ksb::DependencyResolver 0.20;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
-use Mojo::Asset::File;
-use Mojo::File;
 use Mojo::IOLoop;
-use Mojo::JSON qw(encode_json);
-use Mojo::Message::Request;
 use Mojo::Promise;
-use Mojo::Reactor;
-use Mojo::Server::Daemon;
-use Mojo::Template;
 
 use Fcntl; # For sysopen
 use List::Util qw(first min);

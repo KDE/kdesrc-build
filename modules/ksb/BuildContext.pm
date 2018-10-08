@@ -14,7 +14,8 @@ use File::Basename; # dirname
 use IO::File;
 use POSIX qw(strftime);
 use Errno qw(:POSIX);
-use JSON::PP;
+
+use Mojo::JSON qw(encode_json decode_json);
 
 # We derive from ksb::Module so that BuildContext acts like the 'global'
 # ksb::Module, with some extra functionality.
@@ -810,23 +811,7 @@ sub loadPersistentOptions
         $persistent_data = <$fh>;
     }
 
-    my $persistent_options;
-
-    eval { $persistent_options = decode_json($persistent_data); };
-    if ($@) {
-        # Apparently wasn't JSON, try falling back to old format for compat.
-        # Previously, this was a Perl code which, when evaluated would give
-        # us a hash called persistent_options which we can then merge into our
-        # persistent options.
-        # TODO: Remove compat code after 2018-06-30
-        eval $persistent_data; # Runs Perl code read from file
-        if ($@)
-        {
-            # Failed.
-            error ("Failed to read persistent module data: r[b[$@]");
-            return;
-        }
-    }
+    my $persistent_options = decode_json($persistent_data);
 
     # We need to keep persistent data with the context instead of with the
     # applicable modules since otherwise we might forget to write out
@@ -853,7 +838,6 @@ sub storePersistentOptions
     return if pretending();
 
     my $fh = IO::File->new($self->persistentOptionFileName(), '>');
-    my $json = JSON::PP->new->ascii->pretty;
 
     if (!$fh)
     {
@@ -861,7 +845,7 @@ sub storePersistentOptions
         return;
     }
 
-    my $encodedJSON = $json->encode($self->{persistent_options});
+    my $encodedJSON = encode_json ($self->{persistent_options});
     print $fh $encodedJSON;
     undef $fh; # Closes the file
 }

@@ -94,7 +94,10 @@ sub start
     # Open a file to log the event stream
     my $ctx = $app->context();
     my $separator = '  ';
-    open my $event_stream, '>', $ctx->getLogDirFor($ctx) . '/event-stream'
+    my $dest = pretending()
+        ? '/dev/null'
+        : $ctx->getLogDirFor($ctx) . '/event-stream';
+    open my $event_stream, '>', $dest
         or croak_internal("Unable to open event log $!");
     $event_stream->say("["); # Try to make it valid JSON syntax
 
