@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # This is a very simple script to build the documentation used on the
-# kdesrc-build.kde.org website. The /common files themselves came from
-# kdelibs/doc/common IIRC
+# kdesrc-build.kde.org website. The /common files themselves are part
+# of kdoctools.
 #
 # By Michael Pyne <mpyne@kde.org>
 #
@@ -26,21 +26,28 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+PATH_TO_DOCS="../doc/index.docbook"
+COMMON_DIR="kdoctools5-common"
+COMMON_FILES=$(printf "'%s/'" "$COMMON_DIR") # The single quotes are exceedingly important
 
-PATH_TO_DOCS="/kdesvn/src/extragear/utils/kdesrc-build/doc/index.docbook"
-COMMON_FILES="'common/'" # The single quotes are exceedingly important
+DATA_DIR=$(kf5-config --install data)
+DATA_DIR=${DATA_DIR%/} # Remove trailing /
 
-# The kdelibs install process installs support files for DocBook handling to
-# the ksgmltools2 application data dir. A kdelibs checkout is not sufficient
-# since some of the xsl files are input to a CMake script which converts them
-# to final form.
-DATA_DIR=$(kde4-config --install data)
-DOC_SRCDIR="$DATA_DIR/ksgmltools2"
+# The kdoctools install process installs support files for DocBook handling to
+# the kf5/kdoctools application data dir. A kdoctools checkout (i.e. not
+# installed already) is probably not sufficient but I haven't tested this
+DOC_SRCDIR="$DATA_DIR/kf5/kdoctools"
 XSLT="$DOC_SRCDIR/customization/kde-chunk-online.xsl"
 
-# We need to run this from right directory, i.e. the directory we want generated
-# output to go to (www/kdesrc-build/documentation)
-meinproc4 --srcdir $DOC_SRCDIR \
+# We need to run this from the directory we want generated output to go
+
+if [ ! -e "$COMMON_DIR" ]; then
+    ln -s "$DATA_DIR/doc/HTML/en/$COMMON_DIR" .
+fi
+
+meinproc5 --srcdir "$DOC_SRCDIR" \
           --param kde.common="$COMMON_FILES" \
-          --stylesheet $XSLT \
-          $PATH_TO_DOCS
+          --param chunker.output.encoding="UTF-8" \
+          --param chunker.output.indent="yes" \
+          --stylesheet "$XSLT" \
+          "$PATH_TO_DOCS"
