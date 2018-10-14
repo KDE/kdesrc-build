@@ -78,7 +78,7 @@ package ksb::BuildException::Config 0.10 {
             $result = <<"EOF";
 The y[git-repository-base] option requires a repository name and URL.
 
-e.g. git-repository base y[b[kde] g[b[git://anongit.kde.org/]
+e.g. git-repository base y[b[kde] g[b[https://anongit.kde.org/]
 
 Use this in a "module-set" group:
 

@@ -19,6 +19,7 @@ use ksb::Module;
 use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
+use ksb::OSSupport;
 use ksb::PromiseChain;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
@@ -135,6 +136,7 @@ sub _readCommandLineOptionsAndSelectors
     my ($cmdlineOptionsRef, $selectorsRef, $ctx, @options) = @_;
     my $phases = $ctx->phases();
     my @savedOptions = @options; # Copied for use in debugging.
+    my $os = ksb::OSSupport->new;
     my $version = "kdesrc-build " . scriptVersion();
     my $author = <<DONE;
 $version was written (mostly) by:
@@ -154,6 +156,7 @@ DONE
     %foundOptions = (
         version => sub { say $version; exit },
         author  => sub { say $author;  exit },
+        'show-info' => sub { say $version; say "OS: ", $os->vendorID(); exit },
         help    => sub { _showHelpMessage(); exit 0 },
         install => sub {
             $self->{run_mode} = 'install';
@@ -278,7 +281,7 @@ DONE
 
     # Actually read the options.
     my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
-        'version', 'author', 'help', 'disable-snapshots|no-snapshots',
+        'version', 'author', 'help', 'show-info', 'disable-snapshots|no-snapshots',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
         'verbose|v', 'quiet|quite|q', 'really-quiet', 'debug',
@@ -973,7 +976,7 @@ sub _parseModuleSetOptions
 #  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
 #  methods (e.g. <IO::Handle> subclass).
 #
-#  deferredOptions - An out paramter: a hashref holding the options set by any
+#  deferredOptions - An out parameter: a hashref holding the options set by any
 #  'options' blocks read in by this function. Each key (identified by the name
 #  of the 'options' block) will point to a hashref value holding the options to
 #  apply.

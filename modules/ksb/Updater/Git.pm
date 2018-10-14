@@ -766,7 +766,7 @@ sub hasRemote
 sub verifyGitConfig
 {
     my $configOutput =
-        qx'git config --global --get url.git://anongit.kde.org/.insteadOf kde:';
+        qx'git config --global --get url.https://anongit.kde.org/.insteadOf kde:';
 
     # 0 means no error, 1 means no such section exists -- which is OK
     if ((my $errNum = $? >> 8) >= 2) {
@@ -791,7 +791,7 @@ sub verifyGitConfig
     if ($configOutput !~ /^kde:\s*$/) {
         whisper ("\tAdding git download kde: alias");
         my $result = safe_system(
-            qw(git config --global --add url.git://anongit.kde.org/.insteadOf kde:)
+            qw(git config --global --add url.https://anongit.kde.org/.insteadOf kde:)
         ) >> 8;
         return 0 if $result != 0;
     }
@@ -803,6 +803,18 @@ sub verifyGitConfig
         whisper ("\tAdding git upload kde: alias");
         my $result = safe_system(
             qw(git config --global --add url.git@git.kde.org:.pushInsteadOf kde:)
+        ) >> 8;
+        return 0 if $result != 0;
+    }
+
+    # Remove old kdesrc-build installed aliases (kde: -> git://anongit.kde.org/)
+    $configOutput =
+        qx'git config --global --get url.git://anongit.kde.org/.insteadOf kde:';
+
+    if ($configOutput =~ /^kde:\s*$/) {
+        whisper ("\tRemoving outdated kde: alias");
+        my $result = safe_system(
+            qw(git config --global --unset-all url.git://anongit.kde.org/.insteadOf kde:)
         ) >> 8;
         return 0 if $result != 0;
     }
