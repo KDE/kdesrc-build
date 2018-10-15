@@ -52,7 +52,7 @@ use ksb::Util;
 use ksb::Version qw(scriptVersion);
 use ksb::Application;
 use ksb::UserInterface::TTY;
-use BackendServer;
+use web::BackendServer;
 
 use 5.014; # Require Perl 5.14
 
@@ -237,7 +237,7 @@ sub launchBackend
     # Manually setup the daemon so that we can figure out what port it
     # ends up on.
     my $daemon = Mojo::Server::Daemon->new(
-        app    => BackendServer->new,
+        app    => web::BackendServer->new,
         listen => ['http://localhost'],
         silent => 1,
     );
@@ -291,7 +291,7 @@ END {
 # Use some exception handling to avoid ucky error messages
 eval
 {
-    my $app = BackendServer->new(@ARGV);
+    my $app = web::BackendServer->new(@ARGV);
     my $ui  = ksb::UserInterface::TTY->new($app);
 
     # Hack for debugging current state.

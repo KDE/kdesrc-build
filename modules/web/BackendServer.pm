@@ -1,4 +1,4 @@
-package BackendServer;
+package web::BackendServer;
 
 # Make this subclass a Mojolicious app
 use Mojo::Base 'Mojolicious';
@@ -42,6 +42,14 @@ my $KSB_APP;
 
 sub startup {
     my $self = shift;
+
+    # Force use of 'modules/web' as the home directory, would normally be
+    # 'modules' alone
+    $self->home($self->home->child('web'));
+
+    # Fixup templates and public base directories
+    $self->static->paths->[0]   = $self->home->child('public');
+    $self->renderer->paths->[0] = $self->home->child('templates');
 
     $self->helper(ksb => sub {
         my ($c, $new_ksb) = @_;

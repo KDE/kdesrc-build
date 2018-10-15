@@ -20,7 +20,7 @@ requests necessary.
 
 =head1 SYNOPSIS
 
-    my $app = BackendServer->new(@ARGV);
+    my $app = web::BackendServer->new(@ARGV);
     my $ui = ksb::UserInterface::TTY->new($app);
     exit $ui->start(); # Blocks! Returns a shell-style return code
 
@@ -37,9 +37,6 @@ use Mojo::IOLoop;
 use Mojo::UserAgent;
 use Mojo::JSON qw(to_json);
 
-# This is essentially ksb::Application but across a socket connection. It reads
-# the options and module selectors like normal.
-use BackendServer;
 use ksb::StatusView;
 use ksb::Util;
 use ksb::Debug;
