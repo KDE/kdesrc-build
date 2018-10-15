@@ -6,6 +6,8 @@ use Mojo::Util qw(trim);
 
 use ksb::Application;
 
+use Cwd;
+
 # This is written in a kind of domain-specific language for Mojolicious for
 # now, to setup a web server backend for clients / frontends to communicate
 # with.
@@ -17,7 +19,7 @@ has 'selectors';
 sub new
 {
     my ($class, @opts) = @_;
-    return $class->SUPER::new(options => [@opts]);
+    return $class->SUPER::new(options => [@opts], ksbhome => getcwd());
 }
 
 # Adds a helper method to each HTTP context object to return the
@@ -25,6 +27,10 @@ sub new
 sub make_new_ksb
 {
     my $c = shift;
+
+    # ksb::Application startup uses current dir to find right rc-file
+    # by default.
+    chdir($c->app->{ksbhome});
     my $app = ksb::Application->new->setHeadless;
 
     my @selectors = $app->establishContext(@{$c->app->{options}});
@@ -73,13 +79,7 @@ sub _generateRoutes {
     my $self = shift;
     my $r = $self->routes;
 
-    $r->get('/' => sub {
-        my $c = shift;
-        my $app = $c->ksb();
-        my $isApp = $app->isa('ksb::Application') ? 'app' : 'not app';
-        $c->stash(app => "Application is a $isApp");
-        $c->render(template => 'index');
-    } => 'index');
+    $r->get('/' => 'index');
 
     $r->post('/reset' => sub {
         my $c = shift;
