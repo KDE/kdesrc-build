@@ -1123,17 +1123,17 @@ sub runPhase_p
             close $reader;
             close $writer; # can't close it earlier because must be open at fork
 
-            if ($err) {
-                $ctx->markModulePhaseFailed($phaseName, $self);
-                return $promise->reject($err);
-            }
-
             # Apply options that may have changed during child proc execution.
             if (%{$resultsRef->{newOptions}}) {
                 while(my ($k, $v) = each %{$resultsRef->{newOptions}}) {
                     my %modulesNewOptions = %{$v};
                     @{$ctx->{build_options}->{$k}}{keys %modulesNewOptions} = values %modulesNewOptions;
                 }
+            }
+
+            if ($err) {
+                $ctx->markModulePhaseFailed($phaseName, $self);
+                return $promise->reject($err);
             }
 
             my $result = $resultsRef->{result};
