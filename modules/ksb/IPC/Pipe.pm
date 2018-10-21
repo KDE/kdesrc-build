@@ -8,7 +8,7 @@ use 5.014;
 
 use parent qw(ksb::IPC);
 
-use ksb::Util qw(croak_internal croak_runtime);
+use ksb::BuildException;
 
 use IO::Handle;
 use IO::Pipe;

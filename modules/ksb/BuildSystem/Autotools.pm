@@ -8,6 +8,7 @@ use 5.014;
 
 use parent qw(ksb::BuildSystem);
 
+use ksb::BuildException;
 use ksb::Debug;
 use ksb::Util;
 

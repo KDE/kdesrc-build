@@ -21,6 +21,7 @@ use JSON::PP;
 # TODO: Derive from OptionsBase directly and remove getOption override
 use parent qw(ksb::Module);
 
+use ksb::BuildException;
 use ksb::Debug;
 use ksb::Util;
 use ksb::PhaseList;

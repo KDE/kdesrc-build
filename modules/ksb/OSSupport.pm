@@ -4,7 +4,7 @@ use 5.014;
 use strict;
 use warnings;
 
-use ksb::Util qw(croak_runtime);
+use ksb::BuildException qw(croak_runtime);
 
 use Text::ParseWords qw(nested_quotewords);
 use List::Util qw(first);
@@ -21,6 +21,9 @@ and so on.
 
 See L<https://www.freedesktop.org/software/systemd/man/os-release.html> for the
 relevant specification.
+
+B<NOTE> This module is supposed to be loadable even under minimal Perl
+environments as fielded in "minimal Docker container" forms of popular distros.
 
 =head1 SYNOPSIS
 
@@ -129,7 +132,10 @@ sub _readOSRelease
 
     while (!$fh && @files) {
         my $file = shift @files;
-        open $fh, '<:encoding(UTF-8)', $file and last;
+
+        # Can't use PerlIO UTF-8 encoding on minimal distros, which this module
+        # must be loadable from
+        open $fh, '<', $file and last;
         $error = $!;
     }
 

@@ -9,7 +9,7 @@ use 5.014;
 
 our $VERSION = '0.10';
 
-use ksb::Util;
+use ksb::BuildException;
 
 sub new
 {

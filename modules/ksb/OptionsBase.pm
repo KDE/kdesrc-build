@@ -6,6 +6,7 @@ package ksb::OptionsBase 0.20;
 use 5.014;
 use warnings;
 
+use ksb::BuildException;
 use ksb::Debug;
 use ksb::Util;
 

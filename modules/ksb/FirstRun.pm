@@ -5,8 +5,8 @@ use strict;
 use warnings;
 use File::Spec qw(splitpath);
 
+use ksb::BuildException;
 use ksb::Debug qw(colorize);
-use ksb::Util;
 use ksb::OSSupport;
 
 =head1 NAME
@@ -16,6 +16,9 @@ ksb::FirstRun
 =head1 DESCRIPTION
 
 Performs initial-install setup, implementing the C<--initial-setup> option.
+
+B<NOTE> This module is supposed to be loadable even under minimal Perl
+environments as fielded in "minimal Docker container" forms of popular distros.
 
 =head1 SYNOPSIS
 

@@ -12,6 +12,7 @@ use 5.014;
 
 our $VERSION = '0.20';
 
+use ksb::BuildException;
 use ksb::Debug;
 use ksb::Util;
 use List::Util qw(first);

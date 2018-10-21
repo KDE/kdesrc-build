@@ -6,6 +6,7 @@ package ksb::ModuleResolver 0.20;
 use warnings;
 use 5.014;
 
+use ksb::BuildException;
 use ksb::Debug;
 use ksb::Util;
 use ksb::ModuleSet::KDEProjects;

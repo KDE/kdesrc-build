@@ -9,8 +9,9 @@ use 5.014;
 
 use parent qw(ksb::Updater::KDEProject);
 
-use ksb::Util;
+use ksb::BuildException;
 use ksb::Debug;
+use ksb::Util;
 
 use JSON::PP;
 

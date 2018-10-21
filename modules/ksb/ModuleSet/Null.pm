@@ -11,7 +11,7 @@ use 5.014;
 
 use parent qw(ksb::ModuleSet);
 
-use ksb::Util;
+use ksb::BuildException;
 
 sub new
 {

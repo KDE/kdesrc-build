@@ -6,6 +6,7 @@ use 5.014;
 
 our $VERSION = '0.10';
 
+use ksb::BuildException;
 use ksb::Util;
 use File::Basename; # dirname
 

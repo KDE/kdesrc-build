@@ -12,8 +12,9 @@ no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
 our $VERSION = '0.20';
 
-use ksb::Util; # make_exception, list_has
+use ksb::BuildException; # make_exception
 use ksb::Debug;
+use ksb::Util; # list_has
 
 # IPC message types
 use constant {
