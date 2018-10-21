@@ -1,5 +1,9 @@
 package ksb::OSSupport 0.10;
 
+use 5.014;
+use strict;
+use warnings;
+
 use ksb::Util qw(croak_runtime);
 
 use Text::ParseWords qw(nested_quotewords);
@@ -69,6 +73,23 @@ sub vendorID
     return $self->{ID} // 'unknown';
 }
 
+=head2 vendorVersion
+
+    my $vendor = $os->vendorVersion; # 'xenial', '17', etc.
+
+Returns the vendor Version from the I<os-release> specification.
+The first available value from C<VERSION_ID> and then
+C<VERSION_CODENAME> is used, and 'unknown' is returned if neither
+are set.
+
+=cut
+
+sub vendorVersion
+{
+    my $self = shift;
+    return $self->{VERSION_ID} // $self->{VERSION_CODENAME} // 'unknown';
+}
+
 =head2 bestDistroMatch
 
     # Might return 'fedora' if running on Scientific Linux
@@ -93,8 +114,8 @@ sub bestDistroMatch
         push @ids, split(' ', $likeDistros);
     }
 
-    foreach my $distro (@distros) {
-        return $distro if first { $distro eq $_ } @ids;
+    foreach my $id (@ids) {
+        return $id if first { $id eq $_ } @distros;
     }
 
     return 'linux';
