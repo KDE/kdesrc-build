@@ -100,7 +100,14 @@ DONE
 
     my @packages = _findBestVendorPackageList($os);
     if (@packages) {
-        sleep 3;
+        my @installCmd = _findBestInstallCmd($os);
+        say colorize (" b[*] Running b[" . join(' ', @installCmd) . "]");
+        my $result = system (@installCmd, @packages);
+        if ($result >> 8 == 0) {
+            say colorize (" b[*] b[g[Looks like things went OK!]");
+        } else {
+            say colorize (" r[b[*] Ran into an error with the installer!");
+        }
     } else {
         say colorize (" r[b[*] Whoa, I'm not familiar with your distribution, skipping");
     }
@@ -156,6 +163,38 @@ DONE
     }
 }
 
+sub _findBestInstallCmd
+{
+    my $os = shift;
+    my $pkgsRef = _readPackages();
+
+    my @supportedDistros =
+        map  { s{^cmd/install/([^/]+)/.*$}{$1}; $_ }
+        grep { /^cmd\/install\// }
+            keys %{$pkgsRef};
+
+    my $bestVendor = $os->bestDistroMatch(@supportedDistros);
+    say colorize ("    Using installer for b[$bestVendor]");
+
+    my $version = $os->vendorVersion();
+    my @cmd;
+
+    for my $opt ("$bestVendor/$version", "$bestVendor/unknown") {
+        my $key = "cmd/install/$opt";
+        next unless exists $pkgsRef->{$key};
+        @cmd = split(' ', $pkgsRef->{$key});
+        last;
+    }
+
+    _throw("No installer for $bestVendor!")
+        unless @cmd;
+
+    # If not running as root already, add sudo
+    unshift @cmd, 'sudo' if $> != 0;
+
+    return @cmd;
+}
+
 sub _findBestVendorPackageList
 {
     my $os = shift;
@@ -194,7 +233,7 @@ shared-mime-info
 
 @@ pkg/opensuse/unknown
 perl perl-IO-Socket-SSL perl-JSON perl-YAML-LibYAML
-git shared-mime-info
+git shared-mime-info make cmake libqt5-qtbase-common-devel
 
 @@ pkg/fedora/unknown
 git
@@ -205,6 +244,9 @@ dev-lang/perl
 
 @@ pkg/arch/unknown
 perl-json
+
+@@ cmd/install/opensuse/unknown
+zypper install -y
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
