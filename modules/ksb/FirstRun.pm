@@ -29,11 +29,12 @@ environments as fielded in "minimal Docker container" forms of popular distros.
 
 sub setupUserSystem
 {
+    my $baseDir = shift;
     my $os = ksb::OSSupport->new;
 
     eval {
         _installSystemPackages($os);
-        _setupBaseConfiguration();
+        _setupBaseConfiguration($baseDir);
         _setupBashrcFile();
     };
 
@@ -64,17 +65,16 @@ sub _readPackages
     };
 
     while(my $line = <DATA>) {
-        next if $line =~ /^\s*#/;
+        next if $line =~ /^\s*#/ and $cur_file !~ /sample-rc/;
         chomp $line;
 
         my ($fname) = ($line =~ /^@@ *([^ ]+)$/);
         if ($fname) {
             $commit->();
             $cur_file = $fname;
-            $cur_value = '';
         }
         else {
-            $cur_value .= "$line ";
+            $cur_value .= "$line\n";
         }
     }
 
@@ -93,34 +93,47 @@ sub _installSystemPackages
     my $os = shift;
     my $vendor = $os->vendorID;
     my $osVersion = $os->vendorVersion;
-    my @packages = _findBestVendorPackageList($os);
 
-    say colorize(<<DONE);
+    print colorize(<<DONE);
  b[1.] Installing b[system packages] for b[$vendor]...
 DONE
 
-    sleep 3;
+    my @packages = _findBestVendorPackageList($os);
+    if (@packages) {
+        sleep 3;
+    } else {
+        say colorize (" r[b[*] Whoa, I'm not familiar with your distribution, skipping");
+    }
 }
 
 sub _setupBaseConfiguration
 {
+    my $baseDir = shift;
+
     if (-e "kdesrc-buildrc" || -e "$ENV{HOME}/.kdesrc-buildrc") {
-        say colorize(<<DONE);
+        print colorize(<<DONE);
  b[2.] You b[y[already have a configuration file], skipping this step...
 DONE
     } else {
-        say colorize(<<DONE);
+        print colorize(<<DONE);
  b[2.] Installing b[sample configuration file]...
 DONE
-        # TODO: Bring that whole script inline here since we need to know
-        # the path for bashrc
-        my (undef, $baseDir) = File::Spec->splitpath($0);
-        _throw("Can't find setup script")
-            unless -e "$baseDir/kdesrc-build-setup" && -x _;
 
-        my $result = system("$baseDir/kdesrc-build-setup");
-        _throw("setup script failed: $!")
-            unless ($result >> 8) == 0;
+        my $sampleRc = $packages{'sample-rc'} or
+            _throw("Embedded sample file missing!");
+
+        my $numCpus = `nproc 2>/dev/null` || 4;
+        $sampleRc =~ s/%\{num_cpus}/$numCpus/;
+        $sampleRc =~ s/%\{base_dir}/$baseDir/;
+
+        open my $sampleFh, '>', "$ENV{HOME}/.kdesrc-buildrc"
+            or _throw("Couldn't open new ~/.kdesrc-buildrc: $!");
+
+        print $sampleFh $sampleRc
+            or _throw("Couldn't write to ~/.kdesrc-buildrc: $!");
+
+        close $sampleFh
+            or _throw("Error closing ~/.kdesrc-buildrc: $!");
     }
 }
 
@@ -154,22 +167,23 @@ sub _findBestVendorPackageList
             keys %{_readPackages()};
 
     my $bestVendor = $os->bestDistroMatch(@supportedDistros);
-    return _packagesForVendor($bestVendor);
+    my $version = $os->vendorVersion();
+    say colorize ("    Installing packages for b[$bestVendor]/b[$version]");
+    return _packagesForVendor($bestVendor, $version);
 }
 
 sub _packagesForVendor
 {
-    my $vendor = shift;
+    my ($vendor, $version) = @_;
     my $packagesRef = _readPackages();
-    my @opts = grep { /^pkg\/$vendor\b/ } keys %{$packagesRef};
 
-    # TODO Narrow to one set based on distro version
-    my @packages;
-    foreach my $opt (@opts) {
-        @packages = split(' ', $packagesRef->{$opt});
+    foreach my $opt ("pkg/$vendor/$version", "pkg/$vendor/unknown") {
+        next unless exists $packagesRef->{$opt};
+        my @packages = split(' ', $packagesRef->{$opt});
+        return @packages;
     }
 
-    return @packages;
+    return;
 }
 
 1;
@@ -178,8 +192,9 @@ __DATA__
 @@ pkg/debian/unknown
 shared-mime-info
 
-@@ pkg/opensuse/tumbleweed
-shared-mime-info
+@@ pkg/opensuse/unknown
+perl perl-IO-Socket-SSL perl-JSON perl-YAML-LibYAML
+git shared-mime-info
 
 @@ pkg/fedora/unknown
 git
@@ -190,3 +205,42 @@ dev-lang/perl
 
 @@ pkg/arch/unknown
 perl-json
+
+@@ sample-rc
+# This file controls options to apply when configuring/building modules, and
+# controls which modules are built in the first place.
+# List of all options: https://go.kde.org/u/ksboptions
+
+global
+    branch-group kf5-qt5
+    kdedir ~/kde-5 # Where to install KF5-based software
+    # Uncomment this and edit value to choose a different Qt5
+#    qtdir /usr     # Where to find Qt5
+
+    # Will pull in KDE-based dependencies only, to save you the trouble of
+    # listing them all below
+    include-dependencies true
+
+    source-dir ~/kde/src
+    build-dir  ~/kde/build
+
+    cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    make-options  -j%{num_cpus}
+end global
+
+# With base options set, the remainer of the file is used to define modules to build, in the
+# desired order, and set any module-specific options.
+#
+# Modules may be grouped into sets, and this is the normal practice.
+#
+# You can include other files inline using the "include" command. We do this here
+# to include files which are updated with kdesrc-build.
+
+include %{base_dir}/kf5-qt5-build-include
+
+# To change options for modules that have already been defined, use an
+# 'options' block
+options kcoreaddons
+    make-options -j4
+end options
+
