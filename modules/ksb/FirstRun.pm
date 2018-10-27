@@ -270,7 +270,7 @@ global
     make-options  -j%{num_cpus}
 end global
 
-# With base options set, the remainer of the file is used to define modules to build, in the
+# With base options set, the remainder of the file is used to define modules to build, in the
 # desired order, and set any module-specific options.
 #
 # Modules may be grouped into sets, and this is the normal practice.

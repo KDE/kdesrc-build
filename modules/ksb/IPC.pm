@@ -212,7 +212,7 @@ sub waitForModule
     my $moduleName = $module->name();
     my $updated = $self->{'updated'};
 
-    # Wait for for the initial phase to complete, if it hasn't.
+    # Wait for the initial phase to complete, if it hasn't.
     $self->waitForStreamStart();
 
     # No update? Just mark as successful

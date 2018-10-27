@@ -2,7 +2,7 @@ package ksb::ModuleSet::Null 0.10;
 
 # Class: ModuleSet::Null
 #
-# Used automatically by <Module> to represent the abscence of a <ModuleSet> without
+# Used automatically by <Module> to represent the absence of a <ModuleSet> without
 # requiring definedness checks.
 
 use strict;

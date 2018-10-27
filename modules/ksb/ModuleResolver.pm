@@ -488,7 +488,7 @@ Selectors always choose an available ksb::Module or ksb::ModuleSet if
 present (based on the name() of each Module or ModuleSet, including any
 use-modules entries for ModuleSet objects). If a selector cannot be
 directly found then ModuleSet objects may be expanded into their
-constitutent Module objects and the search performed again. If a selector
+constituent Module objects and the search performed again. If a selector
 still cannot be found an exception is thrown.
 
 Any embedded ModuleSets are expanded to Modules in the return value.

@@ -803,7 +803,7 @@ sub _splitOptionAndValue
 
     # The option is the first word, followed by the
     # flags on the rest of the line.  The interpretation
-    # of the flags is dependant on the option.
+    # of the flags is dependent on the option.
     my ($option, $value) = ($input =~ /^\s*     # Find all spaces
                             ([-\w]+) # First match, alphanumeric, -, and _
                             # (?: ) means non-capturing group, so (.*) is $value
@@ -1027,7 +1027,7 @@ sub _parseModuleSetOptions
 #  apply.
 #
 # Returns:
-#  @module - Heterogenous list of <Modules> and <ModuleSets> defined in the
+#  @module - Heterogeneous list of <Modules> and <ModuleSets> defined in the
 #  configuration file. No module sets will have been expanded out (either
 #  kde-projects or standard sets).
 #
