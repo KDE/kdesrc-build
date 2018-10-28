@@ -230,7 +230,7 @@ sub cleanBuildSystem
 
         # Let users know we're done so they don't wonder why rm -rf is taking so
         # long and oh yeah, why's my HD so active?...
-        info ("\tOld build system cleaned, starting new build system.");
+        whisper ("\tOld build system cleaned, starting new build system.");
     }
     # or create the directory
     elsif (!super_mkdir ($builddir))
