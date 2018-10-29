@@ -1068,6 +1068,7 @@ sub runPhase_p
     # progresses, logs, etc.
     my $reactor = Mojo::IOLoop->singleton->reactor;
     my $monitor = $self->buildContext()->statusMonitor();
+    my $reactorPromise = Mojo::Promise->new;
 
     $reactor->io($reader => sub {
         my ($reactor) = @_;
@@ -1077,12 +1078,14 @@ sub runPhase_p
             # eof
             $reactor->remove($reader);
             close $reader;
+            $reactorPromise->resolve;
         }
         elsif ($lengthRead > 0) {
             $self->_readAndDispatchInProcessMessages($buffer, $monitor, $phaseName);
         }
         else {
             croak_runtime("Error reading from child pipe: $!");
+            $reactorPromise->reject;
         }
     });
     $reactor->watch($reader, 1, 0); # watch for pipe readability only
@@ -1130,8 +1133,6 @@ sub runPhase_p
             # runs in this process once subprocess is done
             my ($subprocess, $err, $resultsRef) = @_;
 
-            $reactor->remove($reader);
-            close $reader;
             close $writer; # can't close it earlier because must be open at fork
 
             # Apply options that may have changed during child proc execution.
@@ -1154,8 +1155,10 @@ sub runPhase_p
                 $ctx->markModulePhaseFailed($phaseName, $self);
             }
 
-            # This coderef should resolve or reject the promise, if used
-            $promise->resolve($completion_coderef->($self, $result));
+            return $reactorPromise->then(sub {
+                # This coderef should resolve or reject the promise, if used
+                $promise->resolve($completion_coderef->($self, $result));
+            });
         }
     );
 
