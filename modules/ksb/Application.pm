@@ -1294,9 +1294,9 @@ sub _handle_updates
                 sub { return $module->update($ctx) },
                 # called in this process, with results
                 sub {
-                    my (undef, $numUpdates) = @_;
-                    $module->setOption('#numUpdates', $numUpdates + 0);
-                    1; # Declare victory
+                    my (undef, $was_successful, $extras) = @_;
+                    $module->setOption('#numUpdates', $extras->{update_count});
+                    return $was_successful;
                 }
             );
         };

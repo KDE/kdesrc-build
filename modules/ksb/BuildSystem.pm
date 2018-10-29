@@ -122,7 +122,7 @@ sub buildCommands
     return 'gmake', 'make';
 }
 
-# Return value style: boolean
+# Return value style: hashref {was_successful => bool, warnings => int, ...}
 sub buildInternal
 {
     my $self = shift;
@@ -134,7 +134,7 @@ sub buildInternal
             split(' ', $self->module()->getOption('make-options')),
         ],
         logbase => 'build',
-    })->{was_successful};
+    });
 }
 
 # Return value style: boolean
@@ -401,6 +401,8 @@ sub _runBuildCommand
         my $input = shift;
         return if not defined $input;
 
+        $warnings++ if ($input =~ /warning: /);
+
         my ($x, $y);
         my ($percentage) = ($input =~ /^\[\s*([0-9]+)%]/);
         if ($percentage) {
@@ -417,8 +419,6 @@ sub _runBuildCommand
         if ($x != $oldX || $y != $oldY) {
             ksb::Debug::reportProgressToParent($module, $x, $y);
         }
-
-        $warnings++ if ($input =~ /warning: /);
     };
 
     $resultRef->{was_successful} =

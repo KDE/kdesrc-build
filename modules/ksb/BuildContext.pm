@@ -658,11 +658,12 @@ sub lookupModule
 
 sub markModulePhaseSucceeded
 {
-    my ($self, $phase, $module) = @_;
+    my ($self, $phase, $module, $extras) = @_;
     assert_isa($module, 'ksb::Module');
 
     my $name = $module->name();
-    $self->{status_monitor}->markPhaseComplete($name, $phase, 'success');
+    $extras //= { };
+    $self->{status_monitor}->markPhaseComplete($name, $phase, 'success', %{$extras});
 }
 
 sub markModulePhaseFailed

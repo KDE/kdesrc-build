@@ -428,7 +428,7 @@ sub installPhasePromises
             my $self = shift;
             my %pathinfo = $self->getInstallPathComponents('build');
             super_mkdir($pathinfo{'path'});
-            return 1;
+            return { was_successful => 1 };
         },
 
         # update => [
@@ -438,7 +438,7 @@ sub installPhasePromises
         buildsystem => [
             sub {
                 my $self = shift;
-                return $self->setupBuildSystem();
+                return { was_successful => $self->setupBuildSystem() };
             },
             sub {
                 my ($self, $was_successful) = @_;
@@ -454,12 +454,16 @@ sub installPhasePromises
             sub {
                 # called in child process, can block
                 my $self = shift;
+                # already returns a hashref in proper schema
                 return $self->buildSystem()->buildInternal();
             },
             sub {
                 # called in this process, with results
-                my ($self, $was_successful) = @_;
+                my ($self, $was_successful, $extras) = @_;
                 $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
+
+                # $extras has metadata on number of warnings, but it's already
+                # been reported by the time we get here.
 
                 return 1 if $was_successful;
                 return Mojo::Promise->new->reject('Build failed');
@@ -468,20 +472,22 @@ sub installPhasePromises
 
         test => sub {
             my $self = shift;
-            if ($self->getOption('run-tests')) {
-                # TODO: Make test failure a blocker for install?
-                $self->buildSystem()->runTestsuite();
-            }
-            return 1;
+
+            $self->buildSystem()->runTestsuite()
+                if $self->getOption('run-tests');
+
+            # TODO: Make test failure a blocker for install?
+            return { was_successful => 1 };
         },
 
         install => sub {
             my $self = shift;
-            if ($self->getOption('install-after-build')) {
-                return 0 if !$self->install();
-            }
+            my $success = 1;
 
-            return 1;
+            $success = 0
+                if $self->getOption('install-after-build') and !$self->install();
+
+            return { was_successful => $success };
         },
     );
 
@@ -798,11 +804,7 @@ sub update
     # Use 1 as default value to force a rebuild if we can't determine there
     # were truly *no* updates
     my $count = $self->scm()->updateInternal() // 1;
-
-    # Need to help calling code figure out that 0 is an OK return value from this method.
-    # TODO: Consistently use exceptions in runPhase-based code so this isn't needed.
-    # TODO: Require updateInternal to set appropriate msg for scm (files, commits, etc.)
-    return $count ? $count : '0 but true';
+    return { was_successful => 1, update_count => $count };
 }
 
 # OVERRIDE
@@ -1053,7 +1055,7 @@ sub runPhase_p
 
     # Default handler
     $completion_coderef //= sub {
-        my ($module, $result) = (@_);
+        my ($module, $result, $extras) = (@_);
         return Mojo::Promise->new->reject unless $result;
         return $result;
     };
@@ -1109,9 +1111,12 @@ sub runPhase_p
             $self->buildContext->resetEnvironment();
             $self->setupEnvironment();
 
-            # This coderef should return a normal value (something you could
-            # stick in a plain JSON object)
-            my $result = $blocking_coderef->($self);
+            # This coderef should return a hashref: {
+            #   was_successful => bool,
+            #   ... (other details)
+            # }
+            my $resultRef = $blocking_coderef->($self);
+            my $result = $resultRef->{was_successful};
             my %newOptions;
 
             # Grab any newly-set options to feed back to parent
@@ -1126,6 +1131,7 @@ sub runPhase_p
             return {
                 result     => $result,
                 newOptions => \%newOptions,
+                extras     => $resultRef,
             };
         },
 
@@ -1150,14 +1156,14 @@ sub runPhase_p
 
             my $result = $resultsRef->{result};
             if ($result) {
-                $ctx->markModulePhaseSucceeded($phaseName, $self);
+                $ctx->markModulePhaseSucceeded($phaseName, $self, $resultsRef->{extras});
             } else {
                 $ctx->markModulePhaseFailed($phaseName, $self);
             }
 
             return $reactorPromise->then(sub {
                 # This coderef should resolve or reject the promise, if used
-                $promise->resolve($completion_coderef->($self, $result));
+                $promise->resolve($completion_coderef->($self, $result, $resultsRef));
             });
         }
     );
