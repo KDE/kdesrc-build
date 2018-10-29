@@ -530,7 +530,7 @@ sub stashAndUpdate
     }
 
     if ($needsStash) {
-        info ("\tLocal changes detected, stashing them away...");
+        info ("\tLocal changes detected (will stash for now and then restore)");
         $status = log_command($module, 'git-stash-save', [
                 qw(git stash save --quiet), "kdesrc-build auto-stash at $date",
             ]);
@@ -546,7 +546,6 @@ sub stashAndUpdate
 
     # Update is performed and successful, re-apply the stashed changes
     if ($needsStash) {
-        info ("\tModule updated, reapplying your local changes.");
         $status = log_command($module, 'git-stash-pop', [
                 qw(git stash pop --index --quiet)
             ]);
