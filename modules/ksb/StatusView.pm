@@ -1,5 +1,7 @@
 package ksb::StatusView 0.30;
 
+use utf8; # Source code is utf8-encoded
+
 # Helper used to handle a generic 'progress update' status for the module
 # build, update, install, etc. processes.
 #
@@ -9,6 +11,10 @@ package ksb::StatusView 0.30;
 use strict;
 use warnings;
 use 5.014;
+
+# our output to STDOUT should match locale (esp UTF-8 locale, which induces
+# warnings for UTF-8 output unless we specifically opt-in)
+use open OUT => ':locale';
 
 use ksb::Debug 0.20 qw(colorize);
 use ksb::Util;
@@ -164,8 +170,15 @@ sub onBuildDone
             keys %{$self->{todo_in_phase}}));
     my $numSuccesses = $numBuiltModules - $numFailedModules;
 
-    my $built = $numFailedModules == 0 ? 'Built all' : 'Worked on';
-    my $msg = "\n$built b[$numBuiltModules] modules";
+    my $unicode = $ENV{LC_ALL} =~ /UTF-?8$/;
+    my $happy = $unicode ? '✓' : ':-)';
+    my $frown = $unicode ? '✗' : ':-(';
+
+    my $built = $numFailedModules == 0
+        ? " g[b[$happy] - Built all"
+        : " r[b[$frown] - Worked on";
+
+    my $msg = "$built b[$numBuiltModules] modules";
     $msg .= " (b[g[$numSuccesses] built OK)"
         if $numFailedModules > 0 and $numSuccesses > 0;
     $self->_clearLineAndUpdate (colorize("$msg\n"));

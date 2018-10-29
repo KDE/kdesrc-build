@@ -200,7 +200,6 @@ sub start
 
     # _report_on_failures(@module_failures);
 
-    say $result == 0 ? ":-)" : ":-(";
     return $result;
 };
 
