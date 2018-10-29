@@ -105,6 +105,11 @@ sub onPhaseCompleted
 
     if ($result eq 'error') {
         $self->{failed_at_phase}->{$moduleName} = $phase;
+        my $failure = $phase eq 'buildsystem' ? 'setup buildsystem' : $phase;
+        my $log = $ev->{phase_completed}->{error_file};
+        my $msg = " r[b[*] b[r[$moduleName] failed";
+        $msg .= ", see b[file://$log]" if $log;
+        $self->_clearLineAndUpdate(colorize("$msg\n"));
     }
 
     $self->{done_in_phase}->{$phase}++;
@@ -157,10 +162,13 @@ sub onBuildDone
     my $numBuiltModules = max(
         map { $self->{todo_in_phase}->{$_} } (
             keys %{$self->{todo_in_phase}}));
+    my $numSuccesses = $numBuiltModules - $numFailedModules;
 
     my $built = $numFailedModules == 0 ? 'Built all' : 'Worked on';
-    my $msg = "\n$built b[$numBuiltModules] modules\n";
-    _clearLineAndUpdate (colorize($msg));
+    my $msg = "\n$built b[$numBuiltModules] modules";
+    $msg .= " (b[g[$numSuccesses] built OK)"
+        if $numFailedModules > 0 and $numSuccesses > 0;
+    $self->_clearLineAndUpdate (colorize("$msg\n"));
 }
 
 # The build/install process has forwarded new notices that should be shown.
@@ -170,15 +178,13 @@ sub onLogEntries
     my ($module, $phase, $entriesRef) =
         @{$ev->{log_entries}}{qw/module phase entries/};
 
-    my $lastUpdateType = $self->{last_msg_type};
-
-    # Current line may have a transient update msg still
-    _clearLine() unless $lastUpdateType eq 'log';
+    # Current line may have a transient update msg still, otherwise we're already on
+    # suitable line to print
+    _clearLine() if $self->{last_msg_type} eq 'progress';
 
     if ("$module/$phase" ne $self->{last_mod_entry} && @$entriesRef) {
         say colorize(" b[y[*] b[$module] $phase:");
         $self->{last_mod_entry} = "$module/$phase";
-        $lastUpdateType = 'log';
     }
 
     for my $entry (@$entriesRef) {
@@ -187,10 +193,9 @@ sub onLogEntries
         $self->{log_entries}->{$module} //= { build => [ ], update => [ ] };
         $self->{log_entries}->{$module}->{$phase} //= [ ];
         push @{$self->{log_entries}->{$module}->{$phase}}, $entry;
-        $lastUpdateType = 'log';
     }
 
-    $self->{last_msg_type} = $lastUpdateType;
+    $self->{last_msg_type} = 'log';
     $self->update();
 }
 
@@ -307,7 +312,7 @@ sub update
         $msg = sprintf("%s [%*s] %s", $progress, -$max_prog_width, $bar, $current_modules);
     }
 
-    _clearLineAndUpdate($msg);
+    $self->_clearLineAndUpdate($msg);
     $self->{last_msg_type} = 'progress';
 }
 
@@ -318,12 +323,16 @@ sub _clearLine
 
 sub _clearLineAndUpdate
 {
-    my $msg = shift;
+    my ($self, $msg) = @_;
 
-    # Give escape sequence to return to column 1 and clear the entire line,
-    # then prints message.
-    print "\e[1G\e[K$msg";
+    # If last message was a transient progress meter, gives the escape sequence
+    # to return to column 1 and clear the entire line before printing message
+    $msg = "\e[1G\e[K$msg" if $self->{last_msg_type} eq 'progress';
+
+    print $msg;
     STDOUT->flush;
+
+    $self->{last_msg_type} = 'log'; # update() will change it back if needed
 }
 
 1;

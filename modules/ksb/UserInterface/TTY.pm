@@ -198,7 +198,7 @@ sub start
     $event_stream->say("]");
     $event_stream->close() or $result = 1;
 
-    _report_on_failures(@module_failures);
+    # _report_on_failures(@module_failures);
 
     say $result == 0 ? ":-)" : ":-(";
     return $result;
@@ -222,6 +222,5 @@ sub _report_on_failures
         error("b[*]\tFind the log at file://$log") if $log;
     }
 }
-
 
 1;

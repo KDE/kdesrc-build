@@ -27,7 +27,7 @@ my $screenLog;   # Filehandle pointing to the "build log".
 my $isPretending = 0;
 my $debugLevel = INFO;
 
-my $ipc;         # Set only if we should forward log messages over IPC.
+my $pipeToParent; # Set in child subprocesses, can write to this to send data back
 
 # Colors
 my ($RED, $GREEN, $YELLOW, $NORMAL, $BOLD, $DIM) = ("") x 6;
@@ -115,13 +115,13 @@ sub setLogFile
     open ($screenLog, '>', $fileName) or error ("Unable to open log file $fileName!");
 }
 
-# Sets an IPC object to use to proxy logged messages over, to avoid having
-# multiple procs fighting over the same TTY. Needless to say, you should only
-# bother with this if the IPC method is actually concurrent.
+# Sets a pipe to use to proxy logged messages, progress info, etc. back to our
+# parent
 sub setOutputHandle
 {
-    $ipc = shift;
-    die "$ipc isn't an IO handle!" if (!$ipc->can('syswrite'));
+    $pipeToParent = shift;
+    die "$pipeToParent isn't an IO handle!"
+        unless $pipeToParent->can('syswrite');
 }
 
 # The next few subroutines are used to print output at different importance
@@ -137,24 +137,24 @@ sub setOutputHandle
 # well so you don't need to manually add the ] to reset.
 
 # Subroutine used to actually display the data, calls ksb::Debug::colorize on each entry first.
-sub print_clr(@)
+sub _print_clr
 {
-    my @items = @_;
+    my ($msgDebugLevel, @items) = @_;
 
-    if (defined $screenLog || $ipc) {
+    return unless $debugLevel <= $msgDebugLevel;
+
+    if (defined $screenLog || $pipeToParent) {
         my $msg = join('', map { +stripDecorators($_) } (@items));
 
-        if (defined $screenLog) {
-            say $screenLog $msg;
-        }
+        say $screenLog $msg
+            if defined $screenLog;
 
-        # If we have an IPC object that means the real kdesrc-build is a different proc
-        # and we should forward log entries back to it, unless used for line-spacing only
-        if ($ipc && $msg) {
-            my $msgs = freeze({ message => $msg});
-            $ipc->syswrite($msgs) or say "Couldn't write to debugging output handle: $!";
+        # If we have an pipe, that means the parent kdesrc-build owns TTY.
+        if ($pipeToParent && $msg) {
+            # $msg can be blank if used for newlines
+            _sendMessageToParent({ message => $msg}) if $msg;
+            return;
         }
-        return if $ipc; # don't concurrently spam to TTY
     }
 
     # Leading + prevents Perl from assuming the plain word "colorize" is actually
@@ -164,44 +164,50 @@ sub print_clr(@)
 
 }
 
-# Subroutine to forward information back to a listening parent.
+sub _sendMessageToParent
+{
+    croak_internal("Missing pipe to parent")
+        unless $pipeToParent;
+
+    my $obj_ref = shift;
+    $pipeToParent->syswrite(freeze($obj_ref))
+        or croak_internal("Failed to write msg to parent $!, aborting");
+}
+
 sub reportProgressToParent
 {
-    croak_internal("Missing IPC receiver") unless $ipc;
-
     my ($module, $x, $y) = @_;
-    $ipc->syswrite(freeze({ progress => [ $x, $y ], module => "$module" }));
+    _sendMessageToParent({ progress => [ 0+$x, 0+$y ], module => "$module" });
 }
 
 sub debug(@)
 {
-    print_clr(@_) if debugging;
+    _print_clr(DEBUG, @_);
 }
 
 sub whisper(@)
 {
-    print_clr(@_) if $debugLevel <= WHISPER;
+    _print_clr(WHISPER, @_);
 }
 
 sub info(@)
 {
-    print_clr(@_) if $debugLevel <= INFO;
+    _print_clr(INFO, @_);
 }
 
 sub note(@)
 {
-    print_clr(@_) if $debugLevel <= NOTE;
+    _print_clr(NOTE, @_);
 }
 
 sub warning(@)
 {
-    print_clr(@_) if $debugLevel <= WARNING;
+    _print_clr(WARNING, @_);
 }
 
 sub error(@)
 {
-    print STDERR (colorize $_) foreach (@_);
-    print STDERR (colorize "]\n");
+    _print_clr(ERROR, @_);
 }
 
 sub pretend(@)
@@ -210,7 +216,7 @@ sub pretend(@)
         my @lines = @_;
         s/(\w)/d[$1/ foreach @lines; # Add dim prefix
                                      # Clear suffix is actually implicit
-        print_clr(@lines);
+        _print_clr($debugLevel, @lines);
     }
 }
 
