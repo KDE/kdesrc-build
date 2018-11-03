@@ -45,7 +45,16 @@ my $modPath;
 # 'use lib' below work (which itself implicitly uses BEGIN { })
 BEGIN {
     use File::Spec;
-    my ($volume, $directories, $script) = File::Spec->splitpath($0);
+
+    # resolve symlinks
+    my $scriptPath = $0;
+    for (1..16) {
+        last unless -l $scriptPath;
+        $scriptPath = readlink $scriptPath;
+    }
+    die "Too many symlinks followed looking for script" if -l $scriptPath;
+
+    my ($volume, $directories, $script) = File::Spec->splitpath($scriptPath);
 
     $RealBin = File::Spec->catpath($volume, $directories, '');
     die "Couldn't find base directory!" unless $RealBin;
