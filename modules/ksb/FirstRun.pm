@@ -243,10 +243,13 @@ dev-util/cmake
 dev-lang/perl
 
 @@ pkg/arch/unknown
-perl-json
+perl-json perl-yaml-libyaml
 
 @@ cmd/install/opensuse/unknown
 zypper install -y
+
+@@ cmd/install/arch/unknown
+pacman -S
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
