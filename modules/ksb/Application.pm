@@ -450,8 +450,6 @@ sub generateModuleList
     my @modules;
     if ($commandLineModules) {
         @modules = $moduleResolver->resolveSelectorsIntoModules(@selectors);
-
-        ksb::Module->setModuleSource('cmdline');
     }
     else {
         # Build everything in the rc-file, in the order specified.
@@ -460,8 +458,6 @@ sub generateModuleList
         if ($ctx->getOption('kde-languages')) {
             @modules = _expandl10nModules($ctx, @modules);
         }
-
-        ksb::Module->setModuleSource('config');
     }
 
     # If modules were on the command line then they are effectively forced to

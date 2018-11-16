@@ -43,8 +43,6 @@ use overload
     '<=>' => 'compare',
     ;
 
-my $ModuleSource = 'config';
-
 sub new
 {
     my ($class, $ctx, $name) = @_;
@@ -96,19 +94,6 @@ sub setModuleSet
 {
     my ($self, $moduleSetName) = @_;
     $self->{'module-set'} = $moduleSetName;
-}
-
-sub setModuleSource
-{
-    my ($class, $source) = @_;
-    $ModuleSource = $source;
-}
-
-sub moduleSource
-{
-    my $class = shift;
-    # Should be 'config' or 'cmdline';
-    return $ModuleSource;
 }
 
 # Subroutine to retrieve a subdirectory path with tilde-expansion and
