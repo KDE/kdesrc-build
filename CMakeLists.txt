@@ -3,7 +3,7 @@ project(kdesrc-build)
 
 # Needed for the docs, but optional. If not found, we will simply
 # defer to native CMake handling.
-find_package(ECM 5.10.0 NO_MODULE)
+find_package(ECM 5.10.0 NO_MODULE QUIET)
 
 if (ECM_FOUND)
     set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_DIR})

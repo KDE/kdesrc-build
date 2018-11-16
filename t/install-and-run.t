@@ -6,6 +6,7 @@ use warnings;
 
 use Test::More;
 use Cwd;
+use IPC::Cmd;
 
 # Assume we're running directly for git source root, as required for rest of
 # test suite.
@@ -51,10 +52,16 @@ symlink("$curdir/kdesrc-build", "$tempInstallDir/bin/kdesrc-build");
 {
     my $tempBuildDir = File::Temp->newdir();
     chdir ("$tempBuildDir") or die "Can't cd to build dir $!";
-    my $buildResult =
-        system ('cmake', "-DCMAKE_INSTALL_PREFIX=$tempInstallDir", "-DBUILD_doc=OFF", $curdir);
-    die "Couldn't run cmake! $buildResult"
-        if ($buildResult == -1 || ($buildResult >> 8) != 0);
+
+    # Use IPC::Cmd to capture (and ignore) output. All we need is the exit code
+    my ($buildResult, $errMsg) = IPC::Cmd::run(
+	command => [
+	    'cmake', "-DCMAKE_INSTALL_PREFIX=$tempInstallDir", "-DBUILD_doc=OFF", $curdir
+	],
+	verbose => 0,
+	timeout => 60);
+    die "Couldn't run cmake! $errMsg"
+        unless $buildResult;
 
     $buildResult = system ('make');
     die "Couldn't run make! $buildResult"
