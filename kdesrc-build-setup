@@ -237,6 +237,32 @@ else {
     $installDir = "~/kde/usr";
 }
 
+my $sourceDir = getMenuOption('Where do you want the source code to be saved?',
+    [
+        home => "$ENV{HOME}/kde/src (default)",
+        custom => "Custom location, chosen next screen",
+    ]);
+
+if ($sourceDir eq 'custom') {
+    $sourceDir = getDirectory('/usr/local/kde/src');
+}
+else {
+    $sourceDir = "~/kde/src";
+}
+
+my $buildDir = getMenuOption('Where do you want temporary build files to be saved? (They might need lots of space)',
+    [
+        home => "$ENV{HOME}/kde/build (default)",
+        custom => "Custom location, chosen next screen",
+    ]);
+
+if ($buildDir eq 'custom') {
+    $buildDir = getDirectory('/usr/local/kde/build');
+}
+else {
+    $buildDir = "~/kde/build";
+}
+
 my @chosenModules = getListOptions(
     "Which major module groups do you want to build?",
     [
@@ -331,11 +357,11 @@ print $output <<EOF;
     kdedir $installDir
 
     # Directory for downloaded source code
-    source-dir ~/kde/src
+    source-dir $sourceDir
 
     # Directory to build KDE into before installing
     # relative to source-dir by default
-    build-dir ~/kde/build
+    build-dir $buildDir
 
     # Use multiple cores for building. Other options to GNU make may also be
     # set.
