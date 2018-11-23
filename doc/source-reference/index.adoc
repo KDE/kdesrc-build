@@ -1,10 +1,156 @@
 = kdesrc-build documentation:
 Michael Pyne <mpyne@kde.org>
 v18.12, 2018-11-22
+:webfonts!:
 
-This is just a basic landing page. See the individual kdesrc-build package
-documentation instead for now.
+kdesrc-build is intended to build KDE-based software from its source repository, although it can build
+other types of software from its native source control system(s) as well.
 
-== PACKAGES
+This documentation is intended for developers to aid in hacking on kdesrc-build itself, or porting the same concepts
+to other build systems if necessary.
+
+== Concepts
+
+Some basic concepts are assumed throughout for brevity.
+
+=== Modules
+
+kdesrc-build uses the "module" as the most granular level of buildable
+software. Each module has a name, unique in the list of all modules.
+Each module can have a specific source control system plugin (Git,
+KDE's git, Subversion, etc.) and a build system plugin (qmake, CMake, KDE's
+CMake, autotools, etc.)
+
+=== Build Phases
+
+A module's build process progresses through build phases, which are often
+optional.
+
+The normal progression is:
+
+. Update
+. Uninstall (not normally seen)
+. Build system setup and configuration
+. Build
+. Testsuite (if enabled)
+. Install
+
+The update phase can happen concurrently with other modules' build/install
+phases, under the theory that the build phase is usually CPU-heavy so it makes
+sense to start on subsequent network (IO-heavy) updates while the build
+progresses.
+
+=== Build Context
+
+To group global settings and status together that exist across individual
+modules, a "build context" is used, shared across the entire application.
+
+Each module can refer to the global build context.
+
+=== Configuration file (rc-file)
+
+kdesrc-build uses a configuration file (usually abbreviated the `+rc-file+`) to
+store:
+
+. The list of modules to build, and
+. The dependency order in which to build modules (the order seen in the rc-file), and
+. The build or configuration options to use by default or on a per-module
+basis.
+
+The configuration file is used from `+kdesrc-buildrc+` in the current directory
+when kdesrc-build is run, if the file is present. If not, the global rc-file at
+`+~/.kdesrc-buildrc+` is used instead.
+
+=== Command line
+
+kdesrc-build uses the command line (seen as "cmdline" in the source and commit
+logs) to override the list of modules to build (nearly always still requiring
+that any modules built are visible from the rc-file). The command line is also
+used to override various options (such as skipping source update phases),
+control output verbosity and so on.
+
+In theory every option in the rc-file can be set from the cmdline, and cmdline
+entries override and mask any options used by default or read from an rc-file.
+
+=== Module Sets
+
+With the adoption of git, KDE exploded to having hundreds of repositories. It
+would be annoying and error-prone to try to manually update the rc-file with
+the list of modules to build and the proper ordering.
+
+Because of this, kdesrc-build supports grouping modules into "module sets" of
+modules that have common options and a common repository URL prefix, as if the
+user had manually entered those modules one by one.
+
+NOTE: This is controlled by the `+git-repository-base+` option to set the URL
+prefix, the `+repository+` option to choose one of the defined bases, and the
+`+use-modules+` option to list module names.
+
+==== KDE module sets
+
+To support the KDE repositories in particular, a special module set repository
+is defined, `+kde-projects+`. Use of this repository enables some extra magic
+in the modules that are ultimately defined from such a module set, including
+automagic dependency handling and inclusion of modules based on a virtual KDE
+project structure.
+
+NOTE: Inclusion of modules is **separate** from dependency handling, which is
+also supported!
+
+=== Pretend mode
+
+The user can pass a `+--pretend+` cmdline flag to have kdesrc-build not
+actually undertake the more time or resource intensive actions, so that the
+user can see what kdesrc-build would do and tweak their cmdline until it looks
+correct, and then remove the --pretend flag from there.
+
+This significantly influences the design of the script, both in action and
+output.
+
+=== Logs and build output
+
+All build commands are logged to a file (see `+log_command+` in ksb::Util).
+This is both to declutter the terminal output and to enable troubleshooting
+after a build failure.
+
+The logs are generally kept in a separate directory for each separate run of
+kdesrc-build.  A "latest" symlink is created for each module name, which points
+to the last instance of a script run.
+
+If a build ends in a failure, an error.log symlink is created in the specific
+log directory for that module, which points to the specific build phase output
+file where the build was determined to have failed.
+
+Sometimes there is no log though (e.g. an internal kdesrc-build failure outside
+of log_command)!
+
+Some users prefer to have TTY output. For now the --debug cmdline option is
+useful for that, but --debug has a significant amount of other changes as well.
+
+== Basic flow
+
+For each script execution, kdesrc-build generically goes through the following
+steps:
+
+. Read the cmdline to determine global options, list of module *selectors*
+(modules are defined later) and potentially alternate rc-files to use.
+. Opens the selected rc-file (chosen on cmdline or based on `+$PWD+`) and reads
+in the list of modules and module-sets in the rc-file along with the options
+chosen for each.
+. Ensures that the KDE git repository metadata is available (containing
+dependency information and the virtual project path hierarchy)
+. If module selectors are available from the cmdline, creates the build list by
+expanding those selectors into the appropriate modules from the rc-file. If no
+selectors, uses all module sets and modules from the rc-file.
+  * Either mode can involve resolving dependencies for KDE-based modules.
+. Forks additional children to serve as a way to perform updates and build in
+separate processes so that they may proceed concurrently. Once ready, performs
+these two steps concurrently:
+.. Updates each module in order, and
+.. Performs remaining module build steps in order (waiting for the update if
+  needed).
+. When all update/build processes are done, displays the results to the user.
+
+== List of Packages
 
 * <<ksb/Module#,ksb::Module>>
