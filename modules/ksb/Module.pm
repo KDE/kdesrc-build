@@ -92,8 +92,9 @@ sub moduleSet
 
 sub setModuleSet
 {
-    my ($self, $moduleSetName) = @_;
-    $self->{'module-set'} = $moduleSetName;
+    my ($self, $moduleSet) = @_;
+    assert_isa($moduleSet, 'ksb::ModuleSet');
+    $self->{'module-set'} = $moduleSet;
 }
 
 # Subroutine to retrieve a subdirectory path with tilde-expansion and
