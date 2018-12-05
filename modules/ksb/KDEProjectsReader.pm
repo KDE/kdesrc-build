@@ -120,7 +120,7 @@ sub getModulesForProject
             grep {
                 _projectPathMatchesWildcardSearch(
                     $repositoryRef->{$_}->{'fullName'}, $proj)
-            } (keys %{$repositoryRef});
+            } (sort keys %{$repositoryRef});
 
         if ($proj =~ m/\*/) {
             $repositoryRef->{$_}->{found_by} = 'wildcard' foreach @matchList;

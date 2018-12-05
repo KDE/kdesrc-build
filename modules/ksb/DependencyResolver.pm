@@ -183,6 +183,28 @@ sub readDependencyData
         push @{$dependenciesOfRef->{"$dependentItem:$dependentBranch"}->{$depKey}},
              "$sourceItem:$sourceBranch";
     }
+
+    $self->_canonicalizeDependencies();
+}
+
+# Function: _canonicalizeDependencies
+#
+# Ensures that all stored dependencies are stored in a way that allows for
+# reproducable dependency ordering (assuming the same dependency items and same
+# selectors are used).
+#
+# Parameters: none
+#
+# Returns: none
+sub _canonicalizeDependencies
+{
+    my $self = shift;
+    my $dependenciesOfRef  = $self->{dependenciesOf};
+
+    foreach my $dependenciesRef (values %{$dependenciesOfRef}) {
+        @{$dependenciesRef->{'-'}} = sort @{$dependenciesRef->{'-'}};
+        @{$dependenciesRef->{'+'}} = sort @{$dependenciesRef->{'+'}};
+    }
 }
 
 # Function: directDependenciesOf
