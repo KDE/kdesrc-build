@@ -281,11 +281,11 @@ DONE
 
     # Actually read the options.
     my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
-        'version', 'author', 'help', 'show-info', 'initial-setup',
+        'version|v', 'author', 'help', 'show-info', 'initial-setup',
         'disable-snapshots|no-snapshots',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
-        'verbose|v', 'quiet|quite|q', 'really-quiet', 'debug',
+        'verbose', 'quiet|quite|q', 'really-quiet', 'debug',
         'reconfigure', 'colorful-output|color!', 'async!',
         'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
