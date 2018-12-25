@@ -74,6 +74,8 @@ my %internalGlobalOptions = (
 );
 
 # Holds boolean flags that could be altered from cmdline.
+# These must be completely disjoint from the options provided in
+# ksb::Application to GetOptionsFromArray!
 our %defaultGlobalFlags = (
     "delete-my-patches"          => 0, # Should only be set from cmdline
     "delete-my-settings"         => 0, # Should only be set from cmdline

@@ -172,6 +172,10 @@ DONE
         'no-install' => sub {
             $phases->filterOutPhase('install');
         },
+        'no-snapshots' => sub {
+            # The documented form of disable-snapshots
+            $auxOptions{'disable-snapshots'} = 1;
+        },
         'no-tests' => sub {
             # The "right thing" to do
             $phases->filterOutPhase('test');
@@ -281,8 +285,9 @@ DONE
 
     # Actually read the options.
     my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
+        # Options here should not duplicate the flags and options defined below
+        # from ksb::BuildContext!
         'version|v', 'author', 'help', 'show-info', 'initial-setup',
-        'disable-snapshots|no-snapshots',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
         'verbose', 'quiet|quite|q', 'really-quiet', 'debug',
@@ -292,13 +297,13 @@ DONE
         'print-modules', 'pretend|dry-run|p', 'refresh-build',
         'query=s', 'start-program|run=s{,}',
         'revision=i', 'resume-from=s', 'resume-after=s',
-        'rebuild-failures', 'resume', 'stop-on-failure',
+        'rebuild-failures', 'resume',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
         'metadata-only', 'include-dependencies',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
-        # for strings
-        (map { "$_:s" } (keys %ksb::BuildContext::defaultGlobalFlags)),
+        # for negatable boolean flags
+        (map { "$_!" } (keys %ksb::BuildContext::defaultGlobalFlags)),
 
         # Default handling fine, still have to ask for strings.
         (map { "$_:s" } (keys %ksb::BuildContext::defaultGlobalOptions)),
