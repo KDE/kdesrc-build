@@ -244,12 +244,13 @@ dev-lang/perl
 
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
+cmake gcc make qt5-base
 
 @@ cmd/install/opensuse/unknown
 zypper install -y
 
 @@ cmd/install/arch/unknown
-pacman -S
+pacman -Sy --noconfirm
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
