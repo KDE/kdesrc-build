@@ -243,7 +243,7 @@ dev-util/cmake
 dev-lang/perl
 
 @@ pkg/arch/unknown
-perl-json perl-yaml-libyaml
+perl-json perl-yaml-libyaml perl-io-socket-ssl
 
 @@ cmd/install/opensuse/unknown
 zypper install -y
