@@ -21,7 +21,7 @@ be easier to try out.
 
 However if you're testing out the latest KDE Frameworks or are involved in
 development yourself, you'll probably find it easiest to use kdesrc-build.
-Continue on to set how to set it up.
+Continue on, to learn how to set it up.
 
 ## QUICK HOWTO
 
@@ -53,13 +53,13 @@ $ cd ~/kde/src/kdesrc-build
 $ ./kdesrc-build --version
 ```
 
-you should see output similar to `kdesrc-build 18.10 (v18.10-20-g1c39943)`.
-later we will set up kdesrc-build to keep itself updated automatically.
+You should see output similar to `kdesrc-build 18.10 (v18.10-20-g1c39943)`.
+Later we will set up kdesrc-build to keep itself updated automatically.
 
 2. Set up kdesrc-build:
 
-- now that kdesrc-build is installed and works, you need to set up kdesrc-build
-  to work appropriately on your particular system. do this by running the
+- Now that kdesrc-build is installed and works, you need to set up kdesrc-build
+  to work appropriately on your particular system. Do this by running the
   provided set up script to generate the **configuration file**
   (~/.kdesrc-buildrc):
 
@@ -120,10 +120,10 @@ since it is a good test case to exercise the whole build process.
 
 For each module built, kdesrc-build will complete these steps:
 
-    - Update source code (initial download or later update)
-    - Set up the build system and configure source code with your options, if needed
-    - Perform the build, if needed
-    - Install the module
+- Update source code (initial download or later update)
+- Set up the build system and configure source code with your options, if needed
+- Perform the build, if needed
+- Install the module
 
 The `--stop-on-failure` flag causes kdesrc-build to stop the first time a
 module fails to build, in case there are missing dependencies. If not set,
