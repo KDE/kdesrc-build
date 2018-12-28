@@ -22,6 +22,7 @@ use Mojo::JSON qw(encode_json decode_json);
 # TODO: Derive from OptionsBase directly and remove getOption override
 use parent qw(ksb::Module);
 
+use ksb::BuildException;
 use ksb::Debug;
 use ksb::Util;
 use ksb::PhaseList;
@@ -74,6 +75,8 @@ my %internalGlobalOptions = (
 );
 
 # Holds boolean flags that could be altered from cmdline.
+# These must be completely disjoint from the options provided in
+# ksb::Application to GetOptionsFromArray!
 our %defaultGlobalFlags = (
     "delete-my-patches"          => 0, # Should only be set from cmdline
     "delete-my-settings"         => 0, # Should only be set from cmdline

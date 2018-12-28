@@ -44,8 +44,6 @@ use overload
     '<=>' => 'compare',
     ;
 
-my $ModuleSource = 'config';
-
 sub new
 {
     my ($class, $ctx, $name) = @_;
@@ -100,21 +98,9 @@ sub moduleSet
 
 sub setModuleSet
 {
-    my ($self, $moduleSetName) = @_;
-    $self->{'module-set'} = $moduleSetName;
-}
-
-sub setModuleSource
-{
-    my ($class, $source) = @_;
-    $ModuleSource = $source;
-}
-
-sub moduleSource
-{
-    my $class = shift;
-    # Should be 'config' or 'cmdline';
-    return $ModuleSource;
+    my ($self, $moduleSet) = @_;
+    assert_isa($moduleSet, 'ksb::ModuleSet');
+    $self->{'module-set'} = $moduleSet;
 }
 
 # Subroutine to retrieve a subdirectory path with tilde-expansion and

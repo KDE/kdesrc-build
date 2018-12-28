@@ -32,36 +32,135 @@
 
 # Adding an option? Grep for 'defaultGlobalOptions' in ksb::BuildContext --mpyne
 
-use FindBin qw($RealBin);
-use lib "$RealBin/../share/kdesrc-build/modules";
-use lib "$RealBin/modules";
-
+use 5.014; # Require Perl 5.14
 use strict;
 use warnings;
 
-use Carp;
-use Data::Dumper;
-use File::Find; # For our lndir reimplementation.
-use File::Path qw(remove_tree);
+# On many container-based distros, even FindBin is missing to conserve space.
+# But we can use File::Spec to do nearly the same.
+my $RealBin;
+my $modPath;
 
-use Mojo::IOLoop;
-use Mojo::Server::Daemon;
+# The File::Spec calls have to run when parsing (i.e. in BEGIN) to make the
+# 'use lib' below work (which itself implicitly uses BEGIN { })
+BEGIN {
+    use File::Spec;
 
-use ksb::Debug;
-use ksb::Util;
-use ksb::Version qw(scriptVersion);
-use ksb::Application;
-use ksb::UserInterface::TTY;
-use web::BackendServer;
+    # resolve symlinks
+    my $scriptPath = $0;
+    for (1..16) {
+        last unless -l $scriptPath;
+        $scriptPath = readlink $scriptPath;
+    }
+    die "Too many symlinks followed looking for script" if -l $scriptPath;
 
-use 5.014; # Require Perl 5.14
+    my ($volume, $directories, $script) = File::Spec->splitpath($scriptPath);
+
+    $RealBin = File::Spec->catpath($volume, $directories, '');
+    die "Couldn't find base directory!" unless $RealBin;
+
+    # Use modules in git repo if running from git dir, otherwise assume
+    # system install
+    $modPath = File::Spec->rel2abs('modules', $RealBin);
+    $modPath = ($RealBin =~ s,/bin/?$,/share/kdesrc-build/modules,r)
+        unless -d $modPath;
+
+    die "Couldn't find modules for kdesrc-build!" unless $modPath;
+}
+
+use lib "$modPath"; # Make ksb:: modules available
+
+sub dumpError
+{
+    my $err = $@;
+    open my $fh, '>>', "error-$$.log" or return;
+    my $time = localtime;
+    say $fh $time;
+    say $fh $@;
+}
+
+# When running in a limited environment, we might not be able to load
+# our modules although we can find them. In this case we should help user
+# by setting up system dependencies.
+eval {
+    if (grep { $_ eq '--initial-setup' } @ARGV) {
+        require ksb::FirstRun;
+        require ksb::Debug;
+        ksb::Debug::setColorfulOutput(1);
+        exit ksb::FirstRun::setupUserSystem($RealBin);
+    }
+};
+
+if ($@) {
+    dumpError();
+    say STDERR <<DONE;
+* Unable to even load the simplistic initial setup support for some reason??
+
+More detail might be available in error-$$.log
+
+You could:
+ File a bug https://bugs.kde.org/enter_bug.cgi?product=kdesrc-build
+ Ask for help on Freenode IRC in the #kde channel
+DONE
+    exit 1;
+}
+
+# Even though the flow of execution should not make it here unless the modules
+# we need are installed, we still cannot "use" the modules that might be
+# missing on first use since just trying to parse/compile the code is then
+# enough to cause errors.
+eval {
+    use Carp;
+    use File::Find; # For our lndir reimplementation.
+    use File::Path qw(remove_tree);
+
+    require ksb::Debug;
+    require ksb::Util;
+    require ksb::Version;
+    require ksb::Application;
+    require ksb::BuildException;
+    require ksb::UserInterface::TTY;
+    require web::BackendServer;
+
+    require Mojo::IOLoop;
+    require Mojo::Server::Daemon;
+};
+
+if ($@) {
+    dumpError();
+    say STDERR <<DONE;
+Couldn't load the base platform for kdesrc-build!
+More detail might be available in error-$$.log
+DONE
+
+    if (! -e "kdesrc-buildrc" && ! -e "$ENV{HOME}/.kdesrc-buildrc") {
+        say STDERR <<DONE;
+It appears you've not run kdesrc-build before.
+
+Please run "kdesrc-build --initial-setup" and kdesrc-build will guide you
+through setting up required dependencies and environment setup.
+DONE
+    }
+    exit 1;
+}
+
+ksb::Debug->import();
+ksb::Util->import();
+ksb::BuildException->import();
+ksb::Version->import(qw(scriptVersion));
+ksb::Application->import();
+ksb::UserInterface::TTY->import();
+web::BackendServer->import();
+
+Mojo::IOLoop->import();
+Mojo::Server::Daemon->import();
 
 # Make Perl 'plain die' exceptions use Carp::confess instead of their core
 # support. This is not supported by the Perl 5 authors but assuming it works
 # will be better than the alternative backtrace we get (which is to say, none)
 $SIG{__DIE__} = \&Carp::confess;
 
-$ksb::Version::SCRIPT_PATH = $RealBin;
+ksb::Version->path($RealBin);
 
 ### Script-global functions.
 
@@ -271,6 +370,9 @@ without them.  Please ensure these modules are installed and available to Perl:
 EOF
     say "\t$_" foreach @missingModuleDescriptions;
 
+    say "\nkdesrc-build can do this for you on many distros:";
+    say "Run 'kdesrc-build --initial-setup'";
+
     # TODO: Built-in mapping to popular distro package names??
     exit 1;
 }
@@ -288,21 +390,17 @@ END {
     }
 }
 
+# TODO: Need to split up option reading here to exit early for some options
+# (--help, --version, etc) and only continue on with creating a U/I if there's
+# then still work to do. But this still needs to follow reading the rc-file!
+# Until fixed this will fail t/install-and-run.t (which will handle --version in
+# ui->start() and then as an atexit handler app->ksb->finish)
+
 # Use some exception handling to avoid ucky error messages
 eval
 {
     my $app = web::BackendServer->new(@ARGV);
     my $ui  = ksb::UserInterface::TTY->new($app);
-
-    # Hack for debugging current state.
-    if (exists $ENV{KDESRC_BUILD_DUMP_CONTEXT}) {
-        local $Data::Dumper::Indent = 1;
-        local $Data::Dumper::Sortkeys = 1;
-
-        # This method call dumps the first list with the variables named by the
-        # second list.
-        print Data::Dumper->Dump([$app->ksb->context()], [qw(ctx)]);
-    }
 
     push @atexit_subs, sub { $app->ksb->finish(99) };
 

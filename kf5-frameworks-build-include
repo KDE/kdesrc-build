@@ -34,7 +34,6 @@ end module
 module-set
     repository kde-projects
     use-modules kdesrc-build kde-dev-scripts extra-cmake-modules polkit-qt-1 qca
-    cmake-options -DCMAKE_BUILD_TYPE:STRING=debug
 end module-set
 
 module-set phonon
@@ -51,21 +50,22 @@ end module-set
 module-set frameworks
     repository kde-projects
     use-modules frameworks
-    # The CodeBlocks generator allows usage in QtCreator, while still generating Makefiles 
+    # The CodeBlocks generator allows usage in QtCreator, while still generating Makefiles
     # if you use Make as build system add to cmake-options -G "CodeBlocks - Unix Makefiles"
     # if you use Ninja as build system add to cmake-options -G "CodeBlocks - Ninja"
     # see http://www.cmake.org/cmake/help/v3.0/generator/CodeBlocks.html
-    cmake-options -DBUILD_TESTING=TRUE -DCMAKE_BUILD_TYPE:STRING=debug
+    cmake-options -DBUILD_TESTING=TRUE
     #tag v5.50.0-rc1
 end module-set
 
-# Example of how to set options for just one module from a module-set... this is
-# useful to have *after* your "include .../kf5-framework-build-include" in your
+# Set some options for the module kactivities.
+# This also serves as an example of how to set options for just one module from a module-set...
+# this is useful to have *after* your "include .../kf5-framework-build-include" in your
 # kdesrc-buildrc if you just want to tweak some settings without adding/removing
 # modules.
 options kactivities
     cmake-options -DKDE4_BUILD_TESTS=TRUE -DBUILD_TESTING=TRUE \
-                  -DKACTIVITIES_ENABLE_EXCEPTIONS=TRUE -DCMAKE_BUILD_TYPE:STRING=debug
+                  -DKACTIVITIES_ENABLE_EXCEPTIONS=TRUE
 end options
 
 options bluez-qt

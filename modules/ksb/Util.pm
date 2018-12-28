@@ -1,4 +1,4 @@
-package ksb::Util 0.20;
+package ksb::Util 0.30;
 
 # Useful utilities, which are exported into the calling module's namespace by default.
 
@@ -6,14 +6,12 @@ use 5.014; # Needed for state keyword
 use strict;
 use warnings;
 
-use Carp qw(cluck);
 use Scalar::Util qw(blessed);
 use File::Path qw(make_path);
 use File::Find;
 use Cwd qw(getcwd);
 use Errno qw(:POSIX);
 use Digest::MD5;
-use HTTP::Tiny;
 
 use ksb::Debug;
 use ksb::Version qw(scriptVersion);
@@ -21,8 +19,7 @@ use ksb::BuildException;
 
 use Exporter qw(import); # Use Exporter's import method
 our @EXPORT = qw(list_has assert_isa assert_in any unique_items
-                 croak_runtime croak_internal had_an_exception make_exception
-                 download_file absPathToExecutable
+                 absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
                  pretend_open safe_rmtree get_list_digest is_dir_empty
@@ -60,59 +57,6 @@ sub absPathToExecutable
     }
 
     return undef;
-}
-
-# Returns a Perl object worth "die"ing for. (i.e. can be given to the die
-# function and handled appropriately later with an eval). The returned
-# reference will be an instance of ksb::BuildException. The actual exception
-# type is passed in as the first parameter (as a string), and can be retrieved
-# from the object later using the 'exception_type' key, and the message is
-# returned as 'message'
-#
-# First parameter: Exception type. Recommended are one of: Config, Internal
-# (for logic errors), Runtime (other runtime errors which are not logic
-# bugs in kdesrc-build), or just leave blank for 'Exception'.
-# Second parameter: Message to show to user
-# Return: Reference to the exception object suitable for giving to "die"
-sub make_exception
-{
-    my $exception_type = shift // 'Exception';
-    my $message = shift;
-    my $levels = shift // 0; # Allow for more levels to be removed from bt
-
-    # Remove this subroutine from the backtrace
-    local $Carp::CarpLevel = 1 + $levels;
-
-    $message = Carp::longmess($message)
-        if $exception_type eq 'Internal';
-    return ksb::BuildException->new($exception_type, $message);
-}
-
-# Helper function to return $@ if $@ is a ksb::BuildException.
-#
-# This function assumes that an eval block had just been used in order to set or
-# clear $@ as appropriate.
-sub had_an_exception
-{
-    if ($@ && ref $@ && $@->isa('ksb::BuildException')) {
-        return $@;
-    }
-
-    return;
-}
-
-# Should be used for "runtime errors" (i.e. unrecoverable runtime problems that
-# don't indicate a bug in the program itself).
-sub croak_runtime
-{
-    die (make_exception('Runtime', $_[0], 1));
-}
-
-# Should be used for "logic errors" (i.e. impossibilities in program state, things
-# that shouldn't be possible no matter what input is fed at runtime)
-sub croak_internal
-{
-    die (make_exception('Internal', $_[0], 1));
 }
 
 # Throws an exception if the first parameter is not an object at all, or if
@@ -577,45 +521,6 @@ sub split_quoted_on_whitespace
 
     # 0 means not to keep delimiters or quotes
     return parse_line('\s+', 0, $line);
-}
-
-# This subroutine downloads the file pointed to by the URL given in the
-# first parameter, saving to the given filename.  (FILENAME, not
-# directory). HTTP and HTTPS are supported, using Perl's built-in HTTP::Tiny (and for
-# HTTPS, IO::Socket::SSL must also be installed)
-#
-# First parameter: URL of link to download (i.e. https://kdesrc-build.kde.org/foo.tbz2)
-# Second parameter: Filename to save as (i.e. $ENV{HOME}/blah.tbz2)
-# Third parameter: URL of a proxy to use (undef or empty means proxy as set in environment)
-# Return value is 0 for failure, non-zero for success.
-sub download_file
-{
-    my ($url, $filename, $proxy) = @_;
-
-    my $scriptVersion = scriptVersion();
-    my %opts = (
-        # Trailing space adds lib version info
-        agent => "kdesrc-build/$scriptVersion ",
-        timeout => 30,
-    );
-
-    if ($proxy) {
-        whisper ("Using proxy $proxy for HTTP downloads");
-        $opts{proxy} = $proxy;
-    }
-
-    my $http_client = HTTP::Tiny->new(%opts);
-
-    whisper ("Downloading g[$filename] from g[$url]");
-    my $response = $http_client->mirror($url, $filename);
-
-    return 1 if $response->{success};
-
-    $response->{reason} .= " $response->{content}" if $response->{status} == 599;
-    error ("Failed to download y[b[$url] to b[$filename]");
-    error ("Result was: y[b[$response->{status} $response->{reason}]");
-
-    return 0;
 }
 
 # Function: pretend_open

@@ -60,8 +60,8 @@ sub startup {
     $self->helper(ksb => sub {
         my ($c, $new_ksb) = @_;
 
-        $KSB_APP //= make_new_ksb($c);
         $KSB_APP = $new_ksb if $new_ksb;
+        $KSB_APP //= make_new_ksb($c);
 
         return $KSB_APP;
     });

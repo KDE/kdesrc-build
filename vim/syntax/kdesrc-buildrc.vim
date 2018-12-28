@@ -54,16 +54,16 @@ syn keyword ksbrcErrorGlobalOption contained skipwhite nextgroup=ksbrcStringValu
             \ kde-languages niceness debug-level persistent-data-file set-env
 
 syn keyword ksbrcModuleSetOption contained skipwhite nextgroup=ksbrcStringValue
-            \ use-modules ignore-modules include-dependencies
+            \ use-modules ignore-modules
 
 " MUST BE CONSISTENT WITH ABOVE. Used when a module-set option is used in the
 " wrong spot to highlight the error.
 syn keyword ksbrcErrorModuleSetOption contained skipwhite nextgroup=ksbrcStringValue
-            \ use-modules ignore-modules include-dependencies
+            \ use-modules ignore-modules
 
 syn keyword ksbrcBoolOption contained skipwhite nextgroup=ksbrcBoolValue
             \ build-system-only build-when-unchanged ignore-kde-structure
-            \ install-after-build manual-build manual-update
+            \ include-dependencies install-after-build manual-build manual-update
             \ no-src reconfigure recreate-configure refresh-build run-tests
             \ use-clean-install
 

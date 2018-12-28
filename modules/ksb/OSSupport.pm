@@ -1,6 +1,10 @@
 package ksb::OSSupport 0.10;
 
-use ksb::Util qw(croak_runtime);
+use 5.014;
+use strict;
+use warnings;
+
+use ksb::BuildException qw(croak_runtime);
 
 use Text::ParseWords qw(nested_quotewords);
 use List::Util qw(first);
@@ -17,6 +21,9 @@ and so on.
 
 See L<https://www.freedesktop.org/software/systemd/man/os-release.html> for the
 relevant specification.
+
+B<NOTE> This module is supposed to be loadable even under minimal Perl
+environments as fielded in "minimal Docker container" forms of popular distros.
 
 =head1 SYNOPSIS
 
@@ -69,6 +76,23 @@ sub vendorID
     return $self->{ID} // 'unknown';
 }
 
+=head2 vendorVersion
+
+    my $vendor = $os->vendorVersion; # 'xenial', '17', etc.
+
+Returns the vendor Version from the I<os-release> specification.
+The first available value from C<VERSION_ID> and then
+C<VERSION_CODENAME> is used, and 'unknown' is returned if neither
+are set.
+
+=cut
+
+sub vendorVersion
+{
+    my $self = shift;
+    return $self->{VERSION_ID} // $self->{VERSION_CODENAME} // 'unknown';
+}
+
 =head2 bestDistroMatch
 
     # Might return 'fedora' if running on Scientific Linux
@@ -93,8 +117,8 @@ sub bestDistroMatch
         push @ids, split(' ', $likeDistros);
     }
 
-    foreach my $distro (@distros) {
-        return $distro if first { $distro eq $_ } @ids;
+    foreach my $id (@ids) {
+        return $id if first { $id eq $_ } @distros;
     }
 
     return 'linux';
@@ -108,7 +132,10 @@ sub _readOSRelease
 
     while (!$fh && @files) {
         my $file = shift @files;
-        open $fh, '<:encoding(UTF-8)', $file and last;
+
+        # Can't use PerlIO UTF-8 encoding on minimal distros, which this module
+        # must be loadable from
+        open $fh, '<', $file and last;
         $error = $!;
     }
 

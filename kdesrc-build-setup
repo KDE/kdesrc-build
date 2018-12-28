@@ -168,7 +168,7 @@ sub getListOptions
 
     # Filter out empty results, remove quotes.
     my @items = split (/,/, $output);
-    s/^"(.*)"$/\1/ foreach @items;
+    s/^"(.*)"$/$1/ foreach @items;
     @items = grep { length $_ } @items;
     return @items;
 }
@@ -235,6 +235,32 @@ if ($installDir eq 'custom') {
 }
 else {
     $installDir = "~/kde/usr";
+}
+
+my $sourceDir = getMenuOption('Where do you want the source code to be saved?',
+    [
+        home => "$ENV{HOME}/kde/src (default)",
+        custom => "Custom location, chosen next screen",
+    ]);
+
+if ($sourceDir eq 'custom') {
+    $sourceDir = getDirectory('/usr/local/kde/src');
+}
+else {
+    $sourceDir = "~/kde/src";
+}
+
+my $buildDir = getMenuOption('Where do you want temporary build files to be saved? (They might need lots of space)',
+    [
+        home => "$ENV{HOME}/kde/build (default)",
+        custom => "Custom location, chosen next screen",
+    ]);
+
+if ($buildDir eq 'custom') {
+    $buildDir = getDirectory('/usr/local/kde/build');
+}
+else {
+    $buildDir = "~/kde/build";
 }
 
 my @chosenModules = getListOptions(
@@ -331,11 +357,11 @@ print $output <<EOF;
     kdedir $installDir
 
     # Directory for downloaded source code
-    source-dir ~/kde/src
+    source-dir $sourceDir
 
     # Directory to build KDE into before installing
     # relative to source-dir by default
-    build-dir ~/kde/build
+    build-dir $buildDir
 
     # Use multiple cores for building. Other options to GNU make may also be
     # set.
@@ -348,6 +374,13 @@ print $output <<EOF;
     # or add a environment variable-setting script to
     # ~/.config/kde-env-master.sh
     install-environment-driver true
+
+    # Stop the build process on the first failure
+    stop-on-failure true
+
+    # Use a flat folder structure under $sourceDir and $buildDir
+    # rather than nested directories
+    ignore-kde-structure true
 EOF
 
 if ($proxy) {

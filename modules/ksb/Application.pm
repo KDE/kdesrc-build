@@ -15,6 +15,7 @@ use ksb::Util;
 use ksb::BuildContext 0.35;
 use ksb::BuildSystem::QMake;
 use ksb::BuildException 0.20;
+use ksb::FirstRun;
 use ksb::Module;
 use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
@@ -154,9 +155,10 @@ DONE
     # subs save to %auxOptions, and read those in back over it later.
     my (%foundOptions, %auxOptions);
     %foundOptions = (
+        'show-info' => sub { say $version; say "OS: ", $os->vendorID(); exit },
+        'initial-setup' => sub { exit $self->performInitialUserSetup() },
         version => sub { say $version; exit },
         author  => sub { say $author;  exit },
-        'show-info' => sub { say $version; say "OS: ", $os->vendorID(); exit },
         help    => sub { _showHelpMessage(); exit 0 },
         install => sub {
             $self->{run_mode} = 'install';
@@ -171,6 +173,10 @@ DONE
         },
         'no-install' => sub {
             $phases->filterOutPhase('install');
+        },
+        'no-snapshots' => sub {
+            # The documented form of disable-snapshots
+            $auxOptions{'disable-snapshots'} = 1;
         },
         'no-tests' => sub {
             # The "right thing" to do
@@ -281,10 +287,12 @@ DONE
 
     # Actually read the options.
     my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
-        'version', 'author', 'help', 'show-info', 'disable-snapshots|no-snapshots',
+        # Options here should not duplicate the flags and options defined below
+        # from ksb::BuildContext!
+        'version|v', 'author', 'help', 'show-info', 'initial-setup',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
-        'verbose|v', 'quiet|quite|q', 'really-quiet', 'debug',
+        'verbose', 'quiet|quite|q', 'really-quiet', 'debug',
         'reconfigure', 'colorful-output|color!',
         'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
@@ -292,13 +300,13 @@ DONE
         'query=s', 'start-program|run=s{,}',
         'launch-browser',
         'revision=i', 'resume-from=s', 'resume-after=s',
-        'rebuild-failures', 'resume', 'stop-on-failure',
+        'rebuild-failures', 'resume',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
         'metadata-only', 'include-dependencies',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
-        # for strings
-        (map { "$_:s" } (keys %ksb::BuildContext::defaultGlobalFlags)),
+        # for negatable boolean flags
+        (map { "$_!" } (keys %ksb::BuildContext::defaultGlobalFlags)),
 
         # Default handling fine, still have to ask for strings.
         (map { "$_:s" } (keys %ksb::BuildContext::defaultGlobalOptions)),
@@ -458,7 +466,7 @@ sub establishContext
 # After this function is called all module set selectors will have been
 # expanded, and we will have downloaded kde-projects metadata.
 #
-# The modules returns must still be added (using setModulesToProcess) to the
+# The modules returned must still be added (using setModulesToProcess) to the
 # context if you intend to build. This is a separate step to allow for some
 # introspection prior to making choice to build.
 #
@@ -472,15 +480,11 @@ sub modulesFromSelectors
     my @modules;
     if (@selectors) {
         @modules = $moduleResolver->resolveSelectorsIntoModules(@selectors);
-
-        ksb::Module->setModuleSource('cmdline');
     }
     else {
         # Build everything in the rc-file, in the order specified.
         my @rcfileModules = @{$moduleResolver->{inputModulesAndOptions}};
         @modules = $moduleResolver->expandModuleSets(@rcfileModules);
-
-        ksb::Module->setModuleSource('config');
     }
 
     # If modules were on the command line then they are effectively forced to
@@ -758,7 +762,7 @@ sub _splitOptionAndValue
 
     # The option is the first word, followed by the
     # flags on the rest of the line.  The interpretation
-    # of the flags is dependant on the option.
+    # of the flags is dependent on the option.
     my ($option, $value) = ($input =~ /^\s*     # Find all spaces
                             ([-\w]+) # First match, alphanumeric, -, and _
                             # (?: ) means non-capturing group, so (.*) is $value
@@ -982,7 +986,7 @@ sub _parseModuleSetOptions
 #  apply.
 #
 # Returns:
-#  @module - Heterogenous list of <Modules> and <ModuleSets> defined in the
+#  @module - Heterogeneous list of <Modules> and <ModuleSets> defined in the
 #  configuration file. No module sets will have been expanded out (either
 #  kde-projects or standard sets).
 #
@@ -2194,108 +2198,70 @@ sub _installSignalHandlers
     @SIG{@signals} = ($handlerRef) x scalar @signals;
 }
 
+# Ensures that basic one-time setup to actually *use* installed software is
+# performed, including .kdesrc-buildrc setup if necessary.
+#
+# Returns the appropriate exitcode to pass to the exit function
+sub performInitialUserSetup
+{
+    my $self = shift;
+    return ksb::FirstRun::setupUserSystem();
+}
+
 # Shows a help message and version. Does not exit.
 sub _showHelpMessage
 {
     my $scriptVersion = scriptVersion();
-    print <<DONE;
+    say <<DONE;
 kdesrc-build $scriptVersion
-https://kdesrc-build.kde.org/
+Copyright (c) 2003 - 2018 Michael Pyne <mpyne\@kde.org> and others, and is
+distributed under the terms of the GNU GPL v2.
 
 This script automates the download, build, and install process for KDE software
 using the latest available source code.
 
-You should first setup a configuration file (~/.kdesrc-buildrc). You can do
-this by running the kdesrc-build-setup program, which should be included with
-this one.  You can also copy the kdesrc-buildrc-sample file (which should be
-included) to ~/.kdesrc-buildrc.
+Configuration is controlled from "\$PWD/kdesrc-buildrc" or "~/.kdesrc-buildrc".
+See kdesrc-buildrc-sample for an example.
 
-Basic synopsis, after setting up .kdesrc-buildrc:
-\$ $0 [--options] [module names]
+Usage: \$ $0 [--options] [module names]
+    All configured modules are built if none are listed.
 
-The module names can be either the name of an individual module (as set in your
-configuration with a module declaration, or a use-modules declaration), or of a
-module set (as set with a module-set declaration).
+Important Options:
+    --pretend              Don't actually take major actions, instead describe
+                           what would be done.
+    --no-src               Don't update source code, just build/install.
+    --src-only             Only update the source code
+    --refresh-build        Start the build from scratch.
 
-If you don\'t specify any particular module names, then every module you have
-listed in your configuration will be built, in the order listed.
+    --rc-file=<filename>   Read configuration from filename instead of default.
+    --initial-setup        Installs Plasma env vars (~/.bashrc), required
+                           system pkgs, and a base kdesrc-buildrc.
 
-Copyright (c) 2003 - 2018 Michael Pyne <mpyne\@kde.org>, and others.
+    --resume-from=<pkg>    Skips modules until just before or after the given
+    --resume-after=<pkg>       package, then operates as normal.
+    --stop-before=<pkg>    Stops just before or after the given package is
+    --stop-after=<pkg>         reached.
 
-The script is distributed under the terms of the GNU General Public License
-v2, and includes ABSOLUTELY NO WARRANTY!!!
+    --include-dependencies Also builds KDE-based dependencies of given modules.
+    --stop-on-failure      Stops the build as soon as a package fails to build.
 
-Options:
-    --no-src             Skip contacting the source server.
-    --no-build           Skip the build process.
-    --no-install         Don't automatically install after build.
-
-    --pretend            Don't actually take major actions, instead describe
-                         what would be done.
-
-    --src-only           Only update the source code (Identical to --no-build
-                         at this point).
-    --build-only         Build only, don't perform updates or install.
-
-    --install-only       Only install the already compiled code, this is equivalent
-    --install            to make install/fast in CMake. Useful for example when we
-                         want to clean the install directory but we do not want to
-                         re-compile everything.
-
-    --rc-file=<filename> Read configuration from filename instead of default.
-
-    --resume-from=<pkg>  Skips modules until just before the given package,
-                         then operates as normal.
-    --resume-after=<pkg> Skips modules up to and including the given package,
-                         then operates as normal.
-
-    --stop-before=<pkg>  Skips the given package and all later packages.
-    --stop-after=<pkg>   Skips all packages after the given package.
-    --stop-on-failure    Stops the build as soon as a package fails to build.
-
-    --reconfigure        Run CMake/configure again, but don't clean the build
-                         directory.
-    --build-system-only  Create the build infrastructure, but don't actually
-                         perform the build.
-
-    --<option>=          Any unrecognized options override an existing global
-                         configuration value, if present.
-
-    --set-module-option-value=<module>,<option>,<value>
-        This option allows you to override an option for a given module, so
-        that you don't have to change it in the configuration file temporarily.
-        Use a module name of 'global' for the global configuration.
-
-    --pretend (or -p)    Don't actually contact the source server, run make,
-                         or create/delete files and directories.  Instead,
-                         output what the script would have done.
-    --refresh-build      Start the build from scratch.
-
-    --include-dependencies Also try to build known dependencies of the modules
-                           to be built.
-
-    --verbose            Print verbose output
-
-    --help               You\'re reading it. :-)
-    --version            Output the program version.
-
-You can get more help by going online to
-https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/
-to view the online documentation.
-
-If you have installed kdesrc-build you may also be able to view the
-documentation using KHelpCenter or Konqueror at the URL help:/kdesrc-build, or
-using the man page by typing "man kdesrc-build".
-
-The man page can also be found online at
-https://kdesrc-build.kde.org/documentation/kdesrc-build.1.html
-
-This help is not comprehensive, to see a listing of all options please visit:
-https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/conf-options-table.html
-
-For all command line options, please visit:
-https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/supported-cmdline-params.html
+More docs at https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/
+    Supported configuration options: https://go.kde.org/u/ksboptions
+    Supported cmdline options:       https://go.kde.org/u/ksbcmdline
 DONE
+
+    # Look for indications this is the first run.
+    if (! -e "./kdesrc-buildrc" && ! -e "$ENV{HOME}/.kdesrc-buildrc") {
+        say <<DONE;
+  **  **  **  **  **
+It looks like kdesrc-build has not yet been setup. For easy setup, run:
+    $0 --initial-setup
+
+This will adjust your ~/.bashrc to find installed software, run your system's
+package manager to install required dependencies, and setup a kdesrc-buildrc
+that can be edited from there.
+DONE
+    }
 }
 
 # Accessors

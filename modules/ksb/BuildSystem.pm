@@ -8,6 +8,7 @@ use strict;
 use warnings;
 use 5.014;
 
+use ksb::BuildException;
 use ksb::Debug 0.30;
 use ksb::Util;
 use ksb::StatusView;

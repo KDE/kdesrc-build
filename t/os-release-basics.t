@@ -24,7 +24,7 @@ is($opts{SPECIAL}, '$VAR \\ ` " is set', 'Right SPECIAL');
 my $os = new_ok('ksb::OSSupport', ['t/data/os-release']);
 is($os->bestDistroMatch(qw/arch kdesrc-build sabayon/), 'kdesrc-build', 'ID preferred');
 is($os->bestDistroMatch(qw/ubuntu fedora gentoo/), 'gentoo', 'ID_LIKE respected');
-is($os->bestDistroMatch(qw/fedora gentoo gentoo-hardened sabayon/), 'gentoo', 'ID_LIKE preference order proper');
+is($os->bestDistroMatch(qw/fedora gentoo gentoo-hardened sabayon/), 'sabayon', 'ID_LIKE preference order proper');
 is($os->vendorID, 'kdesrc-build', 'Right ID');
 
 done_testing();

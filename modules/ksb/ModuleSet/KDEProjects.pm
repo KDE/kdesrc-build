@@ -18,10 +18,11 @@ use 5.014;
 use parent qw(ksb::ModuleSet);
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
-use ksb::Module;
+use ksb::BuildContext 0.20;
+use ksb::BuildException;
 use ksb::Debug;
 use ksb::KDEProjectsReader 0.50;
-use ksb::BuildContext 0.20;
+use ksb::Module;
 use ksb::Util;
 
 sub new

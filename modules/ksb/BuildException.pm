@@ -6,8 +6,12 @@ package ksb::BuildException 0.20;
 use 5.014; # Needed for state keyword
 use strict;
 use warnings;
+use Carp;
 use overload
     '""' => \&to_string;
+
+use Exporter qw(import);
+our @EXPORT = qw(croak_runtime croak_internal had_an_exception make_exception);
 
 sub new
 {
@@ -35,6 +39,56 @@ sub setMessage
 {
     my ($self, $newMessage) = @_;
     $self->{message} = $newMessage;
+}
+
+#
+# Exported utility functions
+#
+
+# Returns a Perl exception object to pass to 'die' function
+# The returned reference will be an instance of ksb::BuildException.
+#
+# First parameter: Exception type, 'Exception' if undef
+# Second parameter: Message to show to user
+sub make_exception
+{
+    my $exception_type = shift // 'Exception';
+    my $message = shift;
+    my $levels = shift // 0; # Allow for more levels to be removed from bt
+
+    # Remove this subroutine from the backtrace
+    local $Carp::CarpLevel = 1 + $levels;
+
+    $message = Carp::longmess($message)
+        if $exception_type eq 'Internal';
+    return ksb::BuildException->new($exception_type, $message);
+}
+
+# Helper function to return $@ if $@ is a ksb::BuildException.
+#
+# This function assumes that an eval block had just been used in order to set
+# or clear $@ as appropriate.
+sub had_an_exception
+{
+    if ($@ && ref $@ && $@->isa('ksb::BuildException')) {
+        return $@;
+    }
+
+    return;
+}
+
+# Should be used for "runtime errors" (i.e. unrecoverable runtime problems that
+# don't indicate a bug in the program itself).
+sub croak_runtime
+{
+    die (make_exception('Runtime', $_[0], 1));
+}
+
+# Should be used for "logic errors" (i.e. impossibilities in program state, things
+# that shouldn't be possible no matter what input is fed at runtime)
+sub croak_internal
+{
+    die (make_exception('Internal', $_[0], 1));
 }
 
 #
