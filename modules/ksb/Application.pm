@@ -154,7 +154,6 @@ DONE
     my (%foundOptions, %auxOptions);
     %foundOptions = (
         'show-info' => sub { say $version; say "OS: ", $os->vendorID(); exit },
-        'initial-setup' => sub { exit $self->performInitialUserSetup() },
         version => sub { say $version; exit },
         author  => sub { say $author;  exit },
         help    => sub { _showHelpMessage(); exit 0 },
@@ -287,7 +286,7 @@ DONE
     my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
         # Options here should not duplicate the flags and options defined below
         # from ksb::BuildContext!
-        'version|v', 'author', 'help', 'show-info', 'initial-setup',
+        'version|v', 'author', 'help', 'show-info',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
         'verbose', 'quiet|quite|q', 'really-quiet', 'debug',
