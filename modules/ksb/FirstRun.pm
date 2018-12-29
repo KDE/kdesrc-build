@@ -233,7 +233,31 @@ shared-mime-info
 
 @@ pkg/opensuse/unknown
 perl perl-IO-Socket-SSL perl-JSON perl-YAML-LibYAML
-git shared-mime-info make cmake libqt5-qtbase-common-devel
+git shared-mime-info make cmake libqt5-qtbase-common-devel libopenssl-devel intltool
+polkit-devel
+libqt5-qtbase-devel libqt5-qtimageformats-devel libqt5-qtmultimedia-devel libqt5-qtdeclarative-devel libqt5-qtx11extras-devel libqt5-qtxmlpatterns-devel libqt5-qtsvg-devel
+gperf
+gettext-runtime gettext-tools
+libxml2-devel libxml2-tools libxslt-devel docbook-xsl-stylesheets docbook_4
+perl-URI
+libXrender-devel xcb-util-keysyms-devel
+flex bison
+libQt5Core-private-headers-devel
+libudev-devel
+libQt5WebKit5-devel libQt5WebKitWidgets-devel
+libQt5DesignerComponents5 libqt5-qttools-devel libSM-devel
+libattr-devel
+libboost_headers1_66_0-devel
+libQt5QuickControls2-devel
+libqt5-qtscript-devel
+wayland-devel
+libqt5-qtbase-private-headers-devel
+lmdb-devel
+libpng16-compat-devel giflib-devel
+ModemManager-devel
+# This pulls in so many other packages! :(
+NetworkManager-devel
+qrencode-devel
 
 @@ pkg/fedora/unknown
 git
@@ -247,7 +271,7 @@ perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
 
 @@ cmd/install/opensuse/unknown
-zypper install -y
+zypper install -y --no-recommends
 
 @@ cmd/install/arch/unknown
 pacman -Sy --noconfirm
