@@ -229,7 +229,9 @@ sub _packagesForVendor
 
 __DATA__
 @@ pkg/debian/unknown
-shared-mime-info
+libyaml-libyaml-perl libio-socket-ssl-perl libjson-xs-perl
+git shared-mime-info cmake build-essential flex bison gperf libssl-dev intltool
+liburi-perl gettext
 
 @@ pkg/opensuse/unknown
 perl perl-IO-Socket-SSL perl-JSON perl-YAML-LibYAML
@@ -269,6 +271,9 @@ dev-lang/perl
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
+
+@@ cmd/install/debian/unknown
+apt-get -q -y --no-install-recommends install
 
 @@ cmd/install/opensuse/unknown
 zypper install -y --no-recommends
