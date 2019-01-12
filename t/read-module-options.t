@@ -7,6 +7,7 @@ use warnings;
 use Test::More;
 
 use ksb::Application;
+use ksb::Util qw(trimmed);
 
 my $app = ksb::Application->new(qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc));
 my @moduleList = @{$app->{modules}};
@@ -27,5 +28,8 @@ is($moduleList[1]->name(), 'setmod2', 'Right module name from module-set');
 
 is($branch, 'refs/tags/tag-setmod2', 'Right tag name (options block)');
 is($type, 'tag', 'options block came back as tag');
+
+# See https://phabricator.kde.org/D18165
+is($moduleList[1]->getOption('cxxflags'), '', 'empty cxxflags renders with no whitespace in module');
 
 done_testing();

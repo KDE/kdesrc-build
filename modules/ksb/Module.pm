@@ -844,18 +844,20 @@ sub getOption
     # If module-only, check that first.
     return $self->{options}{$key} if $levelLimit eq 'module';
 
+    my $ctxValue = $ctx->getOption($key); # we'll use this a lot from here
+
     # Some global options always override module options.
-    return $ctx->getOption($key) if $ctx->hasStickyOption($key);
+    return $ctxValue if $ctx->hasStickyOption($key);
 
     # Some options append to the global (e.g. conf flags)
     my @confFlags = qw(cmake-options configure-flags cxxflags);
-    if (list_has(\@confFlags, $key) && $ctx->hasOption($key)) {
-        return $ctx->getOption($key) . " " . ($self->{options}{$key} || '');
+    if (list_has(\@confFlags, $key) && $ctxValue) {
+        return trimmed("$ctxValue " . ($self->{options}{$key} || ''));
     }
 
     # Everything else overrides the global option, unless it's simply not
     # set at all.
-    return $self->{options}{$key} // $ctx->getOption($key);
+    return $self->{options}{$key} // $ctxValue;
 }
 
 # Gets persistent options set for this module. First parameter is the name

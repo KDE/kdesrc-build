@@ -810,11 +810,9 @@ sub _splitOptionAndValue
                             # So, skip spaces and pick up the rest of the line.
                             (?:\s+(.*))?$/x);
 
-    $value //= '';
+    $value = trimmed($value // '');
 
     # Simplify whitespace.
-    $value =~ s/\s+$//;
-    $value =~ s/^\s+//;
     $value =~ s/\s+/ /g;
 
     # Check for false keyword and convert it to Perl false.
@@ -1048,9 +1046,9 @@ sub _readConfigurationOptions
     # Read in global settings
     while ($_ = $fileReader->readLine())
     {
-        s/#.*$//;       # Remove comments
-        s/^\s*//;       # Remove leading whitespace
-        next if (/^\s*$/); # Skip blank lines
+        s/#.*$//; # Remove comments
+        s/^\s+//; # Remove leading whitespace
+        next unless $_; # Skip blank lines
 
         # First command in .kdesrc-buildrc should be a global
         # options declaration, even if none are defined.

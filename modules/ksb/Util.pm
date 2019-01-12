@@ -21,6 +21,7 @@ use Exporter qw(import); # Use Exporter's import method
 our @EXPORT = qw(list_has assert_isa assert_in any unique_items
                  absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
+                 trimmed
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
                  pretend_open safe_rmtree get_list_digest is_dir_empty
                  super_mkdir filter_program_output prettify_seconds);
@@ -504,6 +505,15 @@ EOF
     }
 }
 
+# removes leading/trailing whitespace
+sub trimmed
+{
+    my $str = shift;
+    $str =~ s/^\s+//;
+    $str =~ s/\s+$//;
+    return $str;
+}
+
 # This subroutine acts like split(' ', $_) except that double-quoted strings
 # are not split in the process.
 #
@@ -513,11 +523,7 @@ EOF
 sub split_quoted_on_whitespace
 {
     use Text::ParseWords qw(parse_line);
-    my $line = shift;
-
-    # Remove leading/trailing whitespace
-    $line =~ s/^\s+//;
-    $line =~ s/\s+$//;
+    my $line = trimmed(shift);
 
     # 0 means not to keep delimiters or quotes
     return parse_line('\s+', 0, $line);
