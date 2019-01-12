@@ -6,6 +6,37 @@ use warnings;
 
 use Test::More;
 
+package ksb::test {
+    use Carp qw(confess cluck);
+    use Test::More;
+
+    my %inspectors = (
+        log_command => \&_inspect_log_command,
+    );
+
+    our @CMD;
+    our %OPTS;
+
+    sub inspect {
+        my $mod = shift;
+        my $sub = $inspectors{$mod} or return;
+        goto $sub;
+    };
+
+    sub _inspect_log_command
+    {
+        my ($module, $filename, $argRef, $optionsRef) = @_;
+        confess "No arg to module" unless $argRef;
+        my @command = @{$argRef};
+        if (grep { $_ eq 'cmake' } @command) {
+            @CMD = @command;
+            %OPTS = %{$optionsRef};
+        }
+    };
+
+    1;
+};
+
 use ksb::Application;
 use ksb::Util qw(trimmed);
 
@@ -28,6 +59,22 @@ is($moduleList[1]->name(), 'setmod2', 'Right module name from module-set');
 
 is($branch, 'refs/tags/tag-setmod2', 'Right tag name (options block)');
 is($type, 'tag', 'options block came back as tag');
+
+#
+# Test some of the option parsing indirectly by seeing how the value is input
+# into build system.
+#
+
+# Override auto-detection since no source is downloaded
+$moduleList[1]->setOption('override-build-system', 'kde');
+
+# Should do nothing in --pretend
+ok($moduleList[1]->setupBuildSystem(), 'setup fake build system');
+
+ok(@ksb::test::CMD, 'log_command cmake was called');
+is($ksb::test::CMD[2], '-DCMAKE_BUILD_TYPE=a b', 'CMake options can be quoted');
+is($ksb::test::CMD[3], 'bar=c', 'CMake option quoting does not eat all options');
+is($ksb::test::CMD[-1], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde", 'Prefix is passed to cmake');
 
 # See https://phabricator.kde.org/D18165
 is($moduleList[1]->getOption('cxxflags'), '', 'empty cxxflags renders with no whitespace in module');
