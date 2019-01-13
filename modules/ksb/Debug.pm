@@ -200,8 +200,6 @@ package ksb::test {
     our $AUTOLOAD;
     sub AUTOLOAD {
         my $method = $AUTOLOAD;
-        die "Called unknown method $method"
-            unless $method eq 'inspect';
         return; # eat method args and ignore
     };
 
