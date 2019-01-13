@@ -140,6 +140,48 @@ sub _clone
     return;
 }
 
+# Checks that the required source dir is either not already present or is empty.
+# Throws an exception if that's not true.
+sub _verifySafeToCloneIntoSourceDir
+{
+    my ($module, $srcdir) = @_;
+
+    if (-e "$srcdir" && !is_dir_empty($srcdir)) {
+        if ($module->getOption('#delete-my-patches')) {
+            warning ("\tRemoving conflicting source directory " .
+                     "as allowed by --delete-my-patches");
+            warning ("\tRemoving b[$srcdir]");
+            safe_rmtree($srcdir) or
+                croak_internal("Unable to delete $srcdir!");
+        }
+        else {
+            error (<<EOF);
+The source directory for b[$module] does not exist. kdesrc-build would download
+it, except there is already a file or directory present in the desired source
+directory:
+\ty[b[$srcdir]
+
+Please either remove the source directory yourself and re-run this script, or
+pass the b[--delete-my-patches] option to kdesrc-build and kdesrc-build will
+try to do so for you.
+
+DO NOT FORGET TO VERIFY THERE ARE NO UNCOMMITTED CHANGES OR OTHER VALUABLE
+FILES IN THE DIRECTORY.
+
+EOF
+
+            if (-e "$srcdir/.svn") {
+                error ("svn status of $srcdir:");
+                system('svn', 'st', '--non-interactive', $srcdir);
+            }
+
+            croak_runtime('Conflicting source-dir present');
+        }
+    }
+
+    return;
+}
+
 # Either performs the initial checkout or updates the current git checkout
 # for git-using modules, as appropriate.
 #
@@ -157,39 +199,7 @@ sub updateCheckout
         return $self->updateExistingClone();
     }
     else {
-        # Check if an existing source directory is there somehow.
-        if (-e "$srcdir" && !is_dir_empty($srcdir)) {
-            if ($module->getOption('#delete-my-patches')) {
-                warning ("\tRemoving conflicting source directory " .
-                         "as allowed by --delete-my-patches");
-                warning ("\tRemoving b[$srcdir]");
-                safe_rmtree($srcdir) or
-                    croak_internal("Unable to delete $srcdir!");
-            }
-            else {
-                error (<<EOF);
-The source directory for b[$module] does not exist. kdesrc-build would download
-it, except there is already a file or directory present in the desired source
-directory:
-\ty[b[$srcdir]
-
-Please either remove the source directory yourself and re-run this script, or
-pass the b[--delete-my-patches] option to kdesrc-build and kdesrc-build will
-try to do so for you.
-
-DO NOT FORGET TO VERIFY THERE ARE NO UNCOMMITTED CHANGES OR OTHER VALUABLE
-FILES IN THE DIRECTORY.
-
-EOF
-
-                if (-e "$srcdir/.svn") {
-                    error ("svn status of $srcdir:");
-                    system('svn', 'st', '--non-interactive', $srcdir);
-                }
-
-                croak_runtime('Conflicting source-dir present');
-            }
-        }
+        _verifySafeToCloneIntoSourceDir($module, $srcdir);
 
         my $git_repo = $module->getOption('repository');
 
