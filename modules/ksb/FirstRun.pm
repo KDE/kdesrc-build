@@ -299,6 +299,8 @@ global
     source-dir ~/kde/src
     build-dir  ~/kde/build
 
+    ignore-kde-structure true
+
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
     make-options  -j%{num_cpus}
 end global
