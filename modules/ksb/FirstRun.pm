@@ -262,7 +262,27 @@ NetworkManager-devel
 qrencode-devel
 
 @@ pkg/fedora/unknown
-git
+perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
+git shared-mime-info make cmake openssl-devel intltool
+gcc gcc-c++ python
+mesa-libGL-devel dbus-devel gstreamer1-devel
+polkit-devel
+gperf
+gettext gettext-devel
+libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
+perl-URI
+libXrender-devel xcb-util-keysyms-devel
+flex bison
+libSM-devel
+libattr-devel
+boost
+wayland-devel
+lmdb-devel
+libpng-devel giflib-devel
+ModemManager-devel
+# This pulls in so many other packages! :(
+NetworkManager-libnm-devel
+qrencode-devel
 
 @@ pkg/gentoo/unknown
 dev-util/cmake
@@ -280,6 +300,9 @@ zypper install -y --no-recommends
 
 @@ cmd/install/arch/unknown
 pacman -Sy --noconfirm
+
+@@ cmd/install/fedora/unknown
+dnf -y install
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
