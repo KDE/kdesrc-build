@@ -20,6 +20,7 @@ use ksb::Module;
 use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
+use ksb::ModuleSet::Qt;
 use ksb::OSSupport;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
@@ -41,7 +42,8 @@ use IO::Select;
 use constant {
     # We use a named remote to make some git commands work that don't accept the
     # full path.
-    KDE_PROJECT_ID   => 'kde-projects',          # git-repository-base for kde_projects.xml
+    KDE_PROJECT_ID   => 'kde-projects',  # git-repository-base for sysadmin/repo-metadata
+    QT_PROJECT_ID    => 'qt-projects',   # git-repository-base for qt.io Git repo
 };
 
 ### Package methods
@@ -868,7 +870,7 @@ EOF
     }
 
     my $repoSet = $ctx->getOption('git-repository-base');
-    if ($selectedRepo ne KDE_PROJECT_ID &&
+    if ($selectedRepo ne KDE_PROJECT_ID && $selectedRepo ne QT_PROJECT_ID &&
         not exists $repoSet->{$selectedRepo})
     {
         my $projectID = KDE_PROJECT_ID;
@@ -992,13 +994,13 @@ sub _parseModuleSetOptions
 
     $moduleSet = _parseModuleOptions($ctx, $fileReader, $moduleSet, qr/^end\s+module(-?set)?$/);
 
-    if ($moduleSet->getOption('repository') eq KDE_PROJECT_ID &&
-        !$moduleSet->isa('ksb::ModuleSet::KDEProjects'))
-    {
-        # Perl-specific note! re-blessing the module set into the right 'class'
-        # You'd probably have to construct an entirely new object and copy the
-        # members over in other languages.
+    # Perl-specific note! re-blessing the module set into the right 'class'
+    # You'd probably have to construct an entirely new object and copy the
+    # members over in other languages.
+    if ($moduleSet->getOption('repository') eq KDE_PROJECT_ID) {
         bless $moduleSet, 'ksb::ModuleSet::KDEProjects';
+    } elsif ($moduleSet->getOption('repository') eq QT_PROJECT_ID) {
+        bless $moduleSet, 'ksb::ModuleSet::Qt';
     }
 
     return $moduleSet;

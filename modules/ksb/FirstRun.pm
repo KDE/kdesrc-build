@@ -130,8 +130,8 @@ DONE
             _throw("Embedded sample file missing!");
 
         my $numCpus = `nproc 2>/dev/null` || 4;
-        $sampleRc =~ s/%\{num_cpus}/$numCpus/;
-        $sampleRc =~ s/%\{base_dir}/$baseDir/;
+        $sampleRc =~ s/%\{num_cpus}/$numCpus/g;
+        $sampleRc =~ s/%\{base_dir}/$baseDir/g;
 
         open my $sampleFh, '>', "$ENV{HOME}/.kdesrc-buildrc"
             or _throw("Couldn't open new ~/.kdesrc-buildrc: $!");
@@ -310,19 +310,19 @@ dnf -y install
 # List of all options: https://go.kde.org/u/ksboptions
 
 global
-    branch-group kf5-qt5
-    kdedir ~/kde-5 # Where to install KF5-based software
-    # Uncomment this and edit value to choose a different Qt5
-#    qtdir /usr     # Where to find Qt5
+    # Paths
+
+    kdedir ~/kde/usr # Where to install KF5-based software
+    qtdir  ~/kde/qt5 # Where to find Qt5
+
+    source-dir ~/kde/src   # Where sources are downloaded
+    build-dir  ~/kde/build # Where the source build is run
+
+    ignore-kde-structure true # Use flat structure
 
     # Will pull in KDE-based dependencies only, to save you the trouble of
     # listing them all below
     include-dependencies true
-
-    source-dir ~/kde/src
-    build-dir  ~/kde/build
-
-    ignore-kde-structure true
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
     make-options  -j%{num_cpus}
@@ -336,6 +336,11 @@ end global
 # You can include other files inline using the "include" command. We do this here
 # to include files which are updated with kdesrc-build.
 
+# Qt and some Qt-using middleware libraries
+include %{base_dir}/qt5-build-include
+include %{base_dir}/custom-qt5-libs-build-include
+
+# KF5 and Plasma :)
 include %{base_dir}/kf5-qt5-build-include
 
 # To change options for modules that have already been defined, use an
@@ -343,4 +348,3 @@ include %{base_dir}/kf5-qt5-build-include
 options kcoreaddons
     make-options -j4
 end options
-

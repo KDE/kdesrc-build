@@ -23,6 +23,7 @@ use ksb::Updater::Git;
 use ksb::Updater::Bzr;
 use ksb::Updater::KDEProject;
 use ksb::Updater::KDEProjectMetadata;
+use ksb::Updater::Qt5;
 
 use ksb::BuildException 0.20;
 
@@ -30,6 +31,7 @@ use ksb::BuildSystem 0.30;
 use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
 use ksb::BuildSystem::Qt4;
+use ksb::BuildSystem::Qt5;
 use ksb::BuildSystem::KDE4;
 use ksb::BuildSystem::CMakeBootstrap;
 
@@ -256,6 +258,7 @@ sub setScmType
         when('l10n') { $newType = ksb::l10nSystem->new($self); }
         when('svn')  { $newType = ksb::Updater::Svn->new($self); }
         when('bzr')  { $newType = ksb::Updater::Bzr->new($self); }
+        when('qt5')  { $newType = ksb::Updater::Qt5->new($self); }
         default      { $newType = undef; }
     }
 
@@ -290,6 +293,7 @@ sub buildSystemFromName
         'cmake-bootstrap' => 'ksb::BuildSystem::CMakeBootstrap',
         'kde'             => 'ksb::BuildSystem::KDE4',
         'qt'              => 'ksb::BuildSystem::Qt4',
+        'qt5'             => 'ksb::BuildSystem::Qt5',
         'autotools'       => 'ksb::BuildSystem::Autotools',
     );
 
