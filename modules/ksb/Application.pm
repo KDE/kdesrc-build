@@ -2442,7 +2442,8 @@ sub _checkForEssentialBuildPrograms
         if (!$programPath) {
             # Don't complain about Qt if we're building it...
             if ($prog eq 'qmake' && (
-                    grep { $_->buildSystemType() eq 'Qt' } (@buildModules)) ||
+                    grep { $_->buildSystemType() eq 'Qt' ||
+                           $_->buildSystemType() eq 'Qt5' } (@buildModules)) ||
                     pretending()
                 )
             {
