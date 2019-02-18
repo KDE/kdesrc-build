@@ -642,10 +642,23 @@ sub setupEnvironment
     my $self = assert_isa(shift, 'ksb::Module');
     my $ctx = $self->buildContext();
     my $kdedir = $self->getOption('kdedir');
+    my $qtdir = $self->getOption('qtdir');
     my $prefix = $self->installationPath();
 
     # Add global set-envs and context
     $self->buildContext()->applyUserEnvironment();
+
+    # Avoid moving /usr up in env vars
+    if ($qtdir ne '/usr') {
+        my @qt_pkg_config_dirs = ("$qtdir/lib/pkgconfig");
+        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @qt_pkg_config_dirs);
+
+        my @qt_ld_dirs = ("$qtdir/lib");
+        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @qt_ld_dirs);
+
+        my @qt_path = ("$qtdir/bin");
+        $ctx->prependEnvironmentValue('PATH', @qt_path);
+    }
 
     # Avoid moving /usr up in env vars
     if ($kdedir ne '/usr') {
