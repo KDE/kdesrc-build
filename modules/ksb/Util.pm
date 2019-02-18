@@ -39,19 +39,22 @@ sub list_has
 }
 
 # Subroutine to return the path to the given executable based on the
-# current PATH.  e.g. if you pass make you could get '/usr/bin/make'.  If
-# the executable is not found undef is returned.
+# either the given paths or the current PATH.
+# E.g.:
+# absPathToExecutable('make') -> '/usr/bin/make'
+# absPathToExecutable('make', 'foo', 'bar') -> /foo/make
+# If the executable is not found undef is returned.
 #
 # This assumes that the module environment has already been updated since
 # binpath doesn't exactly correspond to $ENV{'PATH'}.
 sub absPathToExecutable
 {
-    my $prog = shift;
-    my @paths = split(/:/, $ENV{'PATH'});
+    my ($prog, @preferred) = @_;
 
     # If it starts with a / the path is already absolute.
     return $prog if $prog =~ /^\//;
 
+    my @paths = @preferred ? @preferred : split(/:/, $ENV{'PATH'});
     for my $path (@paths)
     {
         return "$path/$prog" if (-x "$path/$prog");

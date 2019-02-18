@@ -2406,6 +2406,9 @@ sub _installCustomSessionDriver
 sub _checkForEssentialBuildPrograms
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $kdedir = $ctx->getOption('kdedir');
+    my $qtdir = $ctx->getOption('qtdir');
+    my @preferred_paths = ("$kdedir/bin", "$qtdir/bin");
 
     return 1 if pretending();
 
@@ -2432,7 +2435,8 @@ sub _checkForEssentialBuildPrograms
             cmake => 'CMake',
         );
 
-        my $programPath = absPathToExecutable($prog);
+        my $preferredPath = absPathToExecutable($prog, @preferred_paths);
+        my $programPath = $preferredPath || absPathToExecutable($prog);
 
         # qmake is not necessarily named 'qmake'
         if (!$programPath && $prog eq 'qmake') {
