@@ -27,7 +27,7 @@ sub _makeQt5Module
     my $self = assert_isa(shift, __PACKAGE__);
     my $ctx  = assert_isa(shift, 'ksb::BuildContext');
 
-    my $newModule = ksb::Module->new($ctx, 'qt5');
+    my $newModule = ksb::Module->new($ctx, 'Qt5');
 
     $self->_initializeNewModule($newModule);
 
