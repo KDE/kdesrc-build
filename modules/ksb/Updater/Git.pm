@@ -576,7 +576,7 @@ r[b[*] Unable to re-apply stashed changes to r[b[$module]!
 r[b[*]
 * These changes were saved using the name "kdesrc-build auto-stash at $date"
 * and should still be available using the name stash\@{0}, the command run
-* to re-apply was y[git stash --pop --index]. Resolve this before you run
+* to re-apply was y[git stash pop --index]. Resolve this before you run
 * kdesrc-build to update this module again.
 *
 * If you do not desire to keep your local changes, then you can generally run
