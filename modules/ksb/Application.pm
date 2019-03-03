@@ -300,7 +300,8 @@ DONE
         'revision=i', 'resume-from=s', 'resume-after=s',
         'rebuild-failures', 'resume',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
-        'metadata-only', 'include-dependencies',
+        'metadata-only', 'include-dependencies', 'list-build',
+        'dependency-tree',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
         # for negatable boolean flags
@@ -331,6 +332,49 @@ DONE
 
     @{ $cmdlineOptionsRef->{'global'} }{keys %auxOptions}
         = values %auxOptions;
+}
+
+sub _yieldModuleDependencyTreeEntry
+{
+    my ($nodeInfo, $module, $context) = @_;
+
+    my $depth = $nodeInfo->{depth};
+    my $index = $nodeInfo->{idx};
+    my $count = $nodeInfo->{count};
+    my $build = $nodeInfo->{build};
+    my $currentItem = $nodeInfo->{currentItem};
+    my $currentBranch = $nodeInfo->{currentBranch};
+    my $parentItem = $nodeInfo->{parentItem};
+    my $parentBranch = $nodeInfo->{parentBranch};
+
+    my $buildStatus = $build ? 'built' : 'not built';
+    my $statusInfo = $currentBranch ? "($buildStatus: $currentBranch)" : "($buildStatus)";
+
+    my $connectorStack = $context->{stack};
+
+
+    my $prefix = pop(@$connectorStack);
+
+    while($context->{depth} > $depth) {
+        $prefix = pop(@$connectorStack);
+        --($context->{depth});
+    }
+
+    push(@$connectorStack, $prefix);
+
+    my $connector;
+
+    if ($depth == 0) {
+        $connector = $prefix . ' ── ';
+        push(@$connectorStack, $prefix . (' ' x 4));
+    }
+    else {
+        $connector = $prefix . ($index == $count ? '└── ': '├── ');
+        push(@$connectorStack, $prefix . ($index == $count ? ' ' x 4: '│   '));
+    }
+
+    $context->{depth} = $depth + 1;
+    $context->{report}($connector . $currentItem . ' ' . $statusInfo);
 }
 
 # Generates the build context and module list based on the command line options
@@ -490,7 +534,32 @@ sub generateModuleList
         (!defined $branch or $branch); # This is the actual test
     } (@modules);
 
-    @modules = $self->_resolveModuleDependencies(@modules);
+    my $moduleGraph = $self->_resolveModuleDependencyGraph(@modules);
+
+    if (!$moduleGraph || !exists $moduleGraph->{graph}) {
+        croak_runtime("Failed to resolve dependency graph");
+    }
+
+    if (exists $cmdlineGlobalOptions->{'dependency-tree'}) {
+        my $depTreeCtx = {
+            stack => [''],
+            depth => 0,
+            report => sub {
+                print(@_, "\n");
+            }
+        };
+        ksb::DependencyResolver::walkModuleDependencyTrees(
+            $moduleGraph->{graph},
+            \&_yieldModuleDependencyTreeEntry,
+            $depTreeCtx,
+            @modules
+        );
+        return;
+    }
+
+    @modules = ksb::DependencyResolver::sortModulesIntoBuildOrder(
+        $moduleGraph->{graph}
+    );
 
     # Filter --resume-foo options. This might be a second pass, but that should
     # be OK since there's nothing different going on from the first pass (in
@@ -499,6 +568,18 @@ sub generateModuleList
 
     # Check for ignored modules (post-expansion)
     @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
+
+    if(exists $cmdlineGlobalOptions->{'list-build'}) {
+        for my $module (@modules) {
+            my $branch = ksb::DependencyResolver::_getBranchOf($module);
+            print(' ── ', $module->name());
+            if($branch) {
+                print(' : ', $branch);
+            }
+            print("\n");
+        }
+        return;
+    }
 
     return @modules;
 }
@@ -564,20 +645,20 @@ sub _downloadKDEProjectMetadata
     }
 }
 
-# Returns a list of Modules in the proper build order according to the
-# kde-build-metadata dependency information.
+# Returns a graph of Modules according to the kde-build-metadata dependency
+# information.
 #
 # The kde-build-metadata repository must have already been updated, and the
-# module factory must be setup. The Modules to reorder must be passed as
-# arguments.
-sub _resolveModuleDependencies
+# module factory must be setup. The modules for which to calculate the graph
+# must be passed in as arguments
+sub _resolveModuleDependencyGraph
 {
     my $self = shift;
     my $ctx = $self->context();
     my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
     my @modules = @_;
 
-    @modules = eval {
+    my $graph = eval {
         my $dependencyResolver = ksb::DependencyResolver->new($self->{module_factory});
         my $branchGroup = $ctx->effectiveBranchGroup();
 
@@ -592,17 +673,34 @@ sub _resolveModuleDependencies
             close $dependencies;
         }
 
-        my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
-        return @reorderedModules;
+        return $dependencyResolver->resolveToModuleGraph(@modules);
     };
 
     if ($@) {
-        warning (" r[b[*] Problems encountered trying to sort modules into correct order:");
+        warning (" r[b[*] Problems encountered trying to determing correct module graph:");
         warning (" r[b[*] $@");
         warning (" r[b[*] Will attempt to continue.");
+
+        $graph = {
+            graph => undef,
+            syntaxErrors  => 0,
+            cycles        => 0,
+            trivialCycles => 0,
+            pathErrors    => 0,
+            branchErrors  => 0,
+            exception => $@
+        };
+    }
+    else {
+        if (!$graph->{graph}) {
+            warning (" r[b[*] Unable to determine correct module graph");
+            warning (" r[b[*] Will attempt to continue.");
+        }
     }
 
-    return @modules;
+    $graph->{exception} = undef;
+
+    return $graph;
 }
 
 # Runs all update, build, install, etc. phases. Basically this *is* the
@@ -2564,6 +2662,12 @@ Usage: \$ $0 [--options] [module names]
 Important Options:
     --pretend              Don't actually take major actions, instead describe
                            what would be done.
+    --list-build           List what modules would be built in the order in
+                           which they would be built.
+    --dependency-tree      Print out dependency information on the modules that
+                           would be built, using a `tree` format. Very useful
+                           for learning how modules relate to each other. May
+                           generate a lot of output.
     --no-src               Don't update source code, just build/install.
     --src-only             Only update the source code
     --refresh-build        Start the build from scratch.
