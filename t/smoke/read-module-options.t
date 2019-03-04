@@ -44,9 +44,9 @@ my $app = ksb::Application->new(qw(--pretend --rc-file t/data/sample-rc/kdesrc-b
 my @moduleList = @{$app->{modules}};
 
 is(scalar @moduleList, 4, 'Right number of modules');
-is($moduleList[3]->name(), 'module2', 'Right module name');
+is($moduleList[0]->name(), 'module2', 'Right module name');
 
-my $scm = $moduleList[3]->scm();
+my $scm = $moduleList[0]->scm();
 isa_ok($scm, 'ksb::Updater::Git');
 
 my ($branch, $type) = $scm->_determinePreferredCheckoutSource();
@@ -54,8 +54,8 @@ my ($branch, $type) = $scm->_determinePreferredCheckoutSource();
 is($branch, 'refs/tags/fake-tag5', 'Right tag name');
 is($type, 'tag', 'Result came back as a tag');
 
-is($moduleList[1]->name(), 'setmod2', 'Right module name from module-set');
-($branch, $type) = $moduleList[1]->scm()->_determinePreferredCheckoutSource();
+is($moduleList[2]->name(), 'setmod2', 'Right module name from module-set');
+($branch, $type) = $moduleList[2]->scm()->_determinePreferredCheckoutSource();
 
 is($branch, 'refs/tags/tag-setmod2', 'Right tag name (options block)');
 is($type, 'tag', 'options block came back as tag');
@@ -66,10 +66,10 @@ is($type, 'tag', 'options block came back as tag');
 #
 
 # Override auto-detection since no source is downloaded
-$moduleList[1]->setOption('override-build-system', 'kde');
+$moduleList[2]->setOption('override-build-system', 'kde');
 
 # Should do nothing in --pretend
-ok($moduleList[1]->setupBuildSystem(), 'setup fake build system');
+ok($moduleList[2]->setupBuildSystem(), 'setup fake build system');
 
 ok(@ksb::test::CMD, 'log_command cmake was called');
 is($ksb::test::CMD[2], '-DCMAKE_BUILD_TYPE=a b', 'CMake options can be quoted');

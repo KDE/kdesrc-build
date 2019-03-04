@@ -16,13 +16,40 @@ use ksb::Module;
 package ksb::Application {
     no warnings 'redefine';
 
-    sub _resolveModuleDependencies {
-        my ($self, @modules) = @_;
-        # simulate effect of --include-dependencies, using ksb::Application's
-        # built-in module-name to ksb::Module resolver.
+    sub _resolveModuleDependencyGraph {
+        my $self = shift;
+        my @modules = @_;
+
         my $newModule = $self->{module_factory}->('setmod2');
-        splice @modules, 1, 0, $newModule;
-        return @modules;
+
+        my $graph = {
+            'setmod1' => {
+                votes => {
+                    'setmod2' => 1,
+                    'setmod3' => 1
+                },
+                build => 1,
+                module => $modules[0]
+            },
+            'setmod2' => {
+                votes => {
+                    'setmod3' => 1
+                },
+                build => 1,
+                module => $newModule
+            },
+            'setmod3' => {
+                votes => {},
+                build => 1,
+                module => $modules[1]
+            }
+        };
+
+        my $result = {
+            graph => $graph
+        };
+
+        return $result;
     }
 };
 
