@@ -142,9 +142,13 @@ sub readDependencyData
         $dependentBranch ||= '*'; # If no branch, apply catch-all flag
         $sourceBranch ||= '*';
 
+        # _shortenModuleName may remove negation marker so check now
+        my $depKey = (index($sourceItem, '-') == 0) ? '-' : '+';
+        $sourceItem =~ s/^-//; # remove negation marker if name already short
+
         # Source can never be a catch-all so we can shorten early. Also,
         # we *must* shorten early to avoid a dependency on a long path.
-        $sourceItem    = _shortenModuleName($sourceItem);
+        $sourceItem = _shortenModuleName($sourceItem);
 
         # Handle catch-all dependent groupings
         if ($dependentItem =~ /\*$/) {
@@ -176,9 +180,6 @@ sub readDependencyData
             '-' => [ ],
             '+' => [ ],
         };
-
-        my $depKey = (index($sourceItem, '-') == 0) ? '-' : '+';
-        $sourceItem =~ s/^-//;
 
         push @{$dependenciesOfRef->{"$dependentItem:$dependentBranch"}->{$depKey}},
              "$sourceItem:$sourceBranch";
