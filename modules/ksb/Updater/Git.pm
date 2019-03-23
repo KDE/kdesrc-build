@@ -489,6 +489,20 @@ sub _determinePreferredCheckoutSource
     return ($checkoutSource, $sourceTypeRef->[1]);
 }
 
+# Tries to check whether the git module is using submodules or not. Currently
+# we just check the .git/config file (using git-config) to determine whether
+# there are any 'active' submodules.
+#
+# MUST BE RUN FROM THE SOURCE DIR
+sub _hasSubmodules
+{
+    # The git-config line shows all option names of the form submodule.foo.active,
+    # filtering down to options for which the option is set to 'true'
+    my @configLines = filter_program_output(undef, # accept all lines
+        qw(git config --local --get-regexp ^submodule\..*\.active true));
+    return scalar @configLines > 0;
+}
+
 # Splits a URI up into its component parts. Taken from
 # http://search.cpan.org/~ether/URI-1.67/lib/URI.pm
 # Copyright Gisle Aas under the following terms:
@@ -534,7 +548,7 @@ sub stashAndUpdate
     }
 
     my $needsStash = 0;
-    if ($status) {
+    if ($status && !_hasSubmodules()) {
         # There are local changes.
         $needsStash = 1;
     }
