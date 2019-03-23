@@ -36,6 +36,24 @@ ok($result, "git init worked");
 }
 
 $result = run(
+    command => [qw(git config --local user.name kdesrc-build)],
+    verbose => 0,
+    timeout => 10,
+);
+if (!$result) {
+    BAIL_OUT("Can't setup git username, subsequent tests will fail");
+}
+
+$result = run(
+    command => [qw(git config --local user.email kdesrc-build@kde.org)],
+    verbose => 0,
+    timeout => 10,
+);
+if (!$result) {
+    BAIL_OUT("Can't setup git username, subsequent tests will fail");
+}
+
+$result = run(
     command => [qw(git add README.md)],
     verbose => 0,
     timeout => 10,
@@ -66,6 +84,24 @@ ok($result, "git supermodule init worked");
     open my $file, '>', 'README.md';
     say $file, "Initial content";
     close $file;
+}
+
+$result = run(
+    command => [qw(git config --local user.name kdesrc-build)],
+    verbose => 0,
+    timeout => 10,
+);
+if (!$result) {
+    BAIL_OUT("Can't setup git username, subsequent tests will fail");
+}
+
+$result = run(
+    command => [qw(git config --local user.email kdesrc-build@kde.org)],
+    verbose => 0,
+    timeout => 10,
+);
+if (!$result) {
+    BAIL_OUT("Can't setup git username, subsequent tests will fail");
 }
 
 $result = run(
