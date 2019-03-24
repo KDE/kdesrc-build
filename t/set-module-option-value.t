@@ -27,4 +27,7 @@ is($type, 'tag', 'Result came back as a tag');
 is($branch, 'refs/tags/tag-setmod10', 'Right tag name (options block from cmdline)');
 is($type, 'tag', 'cmdline options block came back as tag');
 
+ok(!$moduleList[1]->isKDEProject(), 'setmod2 is *not* a "KDE" project');
+is($moduleList[1]->fullProjectPath(), 'setmod2', 'fullProjectPath on non-KDE modules returns name');
+
 done_testing();

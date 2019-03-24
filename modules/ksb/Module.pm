@@ -921,14 +921,12 @@ sub fullpath
 
 # Returns the "full kde-projects path" for the module. As should be obvious by
 # the description, this only works for modules with an scm type that is a
-# Updater::KDEProject (or its subclasses).
+# Updater::KDEProject (or its subclasses), but modules that don't fall into this
+# hierarchy will just return the module name (with no path components) anyways.
 sub fullProjectPath
 {
     my $self = shift;
-    my $path = $self->getOption('#xml-full-path', 'module') ||
-        croak_internal("Tried to ask for full path of a module $self that doesn't have one!");
-
-    return $path;
+    return ($self->getOption('#xml-full-path', 'module') || $self->name());
 }
 
 # Returns true if this module is (or was derived from) a kde-projects module.
