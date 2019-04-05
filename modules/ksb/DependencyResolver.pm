@@ -745,15 +745,6 @@ sub _compareBuildOrder
     my ($moduleGraph, $a, $b) = @_;
 
     #
-    # Always build non-KDE modules first
-    #
-    my $bIsKDE = $moduleGraph->{$b}->{module}->isKDEProject();
-    my $aIsKDE = $moduleGraph->{$a}->{module}->isKDEProject();
-    my $nonKDE = $bIsKDE ? ($aIsKDE ? 0 : -1) : ($aIsKDE ? 1 : 0);
-
-    return $nonKDE if $nonKDE;
-
-    #
     # Enforce a strict dependency ordering.
     # The case where both are true should never happen, since that would
     # amount to a cycle, and cycle detection is supposed to have been
