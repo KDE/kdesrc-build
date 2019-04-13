@@ -771,8 +771,8 @@ sub _compareBuildOrder
     # so it is probably a good idea to build that one earlier to help
     # maximise the duration of time for which builds can be run in parallel
     #
-    my $voteA = scalar(%{$moduleGraph->{$a}->{votes}});
-    my $voteB = scalar(%{$moduleGraph->{$b}->{votes}});
+    my $voteA = scalar keys %{$moduleGraph->{$a}->{votes}};
+    my $voteB = scalar keys %{$moduleGraph->{$b}->{votes}};
     my $votes = $voteB <=> $voteA;
 
     return $votes if $votes;
