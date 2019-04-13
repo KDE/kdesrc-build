@@ -15,14 +15,21 @@ package ksb::Module {
 
     sub new
     {
-        my ($class, $projectPath) = @_;
+        my ($class, $projectPath, $kde) = @_;
 
         my $self = {
             projectPath => $projectPath,
+            kde => $kde
         };
 
         bless $self, $class;
         return $self;
+    }
+
+    sub isKDEProject
+    {
+        my $self = shift;
+        return $self->{kde};
     }
 
     sub fullProjectPath
@@ -32,13 +39,16 @@ package ksb::Module {
     }
 };
 
-my $module1 = ksb::Module->new('test/path');
+my $module1 = ksb::Module->new('test/path', 1);
 
-is(ksb::DependencyResolver::_getDependencyPathOf($module1, 'foo', 'bar'), 'test/path', "should return full project path if a module object is passed");
+is(ksb::DependencyResolver::_getDependencyPathOf($module1, 'foo', 'bar'), 'test/path', "should return full project path if a KDE module object is passed");
 
 my $module2 = undef;
 
 is(ksb::DependencyResolver::_getDependencyPathOf($module2, 'foo', 'bar'), 'bar', "should return the provided default if no module is passed");
+
+my $module3 = ksb::Module->new('test/path', 0);
+is(ksb::DependencyResolver::_getDependencyPathOf($module3, 'foo', 'bar'), 'third-party/test/path', "should return 'third-party/' prefixed project path if a non-KDE module object is passed");
 
 done_testing();
 

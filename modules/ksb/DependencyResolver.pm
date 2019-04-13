@@ -424,7 +424,10 @@ sub _getDependencyPathOf
 
     if ($module) {
         my $projectPath = $module->fullProjectPath();
-        debug("\tUsing full project path: 'b[$projectPath]' for item: b[$item]");
+
+        $projectPath = "third-party/$projectPath" if(!$module->isKDEProject());
+
+        debug("\tUsing path: 'b[$projectPath]' for item: b[$item]");
         return $projectPath;
     }
 
