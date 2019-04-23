@@ -720,10 +720,15 @@ please be careful while dealing with root privileges.</entry>
 <row id="conf-make-options">
 <entry>make-options</entry>
 <entry>Module setting overrides global (build system option)</entry>
-<entry>Set this variable in order to pass command line options to the
+<entry><para>Set this variable in order to pass command line options to the
 <command>make</command> command. This is useful for programs such as <ulink
 url="https://github.com/distcc/distcc"><application>distcc</application></ulink> or
-systems with more than one processor core.
+systems with more than one processor core.</para>
+<para>Note that not all supported build systems use <command>make</command>. For
+build systems that use <command>ninja</command> for build (such as the
+<link linkend="conf-override-build-system"><application>Meson</application>
+build system</link>), see the <link linkend="conf-ninja-options">ninja-options</link>
+setting.</para>
 </entry>
 </row>
 
@@ -781,6 +786,36 @@ number, the "nicer" the program is. The default is 10.
 </entry>
 </row>
 
+<row id="conf-ninja-options">
+<entry>ninja-options</entry>
+<entry>Module setting overrides global (build system option)</entry>
+<entry><para>Set this variable in order to pass command line options to the
+
+<command>ninja</command> build command. This can be useful to enable <quote>verbose</quote> output
+or to manually reduce the number of parallel build jobs that <command>ninja</command> would
+use.</para>
+
+<note><para>Note that this setting only controls ninja when used by &kdesrc-build;.
+The &Qt; <quote>webengine</quote> module uses <command>ninja</command> indirectly, but
+only officially supports being built by <command>make</command>.
+In this situation, you can set <literal>NINJAFLAGS</literal> as a way to have
+<command>make</command> pass the appropriate flags when it later calls
+<command>ninja</command>, by using
+<link linkend="conf-make-options">make-options</link>.</para>
+
+<informalexample>
+<programlisting>
+options <replaceable>qtwebengine</replaceable>
+    # Restrict make and ninja to using no more than 6 separate compile jobs even
+    # when more CPU is available, to avoid running out of memory
+    <option><link linkend="conf-make-options">make-options</link></option> -j<replaceable>6</replaceable> NINJAFLAGS=-j<replaceable>6</replaceable>
+end options
+</programlisting>
+</informalexample>
+</note>
+</entry>
+</row>
+
 <row id="conf-no-svn">
 <entry>no-svn</entry>
 <entry>Module setting overrides global</entry>
@@ -835,6 +870,12 @@ the auto-detection. In this case you can manually specify the correct build type
         <term>autotools</term>
         <listitem><para>This is the standard configuration tool used for most Free and
             open-source software not in any of the other categories.</para></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term>meson</term>
+        <listitem><para>This is a <ulink url="https://mesonbuild.com">relatively new
+            tool</ulink> gaining popularity as a replacement for the autotools and may
+            be required for some non-&kde; modules.</para></listitem>
     </varlistentry>
 </variablelist>
 
