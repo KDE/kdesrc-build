@@ -58,6 +58,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
 
     install(FILES
         modules/ksb/BuildSystem/Autotools.pm
+        modules/ksb/BuildSystem/Meson.pm
         modules/ksb/BuildSystem/CMakeBootstrap.pm
         modules/ksb/BuildSystem/KDE4.pm
         modules/ksb/BuildSystem/QMake.pm

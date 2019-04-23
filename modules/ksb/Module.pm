@@ -34,6 +34,7 @@ use ksb::BuildSystem::Qt4;
 use ksb::BuildSystem::Qt5;
 use ksb::BuildSystem::KDE4;
 use ksb::BuildSystem::CMakeBootstrap;
+use ksb::BuildSystem::Meson;
 
 use ksb::ModuleSet::Null;
 
@@ -295,6 +296,7 @@ sub buildSystemFromName
         'qt'              => 'ksb::BuildSystem::Qt4',
         'qt5'             => 'ksb::BuildSystem::Qt5',
         'autotools'       => 'ksb::BuildSystem::Autotools',
+        'meson'           => 'ksb::BuildSystem::Meson',
     );
 
     my $class = $buildSystemClasses{lc $name} // undef;
@@ -355,6 +357,12 @@ sub buildSystem
         (-e "$sourceDir/configure" || -e "$sourceDir/autogen.sh"))
     {
         $buildType = ksb::BuildSystem::Autotools->new($self);
+    }
+
+    # Someday move this up, but for now ensure that Meson happens after
+    # configure/autotools support is checked for.
+    if (!$buildType && -e "$sourceDir/meson.build") {
+        $buildType = ksb::BuildSystem::Meson->new($self);
     }
 
     # Don't just assume the build system is KDE-based...

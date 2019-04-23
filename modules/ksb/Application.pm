@@ -2531,6 +2531,7 @@ sub _checkForEssentialBuildPrograms
         my %requiredPackages = (
             qmake => 'Qt',
             cmake => 'CMake',
+            meson => 'Meson',
         );
 
         my $preferredPath = absPathToExecutable($prog, @preferred_paths);
