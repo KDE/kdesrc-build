@@ -642,34 +642,22 @@ sub setupEnvironment
     my $self = assert_isa(shift, 'ksb::Module');
     my $ctx = $self->buildContext();
     my $kdedir = $self->getOption('kdedir');
-    my $qtdir = $self->getOption('qtdir');
+    my $qtdir  = $self->getOption('qtdir');
     my $prefix = $self->installationPath();
 
     # Add global set-envs and context
     $self->buildContext()->applyUserEnvironment();
 
-    # Avoid moving /usr up in env vars
-    if ($qtdir ne '/usr') {
-        my @qt_pkg_config_dirs = ("$qtdir/lib/pkgconfig");
-        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @qt_pkg_config_dirs);
+    # Ensure the platform libraries we're building can be found, as long as they
+    # are not the system's own libraries.
+    for my $platformDir ($qtdir, $kdedir) {
+        next unless $platformDir;       # OK, assume system platform is usable
+        next if $platformDir eq '/usr'; # Don't 'fix' things if system platform
+                                        # manually set
 
-        my @qt_ld_dirs = ("$qtdir/lib");
-        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @qt_ld_dirs);
-
-        my @qt_path = ("$qtdir/bin");
-        $ctx->prependEnvironmentValue('PATH', @qt_path);
-    }
-
-    # Avoid moving /usr up in env vars
-    if ($kdedir ne '/usr') {
-        my @pkg_config_dirs = ("$kdedir/lib/pkgconfig");
-        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @pkg_config_dirs);
-
-        my @ld_dirs = ("$kdedir/lib", $self->getOption('libpath'));
-        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
-
-        my @path = ("$kdedir/bin", $self->getOption('binpath'));
-        $ctx->prependEnvironmentValue('PATH', @path);
+        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$platformDir/lib/pkgconfig");
+        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/lib");
+        $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
     }
 
     # Build system's environment injection
