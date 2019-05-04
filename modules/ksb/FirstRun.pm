@@ -284,6 +284,30 @@ ModemManager-devel
 NetworkManager-libnm-devel
 qrencode-devel
 
+@@ pkg/mageia/unknown
+perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
+git shared-mime-info make cmake openssl-devel intltool
+gcc gcc-c++ python
+libgl-devel dbus-devel gstreamer1.0-devel
+polkit-devel
+gperf
+gettext gettext-devel
+libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
+perl-URI
+libxrender-devel xcb-util-keysyms-devel
+flex bison
+libsm-devel
+libattr-devel
+boost
+wayland-devel
+lmdb-devel
+libpng-devel giflib-devel
+modemmanager-devel
+# This pulls in so many other packages! :(
+libnm-devel
+qrencode-devel
+
+
 @@ pkg/gentoo/unknown
 dev-util/cmake
 dev-lang/perl
