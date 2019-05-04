@@ -85,7 +85,9 @@ fi
 # but we can reason that if there's a /usr/lib64, there will likely end
 # up being a $kde_prefix/lib64 once kdesrc-build gets done installing it
 libname=lib
-if test -d /usr/lib64; then
+if test -d /usr/lib/x86_64-linux-gnu; then
+	libname=lib/x86_64-linux-gnu
+elif test -d /usr/lib64; then
 	libname=lib64
 fi
 
