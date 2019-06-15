@@ -16,18 +16,40 @@ use ksb::Module;
 package ksb::Application {
     no warnings 'redefine';
 
-    our $IGNORE_ON = 0;
+    sub _resolveModuleDependencyGraph {
+        my $self = shift;
+        my @modules = @_;
 
-    # simulate effect of --include-dependencies, using ksb::Application's
-    # built-in module-name to ksb::Module resolver.
-    sub _resolveModuleDependencies {
-        my ($self, @modules) = @_;
+        my $newModule = $self->{module_factory}->('setmod2');
 
-        return @modules if $IGNORE_ON; # Simulate setmod2 being ignored in the base resolver
+        my $graph = {
+            'setmod1' => {
+                votes => {
+                    'setmod2' => 1,
+                    'setmod3' => 1
+                },
+                build => 1,
+                module => $modules[0]
+            },
+            'setmod2' => {
+                votes => {
+                    'setmod3' => 1
+                },
+                build => 1,
+                module => $newModule
+            },
+            'setmod3' => {
+                votes => {},
+                build => 1,
+                module => $modules[1]
+            }
+        };
 
-        my ($newModule) = $self->{module_resolver}->resolveSelectorsIntoModules('setmod2');
-        splice @modules, 1, 0, $newModule;
-        return @modules;
+        my $result = {
+            graph => $graph
+        };
+
+        return $result;
     }
 };
 

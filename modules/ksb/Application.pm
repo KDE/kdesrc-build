@@ -20,6 +20,7 @@ use ksb::Module;
 use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
+use ksb::ModuleSet::Qt;
 use ksb::OSSupport;
 use ksb::PromiseChain;
 use ksb::RecursiveFH;
@@ -44,7 +45,8 @@ use IO::Select;
 use constant {
     # We use a named remote to make some git commands work that don't accept the
     # full path.
-    KDE_PROJECT_ID   => 'kde-projects',          # git-repository-base for kde_projects.xml
+    KDE_PROJECT_ID   => 'kde-projects',  # git-repository-base for sysadmin/repo-metadata
+    QT_PROJECT_ID    => 'qt-projects',   # git-repository-base for qt.io Git repo
 };
 
 ### Package methods
@@ -156,7 +158,6 @@ DONE
     my (%foundOptions, %auxOptions);
     %foundOptions = (
         'show-info' => sub { say $version; say "OS: ", $os->vendorID(); exit },
-        'initial-setup' => sub { exit $self->performInitialUserSetup() },
         version => sub { say $version; exit },
         author  => sub { say $author;  exit },
         help    => sub { _showHelpMessage(); exit 0 },
@@ -289,7 +290,7 @@ DONE
     my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
         # Options here should not duplicate the flags and options defined below
         # from ksb::BuildContext!
-        'version|v', 'author', 'help', 'show-info', 'initial-setup',
+        'version|v', 'author', 'help', 'show-info',
         'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
         'verbose', 'quiet|quite|q', 'really-quiet', 'debug',
@@ -302,7 +303,8 @@ DONE
         'revision=i', 'resume-from=s', 'resume-after=s',
         'rebuild-failures', 'resume',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
-        'metadata-only', 'include-dependencies',
+        'metadata-only', 'include-dependencies', 'list-build',
+        'dependency-tree',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
         # for negatable boolean flags
@@ -333,6 +335,49 @@ DONE
 
     @{ $cmdlineOptionsRef->{'global'} }{keys %auxOptions}
         = values %auxOptions;
+}
+
+sub _yieldModuleDependencyTreeEntry
+{
+    my ($nodeInfo, $module, $context) = @_;
+
+    my $depth = $nodeInfo->{depth};
+    my $index = $nodeInfo->{idx};
+    my $count = $nodeInfo->{count};
+    my $build = $nodeInfo->{build};
+    my $currentItem = $nodeInfo->{currentItem};
+    my $currentBranch = $nodeInfo->{currentBranch};
+    my $parentItem = $nodeInfo->{parentItem};
+    my $parentBranch = $nodeInfo->{parentBranch};
+
+    my $buildStatus = $build ? 'built' : 'not built';
+    my $statusInfo = $currentBranch ? "($buildStatus: $currentBranch)" : "($buildStatus)";
+
+    my $connectorStack = $context->{stack};
+
+
+    my $prefix = pop(@$connectorStack);
+
+    while($context->{depth} > $depth) {
+        $prefix = pop(@$connectorStack);
+        --($context->{depth});
+    }
+
+    push(@$connectorStack, $prefix);
+
+    my $connector;
+
+    if ($depth == 0) {
+        $connector = $prefix . ' ── ';
+        push(@$connectorStack, $prefix . (' ' x 4));
+    }
+    else {
+        $connector = $prefix . ($index == $count ? '└── ': '├── ');
+        push(@$connectorStack, $prefix . ($index == $count ? ' ' x 4: '│   '));
+    }
+
+    $context->{depth} = $depth + 1;
+    $context->{report}($connector . $currentItem . ' ' . $statusInfo);
 }
 
 # Generates the build context, builds various module, dependency and branch
@@ -368,6 +413,14 @@ sub establishContext
     # Convert list to hash for lookup
     my %ignoredSelectors =
         map { $_, 1 } @{$cmdlineGlobalOptions->{'ignore-modules'}};
+
+    # Set aside debug-related flags for kdesrc-build CLI driver to handle
+    my @debugFlags = qw(dependency-tree list-build);
+    $self->{debugFlags} = {
+        map { ($_, 1) }
+            grep { defined $cmdlineGlobalOptions->{$_} }
+                (@debugFlags)
+    };
 
     my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
     delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
@@ -445,9 +498,6 @@ sub establishContext
     # We also might have cmdline "selectors" to determine which modules or
     # module-sets to choose. First let's select module sets, and expand them.
 
-    my @globalCmdlineArgs = keys %{$cmdlineGlobalOptions};
-    my $commandLineModules = scalar @selectors;
-
     my $moduleResolver
         = $self->{module_resolver}
         = ksb::ModuleResolver->new($ctx);
@@ -512,12 +562,49 @@ sub modulesFromSelectors
         (!defined $branch or $branch); # This is the actual test
     } (@modules);
 
-    @modules = $self->_resolveModuleDependencies(@modules);
+    my $moduleGraph = $self->_resolveModuleDependencyGraph(@modules);
+
+    if (!$moduleGraph || !exists $moduleGraph->{graph}) {
+        croak_runtime("Failed to resolve dependency graph");
+    }
+
+    if (exists $self->{debugFlags}->{'dependency-tree'}) {
+        my $depTreeCtx = {
+            stack => [''],
+            depth => 0,
+            report => sub {
+                print(@_, "\n");
+            }
+        };
+        ksb::DependencyResolver::walkModuleDependencyTrees(
+            $moduleGraph->{graph},
+            \&_yieldModuleDependencyTreeEntry,
+            $depTreeCtx,
+            @modules
+        );
+        return;
+    }
+
+    @modules = ksb::DependencyResolver::sortModulesIntoBuildOrder(
+        $moduleGraph->{graph}
+    );
 
     # Filter --resume-foo options. This might be a second pass, but that should
     # be OK since there's nothing different going on from the first pass (in
     # resolveSelectorsIntoModules) in that event.
     @modules = _applyModuleFilters($ctx, @modules);
+
+    if(exists $self->{debugFlags}->{'list-build'}) {
+        for my $module (@modules) {
+            my $branch = ksb::DependencyResolver::_getBranchOf($module);
+            print(' ── ', $module->name());
+            if($branch) {
+                print(' : ', $branch);
+            }
+            print("\n");
+        }
+        return;
+    }
 
     return @modules;
 }
@@ -583,20 +670,20 @@ sub _downloadKDEProjectMetadata
     }
 }
 
-# Returns a list of Modules in the proper build order according to the
-# kde-build-metadata dependency information.
+# Returns a graph of Modules according to the kde-build-metadata dependency
+# information.
 #
 # The kde-build-metadata repository must have already been updated, and the
-# module factory must be setup. The Modules to reorder must be passed as
-# arguments.
-sub _resolveModuleDependencies
+# module factory must be setup. The modules for which to calculate the graph
+# must be passed in as arguments
+sub _resolveModuleDependencyGraph
 {
     my $self = shift;
     my $ctx = $self->context();
     my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
     my @modules = @_;
 
-    @modules = eval {
+    my $graph = eval {
         my $moduleResolver = $self->{module_resolver};
         my $dependencyResolver = ksb::DependencyResolver->new(sub {
             # Maps module names (what dep resolver has) to built ksb::Modules
@@ -617,17 +704,34 @@ sub _resolveModuleDependencies
             close $dependencies;
         }
 
-        my @reorderedModules = $dependencyResolver->resolveDependencies(@modules);
-        return @reorderedModules;
+        return $dependencyResolver->resolveToModuleGraph(@modules);
     };
 
     if ($@) {
-        warning (" r[b[*] Problems encountered trying to sort modules into correct order:");
+        warning (" r[b[*] Problems encountered trying to determing correct module graph:");
         warning (" r[b[*] $@");
         warning (" r[b[*] Will attempt to continue.");
+
+        $graph = {
+            graph => undef,
+            syntaxErrors  => 0,
+            cycles        => 0,
+            trivialCycles => 0,
+            pathErrors    => 0,
+            branchErrors  => 0,
+            exception => $@
+        };
+    }
+    else {
+        if (!$graph->{graph}) {
+            warning (" r[b[*] Unable to determine correct module graph");
+            warning (" r[b[*] Will attempt to continue.");
+        }
     }
 
-    return @modules;
+    $graph->{exception} = undef;
+
+    return $graph;
 }
 
 # Similar to the old interactive runAllModulePhases. Actually performs the
@@ -769,11 +873,9 @@ sub _splitOptionAndValue
                             # So, skip spaces and pick up the rest of the line.
                             (?:\s+(.*))?$/x);
 
-    $value //= '';
+    $value = trimmed($value // '');
 
     # Simplify whitespace.
-    $value =~ s/\s+$//;
-    $value =~ s/^\s+//;
     $value =~ s/\s+/ /g;
 
     # Check for false keyword and convert it to Perl false.
@@ -829,7 +931,7 @@ EOF
     }
 
     my $repoSet = $ctx->getOption('git-repository-base');
-    if ($selectedRepo ne KDE_PROJECT_ID &&
+    if ($selectedRepo ne KDE_PROJECT_ID && $selectedRepo ne QT_PROJECT_ID &&
         not exists $repoSet->{$selectedRepo})
     {
         my $projectID = KDE_PROJECT_ID;
@@ -953,13 +1055,13 @@ sub _parseModuleSetOptions
 
     $moduleSet = _parseModuleOptions($ctx, $fileReader, $moduleSet, qr/^end\s+module(-?set)?$/);
 
-    if ($moduleSet->getOption('repository') eq KDE_PROJECT_ID &&
-        !$moduleSet->isa('ksb::ModuleSet::KDEProjects'))
-    {
-        # Perl-specific note! re-blessing the module set into the right 'class'
-        # You'd probably have to construct an entirely new object and copy the
-        # members over in other languages.
+    # Perl-specific note! re-blessing the module set into the right 'class'
+    # You'd probably have to construct an entirely new object and copy the
+    # members over in other languages.
+    if ($moduleSet->getOption('repository') eq KDE_PROJECT_ID) {
         bless $moduleSet, 'ksb::ModuleSet::KDEProjects';
+    } elsif ($moduleSet->getOption('repository') eq QT_PROJECT_ID) {
+        bless $moduleSet, 'ksb::ModuleSet::Qt';
     }
 
     return $moduleSet;
@@ -1007,9 +1109,9 @@ sub _readConfigurationOptions
     # Read in global settings
     while ($_ = $fileReader->readLine())
     {
-        s/#.*$//;       # Remove comments
-        s/^\s*//;       # Remove leading whitespace
-        next if (/^\s*$/); # Skip blank lines
+        s/#.*$//; # Remove comments
+        s/^\s+//; # Remove leading whitespace
+        next unless $_; # Skip blank lines
 
         # First command in .kdesrc-buildrc should be a global
         # options declaration, even if none are defined.
@@ -2076,6 +2178,9 @@ sub _installCustomSessionDriver
 sub _checkForEssentialBuildPrograms
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $kdedir = $ctx->getOption('kdedir');
+    my $qtdir = $ctx->getOption('qtdir');
+    my @preferred_paths = ("$kdedir/bin", "$qtdir/bin");
 
     return 1 if pretending();
 
@@ -2100,9 +2205,11 @@ sub _checkForEssentialBuildPrograms
         my %requiredPackages = (
             qmake => 'Qt',
             cmake => 'CMake',
+            meson => 'Meson',
         );
 
-        my $programPath = absPathToExecutable($prog);
+        my $preferredPath = absPathToExecutable($prog, @preferred_paths);
+        my $programPath = $preferredPath || absPathToExecutable($prog);
 
         # qmake is not necessarily named 'qmake'
         if (!$programPath && $prog eq 'qmake') {
@@ -2112,7 +2219,8 @@ sub _checkForEssentialBuildPrograms
         if (!$programPath) {
             # Don't complain about Qt if we're building it...
             if ($prog eq 'qmake' && (
-                    grep { $_->buildSystemType() eq 'Qt' } (@buildModules)) ||
+                    grep { $_->buildSystemType() eq 'Qt' ||
+                           $_->buildSystemType() eq 'Qt5' } (@buildModules)) ||
                     pretending()
                 )
             {
@@ -2229,6 +2337,12 @@ Usage: \$ $0 [--options] [module names]
 Important Options:
     --pretend              Don't actually take major actions, instead describe
                            what would be done.
+    --list-build           List what modules would be built in the order in
+                           which they would be built.
+    --dependency-tree      Print out dependency information on the modules that
+                           would be built, using a `tree` format. Very useful
+                           for learning how modules relate to each other. May
+                           generate a lot of output.
     --no-src               Don't update source code, just build/install.
     --src-only             Only update the source code
     --refresh-build        Start the build from scratch.

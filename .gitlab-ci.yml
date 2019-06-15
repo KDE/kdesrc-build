@@ -1,0 +1,22 @@
+unit-test:
+  image: ubuntu:18.04
+  script:
+    - apt-get --quiet -qq update
+    - apt-get --quiet -qq install perl-modules
+    - prove -I modules -r t/unit
+
+smoke-test:
+  image: ubuntu:18.04
+  script:
+    - apt-get --quiet -qq update
+    - apt-get --quiet -qq install perl-modules git cmake g++ libio-socket-ssl-perl libyaml-perl
+    - prove -I modules -r t/smoke
+
+# Verifies that kdesrc-build itself can get to a basic install from a supported
+# scratch Docker repo
+# Commented out because it takes so much time though :(
+#install-test-opensuse:
+#  image: opensuse/leap:15.0
+#  script:
+#    - ./kdesrc-build --initial-setup && ./kdesrc-build --metadata-only
+#    - ./kdesrc-build --include-dependencies --stop-on-failure dolphin

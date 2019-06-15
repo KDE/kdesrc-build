@@ -72,7 +72,7 @@ use lib "$modPath"; # Make ksb:: modules available
 
 sub dumpError
 {
-    my $err = $@;
+    my $err = shift;
     open my $fh, '>>', "error-$$.log" or return;
     my $time = localtime;
     say $fh $time;
@@ -87,12 +87,12 @@ eval {
         require ksb::FirstRun;
         require ksb::Debug;
         ksb::Debug::setColorfulOutput(1);
-        exit ksb::FirstRun::setupUserSystem($RealBin);
+        exit ksb::FirstRun::setupUserSystem(File::Spec->rel2abs($RealBin));
     }
 };
 
 if ($@) {
-    dumpError();
+    dumpError($@);
     say STDERR <<DONE;
 * Unable to even load the simplistic initial setup support for some reason??
 
@@ -127,10 +127,12 @@ eval {
 };
 
 if ($@) {
-    dumpError();
+    my $err = $@;
+    dumpError($err);
     say STDERR <<DONE;
 Couldn't load the base platform for kdesrc-build!
-More detail might be available in error-$$.log
+
+    $err
 DONE
 
     if (! -e "kdesrc-buildrc" && ! -e "$ENV{HOME}/.kdesrc-buildrc") {
@@ -401,6 +403,18 @@ eval
 {
     my $app = web::BackendServer->new(@ARGV);
     my $ui  = ksb::UserInterface::TTY->new($app);
+
+    my %debugFlags = %{$app->ksb->{debugFlags} // {}};
+    if (%debugFlags) {
+        if ($debugFlags{'dependency-tree'}) {
+            say "Dumping dependency tree";
+        }
+        elsif ($debugFlags{'list-build'}) {
+            say "Dumping build list";
+        }
+
+        exit 0;
+    }
 
     push @atexit_subs, sub { $app->ksb->finish(99) };
 

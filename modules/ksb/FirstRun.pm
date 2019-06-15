@@ -130,8 +130,8 @@ DONE
             _throw("Embedded sample file missing!");
 
         my $numCpus = `nproc 2>/dev/null` || 4;
-        $sampleRc =~ s/%\{num_cpus}/$numCpus/;
-        $sampleRc =~ s/%\{base_dir}/$baseDir/;
+        $sampleRc =~ s/%\{num_cpus}/$numCpus/g;
+        $sampleRc =~ s/%\{base_dir}/$baseDir/g;
 
         open my $sampleFh, '>', "$ENV{HOME}/.kdesrc-buildrc"
             or _throw("Couldn't open new ~/.kdesrc-buildrc: $!");
@@ -229,14 +229,84 @@ sub _packagesForVendor
 
 __DATA__
 @@ pkg/debian/unknown
-shared-mime-info
+libyaml-libyaml-perl libio-socket-ssl-perl libjson-xs-perl
+git shared-mime-info cmake build-essential flex bison gperf libssl-dev intltool
+liburi-perl gettext
 
 @@ pkg/opensuse/unknown
 perl perl-IO-Socket-SSL perl-JSON perl-YAML-LibYAML
-git shared-mime-info make cmake libqt5-qtbase-common-devel
+git shared-mime-info make cmake libqt5-qtbase-common-devel libopenssl-devel intltool
+polkit-devel
+libqt5-qtbase-devel libqt5-qtimageformats-devel libqt5-qtmultimedia-devel libqt5-qtdeclarative-devel libqt5-qtx11extras-devel libqt5-qtxmlpatterns-devel libqt5-qtsvg-devel
+gperf
+gettext-runtime gettext-tools
+libxml2-devel libxml2-tools libxslt-devel docbook-xsl-stylesheets docbook_4
+perl-URI
+libXrender-devel xcb-util-keysyms-devel
+flex bison
+libQt5Core-private-headers-devel
+libudev-devel
+libQt5WebKit5-devel libQt5WebKitWidgets-devel
+libQt5DesignerComponents5 libqt5-qttools-devel libSM-devel
+libattr-devel
+libboost_headers1_66_0-devel
+libQt5QuickControls2-devel
+libqt5-qtscript-devel
+wayland-devel
+libqt5-qtbase-private-headers-devel
+lmdb-devel
+libpng16-compat-devel giflib-devel
+ModemManager-devel
+# This pulls in so many other packages! :(
+NetworkManager-devel
+qrencode-devel
 
 @@ pkg/fedora/unknown
-git
+perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
+git shared-mime-info make cmake openssl-devel intltool
+gcc gcc-c++ python
+mesa-libGL-devel dbus-devel gstreamer1-devel
+polkit-devel
+gperf
+gettext gettext-devel
+libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
+perl-URI
+libXrender-devel xcb-util-keysyms-devel
+flex bison
+libSM-devel
+libattr-devel
+boost
+wayland-devel
+lmdb-devel
+libpng-devel giflib-devel
+ModemManager-devel
+# This pulls in so many other packages! :(
+NetworkManager-libnm-devel
+qrencode-devel
+
+@@ pkg/mageia/unknown
+perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
+git shared-mime-info make cmake openssl-devel intltool
+gcc gcc-c++ python
+libgl-devel dbus-devel gstreamer1.0-devel
+polkit-devel
+gperf
+gettext gettext-devel
+libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
+perl-URI
+libxrender-devel xcb-util-keysyms-devel
+flex bison
+libsm-devel
+libattr-devel
+boost
+wayland-devel
+lmdb-devel
+libpng-devel giflib-devel
+modemmanager-devel
+# This pulls in so many other packages! :(
+libnm-devel
+qrencode-devel
+
 
 @@ pkg/gentoo/unknown
 dev-util/cmake
@@ -246,11 +316,17 @@ dev-lang/perl
 perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
 
+@@ cmd/install/debian/unknown
+apt-get -q -y --no-install-recommends install
+
 @@ cmd/install/opensuse/unknown
-zypper install -y
+zypper install -y --no-recommends
 
 @@ cmd/install/arch/unknown
-pacman -Sy --noconfirm
+pacman -Sy --noconfirm --needed
+
+@@ cmd/install/fedora/unknown
+dnf -y install
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
@@ -258,17 +334,19 @@ pacman -Sy --noconfirm
 # List of all options: https://go.kde.org/u/ksboptions
 
 global
-    branch-group kf5-qt5
-    kdedir ~/kde-5 # Where to install KF5-based software
-    # Uncomment this and edit value to choose a different Qt5
-#    qtdir /usr     # Where to find Qt5
+    # Paths
+
+    kdedir ~/kde/usr # Where to install KF5-based software
+    qtdir  ~/kde/qt5 # Where to find Qt5
+
+    source-dir ~/kde/src   # Where sources are downloaded
+    build-dir  ~/kde/build # Where the source build is run
+
+    ignore-kde-structure true # Use flat structure
 
     # Will pull in KDE-based dependencies only, to save you the trouble of
     # listing them all below
     include-dependencies true
-
-    source-dir ~/kde/src
-    build-dir  ~/kde/build
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
     make-options  -j%{num_cpus}
@@ -282,6 +360,11 @@ end global
 # You can include other files inline using the "include" command. We do this here
 # to include files which are updated with kdesrc-build.
 
+# Qt and some Qt-using middleware libraries
+include %{base_dir}/qt5-build-include
+include %{base_dir}/custom-qt5-libs-build-include
+
+# KF5 and Plasma :)
 include %{base_dir}/kf5-qt5-build-include
 
 # To change options for modules that have already been defined, use an
@@ -289,4 +372,3 @@ include %{base_dir}/kf5-qt5-build-include
 options kcoreaddons
     make-options -j4
 end options
-

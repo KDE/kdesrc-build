@@ -133,6 +133,48 @@ sub _clone
     return;
 }
 
+# Checks that the required source dir is either not already present or is empty.
+# Throws an exception if that's not true.
+sub _verifySafeToCloneIntoSourceDir
+{
+    my ($module, $srcdir) = @_;
+
+    if (-e "$srcdir" && !is_dir_empty($srcdir)) {
+        if ($module->getOption('#delete-my-patches')) {
+            warning ("\tRemoving conflicting source directory " .
+                     "as allowed by --delete-my-patches");
+            warning ("\tRemoving b[$srcdir]");
+            safe_rmtree($srcdir) or
+                croak_internal("Unable to delete $srcdir!");
+        }
+        else {
+            error (<<EOF);
+The source directory for b[$module] does not exist. kdesrc-build would download
+it, except there is already a file or directory present in the desired source
+directory:
+\ty[b[$srcdir]
+
+Please either remove the source directory yourself and re-run this script, or
+pass the b[--delete-my-patches] option to kdesrc-build and kdesrc-build will
+try to do so for you.
+
+DO NOT FORGET TO VERIFY THERE ARE NO UNCOMMITTED CHANGES OR OTHER VALUABLE
+FILES IN THE DIRECTORY.
+
+EOF
+
+            if (-e "$srcdir/.svn") {
+                error ("svn status of $srcdir:");
+                system('svn', 'st', '--non-interactive', $srcdir);
+            }
+
+            croak_runtime('Conflicting source-dir present');
+        }
+    }
+
+    return;
+}
+
 # Either performs the initial checkout or updates the current git checkout
 # for git-using modules, as appropriate.
 #
@@ -150,39 +192,7 @@ sub updateCheckout
         return $self->updateExistingClone();
     }
     else {
-        # Check if an existing source directory is there somehow.
-        if (-e "$srcdir" && !is_dir_empty($srcdir)) {
-            if ($module->getOption('#delete-my-patches')) {
-                warning ("\tRemoving conflicting source directory " .
-                         "as allowed by --delete-my-patches");
-                warning ("\tRemoving b[$srcdir]");
-                safe_rmtree($srcdir) or
-                    croak_internal("Unable to delete $srcdir!");
-            }
-            else {
-                error (<<EOF);
-The source directory for b[$module] does not exist. kdesrc-build would download
-it, except there is already a file or directory present in the desired source
-directory:
-\ty[b[$srcdir]
-
-Please either remove the source directory yourself and re-run this script, or
-pass the b[--delete-my-patches] option to kdesrc-build and kdesrc-build will
-try to do so for you.
-
-DO NOT FORGET TO VERIFY THERE ARE NO UNCOMMITTED CHANGES OR OTHER VALUABLE
-FILES IN THE DIRECTORY.
-
-EOF
-
-                if (-e "$srcdir/.svn") {
-                    error ("svn status of $srcdir:");
-                    system('svn', 'st', '--non-interactive', $srcdir);
-                }
-
-                croak_runtime('Conflicting source-dir present');
-            }
-        }
+        _verifySafeToCloneIntoSourceDir($module, $srcdir);
 
         my $git_repo = $module->getOption('repository');
 
@@ -471,6 +481,20 @@ sub _determinePreferredCheckoutSource
     return ($checkoutSource, $sourceTypeRef->[1]);
 }
 
+# Tries to check whether the git module is using submodules or not. Currently
+# we just check the .git/config file (using git-config) to determine whether
+# there are any 'active' submodules.
+#
+# MUST BE RUN FROM THE SOURCE DIR
+sub _hasSubmodules
+{
+    # The git-config line shows all option names of the form submodule.foo.active,
+    # filtering down to options for which the option is set to 'true'
+    my @configLines = filter_program_output(undef, # accept all lines
+        qw(git config --local --get-regexp ^submodule\..*\.active true));
+    return scalar @configLines > 0;
+}
+
 # Splits a URI up into its component parts. Taken from
 # http://search.cpan.org/~ether/URI-1.67/lib/URI.pm
 # Copyright Gisle Aas under the following terms:
@@ -516,7 +540,7 @@ sub stashAndUpdate
     }
 
     my $needsStash = 0;
-    if ($status) {
+    if ($status && !_hasSubmodules()) {
         # There are local changes.
         $needsStash = 1;
     }
@@ -557,7 +581,7 @@ r[b[*] Unable to re-apply stashed changes to r[b[$module]!
 r[b[*]
 * These changes were saved using the name "kdesrc-build auto-stash at $date"
 * and should still be available using the name stash\@{0}, the command run
-* to re-apply was y[git stash --pop --index]. Resolve this before you run
+* to re-apply was y[git stash pop --index]. Resolve this before you run
 * kdesrc-build to update this module again.
 *
 * If you do not desire to keep your local changes, then you can generally run

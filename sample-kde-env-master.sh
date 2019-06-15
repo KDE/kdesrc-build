@@ -41,7 +41,7 @@ fi                                                             # kdesrc-build: f
 # === End of modifiable variables.
 
 # Default qmake executable if we don't find a better one
-qmake=qmake
+qmake=${qt_prefix}/bin/qmake
 
 # Find system Qt5
 if test -z "$qt_prefix"; then
@@ -85,7 +85,9 @@ fi
 # but we can reason that if there's a /usr/lib64, there will likely end
 # up being a $kde_prefix/lib64 once kdesrc-build gets done installing it
 libname=lib
-if test -d /usr/lib64; then
+if test -d /usr/lib/x86_64-linux-gnu; then
+	libname=lib/x86_64-linux-gnu
+elif test -d /usr/lib64; then
 	libname=lib64
 fi
 
@@ -102,6 +104,7 @@ path_add "CMAKE_PREFIX_PATH"  "$kde_prefix";
 path_add "QML2_IMPORT_PATH"   "$kde_prefix/$libname/qml";
 path_add "QT_PLUGIN_PATH"     "$kde_prefix/$libname/qt5/plugins" # phonon likes this one
 path_add "QT_PLUGIN_PATH"     "$kde_prefix/$libname/plugins"     # others like this more
+path_add "LD_LIBRARY_PATH"    "$qt_prefix/lib/"
 
 # For Python bindings support.
 path_add "PYTHONPATH"         "$kde_prefix/$libname/site-packages";
@@ -120,3 +123,4 @@ export QT_PLUGIN_PATH
 export XDG_DATA_DIRS
 export XDG_CONFIG_DIRS
 export MANPATH
+export LD_LIBRARY_PATH

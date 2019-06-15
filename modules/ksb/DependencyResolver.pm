@@ -17,6 +17,12 @@ use ksb::Debug;
 use ksb::Util;
 use List::Util qw(first);
 
+sub uniq
+{
+    my %seen;
+    return grep { ++($seen{$_}) == 1 } @_;
+}
+
 # Constructor: new
 #
 # Constructs a new <DependencyResolver>.
@@ -136,15 +142,16 @@ sub readDependencyData
             next;
         }
 
-        # Ignore deps on Qt, since we allow system Qt.
-        next if $sourceItem =~ /^\s*Qt/ || $dependentItem =~ /^\s*Qt/;
-
         $dependentBranch ||= '*'; # If no branch, apply catch-all flag
         $sourceBranch ||= '*';
 
+        # _shortenModuleName may remove negation marker so check now
+        my $depKey = (index($sourceItem, '-') == 0) ? '-' : '+';
+        $sourceItem =~ s/^-//; # remove negation marker if name already short
+
         # Source can never be a catch-all so we can shorten early. Also,
         # we *must* shorten early to avoid a dependency on a long path.
-        $sourceItem    = _shortenModuleName($sourceItem);
+        $sourceItem = _shortenModuleName($sourceItem);
 
         # Handle catch-all dependent groupings
         if ($dependentItem =~ /\*$/) {
@@ -177,9 +184,6 @@ sub readDependencyData
             '+' => [ ],
         };
 
-        my $depKey = (index($sourceItem, '-') == 0) ? '-' : '+';
-        $sourceItem =~ s/^-//;
-
         push @{$dependenciesOfRef->{"$dependentItem:$dependentBranch"}->{$depKey}},
              "$sourceItem:$sourceBranch";
     }
@@ -207,46 +211,41 @@ sub _canonicalizeDependencies
     }
 }
 
-# Function: directDependenciesOf
-#
-# Internal:
-#
-# Finds and returns the direct dependencies of the given module at a given
-# branch. This requires forming a list of dependencies for the module from the
-# "branch neutral" dependencies, adding branch-specific dependencies, and then
-# removing any explicit non-dependencies for the given branch, which is why
-# this is a separate routine.
-#
-# Parameters:
-#  dependenciesOfRef - hashref to the table of dependencies as read by
-#  <readDependencyData>.
-#  module - The short name (just the name) of the kde-project module to list
-#  dependencies of.
-#  branch - The branch to assume for module. This must be specified, but use
-#  '*' if you have no specific branch in mind.
-#
-# Returns:
-#  A list of dependencies. Every item of the list will be of the form
-#  "$moduleName:$branch", where $moduleName will be the short kde-project module
-#  name (e.g. kdelibs) and $branch will be a specific git branch or '*'.
-#  The order of the entries within the list is not important.
-sub _directDependenciesOf
+sub _lookupDirectDependencies
 {
-    my ($dependenciesOfRef, $module, $branch) = @_;
+    my $self = assert_isa(shift, 'ksb::DependencyResolver');
+    my ($path, $branch) = @_;
 
-    my $moduleDepEntryRef = $dependenciesOfRef->{"$module:*"};
-    my @directDeps;
-    my @exclusions;
+    my $dependenciesOfRef = $self->{dependenciesOf};
 
-    return unless $moduleDepEntryRef;
+    my @directDeps = ();
+    my @exclusions = ();
 
-    push @directDeps, @{$moduleDepEntryRef->{'+'}};
-    push @exclusions, @{$moduleDepEntryRef->{'-'}};
+    my $item = _shortenModuleName($path);
+    my $moduleDepEntryRef = $dependenciesOfRef->{"$item:*"};
 
-    $moduleDepEntryRef = $dependenciesOfRef->{"$module:$branch"};
-    if ($moduleDepEntryRef && $branch ne '*') {
+    if ($moduleDepEntryRef) {
+        debug("handling dependencies for: $item without branch (*)");
         push @directDeps, @{$moduleDepEntryRef->{'+'}};
         push @exclusions, @{$moduleDepEntryRef->{'-'}};
+    }
+
+    if ($branch && $branch ne '*') {
+        $moduleDepEntryRef = $dependenciesOfRef->{"$item:$branch"};
+        if ($moduleDepEntryRef) {
+            debug("handling dependencies for: $item with branch ($branch)");
+            push @directDeps, @{$moduleDepEntryRef->{'+'}};
+            push @exclusions, @{$moduleDepEntryRef->{'-'}};
+        }
+    }
+
+    while (my ($catchAll, $deps) = each %{$self->{catchAllDependencies}}) {
+        my $prefix = $catchAll;
+        $prefix =~ s/\*$//;
+
+        if (($path =~ /^$prefix/) || !$prefix) {
+            push @directDeps, @{$deps};
+        }
     }
 
     foreach my $exclusion (@exclusions) {
@@ -257,45 +256,547 @@ sub _directDependenciesOf
         @directDeps = grep { $_ ne $exclusion } (@directDeps);
     }
 
-    return @directDeps;
-}
+    my $result = {
+        syntaxErrors => 0,
+        trivialCycles => 0,
+        dependencies => {}
+    };
 
-# Function: makeCatchAllRules
-#
-# Internal:
-#
-# Given the internal dependency options data and a kde-project full path,
-# extracts all "catch-all" rules that apply to the given item and converts
-# them to standard dependencies for that item. The dependency options are
-# then appropriately updated.
-#
-# No checks are done for logical errors (e.g. having the item depend on
-# itself) and no provision is made to avoid updating a module that has
-# already had its catch-all rules generated.
-#
-# Parameters:
-#  optionsRef - The hashref as provided to <_visitModuleAndDependencies>
-#  fullName - The kde-project full project path to generate dependencies for.
-sub _makeCatchAllRules
-{
-    my ($optionsRef, $fullName) = @_;
-    my $dependenciesOfRef = $optionsRef->{dependenciesOf};
-    my $item = _shortenModuleName($fullName);
+    for my $dep (@directDeps) {
+        my ($depPath, $depBranch) = ($dep =~ m/^([^:]+):(.*)$/);
+        if (!$depPath) {
+            error("r[Invalid dependency declaration: b[$dep]]");
+            ++($result->{syntaxErrors});
+            next;
+        }
+        my $depItem = _shortenModuleName($depPath);
+        if ($depItem eq $item) {
+            debug("\tBreaking trivial cycle of b[$depItem] -> b[$item]");
+            ++($result->{trivialCycles});
+            next;
+        }
 
-    while (my ($catchAll, $deps) = each %{$optionsRef->{catchAllDependencies}}) {
-        my $prefix = $catchAll;
-        $prefix =~ s/\*$//;
-
-        if (($fullName =~ /^$prefix/) || !$prefix) {
-            my $depEntry = "$item:*";
-            $dependenciesOfRef->{$depEntry} //= {
-                '-' => [ ],
-                '+' => [ ],
+        if ($result->{dependencies}->{$depItem}) {
+            debug("\tSkipping duplicate direct dependency b[$depItem] of b[$item]");
+        }
+        else {
+            $depBranch //= '';
+            # work-around: wildcard branches are a don't care, not an actual
+            # branch name/value
+            $depBranch = undef if ($depBranch eq '' || $depBranch eq '*');
+            $result->{dependencies}->{$depItem} = {
+                item => $depItem,
+                path => $depPath,
+                branch => $depBranch
             };
-
-            push @{$dependenciesOfRef->{$depEntry}->{'+'}}, @{$deps};
         }
     }
+
+    return $result;
+}
+
+sub _runDependencyVote
+{
+    my $moduleGraph = shift;
+
+    for my $item (keys(%$moduleGraph)) {
+        my @names = keys(%{$moduleGraph->{$item}->{allDeps}->{items}});
+        for my $name (@names) {
+            ++($moduleGraph->{$name}->{votes}->{$item});
+        }
+    }
+
+    return $moduleGraph;
+}
+
+sub _detectDependencyCycle
+{
+    my ($moduleGraph, $depItem, $item) = @_;
+
+    my $depModuleGraph = $moduleGraph->{$depItem};
+    if ($depModuleGraph->{traces}->{status}) {
+        if ($depModuleGraph->{traces}->{status} == 2) {
+            debug("Already resolved $depItem -- skipping");
+            return $depModuleGraph->{traces}->{result};
+        }
+        else {
+            error("Found a dependency cycle at: $depItem while tracing $item");
+            $depModuleGraph->{traces}->{result} = 1;
+        }
+    }
+    else {
+        $depModuleGraph->{traces}->{status} = 1;
+        $depModuleGraph->{traces}->{result} = 0;
+
+        my @names = keys(%{$depModuleGraph->{deps}});
+        for my $name (@names) {
+            if (_detectDependencyCycle($moduleGraph, $name, $item)) {
+                $depModuleGraph->{traces}->{result} = 1;
+            }
+        }
+    }
+
+    $depModuleGraph->{traces}->{status} = 2;
+    return $depModuleGraph->{traces}->{result};
+}
+
+sub _checkDependencyCycles
+{
+    my $moduleGraph = shift;
+
+    my $errors = 0;
+
+    for my $item (keys(%$moduleGraph)) {
+        if(_detectDependencyCycle($moduleGraph, $item, $item)) {
+            error("Somehow there is a circular dependency involving b[$item]! :(");
+            error("Please file a bug against kde-build-metadata about this!");
+            ++$errors;
+        }
+    }
+
+    return $errors;
+}
+
+sub _copyUpDependenciesForModule
+{
+    my ($moduleGraph, $item) = @_;
+
+    my $allDeps = $moduleGraph->{$item}->{allDeps};
+
+    if($allDeps->{done}) {
+        debug("\tAlready copied up dependencies for b[$item] -- skipping");
+    }
+    else {
+        debug("\tCopying up dependencies and transitive dependencies for item: b[$item]");
+        $allDeps->{items} = {};
+
+        my @names = keys(%{$moduleGraph->{$item}->{deps}});
+        for my $name (@names) {
+            if ($allDeps->{items}->{$name}) {
+                debug("\tAlready copied up (transitive) dependency on b[$name] for b[$item] -- skipping");
+            }
+            else {
+                _copyUpDependenciesForModule($moduleGraph, $name);
+                my @copied = keys(%{$moduleGraph->{$name}->{allDeps}->{items}});
+                for my $copy (@copied) {
+                    if ($allDeps->{items}->{$copy}) {
+                        debug("\tAlready copied up (transitive) dependency on b[$copy] for b[$item] -- skipping");
+                    }
+                    else {
+                        ++($allDeps->{items}->{$copy});
+                    }
+                }
+                ++($allDeps->{items}->{$name});
+            }
+        }
+        ++($allDeps->{done});
+    }
+}
+
+sub _copyUpDependencies
+{
+    my $moduleGraph = shift;
+
+    for my $item (keys(%$moduleGraph)) {
+        _copyUpDependenciesForModule($moduleGraph, $item);
+    }
+
+    return $moduleGraph;
+}
+
+sub _detectBranchConflict
+{
+    my ($moduleGraph, $item, $branch) = @_;
+
+    if ($branch) {
+        my $subGraph = $moduleGraph->{$item};
+        my $previouslySelectedBranch = $subGraph->{branch};
+
+        return $previouslySelectedBranch if($previouslySelectedBranch && $previouslySelectedBranch ne $branch);
+    }
+
+    return undef;
+}
+
+sub _getDependencyPathOf
+{
+    my ($module, $item, $path) = @_;
+
+    if ($module) {
+        my $projectPath = $module->fullProjectPath();
+
+        $projectPath = "third-party/$projectPath" if(!$module->isKDEProject());
+
+        debug("\tUsing path: 'b[$projectPath]' for item: b[$item]");
+        return $projectPath;
+    }
+
+    debug("\tGuessing path: 'b[$path]' for item: b[$item]");
+    return $path;
+}
+
+sub _resolveDependenciesForModuleDescription
+{
+    my $self = assert_isa(shift, 'ksb::DependencyResolver');
+    my ($moduleGraph, $moduleDesc) = @_;
+
+    my $module = $moduleDesc->{module};
+    if($module) {
+        assert_isa($module, 'ksb::Module');
+    }
+
+    my $path = $moduleDesc->{path};
+    my $item = $moduleDesc->{item};
+    my $branch = $moduleDesc->{branch};
+    my $prettyBranch = $branch ? "$branch" : "*";
+    my $includeDependencies = $module
+        ? $module->getOption('include-dependencies')
+        : $moduleDesc->{includeDependencies};
+
+    my $errors = {
+        syntaxErrors => 0,
+        trivialCycles => 0,
+        branchErrors => 0
+    };
+
+    debug("Resolving dependencies for module: b[$item]");
+
+    while (my ($depItem, $depInfo) = each %{$moduleGraph->{$item}->{deps}}) {
+        my $depPath = $depInfo->{path};
+        my $depBranch = $depInfo->{branch};
+
+        my $prettyDepBranch = $depBranch ? "$depBranch" : "*";
+
+        debug ("\tdep-resolv: b[$item:$prettyBranch] depends on b[$depItem:$prettyDepBranch]");
+
+        my $depModuleGraph = $moduleGraph->{$depItem};
+
+        if($depModuleGraph) {
+            my $previouslySelectedBranch = _detectBranchConflict($moduleGraph, $depItem, $depBranch);
+            if($previouslySelectedBranch) {
+                error("r[Found a dependency conflict in branches ('b[$previouslySelectedBranch]' is not 'b[$prettyDepBranch]') for b[$depItem]! :(");
+                ++($errors->{branchErrors});
+            }
+            else {
+                if($depBranch) {
+                    $depModuleGraph->{branch} = $depBranch;
+                }
+            }
+        }
+        else {
+            my $depModule = $self->{moduleFactoryRef}($depItem);
+            my $resolvedPath = _getDependencyPathOf($depModule, $depItem, $depPath);
+            # May not exist, e.g. misspellings or 'virtual' dependencies like kf5umbrella.
+            if(!$depModule) {
+                debug("\tdep-resolve: Will not build virtual or undefined module: b[$depItem]\n");
+            }
+
+            my $depLookupResult = $self->_lookupDirectDependencies(
+                $resolvedPath,
+                $depBranch
+            );
+
+            $errors->{trivialCycles} += $depLookupResult->{trivialCycles};
+            $errors->{syntaxErrors} += $depLookupResult->{syntaxErrors};
+
+            $moduleGraph->{$depItem} = {
+                votes => {},
+                path => $resolvedPath,
+                build => $depModule && $includeDependencies ? 1 : 0,
+                branch => $depBranch,
+                deps => $depLookupResult->{dependencies},
+                allDeps => {},
+                module => $depModule,
+                traces => {}
+            };
+
+            my $depModuleDesc = {
+                includeDependencies => $includeDependencies,
+                module => $depModule,
+                item => $depItem,
+                path => $resolvedPath,
+                branch => $depBranch
+            };
+
+            if (!$moduleGraph->{$depItem}->{build}) {
+                debug (" y[b[*] $item depends on $depItem, but no module builds $depItem for this run.]");
+            }
+
+            if($depModule && $depBranch && (_getBranchOf($depModule) // '') ne "$depBranch") {
+                my $wrongBranch = _getBranchOf($depModule) // '?';
+                error(" r[b[*] $item needs $depItem:$prettyDepBranch, not $depItem:$wrongBranch]");
+                ++($errors->{branchErrors});
+            }
+
+            debug("Resolving transitive dependencies for module: b[$item] (via: b[$depItem:$prettyDepBranch])");
+            my $resolvErrors = $self->_resolveDependenciesForModuleDescription(
+                $moduleGraph,
+                $depModuleDesc
+            );
+
+            $errors->{branchErrors} += $resolvErrors->{branchErrors};
+            $errors->{syntaxErrors} += $resolvErrors->{syntaxErrors};
+            $errors->{trivialCycles} += $resolvErrors->{trivialCycles};
+        }
+    }
+
+    return $errors;
+}
+
+sub resolveToModuleGraph
+{
+    my $self = assert_isa(shift, 'ksb::DependencyResolver');
+    my @modules = @_;
+
+    my %graph;
+    my $moduleGraph = \%graph;
+
+    my $result = {
+        graph => $moduleGraph,
+        errors => {
+            branchErrors => 0,
+            pathErrors => 0,
+            trivialCycles => 0,
+            syntaxErrors => 0,
+            cycles => 0
+        }
+    };
+    my $errors = $result->{errors};
+
+    for my $module (@modules) {
+        my $item = $module->name(); # _shortenModuleName($path);
+        my $branch = _getBranchOf($module);
+        my $path = _getDependencyPathOf($module, $item, '');
+
+        if (!$path) {
+            error("r[Unable to determine project/dependency path of module: $item]");
+            ++($errors->{pathErrors});
+            next;
+        }
+
+        if($moduleGraph->{$item}) {
+            debug("Module pulled in previously through (transitive) dependencies: $item");
+            my $previouslySelectedBranch = _detectBranchConflict($moduleGraph, $item, $branch);
+            if($previouslySelectedBranch) {
+                error("r[Found a dependency conflict in branches ('b[$previouslySelectedBranch]' is not 'b[$branch]') for b[$item]! :(");
+                ++($errors->{branchErrors});
+            }
+            elsif ($branch) {
+                $moduleGraph->{$item}->{branch} = $branch;
+            }
+            #
+            # May have been pulled in via dependencies but not yet marked for
+            # build. Do so now, since it is listed explicitly in @modules
+            #
+            $moduleGraph->{$item}->{build} = 1;
+        }
+        else {
+            my $depLookupResult = $self->_lookupDirectDependencies(
+                $path,
+                $branch
+            );
+
+            $errors->{trivialCycles} += $depLookupResult->{trivialCycles};
+            $errors->{syntaxErrors} += $depLookupResult->{syntaxErrors};
+
+            $moduleGraph->{$item} = {
+                votes => {},
+                path => $path,
+                build => 1,
+                branch => $branch,
+                module => $module,
+                deps => $depLookupResult->{dependencies},
+                allDeps => {},
+                traces => {}
+            };
+
+            my $moduleDesc = {
+                includeDependencies => $module->getOption('include-dependencies'),
+                path => $path,
+                item => $item,
+                branch => $branch,
+                module => $module
+            };
+
+            my $resolvErrors = $self->_resolveDependenciesForModuleDescription(
+                $moduleGraph,
+                $moduleDesc
+            );
+
+            $errors->{branchErrors} += $resolvErrors->{branchErrors};
+            $errors->{syntaxErrors} += $resolvErrors->{syntaxErrors};
+            $errors->{trivialCycles} += $resolvErrors->{trivialCycles};
+        }
+    }
+
+    my $pathErrors = $errors->{pathErrors};
+    if ($pathErrors) {
+        error("Total of items which were not resolved due to path lookup failure: $pathErrors");
+    }
+
+    my $branchErrors = $errors->{branchErrors};
+    if ($branchErrors) {
+        error("Total of branch conflicts detected: $branchErrors");
+    }
+
+    my $syntaxErrors = $errors->{syntaxErrors};
+    if ($syntaxErrors) {
+        error("Total of encountered syntax errors: $syntaxErrors");
+    }
+
+    if ($syntaxErrors || $pathErrors || $branchErrors) {
+        error("Unable to resolve dependency graph");
+
+        $result->{graph} = undef;
+        return $result;
+    }
+
+    my $trivialCycles = $errors->{trivialCycles};
+
+    if ($trivialCycles) {
+        warning("Total of 'trivial' dependency cycles detected & eliminated: $trivialCycles");
+    }
+
+    my $cycles = _checkDependencyCycles($moduleGraph);
+
+    if ($cycles) {
+        error("Total of items with at least one circular dependency detected: $errors");
+        error("Unable to resolve dependency graph");
+
+        $result->{cycles} = $cycles;
+        $result->{graph} = undef;
+        return $result;
+    }
+    else {
+        $result->{graph} = _runDependencyVote(_copyUpDependencies($moduleGraph));
+        return $result;
+    }
+}
+
+sub _descendModuleGraph
+{
+    my ($moduleGraph, $callback, $nodeInfo, $context) = @_;
+
+    my $depth = $nodeInfo->{depth};
+    my $index = $nodeInfo->{idx};
+    my $count = $nodeInfo->{count};
+    my $currentItem = $nodeInfo->{currentItem};
+    my $currentBranch = $nodeInfo->{currentBranch};
+    my $parentItem = $nodeInfo->{parentItem};
+    my $parentBranch = $nodeInfo->{parentBranch};
+
+    my $subGraph = $moduleGraph->{$currentItem};
+    &$callback($nodeInfo, $subGraph->{module}, $context);
+
+    ++$depth;
+
+    my @items = keys(%{$subGraph->{deps}});
+
+    my $itemCount = scalar(@items);
+    my $itemIndex = 1;
+
+    for my $item (@items)
+    {
+        $subGraph = $moduleGraph->{$item};
+        my $branch = $subGraph->{branch} // '';
+        my $itemInfo = {
+            build => $subGraph->{build},
+            depth => $depth,
+            idx => $itemIndex,
+            count => $itemCount,
+            currentItem => $item,
+            currentBranch => $branch,
+            parentItem => $currentItem,
+            parentBranch => $currentBranch
+        };
+        _descendModuleGraph($moduleGraph, $callback, $itemInfo, $context);
+        ++$itemIndex;
+    }
+}
+
+sub walkModuleDependencyTrees
+{
+    my $moduleGraph = shift;
+    my $callback = shift;
+    my $context = shift;
+    my @modules = @_;
+    my $itemCount = scalar(@modules);
+    my $itemIndex = 1;
+
+    for my $module (@modules) {
+        assert_isa($module, 'ksb::Module');
+        my $item = $module->name();
+        my $subGraph = $moduleGraph->{$item};
+        my $branch = $subGraph->{branch} // '';
+        my $info = {
+            build => $subGraph->{build},
+            depth => 0,
+            idx => $itemIndex,
+            count => $itemCount,
+            currentItem => $item,
+            currentBranch => $branch,
+            parentItem => '',
+            parentBranch => ''
+        };
+        _descendModuleGraph($moduleGraph, $callback, $info, $context);
+        ++$itemIndex;
+    }
+}
+
+sub _compareBuildOrder
+{
+    my ($moduleGraph, $a, $b) = @_;
+
+    #
+    # Enforce a strict dependency ordering.
+    # The case where both are true should never happen, since that would
+    # amount to a cycle, and cycle detection is supposed to have been
+    # performed beforehand.
+    #
+    my $bDependsOnA = $moduleGraph->{$a}->{votes}->{$b} // 0;
+    my $aDependsOnB = $moduleGraph->{$b}->{votes}->{$a} // 0;
+    my $order = $bDependsOnA ? -1 : ($aDependsOnB ? 1 : 0);
+
+    return $order if $order;
+
+    #
+    # Assuming no dependency relation, next sort by 'popularity':
+    # the item with the most votes (back edges) is depended on the most
+    # so it is probably a good idea to build that one earlier to help
+    # maximise the duration of time for which builds can be run in parallel
+    #
+    my $voteA = scalar keys %{$moduleGraph->{$a}->{votes}};
+    my $voteB = scalar keys %{$moduleGraph->{$b}->{votes}};
+    my $votes = $voteB <=> $voteA;
+
+    return $votes if $votes;
+
+    #
+    # If there is no good reason to perfer one module over another,
+    # simply sort by name to get a reproducible build order.
+    # That simplifies autotesting and/or reproducible builds.
+    # (The items to sort are supplied as a hash so the order of keys is by
+    # definition not guaranteed.)
+    #
+    my $name = ($a cmp $b);
+
+    return $name;
+}
+
+sub sortModulesIntoBuildOrder
+{
+    my $moduleGraph = shift;
+
+    my @resolved = keys(%{$moduleGraph});
+    my @built = grep { $moduleGraph->{$_}->{build} && $moduleGraph->{$_}->{module} } (@resolved);
+
+    my @prioritised = sort {
+        _compareBuildOrder($moduleGraph, $a, $b);
+    } (@built);
+
+    my @modules = map { $moduleGraph->{$_}->{module} } (@prioritised);
+
+    return @modules;
 }
 
 # Function: getBranchOf
@@ -310,233 +811,16 @@ sub _makeCatchAllRules
 sub _getBranchOf
 {
     my $module = shift;
-    my ($branch, $type) = $module->scm()->_determinePreferredCheckoutSource($module);
+
+    my $scm = $module->scm();
+
+    # when the module's SCM is not git,
+    # assume the default "no particular" branch wildcard
+    return undef unless $scm->isa('ksb::Updater::Git');
+
+    my ($branch, $type) = $scm->_determinePreferredCheckoutSource($module);
 
     return ($type eq 'branch' ? $branch : undef);
-}
-
-# Function: visitModuleAndDependencies
-#
-# Internal:
-#
-# This method is used to topographically sort dependency data. It accepts a
-# <ksb::Module>, ensures that any KDE Projects it depends on (which are present
-# on the build list) are re-ordered before the module, and then adds the
-# <ksb::Module> to the build list (whether it is a KDE Project or not, to
-# preserve ordering).
-#
-# See also _visitDependencyItemAndDependencies, which actually does most of
-# the work of handling dependencies, and calls back to this function when it
-# finds Modules in the build list.
-#
-# Parameters:
-#  optionsRef - hashref to the module dependencies, catch-all dependencies,
-#   module build list, module name to <ksb::Module> mapping, and auxiliary data
-#   to see if a module has already been visited.
-#  module - The <ksb::Module> to properly order in the build list.
-#  level - The level of recursion of this call.
-#  dependent - Identical to the same param as _visitDependencyItemAndDependencies
-#
-# Returns:
-#  Nothing. The proper build order can be read out from the optionsRef passed
-#  in.
-sub _visitModuleAndDependencies
-{
-    my ($optionsRef, $module, $level, $dependentName) = @_;
-    assert_isa($module, 'ksb::Module');
-
-    if ($module->scmType() eq 'proj') {
-        my $fullName = $module->fullProjectPath();
-        my $item = _shortenModuleName($fullName);
-        my $branch = _getBranchOf($module) // '*';
-
-        # Since the initial build list is visited start to finish it is
-        # possible for this module to already be in the ordered list if
-        # reordering has already happened or if dependencies are included (i.e.
-        # this was a dependency of some other module).
-        return if ($optionsRef->{visitedItems}->{$item} // 0) == 3;
-
-        $dependentName //= $item if $module->getOption('include-dependencies');
-        _visitDependencyItemAndDependencies($optionsRef, $fullName, $branch, $level, $dependentName);
-
-        $optionsRef->{visitedItems}->{$item} = 3; # Mark as also in build list
-    }
-
-    $module->setOption('#dependency-level', $level);
-    push @{$optionsRef->{properBuildOrder}}, $module;
-    --($optionsRef->{modulesNeeded});
-
-    return;
-}
-
-# Function: visitDependencyItemAndDependencies
-#
-# Internal:
-#
-# This method is used by _visitModuleAndDependencies to account for dependencies
-# by kde-project modules across dependency items that are not actually present
-# in the build.
-#
-# For instance, if kde/foo/a depends on kde/lib/bar, and kde/lib/bar depends on
-# kde/foo/baz, then /a also depends on /baz and should be ordered after /baz.
-# This function accounts for that in cases such as trying to build only /a and
-# /baz.
-#
-# Parameters:
-#  optionsRef - hashref to the module dependencies, catch-all dependencies,
-#   module build list, module name to <ksb::Module> mapping, and auxiliary data
-#   to see if a module has already been visited.
-#  dependencyFullItem - a string containing the full kde-projects path for the
-#   the module. The full path is needed to handle wildcarded dependencies.
-#  branch - The specific branch name for the dependency if
-#   needed. The branch name is '*' if the branch doesn't matter (or can be
-#   determined only by the branch-group in use). E.g. '*' or 'master'.
-#  level - Level of recursion of the current call.
-#  dependent - *if set*, is the name of the module that requires that all of its
-#   dependencies be added to the build list (properly ordered) even if not
-#   specifically selected in the configuration file or command line. If not set,
-#   recursive dependencies are not pulled into the build even if they are not
-#   in the build list.
-#
-# Returns:
-#  Nothing. The proper build order can be read out from the optionsRef passed
-#  in. Note that the generated build list might be longer than the build list that
-#  was input, in the case that recursive dependency inclusion was requested.
-sub _visitDependencyItemAndDependencies
-{
-    my ($optionsRef, $dependencyFullItem, $branch, $level, $dependentName) = @_;
-
-    my $visitedItemsRef     = $optionsRef->{visitedItems};
-    my $properBuildOrderRef = $optionsRef->{properBuildOrder};
-    my $dependenciesOfRef   = $optionsRef->{dependenciesOf};
-    my $modulesFromNameRef  = $optionsRef->{modulesFromName};
-    my $moduleFactoryRef    = $optionsRef->{moduleFactoryRef};
-    $level //= 0;
-
-    my $item = _shortenModuleName($dependencyFullItem);
-
-    debug ("dep-resolv: Visiting ", (' ' x $level), "$item");
-
-    $visitedItemsRef->{$item} //= 0;
-
-    # This module may have already been added to build.
-    # 0 == Not visited
-    # 1 == Currently visiting. Running into a module in visit state 1 indicates a cycle.
-    # 2 == Visited, but not in build (this may happen for common dependencies with siblings, or for
-    #      modules that are not in our build list but are part of dependency chain for other modules
-    #      that *are* in build list).
-    # 3 == Visited, placed in build queue.
-    return if $visitedItemsRef->{$item} >= 2;
-
-    # But if the value is 2 that means we've detected a cycle.
-    if ($visitedItemsRef->{$item} == 1) {
-        croak_internal("Somehow there is a dependency cycle involving $item! :(");
-    }
-
-    $visitedItemsRef->{$item} = 1; # Mark as currently-visiting for cycle detection.
-
-    _makeCatchAllRules($optionsRef, $dependencyFullItem);
-
-    for my $subItem (_directDependenciesOf($dependenciesOfRef, $item, $branch)) {
-        my ($subItemName, $subItemBranch) = ($subItem =~ m/^([^:]+):(.*)$/);
-        croak_internal("Invalid dependency item: $subItem") if !$subItemName;
-
-        next if $subItemName eq $item; # Catch-all deps might make this happen
-
-        # This keeps us from doing a deep recursive search for dependencies
-        # on an item we've already asked about.
-        next if (($visitedItemsRef->{$subItemName} // 0) >= 2);
-
-        debug ("\tdep-resolv: $item:$branch depends on $subItem");
-
-        my $subModule = $modulesFromNameRef->{$subItemName};
-        if (!$subModule && $dependentName) {
-            # Dependent item not in the build, but we're including dependencies
-            $subModule = $moduleFactoryRef->($subItemName);
-
-            # May not exist, e.g. misspellings or 'virtual' dependencies like
-            # kf5umbrella. But if it does, update the admin for our visit.
-            if ($subModule) {
-                $modulesFromNameRef->{$subModule->name()} = $subModule;
-                ++($optionsRef->{modulesNeeded});
-            }
-        }
-
-        if (!$subModule) {
-            debug (" y[b[*] $item depends on $subItem, but no module builds $subItem for this run.");
-            _visitDependencyItemAndDependencies($optionsRef, $subItemName, $subItemBranch, $level + 1, $dependentName);
-        }
-        else {
-            if ($subItemBranch ne '*' && (_getBranchOf($subModule) // '') ne $subItemBranch) {
-                my $wrongBranch = _getBranchOf($subModule) // '?';
-                error (" r[b[*] $item needs $subItem, not $subItemName:$wrongBranch");
-            }
-
-            _visitModuleAndDependencies($optionsRef, $subModule, $level + 1, $dependentName);
-        }
-
-        last if $optionsRef->{modulesNeeded} == 0;
-    }
-
-    # Mark as done visiting.
-    $visitedItemsRef->{$item} = 2;
-    return;
-}
-
-# Function: resolveDependencies
-#
-# This method takes a list of Modules (real <ksb::Module> objects, not just
-# module names).
-#
-# These modules have their dependencies resolved, and a new list of <Modules>
-# is returned, containing the proper build order for the module given.
-#
-# Only "KDE Project" modules can be re-ordered or otherwise affect the
-# build so this currently won't affect Subversion modules or "plain Git"
-# modules.
-#
-# The dependency data must have been read in first (<readDependencyData>).
-#
-# Parameters:
-#
-#  $self    - The DependencyResolver object.
-#  @modules - List of <Modules> to evaluate, in suggested build order.
-#
-# Returns:
-#
-#  Modules to build, with the included KDE Project modules in a valid ordering
-#  based on the currently-read dependency data. KDE Project modules are only
-#  re-ordered amongst themselves, other module types retain their relative
-#  positions.
-sub resolveDependencies
-{
-    my $self = assert_isa(shift, 'ksb::DependencyResolver');
-    my @modules = @_;
-
-    my $optionsRef = {
-        visitedItems => { },
-        properBuildOrder => [ ],
-        dependenciesOf => $self->{dependenciesOf},
-        catchAllDependencies => $self->{catchAllDependencies},
-
-        # will map names back to their Modules
-        modulesFromName => {
-            map { $_->name() => $_ }
-            grep { $_->scmType() eq 'proj' }
-                @modules
-        },
-
-        moduleFactoryRef => $self->{moduleFactoryRef},
-
-        # Help _visitModuleAndDependencies to optimize
-        modulesNeeded => scalar @modules,
-    };
-
-    for my $module (@modules) {
-        _visitModuleAndDependencies($optionsRef, $module);
-    }
-
-    return @{$optionsRef->{properBuildOrder}};
 }
 
 1;

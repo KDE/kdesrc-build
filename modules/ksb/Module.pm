@@ -20,6 +20,7 @@ use ksb::Updater::Git;
 use ksb::Updater::Bzr;
 use ksb::Updater::KDEProject;
 use ksb::Updater::KDEProjectMetadata;
+use ksb::Updater::Qt5;
 
 use ksb::BuildException 0.20;
 
@@ -27,8 +28,10 @@ use ksb::BuildSystem 0.30;
 use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
 use ksb::BuildSystem::Qt4;
+use ksb::BuildSystem::Qt5;
 use ksb::BuildSystem::KDE4;
 use ksb::BuildSystem::CMakeBootstrap;
+use ksb::BuildSystem::Meson;
 
 use ksb::ModuleSet::Null;
 
@@ -262,6 +265,7 @@ sub setScmType
 #       when('l10n') { $newType = ksb::l10nSystem->new($self); }
         when('svn')  { $newType = ksb::Updater::Svn->new($self); }
         when('bzr')  { $newType = ksb::Updater::Bzr->new($self); }
+        when('qt5')  { $newType = ksb::Updater::Qt5->new($self); }
         default      { $newType = undef; }
     }
 
@@ -296,7 +300,9 @@ sub buildSystemFromName
         'cmake-bootstrap' => 'ksb::BuildSystem::CMakeBootstrap',
         'kde'             => 'ksb::BuildSystem::KDE4',
         'qt'              => 'ksb::BuildSystem::Qt4',
+        'qt5'             => 'ksb::BuildSystem::Qt5',
         'autotools'       => 'ksb::BuildSystem::Autotools',
+        'meson'           => 'ksb::BuildSystem::Meson',
     );
 
     my $class = $buildSystemClasses{lc $name} // undef;
@@ -357,6 +363,12 @@ sub buildSystem
         (-e "$sourceDir/configure" || -e "$sourceDir/autogen.sh"))
     {
         $buildType = ksb::BuildSystem::Autotools->new($self);
+    }
+
+    # Someday move this up, but for now ensure that Meson happens after
+    # configure/autotools support is checked for.
+    if (!$buildType && -e "$sourceDir/meson.build") {
+        $buildType = ksb::BuildSystem::Meson->new($self);
     }
 
     # Don't just assume the build system is KDE-based...
@@ -715,21 +727,22 @@ sub setupEnvironment
     my $self = assert_isa(shift, 'ksb::Module');
     my $ctx = $self->buildContext();
     my $kdedir = $self->getOption('kdedir');
+    my $qtdir  = $self->getOption('qtdir');
     my $prefix = $self->installationPath();
 
     # Add global set-envs and context
     $self->buildContext()->applyUserEnvironment();
 
-    # Avoid moving /usr up in env vars
-    if ($kdedir ne '/usr') {
-        my @pkg_config_dirs = ("$kdedir/lib/pkgconfig");
-        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', @pkg_config_dirs);
+    # Ensure the platform libraries we're building can be found, as long as they
+    # are not the system's own libraries.
+    for my $platformDir ($qtdir, $kdedir) {
+        next unless $platformDir;       # OK, assume system platform is usable
+        next if $platformDir eq '/usr'; # Don't 'fix' things if system platform
+                                        # manually set
 
-        my @ld_dirs = ("$kdedir/lib", $self->getOption('libpath'));
-        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', @ld_dirs);
-
-        my @path = ("$kdedir/bin", $self->getOption('binpath'));
-        $ctx->prependEnvironmentValue('PATH', @path);
+        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$platformDir/lib/pkgconfig");
+        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/lib");
+        $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
     }
 
     # Build system's environment injection
@@ -869,18 +882,20 @@ sub getOption
     # If module-only, check that first.
     return $self->{options}{$key} if $levelLimit eq 'module';
 
+    my $ctxValue = $ctx->getOption($key); # we'll use this a lot from here
+
     # Some global options always override module options.
-    return $ctx->getOption($key) if $ctx->hasStickyOption($key);
+    return $ctxValue if $ctx->hasStickyOption($key);
 
     # Some options append to the global (e.g. conf flags)
     my @confFlags = qw(cmake-options configure-flags cxxflags);
-    if (list_has(\@confFlags, $key) && $ctx->hasOption($key)) {
-        return $ctx->getOption($key) . " " . ($self->{options}{$key} || '');
+    if (list_has(\@confFlags, $key) && $ctxValue) {
+        return trimmed("$ctxValue " . ($self->{options}{$key} || ''));
     }
 
     # Everything else overrides the global option, unless it's simply not
     # set at all.
-    return $self->{options}{$key} // $ctx->getOption($key);
+    return $self->{options}{$key} // $ctxValue;
 }
 
 # Gets persistent options set for this module. First parameter is the name
@@ -927,14 +942,12 @@ sub fullpath
 
 # Returns the "full kde-projects path" for the module. As should be obvious by
 # the description, this only works for modules with an scm type that is a
-# Updater::KDEProject (or its subclasses).
+# Updater::KDEProject (or its subclasses), but modules that don't fall into this
+# hierarchy will just return the module name (with no path components) anyways.
 sub fullProjectPath
 {
     my $self = shift;
-    my $path = $self->getOption('#xml-full-path', 'module') ||
-        croak_internal("Tried to ask for full path of a module $self that doesn't have one!");
-
-    return $path;
+    return ($self->getOption('#xml-full-path', 'module') || $self->name());
 }
 
 # Returns true if this module is (or was derived from) a kde-projects module.

@@ -21,6 +21,7 @@ use Exporter qw(import); # Use Exporter's import method
 our @EXPORT = qw(list_has assert_isa assert_in any unique_items
                  absPathToExecutable
                  fileDigestMD5 log_command disable_locale_message_translation
+                 trimmed
                  split_quoted_on_whitespace safe_unlink safe_system p_chdir
                  pretend_open safe_rmtree get_list_digest is_dir_empty
                  super_mkdir filter_program_output prettify_seconds);
@@ -38,19 +39,22 @@ sub list_has
 }
 
 # Subroutine to return the path to the given executable based on the
-# current PATH.  e.g. if you pass make you could get '/usr/bin/make'.  If
-# the executable is not found undef is returned.
+# either the given paths or the current PATH.
+# E.g.:
+# absPathToExecutable('make') -> '/usr/bin/make'
+# absPathToExecutable('make', 'foo', 'bar') -> /foo/make
+# If the executable is not found undef is returned.
 #
 # This assumes that the module environment has already been updated since
 # binpath doesn't exactly correspond to $ENV{'PATH'}.
 sub absPathToExecutable
 {
-    my $prog = shift;
-    my @paths = split(/:/, $ENV{'PATH'});
+    my ($prog, @preferred) = @_;
 
     # If it starts with a / the path is already absolute.
     return $prog if $prog =~ /^\//;
 
+    my @paths = @preferred ? @preferred : split(/:/, $ENV{'PATH'});
     for my $path (@paths)
     {
         return "$path/$prog" if (-x "$path/$prog");
@@ -385,6 +389,7 @@ sub log_command
     my $callbackRef = $optionsRef->{'callback'};
 
     debug ("log_command(): Module $module, Command: ", join(' ', @command));
+    ksb_debug_inspect('log_command', "$module", $filename, $argRef, $optionsRef);
 
     if (pretending())
     {
@@ -504,6 +509,15 @@ EOF
     }
 }
 
+# removes leading/trailing whitespace
+sub trimmed
+{
+    my $str = shift;
+    $str =~ s/^\s+//;
+    $str =~ s/\s+$//;
+    return $str;
+}
+
 # This subroutine acts like split(' ', $_) except that double-quoted strings
 # are not split in the process.
 #
@@ -513,11 +527,7 @@ EOF
 sub split_quoted_on_whitespace
 {
     use Text::ParseWords qw(parse_line);
-    my $line = shift;
-
-    # Remove leading/trailing whitespace
-    $line =~ s/^\s+//;
-    $line =~ s/\s+$//;
+    my $line = trimmed(shift);
 
     # 0 means not to keep delimiters or quotes
     return parse_line('\s+', 0, $line);

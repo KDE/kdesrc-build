@@ -58,10 +58,12 @@ if (KDESRC_BUILD_INSTALL_MODULES)
 
     install(FILES
         modules/ksb/BuildSystem/Autotools.pm
+        modules/ksb/BuildSystem/Meson.pm
         modules/ksb/BuildSystem/CMakeBootstrap.pm
         modules/ksb/BuildSystem/KDE4.pm
         modules/ksb/BuildSystem/QMake.pm
         modules/ksb/BuildSystem/Qt4.pm
+        modules/ksb/BuildSystem/Qt5.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/BuildSystem)
 
     install(FILES
@@ -71,6 +73,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
     install(FILES
         modules/ksb/ModuleSet/KDEProjects.pm
         modules/ksb/ModuleSet/Null.pm
+        modules/ksb/ModuleSet/Qt.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/ModuleSet)
 
     install(FILES
@@ -79,6 +82,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/Updater/KDEProject.pm
         modules/ksb/Updater/KDEProjectMetadata.pm
         modules/ksb/Updater/Svn.pm
+        modules/ksb/Updater/Qt5.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/Updater)
 endif()
 
@@ -88,6 +92,8 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build-setup DESTINATION ${KD
 install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/sample-kde-env-master.sh
             ${CMAKE_SOURCE_DIR}/sample-xsession.sh
+            ${CMAKE_SOURCE_DIR}/custom-qt5-libs-build-include
+            ${CMAKE_SOURCE_DIR}/qt5-build-include
             ${CMAKE_SOURCE_DIR}/kf5-applications-build-include
             ${CMAKE_SOURCE_DIR}/kf5-extragear-build-include
             ${CMAKE_SOURCE_DIR}/kf5-frameworks-build-include

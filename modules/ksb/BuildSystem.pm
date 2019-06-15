@@ -127,12 +127,13 @@ sub buildCommands
 sub buildInternal
 {
     my $self = shift;
+    my $optionsName = shift // 'make-options';
 
     return $self->safe_make({
         target => undef,
         message => 'Compiling...',
         'make-options' => [
-            split(' ', $self->module()->getOption('make-options')),
+            split(' ', $self->module()->getOption($optionsName)),
         ],
         logbase => 'build',
     });
