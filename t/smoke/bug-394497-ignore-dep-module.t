@@ -68,7 +68,6 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --include-depe
 
 {
     push @args, '--ignore-modules', 'setmod2';
-    $ksb::Application::IGNORE_ON = 1;
 
     my $app = ksb::Application->new;
     my @selectors = $app->establishContext(@args);
