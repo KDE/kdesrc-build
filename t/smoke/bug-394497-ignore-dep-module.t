@@ -15,12 +15,13 @@ use ksb::Module;
 # module.
 package ksb::Application {
     no warnings 'redefine';
+    our $IGNORE_MOD2 = 0;
 
     sub _resolveModuleDependencyGraph {
         my $self = shift;
         my @modules = @_;
 
-        my $newModule = $self->{module_factory}->('setmod2');
+        my $newModule = ksb::Module->new($self->{context}, 'setmod2');
 
         my $graph = {
             'setmod1' => {
@@ -35,7 +36,7 @@ package ksb::Application {
                 votes => {
                     'setmod3' => 1
                 },
-                build => 1,
+                build => !$ksb::Application::IGNORE_MOD2,
                 module => $newModule
             },
             'setmod3' => {
@@ -70,6 +71,7 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --include-depe
     push @args, '--ignore-modules', 'setmod2';
 
     my $app = ksb::Application->new;
+    $ksb::Application::IGNORE_MOD2 = 1;
     my @selectors = $app->establishContext(@args);
     my @moduleList = $app->modulesFromSelectors(@selectors);
 
