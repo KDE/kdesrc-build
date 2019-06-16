@@ -758,7 +758,6 @@ sub startHeadlessBuild
 
     # Install signal handlers to ensure that the lockfile gets closed.
     _installSignalHandlers(sub {
-        note ("Signal received, terminating.");
         @main::atexit_subs = (); # Remove their finish, doin' it manually
         $self->finish(5);
     });
@@ -2304,7 +2303,13 @@ sub _installSignalHandlers
     my $handlerRef = shift;
     my @signals = qw/HUP INT QUIT ABRT TERM PIPE/;
 
-    @SIG{@signals} = ($handlerRef) x scalar @signals;
+    foreach my $signal (@signals) {
+        my $handler = sub {
+            say "Signal SIG$signal received, terminating.";
+            $handlerRef->();
+        };
+        @SIG{$signal} = $handler;
+    }
 }
 
 # Ensures that basic one-time setup to actually *use* installed software is
