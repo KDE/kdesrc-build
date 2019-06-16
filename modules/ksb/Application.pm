@@ -2300,15 +2300,17 @@ sub _reachableModuleLogs
 # First parameter is a reference to the sub to act as the handler.
 sub _installSignalHandlers
 {
+    use Carp qw(confess);
+
     my $handlerRef = shift;
     my @signals = qw/HUP INT QUIT ABRT TERM PIPE/;
 
     foreach my $signal (@signals) {
-        my $handler = sub {
-            say "Signal SIG$signal received, terminating.";
+        $SIG{$signal} = sub {
+            confess ("Signal SIG$signal received, terminating.")
+                unless $signal eq 'INT';
             $handlerRef->();
         };
-        @SIG{$signal} = $handler;
     }
 }
 
