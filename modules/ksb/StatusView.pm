@@ -171,7 +171,7 @@ sub onBuildDone
             keys %{$self->{todo_in_phase}}));
     my $numSuccesses = $numBuiltModules - $numFailedModules;
 
-    my $unicode = $ENV{LC_ALL} =~ /UTF-?8$/;
+    my $unicode = ($ENV{LC_ALL} // 'C') =~ /UTF-?8$/;
     my $happy = $unicode ? '✓' : ':-)';
     my $frown = $unicode ? '✗' : ':-(';
 
