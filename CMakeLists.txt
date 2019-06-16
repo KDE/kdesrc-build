@@ -32,58 +32,7 @@ set(KDESRC_BUILD_MODULE_INSTALL_PREFIX "${KDE_INSTALL_DATADIR}/kdesrc-build/modu
 
 if (KDESRC_BUILD_INSTALL_MODULES)
     message(STATUS "Installing component modules to ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}")
-    install(FILES
-        modules/ksb/Application.pm
-        modules/ksb/BuildContext.pm
-        modules/ksb/BuildException.pm
-        modules/ksb/BuildSystem.pm
-        modules/ksb/Debug.pm
-        modules/ksb/DependencyResolver.pm
-        modules/ksb/FirstRun.pm
-        modules/ksb/KDEProjectsReader.pm
-        modules/ksb/Module.pm
-        modules/ksb/ModuleResolver.pm
-        modules/ksb/ModuleSet.pm
-        modules/ksb/OptionsBase.pm
-        modules/ksb/OSSupport.pm
-        modules/ksb/PhaseList.pm
-        modules/ksb/PromiseChain.pm
-        modules/ksb/RecursiveFH.pm
-        modules/ksb/StatusMonitor.pm
-        modules/ksb/StatusView.pm
-        modules/ksb/Updater.pm
-        modules/ksb/Util.pm
-        modules/ksb/Version.pm
-    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb)
-
-    install(FILES
-        modules/ksb/BuildSystem/Autotools.pm
-        modules/ksb/BuildSystem/Meson.pm
-        modules/ksb/BuildSystem/CMakeBootstrap.pm
-        modules/ksb/BuildSystem/KDE4.pm
-        modules/ksb/BuildSystem/QMake.pm
-        modules/ksb/BuildSystem/Qt4.pm
-        modules/ksb/BuildSystem/Qt5.pm
-    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/BuildSystem)
-
-    install(FILES
-        modules/ksb/Module/BranchGroupResolver.pm
-    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/Module)
-
-    install(FILES
-        modules/ksb/ModuleSet/KDEProjects.pm
-        modules/ksb/ModuleSet/Null.pm
-        modules/ksb/ModuleSet/Qt.pm
-    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/ModuleSet)
-
-    install(FILES
-        modules/ksb/Updater/Bzr.pm
-        modules/ksb/Updater/Git.pm
-        modules/ksb/Updater/KDEProject.pm
-        modules/ksb/Updater/KDEProjectMetadata.pm
-        modules/ksb/Updater/Svn.pm
-        modules/ksb/Updater/Qt5.pm
-    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/Updater)
+    install(DIRECTORY modules/ DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX})
 endif()
 
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${KDE_INSTALL_BINDIR})
