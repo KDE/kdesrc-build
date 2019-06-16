@@ -18,6 +18,7 @@ use open OUT => ':locale';
 
 use ksb::Debug 0.20 qw(colorize);
 use ksb::Util;
+use ksb::BuildException;
 use List::Util qw(min max reduce);
 
 use IO::Handle;

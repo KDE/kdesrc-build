@@ -37,6 +37,7 @@ use Mojo::IOLoop;
 use Mojo::UserAgent;
 use Mojo::JSON qw(to_json);
 
+use ksb::BuildException;
 use ksb::StatusView;
 use ksb::Util;
 use ksb::Debug;

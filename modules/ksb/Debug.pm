@@ -13,6 +13,8 @@ our @EXPORT = qw(debug pretending debugging whisper
                  note info warning error pretend ksb_debug_inspect);
 our @EXPORT_OK = qw(colorize);
 
+use ksb::BuildException;
+
 # Debugging level constants.
 use constant {
     DEBUG   => 0,
