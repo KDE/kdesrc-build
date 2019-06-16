@@ -414,8 +414,9 @@ sub establishContext
     my %ignoredSelectors =
         map { $_, 1 } @{$cmdlineGlobalOptions->{'ignore-modules'}};
 
-    # Set aside debug-related flags for kdesrc-build CLI driver to handle
-    my @debugFlags = qw(dependency-tree list-build);
+    # Set aside debug-related and other short-circuit cmdline options
+    # for kdesrc-build CLI driver to handle
+    my @debugFlags = qw(dependency-tree list-build metadata-only);
     $self->{debugFlags} = {
         map { ($_, 1) }
             grep { defined $cmdlineGlobalOptions->{$_} }
@@ -487,12 +488,6 @@ sub establishContext
         $self->_downloadKDEProjectMetadata();
     }
 
-    # The user might only want metadata to update to allow for a later
-    # --pretend run, check for that here.
-    if (exists $cmdlineGlobalOptions->{'metadata-only'}) {
-        return;
-    }
-
     # At this point we have our list of candidate modules / module-sets (as read in
     # from rc-file). The module sets have not been expanded into modules.
     # We also might have cmdline "selectors" to determine which modules or
@@ -505,6 +500,12 @@ sub establishContext
     $moduleResolver->setDeferredOptions($deferredOptions);
     $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
     $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
+
+    # The user might only want metadata to update to allow for a later
+    # --pretend run, check for that here.
+    if (exists $cmdlineGlobalOptions->{'metadata-only'}) {
+        return;
+    }
 
     return @selectors;
 }
