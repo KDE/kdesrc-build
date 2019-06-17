@@ -404,18 +404,6 @@ eval
     my $app = web::BackendServer->new(@ARGV);
     my $ui  = ksb::UserInterface::TTY->new($app);
 
-    my %debugFlags = %{$app->ksb->{debugFlags} // {}};
-    if (%debugFlags) {
-        if ($debugFlags{'dependency-tree'}) {
-            say "Dumping dependency tree";
-        }
-        elsif ($debugFlags{'list-build'}) {
-            say "Dumping build list";
-        }
-
-        exit 0;
-    }
-
     push @atexit_subs, sub { $app->ksb->finish(99) };
 
     # TODO: Reimplement --print-modules, --query modes, which wouldn't go through ->start

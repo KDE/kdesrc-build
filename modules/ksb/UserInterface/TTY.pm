@@ -60,6 +60,7 @@ sub new
     # attachment will startup the Web server behind the scenes and allow $ua to
     # make HTTP requests.
     $self->ua->server->app($app);
+#   $self->ua->server->app->log->level('debug');
     $self->ua->server->app->log->level('fatal');
 
     return $self;
@@ -67,7 +68,7 @@ sub new
 
 sub _check_error {
     my $tx = shift;
-    my $err = $tx->error or return;
+    my $err = $tx->error or return $tx;
     my $body = $tx->res->body // '';
     open my $fh, '<', \$body;
     my ($first_line) = <$fh> // '';
@@ -75,19 +76,48 @@ sub _check_error {
     die $err;
 };
 
-# Just a giant huge promise handler that actually processes U/I events and
-# keeps the TTY up to date. Note the TTY-specific stuff is actually itself
-# buried in a separate class for now.
-sub start
+# Returns a promise chain to handle the "debug and show some output but don't
+# actually build anything" use case.
+sub _runModeDebug
 {
     my $self = shift;
+    my $app  = $self->app;
+    my $ua   = $self->ua;
+    my %debugFlags = %{$app->ksb->{debugFlags}};
+
+    $app->log->debug("Run mode: DEBUG");
+    if ($debugFlags{'dependency-tree'}) {
+        $app->log->debug("Dumping dependency tree (in a later release...)");
+        return $ua->get_p('/moduleGraph')->then(sub {
+            my $tx = _check_error(shift);
+            say $tx->result->text;
+            return 0;
+        });
+    }
+    elsif ($debugFlags{'list-build'}) {
+        $app->log->debug("Listing modules to build");
+        return $ua->get_p('/modules')->then(sub {
+            my $tx = _check_error(shift);
+            my @modules = @{$tx->result->json};
+            say $_ foreach @modules;
+            return 0;
+        });
+    }
+
+    return 0; # Bail early
+}
+
+# Returns a promise chain to handle the normal build case.
+sub _runModeBuild
+{
+    my $self = shift;
+    my $module_failures_ref = shift;
 
     my $ui = $self->ui;
     my $ua = $self->ua;
     my $app = $self->app;
-    my $result = 0; # notes errors from module builds or internal errors
 
-    my @module_failures;
+    $app->log->debug("Run mode: BUILD");
 
     # Open a file to log the event stream
     my $ctx = $app->context();
@@ -99,31 +129,10 @@ sub start
         or croak_internal("Unable to open event log $!");
     $event_stream->say("["); # Try to make it valid JSON syntax
 
-    # This call just reads an option from the BuildContext as a sanity check
-    $ua->get_p('/context/options/pretend')->then(sub {
-        my $tx = shift;
-        _check_error($tx);
-
-        # If we get here things are mostly working?
-        my $selectorsRef = $app->{selectors};
-
-        # We need to specifically ask for all modules if we're not passing a
-        # specific list of modules to build.
-        my $headers = { };
-        $headers->{'X-BuildAllModules'} = 1 unless @{$selectorsRef};
-
-        # Tell the backend which modules to build.
-        return $ua->post_p('/modules', $headers, json => $selectorsRef);
-    })->then(sub {
-        my $tx = shift;
-        _check_error($tx);
-
-        # We've received a successful response from the backend that it's able to
-        # build the requested modules, so proceed to setup the U/I and start the
-        # build.
-
-        return $ua->websocket_p('/events');
-    })->then(sub {
+    # We track the build using a JSON-based event stream which is published as
+    # a WebSocket IPC using Mojolicious. We need to return a promise which
+    # ultimately resolves to the exit status of the build.
+    return $ua->websocket_p('/events')->then(sub {
         # Websocket Event handler
         my $ws = shift;
         my $everFailed = 0;
@@ -152,7 +161,7 @@ sub start
                 # See ksb::StatusMonitor for where events defined
                 if ($modRef->{event} eq 'phase_completed') {
                     my $results = $modRef->{phase_completed};
-                    push @module_failures, $results
+                    push @{$module_failures_ref}, $results
                         if $results->{result} eq 'error';
                 }
 
@@ -160,7 +169,7 @@ sub start
                     # We've reported the build is complete, activate the promise
                     # holding things together. The value we pass is what is passed
                     # to the next promise handler.
-                    $stop_promise->resolve(scalar @module_failures);
+                    $stop_promise->resolve(scalar @{$module_failures_ref});
                 }
             }
         });
@@ -179,9 +188,61 @@ sub start
         # Once we return here we'll wait in Mojolicious event loop for awhile until
         # the build is done, before moving into the promise handler below
         return $stop_promise;
+    })->finally(sub {
+        $event_stream->say("]");
+        $event_stream->close();
+    });
+}
+
+# Just a giant huge promise handler that actually processes U/I events and
+# keeps the TTY up to date. Note the TTY-specific stuff is actually itself
+# buried in a separate class for now.
+sub start
+{
+    my $self = shift;
+
+    my $ua = $self->ua;
+    my $app = $self->app;
+    my $result = 0; # notes errors from module builds or internal errors
+
+    my @module_failures;
+
+    $app->log->debug("Sending test msg to backend");
+    # This call just reads an option from the BuildContext as a sanity check
+    $ua->get_p('/context/options/pretend')->then(sub {
+        my $tx = shift;
+        _check_error($tx);
+
+        # If we get here things are mostly working?
+        my $selectorsRef = $app->{selectors};
+
+        # We need to specifically ask for all modules if we're not passing a
+        # specific list of modules to build.
+        my $headers = { };
+        $headers->{'X-BuildAllModules'} = 1 unless @{$selectorsRef};
+
+        $app->log->debug("Test msg success, sending selectors to build");
+        # Tell the backend which modules to build.
+        return $ua->post_p('/modules', $headers, json => $selectorsRef);
     })->then(sub {
-        # Build done, value comes from stop_promise->resolve above
+        my $tx = shift;
+        _check_error($tx);
+
+        my $result = eval { $tx->result->json->[0]; };
+        $app->log->debug("Selectors sent to backend, $result");
+
+        # We've received a successful response from the backend that it's able to
+        # build the requested modules, so proceed as appropriate based on the run mode
+        # the user has requested.
+
+        $app->ksb->{debugFlags} //= {};
+        return $self->_runModeDebug()
+            if (%{$app->ksb->{debugFlags}});
+        return $self->_runModeBuild(\@module_failures);
+    })->then(sub {
+        # Build done, value comes from runMode promise above
         $result ||= shift;
+        $app->log->debug("Chosen run mode complete, result (0 == success): $result");
     })->catch(sub {
         # Catches all errors in any of the prior promises
         my $err = shift;
@@ -195,9 +256,6 @@ sub start
 
         $result = 1; # error
     })->wait;
-
-    $event_stream->say("]");
-    $event_stream->close() or $result = 1;
 
     # _report_on_failures(@module_failures);
 

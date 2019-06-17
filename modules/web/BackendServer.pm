@@ -233,6 +233,11 @@ sub _generateRoutes {
         $c->render(text => $c->in_build ? 'True' : 'False');
     });
 
+    $r->get('/moduleGraph' => sub {
+        my $c = shift;
+        $c->render(json => ($c->app->ksb->{debugFlags}->{'dependency-tree'} // {}));
+    });
+
     $r->post('/build' => sub {
         my $c = shift;
         if ($c->in_build) {

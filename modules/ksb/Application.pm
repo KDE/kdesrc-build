@@ -570,20 +570,8 @@ sub modulesFromSelectors
     }
 
     if (exists $self->{debugFlags}->{'dependency-tree'}) {
-        my $depTreeCtx = {
-            stack => [''],
-            depth => 0,
-            report => sub {
-                print(@_, "\n");
-            }
-        };
-        ksb::DependencyResolver::walkModuleDependencyTrees(
-            $moduleGraph->{graph},
-            \&_yieldModuleDependencyTreeEntry,
-            $depTreeCtx,
-            @modules
-        );
-        return;
+        # Save for later introspection
+        $self->{debugFlags}->{'dependency-tree'} = $moduleGraph->{graph};
     }
 
     @modules = ksb::DependencyResolver::sortModulesIntoBuildOrder(
@@ -594,18 +582,6 @@ sub modulesFromSelectors
     # be OK since there's nothing different going on from the first pass (in
     # resolveSelectorsIntoModules) in that event.
     @modules = _applyModuleFilters($ctx, @modules);
-
-    if(exists $self->{debugFlags}->{'list-build'}) {
-        for my $module (@modules) {
-            my $branch = ksb::DependencyResolver::_getBranchOf($module);
-            print(' ── ', $module->name());
-            if($branch) {
-                print(' : ', $branch);
-            }
-            print("\n");
-        }
-        return;
-    }
 
     return @modules;
 }
