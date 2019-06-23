@@ -76,9 +76,6 @@ sub needsRefreshed
    if ($module->getOption("refresh-build")) {
        return "the option refresh-build was set";
    }
-   if (($module->getPersistentOption('failure-count') // 0) > 1) {
-       return "the module has failed to build " . $module->getPersistentOption('failure-count') . " times in a row";
-   }
    if (not -e "$builddir/$confFileKey") {
        return "$builddir/$confFileKey is missing";
    }
