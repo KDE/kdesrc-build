@@ -263,7 +263,7 @@ qrencode-devel
 
 @@ pkg/fedora/unknown
 perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
-git shared-mime-info make cmake openssl-devel intltool
+git bzr shared-mime-info make cmake openssl-devel intltool
 gcc gcc-c++ python
 mesa-libGL-devel dbus-devel gstreamer1-devel
 polkit-devel
