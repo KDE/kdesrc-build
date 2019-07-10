@@ -2563,13 +2563,9 @@ sub _checkForEssentialBuildPrograms
 
 Unable to find r[b[$prog]. This program is absolutely essential for building
 the modules: y[@modulesNeeding].
+
 Please ensure the development packages for
 $reqPackage are installed by using your distribution's package manager.
-
-You can also see the
-https://techbase.kde.org/Getting_Started/Build/Distributions page for
-information specific to your distribution (although watch for outdated
-information :( ).
 EOF
         }
     }
