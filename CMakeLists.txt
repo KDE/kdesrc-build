@@ -107,6 +107,8 @@ install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/kf5-workspace-build-include
     DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
+install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${CMAKE_INSTALL_METAINFODIR})
+
 if (ECM_FOUND)
     feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
 endif()
