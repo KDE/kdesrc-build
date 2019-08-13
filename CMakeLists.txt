@@ -25,6 +25,7 @@ else()
     # ECM now sets KDE_INSTALL_DATADIR to PREFIX/share, try to match
     set(KDE_INSTALL_DATADIR  "${CMAKE_INSTALL_PREFIX}/share" CACHE PATH "The parent directory where applications can install their data")
     set(KDE_INSTALL_BINDIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
+    set(KDE_INSTALL_METAINFODIR "${KDE_INSTALL_DATADIR}/metainfo" CACHE PATH "AppStream metadata directory")
 endif()
 
 set(KDESRC_BUILD_INSTALL_MODULES TRUE CACHE BOOL "Controls whether to install the modules that make up the script. Leave enabled unless running straight from source")
@@ -107,7 +108,7 @@ install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/kf5-workspace-build-include
     DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
-install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${CMAKE_INSTALL_METAINFODIR})
+install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
 
 if (ECM_FOUND)
     feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
