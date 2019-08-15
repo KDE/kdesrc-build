@@ -275,7 +275,7 @@ libXrender-devel xcb-util-keysyms-devel
 flex bison
 libSM-devel
 libattr-devel
-boost
+boost-devel
 wayland-devel
 xcb-util-wm-devel
 lmdb-devel
