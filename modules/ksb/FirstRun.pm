@@ -277,6 +277,7 @@ libSM-devel
 libattr-devel
 boost
 wayland-devel
+xcb-util-wm-devel
 lmdb-devel
 libpng-devel giflib-devel
 ModemManager-devel
