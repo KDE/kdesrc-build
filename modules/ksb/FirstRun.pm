@@ -273,6 +273,7 @@ libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
 perl-URI
 libXrender-devel xcb-util-keysyms-devel
 flex bison
+libjpeg-devel
 libSM-devel
 libattr-devel
 boost-devel
