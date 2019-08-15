@@ -267,6 +267,7 @@ git bzr texinfo shared-mime-info make cmake openssl-devel intltool
 gcc gcc-c++ python
 mesa-libGL-devel dbus-devel gstreamer1-devel
 polkit-devel
+pam-devel
 gperf
 gettext gettext-devel
 libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
