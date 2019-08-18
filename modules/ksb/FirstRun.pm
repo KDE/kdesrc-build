@@ -265,18 +265,24 @@ qrencode-devel
 perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
 git bzr texinfo shared-mime-info make cmake openssl-devel intltool
 gcc gcc-c++ python
-mesa-libGL-devel dbus-devel gstreamer1-devel
+mesa-libGL-devel dbus-devel gstreamer1-devel mesa-libgbm-devel
 polkit-devel
+pam-devel
 gperf
 gettext gettext-devel
 libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
 perl-URI
 libXrender-devel xcb-util-keysyms-devel
 flex bison
+libjpeg-devel
 libSM-devel
 libattr-devel
-boost
+xapian-core-devel
+boost-devel
 wayland-devel
+xcb-util-devel
+xcb-util-wm-devel
+xcb-util-cursor-devel
 lmdb-devel
 libpng-devel giflib-devel
 ModemManager-devel
