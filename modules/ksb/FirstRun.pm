@@ -330,7 +330,7 @@ apt-get -q -y --no-install-recommends install
 zypper install -y --no-recommends
 
 @@ cmd/install/arch/unknown
-pacman -Sy --noconfirm --needed
+pacman -Syu --noconfirm --needed
 
 @@ cmd/install/fedora/unknown
 dnf -y install
