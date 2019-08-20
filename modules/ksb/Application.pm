@@ -24,6 +24,7 @@ use ksb::ModuleSet::Qt;
 use ksb::OSSupport;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
+use ksb::DebugOrderHints;
 use ksb::IPC::Pipe 0.20;
 use ksb::IPC::Null;
 use ksb::Updater::Git;
@@ -65,13 +66,14 @@ sub new
     # Default to colorized output if sending to TTY
     ksb::Debug::setColorfulOutput(-t STDOUT);
 
-    my @moduleList = $self->generateModuleList(@options);
-    $self->{modules} = \@moduleList;
-
-    if (!@moduleList) {
+    my $workLoad = $self->generateModuleList(@options);
+    if (!$workLoad->{build}) {
         print "No modules to build, exiting.\n";
         exit 0;
     }
+
+    $self->{modules} = $workLoad->{selectedModules};
+    $self->{workLoad} = $workLoad;
 
     $self->context()->setupOperatingEnvironment(); # i.e. niceness, ulimits, etc.
 
@@ -384,7 +386,12 @@ sub _yieldModuleDependencyTreeEntry
 # After this function is called all module set selectors will have been
 # expanded, and we will have downloaded kde-projects metadata.
 #
-# Returns: List of Modules to build.
+# Returns: a hash containing the following entries:
+#
+#  - selectedModules: the selected modules to build
+#  - dependencyInfo: reference to dependency info object as created by ksb::DependencyResolver
+#  - build: whether or not to actually perform a build action
+#
 sub generateModuleList
 {
     my $self = shift;
@@ -554,7 +561,13 @@ sub generateModuleList
             $depTreeCtx,
             @modules
         );
-        return;
+
+        my $result = {
+            dependencyInfo => $moduleGraph,
+            selectedModules => [],
+            build => 0
+        };
+        return $result;
     }
 
     @modules = ksb::DependencyResolver::sortModulesIntoBuildOrder(
@@ -578,10 +591,21 @@ sub generateModuleList
             }
             print("\n");
         }
-        return;
+
+        my $result = {
+            dependencyInfo => $moduleGraph,
+            selectedModules => [],
+            build => 0
+        };
+        return $result;
     }
 
-    return @modules;
+    my $result = {
+        dependencyInfo => $moduleGraph,
+        selectedModules => \@modules,
+        build => 1
+    };
+    return $result;
 }
 
 # Causes kde-projects metadata to be downloaded (unless --pretend, --no-src, or
@@ -800,7 +824,11 @@ sub runAllModulePhases
     }
 
     _cleanup_log_directory($ctx) if $ctx->getOption('purge-old-logs');
-    _output_failed_module_lists($ctx);
+
+    my $workLoad = $self->workLoad();
+    my $dependencyGraph = $workLoad->{dependencyInfo}->{graph};
+    _output_failed_module_lists($ctx, $dependencyGraph);
+
 
     # Record all failed modules. Unlike the 'resume-list' option this doesn't
     # include any successfully-built modules in between failures.
@@ -2295,12 +2323,27 @@ sub _output_failed_module_list
 sub _output_failed_module_lists
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $moduleGraph = shift;
+
+    my $extraDebugInfo = {
+        phases => {},
+        failCount => {}
+    };
+    my @actualFailures = ();
 
     # This list should correspond to the possible phase names (although
     # it doesn't yet since the old code didn't, TODO)
     for my $phase ($ctx->phases()->phases())
     {
         my @failures = $ctx->failedModulesInPhase($phase);
+        for my $failure (@failures) {
+            # we already tagged the failure before, should not happen but
+            # make sure to check to avoid spurious duplicate output
+            next if $extraDebugInfo->{phases}->{$failure};
+
+            $extraDebugInfo->{phases}->{$failure} = $phase;
+            push @actualFailures, $failure;
+        }
         _output_failed_module_list($ctx, "failed to $phase", @failures);
     }
 
@@ -2315,6 +2358,26 @@ sub _output_failed_module_lists
         warning ("\tr[b[$_]") foreach @super_fail;
         warning ("\nThere is probably a local error causing this kind of consistent failure, it");
         warning ("is recommended to verify no issues on the system.\n");
+    }
+
+    my $top = 5;
+    my $numSuggestedModules = scalar @actualFailures;
+    #
+    # Omit listing $top modules if there are that many or fewer anyway.
+    # Not much point ranking 4 out of 4 failures,
+    # this feature is meant for 5 out of 65
+    #
+    if ($numSuggestedModules > $top) {
+        my @sortedForDebug = ksb::DebugOrderHints::sortFailuresInDebugOrder(
+            $moduleGraph,
+            $extraDebugInfo,
+            \@actualFailures
+        );
+
+        info ("\nThe following top $top may be the most important to fix to " .
+            "get the build to work, listed in order of 'probably most " .
+            "interesting' to 'probably least interesting' failure:\n");
+        info ("\tr[b[$_]") foreach (@sortedForDebug[0..($top - 1)]);
     }
 }
 
@@ -2724,6 +2787,12 @@ sub modules
 {
     my $self = shift;
     return @{$self->{modules}};
+}
+
+sub workLoad
+{
+    my $self = shift;
+    return $self->{workLoad};
 }
 
 1;
