@@ -39,6 +39,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/BuildException.pm
         modules/ksb/BuildSystem.pm
         modules/ksb/Debug.pm
+        modules/ksb/DebugOrderHints.pm
         modules/ksb/DependencyResolver.pm
         modules/ksb/FirstRun.pm
         modules/ksb/IPC.pm
