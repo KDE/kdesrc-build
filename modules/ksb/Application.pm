@@ -302,8 +302,7 @@ DONE
         'revision=i', 'resume-from=s', 'resume-after=s',
         'rebuild-failures', 'resume',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
-        'metadata-only', 'include-dependencies', 'list-build',
-        'dependency-tree',
+        'metadata-only', 'list-build', 'dependency-tree',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
         # for negatable boolean flags
@@ -2707,7 +2706,7 @@ sub _showHelpMessage
     my $scriptVersion = scriptVersion();
     say <<DONE;
 kdesrc-build $scriptVersion
-Copyright (c) 2003 - 2018 Michael Pyne <mpyne\@kde.org> and others, and is
+Copyright (c) 2003 - 2019 Michael Pyne <mpyne\@kde.org> and others, and is
 distributed under the terms of the GNU GPL v2.
 
 This script automates the download, build, and install process for KDE software
@@ -2742,6 +2741,7 @@ Important Options:
     --stop-after=<pkg>         reached.
 
     --include-dependencies Also builds KDE-based dependencies of given modules.
+      (This is enabled by default; use --no-include-dependencies to disable)
     --stop-on-failure      Stops the build as soon as a package fails to build.
 
 More docs at https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/
