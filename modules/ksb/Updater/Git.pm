@@ -530,29 +530,15 @@ sub stashAndUpdate
     my $module = $self->module();
     my $date = strftime ("%F-%R", gmtime()); # ISO Date, hh:mm time
 
-    # To find out if we should stash, we just use git diff --quiet, twice to
-    # account for the index and the working dir.
-    # Note: Don't use safe_system, as the error code is stripped to the exit code
-    my $status = pretending() ? 0 : system('git', 'diff', '--quiet');
-
-    if ($status == -1 || $status & 127) {
-        croak_runtime("$module doesn't appear to be a git module.");
-    }
-
-    my $needsStash = 0;
-    if ($status && !_hasSubmodules()) {
-        # There are local changes.
-        $needsStash = 1;
-    }
-    else {
-        $status = pretending() ? 0 : system('git', 'diff', '--cached', '--quiet');
-        if ($status == -1 || $status & 127) {
-            croak_runtime("$module doesn't appear to be a git module.");
-        }
-        else {
-            $needsStash = ($status != 0);
-        }
-    }
+    # To find out if we should stash, we use git-status in its short mode which
+    # is intended to be scriptable and returns information on both the index
+    # and the working dir in one command.
+    my $status = 1;
+    my $needsStash =
+        !pretending() &&
+        (scalar filter_program_output(
+                undef, # don't filter output
+                qw(git status --short --untracked-files=no))) > 0;
 
     if ($needsStash) {
         info ("\tLocal changes detected (will stash for now and then restore)");

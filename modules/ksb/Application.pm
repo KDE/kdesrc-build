@@ -25,6 +25,7 @@ use ksb::OSSupport;
 use ksb::PromiseChain;
 use ksb::RecursiveFH;
 use ksb::DependencyResolver 0.20;
+use ksb::DebugOrderHints;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
@@ -71,16 +72,26 @@ sub new
 }
 
 # Call after establishContext (to read in config file and do one-time metadata
-# reading).
+# reading), but before you call startHeadlessBuild.
 #
-# Need to call this before you call startHeadlessBuild
+# Parameter:
+#
+# - workload, a hashref containing the following entries:
+# {
+#   selectedModules: listref with the selected ksb::Modules to build
+#   dependencyInfo: reference to a dependency info object created by
+#     ksb::DependencyResolver
+#   build: a boolean indicating whether to go through with build or not
+# }
 sub setModulesToProcess
 {
-    my ($self, @modules) = @_;
-    $self->{modules} = \@modules;
+    my ($self, $workLoad) = @_;
+
+    $self->{modules} = $workLoad->{selectedModules};
+    $self->{workLoad} = $workLoad;
 
     $self->context()->addModule($_)
-        foreach @modules;
+        foreach @{$self->{modules}};
 
     # i.e. niceness, ulimits, etc.
     $self->context()->setupOperatingEnvironment();
@@ -303,8 +314,7 @@ DONE
         'revision=i', 'resume-from=s', 'resume-after=s',
         'rebuild-failures', 'resume',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
-        'metadata-only', 'include-dependencies', 'list-build',
-        'dependency-tree',
+        'metadata-only', 'list-build', 'dependency-tree',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
         # for negatable boolean flags
@@ -512,7 +522,7 @@ sub establishContext
 
 # Requires establishContext to have been called first. Converts string-based
 # "selectors" for modules or module-sets into a list of ksb::Modules (only
-# modules, no sets).
+# modules, no sets), and returns associated metadata including dependencies.
 #
 # After this function is called all module set selectors will have been
 # expanded, and we will have downloaded kde-projects metadata.
@@ -521,7 +531,7 @@ sub establishContext
 # context if you intend to build. This is a separate step to allow for some
 # introspection prior to making choice to build.
 #
-# Returns: List of Modules to build.
+# Returns: A hashref to a workload object (as described in setModulesToProcess)
 sub modulesFromSelectors
 {
     my ($self, @selectors) = @_;
@@ -569,9 +579,17 @@ sub modulesFromSelectors
         croak_runtime("Failed to resolve dependency graph");
     }
 
+    # TODO: Implement --dependency-tree
     if (exists $self->{debugFlags}->{'dependency-tree'}) {
         # Save for later introspection
         $self->{debugFlags}->{'dependency-tree'} = $moduleGraph->{graph};
+
+        my $result = {
+            dependencyInfo => $moduleGraph,
+            selectedModules => [],
+            build => 0
+        };
+        return $result;
     }
 
     @modules = ksb::DependencyResolver::sortModulesIntoBuildOrder(
@@ -583,7 +601,22 @@ sub modulesFromSelectors
     # resolveSelectorsIntoModules) in that event.
     @modules = _applyModuleFilters($ctx, @modules);
 
-    return @modules;
+    # TODO: Implement 'list-build' option
+    if(exists $self->{debugFlags}->{'list-build'}) {
+        my $result = {
+            dependencyInfo => $moduleGraph,
+            selectedModules => [],
+            build => 0
+        };
+        return $result;
+    }
+
+    my $result = {
+        dependencyInfo => $moduleGraph,
+        selectedModules => \@modules,
+        build => 1
+    };
+    return $result;
 }
 
 # Causes kde-projects metadata to be downloaded (unless --pretend, --no-src, or
@@ -738,7 +771,7 @@ sub startHeadlessBuild
         $self->finish(5);
     });
 
-    $startPromise->resolve; # allow build to start
+    $startPromise->resolve; # allow build to start once control returned to evt loop
     my $promise = $promiseChain->makePromiseChain($startPromise)->finally(sub {
         my @results = @_;
         my $result = 0; # success, non-zero is failure
@@ -756,6 +789,10 @@ sub startHeadlessBuild
             # --rebuild-failures
             $ctx->setPersistentOption('global', 'last-failed-module-list', $failedModules);
         }
+
+        # TODO: Anything to do with this info at this point?
+        my $workLoad = $self->workLoad();
+        my $dependencyGraph = $workLoad->{dependencyInfo}->{graph};
 
         $ctx->storePersistentOptions();
         _cleanup_log_directory($ctx);
@@ -1945,12 +1982,27 @@ sub _output_failed_module_list
 sub _output_failed_module_lists
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $moduleGraph = shift;
+
+    my $extraDebugInfo = {
+        phases => {},
+        failCount => {}
+    };
+    my @actualFailures = ();
 
     # This list should correspond to the possible phase names (although
     # it doesn't yet since the old code didn't, TODO)
     for my $phase ($ctx->phases()->phases())
     {
         my @failures = $ctx->failedModulesInPhase($phase);
+        for my $failure (@failures) {
+            # we already tagged the failure before, should not happen but
+            # make sure to check to avoid spurious duplicate output
+            next if $extraDebugInfo->{phases}->{$failure};
+
+            $extraDebugInfo->{phases}->{$failure} = $phase;
+            push @actualFailures, $failure;
+        }
         _output_failed_module_list($ctx, "failed to $phase", @failures);
     }
 
@@ -1965,6 +2017,26 @@ sub _output_failed_module_lists
         warning ("\tr[b[$_]") foreach @super_fail;
         warning ("\nThere is probably a local error causing this kind of consistent failure, it");
         warning ("is recommended to verify no issues on the system.\n");
+    }
+
+    my $top = 5;
+    my $numSuggestedModules = scalar @actualFailures;
+    #
+    # Omit listing $top modules if there are that many or fewer anyway.
+    # Not much point ranking 4 out of 4 failures,
+    # this feature is meant for 5 out of 65
+    #
+    if ($numSuggestedModules > $top) {
+        my @sortedForDebug = ksb::DebugOrderHints::sortFailuresInDebugOrder(
+            $moduleGraph,
+            $extraDebugInfo,
+            \@actualFailures
+        );
+
+        info ("\nThe following top $top may be the most important to fix to " .
+            "get the build to work, listed in order of 'probably most " .
+            "interesting' to 'probably least interesting' failure:\n");
+        info ("\tr[b[$_]") foreach (@sortedForDebug[0..($top - 1)]);
     }
 }
 
@@ -2213,13 +2285,9 @@ sub _checkForEssentialBuildPrograms
 
 Unable to find r[b[$prog]. This program is absolutely essential for building
 the modules: y[@modulesNeeding].
+
 Please ensure the development packages for
 $reqPackage are installed by using your distribution's package manager.
-
-You can also see the
-https://techbase.kde.org/Getting_Started/Build/Distributions page for
-information specific to your distribution (although watch for outdated
-information :( ).
 EOF
         }
     }
@@ -2306,7 +2374,7 @@ sub _showHelpMessage
     my $scriptVersion = scriptVersion();
     say <<DONE;
 kdesrc-build $scriptVersion
-Copyright (c) 2003 - 2018 Michael Pyne <mpyne\@kde.org> and others, and is
+Copyright (c) 2003 - 2019 Michael Pyne <mpyne\@kde.org> and others, and is
 distributed under the terms of the GNU GPL v2.
 
 This script automates the download, build, and install process for KDE software
@@ -2341,6 +2409,7 @@ Important Options:
     --stop-after=<pkg>         reached.
 
     --include-dependencies Also builds KDE-based dependencies of given modules.
+      (This is enabled by default; use --no-include-dependencies to disable)
     --stop-on-failure      Stops the build as soon as a package fails to build.
 
 More docs at https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/
@@ -2386,6 +2455,12 @@ sub modules
 {
     my $self = shift;
     return @{$self->{modules}};
+}
+
+sub workLoad
+{
+    my $self = shift;
+    return $self->{workLoad};
 }
 
 1;
