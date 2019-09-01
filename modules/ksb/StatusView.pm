@@ -165,11 +165,16 @@ sub onBuildDone
     my ($statsRef) =
         %{$ev->{build_done}};
 
-    my $numFailedModules = keys %{$self->{failed_at_phase}};
-    my $numBuiltModules = max(
+    # --stop-on-failure can cause modules to skip
+    my $numTotalModules = max(
         map { $self->{todo_in_phase}->{$_} } (
             keys %{$self->{todo_in_phase}}));
+    my $numFailedModules = keys %{$self->{failed_at_phase}};
+    my $numBuiltModules = max(
+        map { $self->{done_in_phase}->{$_} } (
+            keys %{$self->{done_in_phase}}));
     my $numSuccesses = $numBuiltModules - $numFailedModules;
+    my $numSkipped = $numTotalModules - $numBuiltModules;
 
     my $unicode = ($ENV{LC_ALL} // 'C') =~ /UTF-?8$/;
     my $happy = $unicode ? '✓' : ':-)';
@@ -179,9 +184,14 @@ sub onBuildDone
         ? " g[b[$happy] - Built all"
         : " r[b[$frown] - Worked on";
 
-    my $msg = "$built b[$numBuiltModules] modules";
-    $msg .= " (b[g[$numSuccesses] built OK)"
-        if $numFailedModules > 0 and $numSuccesses > 0;
+    my $msg = "$built b[$numTotalModules] modules";
+    if ($numSkipped > 0 || $numFailedModules > 0) {
+        $msg .= " (b[g[$numSuccesses] built OK, b[r[$numFailedModules] failed"
+            if $numFailedModules > 0;
+        $msg .= ", b[$numSkipped] skipped"
+            if $numSkipped > 0;
+        $msg .= ")";
+    }
     $self->_clearLineAndUpdate (colorize("$msg\n"));
 }
 
