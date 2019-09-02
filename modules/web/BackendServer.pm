@@ -143,24 +143,24 @@ sub _generateRoutes {
         my $build_all = $c->req->headers->header('X-BuildAllModules');
 
         # Remove empty selectors
-        my @modules = grep { !!$_ } map { trim($_ // '') } @{$selectorList};
+        my @selectors = grep { !!$_ } map { trim($_ // '') } @{$selectorList};
 
         # If not building all then ensure there's at least one module to build
-        if ($c->in_build || !$selectorList || (!@modules && !$build_all) || (@modules && $build_all)) {
+        if ($c->in_build || !$selectorList || (!@selectors && !$build_all) || (@selectors && $build_all)) {
             $c->app->log->error("Something was wrong with modules to assign to build");
             return $c->render(text => "Invalid request sent", status => 400);
         }
 
         eval {
-            @modules = $c->ksb->modulesFromSelectors(@modules);
-            $c->ksb->setModulesToProcess(@modules);
+            my $workload = $c->ksb->modulesFromSelectors(@selectors);
+            $c->ksb->setModulesToProcess($workload);
         };
 
         if ($@) {
             return $c->render(text => $@->{message}, status => 400);
         }
 
-        my $numSels = @modules; # count
+        my $numSels = scalar @selectors;
 
         $c->render(json => ["$numSels handled"]);
     }, 'post_modules');
