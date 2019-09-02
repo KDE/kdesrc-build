@@ -39,7 +39,9 @@ my @args = qw(--pretend --rc-file t/data/bug-395627/kdesrc-buildrc);
 {
     my $app = ksb::Application->new(@args);
     my @selectors = $app->establishContext(@args);
-    my @moduleList = $app->modulesFromSelectors(@selectors);
+    my $workload = $app->modulesFromSelectors(@selectors);
+    $app->setModulesToProcess($workload);
+    my @moduleList = $app->modules();
 
     is (scalar @moduleList, 6, 'Right number of modules');
     isa_ok ($moduleList[0]->buildSystem(), 'ksb::BuildSystem::KDE4');

@@ -21,7 +21,9 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --stop-on-fail
 {
     my $app = ksb::Application->new(@args)->setHeadless;
     my @selectors = $app->establishContext(@args);
-    my @moduleList = $app->modulesFromSelectors(@selectors);
+    my $workload = $app->modulesFromSelectors(@selectors);
+    $app->setModulesToProcess($workload);
+    my @moduleList = $app->modules();
 
     is (scalar @moduleList, 1, 'Right number of modules (just one)');
     is ($moduleList[0]->name(), 'setmod3', 'mod list[0] == setmod3');
@@ -32,7 +34,9 @@ $args[-2] = '--disable-snapshots';
 {
     my $app = ksb::Application->new(@args)->setHeadless;
     my @selectors = $app->establishContext(@args);
-    my @moduleList = $app->modulesFromSelectors(@selectors);
+    my $workload = $app->modulesFromSelectors(@selectors);
+    $app->setModulesToProcess($workload);
+    my @moduleList = $app->modules();
 
     is (scalar @moduleList, 1, 'Right number of modules (just one)');
     is ($moduleList[0]->name(), 'setmod3', 'mod list[0] == setmod3');

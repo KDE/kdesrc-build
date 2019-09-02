@@ -59,7 +59,9 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --include-depe
 {
     my $app = ksb::Application->new;
     my @selectors = $app->establishContext(@args);
-    my @moduleList = $app->modulesFromSelectors(@selectors);
+    my $workload = $app->modulesFromSelectors(@selectors);
+    $app->setModulesToProcess($workload);
+    my @moduleList = $app->modules();
 
     is (scalar @moduleList, 3, 'Right number of modules (include-dependencies)');
     is ($moduleList[0]->name(), 'setmod1', 'mod list[0] == setmod1');
@@ -73,7 +75,9 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --include-depe
     my $app = ksb::Application->new;
     $ksb::Application::IGNORE_MOD2 = 1;
     my @selectors = $app->establishContext(@args);
-    my @moduleList = $app->modulesFromSelectors(@selectors);
+    my $workload = $app->modulesFromSelectors(@selectors);
+    $app->setModulesToProcess($workload);
+    my @moduleList = $app->modules();
 
     is (scalar @moduleList, 2, 'Right number of modules (include-dependencies+ignore-modules)');
     is ($moduleList[0]->name(), 'setmod1', 'mod list[0] == setmod1');

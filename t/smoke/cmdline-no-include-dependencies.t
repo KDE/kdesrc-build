@@ -19,7 +19,7 @@ package ksb::Application {
         my $self = shift;
         my @modules = @_;
 
-        my $newModule = $self->{module_factory}->('setmod2');
+        my $newModule = ksb::Module->new($self->{context}, 'setmod2');
 
         my $graph = {
             'setmod1' => {
@@ -55,8 +55,11 @@ package ksb::Application {
 my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc-with-deps --no-include-dependencies setmod1 setmod3);
 
 {
-    my $app = ksb::Application->new(@args);
-    my @moduleList = @{$app->{modules}};
+    my $app = ksb::Application->new;
+    my @selectors = $app->establishContext(@args);
+    my $workload = $app->modulesFromSelectors(@selectors);
+    $app->setModulesToProcess($workload);
+    my @moduleList = $app->modules();
 
     is (scalar @moduleList, 2, 'Right number of modules (include-dependencies)');
     is ($moduleList[0]->name(), 'setmod1', 'mod list[0] == setmod1');
@@ -65,8 +68,12 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc-with-deps --no
 
 {
     push @args, '--ignore-modules', 'setmod2';
-    my $app = ksb::Application->new(@args);
-    my @moduleList = @{$app->{modules}};
+
+    my $app = ksb::Application->new;
+    my @selectors = $app->establishContext(@args);
+    my $workload = $app->modulesFromSelectors(@selectors);
+    $app->setModulesToProcess($workload);
+    my @moduleList = $app->modules();
 
     is (scalar @moduleList, 2, 'Right number of modules (include-dependencies+ignore-modules)');
     is ($moduleList[0]->name(), 'setmod1', 'mod list[0] == setmod1');

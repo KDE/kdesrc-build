@@ -86,6 +86,8 @@ sub new
 sub setModulesToProcess
 {
     my ($self, $workLoad) = @_;
+    croak_internal("Expecting workload object!")
+        unless ref $workLoad eq 'HASH';
 
     $self->{modules} = $workLoad->{selectedModules};
     $self->{workLoad} = $workLoad;

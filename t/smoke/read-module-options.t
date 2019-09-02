@@ -43,7 +43,9 @@ use ksb::Util qw(trimmed);
 my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc);
 my $app = ksb::Application->new;
 my @selectors = $app->establishContext(@args);
-my @moduleList = $app->modulesFromSelectors(@selectors);
+my $workload = $app->modulesFromSelectors(@selectors);
+$app->setModulesToProcess($workload);
+my @moduleList = $app->modules();
 
 is(scalar @moduleList, 4, 'Right number of modules');
 is($moduleList[0]->name(), 'module2', 'Right module name');

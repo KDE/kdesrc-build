@@ -10,8 +10,10 @@ use ksb::Application;
 
 my @args = qw(--pretend --rc-file t/data/branch-time-based/kdesrc-buildrc);
 my $app = ksb::Application->new;
-my $workload = $app->establishContext(@args);
-my @moduleList = $app->modulesFromSelectors($workload);
+my @selectors = $app->establishContext(@args);
+my $workload = $app->modulesFromSelectors(@selectors);
+$app->setModulesToProcess($workload);
+my @moduleList = $app->modules();
 
 is(scalar @moduleList, 3, 'Right number of modules');
 
