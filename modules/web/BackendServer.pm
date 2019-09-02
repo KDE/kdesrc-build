@@ -5,6 +5,7 @@ use Mojo::Base 'Mojolicious';
 use Mojo::Util qw(trim);
 
 use ksb::Application;
+use ksb::dto::ModuleGraph;
 
 use Cwd;
 
@@ -235,7 +236,16 @@ sub _generateRoutes {
 
     $r->get('/moduleGraph' => sub {
         my $c = shift;
-        $c->render(json => ($c->app->ksb->{debugFlags}->{'dependency-tree'} // {}));
+        my $work = $c->app->ksb->workLoad() // {};
+        my $info = $work->{dependencyInfo};
+
+        if (defined($info)) {
+            my $dto = ksb::dto::ModuleGraph::dependencyInfoToDto($info);
+            $c->render(json => $dto);
+        }
+        else {
+            $c->reply->not_found;
+        }
     });
 
     $r->post('/build' => sub {
