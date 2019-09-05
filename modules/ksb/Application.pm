@@ -575,6 +575,8 @@ sub modulesFromSelectors
         (!defined $branch or $branch); # This is the actual test
     } (@modules);
 
+    my @modulesFromCommand = @modules;
+
     my $moduleGraph = $self->_resolveModuleDependencyGraph(@modules);
 
     if (!$moduleGraph || !exists $moduleGraph->{graph}) {
@@ -588,6 +590,7 @@ sub modulesFromSelectors
 
         my $result = {
             dependencyInfo => $moduleGraph,
+            modulesFromCommand => \@modulesFromCommand,
             selectedModules => [],
             build => 0
         };
@@ -607,6 +610,7 @@ sub modulesFromSelectors
     if(exists $self->{debugFlags}->{'list-build'}) {
         my $result = {
             dependencyInfo => $moduleGraph,
+            modulesFromCommand => \@modulesFromCommand,
             selectedModules => [],
             build => 0
         };
@@ -615,6 +619,7 @@ sub modulesFromSelectors
 
     my $result = {
         dependencyInfo => $moduleGraph,
+        modulesFromCommand => \@modulesFromCommand,
         selectedModules => \@modules,
         build => 1
     };

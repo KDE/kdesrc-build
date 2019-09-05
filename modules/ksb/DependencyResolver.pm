@@ -743,6 +743,18 @@ sub walkModuleDependencyTrees
     }
 }
 
+sub hasErrors
+{
+    my $info = shift;
+
+    my $cycles = $info->{cycles} // 0;
+    my $pathErrors = $info->{pathErrors} // 0;
+    my $branchErrors = $info->{branchErrors} // 0;
+    my $syntaxErrors = $info->{syntaxErrors} // 0;
+
+    return $cycles || $pathErrors || $branchErrors || $syntaxErrors;
+}
+
 sub _compareBuildOrder
 {
     my ($moduleGraph, $a, $b) = @_;
