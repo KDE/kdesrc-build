@@ -120,7 +120,7 @@ sub _generateRoutes {
 
     $r->get('/modules' => sub {
         my $c = shift;
-        $c->render(json => $c->ksb->context()->moduleList());
+        $c->render(json => $c->ksb->modules());
     } => 'module_lookup');
 
     $r->get('/known_modules' => sub {
