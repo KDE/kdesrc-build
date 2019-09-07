@@ -107,15 +107,13 @@ sub _generateRoutes {
         my $ctx = $c->ksb->context();
 
         my $opt = $c->param('option') or do {
-            $c->res->code(400);
-            return $c->render;
+            return $c->render(text => "Invalid request sent", status => 400);
         };
 
         if (defined $ctx->{options}->{$opt}) {
             $c->render(json => { $opt => $ctx->{options}->{$opt} });
         }
         else {
-            $c->res->code(404);
             $c->reply->not_found;
         }
     });
