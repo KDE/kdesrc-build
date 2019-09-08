@@ -56,6 +56,8 @@ sub new
 {
     my ($class, @options) = @_;
 
+    # TODO: Do something with @options
+
     my $self = bless {
         context         => ksb::BuildContext->new(),
         metadata_module => undef,
@@ -450,9 +452,9 @@ sub establishContext
     $ctx->setKDEDependenciesMetadataModuleNeeded();
     $ctx->setKDEProjectsMetadataModuleNeeded();
 
-    if (!exists $ENV{HARNESS_ACTIVE}) {
-        # Running in a test harness, avoid downloading metadata which will be
-        # ignored in the test or making changes to git config
+    if (!exists $ENV{HARNESS_ACTIVE} && !$self->{run_mode} eq 'headless') {
+        # In some modes (testing, acting as headless backend), we should avoid
+        # downloading metadata automatically, so don't.
         ksb::Updater::Git::verifyGitConfig();
         $self->_downloadKDEProjectMetadata();
     }

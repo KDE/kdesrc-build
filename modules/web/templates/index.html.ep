@@ -7,7 +7,7 @@
 <button id="btnSubmitModuleList">Enter modules to build:</button>
 
 <div class="module_list_div">
-    <label for="module_select">Or use the dropdown to select</label>
+    <label for="module_select">Or <strike>use the dropdown to select</strike></label>
     <select multiple id="module_select" size="15">
         <option value="">All</option>
         <option value="###">--- Module names loading ---</option>
@@ -33,7 +33,17 @@ btnSubmitModuleList.addEventListener('click', (ev) => {
                 'Content-Type': 'application/json'
             }
         })
-        .then(resp => resp.json())
+        .then(resp => {
+            if(resp.ok) {
+                return resp.json()
+            }
+            else {
+                return resp.text().then(err => {
+                    lkup('modules_result_div').innerHTML = "<b>ERROR</b>: " + err;
+                    throw ("Posting selectors to kdesrc-build backend led to error: " + err);
+                });
+            }
+        })
         .then(resp => {
             console.log(`Response received ${resp}`);
             lkup('btnStartBuild').disabled = false;
