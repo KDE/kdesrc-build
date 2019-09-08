@@ -312,13 +312,16 @@ DONE
         'reconfigure', 'colorful-output|color!',
         'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
-        'print-modules', 'pretend|dry-run|p', 'refresh-build',
+        'pretend|dry-run|p', 'refresh-build',
         'query=s', 'start-program|run=s{,}',
         'launch-browser',
         'revision=i', 'resume-from=s', 'resume-after=s',
         'rebuild-failures', 'resume',
         'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
-        'metadata-only', 'list-build', 'dependency-tree',
+        'metadata-only',
+
+        # Debug-only flags
+        'print-modules', 'list-build', 'dependency-tree',
 
         # Special sub used (see above), but have to tell Getopt::Long to look
         # for negatable boolean flags
@@ -387,7 +390,7 @@ sub establishContext
 
     # Set aside debug-related and other short-circuit cmdline options
     # for kdesrc-build CLI driver to handle
-    my @debugFlags = qw(dependency-tree list-build metadata-only);
+    my @debugFlags = qw(dependency-tree list-build print-modules);
     $self->{debugFlags} = {
         map { ($_, 1) }
             grep { defined $cmdlineGlobalOptions->{$_} }
@@ -565,23 +568,16 @@ sub modulesFromSelectors
     # resolveSelectorsIntoModules) in that event.
     @modules = _applyModuleFilters($ctx, @modules);
 
-    # TODO: Implement 'list-build' option
-    if(exists $self->{debugFlags}->{'list-build'}) {
-        my $result = {
-            dependencyInfo => $moduleGraph,
-            modulesFromCommand => \@modulesFromCommand,
-            selectedModules => [],
-            build => 0
-        };
-        return $result;
-    }
-
     my $result = {
         dependencyInfo => $moduleGraph,
         modulesFromCommand => \@modulesFromCommand,
         selectedModules => \@modules,
-        build => 1
+        build => 1,
     };
+
+    # If debugging then don't build
+    $result->{build} = 0 if exists $self->{debugFlags}->{'list-build'};
+
     return $result;
 }
 

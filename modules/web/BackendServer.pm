@@ -5,6 +5,7 @@ use Mojo::Base 'Mojolicious';
 use Mojo::Util qw(trim);
 
 use ksb::Application;
+use ksb::Debug qw(pretending);
 use ksb::dto::ModuleGraph;
 use ksb::dto::ModuleInfo;
 use ksb::DependencyResolver;
@@ -43,9 +44,15 @@ sub make_new_ksb
 
     # Reset log handler
     my $ctx = $app->context();
-    $c->app->log(Mojo::Log->new(
-            path => $ctx->getLogDirFor($ctx) . "/mojo-backend.log"
-            ));
+    if (pretending()) {
+        # Mojolicious will install a file watch on the log path so it has to exist
+        # if we set it. Instead just de-spam the output to TTY for now.
+        $c->app->log->level('error');
+    } else {
+        $c->app->log(Mojo::Log->new(
+                path => $ctx->getLogDirFor($ctx) . "/mojo-backend.log"
+                ));
+    }
 
     if(@selectors) {
         $c->app->log->info("Module selectors requested:" . join(', ', @selectors));
@@ -135,7 +142,13 @@ sub _generateRoutes {
 
     $r->get('/modules' => sub {
         my $c = shift;
-        $c->render(json => $c->ksb->modules());
+        eval {
+            $c->render(json => [$c->ksb->modules()]);
+        };
+
+        if ($@) {
+            return $c->render(text => $@->{message}, status => 400);
+        }
     } => 'module_lookup');
 
     $r->get('/known_modules' => sub {

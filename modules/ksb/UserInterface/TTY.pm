@@ -36,6 +36,7 @@ use Mojo::Server::Daemon;
 use Mojo::IOLoop;
 use Mojo::UserAgent;
 use Mojo::JSON qw(to_json);
+use Mojo::Util qw(dumper);
 
 use ksb::BuildException;
 use ksb::StatusView;
@@ -139,18 +140,19 @@ sub _runModeDebug
     my %debugFlags = %{$app->ksb->{debugFlags}};
 
     $app->log->debug("Run mode: DEBUG");
+
     if ($debugFlags{'dependency-tree'}) {
-        $app->log->debug("Dumping dependency tree (in a later release...)");
+        $app->log->debug("Dumping dependency tree");
+
         return $ua->get_p('/moduleGraph')->then(sub {
             my $tx = _check_error(shift);
-            return $tx->result->json;
-        })->then(sub {
-            my $tree = shift;
+            my $tree = $tx->result->json;
             return dumpDependencyTree($ua, $tree);
         });
     }
-    elsif ($debugFlags{'list-build'}) {
+    elsif ($debugFlags{'list-build'} || $debugFlags{'print-modules'}) {
         $app->log->debug("Listing modules to build");
+
         return $ua->get_p('/modules')->then(sub {
             my $tx = _check_error(shift);
             my @modules = @{$tx->result->json};
@@ -159,7 +161,8 @@ sub _runModeDebug
         });
     }
 
-    return 0; # Bail early
+    # Bail early
+    return Mojo::Promise->new->reject('Told to debug for no reason');
 }
 
 # Returns a promise chain to handle the normal build case.
@@ -246,6 +249,9 @@ sub _runModeBuild
     })->finally(sub {
         $event_stream->say("]");
         $event_stream->close();
+
+        my $logdir = $ctx->getLogDir();
+        note ("Your logs are saved in y[$logdir]");
     });
 }
 
@@ -290,9 +296,9 @@ sub start
         # build the requested modules, so proceed as appropriate based on the run mode
         # the user has requested.
 
-        $app->ksb->{debugFlags} //= {};
         return $self->_runModeDebug()
-            if (%{$app->ksb->{debugFlags}});
+            if (%{$app->ksb->{debugFlags} // 0});
+
         return $self->_runModeBuild(\@module_failures);
     })->then(sub {
         # Build done, value comes from runMode promise above
@@ -302,12 +308,17 @@ sub start
         # Catches all errors in any of the prior promises
         my $err = shift;
 
-        say "Error: ", $err->{code}, " ", $err->{message};
+        if (ref $err) {
+            say STDERR "Caught an error: ", dumper($err);
+        }
+        else {
+            say STDERR "Caught an error: $err";
+        }
 
         # See if we made it to an rc-file
         my $ctx = $app->ksb->context();
         my $rcFile = $ctx ? $ctx->rcFile() // 'Unknown' : undef;
-        say "Using configuration file found at $rcFile" if $rcFile;
+        say STDERR "Using configuration file found at $rcFile" if $rcFile;
 
         $result = 1; # error
     })->wait;

@@ -271,7 +271,7 @@ sub _lookupDirectDependencies
         }
         my $depItem = _shortenModuleName($depPath);
         if ($depItem eq $item) {
-            debug("\tBreaking trivial cycle of b[$depItem] -> b[$item]");
+            debug("\tBreaking trivial cycle of b[$depItem] to itself");
             ++($result->{trivialCycles});
             next;
         }
@@ -652,10 +652,6 @@ sub resolveToModuleGraph
     }
 
     my $trivialCycles = $errors->{trivialCycles};
-
-    if ($trivialCycles) {
-        warning("Total of 'trivial' dependency cycles detected & eliminated: $trivialCycles");
-    }
 
     my $cycles = _checkDependencyCycles($moduleGraph);
 
