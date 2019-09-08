@@ -673,74 +673,16 @@ sub resolveToModuleGraph
     }
 }
 
-sub _descendModuleGraph
+sub hasErrors
 {
-    my ($moduleGraph, $callback, $nodeInfo, $context) = @_;
+    my $info = shift;
 
-    my $depth = $nodeInfo->{depth};
-    my $index = $nodeInfo->{idx};
-    my $count = $nodeInfo->{count};
-    my $currentItem = $nodeInfo->{currentItem};
-    my $currentBranch = $nodeInfo->{currentBranch};
-    my $parentItem = $nodeInfo->{parentItem};
-    my $parentBranch = $nodeInfo->{parentBranch};
+    my $cycles = $info->{cycles} // 0;
+    my $pathErrors = $info->{pathErrors} // 0;
+    my $branchErrors = $info->{branchErrors} // 0;
+    my $syntaxErrors = $info->{syntaxErrors} // 0;
 
-    my $subGraph = $moduleGraph->{$currentItem};
-    &$callback($nodeInfo, $subGraph->{module}, $context);
-
-    ++$depth;
-
-    my @items = keys(%{$subGraph->{deps}});
-
-    my $itemCount = scalar(@items);
-    my $itemIndex = 1;
-
-    for my $item (@items)
-    {
-        $subGraph = $moduleGraph->{$item};
-        my $branch = $subGraph->{branch} // '';
-        my $itemInfo = {
-            build => $subGraph->{build},
-            depth => $depth,
-            idx => $itemIndex,
-            count => $itemCount,
-            currentItem => $item,
-            currentBranch => $branch,
-            parentItem => $currentItem,
-            parentBranch => $currentBranch
-        };
-        _descendModuleGraph($moduleGraph, $callback, $itemInfo, $context);
-        ++$itemIndex;
-    }
-}
-
-sub walkModuleDependencyTrees
-{
-    my $moduleGraph = shift;
-    my $callback = shift;
-    my $context = shift;
-    my @modules = @_;
-    my $itemCount = scalar(@modules);
-    my $itemIndex = 1;
-
-    for my $module (@modules) {
-        assert_isa($module, 'ksb::Module');
-        my $item = $module->name();
-        my $subGraph = $moduleGraph->{$item};
-        my $branch = $subGraph->{branch} // '';
-        my $info = {
-            build => $subGraph->{build},
-            depth => 0,
-            idx => $itemIndex,
-            count => $itemCount,
-            currentItem => $item,
-            currentBranch => $branch,
-            parentItem => '',
-            parentBranch => ''
-        };
-        _descendModuleGraph($moduleGraph, $callback, $info, $context);
-        ++$itemIndex;
-    }
+    return $cycles || $pathErrors || $branchErrors || $syntaxErrors;
 }
 
 sub _compareBuildOrder

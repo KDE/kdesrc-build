@@ -41,6 +41,8 @@ use ksb::BuildException;
 use ksb::StatusView;
 use ksb::Util;
 use ksb::Debug;
+use ksb::UserInterface::DependencyGraph;
+use Mojo::Promise;
 
 use IO::Handle; # For methods on event_stream file
 use List::Util qw(max);
@@ -76,6 +78,57 @@ sub _check_error {
     die $err;
 };
 
+
+sub _fetchModuleList
+{
+    my ($ua, $list) = @_;
+    return $ua->get_p($list)->then(sub {
+        my $tx = _check_error(shift);
+        return $tx->result->json;
+    });
+}
+
+sub dumpDependencyTree
+{
+    my ($ua, $tree) = @_;
+    #
+    # TODO: this could fail, how to properly promisify?
+    #
+    my $errors = $tree->{errors} // {};
+    my $errorCount = $errors->{errors} // 0;
+
+    if ($errorCount != 0) {
+        say "Unable to resolve dependencies, number of errors encountered is: $errorCount";
+        my $p = Mojo::Promise->new();
+        return $p->resolve(1);
+    }
+
+    my $data = $tree->{data};
+    if (!defined($data)) {
+        say "Unable to resolve dependencies, did not obtain (valid) results";
+        my $p = Mojo::Promise->new();
+        return $p->resolve(1);
+    }
+    else {
+        #
+        # TODO: this is *not* how we should await things in general.
+        # Fix using Mojo::AsyncAwait?
+        #
+        return _fetchModuleList($ua, '/modulesFromCommand')->then(sub {
+            my $list = shift;
+            my @names = map { $_->{name} } (@$list);
+            return @names;
+        })->then(sub {
+            my @modules = @_;
+            my $err = ksb::UserInterface::DependencyGraph::printTrees(
+               $data,
+               @modules
+            );
+            return $err ? 1 : 0;
+        });
+    }
+}
+
 # Returns a promise chain to handle the "debug and show some output but don't
 # actually build anything" use case.
 sub _runModeDebug
@@ -90,8 +143,10 @@ sub _runModeDebug
         $app->log->debug("Dumping dependency tree (in a later release...)");
         return $ua->get_p('/moduleGraph')->then(sub {
             my $tx = _check_error(shift);
-            say $tx->result->text;
-            return 0;
+            return $tx->result->json;
+        })->then(sub {
+            my $tree = shift;
+            return dumpDependencyTree($ua, $tree);
         });
     }
     elsif ($debugFlags{'list-build'}) {
