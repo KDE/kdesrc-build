@@ -349,49 +349,6 @@ DONE
         = values %auxOptions;
 }
 
-sub _yieldModuleDependencyTreeEntry
-{
-    my ($nodeInfo, $module, $context) = @_;
-
-    my $depth = $nodeInfo->{depth};
-    my $index = $nodeInfo->{idx};
-    my $count = $nodeInfo->{count};
-    my $build = $nodeInfo->{build};
-    my $currentItem = $nodeInfo->{currentItem};
-    my $currentBranch = $nodeInfo->{currentBranch};
-    my $parentItem = $nodeInfo->{parentItem};
-    my $parentBranch = $nodeInfo->{parentBranch};
-
-    my $buildStatus = $build ? 'built' : 'not built';
-    my $statusInfo = $currentBranch ? "($buildStatus: $currentBranch)" : "($buildStatus)";
-
-    my $connectorStack = $context->{stack};
-
-
-    my $prefix = pop(@$connectorStack);
-
-    while($context->{depth} > $depth) {
-        $prefix = pop(@$connectorStack);
-        --($context->{depth});
-    }
-
-    push(@$connectorStack, $prefix);
-
-    my $connector;
-
-    if ($depth == 0) {
-        $connector = $prefix . ' ── ';
-        push(@$connectorStack, $prefix . (' ' x 4));
-    }
-    else {
-        $connector = $prefix . ($index == $count ? '└── ': '├── ');
-        push(@$connectorStack, $prefix . ($index == $count ? ' ' x 4: '│   '));
-    }
-
-    $context->{depth} = $depth + 1;
-    $context->{report}($connector . $currentItem . ' ' . $statusInfo);
-}
-
 # Generates the build context, builds various module, dependency and branch
 # group resolvers, and splits up the provided option/selector mix read from
 # cmdline into selectors (returned to caller, if any) and pre-built context and
