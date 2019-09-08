@@ -255,24 +255,26 @@ sub _generateRoutes {
         my $work = $c->app->ksb->workLoad() // {};
         my $info = $work->{dependencyInfo};
 
-        if (defined($info)
-            && !ksb::DependencyResolver::hasErrors($info)
-            && exists $info->{graph}) {
-            my $graph = $info->{graph};
-            my $modules = $work->{modulesFromCommand};
-            my @dtos = ksb::dto::ModuleInfo::selectedModulesToDtos(
-                $graph,
-                $modules
-            );
-            #
-            # Trap for the unwary: make sure to return a reference.
-            # Without this Mojolicious won't encode the array properly
-            #
-            $c->render(json => \@dtos);
-        }
-        else {
+        if (!defined($info)
+            || ksb::DependencyResolver::hasErrors($info)
+            || !exists $info->{graph})
+        {
             $c->reply->not_found;
+            return;
         }
+
+        my $graph = $info->{graph};
+        my $modules = $work->{modulesFromCommand};
+        my @dtos = ksb::dto::ModuleInfo::selectedModulesToDtos(
+            $graph,
+            $modules
+        );
+
+        #
+        # Trap for the unwary: make sure to return a reference.
+        # Without this Mojolicious won't encode the array properly
+        #
+        $c->render(json => \@dtos);
     });
 
     $r->post('/build' => sub {
