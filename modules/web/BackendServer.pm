@@ -38,7 +38,7 @@ sub make_new_ksb
 
     my @selectors = $app->establishContext(@{$c->app->{options}});
     $c->app->selectors([@selectors]);
-    $c->app->log->info("Selectors are ", join(', ', @selectors));
+    $c->app->log->debug("Selectors are " . join(', ', @selectors));
 
     return $app;
 }
