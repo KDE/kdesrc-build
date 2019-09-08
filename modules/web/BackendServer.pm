@@ -34,9 +34,22 @@ sub make_new_ksb
     chdir($c->app->{ksbhome});
     my $app = ksb::Application->new->setHeadless;
 
+    # Note that we shouldn't /have/ any selectors at this point, it's now a
+    # separate user input.
     my @selectors = $app->establishContext(@{$c->app->{options}});
     $c->app->selectors([@selectors]);
-    $c->app->log->info("Selectors are ", join(', ', @selectors));
+
+    # Reset log handler
+    my $ctx = $app->context();
+    $c->app->log(Mojo::Log->new(
+            path => $ctx->getLogDirFor($ctx) . "/mojo-backend.log"
+            ));
+
+    if(@selectors) {
+        $c->app->log->info("Module selectors requested:", join(', ', @selectors));
+    } else {
+        $c->app->log->info("All modules to be built");
+    }
 
     return $app;
 }
@@ -140,13 +153,22 @@ sub _generateRoutes {
         my $c = shift;
         my $selectorList = $c->req->json;
         my $build_all = $c->req->headers->header('X-BuildAllModules');
+        my $log = $c->app->log;
 
         # Remove empty selectors
         my @selectors = grep { !!$_ } map { trim($_ // '') } @{$selectorList};
 
+        $log->warn("We're already in a build") if $c->in_build;
+        if ($build_all) {
+            $log->info("User requested to build all modules");
+        } else {
+            my $exactList = $c->req->text;
+            $log->info("User requested to build $exactList: [" . join(', ', @selectors) . "]");
+        }
+
         # If not building all then ensure there's at least one module to build
         if ($c->in_build || !$selectorList || (!@selectors && !$build_all) || (@selectors && $build_all)) {
-            $c->app->log->error("Something was wrong with modules to assign to build");
+            $log->error("Something was wrong with modules to assign to build");
             return $c->render(text => "Invalid request sent", status => 400);
         }
 
