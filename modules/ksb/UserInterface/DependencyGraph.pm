@@ -1,8 +1,14 @@
 package ksb::UserInterface::DependencyGraph;
 
+use utf8; # Source code is utf8-encoded
+
 use strict;
 use warnings;
 use 5.014;
+
+# our output to STDOUT should match locale (esp UTF-8 locale, which induces
+# warnings for UTF-8 output unless we specifically opt-in)
+use open OUT => ':locale';
 
 sub _descendModuleGraph
 {
@@ -78,9 +84,17 @@ sub _treeOutputConnectors
     my ($depth, $index, $count) = @_;
     my $blankPadding = (' ' x 4);
 
-    return (' ── ', $blankPadding) if ($depth == 0);
-    return ('└── ', $blankPadding) if ($index == $count);
-    return ('├── ', '│   ');
+    my $unicode = ($ENV{LC_ALL} // 'C') =~ /UTF-?8$/;
+
+    if ($unicode) {
+        return (' ── ', $blankPadding) if ($depth == 0);
+        return ('└── ', $blankPadding) if ($index == $count);
+        return ('├── ', '│   ');
+    } else {
+        return (' -- ', $blankPadding) if ($depth == 0);
+        return ('\-- ', $blankPadding) if ($index == $count);
+        return ('+-- ', '|   ');
+    }
 }
 
 sub _yieldModuleDependencyTreeEntry
@@ -123,19 +137,11 @@ sub printTrees
     my $tree = shift;
     my @modules = @_;
 
-    #
-    # Hack: reopen STDOUT to get rid of ... "does not map to ascii" noise
-    # Yes: the code points do not map to ASCII, that is sort of the point
-    #
-    my $ok = open my $fh, '>&', STDOUT;
-    return 1 unless $ok;
-
     my $depTreeCtx = {
         stack => [''],
         depth => 0,
         report => sub {
-            my $line = shift;
-            print $fh $line, "\n";
+            say $_[0];
         }
     };
 
@@ -146,7 +152,6 @@ sub printTrees
         @modules
     );
 
-    close $fh;
     return 0;
 }
 
