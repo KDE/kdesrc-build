@@ -8,6 +8,7 @@ use File::Spec qw(splitpath);
 use ksb::BuildException;
 use ksb::Debug qw(colorize);
 use ksb::OSSupport;
+use ksb::Util;
 
 =head1 NAME
 
@@ -95,7 +96,7 @@ sub _installSystemPackages
     my $osVersion = $os->vendorVersion;
 
     print colorize(<<DONE);
- b[1.] Installing b[system packages] for b[$vendor]...
+ b[-] Installing b[system packages] for b[$vendor]...
 DONE
 
     my @packages = _findBestVendorPackageList($os);
@@ -104,12 +105,12 @@ DONE
         say colorize (" b[*] Running b[" . join(' ', @installCmd) . "]");
         my $result = system (@installCmd, @packages);
         if ($result >> 8 == 0) {
-            say colorize (" b[*] b[g[Looks like things went OK!]");
+            say colorize (" b[*] b[g[Looks like the necessary packages were successfully installed!]");
         } else {
             say colorize (" r[b[*] Ran into an error with the installer!");
         }
     } else {
-        say colorize (" r[b[*] Whoa, I'm not familiar with your distribution, skipping");
+        say colorize (" r[b[*] Packages could not be installed, because kdesrc-build does not know your linux distribution.");
     }
 }
 
@@ -119,11 +120,11 @@ sub _setupBaseConfiguration
 
     if (-e "kdesrc-buildrc" || -e "$ENV{HOME}/.kdesrc-buildrc") {
         print colorize(<<DONE);
- b[2.] You b[y[already have a configuration file], skipping this step...
+ b[-] You b[y[already have a configuration file].
 DONE
     } else {
         print colorize(<<DONE);
- b[2.] Installing b[sample configuration file]...
+ b[-] Installing b[sample configuration file]...
 DONE
 
         my $sampleRc = $packages{'sample-rc'} or
@@ -144,24 +145,55 @@ DONE
     }
 }
 
-sub _bashrcIsSetup
-{
-    return 1;
-}
-
 sub _setupBashrcFile
 {
-    if (_bashrcIsSetup()) {
+    my $modifiedBashrc = 0;
+    
+    # Add kdesrc-build path to PATH if not already in there
+    if (!ksb::Util::isInPath('src/kdesrc-build')) {
+        
         say colorize(<<DONE);
- b[3.] Your b[y[~/.bashrc is already setup], skipping this step...
+ b[-] Amending your ~/.bashrc to b[also point to install dir]...
+DONE
+        open(my $bashrc, '>>', "$ENV{HOME}/.bashrc") or _throw("Couldn't open ~/.bashrc: $!");
+        
+        print $bashrc "\n# Adding the kdesrc-build directory to the path\n";
+        print $bashrc 'export PATH="$HOME/kde/src/kdesrc-build:$PATH"';
+        print $bashrc "\n";
+        
+        $modifiedBashrc = 1;
+    }
+    
+    # Create kdesrc-run alias for more convenient program execution
+    if (!ksb::Util::fileHasLine("$ENV{HOME}/.bashrc", "kdesrc-run ()")) {
+        say colorize(<<DONE);
+ b[-] Amending your ~/.bashrc to b[add kdesrc-run alias]...
+DONE
+        open(my $bashrc, '>>', "$ENV{HOME}/.bashrc") or _throw("Couldn't open ~/.bashrc: $!");
+        
+        print $bashrc "\n# Creating alias for running software built with kdesrc-build\n";
+        print $bashrc "kdesrc-run ()\n";
+        print $bashrc "{\n";
+        print $bashrc '  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/$1"';
+        print $bashrc "\n}\n";
+        
+        $modifiedBashrc = 1;
+    }
+
+    
+    
+    if ($modifiedBashrc) {
+        say colorize(<<DONE);
+ b[-] Your b[y[~/.bashrc has been successfully setup].
 DONE
     } else {
         say colorize(<<DONE);
- b[3.] Amending your ~/.bashrc to b[also point to install dir]...
+ b[-] Your b[y[~/.bashrc is already setup].
 DONE
-        sleep 3;
     }
 }
+
+
 
 sub _findBestInstallCmd
 {
