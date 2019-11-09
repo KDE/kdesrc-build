@@ -32,28 +32,25 @@ sub updateInternal
         # check the source out into that directory.
         my @cmd = ('bzr', 'branch', $bzrRepoName, $srcdir);
 
-        # Exceptions are used for failure conditions
-        if (log_command($module, 'bzr-branch', \@cmd) != 0) {
-            die make_exception('Internal', "Unable to checkout $module!");
-        }
+        croak_runtime("Unable to checkout $module!")
+            if log_command($module, 'bzr-branch', \@cmd) != 0;
 
         # TODO: Filtering the output by passing a subroutine to log_command
         # should give us the number of revisions, or we can just somehow
         # count files.
-        my $newRevisionCount = 0;
+        my $newRevisionCount = 1;
         return $newRevisionCount;
     }
     else {
         # Update existing checkout. The source is currently in $srcdir
         p_chdir($srcdir);
 
-        if (log_command($module, 'bzr-pull', ['bzr', 'pull']) != 0) {
-            die make_exception('Internal', "Unable to update $module!");
-        }
+        croak_runtime("Unable to update $module!")
+            if log_command($module, 'bzr-pull', ['bzr', 'pull']) != 0;
 
         # I haven't looked at bzr up output yet to determine how to find
         # number of affected files or number of revisions skipped.
-        my $changeCount = 0;
+        my $changeCount = 1;
         return $changeCount;
     }
 
