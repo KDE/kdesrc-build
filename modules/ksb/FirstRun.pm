@@ -281,13 +281,14 @@ libudev-devel
 libQt5WebKit5-devel libQt5WebKitWidgets-devel
 libQt5DesignerComponents5 libqt5-qttools-devel libSM-devel
 libattr-devel
-libboost_headers1_66_0-devel
+libboost_headers-devel
 libQt5QuickControls2-devel
 libqt5-qtscript-devel
 wayland-devel
 libqt5-qtbase-private-headers-devel
 lmdb-devel
 libpng16-compat-devel giflib-devel
+libical-devel
 ModemManager-devel
 # This pulls in so many other packages! :(
 NetworkManager-devel
