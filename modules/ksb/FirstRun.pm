@@ -323,6 +323,10 @@ ModemManager-devel
 NetworkManager-libnm-devel
 qrencode-devel
 libassuan-devel
+wayland-protocols-devel
+doxygen
+libXfixes-devel
+
 
 @@ pkg/mageia/unknown
 perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
@@ -355,6 +359,7 @@ dev-lang/perl
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
+doxygen
 
 @@ cmd/install/debian/unknown
 apt-get -q -y --no-install-recommends install
