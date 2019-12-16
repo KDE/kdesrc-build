@@ -22,34 +22,39 @@ package ksb::Application {
 
         my $newModule = $self->{module_factory}->('setmod2');
 
-        my $graph = {
-            'setmod1' => {
-                votes => {
-                    'setmod2' => 1,
-                    'setmod3' => 1
-                },
-                build => 1,
-                module => $modules[0]
-            },
-            'setmod2' => {
-                votes => {
-                    'setmod3' => 1
-                },
-                build => 1,
-                module => $newModule
-            },
-            'setmod3' => {
-                votes => {},
-                build => 1,
-                module => $modules[1]
-            }
-        };
+        my $graph = { };
 
-        my $result = {
+        # Construct graph manually based on real module list
+        foreach my $module (@modules) {
+            my $name = $module->name();
+            $graph->{$name} = {
+                votes => { },
+                build => 1,
+                module => $module,
+            };
+        }
+
+        if (exists $graph->{setmod1}) {
+            $graph->{setmod1}->{votes} = {
+                'setmod2' => 1,
+                'setmod3' => 1
+            };
+
+            # setmod1 is only user of setmod2
+            if (!exists $graph->{setmod2}) {
+                $graph->{setmod2} = {
+                    votes => {
+                        'setmod3' => 1
+                    },
+                    build => 1,
+                    module => $newModule,
+                };
+            }
+        }
+
+        return {
             graph => $graph
         };
-
-        return $result;
     }
 };
 
@@ -73,6 +78,17 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --include-depe
     is (scalar @moduleList, 2, 'Right number of modules (include-dependencies+ignore-modules)');
     is ($moduleList[0]->name(), 'setmod1', 'mod list[0] == setmod1');
     is ($moduleList[1]->name(), 'setmod3', 'mod list[1] == setmod3');
+}
+
+# Verify that --include-dependencies on a moduleset name filters out the whole set
+{
+    @args = (@args[0..2], qw(--ignore-modules set1));
+
+    my $app = ksb::Application->new(@args);
+    my @moduleList = @{$app->{modules}};
+
+    is (scalar @moduleList, 1, 'Right number of modules (ignore module-set)');
+    is ($moduleList[0]->name(), 'module2', 'mod list[0] == module2');
 }
 
 done_testing();

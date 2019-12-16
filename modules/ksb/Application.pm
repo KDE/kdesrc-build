@@ -579,7 +579,10 @@ sub generateModuleList
     @modules = _applyModuleFilters($ctx, @modules);
 
     # Check for ignored modules (post-expansion)
-    @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
+    @modules = grep {
+        ! exists $ignoredSelectors{$_->name()} &&
+        ! exists $ignoredSelectors{$_->moduleSet()->name() // ''}
+    } @modules;
 
     if(exists $cmdlineGlobalOptions->{'list-build'}) {
         for my $module (@modules) {
