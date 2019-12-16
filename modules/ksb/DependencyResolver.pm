@@ -654,7 +654,7 @@ sub resolveToModuleGraph
     my $trivialCycles = $errors->{trivialCycles};
 
     if ($trivialCycles) {
-        warning("Total of 'trivial' dependency cycles detected & eliminated: $trivialCycles");
+        whisper("Total of 'trivial' dependency cycles detected & eliminated: $trivialCycles");
     }
 
     my $cycles = _checkDependencyCycles($moduleGraph);
