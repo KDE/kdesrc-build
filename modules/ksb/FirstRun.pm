@@ -266,90 +266,153 @@ git shared-mime-info cmake build-essential flex bison gperf libssl-dev intltool
 liburi-perl gettext
 
 @@ pkg/opensuse/unknown
-perl perl-IO-Socket-SSL perl-JSON perl-YAML-LibYAML
-git shared-mime-info make cmake libqt5-qtbase-common-devel libopenssl-devel intltool
-polkit-devel
-libqt5-qtbase-devel libqt5-qtimageformats-devel libqt5-qtmultimedia-devel libqt5-qtdeclarative-devel libqt5-qtx11extras-devel libqt5-qtxmlpatterns-devel libqt5-qtsvg-devel
-gperf
-gettext-runtime gettext-tools
-libxml2-devel libxml2-tools libxslt-devel docbook-xsl-stylesheets docbook_4
-perl-URI
-libXrender-devel xcb-util-keysyms-devel
+cmake
+docbook-xsl-stylesheets
+docbook_4
 flex bison
-libQt5Core-private-headers-devel
-libudev-devel
-libQt5WebKit5-devel libQt5WebKitWidgets-devel
-libQt5DesignerComponents5 libqt5-qttools-devel libSM-devel
-libattr-devel
+gettext-runtime
+gettext-tools
+giflib-devel
+git
+gperf
+intltool
 libboost_headers-devel
-libQt5QuickControls2-devel
-libqt5-qtscript-devel
-wayland-devel
+libqt5-qtbase-common-devel
 libqt5-qtbase-private-headers-devel
+libqt5-qtimageformats-devel    
+libQt5Core-private-headers-devel
+libQt5DesignerComponents5  
+libxml2-tools
 lmdb-devel
-libpng16-compat-devel giflib-devel
-libical-devel
-ModemManager-devel
-# This pulls in so many other packages! :(
-NetworkManager-devel
-qrencode-devel
+make
+perl 
+perl(IO::Socket::SSL)
+perl(JSON)
+perl(URI)
+perl(YAML::LibYAML)
+pkgconfig(libattr)
+pkgconfig(libical)
+pkgconfig(libpng)
+pkgconfig(libqrencode)
+pkgconfig(libudev)
+pkgconfig(libxml-2.0)
+pkgconfig(libxslt)
+pkgconfig(ModemManager)
+pkgconfig(NetworkManager)
+pkgconfig(openssl)
+pkgconfig(Qt5Core)
+pkgconfig(Qt5Multimedia)
+pkgconfig(Qt5Qml)
+pkgconfig(Qt5QuickControls2)
+pkgconfig(Qt5Script)
+pkgconfig(Qt5Svg)
+pkgconfig(Qt5UiTools)
+pkgconfig(Qt5WebKit)
+pkgconfig(Qt5WebKitWidgets)
+pkgconfig(Qt5X11Extras)
+pkgconfig(Qt5XmlPatterns)
+pkgconfig(sm)
+pkgconfig(wayland-server)
+pkgconfig(xcb-keysyms) 
+pkgconfig(xrender)
+polkit-devel
+shared-mime-info
 
 @@ pkg/fedora/unknown
-perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
-git bzr texinfo shared-mime-info make cmake openssl-devel intltool
-gcc gcc-c++ python
-mesa-libGL-devel dbus-devel gstreamer1-devel mesa-libgbm-devel
-polkit-devel
-pam-devel
-gperf
-gettext gettext-devel
-libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
-perl-URI
-libXrender-devel xcb-util-keysyms-devel
-flex bison
-libjpeg-devel
-libSM-devel
-libattr-devel
-xapian-core-devel
+bison
 boost-devel
-wayland-devel
-xcb-util-devel
-xcb-util-wm-devel
-xcb-util-cursor-devel
-lmdb-devel
-libpng-devel giflib-devel
-ModemManager-devel
-# This pulls in so many other packages! :(
-NetworkManager-libnm-devel
-qrencode-devel
-libassuan-devel
-wayland-protocols-devel
+bzr
+cmake
+docbook-style-xsl
+docbook-utils
 doxygen
-libXfixes-devel
-
+flex
+gcc
+gcc-c++
+gettext
+gettext-devel
+giflib-devel
+git
+gperf
+intltool
+libxml2
+make
+pam-devel
+perl(IO::Socket::SSL)
+perl(IPC::Cmd)
+perl(JSON::PP)
+perl(URI)
+perl(YAML::LibYAML)
+pkgconfig(dbus-1)  
+pkgconfig(gbm)
+pkgconfig(gl) 
+pkgconfig(gstreamer-1.0)
+pkgconfig(libassuan)
+pkgconfig(libattr)
+pkgconfig(libnm)
+pkgconfig(libpng)
+pkgconfig(libqrencode)
+pkgconfig(libxml-2.0)
+pkgconfig(libxslt)
+pkgconfig(lmdb)
+pkgconfig(ModemManager)
+pkgconfig(openssl)
+pkgconfig(polkit-gobject-1)
+pkgconfig(sm)
+pkgconfig(wayland-client)
+pkgconfig(wayland-protocols)
+pkgconfig(xapian-core)
+pkgconfig(xcb-cursor)
+pkgconfig(xcb-ewmh)
+pkgconfig(xcb-keysyms)
+pkgconfig(xcb-util)
+pkgconfig(xfixes)
+pkgconfig(xrender)
+python
+shared-mime-info
+texinfo
 
 @@ pkg/mageia/unknown
-perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
-git shared-mime-info make cmake openssl-devel intltool
-gcc gcc-c++ python
-libgl-devel dbus-devel gstreamer1.0-devel
-polkit-devel
-gperf
-gettext gettext-devel
-libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
-perl-URI
-libxrender-devel xcb-util-keysyms-devel
-flex bison
-libsm-devel
-libattr-devel
+
+bison
 boost
-wayland-devel
-lmdb-devel
-libpng-devel giflib-devel
-modemmanager-devel
-# This pulls in so many other packages! :(
-libnm-devel
-qrencode-devel
+cmake
+docbook-style-xsl
+docbook-utils
+flex
+gcc
+gcc-c++
+gettext
+gettext-devel
+giflib
+git
+gperf
+intltool
+lib64lmdb-devel
+make
+perl(IO::Socket::SSL) 
+perl(IPC::Cmd)
+perl(JSON::PP) 
+perl(URI)
+perl(YAML::LibYAML) 
+pkgconfig(dbus-1)
+pkgconfig(gl) 
+pkgconfig(gstreamer-1.0)
+pkgconfig(libattr)
+pkgconfig(libnm)
+pkgconfig(libpng)
+pkgconfig(libqrencode)
+pkgconfig(libxml-2.0)
+pkgconfig(libxslt)
+pkgconfig(ModemManager)
+pkgconfig(openssl)
+pkgconfig(polkit-gobject-1)
+pkgconfig(sm)
+pkgconfig(wayland-client)
+pkgconfig(xcb-keysyms)
+pkgconfig(xrender)
+python
+shared-mime-info
 
 
 @@ pkg/gentoo/unknown
