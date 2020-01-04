@@ -226,6 +226,20 @@ operation of the &git; source control system.</para>
 <para>See <xref linkend="checking-out-parts"/> for an example.</para></entry>
 </row>
 
+<row id="conf-cmake-generator">
+<entry>cmake-generator</entry>
+<entry>Module setting overrides global</entry>
+<entry><para>Use this option to specify which generator to use with &cmake;.
+Currently both <literal>Ninja</literal> and <literal>Unix Makefiles</literal>
+are supported. Invalid (unsupported) values are ignored and treated as if
+unset. If not set <literal>Unix Makefiles</literal> will be used by default.
+</para>
+
+<para>Note that if a valid generator is also specified through
+<link linkend="conf-cmake-options">cmake-options</link> it will override the
+value for <literal>cmake-generator</literal>.</para></entry>
+</row>
+
 <row id="conf-cmake-options">
 <entry>cmake-options</entry>
 <entry>Appends to global options for the default buildsystem, overrides global
@@ -238,6 +252,12 @@ specify common &cmake; options in the global section.</para>
 
 <para>This option does not apply to qt (which does not use &cmake;). Use
 <link linkend="conf-configure-flags">configure-flags</link> instead.</para>
+
+<para>If a valid generator is specified among the listed options it will
+override the value of
+<link linkend="conf-cmake-generator">cmake-generator</link>. Invalid
+(unsupported) generators are ignored and will not be passed to &cmake;.
+</para>
 
 <para>Since these options are passed directly to the &cmake; command line, they
 should be given as they would be typed into &cmake;. For example:</para>
