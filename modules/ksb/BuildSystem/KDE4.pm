@@ -12,6 +12,122 @@ use ksb::BuildContext 0.30;
 use ksb::Debug;
 use ksb::Util;
 
+use List::Util qw(first);
+
+my $GENERATOR_MAP = {
+    'Ninja' => {
+        optionsName => 'ninja-options',
+        installTarget => 'install',
+        requiredPrograms => [
+            qw{ninja cmake qmake}
+        ],
+        buildCommands => [
+            qw{ninja}
+        ]
+    },
+    'Unix Makefiles' => {
+        optionsName => 'make-options',
+        installTarget => 'install/fast',
+        requiredPrograms => [
+            qw{cmake qmake}
+        ],
+        # Non Linux systems can sometimes fail to build when GNU Make would work,
+        # so prefer GNU Make if present, otherwise try regular make.
+        buildCommands => [
+            qw{gmake make}
+        ]
+    }
+};
+
+sub _checkGeneratorIsWhitelisted
+{
+    my $generator = shift;
+
+    return exists ($GENERATOR_MAP->{$generator});
+}
+
+sub _stripGeneratorFromCMakeOptions
+{
+    my $nextShouldBeGenerator = 0;
+    my @filtered = grep {
+        my $accept = 1;
+        if ($nextShouldBeGenerator) {
+            $nextShouldBeGenerator = 0;
+            $accept = 0;
+        } else {
+            my $maybeGenerator = $_;
+            if ($maybeGenerator =~ /^-G(\S*(\s*\S)*)\s*/) {
+                my $generator = $1 // '';
+                $nextShouldBeGenerator = 1 if ($generator eq '');
+                $accept = 0;
+            }
+        }
+
+        $accept == 1;
+    } (@_);
+    return @filtered;
+}
+
+sub _findGeneratorInCMakeOptions
+{
+    my $nextShouldBeGenerator = 0;
+    my @filtered = grep {
+        my $accept = 0;
+        if ($nextShouldBeGenerator) {
+            $nextShouldBeGenerator = 0;
+            $accept = 1;
+        } else {
+            my $maybeGenerator = $_;
+            if ($maybeGenerator =~ /^-G(\S*(\s*\S)*)\s*/) {
+                my $generator = $1 // '';
+                if ($generator ne '') {
+                    $accept = 1;
+                } else {
+                    $nextShouldBeGenerator = 1;
+                }
+            }
+        }
+
+        $accept == 1;
+    } (@_);
+
+    for my $found (@filtered) {
+        if ($found =~ /^-G(\S*(\s*\S)*)\s*/) {
+            $found = $1 // '';
+        }
+        return $found unless ($found eq '');
+    }
+
+    return '';
+}
+
+sub _determineCmakeGenerator
+{
+    my $self = shift;
+
+    my $module = $self->module();
+    my @cmakeOptions = split_quoted_on_whitespace ($module->getOption('cmake-options'));
+
+    my $generator = first { _checkGeneratorIsWhitelisted($_); } (
+        _findGeneratorInCMakeOptions(@cmakeOptions),
+        $module->getOption('cmake-generator'),
+        'Unix Makefiles'
+    );
+
+    croak_internal("Unable to determine CMake generator for: $module") unless $generator;
+    return $generator;
+}
+
+sub cmakeGenerator
+{
+    my $self = shift;
+    if (not (exists $self->{cmake_generator})) {
+        $self->{cmake_generator} = $self->_determineCmakeGenerator();
+    }
+    return $self->{cmake_generator};
+}
+
+
 sub needsInstalled
 {
     my $self = shift;
@@ -49,9 +165,25 @@ sub prepareModuleBuildEnvironment
     }
 }
 
+# This should return a list of executable names that must be present to
+# even bother attempting to use this build system. An empty list should be
+# returned if there's no required programs.
 sub requiredPrograms
 {
-    return qw{cmake qmake};
+    my $self = shift;
+    my $generator = $self->cmakeGenerator();
+    my @required = @{$GENERATOR_MAP->{$generator}->{requiredPrograms}};
+    return @required;
+}
+
+# Returns a list of possible build commands to run, any one of which should
+# be supported by the build system.
+sub buildCommands
+{
+    my $self = shift;
+    my $generator = $self->cmakeGenerator();
+    my @progs = @{$GENERATOR_MAP->{$generator}->{buildCommands}};
+    return @progs;
 }
 
 sub configuredModuleFileName
@@ -86,8 +218,9 @@ sub runTestsuite
         }
     };
 
+    my $buildCommand = $self->defaultBuildCommand();
     my $result = log_command($module, 'test-results',
-                             [ 'make', $make_target ],
+                             [ $buildCommand, $make_target ],
                              { callback => $countCallback, no_translate => 1});
 
     if ($result != 0) {
@@ -115,7 +248,8 @@ sub installInternal
 {
     my $self = shift;
     my $module = $self->module();
-    my $target = 'install/fast';
+    my $generator = $self->cmakeGenerator();
+    my $target = $GENERATOR_MAP->{$generator}->{installTarget};
     my @cmdPrefix = @_;
 
     $target = 'install' if $module->getOption('custom-build-command');
@@ -136,13 +270,34 @@ sub configureInternal
 
     # Use cmake to create the build directory (sh script return value
     # semantics).
-    if (_safe_run_cmake ($module))
+    if ($self->_safe_run_cmake())
     {
         error ("\tUnable to configure r[$module] with CMake!");
         return 0;
     }
 
     return 1;
+}
+
+# Return value style: boolean
+sub buildInternal
+{
+    my $self = shift;
+    my $generator = $self->cmakeGenerator();
+    my $defaultOptionsName = $GENERATOR_MAP->{$generator}->{optionsName};
+    my $optionsName = shift // "$defaultOptionsName";
+
+    return $self->safe_make({
+        target => undef,
+        message => 'Compiling...',
+        'make-options' => [
+            split(' ', $self->module()->getOption($optionsName)),
+        ],
+        logbase => 'build',
+        subdirs => [
+            split(' ', $self->module()->getOption("checkout-only"))
+        ],
+    })->{was_successful};
 }
 
 ### Internal package functions.
@@ -155,12 +310,15 @@ sub configureInternal
 # 0 for success, non-zero for failure.
 sub _safe_run_cmake
 {
-    my $module = assert_isa(shift, 'ksb::Module');
+    my $self = shift;
+    my $module = $self->module();
+    my $generator = $self->cmakeGenerator();
     my $srcdir = $module->fullpath('source');
     my @commands = split_quoted_on_whitespace ($module->getOption('cmake-options'));
 
     # grep out empty fields
     @commands = grep {!/^\s*$/} @commands;
+    @commands = _stripGeneratorFromCMakeOptions(@commands);
 
     # Add -DBUILD_foo=OFF options for the directories in do-not-compile.
     # This will only work if the CMakeLists.txt file uses macro_optional_add_subdirectory()
@@ -207,7 +365,7 @@ sub _safe_run_cmake
         push @commands, "-DBUILD_experimental:BOOL=ON";
     }
 
-    unshift @commands, 'cmake', $srcdir; # Add to beginning of list.
+    unshift @commands, 'cmake', $srcdir, '-G', $generator; # Add to beginning of list.
 
     my $old_options =
         $module->getPersistentOption('last-cmake-options') || '';
@@ -218,7 +376,7 @@ sub _safe_run_cmake
         ! -e "$builddir/CMakeCache.txt" # File should exist only on successful cmake run
        )
     {
-        info ("\tRunning g[cmake]...");
+        info ("\tRunning g[cmake] targeting b[$generator]...");
 
         # Remove any stray CMakeCache.txt
         safe_unlink ("$srcdir/CMakeCache.txt")   if -e "$srcdir/CMakeCache.txt";

@@ -72,9 +72,16 @@ $moduleList[2]->setOption('override-build-system', 'kde');
 ok($moduleList[2]->setupBuildSystem(), 'setup fake build system');
 
 ok(@ksb::test::CMD, 'log_command cmake was called');
-is($ksb::test::CMD[2], '-DCMAKE_BUILD_TYPE=a b', 'CMake options can be quoted');
-is($ksb::test::CMD[3], 'bar=c', 'CMake option quoting does not eat all options');
-is($ksb::test::CMD[-1], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde", 'Prefix is passed to cmake');
+is(scalar (@ksb::test::CMD), 8);
+
+is($ksb::test::CMD[0], 'cmake', 'CMake command should start with cmake');
+is($ksb::test::CMD[1], '/tmp/setmod2', 'CMake command should specify source directory as first argument');
+is($ksb::test::CMD[2], '-G', 'CMake generator should be specified explicitly');
+is($ksb::test::CMD[3], 'Unix Makefiles', 'Expect the default CMake generator to be used');
+is($ksb::test::CMD[4], '-DCMAKE_BUILD_TYPE=a b', 'CMake options can be quoted');
+is($ksb::test::CMD[5], 'bar=c', 'CMake option quoting does not eat all options');
+is($ksb::test::CMD[6], 'baz', 'Plain CMake options are preserved correctly');
+is($ksb::test::CMD[7], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde", 'Prefix is passed to cmake');
 
 # See https://phabricator.kde.org/D18165
 is($moduleList[1]->getOption('cxxflags'), '', 'empty cxxflags renders with no whitespace in module');

@@ -38,7 +38,7 @@ sub _maskGlobalBuildSystemOptions
     my $module = $self->module();
     my $ctx = $module->buildContext();
     my @buildSystemOptions = qw(
-        cmake-options configure-flags custom-build-command cxxflags
+        cmake-options cmake-generator configure-flags custom-build-command cxxflags
         make-options run-tests use-clean-install
     );
 
@@ -125,6 +125,16 @@ sub buildCommands
     # Non Linux systems can sometimes fail to build when GNU Make would work,
     # so prefer GNU Make if present, otherwise try regular make.
     return 'gmake', 'make';
+}
+
+sub defaultBuildCommand
+{
+    my $self = shift;
+    # Convert the path to an absolute path since I've encountered a sudo
+    # that is apparently unable to guess.  Maybe it's better that it
+    # doesn't guess anyways from a security point-of-view.
+    my $buildCommand = first { absPathToExecutable($_) } $self->buildCommands();
+    return $buildCommand;
 }
 
 # Return value style: boolean
@@ -328,10 +338,7 @@ sub safe_make (@)
     assert_isa($self, 'ksb::BuildSystem');
     my $module = $self->module();
 
-    # Convert the path to an absolute path since I've encountered a sudo
-    # that is apparently unable to guess.  Maybe it's better that it
-    # doesn't guess anyways from a security point-of-view.
-    my $buildCommand = first { absPathToExecutable($_) } $self->buildCommands();
+    my $buildCommand = $self->defaultBuildCommand();
     my @buildCommandLine = $buildCommand;
 
     # Check for custom user command. We support command line options being
