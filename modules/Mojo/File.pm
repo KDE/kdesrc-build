@@ -20,11 +20,11 @@ use File::Temp ();
 use IO::File   ();
 use Mojo::Collection;
 
-our @EXPORT_OK = ('path', 'tempdir', 'tempfile');
+our @EXPORT_OK = ('curfile', 'path', 'tempdir', 'tempfile');
 
 sub basename { File::Basename::basename ${shift()}, @_ }
 
-sub child { $_[0]->new(@_) }
+sub child { $_[0]->new(${shift()}, @_) }
 
 sub chmod {
   my ($self, $mode) = @_;
@@ -38,6 +38,8 @@ sub copy_to {
   return $self->new(-d $to ? ($to, File::Basename::basename $self) : $to);
 }
 
+sub curfile { __PACKAGE__->new(Cwd::realpath((caller)[1])) }
+
 sub dirname { $_[0]->new(scalar File::Basename::dirname ${$_[0]}) }
 
 sub is_abs { file_name_is_absolute ${shift()} }
@@ -49,7 +51,7 @@ sub list {
   opendir(my $dir, $$self) or croak qq{Can't open directory "$$self": $!};
   my @files = grep { $_ ne '.' && $_ ne '..' } readdir $dir;
   @files = grep { !/^\./ } @files unless $options->{hidden};
-  @files = map { catfile $$self, $_ } @files;
+  @files = map  { catfile $$self, $_ } @files;
   @files = grep { !-d } @files unless $options->{dir};
 
   return Mojo::Collection->new(map { $self->new($_) } sort @files);
@@ -94,6 +96,7 @@ sub move_to {
 
 sub new {
   my $class = shift;
+  croak 'Invalid path' if grep { !defined } @_;
   my $value = @_ == 1 ? $_[0] : @_ > 1 ? catfile @_ : canonpath getcwd;
   return bless \$value, ref $class || $class;
 }
@@ -207,6 +210,13 @@ friendly API for dealing with different operating systems.
 
 L<Mojo::File> implements the following functions, which can be imported
 individually.
+
+=head2 curfile
+
+  my $path = curfile;
+
+Construct a new scalar-based L<Mojo::File> object for the absolute path to the
+current source file.
 
 =head2 path
 

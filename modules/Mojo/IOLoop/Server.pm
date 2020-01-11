@@ -61,13 +61,13 @@ sub listen {
       path($path)->remove if -S $path;
       $options{Local} = $path;
       $handle = $class->new(%options) or croak "Can't create listen socket: $!";
-      $reuse = $self->{reuse} = join ':', 'unix', $path, fileno $handle;
+      $reuse  = $self->{reuse} = join ':', 'unix', $path, fileno $handle;
     }
 
     # IP socket
     else {
       $options{LocalAddr} = $address;
-      $options{LocalAddr} =~ s/[\[\]]//g;
+      $options{LocalAddr} =~ y/[]//d;
       $options{LocalPort} = $port if $port;
       $options{ReuseAddr} = 1;
       $options{ReusePort} = $args->{reuse};

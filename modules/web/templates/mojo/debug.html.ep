@@ -6,6 +6,9 @@
     <title><%= $title %> (<%= app->mode %> mode)</title>
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="-1">
+    %= javascript '/mojo/jquery/jquery.js'
+    %= javascript '/mojo/prettify/run_prettify.js'
+    %= stylesheet '/mojo/prettify/prettify-mojo-dark.css'
     <style>
       a img {
         border: 0;
@@ -210,12 +213,12 @@
   <body>
     <div id="mojobar">
       %= link_to 'https://mojolicious.org' => (id => 'mojobar-brand') => begin
-          <img src="<%= url_for '/mojo/logo-white.png' %>">
+        <picture>
+          <img src="<%= url_for '/mojo/logo-white.png' %>"
+            srcset="<%= url_for '/mojo/logo-white-2x.png' %> 2x">
+        </picture>
       % end
       <div id="mojobar-links">
-          <!-- remove links to Mojolicious website so they don't get bombared
-               with our bug reports for kdesrc-build. TODO: Replace with KDE.org links and mention
-               Mojolicious in appropriate spot?
         %= link_to Documentation => 'https://mojolicious.org/perldoc'
         <%= link_to Chat =>
           'https://kiwiirc.com/nextclient/#irc://irc.freenode.net/mojo?nick=guest-?'
@@ -225,9 +228,28 @@
         %= link_to CPAN => 'https://metacpan.org/release/Mojolicious/'
         %= link_to MailingList => 'https://groups.google.com/group/mojolicious'
         %= link_to Twitter => 'https://twitter.com/perlmojo'
-          --> 
+        %= form_for 'https://www.google.com/cse' => (target => '_blank') => begin
+          %= hidden_field cx => '014527573091551588235:pwfplkjpgbi'
+          %= hidden_field ie => 'UTF-8'
+          %= search_field 'q', placeholder => 'Search'
+        %= end
       </div>
     </div>
+    <script>
+      function mojoDrawer(handle, drawer) {
+        $(handle).on('click', function () {
+          $(drawer).slideToggle('slow');
+          var text = $(handle + ' div.tap').text();
+          text = text == "tap for more" ? "tap for less" : "tap for more";
+          $(handle + ' div.tap').text(text);
+        });
+        $(drawer).toggle();
+      }
+      $(function () {
+        mojoDrawer('#trace', '#frames');
+        mojoDrawer('#more', '#infos');
+      });
+    </script>
     <div id="wrapperlicious">
       % my $kv = begin
         % my ($key, $value) = @_;
@@ -274,6 +296,23 @@
                 % }
               </table>
             </div>
+            <div class="tap">tap for more</div>
+            <script>
+              var current = '#context';
+              function mojoShowcase() {
+                $('#showcase').on('click', function () {
+                  $(this).unbind('click');
+                  $(current).slideToggle('slow', function () {
+                    current = current == '#context' ? '#insight' : '#context';
+                    $(current).slideToggle('slow', function () {
+                      mojoShowcase();
+                    });
+                  });
+                });
+              }
+              mojoShowcase();
+              $('#insight').toggle();
+            </script>
           % }
         </div>
         <div id="trace" class="box spaced">
@@ -283,12 +322,14 @@
                 % for my $frame (@{$exception->frames}) {
                   <tr>
                     <td class="striped value wide">
-                      <pre><%= $frame->[1] . ':' . $frame->[2] %></pre>
+                      <pre>File "<%= $frame->[1] %>", line <%= 
+                        $frame->[2] %>, in "<%= $frame->[0] %>"</pre>
                     </td>
                   </tr>
                 % }
               </table>
             </div>
+            <div class="tap">tap for more</div>
           % }
         </div>
       % }
@@ -372,6 +413,7 @@
             %= $kv->(Time => scalar localtime(time))
           </table>
         </div>
+        <div class="tap">tap for more</div>
       </div>
       % if (@{app->log->history}) {
         <div id="log" class="box infobox spaced">
@@ -389,8 +431,11 @@
     </div>
     <div id="footer">
       %= link_to 'https://mojolicious.org' => begin
+        <picture>
           <img src="<%= url_for '/mojo/logo-black.png' %>"
+            srcset="<%= url_for '/mojo/logo-black-2x.png' %> 2x"
             alt="Mojolicious logo">
+        </picture>
       % end
     </div>
   </body>

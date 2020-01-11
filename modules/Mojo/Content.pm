@@ -39,12 +39,11 @@ sub generate_body_chunk {
   my ($self, $offset) = @_;
 
   $self->emit(drain => $offset) unless length($self->{body_buffer} //= '');
-  my $len = $self->headers->content_length;
-  return '' if looks_like_number $len && $len == $offset;
-  my $chunk = delete $self->{body_buffer};
-  return $self->{eof} ? '' : undef unless length $chunk;
+  return delete $self->{body_buffer} if length $self->{body_buffer};
+  return '' if $self->{eof};
 
-  return $chunk;
+  my $len = $self->headers->content_length;
+  return looks_like_number $len && $len == $offset ? '' : undef;
 }
 
 sub get_body_chunk {
@@ -157,9 +156,14 @@ sub write {
 
 sub write_chunk {
   my ($self, $chunk, $cb) = @_;
-  $self->headers->transfer_encoding('chunked') unless $self->is_chunked;
-  $self->write(defined $chunk ? $self->_build_chunk($chunk) : $chunk, $cb);
+
+  $self->headers->transfer_encoding('chunked') unless $self->{chunked};
+  @{$self}{qw(chunked dynamic)} = (1, 1);
+
+  $self->{body_buffer} .= $self->_build_chunk($chunk) if defined $chunk;
+  $self->once(drain => $cb) if $cb;
   $self->{eof} = 1 if defined $chunk && !length $chunk;
+
   return $self;
 }
 
@@ -272,7 +276,7 @@ sub _parse_until_body {
   $self->{raw_size} += length($chunk //= '');
   $self->{pre_buffer} .= $chunk;
   $self->_parse_headers if ($self->{state} ||= 'headers') eq 'headers';
-  $self->emit('body') if $self->{state} ne 'headers' && !$self->{body}++;
+  $self->emit('body')   if $self->{state} ne 'headers' && !$self->{body}++;
 }
 
 1;

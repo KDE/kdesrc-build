@@ -41,7 +41,7 @@ sub one_tick {
     return $self->stop unless keys %{$self->{timers}} || keys %{$self->{io}};
 
     # Calculate ideal timeout based on timers and round up to next millisecond
-    my $min = min map { $_->{time} } values %{$self->{timers}};
+    my $min     = min map { $_->{time} } values %{$self->{timers}};
     my $timeout = defined $min ? $min - steady_time : 0.5;
     $timeout = $timeout <= 0 ? 0 : int($timeout * 1000) + 1;
 
@@ -91,7 +91,9 @@ sub remove {
   return !!delete $self->{io}{fileno($remove) // croak 'Handle is closed'};
 }
 
-sub reset { delete @{shift()}{qw(events io next_tick next_timer timers)} }
+sub reset {
+  delete @{shift()}{qw(events io next_tick next_timer running timers)};
+}
 
 sub start {
   my $self = shift;

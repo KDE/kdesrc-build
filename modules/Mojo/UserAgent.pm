@@ -98,8 +98,8 @@ sub _connect {
   my ($proto, $host, $port) = $handle ? $t->endpoint($tx) : $t->peer($tx);
 
   my %options = (timeout => $self->connect_timeout);
-  if ($proto eq 'http+unix') { $options{path} = $host }
-  else                       { @options{qw(address port)} = ($host, $port) }
+  if   ($proto eq 'http+unix') { $options{path}             = $host }
+  else                         { @options{qw(address port)} = ($host, $port) }
   if (my $local = $self->local_address) { $options{local_address} = $local }
   $options{handle} = $handle if $handle;
 
@@ -131,7 +131,7 @@ sub _connect {
       $stream->on(timeout => sub { $self->_error($id, 'Inactivity timeout') });
       $stream->on(close => sub { $self && $self->_finish($id, 1) });
       $stream->on(error => sub { $self && $self->_error($id, pop) });
-      $stream->on(read  => sub { $self->_read($id, pop) });
+      $stream->on(read => sub { $self->_read($id, pop) });
       $self->_process($id);
     }
   );
@@ -385,7 +385,8 @@ Mojo::UserAgent - Non-blocking I/O HTTP and WebSocket user agent
   my $tx = $ua->put('[::1]:3000' => {'Content-Type' => 'text/plain'} => 'Hi!');
 
   # Quick JSON API request with Basic authentication
-  my $value = $ua->get('https://sri:t3st@example.com/test.json')->result->json;
+  my $url = Mojo::URL->new('https://example.com/test.json')->userinfo('sri:☃');
+  my $value = $ua->get($url)->result->json;
 
   # JSON POST (application/json) with TLS certificate authentication
   my $tx = $ua->cert('tls.crt')->key('tls.key')

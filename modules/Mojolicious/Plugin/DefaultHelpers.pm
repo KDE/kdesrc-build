@@ -6,9 +6,10 @@ use Mojo::ByteStream;
 use Mojo::Collection;
 use Mojo::Exception;
 use Mojo::IOLoop;
+use Mojo::Promise;
 use Mojo::Util qw(dumper hmac_sha1_sum steady_time);
 use Time::HiRes qw(gettimeofday tv_interval);
-use Scalar::Util 'blessed';
+use Scalar::Util qw(blessed weaken);
 
 sub register {
   my ($self, $app) = @_;
@@ -41,6 +42,12 @@ sub register {
   $app->helper(dumper  => sub { shift; dumper @_ });
   $app->helper(include => sub { shift->render_to_string(@_) });
 
+  $app->helper(log => \&_log);
+
+  $app->helper('proxy.get_p'  => sub { _proxy_method_p('GET',  @_) });
+  $app->helper('proxy.post_p' => sub { _proxy_method_p('POST', @_) });
+  $app->helper('proxy.start_p' => \&_proxy_start_p);
+
   $app->helper("reply.$_" => $self->can("_$_")) for qw(asset file static);
 
   $app->helper('reply.exception' => sub { _development('exception', @_) });
@@ -68,9 +75,9 @@ sub _content {
 
   my $hash = $c->stash->{'mojo.content'} ||= {};
   if (defined $content) {
-    if ($append) { $hash->{$name} .= _block($content) }
-    if ($replace) { $hash->{$name} = _block($content) }
-    else          { $hash->{$name} //= _block($content) }
+    if   ($append)  { $hash->{$name} .= _block($content) }
+    if   ($replace) { $hash->{$name} = _block($content) }
+    else            { $hash->{$name} //= _block($content) }
   }
 
   return Mojo::ByteStream->new($hash->{$name} // '');
@@ -90,8 +97,8 @@ sub _current_route {
 sub _development {
   my ($page, $c, $e) = @_;
 
-  my $app = $c->app;
-  $app->log->error($e = _exception($e) ? $e : Mojo::Exception->new($e)->inspect)
+  $c->helpers->log->error(
+    ($e = _is_e($e) ? $e : Mojo::Exception->new($e))->inspect)
     if $page eq 'exception';
 
   # Filtered stash snapshot
@@ -101,6 +108,7 @@ sub _development {
   $stash->{exception} = $page eq 'exception' ? $e : undef;
 
   # Render with fallbacks
+  my $app     = $c->app;
   my $mode    = $app->mode;
   my $options = {
     format   => $stash->{format} || $app->renderer->default_format,
@@ -114,7 +122,6 @@ sub _development {
   return $c;
 }
 
-sub _exception { blessed $_[0] && $_[0]->isa('Mojo::Exception') }
 
 sub _fallbacks {
   my ($c, $options, $template, $bundled) = @_;
@@ -156,9 +163,67 @@ sub _inactivity_timeout {
   return $c;
 }
 
+sub _is_e { blessed $_[0] && $_[0]->isa('Mojo::Exception') }
+
 sub _is_fresh {
   my ($c, %options) = @_;
   return $c->app->static->is_fresh($c, \%options);
+}
+
+sub _log {
+  my $c = shift;
+  return $c->stash->{'mojo.log'}
+    ||= $c->app->log->context('[' . $c->req->request_id . ']');
+}
+
+sub _proxy_method_p {
+  my ($method, $c) = (shift, shift);
+  return _proxy_start_p($c, $c->ua->build_tx($method, @_));
+}
+
+sub _proxy_start_p {
+  my ($c, $source_tx) = @_;
+  my $tx = $c->render_later->tx;
+
+  my $promise = Mojo::Promise->new;
+  $source_tx->res->content->auto_upgrade(0)->auto_decompress(0)->once(
+    body => sub {
+      my $source_content = shift;
+
+      my $source_res = $source_tx->res;
+      my $res        = $tx->res;
+      my $content    = $res->content;
+      $res->code($source_res->code)->message($source_res->message);
+      my $headers = $source_res->headers->clone->dehop;
+      $content->headers($headers);
+      $promise->resolve;
+
+      my $source_stream = Mojo::IOLoop->stream($source_tx->connection);
+      return unless my $stream = Mojo::IOLoop->stream($tx->connection);
+
+      my $write = $source_content->is_chunked ? 'write_chunk' : 'write';
+      $source_content->unsubscribe('read')->on(
+        read => sub {
+          $content->$write(pop) and $tx->resume;
+
+          # Throttle transparently when backpressure rises
+          return if $stream->can_write;
+          $source_stream->stop;
+          $stream->once(drain => sub { $source_stream->start });
+        }
+      );
+
+      # Unknown length (fall back to connection close)
+      $source_res->once(finish => sub { $content->$write('') and $tx->resume })
+        unless length($headers->content_length // '');
+    }
+  );
+  weaken $source_tx;
+  $source_tx->once(finish => sub { $promise->reject(_tx_error(@_)) });
+
+  $c->ua->start_p($source_tx);
+
+  return $promise;
 }
 
 sub _redirect_to {
@@ -198,7 +263,7 @@ sub _respond_to {
 sub _static {
   my ($c, $file) = @_;
   return !!$c->rendered if $c->app->static->serve($c, $file);
-  $c->app->log->debug(qq{Static file "$file" not found});
+  $c->helpers->log->debug(qq{Static file "$file" not found});
   return !$c->helpers->reply->not_found;
 }
 
@@ -219,6 +284,8 @@ sub _timing_server_timing {
   $value .= ";dur=$dur"       if defined $dur;
   $c->res->headers->append('Server-Timing' => $value);
 }
+
+sub _tx_error { (shift->error || {})->{message} // 'Unknown error' }
 
 sub _url_with {
   my $c = shift;
@@ -460,11 +527,82 @@ response headers with L<Mojolicious::Static/"is_fresh">.
 Set C<layout> stash value, all additional key/value pairs get merged into the
 L</"stash">.
 
+=head2 log
+
+  my $log = $c->log;
+
+Alternative to L<Mojolicious/"log"> that includes
+L<Mojo::Message::Request/"request_id"> with every log message.
+
+  # Log message with context
+  $c->log->debug('This is a log message with request id');
+
+  # Pass logger with context to model
+  my $log = $c->log;
+  $c->some_model->create({foo => $foo}, $log);
+
 =head2 param
 
   %= param 'foo'
 
 Alias for L<Mojolicious::Controller/"param">.
+
+=head2 proxy->get_p
+
+  my $promise = $c->proxy->get_p('http://example.com' => {Accept => '*/*'});
+
+Perform non-blocking C<GET> request and forward response as efficiently as
+possible, takes the same arguments as L<Mojo::UserAgent/"get"> and returns a
+L<Mojo::Promise> object. Note that this helper is B<EXPERIMENTAL> and might
+change without warning!
+
+  # Forward with exception handling
+  $c->proxy->get_p('http://mojolicious.org')->catch(sub {
+    my $err = shift;
+    $c->log->debug("Proxy error: $err");
+    $c->render(text => 'Something went wrong!', status => 400);
+  });
+
+=head2 proxy->post_p
+
+  my $promise = $c->proxy->post_p('http://example.com' => {Accept => '*/*'});
+
+Perform non-blocking C<POST> request and forward response as efficiently as
+possible, takes the same arguments as L<Mojo::UserAgent/"post"> and returns a
+L<Mojo::Promise> object. Note that this helper is B<EXPERIMENTAL> and might
+change without warning!
+
+  # Forward with exception handling
+  $c->proxy->post_p('example.com' => form => {test => 'pass'})->catch(sub {
+    my $err = shift;
+    $c->log->debug("Proxy error: $err");
+    $c->render(text => 'Something went wrong!', status => 400);
+  });
+
+=head2 proxy->start_p
+
+  my $promise = $c->proxy->start_p(Mojo::Transaction::HTTP->new);
+
+Perform non-blocking request for a custom L<Mojo::Transaction::HTTP> object and
+forward response as efficiently as possible, returns a L<Mojo::Promise> object.
+Note that this helper is B<EXPERIMENTAL> and might change without warning!
+
+  # Forward with exception handling
+  my $tx = $c->ua->build_tx(GET => 'http://mojolicious.org');
+  $c->proxy->start_p($tx)->catch(sub {
+    my $err = shift;
+    $c->log->debug("Proxy error: $err");
+    $c->render(text => 'Something went wrong!', status => 400);
+  });
+
+  # Forward with custom request and response headers
+  my $headers = $c->req->headers->clone->dehop;
+  $headers->header('X-Proxy' => 'Mojo');
+  my $tx = $c->ua->build_tx(GET => 'http://example.com' => $headers->to_hash);
+  $c->proxy->start_p($tx);
+  $tx->res->content->once(body => sub {
+    $c->res->headers->header('X-Proxy' => 'Mojo');
+  });
 
 =head2 redirect_to
 

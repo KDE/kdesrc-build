@@ -3,9 +3,9 @@ use Mojo::Base -base;
 
 use Carp 'croak';
 
-has [qw(constraints defaults types)] => sub { {} };
+has [qw(constraints defaults types)]   => sub { {} };
 has [qw(placeholder_start type_start)] => ':';
-has [qw(placeholders tree)] => sub { [] };
+has [qw(placeholders tree)]            => sub { [] };
 has quote_end   => '>';
 has quote_start => '<';
 has [qw(regex unparsed)];
@@ -173,8 +173,8 @@ sub _tokenize {
   for my $char (split '', $pattern) {
 
     # Quoted
-    if ($char eq $quote_start) { push @tree, ['placeholder', ''] if ++$spec }
-    elsif ($char eq $quote_end) { $spec = $more = 0 }
+    if    ($char eq $quote_start) { push @tree, ['placeholder', ''] if ++$spec }
+    elsif ($char eq $quote_end)   { $spec = $more = 0 }
 
     # Placeholder
     elsif (!$more && $char eq $start) {

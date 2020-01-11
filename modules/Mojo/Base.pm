@@ -20,6 +20,13 @@ use IO::Handle ();
 use constant ROLES =>
   !!(eval { require Role::Tiny; Role::Tiny->VERSION('2.000001'); 1 });
 
+# async/await support requires Future::AsyncAwait 0.35+
+use constant ASYNC => $ENV{MOJO_NO_ASYNC} ? 0 : !!(eval {
+  require Future::AsyncAwait;
+  Future::AsyncAwait->VERSION('0.35');
+  1;
+});
+
 # Protect subclasses using AUTOLOAD
 sub DESTROY { }
 
@@ -104,33 +111,45 @@ sub import {
   my ($class, $caller) = (shift, caller);
   return unless my @flags = @_;
 
-  # Base
-  if ($flags[0] eq '-base') { $flags[0] = $class }
-
-  # Role
-  if ($flags[0] eq '-role') {
-    Carp::croak 'Role::Tiny 2.000001+ is required for roles' unless ROLES;
-    Mojo::Util::monkey_patch($caller, 'has', sub { attr($caller, @_) });
-    eval "package $caller; use Role::Tiny; 1" or die $@;
-  }
-
-  # Module and not -strict
-  elsif ($flags[0] !~ /^-/) {
-    no strict 'refs';
-    require(Mojo::Util::class_to_path($flags[0])) unless $flags[0]->can('new');
-    push @{"${caller}::ISA"}, $flags[0];
-    Mojo::Util::monkey_patch($caller, 'has', sub { attr($caller, @_) });
-  }
-
   # Mojo modules are strict!
   $_->import for qw(strict warnings utf8);
   feature->import(':5.10');
 
-  # Signatures (Perl 5.20+)
-  if (($flags[1] || '') eq '-signatures') {
-    Carp::croak 'Subroutine signatures require Perl 5.20+' if $] < 5.020;
-    require experimental;
-    experimental->import('signatures');
+  while (my $flag = shift @flags) {
+
+    # Base
+    if ($flag eq '-base') { push @flags, $class }
+
+    # Role
+    elsif ($flag eq '-role') {
+      Carp::croak 'Role::Tiny 2.000001+ is required for roles' unless ROLES;
+      Mojo::Util::monkey_patch($caller, 'has', sub { attr($caller, @_) });
+      eval "package $caller; use Role::Tiny; 1" or die $@;
+    }
+
+    # async/await
+    elsif ($flag eq '-async') {
+      Carp::croak 'Future::AsyncAwait 0.35+ is required for async/await'
+        unless ASYNC;
+      Future::AsyncAwait->import_into($caller, future_class => 'Mojo::Promise');
+    }
+
+    # Signatures (Perl 5.20+)
+    elsif ($flag eq '-signatures') {
+      Carp::croak 'Subroutine signatures require Perl 5.20+' if $] < 5.020;
+      require experimental;
+      experimental->import('signatures');
+    }
+
+    # Module
+    elsif ($flag !~ /^-/) {
+      no strict 'refs';
+      require(Mojo::Util::class_to_path($flag)) unless $flag->can('new');
+      push @{"${caller}::ISA"}, $flag;
+      Mojo::Util::monkey_patch($caller, 'has', sub { attr($caller, @_) });
+    }
+
+    elsif ($flag ne '-strict') { Carp::croak "Unsupported flag: $flag" }
   }
 }
 
@@ -148,6 +167,7 @@ sub tap {
 sub with_roles {
   Carp::croak 'Role::Tiny 2.000001+ is required for roles' unless ROLES;
   my ($self, @roles) = @_;
+  return $self unless @roles;
 
   return Role::Tiny->create_class_with_roles($self,
     map { /^\+(.+)$/ ? "${self}::Role::$1" : $_ } @roles)
@@ -242,7 +262,7 @@ L<Role::Tiny> (2.000001+).
   use Role::Tiny;
   sub has { Mojo::Base::attr(__PACKAGE__, @_) }
 
-On Perl 5.20+ you can also append a C<-signatures> flag to all four forms and
+On Perl 5.20+ you can also use the C<-signatures> flag with all four forms and
 enable support for L<subroutine signatures|perlsub/"Signatures">.
 
   # Also enable signatures
@@ -251,6 +271,15 @@ enable support for L<subroutine signatures|perlsub/"Signatures">.
   use Mojo::Base 'SomeBaseClass', -signatures;
   use Mojo::Base -role, -signatures;
 
+If you have L<Future::AsyncAwait> 0.35+ installed you can also use the C<-async>
+flag to activate the C<async> and C<await> keywords to deal much more
+efficiently with promises. Note that this feature is B<EXPERIMENTAL> and might
+change without warning!
+
+  # Also enable async/await
+  use Mojo::Base -strict, -async;
+  use Mojo::Base -base, -signatures, -async;
+
 This will also disable experimental warnings on versions of Perl where this
 feature was still experimental.
 
@@ -258,7 +287,7 @@ feature was still experimental.
 
 Fluent interfaces are a way to design object-oriented APIs around method
 chaining to create domain-specific languages, with the goal of making the
-readablity of the source code close to written prose.
+readability of the source code close to written prose.
 
   package Duck;
   use Mojo::Base -base;

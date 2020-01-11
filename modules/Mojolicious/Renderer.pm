@@ -3,7 +3,7 @@ use Mojo::Base -base;
 
 use Mojo::Cache;
 use Mojo::DynamicMethods;
-use Mojo::File 'path';
+use Mojo::File qw(curfile path);
 use Mojo::JSON 'encode_json';
 use Mojo::Loader 'data_section';
 use Mojo::Util qw(decamelize encode gzip md5_sum monkey_patch);
@@ -11,14 +11,14 @@ use Mojo::Util qw(decamelize encode gzip md5_sum monkey_patch);
 has cache   => sub { Mojo::Cache->new };
 has classes => sub { ['main'] };
 has [qw(compress default_handler)];
-has default_format => 'html';
-has encoding       => 'UTF-8';
+has default_format         => 'html';
+has encoding               => 'UTF-8';
 has [qw(handlers helpers)] => sub { {} };
-has min_compress_size => 860;
-has paths             => sub { [] };
+has min_compress_size      => 860;
+has paths                  => sub { [] };
 
 # Bundled templates
-my $TEMPLATES = path(__FILE__)->sibling('resources', 'templates');
+my $TEMPLATES = curfile->sibling('resources', 'templates');
 
 sub DESTROY { Mojo::Util::_teardown($_) for @{shift->{namespaces}} }
 
@@ -222,7 +222,7 @@ sub _render_template {
 
   my $handler = $options->{handler} ||= $self->template_handler($options);
   return undef unless $handler;
-  $c->app->log->error(qq{No handler for "$handler" available}) and return undef
+  $c->helpers->log->error(qq{No handler for "$handler" found}) and return undef
     unless my $renderer = $self->handlers->{$handler};
 
   $renderer->($self, $c, $output, $options);
@@ -287,7 +287,7 @@ application startup.
 
 Try to negotiate compression for dynamically generated response content and
 C<gzip> compress it automatically, defaults to false. Note that this attribute
-is EXPERIMENTAL and might change without warning!
+is B<EXPERIMENTAL> and might change without warning!
 
 =head2 default_format
 
@@ -335,7 +335,7 @@ Registered helpers.
   $renderer = $renderer->min_compress_size(1024);
 
 Minimum output size in bytes required for compression to be used if enabled,
-defaults to C<860>. Note that this attribute is EXPERIMENTAL and might change
+defaults to C<860>. Note that this attribute is B<EXPERIMENTAL> and might change
 without warning!
 
 =head2 paths
@@ -427,7 +427,7 @@ L<Mojolicious::Controller/"render"> for a more user-friendly interface.
     Mojolicious::Controller->new, $output, $format, $status);
 
 Finalize dynamically generated response content and L</"compress"> it if
-possible. Note that this method is EXPERIMENTAL and might change without
+possible. Note that this method is B<EXPERIMENTAL> and might change without
 warning!
 
 =head2 template_for

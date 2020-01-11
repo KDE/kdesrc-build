@@ -9,12 +9,6 @@ has usage       => sub { shift->extract_usage };
 sub run {
   my ($self, $class) = (shift, shift || 'MyApp');
 
-  # Prevent bad applications
-  die <<EOF unless $class =~ /^[A-Z](?:\w|::)+$/;
-Your application name has to be a well formed (CamelCase) Perl module name
-like "MyApp".
-EOF
-
   # Script
   my $name = class_to_file $class;
   $self->render_to_rel_file('mojo', "$name/script/$name", {class => $class});
@@ -119,8 +113,8 @@ __DATA__
 use strict;
 use warnings;
 
-use FindBin;
-BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
+use Mojo::File 'curfile';
+use lib curfile->dirname->sibling('lib')->to_string;
 use Mojolicious::Commands;
 
 # Start command line interface for application

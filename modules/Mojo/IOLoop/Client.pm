@@ -169,7 +169,7 @@ sub _try_tls {
   weaken $self;
   my $tls = Mojo::IOLoop::TLS->new($handle)->reactor($self->reactor);
   $tls->on(upgrade => sub { $self->_cleanup->emit(connect => pop) });
-  $tls->on(error => sub { $self->emit(error => pop) });
+  $tls->on(error   => sub { $self->emit(error => pop) });
   $tls->negotiate(%$args);
 }
 

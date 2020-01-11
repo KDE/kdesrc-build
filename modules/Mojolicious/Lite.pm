@@ -34,7 +34,7 @@ sub import {
     monkey_patch $caller, $name, sub { $routes->$name(@_) };
   }
   monkey_patch($caller, $_, sub {$app}) for qw(new app);
-  monkey_patch $caller, del => sub { $routes->delete(@_) };
+  monkey_patch $caller, del   => sub { $routes->delete(@_) };
   monkey_patch $caller, group => sub (&) {
     (my $old, $root) = ($root, $routes);
     shift->();

@@ -1,6 +1,7 @@
 package Mojo::Collection;
 use Mojo::Base -strict;
 
+use re 'is_regexp';
 use Carp 'croak';
 use Exporter 'import';
 use List::Util;
@@ -29,7 +30,7 @@ sub each {
 sub first {
   my ($self, $cb) = (shift, shift);
   return $self->[0] unless $cb;
-  return List::Util::first { $_ =~ $cb } @$self if ref $cb eq 'Regexp';
+  return List::Util::first { $_ =~ $cb } @$self if is_regexp $cb;
   return List::Util::first { $_->$cb(@_) } @$self;
 }
 
@@ -37,8 +38,15 @@ sub flatten { $_[0]->new(_flatten(@{$_[0]})) }
 
 sub grep {
   my ($self, $cb) = (shift, shift);
-  return $self->new(grep { $_ =~ $cb } @$self) if ref $cb eq 'Regexp';
+  return $self->new(grep { $_ =~ $cb } @$self) if is_regexp $cb;
   return $self->new(grep { $_->$cb(@_) } @$self);
+}
+
+sub head {
+  my ($self, $size) = @_;
+  return $self->new(@$self) if $size > @$self;
+  return $self->new(@$self[0 .. ($size - 1)]) if $size >= 0;
+  return $self->new(@$self[0 .. ($#$self + $size)]);
 }
 
 sub join {
@@ -69,11 +77,6 @@ sub shuffle { $_[0]->new(List::Util::shuffle @{$_[0]}) }
 
 sub size { scalar @{$_[0]} }
 
-sub slice {
-  my $self = shift;
-  return $self->new(@$self[@_]);
-}
-
 sub sort {
   my ($self, $cb) = @_;
 
@@ -86,6 +89,13 @@ sub sort {
     $a->$cb($b);
   } @$self;
   return $self->new(@sorted);
+}
+
+sub tail {
+  my ($self, $size) = @_;
+  return $self->new(@$self) if $size > @$self;
+  return $self->new(@$self[($#$self - ($size - 1)) .. $#$self]) if $size >= 0;
+  return $self->new(@$self[(0 - $size) .. $#$self]);
 }
 
 sub tap { shift->Mojo::Base::tap(@_) }
@@ -243,6 +253,20 @@ C<$_>.
   # Find all values that are greater than 5
   my $greater = $collection->grep(sub { $_ > 5 });
 
+=head2 head
+
+  my $new = $collection->head(4);
+  my $new = $collection->head(-2);
+
+Create a new collection with up to the specified number of elements from the
+beginning of the collection. A negative number will count from the end.
+
+  # "A B C"
+  c('A', 'B', 'C', 'D', 'E')->head(3)->join(' ');
+
+  # "A B"
+  c('A', 'B', 'C', 'D', 'E')->head(-3)->join(' ');
+
 =head2 join
 
   my $stream = $collection->join;
@@ -304,15 +328,6 @@ C<$b> will always be set to the next element in the collection.
 
 Create a new collection with all elements in reverse order.
 
-=head2 slice
-
-  my $new = $collection->slice(4 .. 7);
-
-Create a new collection with all selected elements.
-
-  # "B C E"
-  c('A', 'B', 'C', 'D', 'E')->slice(1, 2, 4)->join(' ');
-
 =head2 shuffle
 
   my $new = $collection->shuffle;
@@ -336,6 +351,20 @@ time the callback is executed.
 
   # Sort values case-insensitive
   my $case_insensitive = $collection->sort(sub { uc($a) cmp uc($b) });
+
+=head2 tail
+
+  my $new = $collection->tail(4);
+  my $new = $collection->tail(-2);
+
+Create a new collection with up to the specified number of elements from the
+end of the collection. A negative number will count from the beginning.
+
+  # "C D E"
+  c('A', 'B', 'C', 'D', 'E')->tail(3)->join(' ');
+
+  # "D E"
+  c('A', 'B', 'C', 'D', 'E')->tail(-3)->join(' ');
 
 =head2 tap
 

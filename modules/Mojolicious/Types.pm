@@ -40,7 +40,7 @@ sub content_type {
   return undef if $headers->content_type;
 
   my $type = $o->{file} ? $self->file_type($o->{file}) : $self->type($o->{ext});
-  $headers->content_type($type // $self->type('txt'));
+  $headers->content_type($type // 'application/octet-stream');
 }
 
 sub detect {
@@ -144,9 +144,9 @@ the following new ones.
   $types->content_type(Mojolicious::Controller->new, {ext => 'json'});
 
 Detect MIME type for L<Mojolicious::Controller> object unless a C<Content-Type>
-response header has already been set, defaults to using the MIME type for the
-C<txt> extension if no better alternative could be found. Note that this method
-is EXPERIMENTAL and might change without warning!
+response header has already been set, defaults to using
+C<application/octet-stream> if no better alternative could be found. Note that
+this method is B<EXPERIMENTAL> and might change without warning!
 
 These options are currently available:
 
@@ -179,7 +179,7 @@ Detect file extensions from C<Accept> header value.
 
   my $type = $types->file_type('foo/bar.png');
 
-Get MIME type for file path. Note that this method is EXPERIMENTAL and might
+Get MIME type for file path. Note that this method is B<EXPERIMENTAL> and might
 change without warning!
 
 =head2 type

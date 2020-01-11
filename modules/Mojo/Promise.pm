@@ -2,28 +2,39 @@ package Mojo::Promise;
 use Mojo::Base -base;
 
 use Mojo::IOLoop;
+use Mojo::Util 'deprecated';
 use Scalar::Util 'blessed';
 
 has ioloop => sub { Mojo::IOLoop->singleton }, weak => 1;
 
-sub all {
-  my ($class, @promises) = @_;
+sub AWAIT_CLONE { _await('clone', @_) }
 
-  my $all       = $promises[0]->clone;
-  my $results   = [];
-  my $remaining = scalar @promises;
-  for my $i (0 .. $#promises) {
-    $promises[$i]->then(
-      sub {
-        $results->[$i] = [@_];
-        $all->resolve(@$results) if --$remaining <= 0;
-      },
-      sub { $all->reject(@_) }
-    );
-  }
+sub AWAIT_DONE { shift->resolve(@_) }
+sub AWAIT_FAIL { shift->reject(@_) }
 
-  return $all;
+sub AWAIT_GET {
+  my $self    = shift;
+  my @results = @{$self->{result} // []};
+  die $results[0] unless $self->{status} eq 'resolve';
+  return wantarray ? @results : $results[0];
 }
+
+sub AWAIT_IS_CANCELLED {undef}
+
+sub AWAIT_IS_READY {
+  my $self = shift;
+  return !!$self->{result} && !@{$self->{resolve}} && !@{$self->{reject}};
+}
+
+sub AWAIT_NEW_DONE { _await('resolve', @_) }
+sub AWAIT_NEW_FAIL { _await('reject',  @_) }
+
+sub AWAIT_ON_CANCEL { }
+sub AWAIT_ON_READY  { shift->finally(@_) }
+
+sub all         { _all(2, @_) }
+sub all_settled { _all(0, @_) }
+sub any         { _all(3, @_) }
 
 sub catch { shift->then(undef, shift) }
 
@@ -43,7 +54,7 @@ sub finally {
 
 sub map {
   my ($class, $options) = (shift, ref $_[0] eq 'HASH' ? shift : {});
-  my ($cb, @items) = @_;
+  my ($cb,    @items)   = @_;
 
   my @start = map { $_->$cb } splice @items, 0,
     $options->{concurrency} // @items;
@@ -53,7 +64,7 @@ sub map {
   for my $item (@items) {
     my $p = $proto->clone;
     push @trigger, $p;
-    push @wait, $p->then(sub { local $_ = $item; $_->$cb });
+    push @wait,    $p->then(sub { local $_ = $item; $_->$cb });
   }
 
   my @all = map {
@@ -67,17 +78,19 @@ sub map {
 }
 
 sub new {
+
+  # DEPRECATED!
+  if (@_ > 2 or ref($_[1]) eq 'HASH') {
+    deprecated 'Mojo::Promise::new with attributes is DEPRECATED';
+    return shift->SUPER::new(@_);
+  }
+
   my $self = shift->SUPER::new;
   shift->(sub { $self->resolve(@_) }, sub { $self->reject(@_) }) if @_;
   return $self;
 }
 
-sub race {
-  my ($class, @promises) = @_;
-  my $new = $promises[0]->clone;
-  $_->then(sub { $new->resolve(@_) }, sub { $new->reject(@_) }) for @promises;
-  return $new;
-}
+sub race { _all(1, @_) }
 
 sub reject  { shift->_settle('reject',  @_) }
 sub resolve { shift->_settle('resolve', @_) }
@@ -105,12 +118,72 @@ sub wait {
   $loop->start until $done;
 }
 
+sub _all {
+  my ($type, $class, @promises) = @_;
+
+  my $all       = $promises[0]->clone;
+  my $results   = [];
+  my $remaining = scalar @promises;
+  for my $i (0 .. $#promises) {
+
+    # "race"
+    if ($type == 1) {
+      $promises[$i]->then(sub { $all->resolve(@_) }, sub { $all->reject(@_) });
+    }
+
+    # "all"
+    elsif ($type == 2) {
+      $promises[$i]->then(
+        sub {
+          $results->[$i] = [@_];
+          $all->resolve(@$results) if --$remaining <= 0;
+        },
+        sub { $all->reject(@_) }
+      );
+    }
+
+    # "any"
+    elsif ($type == 3) {
+      $promises[$i]->then(
+        sub { $all->resolve(@_) },
+        sub {
+          $results->[$i] = [@_];
+          $all->reject(@$results) if --$remaining <= 0;
+        }
+      );
+    }
+
+    # "all_settled"
+    else {
+      $promises[$i]->then(
+        sub {
+          $results->[$i] = {status => 'fulfilled', value => [@_]};
+          $all->resolve(@$results) if --$remaining <= 0;
+        },
+        sub {
+          $results->[$i] = {status => 'rejected', reason => [@_]};
+          $all->resolve(@$results) if --$remaining <= 0;
+        }
+      );
+    }
+  }
+
+  return $all;
+}
+
+sub _await {
+  my ($method, $class) = (shift, shift);
+  my $promise = $class->$method(@_);
+  $promise->{cycle} = $promise;
+  return $promise;
+}
+
 sub _defer {
   my $self = shift;
 
   return unless my $result = $self->{result};
   my $cbs = $self->{status} eq 'resolve' ? $self->{resolve} : $self->{reject};
-  @{$self}{qw(resolve reject)} = ([], []);
+  @{$self}{qw(cycle resolve reject)} = (undef, [], []);
 
   $self->ioloop->next_tick(sub { $_->(@$result) for @$cbs });
 }
@@ -170,7 +243,7 @@ Mojo::Promise - Promises/A+
 
   # Wrap continuation-passing style APIs with promises
   my $ua = Mojo::UserAgent->new;
-  sub get {
+  sub get_p {
     my $promise = Mojo::Promise->new;
     $ua->get(@_ => sub {
       my ($ua, $tx) = @_;
@@ -182,7 +255,7 @@ Mojo::Promise - Promises/A+
   }
 
   # Perform non-blocking operations sequentially
-  get('https://mojolicious.org')->then(sub {
+  get_p('https://mojolicious.org')->then(sub {
     my $mojo = shift;
     say $mojo->res->code;
     return get('https://metacpan.org');
@@ -195,8 +268,8 @@ Mojo::Promise - Promises/A+
   })->wait;
 
   # Synchronize non-blocking operations (all)
-  my $mojo = get('https://mojolicious.org');
-  my $cpan = get('https://metacpan.org');
+  my $mojo = get_p('https://mojolicious.org');
+  my $cpan = get_p('https://metacpan.org');
   Mojo::Promise->all($mojo, $cpan)->then(sub {
     my ($mojo, $cpan) = @_;
     say $mojo->[0]->res->code;
@@ -207,8 +280,8 @@ Mojo::Promise - Promises/A+
   })->wait;
 
   # Synchronize non-blocking operations (race)
-  my $mojo = get('https://mojolicious.org');
-  my $cpan = get('https://metacpan.org');
+  my $mojo = get_p('https://mojolicious.org');
+  my $cpan = get_p('https://metacpan.org');
   Mojo::Promise->race($mojo, $cpan)->then(sub {
     my $tx = shift;
     say $tx->req->url, ' won!';
@@ -277,8 +350,26 @@ the following new ones.
 Returns a new L<Mojo::Promise> object that either fulfills when all of the
 passed L<Mojo::Promise> objects have fulfilled or rejects as soon as one of them
 rejects. If the returned promise fulfills, it is fulfilled with the values from
-the fulfilled promises in the same order as the passed promises. This method can
-be useful for aggregating results of multiple promises.
+the fulfilled promises in the same order as the passed promises.
+
+=head2 all_settled
+
+  my $new = Mojo::Promise->all_settled(@promises);
+
+Returns a new L<Mojo::Promise> object that fulfills when all of the passed
+L<Mojo::Promise> objects have fulfilled or rejected, with hash references that
+describe the outcome of each promise. Note that this method is B<EXPERIMENTAL>
+and might change without warning!
+
+=head2 any
+
+  my $new = Mojo::Promise->any(@promises);
+
+Returns a new L<Mojo::Promise> object that fulfills as soon as one of
+the passed L<Mojo::Promise> objects fulfills, with the value from that promise.
+If no promises fulfill, it is rejected with the reasons from the rejected
+promises in the same order as the passed promises. Note that this method is
+B<EXPERIMENTAL> and might change without warning!
 
 =head2 catch
 
@@ -334,7 +425,7 @@ Apply a function that returns a L<Mojo::Promise> to each item in a list of
 items while optionally limiting concurrency. Returns a L<Mojo::Promise> that
 collects the results in the same manner as L</all>. If any item's promise is
 rejected, any remaining items which have not yet been mapped will not be. Note
-that this method is EXPERIMENTAL and might change without warning!
+that this method is B<EXPERIMENTAL> and might change without warning!
 
   # Perform 3 requests at a time concurrently
   Mojo::Promise->map({concurrency => 3}, sub { $ua->get_p($_) }, @urls)
@@ -441,8 +532,8 @@ L<Mojo::Promise> object resolving to the return value of the called handler.
 
 Create a new L<Mojo::Promise> object with a timer or attach a timer to an
 existing promise. The promise will be resolved after the given amount of time in
-seconds with or without a value. Note that this method is EXPERIMENTAL and might
-change without warning!
+seconds with or without a value. Note that this method is B<EXPERIMENTAL> and
+might change without warning!
 
 =head2 timeout
 
@@ -453,7 +544,7 @@ change without warning!
 Create a new L<Mojo::Promise> object with a timeout or attach a timeout to an
 existing promise. The promise will be rejected after the given amount of time in
 seconds with a reason, which defaults to C<Promise timeout>. Note that this
-method is EXPERIMENTAL and might change without warning!
+method is B<EXPERIMENTAL> and might change without warning!
 
 =head2 wait
 

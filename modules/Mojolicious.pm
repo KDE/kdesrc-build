@@ -43,7 +43,7 @@ has moniker  => sub { Mojo::Util::decamelize ref shift };
 has plugins  => sub { Mojolicious::Plugins->new };
 has renderer => sub { Mojolicious::Renderer->new };
 has routes   => sub { Mojolicious::Routes->new };
-has secrets  => sub {
+has secrets => sub {
   my $self = shift;
 
   # Warn developers about insecure default
@@ -59,7 +59,7 @@ has ua        => sub { Mojo::UserAgent->new };
 has validator => sub { Mojolicious::Validator->new };
 
 our $CODENAME = 'Supervillain';
-our $VERSION  = '8.17';
+our $VERSION  = '8.30';
 
 sub BUILD_DYNAMIC {
   my ($class, $method, $dyn_methods) = @_;
@@ -118,13 +118,12 @@ sub dispatch {
 
   # Start timer (ignore static files)
   my $stash = $c->stash;
-  $self->log->debug(sub {
+  $c->helpers->log->debug(sub {
     my $req    = $c->req;
     my $method = $req->method;
     my $path   = $req->url->path->to_abs_string;
-    my $id     = $req->request_id;
     $c->helpers->timing->begin('mojo.timer');
-    return qq{$method "$path" ($id)};
+    return qq{$method "$path"};
   }) unless $stash->{'mojo.static'};
 
   # Routes
@@ -138,7 +137,7 @@ sub handler {
 
   # Dispatcher has to be last in the chain
   ++$self->{dispatch}
-    and $self->hook(around_action   => sub { $_[2]($_[1]) })
+    and $self->hook(around_action   => \&_action)
     and $self->hook(around_dispatch => sub { $_[1]->app->dispatch($_[1]) })
     unless $self->{dispatch};
 
@@ -147,7 +146,8 @@ sub handler {
   $self->plugins->emit_chain(around_dispatch => $c);
 
   # Delayed response
-  $self->log->debug('Nothing has been rendered, expecting delayed response')
+  $c->helpers->log->debug(
+    'Nothing has been rendered, expecting delayed response')
     unless $c->stash->{'mojo.rendered'};
 }
 
@@ -197,10 +197,19 @@ sub start {
 
 sub startup { }
 
+sub _action {
+  my ($next, $c, $action, $last) = @_;
+  my $val = $action->($c);
+  $val->catch(sub { $c->helpers->reply->exception(shift) })
+    if Scalar::Util::blessed $val && $val->isa('Mojo::Promise');
+  return $val;
+}
+
+sub _die { CORE::die ref $_[0] ? $_[0] : Mojo::Exception->new(shift)->trace }
+
 sub _exception {
   my ($next, $c) = @_;
-  local $SIG{__DIE__}
-    = sub { ref $_[0] ? CORE::die $_[0] : Mojo::Exception->throw(shift) };
+  local $SIG{__DIE__} = \&_die;
   $c->helpers->reply->exception($@) unless eval { $next->(); 1 };
 }
 
@@ -247,6 +256,20 @@ Take a look at our excellent documentation in L<Mojolicious::Guides>!
 =head1 HOOKS
 
 L<Mojolicious> will emit the following hooks in the listed order.
+
+=head2 before_command
+
+Emitted right before the application runs a command through the command line
+interface. Note that this hook is B<EXPERIMENTAL> and might change without
+warning!
+
+  $app->hook(before_command => sub {
+    my ($command, $args) = @_;
+    ...
+  });
+
+Useful for reconfiguring the application before running a command or to modify
+the behavior of a command. (Passed the command object and the command arguments)
 
 =head2 before_server_start
 
@@ -803,7 +826,7 @@ that have been bundled for internal use.
 
 =head2 Mojolicious Artwork
 
-  Copyright (C) 2010-2019, Sebastian Riedel.
+  Copyright (C) 2010-2020, Sebastian Riedel.
 
 Licensed under the CC-SA License, Version 4.0
 L<http://creativecommons.org/licenses/by-sa/4.0>.
@@ -864,9 +887,13 @@ Sebastian Riedel, C<kraih@mojolicious.org>
 
 =head1 CORE DEVELOPERS
 
-Current members of the core team in alphabetical order:
+Current voting members of the core team in alphabetical order:
 
 =over 2
+
+CandyAngel, C<candyangel@mojolicious.org>
+
+Dan Book, C<grinnz@mojolicious.org>
 
 Jan Henning Thorsen, C<batman@mojolicious.org>
 
@@ -881,6 +908,8 @@ The following members of the core team are currently on hiatus:
 =over 2
 
 Abhijit Menon-Sen, C<ams@cpan.org>
+
+Christopher Rasch-Olsen Raa, C<christopher@mojolicious.org>
 
 Glen Hinkle, C<tempire@cpan.org>
 
@@ -966,15 +995,13 @@ chromatic
 
 Curt Tilmes
 
-Dan Book
-
 Daniel Kimsey
 
 Daniel Mantovani
 
 Danijel Tasov
 
-Dagfinn Ilmari Mannsaker
+Dagfinn Ilmari Mannsåker
 
 Danny Thomas
 
@@ -1152,6 +1179,8 @@ Simon Bertrang
 
 Simone Tampieri
 
+Shoichi Kaji
+
 Shu Cho
 
 Skye Shaw
@@ -1208,7 +1237,7 @@ Zoffix Znet
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2008-2019, Sebastian Riedel and others.
+Copyright (C) 2008-2020, Sebastian Riedel and others.
 
 This program is free software, you can redistribute it and/or modify it under
 the terms of the Artistic License version 2.0.

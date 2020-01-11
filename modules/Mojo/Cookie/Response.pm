@@ -35,7 +35,7 @@ sub to_string {
 
   # Name and value
   return '' unless length(my $name = $self->name // '');
-  my $value = $self->value // '';
+  my $value  = $self->value // '';
   my $cookie = join '=', $name, $value =~ /[,;" ]/ ? quote $value : $value;
 
   # "expires"
@@ -139,7 +139,7 @@ Cookie path.
   my $samesite = $cookie->samesite;
   $cookie      = $cookie->samesite('Lax');
 
-SameSite value. Note that this attribute is EXPERIMENTAL because even though
+SameSite value. Note that this attribute is B<EXPERIMENTAL> because even though
 most commonly used browsers support the feature, there is no specification yet
 besides
 L<this draft|https://tools.ietf.org/html/draft-west-first-party-cookies-07>.

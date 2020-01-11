@@ -22,8 +22,10 @@ sub parse {
 sub register {
   my ($self, $app, $conf) = @_;
 
-  # Override
+  # DEPRECATED!
   $app->defaults(config => $app->config);
+
+  # Override
   return $app->config if $app->config->{config_override};
 
   # Config file
@@ -84,7 +86,7 @@ Mojolicious::Plugin::Config - Perl-ish configuration plugin
   say $config->{foo};
 
   # foo.html.ep
-  %= $config->{foo}
+  %= config->{foo}
 
   # The configuration is available application-wide
   my $config = app->config;
