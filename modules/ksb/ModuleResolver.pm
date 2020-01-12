@@ -366,7 +366,10 @@ sub resolveSelectorsIntoModules
     @modules = $self->_resolveGuessedModules(@modules);
 
     my %ignoredSelectors = map { ($_, 1) } @{$self->{ignoredSelectors}};
-    @modules = grep { ! exists $ignoredSelectors{$_->name()} } @modules;
+    @modules = grep {
+        ! exists $ignoredSelectors{$_->name()} &&
+        ! exists $ignoredSelectors{$_->moduleSet()->name() // ''}
+    } @modules;
 
     return @modules;
 }

@@ -1,6 +1,6 @@
 module-set qt5-set
     repository qt-projects
-    branch 5.11 # not the most recent but recent enough
+    branch 5.13 # not the most recent but recent enough
 
     # init-repository supports catch-alls like "default" as well, in which case
     # you will want to uncomment ignore-modules below to control which modules to
@@ -18,3 +18,13 @@ module-set qt5-set
     configure-flags -optimized-tools -reduce-relocations
 #   make-options -j7
 end module-set
+
+# qtwebengine is essentially the Chromium Embedded Framework with Qt bindings
+# and has source code of unusually large complexity for the compiler.
+# TL;DR: This will eat a *ton* of RAM and can lockup your system if you have a
+# lot of CPU cores. qtwebengine is disabled by default but if you enable it
+# also ensure you don't outstrip your available RAM with too high of a
+# parallelism (-j flag).
+options qtwebengine
+    make-options NINJAFLAGS=-j4
+end options

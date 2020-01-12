@@ -8,6 +8,7 @@ use File::Spec qw(splitpath);
 use ksb::BuildException;
 use ksb::Debug qw(colorize);
 use ksb::OSSupport;
+use ksb::Util;
 
 =head1 NAME
 
@@ -95,7 +96,7 @@ sub _installSystemPackages
     my $osVersion = $os->vendorVersion;
 
     print colorize(<<DONE);
- b[1.] Installing b[system packages] for b[$vendor]...
+ b[-] Installing b[system packages] for b[$vendor]...
 DONE
 
     my @packages = _findBestVendorPackageList($os);
@@ -104,12 +105,12 @@ DONE
         say colorize (" b[*] Running b[" . join(' ', @installCmd) . "]");
         my $result = system (@installCmd, @packages);
         if ($result >> 8 == 0) {
-            say colorize (" b[*] b[g[Looks like things went OK!]");
+            say colorize (" b[*] b[g[Looks like the necessary packages were successfully installed!]");
         } else {
             say colorize (" r[b[*] Ran into an error with the installer!");
         }
     } else {
-        say colorize (" r[b[*] Whoa, I'm not familiar with your distribution, skipping");
+        say colorize (" r[b[*] Packages could not be installed, because kdesrc-build does not know your linux distribution.");
     }
 }
 
@@ -119,11 +120,11 @@ sub _setupBaseConfiguration
 
     if (-e "kdesrc-buildrc" || -e "$ENV{HOME}/.kdesrc-buildrc") {
         print colorize(<<DONE);
- b[2.] You b[y[already have a configuration file], skipping this step...
+ b[-] You b[y[already have a configuration file].
 DONE
     } else {
         print colorize(<<DONE);
- b[2.] Installing b[sample configuration file]...
+ b[-] Installing b[sample configuration file]...
 DONE
 
         my $sampleRc = $packages{'sample-rc'} or
@@ -144,24 +145,55 @@ DONE
     }
 }
 
-sub _bashrcIsSetup
-{
-    return 1;
-}
-
 sub _setupBashrcFile
 {
-    if (_bashrcIsSetup()) {
+    my $modifiedBashrc = 0;
+    
+    # Add kdesrc-build path to PATH if not already in there
+    if (!ksb::Util::isInPath('src/kdesrc-build')) {
+        
         say colorize(<<DONE);
- b[3.] Your b[y[~/.bashrc is already setup], skipping this step...
+ b[-] Amending your ~/.bashrc to b[also point to install dir]...
+DONE
+        open(my $bashrc, '>>', "$ENV{HOME}/.bashrc") or _throw("Couldn't open ~/.bashrc: $!");
+        
+        print $bashrc "\n# Adding the kdesrc-build directory to the path\n";
+        print $bashrc 'export PATH="$HOME/kde/src/kdesrc-build:$PATH"';
+        print $bashrc "\n";
+        
+        $modifiedBashrc = 1;
+    }
+    
+    # Create kdesrc-run alias for more convenient program execution
+    if (!ksb::Util::fileHasLine("$ENV{HOME}/.bashrc", "kdesrc-run ()")) {
+        say colorize(<<DONE);
+ b[-] Amending your ~/.bashrc to b[add kdesrc-run alias]...
+DONE
+        open(my $bashrc, '>>', "$ENV{HOME}/.bashrc") or _throw("Couldn't open ~/.bashrc: $!");
+        
+        print $bashrc "\n# Creating alias for running software built with kdesrc-build\n";
+        print $bashrc "kdesrc-run ()\n";
+        print $bashrc "{\n";
+        print $bashrc '  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/$1"';
+        print $bashrc "\n}\n";
+        
+        $modifiedBashrc = 1;
+    }
+
+    
+    
+    if ($modifiedBashrc) {
+        say colorize(<<DONE);
+ b[-] Your b[y[~/.bashrc has been successfully setup].
 DONE
     } else {
         say colorize(<<DONE);
- b[3.] Amending your ~/.bashrc to b[also point to install dir]...
+ b[-] Your b[y[~/.bashrc is already setup].
 DONE
-        sleep 3;
     }
 }
+
+
 
 sub _findBestInstallCmd
 {
@@ -234,85 +266,153 @@ git shared-mime-info cmake build-essential flex bison gperf libssl-dev intltool
 liburi-perl gettext
 
 @@ pkg/opensuse/unknown
-perl perl-IO-Socket-SSL perl-JSON perl-YAML-LibYAML
-git shared-mime-info make cmake libqt5-qtbase-common-devel libopenssl-devel intltool
-polkit-devel
-libqt5-qtbase-devel libqt5-qtimageformats-devel libqt5-qtmultimedia-devel libqt5-qtdeclarative-devel libqt5-qtx11extras-devel libqt5-qtxmlpatterns-devel libqt5-qtsvg-devel
-gperf
-gettext-runtime gettext-tools
-libxml2-devel libxml2-tools libxslt-devel docbook-xsl-stylesheets docbook_4
-perl-URI
-libXrender-devel xcb-util-keysyms-devel
+cmake
+docbook-xsl-stylesheets
+docbook_4
 flex bison
-libQt5Core-private-headers-devel
-libudev-devel
-libQt5WebKit5-devel libQt5WebKitWidgets-devel
-libQt5DesignerComponents5 libqt5-qttools-devel libSM-devel
-libattr-devel
-libboost_headers1_66_0-devel
-libQt5QuickControls2-devel
-libqt5-qtscript-devel
-wayland-devel
+gettext-runtime
+gettext-tools
+giflib-devel
+git
+gperf
+intltool
+libboost_headers-devel
+libqt5-qtbase-common-devel
 libqt5-qtbase-private-headers-devel
+libqt5-qtimageformats-devel    
+libQt5Core-private-headers-devel
+libQt5DesignerComponents5  
+libxml2-tools
 lmdb-devel
-libpng16-compat-devel giflib-devel
-ModemManager-devel
-# This pulls in so many other packages! :(
-NetworkManager-devel
-qrencode-devel
+make
+perl 
+perl(IO::Socket::SSL)
+perl(JSON)
+perl(URI)
+perl(YAML::LibYAML)
+pkgconfig(libattr)
+pkgconfig(libical)
+pkgconfig(libpng)
+pkgconfig(libqrencode)
+pkgconfig(libudev)
+pkgconfig(libxml-2.0)
+pkgconfig(libxslt)
+pkgconfig(ModemManager)
+pkgconfig(NetworkManager)
+pkgconfig(openssl)
+pkgconfig(Qt5Core)
+pkgconfig(Qt5Multimedia)
+pkgconfig(Qt5Qml)
+pkgconfig(Qt5QuickControls2)
+pkgconfig(Qt5Script)
+pkgconfig(Qt5Svg)
+pkgconfig(Qt5UiTools)
+pkgconfig(Qt5WebKit)
+pkgconfig(Qt5WebKitWidgets)
+pkgconfig(Qt5X11Extras)
+pkgconfig(Qt5XmlPatterns)
+pkgconfig(sm)
+pkgconfig(wayland-server)
+pkgconfig(xcb-keysyms) 
+pkgconfig(xrender)
+polkit-devel
+shared-mime-info
 
 @@ pkg/fedora/unknown
-perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
-git bzr texinfo shared-mime-info make cmake openssl-devel intltool
-gcc gcc-c++ python
-mesa-libGL-devel dbus-devel gstreamer1-devel mesa-libgbm-devel
-polkit-devel
-pam-devel
-gperf
-gettext gettext-devel
-libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
-perl-URI
-libXrender-devel xcb-util-keysyms-devel
-flex bison
-libjpeg-devel
-libSM-devel
-libattr-devel
-xapian-core-devel
+bison
 boost-devel
-wayland-devel
-xcb-util-devel
-xcb-util-wm-devel
-xcb-util-cursor-devel
-lmdb-devel
-libpng-devel giflib-devel
-ModemManager-devel
-# This pulls in so many other packages! :(
-NetworkManager-libnm-devel
-qrencode-devel
-libassuan-devel
+bzr
+cmake
+docbook-style-xsl
+docbook-utils
+doxygen
+flex
+gcc
+gcc-c++
+gettext
+gettext-devel
+giflib-devel
+git
+gperf
+intltool
+libxml2
+make
+pam-devel
+perl(IO::Socket::SSL)
+perl(IPC::Cmd)
+perl(JSON::PP)
+perl(URI)
+perl(YAML::LibYAML)
+pkgconfig(dbus-1)  
+pkgconfig(gbm)
+pkgconfig(gl) 
+pkgconfig(gstreamer-1.0)
+pkgconfig(libassuan)
+pkgconfig(libattr)
+pkgconfig(libnm)
+pkgconfig(libpng)
+pkgconfig(libqrencode)
+pkgconfig(libxml-2.0)
+pkgconfig(libxslt)
+pkgconfig(lmdb)
+pkgconfig(ModemManager)
+pkgconfig(openssl)
+pkgconfig(polkit-gobject-1)
+pkgconfig(sm)
+pkgconfig(wayland-client)
+pkgconfig(wayland-protocols)
+pkgconfig(xapian-core)
+pkgconfig(xcb-cursor)
+pkgconfig(xcb-ewmh)
+pkgconfig(xcb-keysyms)
+pkgconfig(xcb-util)
+pkgconfig(xfixes)
+pkgconfig(xrender)
+python
+shared-mime-info
+texinfo
 
 @@ pkg/mageia/unknown
-perl-IO-Socket-SSL perl-JSON-PP perl-YAML-LibYAML perl-IPC-Cmd
-git shared-mime-info make cmake openssl-devel intltool
-gcc gcc-c++ python
-libgl-devel dbus-devel gstreamer1.0-devel
-polkit-devel
-gperf
-gettext gettext-devel
-libxml2-devel libxml2 libxslt-devel docbook-style-xsl docbook-utils
-perl-URI
-libxrender-devel xcb-util-keysyms-devel
-flex bison
-libsm-devel
-libattr-devel
+
+bison
 boost
-wayland-devel
-lmdb-devel
-libpng-devel giflib-devel
-modemmanager-devel
-# This pulls in so many other packages! :(
-libnm-devel
-qrencode-devel
+cmake
+docbook-style-xsl
+docbook-utils
+flex
+gcc
+gcc-c++
+gettext
+gettext-devel
+giflib
+git
+gperf
+intltool
+lib64lmdb-devel
+make
+perl(IO::Socket::SSL) 
+perl(IPC::Cmd)
+perl(JSON::PP) 
+perl(URI)
+perl(YAML::LibYAML) 
+pkgconfig(dbus-1)
+pkgconfig(gl) 
+pkgconfig(gstreamer-1.0)
+pkgconfig(libattr)
+pkgconfig(libnm)
+pkgconfig(libpng)
+pkgconfig(libqrencode)
+pkgconfig(libxml-2.0)
+pkgconfig(libxslt)
+pkgconfig(ModemManager)
+pkgconfig(openssl)
+pkgconfig(polkit-gobject-1)
+pkgconfig(sm)
+pkgconfig(wayland-client)
+pkgconfig(xcb-keysyms)
+pkgconfig(xrender)
+python
+shared-mime-info
 
 
 @@ pkg/gentoo/unknown
@@ -322,6 +422,7 @@ dev-lang/perl
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
+doxygen
 
 @@ cmd/install/debian/unknown
 apt-get -q -y --no-install-recommends install

@@ -676,5 +676,32 @@ sub is_dir_empty
     return 1;
 }
 
+# Takes in a string and returns 1 if that string exists somewhere in the 
+# path variable. 
+sub isInPath
+{
+    if (index($ENV{'PATH'}, $_[0]) != -1) {
+        return 1;
+    }  else {
+        return 0;
+    }
+}
+
+# Takes in a string and returns 1 if that string exists as a line in the 
+# ~/.bashrc file.
+sub fileHasLine
+{   
+    my $found = 0;
+    open(my $bashrc, '<', $_[0]) or _croak_runtime("Couldn't open ~/.bashrc: $!");
+    
+    while (my $line = <$bashrc>) {
+        if (index($line, $_[1]) == 0){
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
 1;
 

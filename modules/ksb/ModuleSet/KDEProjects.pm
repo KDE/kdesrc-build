@@ -153,7 +153,7 @@ sub _expandModuleCandidates
         my $repo = $result->{'repo'};
 
         # Prefer kde: alias to normal clone URL.
-        $repo =~ s(^git://anongit\.kde\.org/)(kde:);
+        $repo =~ s(^(git|https)://anongit\.kde\.org/)(kde:);
 
         my $newModule = ksb::Module->new($ctx, $result->{'name'});
         $self->_initializeNewModule($newModule);

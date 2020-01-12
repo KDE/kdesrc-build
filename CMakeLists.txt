@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(kdesrc-build)
 
+include(FeatureSummary)
+
 # Needed for the docs, but optional. If not found, we will simply
 # defer to native CMake handling.
 find_package(ECM 5.10.0 NO_MODULE QUIET)
@@ -10,7 +12,6 @@ if (ECM_FOUND)
 
     include(KDEInstallDirs)
     include(KDECMakeSettings)
-    include(FeatureSummary)
     include(ECMOptionalAddSubdirectory)
 
     find_package(KF5 5.10.0 COMPONENTS DocTools)

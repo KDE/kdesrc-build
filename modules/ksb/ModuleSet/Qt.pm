@@ -4,7 +4,7 @@ package ksb::ModuleSet::Qt 0.10;
 #
 # This represents a collection of Qt5 source code modules that are collectively
 # kept up to date by Qt's init-repository script. This module set is
-# essentially uses to make sure that generated ksb::Modules use proper scm()
+# essentially used to make sure that generated ksb::Modules use proper scm()
 # and buildSystems()
 #
 # Use of this module-set is controlled by the 'repository' option being set to
