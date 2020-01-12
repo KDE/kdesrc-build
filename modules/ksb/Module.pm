@@ -649,27 +649,37 @@ sub setupEnvironment
 {
     my $self = assert_isa(shift, 'ksb::Module');
     my $ctx = $self->buildContext();
-    my $kdedir = $self->getOption('kdedir');
-    my $qtdir  = $self->getOption('qtdir');
     my $prefix = $self->installationPath();
 
     # Add global set-envs and context
     $self->buildContext()->applyUserEnvironment();
 
-    # Ensure the platform libraries we're building can be found, as long as they
-    # are not the system's own libraries.
-    for my $platformDir ($qtdir, $kdedir) {
-        next unless $platformDir;       # OK, assume system platform is usable
-        next if $platformDir eq '/usr'; # Don't 'fix' things if system platform
-                                        # manually set
-
-        $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$platformDir/lib/pkgconfig");
-        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/lib");
-        $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
-    }
-
     # Build system's environment injection
     my $buildSystem = $self->buildSystem();
+
+    #
+    # Suppress injecting qtdir/kdedir related environment variables if a toolchain is also set
+    # Let the toolchain files/definitions take care of themselves.
+    #
+    if ($buildSystem->hasToolchain()) {
+        note ("\tNot setting environment variables for b[$self]: a custom toolchain is used");
+    } else {
+        my $kdedir = $self->getOption('kdedir');
+        my $qtdir  = $self->getOption('qtdir');
+
+        # Ensure the platform libraries we're building can be found, as long as they
+        # are not the system's own libraries.
+        for my $platformDir ($qtdir, $kdedir) {
+            next unless $platformDir;       # OK, assume system platform is usable
+            next if $platformDir eq '/usr'; # Don't 'fix' things if system platform
+                                            # manually set
+
+            $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$platformDir/lib/pkgconfig");
+            $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/lib");
+            $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
+        }
+    }
+
     $buildSystem->prepareModuleBuildEnvironment($ctx, $self, $prefix);
 
     # Read in user environment defines

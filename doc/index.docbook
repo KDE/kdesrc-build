@@ -1307,7 +1307,9 @@ for specific modules as well.</para>
 
 <para>Also, &kdesrc-build; will <link linkend="kdesrc-build-std-flags">add
 standard flags</link> as appropriate to save you the trouble and possible
-errors from typing them yourself.
+errors from typing them yourself. Nota Bene: this does not apply when a (custom)
+toolchain is configured through e.g.:
+<link linkend="conf-cmake-toolchain">cmake-toolchain</link>
 </para></listitem>
 
 <listitem><para>
@@ -1960,6 +1962,23 @@ unset. If not set <literal>Unix Makefiles</literal> will be used by default.
 value for <literal>cmake-generator</literal>.</para></entry>
 </row>
 
+<row id="conf-cmake-toolchain">
+<entry>cmake-toolchain</entry>
+<entry>Module setting overrides global</entry>
+<entry><para>Use this option to specify a toolchain file to use with &cmake;.
+</para>
+<para>When a valid toolchain file is configured, &kdesrc-build; will
+<emphasis>no longer set environment variables automatically</emphasis>.
+You can use &set-env;, &binpath; and &libpath; to fix up the environment
+manually if your toolchain file does not work out of the box with
+&kdesrc-build;. Refer to <link linkend="kdesrc-build-std-flags">the overview
+of standard flags added by &kdesrc-build;</link> for more information.
+</para>
+<para>Note that if a valid toolchain is also specified through
+<link linkend="conf-cmake-options">cmake-options</link> it will override the
+value for <literal>cmake-toolchain</literal>.</para></entry>
+</row>
+
 <row id="conf-cmake-options">
 <entry>cmake-options</entry>
 <entry>Appends to global options for the default buildsystem, overrides global
@@ -1977,6 +1996,12 @@ specify common &cmake; options in the global section.</para>
 override the value of
 <link linkend="conf-cmake-generator">cmake-generator</link>. Invalid
 (unsupported) generators are ignored and will not be passed to &cmake;.
+</para>
+
+<para>If a valid toolchain file is specified among the listed options it will
+override the value of
+<link linkend="conf-cmake-toolchain">cmake-toolchain</link>. Invalid
+toolchains are ignored and will not be passed to &cmake;.
 </para>
 
 <para>Since these options are passed directly to the &cmake; command line, they
@@ -3820,6 +3845,10 @@ like to build a different branch).</para>
 
 <sect2 id="kdesrc-build-std-flags">
 <title>Standard flags added by &kdesrc-build;</title>
+<para>Nota Bene: this section does not apply to modules for which you have
+configured a custom toolchain, using e.g.
+<link linkend="conf-cmake-toolchain">cmake-toolchain</link>.</para>
+
 <para>To save you time, &kdesrc-build; adds some standard paths to your
 environment for you:
 </para>
