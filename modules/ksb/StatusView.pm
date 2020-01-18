@@ -107,8 +107,11 @@ sub onPhaseCompleted
     my ($self, $ev) = @_;
     my ($moduleName, $phase, $result) =
         @{$ev->{phase_completed}}{qw/module phase result/};
+    my $modulePhasePlan = $self->{planned_phases}->{$moduleName};
 
     $self->_checkForBuildPlan();
+
+    delete $modulePhasePlan->{$phase};
 
     if ($result eq 'error') {
         $self->{failed_at_phase}->{$moduleName} = $phase;
@@ -124,6 +127,10 @@ sub onPhaseCompleted
         ($self->{done_in_phase}->{$phase} // 0) ==
         ($self->{todo_in_phase}->{$phase} // 999));
 
+    if ($result eq 'success' && !%{$modulePhasePlan}) {
+        $self->_clearLineAndUpdate(colorize(" g[b[*] Completed b[$moduleName]\n"));
+    }
+
     my $phaseKey = $phase eq 'update' ? 'cur_update' : 'cur_working';
     $self->{$phaseKey} = $phase_done ? '---' : '';
 
@@ -132,13 +139,29 @@ sub onPhaseCompleted
 
 # The one-time build plan has been given, can be used for deciding best way to
 # show progress
+#
+# Looks like:
+# {
+#   "build_plan": [
+#     {
+#       "name": "juk",
+#       "phases": [
+#         "build",
+#         "install"
+#       ]
+#     }
+#   ],
+#   "event": "build_plan"
+# }
 sub onBuildPlan
 {
     my ($self, $ev) = @_;
-    my (@modules) =
-        @{$ev->{build_plan}};
+    my (@modules)   = @{$ev->{build_plan}};
 
-    croak_internal ("Empty build plan!") unless @modules;
+    croak_internal ("Empty build plan!")
+        unless @modules;
+    croak_internal ("Already received a plan!")
+        if exists $self->{planned_phases};
 
     my %num_todo = (
         # These are the 'core' phases we expect to be here even with
@@ -148,9 +171,13 @@ sub onBuildPlan
     );
     my $max_name_width = 0;
 
+    $self->{planned_phases} = { };
+
     for my $m (@modules) {
+        my @phases = @{$m->{phases}};
         $max_name_width = max($max_name_width, length $m->{name});
-        $num_todo{$_}++ foreach (@{$m->{phases}});
+        $num_todo{$_}++ foreach @phases;
+        $self->{planned_phases}->{$m->{name}} = { map { ($_, 1) } @phases };
     }
 
     $self->{done_in_phase}->{$_} = 0 foreach keys %num_todo;
