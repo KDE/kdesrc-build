@@ -127,11 +127,10 @@ sub _listReferencedModules
 
 # Expands out a single module-set listed in referencedModules and places any
 # ksb::Modules created as a result within the lookup table of Modules.
-# Returns the list of created ksb::Modules
+# Returns the list of created ksb::Modules (which may be empty)
 sub _expandSingleModuleSet
 {
-    my $self = shift;
-    my $neededModuleSet = shift;
+    my ($self, $neededModuleSet) = @_;
 
     my $selectedReason = 'partial-expansion:' . $neededModuleSet->name();
     my $lookupTableRef = $self->{definedModules};
@@ -139,9 +138,6 @@ sub _expandSingleModuleSet
 
     # expandModuleSets applies pending/cmdline options already.
     my @moduleResults = $self->expandModuleSets($neededModuleSet);
-    if (!@moduleResults) {
-        croak_internal ("$neededModuleSet->name() expanded to an empty list of modules!");
-    }
 
     $_->setOption('#selected-by', $selectedReason) foreach @moduleResults;
 
@@ -365,12 +361,6 @@ sub resolveSelectorsIntoModules
     # instead of our shell Modules, if possible.
     @modules = $self->_resolveGuessedModules(@modules);
 
-    my %ignoredSelectors = map { ($_, 1) } @{$self->{ignoredSelectors}};
-    @modules = grep {
-        ! exists $ignoredSelectors{$_->name()} &&
-        ! exists $ignoredSelectors{$_->moduleSet()->name() // ''}
-    } @modules;
-
     return @modules;
 }
 
@@ -409,9 +399,13 @@ sub expandModuleSets
     my ($self, @buildModuleList) = @_;
     my $ctx = $self->{context};
 
+    my %ignoredSelectors = map { ($_, 1) } @{$self->{ignoredSelectors}};
+
     my @returnList;
     foreach my $set (@buildModuleList) {
         my @results = $set;
+
+        next if exists $ignoredSelectors{$set->name()};
 
         # If a module-set, need to update first so it can then apply its
         # settings to modules it creates, otherwise update Module directly.
@@ -422,7 +416,7 @@ sub expandModuleSets
             $self->_applyOptions(@results);
         }
 
-        push @returnList, @results;
+        push @returnList, grep { !exists $ignoredSelectors{$_->name()} } (@results);
     }
 
     return @returnList;
