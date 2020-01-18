@@ -371,6 +371,7 @@ pkgconfig(xrender)
 python
 shared-mime-info
 texinfo
+systemd-devel
 
 @@ pkg/mageia/unknown
 
