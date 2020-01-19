@@ -1162,7 +1162,9 @@ sub runPhase_p
 
             return $reactorPromise->then(sub {
                 # This coderef should resolve or reject the promise, if used
-                $promise->resolve($completion_coderef->($self, $result, $resultsRef));
+                $result
+                    ? $promise->resolve($completion_coderef->($self, $result, $resultsRef))
+                    : $promise->reject ($completion_coderef->($self, $result, $resultsRef));
             });
         }
     );

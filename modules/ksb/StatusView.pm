@@ -111,7 +111,8 @@ sub onPhaseCompleted
 
     $self->_checkForBuildPlan();
 
-    $modulePhasePlan->{$phase} = $result;
+    $modulePhasePlan->{$phase} = $result
+        unless ($modulePhasePlan->{$phase} // '') eq 'skipped';
 
     if ($result eq 'error') {
         $self->{failed_at_phase}->{$moduleName} = $phase;
@@ -134,6 +135,13 @@ sub onPhaseCompleted
         uninstall   => 'Uns',
     );
 
+    my %resultColors = (
+        'success' => 'g',
+        'error'   => 'r',
+        'skipped' => 'y',
+        'pending' => 'y',
+    );
+
     # Are we completely done building the module?
     if (!first { $_ eq 'pending' } values %{$modulePhasePlan}) {
         my $modulePlan =
@@ -145,7 +153,7 @@ sub onPhaseCompleted
                 map { my $ok = $modulePhasePlan->{$_} ne 'success' ? 'r' : 'g'; "$ok" . "[$shortPhases{$_}]" }
                 @{$modulePlan->{phases}});
 
-        my $overallColor = $result eq 'error' ? 'r' : 'g';
+        my $overallColor = $resultColors{$result} // '';
         $self->_clearLineAndUpdate(colorize(" ${overallColor}[b[*] Completed b[$fixedLengthName] $done_phases\n"));
     }
 
