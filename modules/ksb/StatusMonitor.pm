@@ -177,7 +177,7 @@ build.
 
 =head1 DESCRIPTION
 
-Right now there are three different events
+Right now there are six different events
 
 =over
 
@@ -187,9 +187,23 @@ build_plan -- Used to announce the build that will be performed
 
 =item 2.
 
-phase_completed -- Used for each individual completed phase as the build progresses
+phase_started -- Emitted for each individual phase once it starts
 
 =item 3.
+
+phase_progress -- Possibly emitted for an individual phase to track progress
+of the phase to completion.
+
+=item 4.
+
+phase_completed -- Used for each individual completed phase as the build progresses
+
+=item 5.
+
+log_entries -- Used to permit important messages to the user to be forwarded
+to the user interface during the build (e.g. that a git-stash has failed)
+
+=item 6.
 
 build_done -- Used when all phases are done (should be redundant but this way
 you know for sure)
