@@ -74,6 +74,9 @@ sub new
         phases       => $phases,
         context      => $ctx,
         'module-set' => undef,
+        metrics      => {
+            time_in_phase => { },
+        },
     );
 
     $self->installPhasePromises() if $class eq 'ksb::Module';
@@ -1092,6 +1095,7 @@ sub runPhase_p
     $reactor->watch($reader, 1, 0); # watch for pipe readability only
 
     $monitor->markPhaseStart($self->name(), $phaseName);
+    my $start_time = time;
 
     Mojo::IOLoop->subprocess(
         sub {
@@ -1144,6 +1148,8 @@ sub runPhase_p
                 $ctx->markModulePhaseFailed($phaseName, $self);
                 return $promise->reject($err);
             }
+
+            $self->{metrics}->{time_in_phase}->{$phaseName} = time - $start_time;
 
             # Apply options that may have changed during child proc execution.
             if (%{$resultsRef->{newOptions}}) {

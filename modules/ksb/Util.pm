@@ -269,50 +269,22 @@ sub filter_program_output
 }
 
 # Subroutine to return a string suitable for displaying an elapsed time,
-# (like a stopwatch) would.  The first parameter is the number of seconds
-# elapsed.
+# (like a stopwatch) would, in a fixed format HH:MM:SS. The first parameter is
+# the number of seconds elapsed.
 sub prettify_seconds
 {
-    my $elapsed = $_[0];
-    my $str = "";
-    my ($days,$hours,$minutes,$seconds,$fraction);
+    my $elapsed = shift;
+    my ($hours, $minutes, $seconds);
 
-    $fraction = int (100 * ($elapsed - int $elapsed));
-    $elapsed = int $elapsed;
+    return "(00:00:00)" if $elapsed <= 0;
 
-    $seconds = $elapsed % 60;
+    $seconds = int $elapsed % 60;
     $elapsed = int $elapsed / 60;
 
-    $minutes = $elapsed % 60;
-    $elapsed = int $elapsed / 60;
+    $minutes =     $elapsed % 60;
+    $hours   = int $elapsed / 60;
 
-    $hours = $elapsed % 24;
-    $elapsed = int $elapsed / 24;
-
-    $days = $elapsed;
-
-    $seconds = "$seconds.$fraction" if $fraction;
-
-    my @str_list;
-
-    for (qw(days hours minutes seconds))
-    {
-        # Use a symbolic reference without needing to disable strict refs.
-        # I couldn't disable it even if I wanted to because these variables
-        # aren't global or localized global variables.
-        my $value = eval "return \$$_;";
-        my $text = $_;
-        $text =~ s/s$// if $value == 1; # Make singular
-
-        push @str_list, "$value $text" if $value or $_ eq 'seconds';
-    }
-
-    # Add 'and ' in front of last element if there was more than one.
-    push @str_list, ("and " . pop @str_list) if (scalar @str_list > 1);
-
-    $str = join (", ", @str_list);
-
-    return $str;
+    return sprintf("(%02d:%02d:%02d)", $hours, $minutes, $seconds);
 }
 
 # Subroutine to mark a file as being the error log for a module.  This also

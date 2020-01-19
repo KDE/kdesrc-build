@@ -101,30 +101,15 @@ sub onPhaseProgress
     $self->update();
 }
 
-# A phase of a module build is finished
-sub onPhaseCompleted
+# Writes out a line to TTY noting information about the module that just finished
+# (elapsed time, compile warnings, success/failure, etc.)
+# Pass in the monitor event for the 'phase_completed' event
+sub _showModuleFinishResults
 {
     my ($self, $ev) = @_;
     my ($moduleName, $phase, $result) =
         @{$ev->{phase_completed}}{qw/module phase result/};
     my $modulePhasePlan = $self->{planned_phases}->{$moduleName};
-
-    $self->_checkForBuildPlan();
-
-    $modulePhasePlan->{$phase} = $result
-        unless ($modulePhasePlan->{$phase} // '') eq 'skipped';
-
-    if ($result eq 'error') {
-        $self->{failed_at_phase}->{$moduleName} = $phase;
-        while (my ($phase, $result) = each %{$modulePhasePlan}) {
-            $modulePhasePlan->{$phase} = 'skipped' if $result eq 'pending';
-        }
-    }
-
-    $self->{done_in_phase}->{$phase}++;
-    my $phase_done = (
-        ($self->{done_in_phase}->{$phase} // 0) ==
-        ($self->{todo_in_phase}->{$phase} // 999));
 
     my %shortPhases = (
         update      => 'Upd',
@@ -142,20 +127,59 @@ sub onPhaseCompleted
         'pending' => 'y',
     );
 
+    # Locate this module's specific build plan from the ordered array
+    my $modulePlan =
+        first { $_->{name} eq $moduleName }
+            @{$self->{build_plan}};
+
+    # Turn each planned phase into a colorized representation of its success or failure
+    my $done_phases =
+        join(' / ',
+            map { my $clr = $resultColors{$modulePhasePlan->{$_}} // 'y'; "$clr" . "[$shortPhases{$_}]" }
+            @{$modulePlan->{phases}});
+
+    my $overallColor = $resultColors{$result} // '';
+
+    # Space out module names so that the whole list is table-aligned
+    my $fixedLengthName = sprintf("%-*s", $self->{max_name_width}, $moduleName);
+
+    my $printedTime = prettify_seconds($ev->{phase_completed}->{elapsed} // 0);
+
+    $self->_clearLineAndUpdate(colorize(" ${overallColor}[b[*] Completed b[$fixedLengthName] $printedTime $done_phases\n"));
+}
+
+# A phase of a module build is finished
+sub onPhaseCompleted
+{
+    my ($self, $ev) = @_;
+    my ($moduleName, $phase, $result) =
+        @{$ev->{phase_completed}}{qw/module phase result/};
+    my $modulePhasePlan = $self->{planned_phases}->{$moduleName};
+
+    $self->_checkForBuildPlan();
+
+    $modulePhasePlan->{$phase} = $result;
+
+    if ($result eq 'error') {
+        $self->{failed_at_phase}->{$moduleName} = $phase;
+
+        # The phases should all eventually become failed but we should
+        # still flag them here in case they don't
+        while (my ($phase, $result) = each %{$modulePhasePlan}) {
+            $modulePhasePlan->{$phase} = 'skipped' if $result eq 'pending';
+        }
+    }
+
     # Are we completely done building the module?
     if (!first { $_ eq 'pending' } values %{$modulePhasePlan}) {
-        my $modulePlan =
-            first { $_->{name} eq $moduleName }
-                @{$self->{build_plan}};
-        my $fixedLengthName = sprintf("%-*s", $self->{max_name_width}, $moduleName);
-        my $done_phases =
-            join(' / ',
-                map { my $ok = $modulePhasePlan->{$_} ne 'success' ? 'r' : 'g'; "$ok" . "[$shortPhases{$_}]" }
-                @{$modulePlan->{phases}});
-
-        my $overallColor = $resultColors{$result} // '';
-        $self->_clearLineAndUpdate(colorize(" ${overallColor}[b[*] Completed b[$fixedLengthName] $done_phases\n"));
+        $self->_showModuleFinishResults($ev);
     }
+
+    # Update global progress bar
+    $self->{done_in_phase}->{$phase}++;
+    my $phase_done = (
+        ($self->{done_in_phase}->{$phase} // 0) ==
+        ($self->{todo_in_phase}->{$phase} // 999));
 
     my $phaseKey = $phase eq 'update' ? 'cur_update' : 'cur_working';
     $self->{$phaseKey} = $phase_done ? '---' : '';

@@ -37,6 +37,8 @@ use ksb::KDEProjectsReader 0.50;
 use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
 
+use List::Util qw(sum);
+
 my @DefaultPhases = qw/update build install/;
 my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
 my $LOCKFILE_NAME = '.kdesrc-lock';
@@ -665,9 +667,11 @@ sub markModulePhaseSucceeded
     my ($self, $phase, $module, $extras) = @_;
     assert_isa($module, 'ksb::Module');
 
-    my $name = $module->name();
     $extras //= { };
-    $self->{status_monitor}->markPhaseComplete($name, $phase, 'success', %{$extras});
+
+    $extras->{elapsed} = sum values %{$module->{metrics}->{time_in_phase}};
+
+    $self->{status_monitor}->markPhaseComplete($module->name(), $phase, 'success', %{$extras});
 }
 
 sub markModulePhaseFailed
