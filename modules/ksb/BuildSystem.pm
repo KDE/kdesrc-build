@@ -431,16 +431,9 @@ sub _runBuildCommand
         (0 == log_command($module, $filename, $argRef, {
             callback => $log_command_callback
         }));
-    $resultRef->{warnings} = $warnings;
 
-    if ($warnings) {
-        my $count = ($warnings < 3  ) ? 1 :
-                    ($warnings < 10 ) ? 2 :
-                    ($warnings < 30 ) ? 3 : 4;
-        my $msg = sprintf("%s b[y[$warnings] %s", '-' x $count, '-' x $count);
-        note ("\tNote: $msg compile warnings");
-        $self->{module}->setPersistentOption('last-compile-warnings', $warnings);
-    }
+    $resultRef->{warnings} = $warnings;
+    $self->{module}->setPersistentOption('last-compile-warnings', $warnings);
 
     return $resultRef;
 }

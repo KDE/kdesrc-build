@@ -43,6 +43,7 @@ sub new
         log_entries     => { }, # $moduleName -> $phase -> [ $entry ... ]
         last_mod_entry  => '',  # $moduleName/$phase, see onLogEntries
         last_msg_type   => '',  # If 'progress' we can clear line
+        warnings        => { }, # $moduleName -> $sum_of_warnings
     };
 
     # Must bless a hash ref since subclasses expect it.
@@ -145,7 +146,12 @@ sub _showModuleFinishResults
 
     my $printedTime = prettify_seconds($ev->{phase_completed}->{elapsed} // 0);
 
-    $self->_clearLineAndUpdate(colorize(" ${overallColor}[b[*] Completed b[$fixedLengthName] $printedTime $done_phases\n"));
+    my $notes = '';
+    my $warnings = $self->{warnings}->{$moduleName};
+    $notes .= "$warnings compiler warnings" if $warnings;
+
+    my $msg = " ${overallColor}[b[*] Completed b[$fixedLengthName] $printedTime $done_phases | $notes";
+    $self->_clearLineAndUpdate(colorize("$msg\n"));
 }
 
 # A phase of a module build is finished
@@ -159,6 +165,9 @@ sub onPhaseCompleted
     $self->_checkForBuildPlan();
 
     $modulePhasePlan->{$phase} = $result;
+
+    $self->{warnings}->{$moduleName} //= 0;
+    $self->{warnings}->{$moduleName} += $ev->{phase_completed}->{warnings} // 0;
 
     if ($result eq 'error') {
         $self->{failed_at_phase}->{$moduleName} = $phase;
