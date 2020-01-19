@@ -289,6 +289,7 @@ sub makePromiseChain {
 
         # $sub will itself return a promise when called, which is needed
         # for this chain to work
+        # TODO Candidate for Mojo::Promise::all_settled once that stabilizes
         push @all_promises, $base_promise->then($sub)->catch(sub {
             # err handler, return a value to keep Promise->all from failing
             # fast, force reject the item promise since $sub may not have run
