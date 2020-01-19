@@ -19,7 +19,7 @@ use open OUT => ':locale';
 use ksb::Debug 0.20 qw(colorize);
 use ksb::Util;
 use ksb::BuildException;
-use List::Util qw(min max reduce);
+use List::Util qw(min max reduce first);
 
 use IO::Handle;
 
@@ -111,15 +111,13 @@ sub onPhaseCompleted
 
     $self->_checkForBuildPlan();
 
-    delete $modulePhasePlan->{$phase};
+    $modulePhasePlan->{$phase} = $result;
 
     if ($result eq 'error') {
         $self->{failed_at_phase}->{$moduleName} = $phase;
-        my $failure = $phase eq 'buildsystem' ? 'setup buildsystem' : $phase;
-        my $log = $ev->{phase_completed}->{error_file};
-        my $msg = " r[b[*] b[r[$moduleName] failed";
-        $msg .= ", see b[file://$log]" if $log;
-        $self->_clearLineAndUpdate(colorize("$msg\n"));
+        while (my ($phase, $result) = each %{$modulePhasePlan}) {
+            $modulePhasePlan->{$phase} = 'skipped' if $result eq 'pending';
+        }
     }
 
     $self->{done_in_phase}->{$phase}++;
@@ -127,8 +125,28 @@ sub onPhaseCompleted
         ($self->{done_in_phase}->{$phase} // 0) ==
         ($self->{todo_in_phase}->{$phase} // 999));
 
-    if ($result eq 'success' && !%{$modulePhasePlan}) {
-        $self->_clearLineAndUpdate(colorize(" g[b[*] Completed b[$moduleName]\n"));
+    my %shortPhases = (
+        update      => 'Upd',
+        buildsystem => 'Cnf',
+        build       => 'Bld',
+        test        => 'Tst',
+        install     => 'Ins',
+        uninstall   => 'Uns',
+    );
+
+    # Are we completely done building the module?
+    if (!first { $_ eq 'pending' } values %{$modulePhasePlan}) {
+        my $modulePlan =
+            first { $_->{name} eq $moduleName }
+                @{$self->{build_plan}};
+        my $fixedLengthName = sprintf("%-*s", $self->{max_name_width}, $moduleName);
+        my $done_phases =
+            join(' / ',
+                map { my $ok = $modulePhasePlan->{$_} ne 'success' ? 'r' : 'g'; "$ok" . "[$shortPhases{$_}]" }
+                @{$modulePlan->{phases}});
+
+        my $overallColor = $result eq 'error' ? 'r' : 'g';
+        $self->_clearLineAndUpdate(colorize(" ${overallColor}[b[*] Completed b[$fixedLengthName] $done_phases\n"));
     }
 
     my $phaseKey = $phase eq 'update' ? 'cur_update' : 'cur_working';
@@ -177,12 +195,13 @@ sub onBuildPlan
         my @phases = @{$m->{phases}};
         $max_name_width = max($max_name_width, length $m->{name});
         $num_todo{$_}++ foreach @phases;
-        $self->{planned_phases}->{$m->{name}} = { map { ($_, 1) } @phases };
+        $self->{planned_phases}->{$m->{name}} = { map { ($_, 'pending') } @phases };
     }
 
     $self->{done_in_phase}->{$_} = 0 foreach keys %num_todo;
     $self->{todo_in_phase}  = \%num_todo;
     $self->{max_name_width} = $max_name_width;
+    $self->{build_plan}     = $ev->{build_plan};
 }
 
 # The whole build/install process has completed.
