@@ -545,7 +545,6 @@ sub modulesFromSelectors
         croak_runtime("Failed to resolve dependency graph");
     }
 
-    # TODO: Implement --dependency-tree
     if (exists $self->{debugFlags}->{'dependency-tree'}) {
         # Save for later introspection
         $self->{debugFlags}->{'dependency-tree'} = $moduleGraph->{graph};
