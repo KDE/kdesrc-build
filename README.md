@@ -35,6 +35,8 @@ Continue on, to learn how to set it up.
 - You must have [Git](https://git-scm.com/) installed to download KDE sources
   and kdesrc-build itself. We recommend at least version 2.10.
 
+- You must have dialog installed to run kdesrc-build-setup.
+
 2. Install kdesrc-build:
 
 - Clone kdesrc-build from git, by running from a terminal:
