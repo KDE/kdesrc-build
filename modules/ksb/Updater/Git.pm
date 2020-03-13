@@ -538,15 +538,12 @@ sub stashAndUpdate
     my $module = $self->module();
     my $date = strftime ("%F-%R", gmtime()); # ISO Date, hh:mm time
 
-    # To find out if we should stash, we use git-status in its short mode which
+    # To find out if we should stash, we use git-diff-index which
     # is intended to be scriptable and returns information on both the index
     # and the working dir in one command.
     my $status = 1;
     my $needsStash =
-        !pretending() &&
-        (scalar filter_program_output(
-                undef, # don't filter output
-                qw(git status --short --untracked-files=no))) > 0;
+        !pretending() && (system('git', 'diff-index', '--quiet', 'HEAD') >> 8);
 
     if ($needsStash) {
         info ("\tLocal changes detected, stashing them away...");
