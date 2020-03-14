@@ -1196,6 +1196,7 @@ sub _readConfigurationOptions
     }
 
     my $using_default = 1;
+    my $creation_order = 0;
     my %seenModules; # NOTE! *not* module-sets, *just* modules.
     my %seenModuleSets; # and vice versa -- named sets only though!
     my %seenModuleSetItems; # To track option override modules.
@@ -1239,6 +1240,7 @@ sub _readConfigurationOptions
             # A moduleset can give us more than one module to add.
             $newModule = _parseModuleSetOptions($ctx, $fileReader,
                 ksb::ModuleSet->new($ctx, $modulename || "<module-set at line $.>"));
+            $newModule->{'#create-id'} = ++$creation_order;
 
             # Save 'use-modules' entries so we can see if later module decls
             # are overriding/overlaying their options.
@@ -1270,6 +1272,7 @@ sub _readConfigurationOptions
         else {
             $newModule = _parseModuleOptions($ctx, $fileReader,
                 ksb::Module->new($ctx, $modulename));
+            $newModule->{'#create-id'} = ++$creation_order;
             $seenModules{$modulename} = $newModule;
         }
 

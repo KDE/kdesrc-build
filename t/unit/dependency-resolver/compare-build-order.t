@@ -14,21 +14,21 @@ my $graph1 = {
             'b' => 1,
             'd' => 1
         },
-        module => 1
+        module => { name => 'a', }
     },
     'b' => {
         votes => {},
-        module => 1
+        module => { name => 'a', }
     },
     'c' => {
         votes => {
             'd' => 1
         },
-        module => 1
+        module => { name => 'a', }
     },
     'd' => {
         votes => {},
-        module => 1
+        module => { name => 'a', }
     }
 };
 

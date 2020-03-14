@@ -15,98 +15,80 @@ my $graph1 = {
             'd' => 1
         },
         build => 1,
-        module => 'a'
+        module => {
+            name => 'a',
+            '#create-id' => 1,
+        },
     },
     'b' => {
         votes => {},
         build => 1,
-        module => 'b'
+        module => {
+            name => 'b',
+            '#create-id' => 1,
+        },
     },
     'c' => {
         votes => {
             'd' => 1
         },
         build => 1,
-        module => 'c'
+        module => {
+            name => 'c',
+            '#create-id' => 1,
+        },
     },
     'd' => {
         votes => {},
         build => 1,
-        module => 'd'
-    }
+        module => {
+            name => 'd',
+            '#create-id' => 1,
+        },
+    },
+    'e' => {
+        votes => {},
+        build => 1,
+        module => {
+            name => 'e',
+            '#create-id' => 2, # Should come after everything else
+        },
+    },
 };
 
 
-my @expected1 = ('a', 'c', 'b', 'd');
-my @actual1 = ksb::DependencyResolver::sortModulesIntoBuildOrder($graph1);
+my @expected1 = ('a', 'c', 'b', 'd', 'e');
+my @actual1 = map { $_->{name} } ksb::DependencyResolver::sortModulesIntoBuildOrder($graph1);
 
 is_deeply(\@actual1, \@expected1, "should sort modules into the proper build order");
 
 # use some random key strokes for names:
 # unlikely to yield keys in equivalent order as $graph1: key order *should not matter*
 my $graph2 = {
-    'avdnrvrl' => {
-        votes => {
-            'd' => 1
-        },
-        build => 1,
-        module => 'c'
-    },
-    'lexical1' => {
-        votes => {},
-        build => 1,
-        module => 'b'
-    },
-    'nllfmvrb' => {
-        votes => {
-            'b' => 1,
-            'd' => 1
-        },
-        build => 1,
-        module => 'a'
-    },
-    'lexical2' => {
-        votes => {},
-        build => 1,
-        module => 'd'
-    }
+    'avdnrvrl' => $graph1->{c},
+    'lexical1' => $graph1->{b},
+    'lexicla3' => $graph1->{e},
+    'nllfmvrb' => $graph1->{a},
+    'lexical2' => $graph1->{d},
 };
 
-my @expected2 = ('a', 'c', 'b', 'd');
-my @actual2 = ksb::DependencyResolver::sortModulesIntoBuildOrder($graph2);
+my @expected2 = ('a', 'c', 'b', 'd', 'e');
+my @actual2 = map { $_->{name} } ksb::DependencyResolver::sortModulesIntoBuildOrder($graph2);
 
 is_deeply(\@actual2, \@expected2, "key order should not matter for build order");
 
 my $graph3 = {
-    'a' => {
-        votes => {
-            'b' => 1,
-            'd' => 1
-        },
-        build => 0,
-        module => 'a'
-    },
-    'b' => {
-        votes => {},
-        build => 1,
-        module => undef
-    },
-    'c' => {
-        votes => {
-            'd' => 1
-        },
-        build => 1,
-        module => 'c'
-    },
-    'd' => {
-        votes => {},
-        build => 1,
-        module => 'd'
-    }
+    'a' => $graph1->{a},
+    'b' => $graph1->{b},
+    'c' => $graph1->{c},
+    'd' => $graph1->{d},
+    'e' => $graph1->{e},
 };
+$graph3->{a}->{build} = 0;
+$graph3->{b}->{module} = undef; # Empty module blocks should be treated as build == 0
 
-my @expected3 = ('c', 'd');
-my @actual3 = ksb::DependencyResolver::sortModulesIntoBuildOrder($graph3);
+my @expected3 = ('c', 'd', 'e');
+my @actual3 = map { $_->{name} } ksb::DependencyResolver::sortModulesIntoBuildOrder($graph3);
 
 is_deeply(\@actual3, \@expected3, "modules that are not to be built should be omitted");
 
