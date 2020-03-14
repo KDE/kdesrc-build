@@ -2709,7 +2709,7 @@ sub _showHelpMessage
     my $scriptVersion = scriptVersion();
     say <<DONE;
 kdesrc-build $scriptVersion
-Copyright (c) 2003 - 2019 Michael Pyne <mpyne\@kde.org> and others, and is
+Copyright (c) 2003 - 2020 Michael Pyne <mpyne\@kde.org> and others, and is
 distributed under the terms of the GNU GPL v2.
 
 This script automates the download, build, and install process for KDE software
