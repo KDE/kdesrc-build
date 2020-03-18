@@ -777,10 +777,9 @@ sub _compareBuildOrder
     # simply sort by the order contained within the configuration file (if
     # present), which would be setup as the rc-file is read.
     #
-    my ($aOrder, $bOrder) =
-        map { $moduleGraph->{$_}->{module}->{'#create-id'} // 0 } ($a, $b);
-
-    my $configOrder = $aOrder <=> $bOrder;
+    my $aRcOrder = $moduleGraph->{$a}->{module}->{'#create-id'} // 0 ;
+    my $bRcOrder = $moduleGraph->{$b}->{module}->{'#create-id'} // 0 ;
+    my $configOrder = $aRcOrder <=> $bRcOrder;
 
     return $configOrder if $configOrder;
 
@@ -788,7 +787,6 @@ sub _compareBuildOrder
     # If the rc-file is not present then sort by name to ensure a reproducible
     # build order that isn't influenced by randomization of the runtime.
     #
-
     return $a cmp $b;
 }
 
