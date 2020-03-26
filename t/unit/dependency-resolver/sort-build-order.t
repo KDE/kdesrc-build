@@ -57,8 +57,8 @@ my $graph1 = {
 };
 
 
-my @expected1 = ('a', 'c', 'b', 'd', 'e');
-my @actual1 = map { $_->{name} } ksb::DependencyResolver::sortModulesIntoBuildOrder($graph1);
+my @expected1 = map { $graph1->{$_}->{module} } ('a', 'c', 'b', 'd', 'e');
+my @actual1   = ksb::DependencyResolver::sortModulesIntoBuildOrder($graph1);
 
 is_deeply(\@actual1, \@expected1, "should sort modules into the proper build order");
 
@@ -72,8 +72,9 @@ my $graph2 = {
     'lexical2' => $graph1->{d},
 };
 
-my @expected2 = ('a', 'c', 'b', 'd', 'e');
-my @actual2 = map { $_->{name} } ksb::DependencyResolver::sortModulesIntoBuildOrder($graph2);
+# corresponds to same order as the test above
+my @expected2 = map { $graph2->{$_}->{module} } qw(nllfmvrb avdnrvrl lexical1 lexical2 lexicla3);
+my @actual2   = ksb::DependencyResolver::sortModulesIntoBuildOrder($graph2);
 
 is_deeply(\@actual2, \@expected2, "key order should not matter for build order");
 
@@ -87,8 +88,8 @@ my $graph3 = {
 $graph3->{a}->{build} = 0;
 $graph3->{b}->{module} = undef; # Empty module blocks should be treated as build == 0
 
-my @expected3 = ('c', 'd', 'e');
-my @actual3 = map { $_->{name} } ksb::DependencyResolver::sortModulesIntoBuildOrder($graph3);
+my @expected3 = map { $graph3->{$_}->{module} } ('c', 'd', 'e');
+my @actual3   = ksb::DependencyResolver::sortModulesIntoBuildOrder($graph3);
 
 is_deeply(\@actual3, \@expected3, "modules that are not to be built should be omitted");
 

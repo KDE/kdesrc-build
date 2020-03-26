@@ -38,6 +38,7 @@ my $graph1 = {
             name => 'd',
         },
     },
+
     'e' => {  # Here to test sorting by rc-file order
         votes => {
             'b' => 1,
@@ -45,34 +46,56 @@ my $graph1 = {
         },
         module => {
             name => 'e',
+            '#create-id' => 2,
+        },
+    },
+    'f' => {  # Identical to 'e' except it's simulated earlier in rc-file
+        votes => {
+            'b' => 1,
+            'd' => 1,
+        },
+        module => {
+            name => 'f',
             '#create-id' => 1,
         },
     },
 };
 
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'a', 'a'),  0, "'a' should be sorted at the same position as itself");
+# Test that tests are symmetric e.g. a > b => b < a. This permits us to only manually
+# test one pair of these tests now that the test matrix is growing.
+for my $l ('a'..'f') {
+    for my $r ('a'..'f') {
+        my $res = ksb::DependencyResolver::_compareBuildOrder($graph1, $l, $r);
+
+        if ($l eq $r) {
+            is($res, 0, "'$l' should be sorted at the same position as itself");
+        }
+        else {
+            my $expected = -$res; # The check that abs($res) == 1 logically follows with later tests
+            is(ksb::DependencyResolver::_compareBuildOrder($graph1, $r, $l), $expected,
+                "'$l' cmp '$r' is opposite of '$r' cmp '$l'");
+        }
+    }
+}
+
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'a', 'b'), -1, "'a' should be sorted before 'b' by dependency ordering");
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'a', 'c'), -1, "'a' should be sorted before 'c' by vote ordering");
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'a', 'd'), -1, "'a' should be sorted before 'd' by dependency ordering");
-# e doesn't depend on a, has same number of votes, but should still lose to a despite lexicographically being after 'a'
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'a', 'e'), -1, "'a' should be sorted before 'e' by rc-file ordering");
+is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'a', 'e'), -1, "'a' should be sorted before 'e' by lexicographic ordering");
+is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'a', 'f'), -1, "'a' should be sorted before 'f' by lexicographic ordering");
 
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'b', 'a'),  1, "'b' should be sorted after 'a' by dependency ordering");
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'b', 'b'),  0, "'b' should be sorted at the same position as itself");
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'b', 'c'),  1, "'b' should be sorted after 'c' by vote ordering");
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'b', 'd'), -1, "'b' should be sorted before 'd' by lexicographic ordering");
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'b', 'e'),  1, "'b' should be sorted after 'e' by dependency ordering");
+is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'b', 'f'),  1, "'b' should be sorted after 'f' by dependency ordering");
 
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'c', 'a'),  1, "'c' should be sorted after 'a' by vote ordering");
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'c', 'b'), -1, "'c' should be sorted before 'b' by vote ordering");
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'c', 'c'),  0, "'c' should be sorted at the same position as itself");
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'c', 'd'), -1, "'c' should be sorted before 'd' by dependency ordering");
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'c', 'e'),  1, "'c' should be sorted after 'e' by vote ordering");
+is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'c', 'f'),  1, "'c' should be sorted after 'f' by vote ordering");
 
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'd', 'a'),  1, "'d' should be sorted after 'a' by dependency ordering");
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'd', 'b'),  1, "'d' should be sorted after 'b' by lexicographic ordering");
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'd', 'c'),  1, "'d' should be sorted after 'c' by dependency ordering");
-is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'd', 'd'),  0, "'d' should be sorted at the same position as itself");
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'd', 'e'),  1, "'d' should be sorted after 'e' by dependency ordering");
+is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'd', 'f'),  1, "'d' should be sorted after 'f' by dependency ordering");
+
+is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'e', 'f'),  1, "'e' should be sorted after 'f' by rc-file ordering");
 
 done_testing();
