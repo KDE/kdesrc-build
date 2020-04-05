@@ -71,9 +71,9 @@ for my $l ('a'..'f') {
             is($res, 0, "'$l' should be sorted at the same position as itself");
         }
         else {
-            my $expected = -$res; # The check that abs($res) == 1 logically follows with later tests
-            is(ksb::DependencyResolver::_compareBuildOrder($graph1, $r, $l), $expected,
-                "'$l' cmp '$r' is opposite of '$r' cmp '$l'");
+            is(abs($res), 1, "Different module items ('$l' and '$r') compare to 1 or -1 (but not 0)");
+            is(ksb::DependencyResolver::_compareBuildOrder($graph1, $r, $l), -$res,
+                "Swapping order of operands should negate the result ('$r' vs '$l')");
         }
     }
 }
