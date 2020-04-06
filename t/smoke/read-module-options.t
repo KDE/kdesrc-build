@@ -44,9 +44,11 @@ my $app = ksb::Application->new(qw(--pretend --rc-file t/data/sample-rc/kdesrc-b
 my @moduleList = @{$app->{modules}};
 
 is(scalar @moduleList, 4, 'Right number of modules');
-is($moduleList[0]->name(), 'module2', 'Right module name');
 
-my $scm = $moduleList[0]->scm();
+# module2 is last in rc-file so should sort last
+is($moduleList[3]->name(), 'module2', 'Right module name');
+
+my $scm = $moduleList[3]->scm();
 isa_ok($scm, 'ksb::Updater::Git');
 
 my ($branch, $type) = $scm->_determinePreferredCheckoutSource();
@@ -54,8 +56,9 @@ my ($branch, $type) = $scm->_determinePreferredCheckoutSource();
 is($branch, 'refs/tags/fake-tag5', 'Right tag name');
 is($type, 'tag', 'Result came back as a tag');
 
-is($moduleList[2]->name(), 'setmod2', 'Right module name from module-set');
-($branch, $type) = $moduleList[2]->scm()->_determinePreferredCheckoutSource();
+# setmod2 is second module in set of 3 at start, should be second overall
+is($moduleList[1]->name(), 'setmod2', 'Right module name from module-set');
+($branch, $type) = $moduleList[1]->scm()->_determinePreferredCheckoutSource();
 
 is($branch, 'refs/tags/tag-setmod2', 'Right tag name (options block)');
 is($type, 'tag', 'options block came back as tag');
@@ -66,10 +69,10 @@ is($type, 'tag', 'options block came back as tag');
 #
 
 # Override auto-detection since no source is downloaded
-$moduleList[2]->setOption('override-build-system', 'kde');
+$moduleList[1]->setOption('override-build-system', 'kde');
 
 # Should do nothing in --pretend
-ok($moduleList[2]->setupBuildSystem(), 'setup fake build system');
+ok($moduleList[1]->setupBuildSystem(), 'setup fake build system');
 
 ok(@ksb::test::CMD, 'log_command cmake was called');
 is(scalar (@ksb::test::CMD), 8);
@@ -84,6 +87,6 @@ is($ksb::test::CMD[6], 'baz', 'Plain CMake options are preserved correctly');
 is($ksb::test::CMD[7], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde", 'Prefix is passed to cmake');
 
 # See https://phabricator.kde.org/D18165
-is($moduleList[1]->getOption('cxxflags'), '', 'empty cxxflags renders with no whitespace in module');
+is($moduleList[0]->getOption('cxxflags'), '', 'empty cxxflags renders with no whitespace in module');
 
 done_testing();

@@ -130,6 +130,8 @@ sub _initializeNewModule
     $newModule->setScmType('git');
     $newModule->phases->phases($self->phases()->phases());
     $newModule->mergeOptionsFrom($self);
+    $newModule->{'#create-id'} = $self->{'#create-id'}
+        if exists $self->{'#create-id'};
 }
 
 # OVERRIDE
