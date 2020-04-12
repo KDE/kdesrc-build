@@ -788,6 +788,20 @@ sub hasRemote
 sub verifyGitConfig
 {
     my $contextOptions = shift;
+    my $useInvent = $contextOptions->getOption('x-invent-kde-push-urls');
+    my $protocol = $contextOptions->getOption('git-desired-protocol') || 'git';
+    my $pushUrlPrefix = 'git@git.kde.org:';
+
+    if ($useInvent) {
+        if ($protocol eq 'git' || $protocol eq 'https') {
+            $pushUrlPrefix = $protocol eq 'git' ? 'git@invent.kde.org:' : 'https://invent.kde.org/';
+        }
+        else {
+            error(" b[y[*] Invalid b[git-desired-protocol] $protocol");
+            error(" b[y[*] Try setting this option to 'git' if you're not using a proxy");
+            croak_runtime("Invalid git-desired-protocol: $protocol");
+        }
+    }
 
     my $configOutput =
         qx'git config --global --get url.https://anongit.kde.org/.insteadOf kde:';
@@ -821,13 +835,11 @@ sub verifyGitConfig
     }
 
     $configOutput =
-        qx'git config --global --get url.git@git.kde.org:.pushInsteadOf kde:';
+        qx"git config --global --get url.$pushUrlPrefix.pushInsteadOf kde:";
 
     if ($configOutput !~ /^kde:\s*$/) {
         whisper ("\tAdding git upload kde: alias");
-        my $result = safe_system(
-            qw(git config --global --add url.git@git.kde.org:.pushInsteadOf kde:)
-        ) >> 8;
+        my $result = safe_system("git config --global --add url.$pushUrlPrefix.pushInsteadOf kde:") >> 8;
         return 0 if $result != 0;
     }
 
@@ -841,6 +853,19 @@ sub verifyGitConfig
             qw(git config --global --unset-all url.git://anongit.kde.org/.insteadOf kde:)
         ) >> 8;
         return 0 if $result != 0;
+    }
+
+    if ($useInvent) {
+        $configOutput =
+            qx'git config --global --get url.git@git.kde.org:.pushInsteadOf kde:';
+
+        if ($configOutput =~ /^kde:\s*$/) {
+            whisper ("\tRemoving outdated kde: alias");
+            my $result = safe_system(
+                qw(git config --global --unset-all url.git@git.kde.org:.pushInsteadOf kde:)
+            ) >> 8;
+            return 0 if $result != 0;
+        }
     }
 
     return 1;
