@@ -787,6 +787,8 @@ sub hasRemote
 # Returns false on failure of any sort, true otherwise.
 sub verifyGitConfig
 {
+    my $contextOptions = shift;
+
     my $configOutput =
         qx'git config --global --get url.https://anongit.kde.org/.insteadOf kde:';
 
