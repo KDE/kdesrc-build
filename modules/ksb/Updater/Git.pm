@@ -545,24 +545,29 @@ sub stashAndUpdate
     my $needsStash =
         !pretending() && (system('git', 'diff-index', '--quiet', 'HEAD') >> 8);
 
+    log_command($module, 'git-status-before-update', [qw(git status)]);
+
     if ($needsStash) {
         info ("\tLocal changes detected, stashing them away...");
         $status = log_command($module, 'git-stash-save', [
                 qw(git stash save --quiet), "kdesrc-build auto-stash at $date",
             ]);
         if ($status != 0) {
+            log_command($module, 'git-status-after-error', [qw(git status)]);
             croak_runtime("Unable to stash local changes for $module, aborting update.");
         }
     }
 
     if (!$updateSub->()) {
         error ("\tUnable to update the source code for r[b[$module]");
+        log_command($module, 'git-status-after-error', [qw(git status)]);
         return;
     }
 
     # Update is performed and successful, re-apply the stashed changes
     if ($needsStash) {
         info ("\tModule updated, reapplying your local changes.");
+        log_command($module, 'git-status-before-stash-pop', [qw(git status)]);
         $status = log_command($module, 'git-stash-pop', [
                 qw(git stash pop --index --quiet)
             ]);
@@ -581,6 +586,7 @@ r[b[*]
 * $module. Developers be careful, doing either of these options will remove
 * any of your local work.
 EOF
+            log_command($module, 'git-status-after-error', [qw(git status)]);
             croak_runtime("Failed to re-apply stashed changes for $module");
         }
     }
