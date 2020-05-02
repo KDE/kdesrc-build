@@ -430,6 +430,57 @@ perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
 doxygen
 
+@@ pkg/alpine/unknown
+alpine-sdk
+attr-dev
+autoconf
+automake
+bison
+boost-dev
+cmake
+doxygen
+eudev-dev
+flex
+giflib-dev
+gperf
+gpgme-dev
+grantlee-dev
+gstreamer-dev
+gst-plugins-base-dev
+libdmtx-dev
+libepoxy-dev
+libgcrypt-dev
+libinput-dev
+libqrencode-dev
+libxkbfile-dev
+libxrender-dev
+libxtst-dev
+linux-pam-dev
+lmdb-dev
+networkmanager-dev
+perl
+perl-io-socket-ssl
+perl-uri
+perl-yaml-libyaml
+polkit-elogind-dev
+qt5-qtbase-dev
+qt5-qtdeclarative-dev
+qt5-qtquickcontrols2-dev
+qt5-qtscript-dev
+qt5-qtsensors-dev
+qt5-qtsvg-dev
+qt5-qttools-dev
+qt5-qttools-static
+qt5-qtwayland-dev
+qt5-qtx11extras-dev
+texinfo
+wayland-protocols
+xapian-core-dev
+xcb-util-cursor-dev
+xcb-util-image-dev
+xcb-util-keysyms-dev
+xcb-util-wm-dev
+
 @@ cmd/install/debian/unknown
 apt-get -q -y --no-install-recommends install
 
@@ -441,6 +492,9 @@ pacman -Syu --noconfirm --needed
 
 @@ cmd/install/fedora/unknown
 dnf -y install
+
+@@ cmd/install/alpine/unknown
+apk add
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
