@@ -40,20 +40,16 @@ sub _verifyYAMLModuleLoaded
 #
 # Parameters:
 #  $projectMetadataModule - ksb::Module reference to the repo-metadata module.
-#  $desiredProtocol - Normally 'git', but other protocols like 'http' can also
-#   be preferred (e.g. for proxy compliance).
 sub new
 {
     my $class = shift;
     my $projectMetadataModule = shift;
-    my $desiredProtocol = shift;
 
     _verifyYAMLModuleLoaded();
 
     my $self = {
         # Maps short names to repo info blocks
-        repositories => { },
-        protocol     => $desiredProtocol,
+        repositories => { }
     };
 
     $self = bless ($self, $class);
@@ -92,7 +88,7 @@ sub _readYAML
     };
 
     my $repoName = $proj_data->{repopath};
-    my $repoPath = $self->{protocol} . "://anongit.kde.org/$repoName";
+    my $repoPath = "kde:$repoName";
 
     my $curRepository = {
         'fullName' => $proj_data->{projectpath},

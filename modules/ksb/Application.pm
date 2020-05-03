@@ -477,7 +477,7 @@ sub generateModuleList
     if (!exists $ENV{HARNESS_ACTIVE}) {
         # Running in a test harness, avoid downloading metadata which will be
         # ignored in the test or making changes to git config
-        ksb::Updater::Git::verifyGitConfig();
+        ksb::Updater::Git::verifyGitConfig($ctx);
         $self->_downloadKDEProjectMetadata();
     }
 

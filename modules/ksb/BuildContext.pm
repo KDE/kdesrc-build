@@ -71,6 +71,8 @@ my %internalGlobalOptions = (
     "set-env"              => { }, # Hash of environment vars to set
     "ssh-identity-file"    => '', # If set, is passed to ssh-add.
     "use-modules"          => "",
+    "x-invent-kde-push-urls" => 0, # 2020-12-04 temporary feature flag to use invent.kde.org for push URLs for KDE
+                                   # projects
 );
 
 # Holds boolean flags that could be altered from cmdline.
@@ -981,14 +983,7 @@ sub getProjectDataReader
     my $projectDatabaseModule = $self->getKDEProjectsMetadataModule() or
         croak_runtime("kde-projects repository information could not be downloaded: $!");
 
-    my $protocol = $self->getOption('git-desired-protocol') || 'git';
-    if (!list_has(['git', 'http', 'https'], $protocol)) {
-        error (" b[y[*] Invalid b[git-desired-protocol] $protocol");
-        error (" b[y[*] Try setting this option to 'git' if you're not using a proxy");
-        croak_runtime ("Invalid git-desired-protocol: $protocol");
-    }
-
-    $self->{projects_db} = ksb::KDEProjectsReader->new($projectDatabaseModule, $protocol);
+    $self->{projects_db} = ksb::KDEProjectsReader->new($projectDatabaseModule);
     return $self->{projects_db};
 }
 

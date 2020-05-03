@@ -50,4 +50,17 @@ sub _moduleIsNeeded
     return 1;
 }
 
+# Reimplementation
+sub _isPlausibleExistingRemote
+{
+    my ($self, $name, $url, $configuredUrl)= @_;
+    return $url eq $configuredUrl || $url =~ /^kde:/;
+}
+
+# Reimplementation
+sub isPushUrlManaged
+{
+    return 1;
+}
+
 1;

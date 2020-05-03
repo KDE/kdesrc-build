@@ -230,6 +230,64 @@ sub _moduleIsNeeded
     return 1;
 }
 
+#
+# Determine whether or not _setupRemote should manage the configuration of the git push URL for the repo.
+#
+# Return value: boolean indicating whether or not _setupRemote should assume control over the push URL.
+#
+sub isPushUrlManaged
+{
+    return 0;
+}
+
+#
+# Ensures the given remote is pre-configured for the module's git repository.
+# The remote is either set up from scratch or its URLs are updated.
+#
+# Param $remote name (alias) of the remote to configure
+#
+# Throws an exception on error.
+#
+sub _setupRemote
+{
+    my $self = assert_isa(shift, 'ksb::Updater::Git');
+    my $remote = shift;
+
+    my $module = $self->module();
+    my $repo = $module->getOption('repository');
+    my $hasOldRemote = $self->hasRemote($remote);
+
+    if ($hasOldRemote) {
+        whisper("\tUpdating the URL for git remote $remote of $module ($repo)");
+        if (log_command($module, 'git-fix-remote', ['git', 'remote', 'set-url', $remote, $repo]) != 0) {
+            croak_runtime("Unable to update the URL for git remote $remote of $module ($repo)");
+        }
+    }
+    elsif (log_command($module, 'git-add-remote', ['git', 'remote', 'add', $remote, $repo]) != 0) {
+        whisper("\tAdding new git remote $remote of $module ($repo)");
+        croak_runtime("Unable to add new git remote $remote of $module ($repo)");
+    }
+
+    if ($self->isPushUrlManaged()) {
+        #
+        # pushInsteadOf does not work nicely with git remote set-url --push
+        # The result would be that the pushInsteadOf kde: prefix gets ignored.
+        #
+        # The next best thing is to remove any preconfigured pushurl and restore the kde: prefix mapping that way.
+        # This is effectively the same as updating the push URL directly because of the remote set-url executed
+        # previously by this function for the fetch URL.
+        #
+        chomp (my $existingPushUrl = qx"git config --get remote.$remote.pushurl");
+        if ($existingPushUrl) {
+            info("\tRemoving preconfigured push URL for git remote $remote of $module: $existingPushUrl");
+
+            if (log_command($module, 'git-fix-remote', ['git', 'config', '--unset', "remote.$remote.pushurl"]) != 0) {
+                croak_runtime("Unable to remove preconfigured push URL for git remote $remote of $module: $existingPushUrl");
+            }
+        }
+    }
+}
+
 # Selects a git remote for the user's selected repository (preferring a
 # defined remote if available, using 'origin' otherwise).
 #
@@ -248,29 +306,10 @@ sub _setupBestRemote
     my $ipc      = $self->{ipc} // croak_internal ('Missing IPC object');
 
     # Search for an existing remote name first. If none, add our alias.
-    my @remoteNames = $self->bestRemoteName($cur_repo);
+    my @remoteNames = $self->bestRemoteName();
+    my $chosenRemote = @remoteNames ? $remoteNames[0] : DEFAULT_GIT_REMOTE;
 
-    if (!@remoteNames) {
-        # The desired repo doesn't have a named remote, this should be
-        # because the user switched it in the rc-file. We control the
-        # 'origin' remote to fix this.
-        if ($self->hasRemote(DEFAULT_GIT_REMOTE)) {
-            if (log_command($module, 'git-update-remote',
-                        ['git', 'remote', 'set-url', DEFAULT_GIT_REMOTE, $cur_repo])
-                != 0)
-            {
-                croak_runtime("Unable to update the fetch URL for existing remote alias for $module");
-            }
-        }
-        elsif (log_command($module, 'git-remote-setup',
-                       ['git', 'remote', 'add', DEFAULT_GIT_REMOTE, $cur_repo])
-            != 0)
-        {
-            croak_runtime("Unable to add a git remote named " . DEFAULT_GIT_REMOTE . " for $cur_repo");
-        }
-
-        push @remoteNames, DEFAULT_GIT_REMOTE;
-    }
+    $self->_setupRemote($chosenRemote);
 
     # Make a notice if the repository we're using has moved.
     my $old_repo = $module->getPersistentOption('git-cloned-repository');
@@ -285,7 +324,7 @@ sub _setupBestRemote
             $module->name(), 'git-cloned-repository', $cur_repo);
     }
 
-    return $remoteNames[0];
+    return $chosenRemote;
 }
 
 # Completes the steps needed to update a git checkout to be checked-out to
@@ -641,6 +680,30 @@ sub getRemoteBranchName
     return '';
 }
 
+#
+# Filter for bestRemoteName to determine if a given remote name and url looks
+# like a plausible prior existing remote for a given configured repository URL.
+#
+# Note that the actual repository fetch URL is not necessarily the same as the
+# configured (expected) fetch URL: an upstream might have moved, or kdesrc-build
+# configuration might have been updated to the same effect.
+#
+# Arguments:
+#   - name : name of the remote found
+#   - url : the configured (fetch) URL
+#   - configuredURL : the configured URL for the module (the expected fetch URL).
+#
+# Return value: whether the remote will be conisdered for bestRemoteName
+#
+sub _isPlausibleExistingRemote
+{
+    my $self = assert_isa(shift, 'ksb::Updater::Git');
+    my $name = shift; # not used, subclasses might want to filter on remote name
+    my $url = shift;
+    my $configuredUrl = shift;
+    return $url eq $configuredUrl;
+}
+
 # 99% of the time the 'origin' remote will be what we want anyways, and
 # 0.5% of the rest the user will have manually added a remote, which we
 # should try to utilize when doing checkouts for instance. To aid in this,
@@ -656,7 +719,8 @@ sub getRemoteBranchName
 sub bestRemoteName
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
-    my $repoUrl = shift;
+    my $module = $self->module();
+    my $configuredUrl = $module->getOption('repository');
     my @outputs;
 
     # The Repo URL isn't much good, let's find a remote name to use it with.
@@ -679,10 +743,10 @@ sub bestRemoteName
         my ($remoteName, $url) = split(/\n/, $output);
 
         $remoteName =~ s/^remote\.//;
-        $remoteName =~ s/\.url$//; # Extract the cruft
+        $remoteName =~ s/\.url$//; # remove the cruft
 
         # Skip other remotes
-        next if $url ne $repoUrl;
+        next unless $self->_isPlausibleExistingRemote($remoteName, $url, $configuredUrl);
 
         # Try to avoid "weird" remote names.
         next if $remoteName !~ /^[\w-]*$/;
@@ -787,6 +851,22 @@ sub hasRemote
 # Returns false on failure of any sort, true otherwise.
 sub verifyGitConfig
 {
+    my $contextOptions = shift;
+    my $useInvent = $contextOptions->getOption('x-invent-kde-push-urls');
+    my $protocol = $contextOptions->getOption('git-desired-protocol') || 'git';
+    my $pushUrlPrefix = 'git@git.kde.org:';
+
+    if ($useInvent) {
+        if ($protocol eq 'git' || $protocol eq 'https') {
+            $pushUrlPrefix = $protocol eq 'git' ? 'git@invent.kde.org:' : 'https://invent.kde.org/';
+        }
+        else {
+            error(" b[y[*] Invalid b[git-desired-protocol] $protocol");
+            error(" b[y[*] Try setting this option to 'git' if you're not using a proxy");
+            croak_runtime("Invalid git-desired-protocol: $protocol");
+        }
+    }
+
     my $configOutput =
         qx'git config --global --get url.https://anongit.kde.org/.insteadOf kde:';
 
@@ -819,13 +899,11 @@ sub verifyGitConfig
     }
 
     $configOutput =
-        qx'git config --global --get url.git@git.kde.org:.pushInsteadOf kde:';
+        qx"git config --global --get url.$pushUrlPrefix.pushInsteadOf kde:";
 
     if ($configOutput !~ /^kde:\s*$/) {
         whisper ("\tAdding git upload kde: alias");
-        my $result = safe_system(
-            qw(git config --global --add url.git@git.kde.org:.pushInsteadOf kde:)
-        ) >> 8;
+        my $result = safe_system("git config --global --add url.$pushUrlPrefix.pushInsteadOf kde:") >> 8;
         return 0 if $result != 0;
     }
 
@@ -839,6 +917,19 @@ sub verifyGitConfig
             qw(git config --global --unset-all url.git://anongit.kde.org/.insteadOf kde:)
         ) >> 8;
         return 0 if $result != 0;
+    }
+
+    if ($useInvent) {
+        $configOutput =
+            qx'git config --global --get url.git@git.kde.org:.pushInsteadOf kde:';
+
+        if ($configOutput =~ /^kde:\s*$/) {
+            whisper ("\tRemoving outdated kde: alias");
+            my $result = safe_system(
+                qw(git config --global --unset-all url.git@git.kde.org:.pushInsteadOf kde:)
+            ) >> 8;
+            return 0 if $result != 0;
+        }
     }
 
     return 1;
