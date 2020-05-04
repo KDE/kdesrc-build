@@ -82,17 +82,25 @@ sub _readYAML
 
     if (!$proj_data->{repoactive} ||
         !$proj_data->{hasrepo} ||
-        ($proj_data->{type} ne 'project' && $proj_data->{type} ne 'module'))
+        #
+        # previously there used to be a check on 'type' which
+        # only caught two specific cases: everything else was
+        # already covered by the hasrepo/repoactive checks.
+        #
+        # replace the type assertion with a specific check on the
+        # projects that would otherwise have been ignored
+        #
+        ($proj_data->{projectpath} eq 'kde-build-metadata' || $proj_data->{projectpath} eq 'repo-management'))
     {
         return;
     };
 
-    my $repoName = $proj_data->{repopath};
-    my $repoPath = "kde:$repoName";
+    my $repoPath = $proj_data->{repopath};
+    my $repoName = $proj_data->{identifier} // $repoPath;
 
     my $curRepository = {
         'fullName' => $proj_data->{projectpath},
-        'repo' => $repoPath,
+        'repo' => "kde:$repoPath",
         'name' => $repoName,
         'active' => !!$proj_data->{repoactive},
         'found_by' => 'direct', # can be changed in getModulesForProject
