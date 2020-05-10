@@ -880,7 +880,7 @@ sub finish
     $ctx->storePersistentOptions();
 
     my $logdir = $ctx->getLogDir();
-    note ("Your logs are saved in y[$logdir]");
+    note ("Your logs are saved in file://y[$logdir]");
 
     exit $exitcode;
 }
