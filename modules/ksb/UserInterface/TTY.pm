@@ -233,7 +233,7 @@ sub _runModeBuild
         $event_stream->close();
 
         my $logdir = $ctx->getLogDir();
-        note ("Your logs are saved in y[$logdir]");
+        note ("Your logs are saved in file://y[$logdir]");
     });
 }
 
