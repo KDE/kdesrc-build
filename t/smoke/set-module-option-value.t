@@ -19,18 +19,20 @@ my @moduleList = $app->modules();
 
 is(scalar @moduleList, 4, 'Right number of modules');
 
-my $scm = $moduleList[0]->scm();
+my ($module) = grep { "$_" eq 'module2' } @moduleList;
+my $scm = $module->scm();
 my ($branch, $type) = $scm->_determinePreferredCheckoutSource();
 
 is($branch, 'refs/tags/fake-tag10', 'Right tag name');
 is($type, 'tag', 'Result came back as a tag');
 
-($branch, $type) = $moduleList[2]->scm()->_determinePreferredCheckoutSource();
+($module) = grep { "$_" eq 'setmod2' } @moduleList;
+($branch, $type) = $module->scm()->_determinePreferredCheckoutSource();
 
 is($branch, 'refs/tags/tag-setmod10', 'Right tag name (options block from cmdline)');
 is($type, 'tag', 'cmdline options block came back as tag');
 
-ok(!$moduleList[2]->isKDEProject(), 'setmod2 is *not* a "KDE" project');
-is($moduleList[2]->fullProjectPath(), 'setmod2', 'fullProjectPath on non-KDE modules returns name');
+ok(!$module->isKDEProject(), 'setmod2 is *not* a "KDE" project');
+is($module->fullProjectPath(), 'setmod2', 'fullProjectPath on non-KDE modules returns name');
 
 done_testing();

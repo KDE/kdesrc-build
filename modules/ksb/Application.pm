@@ -458,7 +458,7 @@ sub establishContext
     if (!exists $ENV{HARNESS_ACTIVE} && !$self->{run_mode} eq 'headless') {
         # In some modes (testing, acting as headless backend), we should avoid
         # downloading metadata automatically, so don't.
-        ksb::Updater::Git::verifyGitConfig();
+        ksb::Updater::Git::verifyGitConfig($ctx);
         $self->_downloadKDEProjectMetadata();
     }
 
@@ -1103,6 +1103,7 @@ sub _readConfigurationOptions
     }
 
     my $using_default = 1;
+    my $creation_order = 0;
     my %seenModules; # NOTE! *not* module-sets, *just* modules.
     my %seenModuleSets; # and vice versa -- named sets only though!
     my %seenModuleSetItems; # To track option override modules.
@@ -1146,6 +1147,7 @@ sub _readConfigurationOptions
             # A moduleset can give us more than one module to add.
             $newModule = _parseModuleSetOptions($ctx, $fileReader,
                 ksb::ModuleSet->new($ctx, $modulename || "<module-set at line $.>"));
+            $newModule->{'#create-id'} = ++$creation_order;
 
             # Save 'use-modules' entries so we can see if later module decls
             # are overriding/overlaying their options.
@@ -1177,6 +1179,7 @@ sub _readConfigurationOptions
         else {
             $newModule = _parseModuleOptions($ctx, $fileReader,
                 ksb::Module->new($ctx, $modulename));
+            $newModule->{'#create-id'} = ++$creation_order;
             $seenModules{$modulename} = $newModule;
         }
 
@@ -2335,7 +2338,7 @@ sub _showHelpMessage
     my $scriptVersion = scriptVersion();
     say <<DONE;
 kdesrc-build $scriptVersion
-Copyright (c) 2003 - 2019 Michael Pyne <mpyne\@kde.org> and others, and is
+Copyright (c) 2003 - 2020 Michael Pyne <mpyne\@kde.org> and others, and is
 distributed under the terms of the GNU GPL v2.
 
 This script automates the download, build, and install process for KDE software

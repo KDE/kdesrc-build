@@ -101,6 +101,77 @@ sub _findGeneratorInCMakeOptions
     return '';
 }
 
+sub _checkToolchainOk
+{
+    my $toolchain = shift;
+    return $toolchain ne '' && -f $toolchain && -r $toolchain;
+}
+
+sub _stripToolchainFromCMakeOptions
+{
+    my @filtered = grep {
+        my $accept = 1;
+        my $maybeToolchain = $_;
+        if ($maybeToolchain =~ /^-DCMAKE_TOOLCHAIN_FILE=(\S*(\s*\S)*)\s*/) {
+            $accept = 0;
+        }
+
+        $accept == 1;
+    } (@_);
+    return @filtered;
+}
+
+sub _findToolchainInCMakeOptions
+{
+    my $found = first {
+        my $accept = 0;
+        my $maybeToolchain = $_;
+        if ($maybeToolchain =~ /^-DCMAKE_TOOLCHAIN_FILE=(\S*(\s*\S)*)\s*/) {
+            my $file = $1 // '';
+            $accept = 1 if (_checkToolchainOk($file));
+        }
+
+        $accept == 1;
+    } (@_);
+
+    if ($found && $found =~ /^-DCMAKE_TOOLCHAIN_FILE=(\S*(\s*\S)*)\s*/) {
+        $found = $1 // '';
+        return $found if (_checkToolchainOk($found));
+    }
+
+    return '';
+}
+
+sub _determineCmakeToolchain
+{
+    my $self = shift;
+
+    my $module = $self->module();
+    my @cmakeOptions = split_quoted_on_whitespace ($module->getOption('cmake-options'));
+
+    my $toolchain = first { _checkToolchainOk($_); } (
+        _findToolchainInCMakeOptions(@cmakeOptions),
+        $module->getOption('cmake-toolchain')
+    );
+
+    return $toolchain // '';
+}
+
+sub cmakeToolchain
+{
+    my $self = shift;
+    if (not (exists $self->{cmake_toolchain})) {
+        $self->{cmake_toolchain} = $self->_determineCmakeToolchain();
+    }
+    return $self->{cmake_toolchain};
+}
+
+sub hasToolchain
+{
+    my $self = shift;
+    return $self->cmakeToolchain() ne '';
+}
+
 sub _determineCmakeGenerator
 {
     my $self = shift;
@@ -127,7 +198,6 @@ sub cmakeGenerator
     return $self->{cmake_generator};
 }
 
-
 sub needsInstalled
 {
     my $self = shift;
@@ -147,6 +217,12 @@ sub name
 sub prepareModuleBuildEnvironment
 {
     my ($self, $ctx, $module, $prefix) = @_;
+
+    #
+    # Suppress injecting qtdir/kdedir related environment variables if a toolchain is also set
+    # Let the toolchain files/definitions take care of themselves.
+    #
+    return if $self->hasToolchain();
 
     # Avoid moving /usr up in env vars
     if ($prefix ne '/usr') {
@@ -300,12 +376,16 @@ sub _safe_run_cmake
     my $self = shift;
     my $module = $self->module();
     my $generator = $self->cmakeGenerator();
+    my $toolchain = $self->cmakeToolchain();
     my $srcdir = $module->fullpath('source');
     my @commands = split_quoted_on_whitespace ($module->getOption('cmake-options'));
 
     # grep out empty fields
     @commands = grep {!/^\s*$/} @commands;
     @commands = _stripGeneratorFromCMakeOptions(@commands);
+    @commands = _stripToolchainFromCMakeOptions(@commands);
+
+    unshift @commands, "-DCMAKE_TOOLCHAIN_FILE=$toolchain" if $toolchain ne '';
 
     # Add -DBUILD_foo=OFF options for the directories in do-not-compile.
     # This will only work if the CMakeLists.txt file uses macro_optional_add_subdirectory()

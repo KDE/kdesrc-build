@@ -150,14 +150,10 @@ sub _expandModuleCandidates
 
     foreach (@activeResults) {
         my $result = $_;
-        my $repo = $result->{'repo'};
-
-        # Prefer kde: alias to normal clone URL.
-        $repo =~ s(^(git|https)://anongit\.kde\.org/)(kde:);
 
         my $newModule = ksb::Module->new($ctx, $result->{'name'});
         $self->_initializeNewModule($newModule);
-        $newModule->setOption('repository', $repo);
+        $newModule->setOption('repository', $result->{'repo'});
         $newModule->setOption('#xml-full-path', $result->{'fullName'});
         $newModule->setOption('#branch:stable', undef);
         $newModule->setOption('#found-by', $result->{found_by});

@@ -40,20 +40,16 @@ sub _verifyYAMLModuleLoaded
 #
 # Parameters:
 #  $projectMetadataModule - ksb::Module reference to the repo-metadata module.
-#  $desiredProtocol - Normally 'git', but other protocols like 'http' can also
-#   be preferred (e.g. for proxy compliance).
 sub new
 {
     my $class = shift;
     my $projectMetadataModule = shift;
-    my $desiredProtocol = shift;
 
     _verifyYAMLModuleLoaded();
 
     my $self = {
         # Maps short names to repo info blocks
-        repositories => { },
-        protocol     => $desiredProtocol,
+        repositories => { }
     };
 
     $self = bless ($self, $class);
@@ -86,17 +82,25 @@ sub _readYAML
 
     if (!$proj_data->{repoactive} ||
         !$proj_data->{hasrepo} ||
-        ($proj_data->{type} ne 'project' && $proj_data->{type} ne 'module'))
+        #
+        # previously there used to be a check on 'type' which
+        # only caught two specific cases: everything else was
+        # already covered by the hasrepo/repoactive checks.
+        #
+        # replace the type assertion with a specific check on the
+        # projects that would otherwise have been ignored
+        #
+        ($proj_data->{projectpath} eq 'kde-build-metadata' || $proj_data->{projectpath} eq 'repo-management'))
     {
         return;
     };
 
-    my $repoName = $proj_data->{repopath};
-    my $repoPath = $self->{protocol} . "://anongit.kde.org/$repoName";
+    my $repoPath = $proj_data->{repopath};
+    my $repoName = $proj_data->{identifier} // $repoPath;
 
     my $curRepository = {
         'fullName' => $proj_data->{projectpath},
-        'repo' => $repoPath,
+        'repo' => "kde:$repoPath",
         'name' => $repoName,
         'active' => !!$proj_data->{repoactive},
         'found_by' => 'direct', # can be changed in getModulesForProject

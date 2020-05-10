@@ -51,6 +51,22 @@ sub _maskGlobalBuildSystemOptions
     }
 }
 
+#
+# Check if a (custom) toolchain is defined.
+# If a build system is configured with a (custom) toolchain, it is assumed that
+#
+#  a: the user knows what they are doing, or
+#  b: they are using an SDK that knows what it is about
+#
+# In either case, kdesrc-build will avoid touching the environment variables to
+# give the custom configuration maximum 'power' (including foot shooting power).
+#
+sub hasToolchain
+{
+    my $self = shift;
+    return 0;
+}
+
 sub module
 {
     my $self = shift;
@@ -85,7 +101,7 @@ sub needsRefreshed
 
 # Called by the module being built before it runs its build/install process. Should
 # setup any needed environment variables, build context settings, etc., in preparation
-# for the build and install phases.
+# for the build and install phases. Should take `hasToolchain()` into account here.
 sub prepareModuleBuildEnvironment
 {
     my ($self, $ctx, $module, $prefix) = @_;

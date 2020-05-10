@@ -685,14 +685,17 @@ sub _compareBuildOrder
 {
     my ($moduleGraph, $a, $b) = @_;
 
+    my $aVotes = $moduleGraph->{$a}->{votes};
+    my $bVotes = $moduleGraph->{$b}->{votes};
+
     #
     # Enforce a strict dependency ordering.
     # The case where both are true should never happen, since that would
     # amount to a cycle, and cycle detection is supposed to have been
     # performed beforehand.
     #
-    my $bDependsOnA = $moduleGraph->{$a}->{votes}->{$b} // 0;
-    my $aDependsOnB = $moduleGraph->{$b}->{votes}->{$a} // 0;
+    my $bDependsOnA = $aVotes->{$b} // 0;
+    my $aDependsOnB = $bVotes->{$a} // 0;
     my $order = $bDependsOnA ? -1 : ($aDependsOnB ? 1 : 0);
 
     return $order if $order;
@@ -703,22 +706,26 @@ sub _compareBuildOrder
     # so it is probably a good idea to build that one earlier to help
     # maximise the duration of time for which builds can be run in parallel
     #
-    my $voteA = scalar keys %{$moduleGraph->{$a}->{votes}};
-    my $voteB = scalar keys %{$moduleGraph->{$b}->{votes}};
-    my $votes = $voteB <=> $voteA;
+    my $votes = scalar keys %$bVotes <=> scalar keys %$aVotes;
 
     return $votes if $votes;
 
     #
     # If there is no good reason to perfer one module over another,
-    # simply sort by name to get a reproducible build order.
-    # That simplifies autotesting and/or reproducible builds.
-    # (The items to sort are supplied as a hash so the order of keys is by
-    # definition not guaranteed.)
+    # simply sort by the order contained within the configuration file (if
+    # present), which would be setup as the rc-file is read.
     #
-    my $name = ($a cmp $b);
+    my $aRcOrder = $moduleGraph->{$a}->{module}->{'#create-id'} // 0 ;
+    my $bRcOrder = $moduleGraph->{$b}->{module}->{'#create-id'} // 0 ;
+    my $configOrder = $aRcOrder <=> $bRcOrder;
 
-    return $name;
+    return $configOrder if $configOrder;
+
+    #
+    # If the rc-file is not present then sort by name to ensure a reproducible
+    # build order that isn't influenced by randomization of the runtime.
+    #
+    return $a cmp $b;
 }
 
 sub sortModulesIntoBuildOrder

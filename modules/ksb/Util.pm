@@ -659,21 +659,18 @@ sub isInPath
     }
 }
 
-# Takes in a string and returns 1 if that string exists as a line in the 
-# ~/.bashrc file.
+# Takes in a string and returns 1 if that string exists as a line in the given file.
 sub fileHasLine
-{   
-    my $found = 0;
-    open(my $bashrc, '<', $_[0]) or _croak_runtime("Couldn't open ~/.bashrc: $!");
-    
-    while (my $line = <$bashrc>) {
-        if (index($line, $_[1]) == 0){
-            return 1;
-        }
+{
+    my ($file, $tag) = @_;
+    open(my $fh, '<', $file) or croak_runtime("Couldn't open $file: $!");
+
+    while (my $line = <$fh>) {
+        chomp $line;
+        return 1 if $line eq $tag;
     }
-    
+
     return 0;
 }
 
 1;
-
