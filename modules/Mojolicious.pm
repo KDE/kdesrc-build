@@ -59,7 +59,7 @@ has ua        => sub { Mojo::UserAgent->new };
 has validator => sub { Mojolicious::Validator->new };
 
 our $CODENAME = 'Supervillain';
-our $VERSION  = '8.30';
+our $VERSION  = '8.42';
 
 sub BUILD_DYNAMIC {
   my ($class, $method, $dyn_methods) = @_;
@@ -893,6 +893,8 @@ Current voting members of the core team in alphabetical order:
 
 CandyAngel, C<candyangel@mojolicious.org>
 
+Christopher Rasch-Olsen Raa, C<christopher@mojolicious.org>
+
 Dan Book, C<grinnz@mojolicious.org>
 
 Jan Henning Thorsen, C<batman@mojolicious.org>
@@ -908,8 +910,6 @@ The following members of the core team are currently on hiatus:
 =over 2
 
 Abhijit Menon-Sen, C<ams@cpan.org>
-
-Christopher Rasch-Olsen Raa, C<christopher@mojolicious.org>
 
 Glen Hinkle, C<tempire@cpan.org>
 
@@ -1067,6 +1067,10 @@ Jonathan Yu
 
 Josh Leder
 
+Kamen Naydenov
+
+Karen Etheridge
+
 Kazuhiro Shibuya
 
 Kevin Old
@@ -1092,6 +1096,8 @@ Mark Fowler
 Mark Grimes
 
 Mark Stosberg
+
+Martin McGrath
 
 Marty Tennison
 

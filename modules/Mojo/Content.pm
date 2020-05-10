@@ -1,10 +1,10 @@
 package Mojo::Content;
 use Mojo::Base 'Mojo::EventEmitter';
 
-use Carp 'croak';
+use Carp qw(croak);
 use Compress::Raw::Zlib qw(WANT_GZIP Z_STREAM_END);
 use Mojo::Headers;
-use Scalar::Util 'looks_like_number';
+use Scalar::Util qw(looks_like_number);
 
 has [qw(auto_decompress auto_relax relaxed skip_body)];
 has headers           => sub { Mojo::Headers->new };
@@ -40,7 +40,7 @@ sub generate_body_chunk {
 
   $self->emit(drain => $offset) unless length($self->{body_buffer} //= '');
   return delete $self->{body_buffer} if length $self->{body_buffer};
-  return '' if $self->{eof};
+  return ''                          if $self->{eof};
 
   my $len = $self->headers->content_length;
   return looks_like_number $len && $len == $offset ? '' : undef;

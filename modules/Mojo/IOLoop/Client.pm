@@ -1,12 +1,12 @@
 package Mojo::IOLoop::Client;
 use Mojo::Base 'Mojo::EventEmitter';
 
-use Errno 'EINPROGRESS';
+use Errno qw(EINPROGRESS);
 use IO::Socket::IP;
 use IO::Socket::UNIX;
 use Mojo::IOLoop;
 use Mojo::IOLoop::TLS;
-use Scalar::Util 'weaken';
+use Scalar::Util qw(weaken);
 use Socket qw(IPPROTO_TCP SOCK_STREAM TCP_NODELAY);
 
 # Non-blocking name resolution requires Net::DNS::Native
@@ -77,7 +77,7 @@ sub _connect {
   my $handle = $self->{handle} = $args->{handle};
 
   unless ($handle) {
-    my $class = $path ? 'IO::Socket::UNIX' : 'IO::Socket::IP';
+    my $class   = $path ? 'IO::Socket::UNIX' : 'IO::Socket::IP';
     my %options = (Blocking => 0);
 
     # UNIX domain socket

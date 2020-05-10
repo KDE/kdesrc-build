@@ -40,7 +40,7 @@ sub cookie {
 
     # Cookie too big
     my $cookie = {name => $name, value => shift, %{shift || {}}};
-    $self->helpers->log->error(qq{Cookie "$name" is bigger than 4096 bytes})
+    $self->helpers->log->error(qq{Cookie "$name" is bigger than 4KiB})
       if length $cookie->{value} > 4096;
 
     $self->res->cookies($cookie);
@@ -147,7 +147,7 @@ sub render {
   local $stash->{extends} = $stash->{extends} if exists $stash->{extends};
 
   # Rendering to string
-  local @{$stash}{keys %$args} if $ts || $maybe;
+  local @{$stash}{keys %$args}         if $ts || $maybe;
   delete @{$stash}{qw(layout extends)} if $ts;
 
   # All other arguments just become part of the stash
@@ -549,7 +549,7 @@ L</"stash">.
   $c->stash(text => 'I ♥ Mojolicious!')->render;
 
   # Render binary data
-  use Mojo::JSON 'encode_json';
+  use Mojo::JSON qw(encode_json);
   $c->render(data => encode_json({test => 'I ♥ Mojolicious!'}));
 
   # Render JSON
@@ -689,11 +689,11 @@ establish the WebSocket connection.
   $c->send({json => {test => 'I ♥ Mojolicious!'}});
 
   # Send JSON object as "Binary" message
-  use Mojo::JSON 'encode_json';
+  use Mojo::JSON qw(encode_json);
   $c->send({binary => encode_json({test => 'I ♥ Mojolicious!'})});
 
   # Send "Ping" frame
-  use Mojo::WebSocket 'WS_PING';
+  use Mojo::WebSocket qw(WS_PING);
   $c->send([1, 0, 0, 0, WS_PING, 'Hello World!']);
 
   # Make sure the first message has been written before continuing
@@ -704,7 +704,7 @@ establish the WebSocket connection.
 
 For mostly idle WebSockets you might also want to increase the inactivity
 timeout with L<Mojolicious::Plugin::DefaultHelpers/"inactivity_timeout">, which
-usually defaults to C<15> seconds.
+usually defaults to C<30> seconds.
 
   # Increase inactivity timeout for connection to 300 seconds
   $c->inactivity_timeout(300);
@@ -860,7 +860,7 @@ the stream.
 
 For Comet (long polling) you might also want to increase the inactivity timeout
 with L<Mojolicious::Plugin::DefaultHelpers/"inactivity_timeout">, which usually
-defaults to C<15> seconds.
+defaults to C<30> seconds.
 
   # Increase inactivity timeout for connection to 300 seconds
   $c->inactivity_timeout(300);

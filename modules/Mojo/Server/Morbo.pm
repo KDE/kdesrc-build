@@ -4,9 +4,9 @@ use Mojo::Base -base;
 # "Linda: With Haley's Comet out of ice, Earth is experiencing the devastating
 #         effects of sudden, intense global warming.
 #  Morbo: Morbo is pleased but sticky."
-use Mojo::Loader 'load_class';
+use Mojo::Loader qw(load_class);
 use Mojo::Server::Daemon;
-use POSIX 'WNOHANG';
+use POSIX qw(WNOHANG);
 
 has backend => sub {
   my $backend = $ENV{MOJO_MORBO_BACKEND} || 'Poll';
@@ -100,7 +100,7 @@ To start applications with it you can use the L<morbo> script.
   Server available at http://127.0.0.1:3000
 
 For better scalability (epoll, kqueue) and to provide non-blocking name
-resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.0+),
+resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.32+),
 L<Net::DNS::Native> (0.15+), L<IO::Socket::Socks> (0.64+) and
 L<IO::Socket::SSL> (2.009+) will be used automatically if possible. Individual
 features can also be disabled with the C<MOJO_NO_NNR>, C<MOJO_NO_SOCKS> and

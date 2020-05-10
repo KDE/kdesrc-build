@@ -1,6 +1,7 @@
 package Mojo::Message::Request;
 use Mojo::Base 'Mojo::Message';
 
+use Digest::SHA qw(sha1_base64);
 use Mojo::Cookie::Request;
 use Mojo::Util qw(b64_encode b64_decode sha1_sum);
 use Mojo::URL;
@@ -11,7 +12,10 @@ has env    => sub { {} };
 has method => 'GET';
 has [qw(proxy reverse_proxy)];
 has request_id => sub {
-  substr sha1_sum($SEED . ($COUNTER = ($COUNTER + 1) % 0xffffff)), 0, 8;
+  my $b64
+    = substr(sha1_base64($SEED . ($COUNTER = ($COUNTER + 1) % 0xffffff)), 0, 8);
+  $b64 =~ tr!+/!-_!;
+  return $b64;
 };
 has url       => sub { Mojo::URL->new };
 has via_proxy => 1;
@@ -61,7 +65,7 @@ sub extract_start_line {
     unless $1 =~ /^(\S+)\s+(\S+)\s+HTTP\/(\d\.\d)$/;
   my $url    = $self->method($1)->version($3)->url;
   my $target = $2;
-  return !!$url->host_port($target) if $1 eq 'CONNECT';
+  return !!$url->host_port($target)              if $1 eq 'CONNECT';
   return !!$url->parse($target)->fragment(undef) if $target =~ /^[^:\/?#]+:/;
   return !!$url->path_query($target);
 }

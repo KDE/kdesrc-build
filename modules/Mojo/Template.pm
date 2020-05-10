@@ -1,10 +1,10 @@
 package Mojo::Template;
 use Mojo::Base -base;
 
-use Carp 'croak';
+use Carp qw(croak);
 use Mojo::ByteStream;
 use Mojo::Exception;
-use Mojo::File 'path';
+use Mojo::File qw(path);
 use Mojo::Util qw(decode encode monkey_patch);
 
 use constant DEBUG => $ENV{MOJO_TEMPLATE_DEBUG} || 0;
@@ -17,12 +17,12 @@ has comment_mark  => '#';
 has encoding      => 'UTF-8';
 has escape        => sub { \&Mojo::Util::xml_escape };
 has [qw(escape_mark expression_mark trim_mark)] => '=';
-has [qw(line_start replace_mark)] => '%';
-has name      => 'template';
-has namespace => 'Mojo::Template::SandBox';
-has tag_start => '<%';
-has tag_end   => '%>';
-has tree      => sub { [] };
+has [qw(line_start replace_mark)]               => '%';
+has name                                        => 'template';
+has namespace                                   => 'Mojo::Template::SandBox';
+has tag_start                                   => '<%';
+has tag_end                                     => '%>';
+has tree                                        => sub { [] };
 
 sub parse {
   my ($self, $template) = @_;
@@ -193,7 +193,7 @@ sub _compile {
     # Text (quote and fix line ending)
     if ($op eq 'text') {
       $value = join "\n", map { quotemeta $_ } split("\n", $value, -1);
-      $value .= '\n' if $newline;
+      $value      .= '\n'                          if $newline;
       $blocks[-1] .= "\$_O .= \"" . $value . "\";" if length $value;
     }
 
@@ -352,7 +352,7 @@ the default in L<Mojolicious> C<.ep> templates, for example.
 
 L<Mojo::ByteStream> objects are always excluded from automatic escaping.
 
-  % use Mojo::ByteStream 'b';
+  % use Mojo::ByteStream qw(b);
   <%= b('<div>excluded!</div>') %>
 
 Whitespace characters around tags can be trimmed by adding an additional equal

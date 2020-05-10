@@ -1,7 +1,7 @@
 package Mojolicious::Command::get;
 use Mojo::Base 'Mojolicious::Command';
 
-use Mojo::Collection 'c';
+use Mojo::Collection qw(c);
 use Mojo::DOM;
 use Mojo::IOLoop;
 use Mojo::JSON qw(to_json j);
@@ -9,7 +9,7 @@ use Mojo::JSON::Pointer;
 use Mojo::URL;
 use Mojo::UserAgent;
 use Mojo::Util qw(decode encode getopt);
-use Scalar::Util 'weaken';
+use Scalar::Util qw(weaken);
 
 has description => 'Perform HTTP request';
 has usage       => sub { shift->extract_usage };
@@ -171,7 +171,7 @@ Mojolicious::Command::get - Get command
                                          application, defaults to the value of
                                          MOJO_HOME or auto-detection
     -i, --inactivity-timeout <seconds>   Inactivity timeout, defaults to the
-                                         value of MOJO_INACTIVITY_TIMEOUT or 20
+                                         value of MOJO_INACTIVITY_TIMEOUT or 40
     -k, --insecure                       Do not require a valid TLS certificate
                                          to access HTTPS sites
     -M, --method <method>                HTTP method to use, defaults to "GET"

@@ -4,8 +4,8 @@ use Mojo::Base -base;
 use Mojo::Cache;
 use Mojo::DynamicMethods;
 use Mojo::File qw(curfile path);
-use Mojo::JSON 'encode_json';
-use Mojo::Loader 'data_section';
+use Mojo::JSON qw(encode_json);
+use Mojo::Loader qw(data_section);
 use Mojo::Util qw(decamelize encode gzip md5_sum monkey_patch);
 
 has cache   => sub { Mojo::Cache->new };
@@ -286,8 +286,7 @@ application startup.
   $renderer = $renderer->compress($bool);
 
 Try to negotiate compression for dynamically generated response content and
-C<gzip> compress it automatically, defaults to false. Note that this attribute
-is B<EXPERIMENTAL> and might change without warning!
+C<gzip> compress it automatically, defaults to false.
 
 =head2 default_format
 
@@ -335,8 +334,7 @@ Registered helpers.
   $renderer = $renderer->min_compress_size(1024);
 
 Minimum output size in bytes required for compression to be used if enabled,
-defaults to C<860>. Note that this attribute is B<EXPERIMENTAL> and might change
-without warning!
+defaults to C<860>.
 
 =head2 paths
 
@@ -427,8 +425,7 @@ L<Mojolicious::Controller/"render"> for a more user-friendly interface.
     Mojolicious::Controller->new, $output, $format, $status);
 
 Finalize dynamically generated response content and L</"compress"> it if
-possible. Note that this method is B<EXPERIMENTAL> and might change without
-warning!
+possible.
 
 =head2 template_for
 

@@ -1,8 +1,8 @@
 package Mojo::Headers;
 use Mojo::Base -base;
 
-use Carp 'croak';
-use Mojo::Util 'monkey_patch';
+use Carp qw(croak);
+use Mojo::Util qw(monkey_patch);
 
 has max_line_size => sub { $ENV{MOJO_MAX_LINE_SIZE} || 8192 };
 has max_lines     => sub { $ENV{MOJO_MAX_LINES}     || 100 };
@@ -409,10 +409,9 @@ Get or replace current header value, shortcut for the C<Date> header.
 
 =head2 dehop
 
-  $heders = $headers->dehop;
+  $headers = $headers->dehop;
 
-Remove hop-by-hop headers that should not be retransmitted. Note that this
-method is B<EXPERIMENTAL> and might change without warning!
+Remove hop-by-hop headers that should not be retransmitted.
 
 =head2 dnt
 

@@ -2,9 +2,9 @@ package Mojolicious::Lite;
 use Mojo::Base 'Mojolicious';
 
 # "Bender: Bite my shiny metal ass!"
-use Mojo::File 'path';
+use Mojo::File qw(path);
 use Mojo::UserAgent::Server;
-use Mojo::Util 'monkey_patch';
+use Mojo::Util qw(monkey_patch);
 
 sub import {
 
@@ -22,7 +22,7 @@ sub import {
 
   # Generate moniker based on filename
   my $moniker = path($ENV{MOJO_EXE})->basename('.pl', '.pm', '.t');
-  my $app = shift->new(moniker => $moniker);
+  my $app     = shift->new(moniker => $moniker);
 
   # Initialize routes without namespaces
   my $routes = $app->routes->namespaces([]);

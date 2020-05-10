@@ -1,7 +1,7 @@
 package Mojo::DOM::CSS;
 use Mojo::Base -base;
 
-use Mojo::Util 'trim';
+use Mojo::Util qw(trim);
 
 has 'tree';
 
@@ -12,7 +12,7 @@ my $ATTR_RE   = qr/
   (?:
     (\W)?=                                              # Operator
     (?:"((?:\\"|[^"])*)"|'((?:\\'|[^'])*)'|([^\]]+?))   # Value
-    (?:\s+(i))?                                         # Case-sensitivity
+    (?:\s+(?:(i|I)|s|S))?                               # Case-sensitivity
   )?
   \]
 /x;
@@ -102,8 +102,8 @@ sub _compile {
     elsif ($css =~ /\G:([\w\-]+)(?:\(((?:\([^)]+\)|[^)])+)\))?/gcs) {
       my ($name, $args) = (lc $1, $2);
 
-      # ":matches" and ":not" (contains more selectors)
-      $args = _compile($args, %ns) if $name eq 'matches' || $name eq 'not';
+      # ":is" and ":not" (contains more selectors)
+      $args = _compile($args, %ns) if $name eq 'is' || $name eq 'not';
 
       # ":nth-*" (with An+B notation)
       $args = _equation($args) if $name =~ /^nth-/;
@@ -163,7 +163,7 @@ sub _namespace {
 
   my $attr = $current->[1] =~ /^([^:]+):/ ? "xmlns:$1" : 'xmlns';
   while ($current) {
-    last if $current->[0] eq 'root';
+    last                               if $current->[0] eq 'root';
     return $current->[2]{$attr} eq $ns if exists $current->[2]{$attr};
 
     $current = $current->[3];
@@ -183,8 +183,8 @@ sub _pc {
   # ":not"
   return !_match($args, $current, $current) if $class eq 'not';
 
-  # ":matches"
-  return !!_match($args, $current, $current) if $class eq 'matches';
+  # ":is"
+  return !!_match($args, $current, $current) if $class eq 'is';
 
   # ":empty"
   return !grep { !_empty($_) } @$current[4 .. $#$current] if $class eq 'empty';
@@ -192,8 +192,8 @@ sub _pc {
   # ":root"
   return $current->[3] && $current->[3][0] eq 'root' if $class eq 'root';
 
-  # ":link" and ":visited"
-  if ($class eq 'link' || $class eq 'visited') {
+  # ":any-link", ":link" and ":visited"
+  if ($class eq 'any-link' || $class eq 'link' || $class eq 'visited') {
     return undef unless $current->[0] eq 'tag' && exists $current->[2]{href};
     return !!grep { $current->[1] eq $_ } qw(a area link);
   }
@@ -397,6 +397,18 @@ This selector is part of
 L<Selectors Level 4|http://dev.w3.org/csswg/selectors-4>, which is still a work
 in progress.
 
+=head2 E[foo="bar" s]
+
+An C<E> element whose C<foo> attribute value is exactly and case-sensitively
+equal to C<bar>. Note that this selector is B<EXPERIMENTAL> and might change
+without warning!
+
+  my $case_sensitive = $css->select('input[type="hidden" s]');
+
+This selector is part of
+L<Selectors Level 4|http://dev.w3.org/csswg/selectors-4>, which is still a work
+in progress.
+
 =head2 E[foo~="bar"]
 
 An C<E> element whose C<foo> attribute value is a list of whitespace-separated
@@ -519,13 +531,21 @@ An C<E> element that has no children (including text nodes).
 
   my $empty = $css->select(':empty');
 
+=head2 E:any-link
+
+Alias for L</"E:link">. Note that this selector is B<EXPERIMENTAL> and might
+change without warning! This selector is part of
+L<Selectors Level 4|http://dev.w3.org/csswg/selectors-4>, which is still a work
+in progress.
+
 =head2 E:link
 
 An C<E> element being the source anchor of a hyperlink of which the target is
 not yet visited (C<:link>) or already visited (C<:visited>). Note that
-L<Mojo::DOM::CSS> is not stateful, therefore C<:link> and C<:visited> yield
-exactly the same results.
+L<Mojo::DOM::CSS> is not stateful, therefore C<:any-link>, C<:link> and
+C<:visited> yield exactly the same results.
 
+  my $links = $css->select(':any-link');
   my $links = $css->select(':link');
   my $links = $css->select(':visited');
 
@@ -564,13 +584,13 @@ Support for compound selectors was added as part of
 L<Selectors Level 4|http://dev.w3.org/csswg/selectors-4>, which is still a work
 in progress.
 
-=head2 E:matches(s1, s2)
+=head2 E:is(s1, s2)
 
 An C<E> element that matches compound selector C<s1> and/or compound selector
 C<s2>. Note that this selector is B<EXPERIMENTAL> and might change without
 warning!
 
-  my $headers = $css->select(':matches(section, article, aside, nav) h1');
+  my $headers = $css->select(':is(section, article, aside, nav) h1');
 
 This selector is part of
 L<Selectors Level 4|http://dev.w3.org/csswg/selectors-4>, which is still a work

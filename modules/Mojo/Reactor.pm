@@ -1,9 +1,9 @@
 package Mojo::Reactor;
 use Mojo::Base 'Mojo::EventEmitter';
 
-use Carp 'croak';
+use Carp qw(croak);
 use Config;
-use Mojo::Loader 'load_class';
+use Mojo::Loader qw(load_class);
 
 my %DETECTED;
 
@@ -11,7 +11,7 @@ sub again { croak 'Method "again" not implemented by subclass' }
 
 sub detect {
   my $default = 'Mojo::Reactor::' . ($Config{d_pseudofork} ? 'Poll' : 'EV');
-  my $try = $ENV{MOJO_REACTOR} || $default;
+  my $try     = $ENV{MOJO_REACTOR} || $default;
   return $DETECTED{$try} ||= load_class($try) ? 'Mojo::Reactor::Poll' : $try;
 }
 
@@ -87,9 +87,10 @@ the following new ones.
 =head2 again
 
   $reactor->again($id);
+  $reactor->again($id, 0.5);
 
-Restart timer. Meant to be overloaded in a subclass. Note that this method
-requires an active timer.
+Restart timer and optionally change the invocation time. Meant to be overloaded
+in a subclass. Note that this method requires an active timer.
 
 =head2 detect
 

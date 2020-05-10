@@ -75,7 +75,7 @@ sub optional {
     @input = map { $self->$cb($name, $_) } @input;
   }
   $self->output->{$name} = ref $input eq 'ARRAY' ? \@input : $input[0]
-    if @input && !grep { !length } @input;
+    if @input && !grep { !defined } @input;
 
   return $self->topic($name);
 }
@@ -231,7 +231,7 @@ the current L</"topic">.
 =head2 optional
 
   $v = $v->optional('foo');
-  $v = $v->optional('foo', 'filter1', 'filter2');
+  $v = $v->optional('foo', @filters);
 
 Change validation L</"topic"> and apply filters. All filters from
 L<Mojolicious::Validator/"FILTERS"> are supported.
@@ -263,11 +263,10 @@ Return an array reference with all names for values that passed validation.
 =head2 required
 
   $v = $v->required('foo');
-  $v = $v->required('foo', 'filter1', 'filter2');
+  $v = $v->required('foo', @filters);
 
-Change validation L</"topic">, apply filters, and make sure a value is present
-and not an empty string. All filters from L<Mojolicious::Validator/"FILTERS">
-are supported.
+Change validation L</"topic">, apply filters, and make sure a value is present.
+All filters from L<Mojolicious::Validator/"FILTERS"> are supported.
 
   # Trim value and check size
   $v->required('user', 'trim')->size(1, 15);

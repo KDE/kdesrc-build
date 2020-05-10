@@ -1,11 +1,11 @@
 package Mojolicious::Routes;
 use Mojo::Base 'Mojolicious::Routes::Route';
 
-use List::Util 'first';
+use List::Util qw(first);
 use Mojo::Cache;
 use Mojo::DynamicMethods;
-use Mojo::Loader 'load_class';
-use Mojo::Util 'camelize';
+use Mojo::Loader qw(load_class);
+use Mojo::Util qw(camelize);
 use Mojolicious::Routes::Match;
 
 has base_classes => sub { [qw(Mojolicious::Controller Mojolicious)] };
@@ -75,11 +75,13 @@ sub match {
   else               { $path = $req->url->path->to_route }
 
   # Method (HEAD will be treated as GET)
-  my $method = uc($req->url->query->clone->param('_method') || $req->method);
-  $method = 'GET' if $method eq 'HEAD';
+  my $method   = uc $req->method;
+  my $override = $req->url->query->clone->param('_method');
+  $method = uc $override if $override && $method eq 'POST';
+  $method = 'GET'        if $method eq 'HEAD';
 
   # Check cache
-  my $ws = $c->tx->is_websocket ? 1 : 0;
+  my $ws    = $c->tx->is_websocket ? 1 : 0;
   my $match = Mojolicious::Routes::Match->new(root => $self);
   $c->match($match);
   my $cache = $self->cache;

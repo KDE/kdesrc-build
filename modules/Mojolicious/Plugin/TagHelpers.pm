@@ -2,8 +2,8 @@ package Mojolicious::Plugin::TagHelpers;
 use Mojo::Base 'Mojolicious::Plugin';
 
 use Mojo::ByteStream;
-use Mojo::DOM::HTML 'tag_to_html';
-use Scalar::Util 'blessed';
+use Mojo::DOM::HTML qw(tag_to_html);
+use Scalar::Util qw(blessed);
 
 sub register {
   my ($self, $app) = @_;
@@ -178,8 +178,8 @@ sub _tag_with_error {
 sub _text_area {
   my ($c, $name) = (shift, shift);
 
-  my $cb = ref $_[-1] eq 'CODE' ? pop : undef;
-  my $content = @_ % 2 ? shift : undef;
+  my $cb      = ref $_[-1] eq 'CODE' ? pop   : undef;
+  my $content = @_ % 2               ? shift : undef;
   $content = $c->param($name) // $content // $cb // '';
 
   return _validation($c, $name, 'textarea', name => $name, @_, $content);

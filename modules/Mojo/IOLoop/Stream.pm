@@ -4,7 +4,7 @@ use Mojo::Base 'Mojo::EventEmitter';
 use Errno qw(EAGAIN ECONNRESET EINTR EWOULDBLOCK);
 use Mojo::IOLoop;
 use Mojo::Util;
-use Scalar::Util 'weaken';
+use Scalar::Util qw(weaken);
 
 has high_water_mark => 1048576;
 has reactor         => sub { Mojo::IOLoop->singleton->reactor }, weak => 1;
@@ -72,16 +72,24 @@ sub stop {
 }
 
 sub timeout {
-  my $self = shift;
+  my ($self, $timeout) = @_;
 
-  return $self->{timeout} unless @_;
+  return $self->{timeout} unless defined $timeout;
+  $self->{timeout} = $timeout;
 
   my $reactor = $self->reactor;
-  $reactor->remove(delete $self->{timer}) if $self->{timer};
-  return $self unless my $timeout = $self->{timeout} = shift;
-  weaken $self;
-  $self->{timer} = $reactor->timer(
-    $timeout => sub { delete $self->{timer}; $self->emit('timeout')->close });
+  if ($self->{timer}) {
+    if (!$self->{timeout}) { $reactor->remove(delete $self->{timer}) }
+    else                   { $reactor->again($self->{timer}, $self->{timeout}) }
+  }
+  elsif ($self->{timeout}) {
+    weaken $self;
+    $self->{timer} = $reactor->timer(
+      $timeout => sub {
+        $self and delete($self->{timer}) and $self->emit('timeout')->close;
+      }
+    );
+  }
 
   return $self;
 }
@@ -92,7 +100,7 @@ sub write {
   # IO::Socket::SSL will corrupt data with the wrong internal representation
   utf8::downgrade $chunk;
   $self->{buffer} .= $chunk;
-  if ($cb) { $self->once(drain => $cb) }
+  if    ($cb)                     { $self->once(drain => $cb) }
   elsif (!length $self->{buffer}) { return $self }
   $self->reactor->watch($self->{handle}, !$self->{paused}, 1)
     if $self->{handle};
@@ -244,8 +252,7 @@ L<Mojo::IOLoop::Stream> implements the following attributes.
   $msg     = $msg->high_water_mark(1024);
 
 Maximum size of L</"write"> buffer in bytes before L</"can_write"> returns
-false, defaults to C<1048576> (1MiB). Note that this attribute is
-B<EXPERIMENTAL> and might change without warning!
+false, defaults to C<1048576> (1MiB).
 
 =head2 reactor
 
@@ -271,8 +278,7 @@ Number of bytes received.
   my $num = $stream->bytes_waiting;
 
 Number of bytes that have been enqueued with L</"write"> and are waiting to be
-written. Note that this method is B<EXPERIMENTAL> and might change without
-warning!
+written.
 
 =head2 bytes_written
 
@@ -284,8 +290,7 @@ Number of bytes written.
 
   my $bool = $stream->can_write;
 
-Returns true if calling L</"write"> is safe. Note that this method is
-B<EXPERIMENTAL> and might change without warning!
+Returns true if calling L</"write"> is safe.
 
 =head2 close
 
