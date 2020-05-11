@@ -98,6 +98,25 @@ sub startup {
     return;
 }
 
+# Generates HTTP response for ksb::BuildExceptions. Note that the 'to_string'
+# overload is called by Mojo if you don't specifically copy the needed values
+# into a plain map.
+sub _renderException {
+    my ($self, $c, $err) = @_;
+
+    my $out = { };
+
+    if (ref $err eq 'STRING') {
+        $out->{message}        = $err;
+        $out->{exception_type} = 'Runtime';
+    } else {
+        $out->{message}        = $@->{message};
+        $out->{exception_type} = $@->{exception_type};
+    }
+
+    return $c->render(json => $out, status => 400);
+}
+
 sub _generateRoutes {
     my $self = shift;
     my $r = $self->routes;
@@ -129,7 +148,7 @@ sub _generateRoutes {
         my $ctx = $c->ksb->context();
 
         my $opt = $c->param('option') or do {
-            return $c->render(text => "Invalid request sent", status => 400);
+            return $self->_renderException($c, 'Invalid request sent');
         };
 
         if (defined $ctx->{options}->{$opt}) {
@@ -146,9 +165,7 @@ sub _generateRoutes {
             $c->render(json => [$c->ksb->modules()]);
         };
 
-        if ($@) {
-            return $c->render(text => $@->{message}, status => 400);
-        }
+        return $self->_renderException($c, $@) if $@;
     } => 'module_lookup');
 
     $r->get('/known_modules' => sub {
@@ -184,7 +201,7 @@ sub _generateRoutes {
         # If not building all then ensure there's at least one module to build
         if ($c->in_build || !$selectorList || (!@selectors && !$build_all) || (@selectors && $build_all)) {
             $log->error("Something was wrong with modules to assign to build");
-            return $c->render(text => "Invalid request sent", status => 400);
+            return $self->_renderException($c, 'Invalid selectors requested to build');
         }
 
         eval {
@@ -192,9 +209,8 @@ sub _generateRoutes {
             $c->ksb->setModulesToProcess($workload);
         };
 
-        if ($@) {
-            return $c->render(text => $@->{message}, status => 400);
-        }
+        return $self->_renderException($c, $@)
+            if $@;
 
         my $numSels = scalar @selectors;
 

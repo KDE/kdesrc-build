@@ -72,6 +72,13 @@ sub new
 sub _check_error {
     my $tx = shift;
     my $err = $tx->error or return $tx;
+
+    # Most ksb::BuildException should be thrown as a json object that will be
+    # decoded by ->catch handler
+    my $err_block = $tx->res->json;
+    die $err_block if $err_block;
+
+    # But just in case, try to extract an error message.
     my $body = $tx->res->body // '';
     open my $fh, '<', \$body;
     my ($first_line) = <$fh> // '';
@@ -290,17 +297,21 @@ sub start
         # Catches all errors in any of the prior promises
         my $err = shift;
 
-        if (ref $err) {
-            say STDERR "Caught an error: ", dumper($err);
+        if (ref $err eq 'HASH') {
+            # JSON response decoded to a hashref
+            say STDERR "Error encountered during build:"
+                if ($err->{exception_type} // '') eq 'Internal';
+            say STDERR $err->{message};
         }
         else {
             say STDERR "Caught an error: $err";
         }
 
         # See if we made it to an rc-file
-        my $ctx = $app->ksb->context();
-        my $rcFile = $ctx ? $ctx->rcFile() // 'Unknown' : undef;
-        say STDERR "Using configuration file found at $rcFile" if $rcFile;
+        # TODO: Put this into a 'show debugging info' type of option
+        #my $ctx = $app->ksb->context();
+        #my $rcFile = $ctx ? $ctx->rcFile() // 'Unknown' : undef;
+        #say STDERR "Using configuration file found at $rcFile" if $rcFile;
 
         $result = 1; # error
     })->wait;

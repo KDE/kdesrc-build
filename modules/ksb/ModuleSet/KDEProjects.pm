@@ -128,7 +128,8 @@ sub _expandModuleCandidates
             getProjectDataReader()->
             getModulesForProject($moduleSearchItem);
 
-    croak_internal ("Unknown KDE project: $moduleSearchItem") unless @allModuleResults;
+    croak_runtime ("Unknown KDE project: $moduleSearchItem")
+        unless @allModuleResults;
 
     # It's possible to match modules which are marked as inactive on
     # projects.kde.org, elide those.
