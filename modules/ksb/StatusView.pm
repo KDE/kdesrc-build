@@ -122,10 +122,17 @@ sub _showModuleFinishResults
     );
 
     my %resultColors = (
-        'success' => 'g',
-        'error'   => 'r',
-        'skipped' => 'y',
-        'pending' => 'y',
+        success => 'g',
+        error   => 'r',
+        skipped => 'y',
+        pending => 'y',
+    );
+
+    my %resultState = (
+        success => 'Success:',
+        error   => 'Failed :',
+        skipped => 'Skipped:',
+        pending => 'Waiting:',
     );
 
     # Locate this module's specific build plan from the ordered array
@@ -150,7 +157,10 @@ sub _showModuleFinishResults
     my $warnings = $self->{warnings}->{$moduleName};
     $notes .= "$warnings compiler warnings" if $warnings;
 
-    my $msg = " ${overallColor}[b[*] Completed b[$fixedLengthName] $printedTime $done_phases | $notes";
+    my $stateToPrint = $resultState{$result} // '???????:';
+    $notes = "| $notes" if $notes; # Only show separator if there are notes to print
+
+    my $msg = " ${overallColor}[b[*] ${overallColor}[$stateToPrint b[$fixedLengthName] $printedTime $done_phases $notes";
     $self->_clearLineAndUpdate(colorize("$msg\n"));
 }
 
