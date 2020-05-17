@@ -787,8 +787,8 @@ sub runAllModulePhases
         # shared memory.
         my $ipc = 0;
         my $updateOptsSub = sub {
-            my ($k, $v) = @_;
-            $ctx->setPersistentOption($k, $v);
+            my ($modName, $k, $v) = @_;
+            $ctx->setPersistentOption($modName, $k, $v);
         };
 
         if ($ctx->getOption('async'))

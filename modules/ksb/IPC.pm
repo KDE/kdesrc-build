@@ -155,7 +155,7 @@ sub _updateSeenModulesFromMessage
             my ($ipcModuleName, $optName, $value) = split(',', $buffer);
             if ($self->{opt_update_handler}) {
                 # Call into callback to update persistent options
-                $self->{opt_update_handler}->($optName, $optName);
+                $self->{opt_update_handler}->($ipcModuleName, $optName, $value);
             }
         }
         when (ksb::IPC::MODULE_LOGMSG) {
