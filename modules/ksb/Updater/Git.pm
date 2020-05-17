@@ -376,7 +376,7 @@ sub _updateToRemoteHead
 
         # On the right branch, merge in changes.
         return 0 == log_command($module, 'git-rebase',
-                      ['git', 'rebase', "$remoteName/$branch"]);
+                      ['git', 'pull', '--rebase', "$remoteName", "$branch"]);
     }
 
     return 1;
