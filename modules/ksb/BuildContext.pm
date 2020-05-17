@@ -71,8 +71,6 @@ my %internalGlobalOptions = (
     "set-env"              => { }, # Hash of environment vars to set
     "ssh-identity-file"    => '', # If set, is passed to ssh-add.
     "use-modules"          => "",
-    "x-invent-kde-push-urls" => 1, # 2020-05-17 temporary feature flag to use invent.kde.org for push URLs for KDE
-                                   # projects
 );
 
 # Holds boolean flags that could be altered from cmdline.
