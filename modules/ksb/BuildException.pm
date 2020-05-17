@@ -131,14 +131,14 @@ package ksb::BuildException::Config 0.10 {
             $result = <<"EOF";
 The y[git-repository-base] option requires a repository name and URL.
 
-e.g. git-repository base y[b[kde] g[b[https://anongit.kde.org/]
+e.g. git-repository base y[b[kde-sdk] g[b[https://invent.kde.org/sdk/]
 
 Use this in a "module-set" group:
 
 e.g.
-module-set kdesupport-set
-    repository y[b[kde]
-    use-modules automoc akonadi soprano attica
+module-set kdesdk-set
+    repository y[b[kde-sdk]
+    use-modules kdesrc-build kde-dev-scripts clazy
 end module-set
 EOF
         }

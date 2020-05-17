@@ -44,7 +44,7 @@ Continue on, to learn how to set it up.
 ```shell
 $ mkdir -p ~/kde/src
 $ cd ~/kde/src
-$ git clone https://anongit.kde.org/kdesrc-build
+$ git clone https://invent.kde.org/sdk/kdesrc-build.git
 $ cd kdesrc-build # kdesrc-build is in this directory
 ```
 
