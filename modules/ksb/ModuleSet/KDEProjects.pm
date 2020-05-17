@@ -124,11 +124,14 @@ sub _expandModuleCandidates
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $moduleSearchItem = shift;
 
+    whisper("There are " . (scalar keys %{$ctx->getProjectDataReader()->{repositories}}) . " repos in db.");
+
     my @allModuleResults = $ctx->
             getProjectDataReader()->
             getModulesForProject($moduleSearchItem);
 
-    croak_runtime ("Unknown KDE project: $moduleSearchItem") unless @allModuleResults;
+    croak_runtime ("Unknown KDE project: $moduleSearchItem")
+        unless @allModuleResults;
 
     # It's possible to match modules which are marked as inactive on
     # projects.kde.org, elide those.
