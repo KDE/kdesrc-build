@@ -114,7 +114,7 @@ sub _readYAML
 
     my $curRepository = {
         'fullName' => $proj_data->{projectpath},
-        'repo' => "kde:$repoPath",
+        'repo' => "kde:$repoPath.git",
         'name' => $repoName,
         'active' => !!$proj_data->{repoactive},
         'found_by' => 'direct', # can be changed in getModulesForProject

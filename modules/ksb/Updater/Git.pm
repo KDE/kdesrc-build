@@ -893,7 +893,7 @@ sub verifyGitConfig
     if ($configOutput !~ /^kde:\s*$/) {
         whisper ("\tAdding git download kde: alias");
         my $result = safe_system(
-            qw(git config --global --add url.https://anongit.kde.org/.insteadOf kde:)
+            qw(git config --global --add url.https://invent.kde.org/.insteadOf kde:)
         ) >> 8;
         return 0 if $result != 0;
     }

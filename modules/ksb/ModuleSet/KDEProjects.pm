@@ -72,7 +72,7 @@ sub _createMetadataModule
 sub getDependenciesModule
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    return _createMetadataModule($ctx, 'kde-build-metadata');
+    return _createMetadataModule($ctx, 'sysadmin/kde-build-metadata');
 }
 
 # Function: getProjectMetadataModule
