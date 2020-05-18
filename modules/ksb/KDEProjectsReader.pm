@@ -95,14 +95,8 @@ sub _readYAML
     my $proj_data = LoadFile($filename);
 
     if (!$proj_data->{repoactive} ||
-        !$proj_data->{hasrepo} ||
         #
-        # previously there used to be a check on 'type' which
-        # only caught two specific cases: everything else was
-        # already covered by the hasrepo/repoactive checks.
-        #
-        # replace the type assertion with a specific check on the
-        # projects that would otherwise have been ignored
+        # these two are already 'covered' as special metadata modules, ignore them
         #
         ($proj_data->{projectpath} eq 'kde-build-metadata' || $proj_data->{projectpath} eq 'repo-management'))
     {
