@@ -852,7 +852,6 @@ sub hasRemote
 sub verifyGitConfig
 {
     my $contextOptions = shift;
-    my $useInvent = $contextOptions->getOption('x-invent-kde-push-urls');
     my $protocol = $contextOptions->getOption('git-desired-protocol') || 'git';
 
     my $pushUrlPrefix = '';
