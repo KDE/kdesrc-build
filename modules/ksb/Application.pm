@@ -23,8 +23,9 @@ use ksb::ModuleSet::KDEProjects;
 use ksb::ModuleSet::Qt;
 use ksb::OSSupport;
 use ksb::RecursiveFH;
-use ksb::DependencyResolver 0.20;
+use ksb::Debug;
 use ksb::DebugOrderHints;
+use ksb::DependencyResolver 0.20;
 use ksb::IPC::Pipe 0.20;
 use ksb::IPC::Null;
 use ksb::Updater::Git;
@@ -831,7 +832,6 @@ sub runAllModulePhases
     my $dependencyGraph = $workLoad->{dependencyInfo}->{graph};
     _output_failed_module_lists($ctx, $dependencyGraph);
 
-
     # Record all failed modules. Unlike the 'resume-list' option this doesn't
     # include any successfully-built modules in between failures.
     my $failedModules = join(',', map { "$_" } $ctx->listFailedModules());
@@ -849,10 +849,20 @@ sub runAllModulePhases
         _installCustomSessionDriver($ctx);
     }
 
+    # Check for post-build messages and list them here
+    for my $m (@modules) {
+        my @msgs = $m->getPostBuildMessages();
+
+        next unless @msgs;
+
+        warning("\ny[Important notification for b[$m]:");
+        warning("    $_") foreach @msgs;
+    }
+
     my $color = 'g[b[';
     $color = 'r[b[' if $result;
 
-    info ("${color}", $result ? ":-(" : ":-)") unless pretending();
+    info ("\n${color}", $result ? ":-(" : ":-)") unless pretending();
 
     return $result;
 }
@@ -2281,37 +2291,33 @@ sub _output_failed_module_list
 
     $message = uc $message; # Be annoying
 
-    if (@fail_list)
+    return unless @fail_list;
+
+    debug ("Message is $message");
+    debug ("\tfor ", join(', ', @fail_list));
+
+    my $homedir = $ENV{'HOME'};
+    my $logfile;
+
+    warning ("\nr[b[<<<  PACKAGES $message  >>>]");
+
+    for my $module (@fail_list)
     {
-        debug ("Message is $message");
-        debug ("\tfor ", join(', ', @fail_list));
-    }
+        $logfile = $module->getOption('#error-log-file');
 
-    if (scalar @fail_list > 0)
-    {
-        my $homedir = $ENV{'HOME'};
-        my $logfile;
-
-        warning ("\nr[b[<<<  PACKAGES $message  >>>]");
-
-        for my $module (@fail_list)
-        {
-            $logfile = $module->getOption('#error-log-file');
-
-            # async updates may cause us not to have a error log file stored.  There's only
-            # one place it should be though, take advantage of side-effect of log_command()
-            # to find it.
-            if (not $logfile) {
-                my $logdir = $module->getLogDir() . "/error.log";
-                $logfile = $logdir if -e $logdir;
-            }
-
-            $logfile = "No log file" unless $logfile;
-            $logfile =~ s|$homedir|~|;
-
-            warning ("r[$module]") if pretending();
-            warning ("r[$module] - g[$logfile]") if not pretending();
+        # async updates may cause us not to have a error log file stored.  There's only
+        # one place it should be though, take advantage of side-effect of log_command()
+        # to find it.
+        if (not $logfile) {
+            my $logdir = $module->getLogDir() . "/error.log";
+            $logfile = $logdir if -e $logdir;
         }
+
+        $logfile = "No log file" unless $logfile;
+        $logfile =~ s|$homedir|~|;
+
+        warning ("r[$module]") if pretending();
+        warning ("r[$module] - g[$logfile]") if not pretending();
     }
 }
 
@@ -2357,12 +2363,13 @@ sub _output_failed_module_lists
         ($_->getPersistentOption('failure-count') // 0) > 3
     } (@{$ctx->moduleList()});
 
-    if (@super_fail)
+    foreach my $m (@super_fail)
     {
-        warning ("\nThe following modules have failed to build 3 or more times in a row:");
-        warning ("\tr[b[$_]") foreach @super_fail;
-        warning ("\nThere is probably a local error causing this kind of consistent failure, it");
-        warning ("is recommended to verify no issues on the system.\n");
+        # These messages will print immediately after this function completes.
+        my $num_failures = $m->getPersistentOption('failure-count');
+
+        $m->addPostBuildMessage("y[$m] has failed to build b[$num_failures] times.");
+        $m->addPostBuildMessage("You can check https://build.kde.org/search/?q=$m to see if this is expected.");
     }
 
     my $top = 5;

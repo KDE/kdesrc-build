@@ -593,6 +593,8 @@ sub stashAndUpdate
             ]);
         if ($status != 0) {
             log_command($module, 'git-status-after-error', [qw(git status)]);
+            $self->{ipc}->notifyNewPostBuildMessage(
+                $module->name(), "b[$module] has local changes that we couldn't handle, so the module was left alone.");
             croak_runtime("Unable to stash local changes for $module, aborting update.");
         }
     }
@@ -625,6 +627,10 @@ r[b[*]
 * $module. Developers be careful, doing either of these options will remove
 * any of your local work.
 EOF
+
+            $self->{ipc}->notifyNewPostBuildMessage(
+                $module->name(), "b[$module] has local changes that didn't re-apply, so the module was left alone.");
+
             log_command($module, 'git-status-after-error', [qw(git status)]);
             croak_runtime("Failed to re-apply stashed changes for $module");
         }
