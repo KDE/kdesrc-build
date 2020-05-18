@@ -72,7 +72,7 @@ sub _createMetadataModule
 sub getDependenciesModule
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    return _createMetadataModule($ctx, 'kde-build-metadata');
+    return _createMetadataModule($ctx, 'sysadmin/kde-build-metadata');
 }
 
 # Function: getProjectMetadataModule
@@ -123,6 +123,8 @@ sub _expandModuleCandidates
     my $self = assert_isa(shift, 'ksb::ModuleSet::KDEProjects');
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $moduleSearchItem = shift;
+
+    whisper("There are " . (scalar keys %{$ctx->getProjectDataReader()->{repositories}}) . " repos in db.");
 
     my @allModuleResults = $ctx->
             getProjectDataReader()->

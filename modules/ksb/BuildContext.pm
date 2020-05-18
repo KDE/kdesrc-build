@@ -57,7 +57,7 @@ my %internalGlobalOptions = (
     "colorful-output"      => 1, # Use color by default.
     "debug-level"          => ksb::Debug::INFO,
     "filter-out-phases"    => '',
-    "git-desired-protocol" => 'https', # protocol to grab from kde-projects
+    "git-desired-protocol" => 'git', # protocol to use for git *push* URLs (fetch requires https)
     "git-repository-base"  => {}, # Base path template for use multiple times.
     "ignore-modules"       => '', # See also: use-modules, kde-projects
     "include-dependencies" => 0,  # Recursively include kde-projects module deps?
@@ -74,8 +74,6 @@ my %internalGlobalOptions = (
     "set-env"              => { }, # Hash of environment vars to set
     "ssh-identity-file"    => '', # If set, is passed to ssh-add.
     "use-modules"          => "",
-    "x-invent-kde-push-urls" => 0, # 2020-12-04 temporary feature flag to use invent.kde.org for push URLs for KDE
-                                   # projects
 );
 
 # Holds boolean flags that could be altered from cmdline.

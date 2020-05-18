@@ -11,6 +11,8 @@ use 5.014;
 
 use File::Find;
 
+use ksb::BuildException;
+
 sub _verifyYAMLModuleLoaded
 {
 # Load YAML-reading module if available without causing compile error if it
@@ -66,12 +68,24 @@ sub _readProjectData
     my ($self, $projectMetadataModule) = @_;
 
     my $srcdir = $projectMetadataModule->fullpath('source');
-    my $file_searched = 0;
 
-    File::Find::find(sub {
-            $self->_readYAML($_) if $_ eq 'metadata.yaml';
-            $file_searched = 1;
-        }, "$srcdir/projects");
+    croak_runtime("No such source directory $srcdir!")
+        unless -d $srcdir;
+
+    my $files_searched = 0;
+
+    File::Find::find({
+        wanted => sub {
+            if ($_ eq 'metadata.yaml') {
+                $self->_readYAML($_);
+                $files_searched++;
+            }
+        },
+        follow => 1,
+    }, "$srcdir/projects");
+
+    croak_runtime("Failed to find KDE project entries from $srcdir!")
+        unless $files_searched > 0;
 }
 
 sub _readYAML
@@ -100,7 +114,7 @@ sub _readYAML
 
     my $curRepository = {
         'fullName' => $proj_data->{projectpath},
-        'repo' => "kde:$repoPath",
+        'repo' => "kde:$repoPath.git",
         'name' => $repoName,
         'active' => !!$proj_data->{repoactive},
         'found_by' => 'direct', # can be changed in getModulesForProject
