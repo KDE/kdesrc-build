@@ -73,6 +73,7 @@ sub new
         phases       => $phases,
         context      => $ctx,
         'module-set' => undef,
+        post_build_msgs => [ ],
     );
 
     @{$self}{keys %newOptions} = values %newOptions;
@@ -988,6 +989,28 @@ sub installationPath
     $path =~ s/(\$\{MODULE})|(\$MODULE\b)/$moduleName/g;
 
     return $path;
+}
+
+# Returns a list of any 'post-build' messages that have been set for the module
+# to show after the build has ended. These may be messages such as warning of a
+# local source conflict that may have scrolled past or similar things the user
+# needs to know about.
+#
+# Each entry in the list will be a text message that should be shown (perhaps
+# with additional formatting).
+sub getPostBuildMessages
+{
+    my $self = assert_isa(shift, 'ksb::Module');
+    return @{$self->{post_build_msgs}};
+}
+
+# Adds the given message to the list of post-build messages to show to the user
+sub addPostBuildMessage
+{
+    my ($self, $new_msg) = @_;
+
+    push @{$self->{post_build_msgs}}, $new_msg;
+    return;
 }
 
 1;

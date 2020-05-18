@@ -36,6 +36,8 @@ use constant {
     MODULE_PERSIST_OPT => 10, # Change to a persistent module option
 
     ALL_DONE        => 11, # Affirmatively flags that all updates are done
+
+    MODULE_POSTBUILD_MSG => 12, # A message to print after all work done
 };
 
 sub new
@@ -46,6 +48,7 @@ sub new
         updated       => { },
         logged_module => 'global',
         messages      => { }, # Holds log output from update process
+        postbuild_msg => { }, # Like above but for post-build msgs
         updates_done  => 0,
         opt_update_handler => undef, # Callback for persistent option changes
     };
@@ -63,6 +66,15 @@ sub notifyPersistentOptionChange
     my ($moduleName, $optName, $optValue) = @_;
 
     $self->sendIPCMessage(ksb::IPC::MODULE_PERSIST_OPT, "$moduleName,$optName,$optValue");
+}
+
+# Sends a message to the main/build process that a given message should be
+# shown to the user at the end of the build.
+sub notifyNewPostBuildMessage
+{
+    my ($self, $moduleName, $msg) = @_;
+
+    $self->sendIPCMessage(ksb::IPC::MODULE_POSTBUILD_MSG, "$moduleName,$msg");
 }
 
 sub notifyUpdateSuccess
@@ -101,6 +113,10 @@ sub _printLoggedMessage
     ksb::Debug::print_clr($msg);
 }
 
+# Called any time we're waiting for an IPC message from a sub process. This can
+# occur during a module build (waiting for messages from update process) or
+# while we're near the end of the script execution. There is no way to tell
+# which module we'll be about to receive messages for from the other end.
 sub _updateSeenModulesFromMessage
 {
     my ($self, $ipcType, $buffer) = @_;
@@ -168,6 +184,12 @@ sub _updateSeenModulesFromMessage
         when (ksb::IPC::ALL_DONE) {
             $self->{updates_done} = 1;
         }
+        when (ksb::IPC::MODULE_POSTBUILD_MSG) {
+            my ($ipcModuleName, $postBuildMsg) = split(',', $buffer, 2);
+
+            $self->{postbuild_msg}->{$ipcModuleName} //= [ ];
+            push @{$self->{postbuild_msg}->{$ipcModuleName}}, $postBuildMsg;
+        }
         default {
             croak_internal("Unhandled IPC type: $ipcType");
         }
@@ -187,7 +209,7 @@ sub setPersistentOptionHandler
 
 sub waitForEnd
 {
-    my ($self, $module) = @_;
+    my $self = shift;
 
     $self->waitForStreamStart();
     while(!$self->{no_update} && !$self->{updates_done}) {
@@ -240,6 +262,13 @@ sub waitForModule
 
         delete $messagesRef->{$item};
     }
+
+    # We won't print post-build messages now but we need to save them for when
+    # they can be printed.
+    for my $msg (@{$self->{postbuild_msg}->{$moduleName}}) {
+        $module->addPostBuildMessage($msg);
+    }
+    delete $self->{postbuild_msg}->{$moduleName};
 
     return ($updated->{$moduleName}, $message);
 }
