@@ -135,8 +135,9 @@ sub _readOSRelease
 
         # Can't use PerlIO UTF-8 encoding on minimal distros, which this module
         # must be loadable from
-        open $fh, '<', $file and last;
+        open ($fh, '<', $file) and last;
         $error = $!;
+        $fh = undef;
     }
 
     croak_runtime("Can't open os-release! $error")
