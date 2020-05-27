@@ -127,7 +127,7 @@ sub bestDistroMatch
 sub _readOSRelease
 {
     my ($self, $fileName) = @_;
-    my @files = $fileName ? $fileName : qw(/etc/os-release /usr/lib/os-release);
+    my @files = $fileName ? $fileName : qw(/etc/os-release /usr/lib/os-release /usr/local/etc/os-release);
     my ($fh, $error);
 
     while (!$fh && @files) {
