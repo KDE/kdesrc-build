@@ -140,8 +140,7 @@ sub _readOSRelease
         $fh = undef;
     }
 
-    croak_runtime("Can't open os-release! $error")
-        unless $fh;
+    return unless $fh;
 
     # skip comments and blank lines, and whitespace-only lines
     my @lines = grep { ! /^\s*(?:#.*)?\s*$/ }
