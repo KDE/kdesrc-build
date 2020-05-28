@@ -122,7 +122,7 @@ DONE
             say colorize (" r[b[*] Ran into an error with the installer!");
         }
     } else {
-        say colorize (" r[b[*] Packages could not be installed, because kdesrc-build does not know your linux distribution.");
+        say colorize (" r[b[*] Packages could not be installed, because kdesrc-build does not know your distribution (" . $vendor .")");
     }
 }
 
