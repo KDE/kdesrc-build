@@ -103,8 +103,8 @@ This uses the ID (and if needed, ID_LIKE) parameter in
 provided distro IDs. The list of distros should be ordered with
 most specific distro first.
 
-If no match is found, returns 'linux' (B<not> undef, '', or
-similar)
+If no match is found, returns a generic os string (B<not> undef, '', or
+similar): 'linux' or 'freebsd' as the case may be.
 
 =cut
 
@@ -121,6 +121,9 @@ sub bestDistroMatch
         return $id if first { $id eq $_ } @distros;
     }
 
+    # Special cases that aren't linux
+    return $ids[0] if first { $ids[0] eq $_ } qw/freebsd/;
+    # .. everything else is generic linux
     return 'linux';
 }
 
