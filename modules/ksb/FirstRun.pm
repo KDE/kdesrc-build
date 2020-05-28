@@ -429,6 +429,8 @@ dev-lang/perl
 perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
 doxygen
+boost
+intltool
 
 @@ pkg/alpine/unknown
 alpine-sdk
