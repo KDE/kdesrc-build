@@ -431,6 +431,7 @@ cmake gcc make qt5-base
 doxygen
 boost
 intltool
+gperf
 
 @@ pkg/alpine/unknown
 alpine-sdk
