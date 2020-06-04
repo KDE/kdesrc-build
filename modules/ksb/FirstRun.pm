@@ -432,6 +432,15 @@ doxygen
 boost
 intltool
 gperf
+docbook-xsl
+flex
+bison
+bzr
+automake
+autoconf
+pkg-config
+wayland-protocols
+clang
 
 @@ pkg/alpine/unknown
 alpine-sdk
