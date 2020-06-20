@@ -91,7 +91,7 @@ sub _shortenModuleName
 # Method: readDependencyData
 #
 # Reads in dependency data in a pseudo-Makefile format.
-# See kde-build-metadata/dependency-data.
+# See repo-metadata/dependencies/dependency-data.
 #
 # Parameters:
 #  $self - The DependencyResolver object.
@@ -138,7 +138,7 @@ sub readDependencyData
         # Ignore "catch-all" dependencies where the source is the catch-all
         if ($sourceItem =~ m,\*$,) {
             warning ("\tIgnoring dependency on wildcard module grouping " .
-                     "on line $. of kde-build-metadata/dependency-data");
+                     "on line $. of repo-metadata/dependencies/dependency-data");
             next;
         }
 
@@ -349,7 +349,7 @@ sub _checkDependencyCycles
     for my $item (keys(%$moduleGraph)) {
         if(_detectDependencyCycle($moduleGraph, $item, $item)) {
             error("Somehow there is a circular dependency involving b[$item]! :(");
-            error("Please file a bug against kde-build-metadata about this!");
+            error("Please file a bug against repo-metadata about this!");
             ++$errors;
         }
     }

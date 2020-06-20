@@ -469,12 +469,6 @@ sub generateModuleList
     # or context option.
     $ctx->setOption(%{$cmdlineGlobalOptions});
 
-    # Selecting modules or module sets would requires having the KDE
-    # build metadata (kde-build-metadata and sysadmin/repo-metadata)
-    # available.
-    $ctx->setKDEDependenciesMetadataModuleNeeded();
-    $ctx->setKDEProjectsMetadataModuleNeeded();
-
     if (!exists $ENV{HARNESS_ACTIVE}) {
         # Running in a test harness, avoid downloading metadata which will be
         # ignored in the test or making changes to git config
@@ -524,7 +518,7 @@ sub generateModuleList
     @modules = _updateModulePhases(@modules) unless $commandLineModules;
 
     # TODO: Verify this does anything still
-    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
+    my $metadataModule = $ctx->getKDEProjectsMetadataModule();
     $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
 
     # Remove modules that are explicitly blanked out in their branch-group
@@ -626,7 +620,7 @@ sub _downloadKDEProjectMetadata
 
     eval {
         for my $metadataModule (
-            $ctx->getKDEDependenciesMetadataModule(),
+#           $ctx->getKDEDependenciesMetadataModule(),
             $ctx->getKDEProjectsMetadataModule())
         {
             my $sourceDir = $metadataModule->getSourceDir();
@@ -672,17 +666,17 @@ sub _downloadKDEProjectMetadata
     }
 }
 
-# Returns a graph of Modules according to the kde-build-metadata dependency
+# Returns a graph of Modules according to the KDE project database dependency
 # information.
 #
-# The kde-build-metadata repository must have already been updated, and the
+# The sysadmin/repo-metadata repository must have already been updated, and the
 # module factory must be setup. The modules for which to calculate the graph
 # must be passed in as arguments
 sub _resolveModuleDependencyGraph
 {
     my $self = shift;
     my $ctx = $self->context();
-    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
+    my $metadataModule = $ctx->getKDEProjectsMetadataModule();
     my @modules = @_;
 
     my $graph = eval {
@@ -691,7 +685,7 @@ sub _resolveModuleDependencyGraph
 
         for my $file ('dependency-data-common', "dependency-data-$branchGroup")
         {
-            my $dependencyFile = $metadataModule->fullpath('source') . "/$file";
+            my $dependencyFile = $metadataModule->fullpath('source') . "/dependencies/$file";
             my $dependencies = pretend_open($dependencyFile)
                 or die "Unable to open $dependencyFile: $!";
 

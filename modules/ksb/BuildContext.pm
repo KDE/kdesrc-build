@@ -160,7 +160,6 @@ sub new
         persistent_options => { }, # These are kept across multiple script runs
         ignore_list => [ ], # List of KDE project paths to ignore completely
         kde_projects_metadata     => undef, # Enumeration of kde-projects
-        kde_dependencies_metadata => undef, # Dependency resolution of kde-projects
         logical_module_resolver   => undef, # For branch-group option
         status_view => ksb::StatusView->new(),
         projects_db => undef, # See getProjectDataReader
@@ -901,19 +900,6 @@ sub setPersistentOption
 }
 
 # Returns the ksb::Module (which has a 'metadata' scm type) that is used for
-# kde-build-metadata, so that other modules that need it can call into it if
-# necessary.
-#
-# Also may return undef if the metadata is unavailable or has not yet
-# been set by setKDEDependenciesMetadataModule (this method does not
-# automatically create the needed module).
-sub getKDEDependenciesMetadataModule
-{
-    my $self = shift;
-    return $self->{kde_dependencies_metadata};
-}
-
-# Returns the ksb::Module (which has a 'metadata' scm type) that is used for
 # kde-project metadata, so that other modules that need it can call into it if
 # necessary.
 #
@@ -923,50 +909,12 @@ sub getKDEDependenciesMetadataModule
 sub getKDEProjectsMetadataModule
 {
     my $self = shift;
+
+    # Initialize if not set
+    $self->{kde_projects_metadata} //=
+        ksb::ModuleSet::KDEProjects::getProjectMetadataModule($self);
+
     return $self->{kde_projects_metadata};
-}
-
-# Call this method to force this build context to pull in the kde-build-metadata
-# module. This is a one-time action, subsequent calls to this method
-# are ignored. Use getKDEDependenciesMetadataModule to see if this build context is
-# using a metadata module.
-#
-# This method should be called before setModuleList.
-sub setKDEDependenciesMetadataModuleNeeded
-{
-    my $self = assert_isa(shift, 'ksb::BuildContext');
-
-    return if defined $self->{kde_dependencies_metadata};
-
-    my $metadata = ksb::ModuleSet::KDEProjects::getDependenciesModule($self);
-
-    debug ("Introducing dependency metadata into the build");
-    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
-
-    $self->{kde_dependencies_metadata} = $metadata;
-    return;
-}
-
-# Call this method to force this build context to pull in the
-# sysadmin/repo-metadata module. This is a one-time action,
-# subsequent calls to this method are ignored. Use
-# getKDEProjectsMetadataModule to see if this build context is using
-# a metadata module.
-#
-# This method should be called before setModuleList.
-sub setKDEProjectsMetadataModuleNeeded
-{
-    my $self = assert_isa(shift, 'ksb::BuildContext');
-
-    return if defined $self->{kde_projects_metadata};
-
-    my $metadata = ksb::ModuleSet::KDEProjects::getProjectMetadataModule($self);
-
-    debug ("Introducing project enumeration metadata into the build");
-    assert_isa($metadata->scm(), 'ksb::Updater::KDEProjectMetadata');
-
-    $self->{kde_projects_metadata} = $metadata;
-    return;
 }
 
 # Returns a KDEProjectsReader module, which has already read in the database and
@@ -986,8 +934,8 @@ sub getProjectDataReader
 }
 
 # Returns the effective branch group to use for modules. You should not call
-# this unless kde-build-metadata is also in use (see
-# setKDEDependenciesMetadataModule and moduleBranchGroupResolver).
+# this unless KDE project metadata is available (see
+# setKDEProjectsMetadataModule and moduleBranchGroupResolver).
 sub effectiveBranchGroup
 {
     my $self = shift;
@@ -1013,7 +961,7 @@ sub moduleBranchGroupResolver
     my $self = shift;
 
     if (!$self->{logical_module_resolver}) {
-        my $metadataModule = $self->getKDEDependenciesMetadataModule();
+        my $metadataModule = $self->getKDEProjectsMetadataModule();
 
         croak_internal("Tried to use branch-group, but needed data wasn't loaded!")
             unless $metadataModule;
