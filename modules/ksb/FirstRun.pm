@@ -181,7 +181,7 @@ DONE
         say $rcFh '# Create alias for running software built with kdesrc-build';
         say $rcFh 'kdesrc-run ()';
         say $rcFh '{';
-        say $rcFh '  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/$1"';
+        say $rcFh '  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/$@"';
         say $rcFh '}';
 
         $rcModified = 1;
