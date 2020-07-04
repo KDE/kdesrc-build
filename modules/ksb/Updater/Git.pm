@@ -374,9 +374,12 @@ sub _updateToRemoteHead
             croak_runtime("Unable to perform a git checkout to existing branch $branchName");
         }
 
-        # On the right branch, merge in changes.
+        #
+        # Given that we're starting with a 'clean' checkout, it's now simply a fast-forward
+        # to the remote HEAD (previously we pulled, incurring additional network I/O).
+        #
         return 0 == log_command($module, 'git-rebase',
-                      ['git', 'pull', '--rebase', "$remoteName", "$branch"]);
+                      ['git', 'reset', '--hard', "$remoteName/$branch"]);
     }
 
     return 1;
