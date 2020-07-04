@@ -24,8 +24,9 @@ use ksb::ModuleSet::Qt;
 use ksb::OSSupport;
 use ksb::PromiseChain;
 use ksb::RecursiveFH;
-use ksb::DependencyResolver 0.20;
+use ksb::Debug;
 use ksb::DebugOrderHints;
+use ksb::DependencyResolver 0.20;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
@@ -449,12 +450,6 @@ sub establishContext
     # or context option.
     $ctx->setOption(%{$cmdlineGlobalOptions});
 
-    # Selecting modules or module sets would requires having the KDE
-    # build metadata (kde-build-metadata and sysadmin/repo-metadata)
-    # available.
-    $ctx->setKDEDependenciesMetadataModuleNeeded();
-    $ctx->setKDEProjectsMetadataModuleNeeded();
-
     if (!exists $ENV{HARNESS_ACTIVE} && !$self->{run_mode} eq 'headless') {
         # In some modes (testing, acting as headless backend), we should avoid
         # downloading metadata automatically, so don't.
@@ -520,7 +515,7 @@ sub modulesFromSelectors
         unless @selectors;
 
     # TODO: Verify this does anything still
-    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
+    my $metadataModule = $ctx->getKDEProjectsMetadataModule();
     $ctx->addToIgnoreList($metadataModule->scm()->ignoredModules());
 
     # Remove modules that are explicitly blanked out in their branch-group
@@ -595,7 +590,7 @@ sub _downloadKDEProjectMetadata
 
     eval {
         for my $metadataModule (
-            $ctx->getKDEDependenciesMetadataModule(),
+#           $ctx->getKDEDependenciesMetadataModule(),
             $ctx->getKDEProjectsMetadataModule())
         {
             my $sourceDir = $metadataModule->getSourceDir();
@@ -641,17 +636,17 @@ sub _downloadKDEProjectMetadata
     }
 }
 
-# Returns a graph of Modules according to the kde-build-metadata dependency
+# Returns a graph of Modules according to the KDE project database dependency
 # information.
 #
-# The kde-build-metadata repository must have already been updated, and the
+# The sysadmin/repo-metadata repository must have already been updated, and the
 # module factory must be setup. The modules for which to calculate the graph
 # must be passed in as arguments
 sub _resolveModuleDependencyGraph
 {
     my $self = shift;
     my $ctx = $self->context();
-    my $metadataModule = $ctx->getKDEDependenciesMetadataModule();
+    my $metadataModule = $ctx->getKDEProjectsMetadataModule();
     my @modules = @_;
 
     my $graph = eval {
@@ -666,7 +661,7 @@ sub _resolveModuleDependencyGraph
 
         for my $file ('dependency-data-common', "dependency-data-$branchGroup")
         {
-            my $dependencyFile = $metadataModule->fullpath('source') . "/$file";
+            my $dependencyFile = $metadataModule->fullpath('source') . "/dependencies/$file";
             my $dependencies = pretend_open($dependencyFile)
                 or die "Unable to open $dependencyFile: $!";
 
@@ -757,6 +752,23 @@ sub startHeadlessBuild
 
         $ctx->storePersistentOptions();
         _cleanup_log_directory($ctx);
+
+        # env driver is just the ~/.config/kde-env-*.sh, session driver is that + ~/.xsession
+        if ($ctx->getOption('install-environment-driver') ||
+            $ctx->getOption('install-session-driver'))
+        {
+            _installCustomSessionDriver($ctx);
+        }
+
+        # Check for post-build messages and list them here
+        for my $m (@{$self->{modules}}) {
+            my @msgs = $m->getPostBuildMessages();
+
+            next unless @msgs;
+
+            warning("\ny[Important notification for b[$m]:");
+            warning("    $_") foreach @msgs;
+        }
 
         return $result;
     });
@@ -1898,38 +1910,32 @@ sub _output_failed_module_list
 
     $message = uc $message; # Be annoying
 
-    if (@fail_list)
+    return unless @fail_list;
+
+    debug ("Message is $message");
+    debug ("\tfor ", join(', ', @fail_list));
+
+    my $homedir = $ENV{'HOME'};
+
+    warning ("\nr[b[<<<  PACKAGES $message  >>>]");
+
+    for my $module (@fail_list)
     {
-        debug ("Message is $message");
-        debug ("\tfor ", join(', ', @fail_list));
-    }
+        my $logfile = $module->getOption('#error-log-file');
 
-    if (scalar @fail_list > 0)
-    {
-        my $homedir = $ENV{'HOME'};
-        my $logfile;
-
-        warning ("\nr[b[<<<  PACKAGES $message  >>>]");
-
-        for my $module (@fail_list)
-        {
-            $logfile = $module->getOption('#error-log-file');
-
-            # async updates may cause us not to have a error log file stored
-            # (though this should now only happen due to other bugs). Since
-            # there's only one place it should be, take advantage of
-            # side-effect of log_command() to find it.
-            if (not $logfile) {
-                my $logdir = $module->getLogDir() . "/error.log";
-                $logfile = $logdir if -e $logdir;
-            }
-
-            $logfile = "No log file" unless $logfile;
-            $logfile =~ s|$homedir|~|;
-
-            warning ("r[$module]") if pretending();
-            warning ("r[$module] - g[$logfile]") if not pretending();
+        # async updates may cause us not to have a error log file stored.  There's only
+        # one place it should be though, take advantage of side-effect of log_command()
+        # to find it.
+        if (not $logfile) {
+            my $logdir = $module->getLogDir() . "/error.log";
+            $logfile = $logdir if -e $logdir;
         }
+
+        $logfile = "No log file" unless $logfile;
+        $logfile =~ s|$homedir|~|;
+
+        warning ("r[$module]") if pretending();
+        warning ("r[$module] - g[$logfile]") if not pretending();
     }
 }
 
@@ -1975,12 +1981,13 @@ sub _output_failed_module_lists
         ($_->getPersistentOption('failure-count') // 0) > 3
     } (@{$ctx->moduleList()});
 
-    if (@super_fail)
+    foreach my $m (@super_fail)
     {
-        warning ("\nThe following modules have failed to build 3 or more times in a row:");
-        warning ("\tr[b[$_]") foreach @super_fail;
-        warning ("\nThere is probably a local error causing this kind of consistent failure, it");
-        warning ("is recommended to verify no issues on the system.\n");
+        # These messages will print immediately after this function completes.
+        my $num_failures = $m->getPersistentOption('failure-count');
+
+        $m->addPostBuildMessage("y[$m] has failed to build b[$num_failures] times.");
+        $m->addPostBuildMessage("You can check https://build.kde.org/search/?q=$m to see if this is expected.");
     }
 
     my $top = 5;

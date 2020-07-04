@@ -61,20 +61,6 @@ sub _createMetadataModule
     return $metadataModule;
 }
 
-# Function: getDependenciesModule
-#
-# Static. Returns a <Module> that can be used to download the
-# 'kde-build-metadata' module, which itself contains module dependencies
-# in the KDE build system.  The module is meant to be held by the <BuildContext>
-#
-# Parameters:
-#  ctx - the <ksb::BuildContext> for this script execution.
-sub getDependenciesModule
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    return _createMetadataModule($ctx, 'sysadmin/kde-build-metadata');
-}
-
 # Function: getProjectMetadataModule
 #
 # Static. Returns a <Module> that can be used to download the

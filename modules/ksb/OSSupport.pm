@@ -103,8 +103,8 @@ This uses the ID (and if needed, ID_LIKE) parameter in
 provided distro IDs. The list of distros should be ordered with
 most specific distro first.
 
-If no match is found, returns 'linux' (B<not> undef, '', or
-similar)
+If no match is found, returns a generic os string (B<not> undef, '', or
+similar): 'linux' or 'freebsd' as the case may be.
 
 =cut
 
@@ -121,13 +121,16 @@ sub bestDistroMatch
         return $id if first { $id eq $_ } @distros;
     }
 
+    # Special cases that aren't linux
+    return $ids[0] if first { $ids[0] eq $_ } qw/freebsd/;
+    # .. everything else is generic linux
     return 'linux';
 }
 
 sub _readOSRelease
 {
     my ($self, $fileName) = @_;
-    my @files = $fileName ? $fileName : qw(/etc/os-release /usr/lib/os-release);
+    my @files = $fileName ? $fileName : qw(/etc/os-release /usr/lib/os-release /usr/local/etc/os-release);
     my ($fh, $error);
 
     while (!$fh && @files) {
@@ -135,12 +138,12 @@ sub _readOSRelease
 
         # Can't use PerlIO UTF-8 encoding on minimal distros, which this module
         # must be loadable from
-        open $fh, '<', $file and last;
+        open ($fh, '<', $file) and last;
         $error = $!;
+        $fh = undef;
     }
 
-    croak_runtime("Can't open os-release! $error")
-        unless $fh;
+    return unless $fh;
 
     # skip comments and blank lines, and whitespace-only lines
     my @lines = grep { ! /^\s*(?:#.*)?\s*$/ }

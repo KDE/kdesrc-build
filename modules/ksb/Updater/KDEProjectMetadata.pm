@@ -1,7 +1,10 @@
-package ksb::Updater::KDEProjectMetadata 0.20;
+package ksb::Updater::KDEProjectMetadata 0.30;
 
-# Updater used only to specifically update the "kde-build-metadata" module
+# Updater used only to specifically update the "repo-metadata" module
 # used for storing dependency information, among other things.
+#
+# Note: 2020-06-20 the previous "kde-build-metadata" module was combined into
+# the "repo-metadata" module, under the '/dependencies' folder.
 
 use strict;
 use warnings;
@@ -24,7 +27,7 @@ sub name
 sub ignoredModules
 {
     my $self = assert_isa(shift, 'ksb::Updater::KDEProjectMetadata');
-    my $path = $self->module()->fullpath('source') . "/build-script-ignore";
+    my $path = $self->module()->fullpath('source') . "/dependencies/build-script-ignore";
 
     # Now that we in theory have up-to-date source code, read in the
     # ignore file and propagate that information to our context object.
@@ -48,7 +51,7 @@ sub ignoredModules
 sub logicalModuleGroups
 {
     my $self = shift;
-    my $path = $self->module()->fullpath('source') . "/logical-module-structure";
+    my $path = $self->module()->fullpath('source') . "/dependencies/logical-module-structure";
 
     # The {} is an empty JSON obj to support pretend mode
     my $fh = pretend_open($path, '{}') or

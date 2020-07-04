@@ -122,7 +122,7 @@ DONE
             say colorize (" r[b[*] Ran into an error with the installer!");
         }
     } else {
-        say colorize (" r[b[*] Packages could not be installed, because kdesrc-build does not know your linux distribution.");
+        say colorize (" r[b[*] Packages could not be installed, because kdesrc-build does not know your distribution (" . $vendor .")");
     }
 }
 
@@ -181,7 +181,7 @@ DONE
         say $rcFh '# Create alias for running software built with kdesrc-build';
         say $rcFh 'kdesrc-run ()';
         say $rcFh '{';
-        say $rcFh '  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/$1"';
+        say $rcFh '  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/$@"';
         say $rcFh '}';
 
         $rcModified = 1;
@@ -297,13 +297,13 @@ perl(URI)
 perl(YAML::LibYAML)
 pkgconfig(libattr)
 pkgconfig(libical)
+pkgconfig(libnm)
 pkgconfig(libpng)
 pkgconfig(libqrencode)
 pkgconfig(libudev)
 pkgconfig(libxml-2.0)
 pkgconfig(libxslt)
 pkgconfig(ModemManager)
-pkgconfig(NetworkManager)
 pkgconfig(openssl)
 pkgconfig(Qt5Core)
 pkgconfig(Qt5Multimedia)
@@ -429,6 +429,18 @@ dev-lang/perl
 perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
 doxygen
+boost
+intltool
+gperf
+docbook-xsl
+flex
+bison
+bzr
+automake
+autoconf
+pkg-config
+wayland-protocols
+clang
 
 @@ pkg/alpine/unknown
 alpine-sdk
