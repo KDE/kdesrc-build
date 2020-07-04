@@ -554,6 +554,34 @@ sub _splitUri
     return ($scheme, $authority, $path, $query, $fragment);
 }
 
+sub countStash
+{
+    my $self = assert_isa(shift, 'ksb::Updater::Git');
+    my $module = $self->module();
+    my $description = shift;
+
+    if (-e '.git/refs/stash') {
+        my $count = qx"git rev-list --walk-reflogs --count refs/stash";
+        chomp $count if $count;
+        debug("\tNumber of stashes found for b[$module] is: b[$count]");
+        return $count;
+    } else {
+        debug("\tIt appears there is no stash for b[$module]");
+        return 0;
+    }
+}
+
+#
+# Wrapper to send a post-build (warning) message via the IPC object.
+# This just takes care of the boilerplate to forward its arguments as message.
+#
+sub _notifyPostBuildMessage
+{
+    my $self = assert_isa(shift, 'ksb::Updater::Git');
+    my $module = $self->module();
+    $self->{ipc}->notifyNewPostBuildMessage($module->name(), @_);
+}
+
 # This stashes existing changes if necessary, and then runs a provided
 # update routine in order to advance the given module to the desired head.
 # Finally, if changes were stashed, they are applied and the stash stack is
@@ -576,67 +604,56 @@ sub stashAndUpdate
     my $updateSub = shift;
     my $module = $self->module();
     my $date = strftime ("%F-%R", gmtime()); # ISO Date, hh:mm time
+    my $stashName = "kdesrc-build auto-stash at $date";
 
-    # To find out if we should stash, we use git-diff-index which
-    # is intended to be scriptable and returns information on both the index
-    # and the working dir in one command.
-    my $status = 1;
-    my $needsStash =
-        !pretending() && (system('git', 'diff-index', '--quiet', 'HEAD') >> 8);
-
+    # first, log a snapshot of the git status prior to kdesrc-build taking over the reins in the repo
     log_command($module, 'git-status-before-update', [qw(git status)]);
+    my $oldStashCount = $self->countStash();
 
-    if ($needsStash) {
-        info ("\tLocal changes detected, stashing them away...");
-        $status = log_command($module, 'git-stash-save', [
-                qw(git stash save --quiet), "kdesrc-build auto-stash at $date",
-            ]);
-        if ($status != 0) {
-            log_command($module, 'git-status-after-error', [qw(git status)]);
-            $self->{ipc}->notifyNewPostBuildMessage(
-                $module->name(), "b[$module] has local changes that we couldn't handle, so the module was left alone.");
-            croak_runtime("Unable to stash local changes for $module, aborting update.");
-        }
+    #
+    # always stash:
+    # - also stash untracked files because what if upstream started to track them
+    # - we do not stash .gitignore'd files because they may be needed for builds?
+    #   on the other hand that leaves a slight risk if upstream altered those (i.e. no longer truly .gitignore'd)
+    #
+    info ("\tStashing local changes if any...");
+    my $status = 0;
+    $status = log_command($module, 'git-stash-push', [
+        qw(git stash push -u --quiet --message), $stashName
+    ]) unless pretending(); # probably best not to do anything if pretending()
+
+    #
+    # This might happen if the repo is already in merge conflict state.
+    # We could sledgehammer our way past this by marking everything as resolved using git add . before
+    # stashing, but... that might not always be appreciated by people having to figure out what the
+    # original merge conflicts were afterwards.
+    #
+    if ($status != 0) {
+        log_command($module, 'git-status-after-error', [qw(git status)]);
+        $self->_notifyPostBuildMessage(
+            "b[$module] may have local changes that we couldn't handle, so the module was left alone."
+        );
+        croak_runtime("Unable to stash local changes (if any) for $module, aborting update.");
     }
 
+    #
+    # next: check if the stash was truly necessary.
+    # compare counts (not just testing if there is *any* stash) because there might have been a
+    # genuine user's stash already prior to kdesrc-build taking over the reins in the repo.
+    #
+    my $newStashCount = $self->countStash();
+    if ($newStashCount != $oldStashCount) {
+        my $message = "b[$module] had local changes that we stashed, ".
+            "you should manually inspect the new stash: b[$stashName]";
+        warning ($message);
+        $self->_notifyPostBuildMessage($message);
+    }
+
+    # finally, update to remote head
     if (!$updateSub->()) {
         error ("\tUnable to update the source code for r[b[$module]");
         log_command($module, 'git-status-after-error', [qw(git status)]);
-        return;
     }
-
-    # Update is performed and successful, re-apply the stashed changes
-    if ($needsStash) {
-        info ("\tModule updated, reapplying your local changes.");
-        log_command($module, 'git-status-before-stash-pop', [qw(git status)]);
-        $status = log_command($module, 'git-stash-pop', [
-                qw(git stash pop --index --quiet)
-            ]);
-        if ($status != 0) {
-            error (<<EOF);
-r[b[*]
-r[b[*] Unable to re-apply stashed changes to r[b[$module]!
-r[b[*]
-* These changes were saved using the name "kdesrc-build auto-stash at $date"
-* and should still be available using the name stash\@{0}, the command run
-* to re-apply was y[git stash pop --index]. Resolve this before you run
-* kdesrc-build to update this module again.
-*
-* If you do not desire to keep your local changes, then you can generally run
-* r[b[git reset --hard HEAD], or simply delete the source directory for
-* $module. Developers be careful, doing either of these options will remove
-* any of your local work.
-EOF
-
-            $self->{ipc}->notifyNewPostBuildMessage(
-                $module->name(), "b[$module] has local changes that didn't re-apply, so the module was left alone.");
-
-            log_command($module, 'git-status-after-error', [qw(git status)]);
-            croak_runtime("Failed to re-apply stashed changes for $module");
-        }
-    }
-
-    return;
 }
 
 # This subroutine finds an existing remote-tracking branch name for the
