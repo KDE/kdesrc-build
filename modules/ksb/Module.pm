@@ -39,7 +39,7 @@ use Mojo::Promise;
 use Mojo::IOLoop;
 
 use POSIX qw(_exit :errno_h);
-use Storable qw(dclone thaw);
+use Storable qw(dclone);
 use Carp 'confess';
 use Scalar::Util 'blessed';
 use overload
@@ -1025,9 +1025,8 @@ sub installationPath
 # complete are handled separately.
 sub _readAndDispatchInProcessMessages
 {
-    my ($self, $frozen_message, $monitor, $phaseName) = @_;
+    my ($self, $linesRef, $monitor, $phaseName) = @_;
 
-    my $linesRef = eval { thaw($frozen_message) };
     croak_internal("Failed to read msg from child handler: $@")
         unless $linesRef;
 
@@ -1038,7 +1037,7 @@ sub _readAndDispatchInProcessMessages
         $monitor->markPhaseProgress("$self", $phaseName, $x / $y)
             if $y > 0;
     } else {
-        croak_internal("Couldn't handle message $frozen_message from child.");
+        croak_internal("Couldn't handle message $linesRef from child.");
     }
 }
 
@@ -1068,125 +1067,96 @@ sub runPhase_p
 
     # Default handler
     $completion_coderef //= sub {
-        my ($module, $result, $extras) = (@_);
-        return Mojo::Promise->new->reject unless $result;
-        return $result;
+        my ($module, $result) = @_;
+        return $result || Mojo::Promise->new->reject;
     };
 
-    my $promise = Mojo::Promise->new;
     my $ctx = $self->buildContext();
-
-    pipe (my $reader, my $writer)
-        or croak_runtime("Couldn't open pipe to subprocess for $phaseName: $!");
-
-    # Setup a pipe from child to parent so we can get updates as the phase
-    # progresses, logs, etc.
-    my $reactor = Mojo::IOLoop->singleton->reactor;
-    my $monitor = $self->buildContext()->statusMonitor();
-    my $reactorPromise = Mojo::Promise->new;
-
-    $reactor->io($reader => sub {
-        my ($reactor) = @_;
-        my $buffer;
-
-        if ((my $lengthRead = $reader->sysread($buffer, 8192)) == 0) {
-            # eof
-            $reactor->remove($reader);
-            close $reader;
-            $reactorPromise->resolve;
-        }
-        elsif ($lengthRead > 0) {
-            $self->_readAndDispatchInProcessMessages($buffer, $monitor, $phaseName);
-        }
-        else {
-            croak_runtime("Error reading from child pipe: $!");
-            $reactorPromise->reject;
-        }
-    });
-    $reactor->watch($reader, 1, 0); # watch for pipe readability only
-
-    $monitor->markPhaseStart($self->name(), $phaseName);
+    my $monitor = $ctx->statusMonitor();
+    my $subprocess = Mojo::IOLoop->subprocess();
     my $start_time = time;
 
-    Mojo::IOLoop->subprocess(
-        sub {
-            # blocks, runs in separate process
-            $SIG{INT} = sub { POSIX::_exit(EINTR); };
-            $0 = "kdesrc-build[$phaseName]";
+    $monitor->markPhaseStart($self->name(), $phaseName);
 
-            # This causes setOption to record changes, and is deliberately not
-            # within ctx->{options}
-            $ctx->{'#pending'} = { };
+    # Setup progress handler in parent
+    $subprocess->on(progress => sub {
+        my ($subprocess, $progress_data) = @_;
+        $self->_readAndDispatchInProcessMessages($progress_data, $monitor, $phaseName);
+    });
 
-            $writer->autoflush(1);
-            close $reader; # we can't use this anyways
-            ksb::Debug::setOutputHandle($writer);
+    # Fork the child process and wait in Mojo::IOLoop event loop
+    return $subprocess->run_p(sub {
+        # blocks, runs in separate process
+        $SIG{INT} = sub { POSIX::_exit(EINTR); };
+        $0 = "kdesrc-build[$phaseName]";
 
-            $self->buildContext->resetEnvironment();
-            $self->setupEnvironment();
+        # This causes setOption to record changes, and is deliberately not
+        # within ctx->{options}
+        $ctx->{'#pending'} = { };
 
-            # This coderef should return a hashref: {
-            #   was_successful => bool,
-            #   ... (other details)
-            # }
-            my $resultRef = $blocking_coderef->($self);
-            my $result = $resultRef->{was_successful};
-            my %newOptions;
+        ksb::Debug::setSubprocessOutputHandle($subprocess);
 
-            # Grab any newly-set options to feed back to parent
-            my @affectedMods = grep {
-                exists $ctx->{build_options}->{$_}->{'#pending'};
-            } (keys %{$ctx->{build_options}});
+        $self->buildContext->resetEnvironment();
+        $self->setupEnvironment();
 
-            foreach my $affected (@affectedMods) {
-                $newOptions{$affected} = $ctx->{build_options}->{$affected}->{'#pending'};
-            }
+        # This coderef should return a hashref: {
+        #   was_successful => bool,
+        #   ... (other details)
+        # }
+        my $resultRef = $blocking_coderef->($self);
+        my $result = $resultRef->{was_successful};
 
-            return {
-                result     => $result,
-                newOptions => \%newOptions,
-                extras     => $resultRef,
-            };
-        },
+        my %newOptions;
 
-        sub {
-            # runs in this process once subprocess is done
-            my ($subprocess, $err, $resultsRef) = @_;
+        # Grab any newly-set options to feed back to parent
+        my @affectedMods = grep {
+            exists $ctx->{build_options}->{$_}->{'#pending'};
+        } (keys %{$ctx->{build_options}});
 
-            close $writer; # can't close it earlier because must be open at fork
-
-            if ($err) {
-                $ctx->markModulePhaseFailed($phaseName, $self);
-                return $promise->reject($err);
-            }
-
-            $self->{metrics}->{time_in_phase}->{$phaseName} = time - $start_time;
-
-            # Apply options that may have changed during child proc execution.
-            if (%{$resultsRef->{newOptions}}) {
-                while(my ($k, $v) = each %{$resultsRef->{newOptions}}) {
-                    my %modulesNewOptions = %{$v};
-                    @{$ctx->{build_options}->{$k}}{keys %modulesNewOptions} = values %modulesNewOptions;
-                }
-            }
-
-            my $result = $resultsRef->{result};
-            if ($result) {
-                $ctx->markModulePhaseSucceeded($phaseName, $self, $resultsRef->{extras});
-            } else {
-                $ctx->markModulePhaseFailed($phaseName, $self);
-            }
-
-            return $reactorPromise->then(sub {
-                # This coderef should resolve or reject the promise, if used
-                $result
-                    ? $promise->resolve($completion_coderef->($self, $result, $resultsRef))
-                    : $promise->reject ($completion_coderef->($self, $result, $resultsRef));
-            });
+        foreach my $affected (@affectedMods) {
+            $newOptions{$affected} = $ctx->{build_options}->{$affected}->{'#pending'};
         }
-    );
 
-    return $promise;
+        return {
+            result     => $result,
+            newOptions => \%newOptions,
+            extras     => $resultRef,
+        };
+    })->then(sub {
+        # runs in this process once subprocess is done
+        my $resultsRef = shift;
+        my $promise = Mojo::Promise->new;
+
+        $self->{metrics}->{time_in_phase}->{$phaseName} = time - $start_time;
+
+        # Apply options that may have changed during child proc execution.
+        if (%{$resultsRef->{newOptions}}) {
+            while(my ($k, $v) = each %{$resultsRef->{newOptions}}) {
+                my %modulesNewOptions = %{$v};
+                @{$ctx->{build_options}->{$k}}{keys %modulesNewOptions} = values %modulesNewOptions;
+            }
+        }
+
+        my $result = $resultsRef->{result};
+        if ($result) {
+            $ctx->markModulePhaseSucceeded($phaseName, $self, $resultsRef->{extras});
+        } else {
+            $ctx->markModulePhaseFailed($phaseName, $self);
+        }
+
+        return (
+            # This coderef should resolve or reject the promise, if used
+            # TODO: 'reject' should be analogous to Perl's die so this should be
+            # refactored to use resolve for normal exit code results, reject for croak_*
+            $result
+                ? $promise->resolve($completion_coderef->($self, $result, $resultsRef))
+                : $promise->reject ($completion_coderef->($self, $result, $resultsRef))
+        );
+    })->catch(sub {
+        my $err = shift;
+        $ctx->markModulePhaseFailed($phaseName, $self);
+        return Mojo::Promise->new->reject($err);
+    });
 }
 
 # Returns a list of any 'post-build' messages that have been set for the module

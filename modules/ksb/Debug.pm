@@ -1,12 +1,10 @@
-package ksb::Debug 0.30;
+package ksb::Debug 0.40;
 
 # Debugging routines and constants for use with kdesrc-build
 
 use strict;
 use warnings;
 use 5.014;
-
-use Storable qw(freeze);
 
 use Exporter qw(import); # Steal Exporter's import method
 our @EXPORT = qw(debug pretending debugging whisper
@@ -119,11 +117,11 @@ sub setLogFile
 
 # Sets a pipe to use to proxy logged messages, progress info, etc. back to our
 # parent
-sub setOutputHandle
+sub setSubprocessOutputHandle
 {
     $pipeToParent = shift;
-    die "$pipeToParent isn't an IO handle!"
-        unless $pipeToParent->can('syswrite');
+    die "$pipeToParent isn't an Mojo::IOLoop::Subprocess handle!"
+        unless $pipeToParent->isa('Mojo::IOLoop::Subprocess');
 }
 
 # The next few subroutines are used to print output at different importance
@@ -172,8 +170,9 @@ sub _sendMessageToParent
         unless $pipeToParent;
 
     my $obj_ref = shift;
-    $pipeToParent->syswrite(freeze($obj_ref))
-        or croak_internal("Failed to write msg to parent $!, aborting");
+
+    # Should be Mojo::IOLoop::Singleton which will serialize and pass to the parent
+    $pipeToParent->progress($obj_ref);
 }
 
 sub reportProgressToParent
