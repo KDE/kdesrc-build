@@ -1090,10 +1090,6 @@ sub runPhase_p
         $SIG{INT} = sub { POSIX::_exit(EINTR); };
         $0 = "kdesrc-build[$phaseName]";
 
-        # This causes setOption to record changes, and is deliberately not
-        # within ctx->{options}
-        $ctx->{'#pending'} = { };
-
         ksb::Debug::setSubprocessOutputHandle($subprocess);
 
         $self->buildContext->resetEnvironment();
@@ -1104,22 +1100,15 @@ sub runPhase_p
         #   ... (other details)
         # }
         my $resultRef = $blocking_coderef->($self);
-        my $result = $resultRef->{was_successful};
 
-        my %newOptions;
-
-        # Grab any newly-set options to feed back to parent
-        my @affectedMods = grep {
-            exists $ctx->{build_options}->{$_}->{'#pending'};
-        } (keys %{$ctx->{build_options}});
-
-        foreach my $affected (@affectedMods) {
-            $newOptions{$affected} = $ctx->{build_options}->{$affected}->{'#pending'};
-        }
+        # We may have changed options and persistent options, feed those back
+        # to the main process.
+        my @bundles_to_copy = qw(build_options persistent_options);
+        my %option_bundle = map { ($_ => $ctx->{$_}->{"$self"}) } @bundles_to_copy;
 
         return {
-            result     => $result,
-            newOptions => \%newOptions,
+            result     => $resultRef->{was_successful},
+            newOptions => \%option_bundle,
             extras     => $resultRef,
         };
     })->then(sub {
@@ -1130,28 +1119,19 @@ sub runPhase_p
         $self->{metrics}->{time_in_phase}->{$phaseName} = time - $start_time;
 
         # Apply options that may have changed during child proc execution.
-        if (%{$resultsRef->{newOptions}}) {
-            while(my ($k, $v) = each %{$resultsRef->{newOptions}}) {
-                my %modulesNewOptions = %{$v};
-                @{$ctx->{build_options}->{$k}}{keys %modulesNewOptions} = values %modulesNewOptions;
-            }
+        while (my ($bundle_name, $options) = each %{$resultsRef->{newOptions}}) {
+            $ctx->{$bundle_name}->{"$self"} = $options;
         }
 
-        my $result = $resultsRef->{result};
-        if ($result) {
+        # TODO Make this a ->then handler?
+        my $completion_p = $completion_coderef->($self, $resultsRef->{result}, $resultsRef);
+        if ($resultsRef->{result}) {
             $ctx->markModulePhaseSucceeded($phaseName, $self, $resultsRef->{extras});
+            return Mojo::Promise->resolve($completion_p);
         } else {
             $ctx->markModulePhaseFailed($phaseName, $self);
+            return Mojo::Promise->reject ($completion_p);
         }
-
-        return (
-            # This coderef should resolve or reject the promise, if used
-            # TODO: 'reject' should be analogous to Perl's die so this should be
-            # refactored to use resolve for normal exit code results, reject for croak_*
-            $result
-                ? $promise->resolve($completion_coderef->($self, $result, $resultsRef))
-                : $promise->reject ($completion_coderef->($self, $result, $resultsRef))
-        );
     })->catch(sub {
         my $err = shift;
         $ctx->markModulePhaseFailed($phaseName, $self);

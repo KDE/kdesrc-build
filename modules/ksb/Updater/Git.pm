@@ -312,7 +312,7 @@ sub _setupBestRemote
         note (" y[b[*]\tThe git remote named b[", DEFAULT_GIT_REMOTE, "] has been updated");
 
         # Update what we think is the current repository on-disk.
-        #$ipc->notifyPersistentOptionChange($module->name(), 'git-cloned-repository', $cur_repo);
+        $module->setPersistentOption('git-cloned-repository', $cur_repo);
     }
 
     return $chosenRemote;
