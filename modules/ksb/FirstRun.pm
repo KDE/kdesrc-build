@@ -517,7 +517,7 @@ global
     # Paths
 
     kdedir ~/kde/usr # Where to install KF5-based software
-    qtdir  ~/kde/qt5 # Where to find Qt5
+#   qtdir  ~/kde/qt5 # Where to install Qt5 if kdesrc-build supplies it
 
     source-dir ~/kde/src   # Where sources are downloaded
     build-dir  ~/kde/build # Where the source build is run
@@ -540,9 +540,10 @@ end global
 # You can include other files inline using the "include" command. We do this here
 # to include files which are updated with kdesrc-build.
 
-# Qt and some Qt-using middleware libraries
-include %{base_dir}/qt5-build-include
-include %{base_dir}/custom-qt5-libs-build-include
+# Qt and some Qt-using middleware libraries. Uncomment if your distribution's Qt
+# tools are too old but be warned that Qt take a long time to build!
+#include %{base_dir}/qt5-build-include
+#include %{base_dir}/custom-qt5-libs-build-include
 
 # KF5 and Plasma :)
 include %{base_dir}/kf5-qt5-build-include
