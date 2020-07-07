@@ -172,6 +172,10 @@ sub new
     assert_isa($self, 'ksb::Module');
     assert_isa($self, 'ksb::BuildContext');
 
+    # Make the number of CPUs available to the rc-file by turning it into a pre-set option
+    my $nproc = int (eval { (filter_program_output(undef, 'nproc'))[0] } // 4);
+    $self->setOption('num-cpus', $nproc);
+
     return $self;
 }
 

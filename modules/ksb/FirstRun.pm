@@ -142,8 +142,6 @@ DONE
         my $sampleRc = $packages{'sample-rc'} or
             _throw("Embedded sample file missing!");
 
-        my $numCpus = `nproc 2>/dev/null` || 4;
-        $sampleRc =~ s/%\{num_cpus}/$numCpus/g;
         $sampleRc =~ s/%\{base_dir}/$baseDir/g;
 
         open my $sampleFh, '>', "$ENV{HOME}/.kdesrc-buildrc"
@@ -529,7 +527,7 @@ global
     include-dependencies true
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
-    make-options  -j%{num_cpus}
+    make-options  -j ${num-cpus}
 end global
 
 # With base options set, the remainder of the file is used to define modules to build, in the

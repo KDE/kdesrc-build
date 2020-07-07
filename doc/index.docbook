@@ -503,11 +503,16 @@ compile jobs you wish to allow.  A higher number (up to the number of logical CP
 your system has available) leads to quicker builds, but requires more system resources.
 </para>
 
+<tip><para>&kdesrc-build; sets the option <option><link linkend="conf-num-cpus">num-cpus</link></option> to
+the detected number of available processing cores. You can use this value
+in your own configuration file to avoid having to set it manually.
+</para></tip>
+
 <example id="make-options-example">
-<title>Configuring Make for 4 compiles at once, with exceptions</title>
+<title>Configuring Make to use all available CPUs, with exceptions</title>
 <screen>
 global
-    make-options -j4
+    make-options -j <literal>${num-cpus}</literal>
     &hellip;
 end global
 
@@ -1599,6 +1604,25 @@ linkend="conf-use-modules">use-modules</link> for more information.
 
 </sect3>
 
+<sect3 id="kdesrc-buildrc-option-values">
+<title>Processing of option values</title>
+
+<para>In general, the entire line contents after the
+<replaceable>option-name</replaceable> is used as the
+<replaceable>option-value</replaceable>.</para>
+
+<para>One modification that &kdesrc-build; performs is that a sequence
+<userinput>${<replaceable>name-of-option</replaceable>}</userinput> is replaced
+with the value of that option from the global configuration. This allows you
+to reference the value of existing options, including options already set by
+&kdesrc-build;.</para>
+
+<para>
+To see an example of this in use, see
+<xref linkend="make-options-example"/>.</para>
+
+</sect3>
+
 <sect3 id="kdesrc-buildrc-options-groups">
 <title><quote>options</quote> modules</title>
 
@@ -2596,6 +2620,20 @@ module if it normally would have tried anyways.</entry>
 <entry></entry>
 <entry>This option was removed in version 1.10, since this behavior no longer helps
 due to fixes in the underlying build system.</entry>
+</row>
+
+<row id="conf-num-cpus">
+<entry>num-cpus</entry>
+<entry>Cannot be overridden</entry>
+<entry>
+<para>This option is automatically set by &kdesrc-build; to the number of
+available CPUs (as indicated by the external application
+<application>nproc</application>). If &kdesrc-build; cannot detect the
+number of CPUs, this value is set to 4.</para>
+
+<para>See <xref linkend="make-options-example"/> for an example of this
+option's usage. This option was added in version 20.07.</para>
+</entry>
 </row>
 
 <row id="conf-override-build-system">
