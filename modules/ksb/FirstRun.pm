@@ -527,7 +527,7 @@ global
     include-dependencies true
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
-    make-options  -j ${num-cpus}
+    make-options  -j ${num-cores}
 end global
 
 # With base options set, the remainder of the file is used to define modules to build, in the
