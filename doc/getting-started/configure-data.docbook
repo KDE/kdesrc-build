@@ -65,7 +65,7 @@ compile jobs you wish to allow.  A higher number (up to the number of logical CP
 your system has available) leads to quicker builds, but requires more system resources.
 </para>
 
-<tip><para>&kdesrc-build; sets the option <option><link linkend="conf-num-cpus">num-cpus</link></option> to
+<tip><para>&kdesrc-build; sets the option <option><link linkend="conf-num-cores">num-cores</link></option> to
 the detected number of available processing cores. You can use this value
 in your own configuration file to avoid having to set it manually.
 </para></tip>
@@ -74,7 +74,9 @@ in your own configuration file to avoid having to set it manually.
 <title>Configuring Make to use all available CPUs, with exceptions</title>
 <screen>
 global
-    make-options -j <literal>${num-cpus}</literal>
+    # This environment variable is automatically used by make, including
+    # make commands not run by kdesrc-build directly, such as Qt's configure
+    set-env MAKEFLAGS -j<literal>${num-cores}</literal>
     &hellip;
 end global
 
