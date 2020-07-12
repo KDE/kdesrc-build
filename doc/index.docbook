@@ -2628,13 +2628,39 @@ due to fixes in the underlying build system.</entry>
 <entry>num-cores</entry>
 <entry>Cannot be overridden</entry>
 <entry>
-<para>This option is automatically set by &kdesrc-build; to the number of
+<para>This option is defined by &kdesrc-build; (when using the kdesrc-build-setup tool
+or <command>kdesrc-build --initial-setup</command>), set to be the number of
 available CPUs (as indicated by the external application
 <application>nproc</application>). If &kdesrc-build; cannot detect the
 number of CPUs, this value is set to 4.</para>
 
 <para>See <xref linkend="make-options-example"/> for an example of this
 option's usage. This option was added in version 20.07.</para>
+</entry>
+</row>
+
+<row id="conf-num-cores-low-mem">
+<entry>num-cores-low-mem</entry>
+<entry>Cannot be overridden</entry>
+<entry>
+<para>This option is defined by &kdesrc-build; (when using the kdesrc-build-setup tool
+or <command>kdesrc-build --initial-setup</command>), set to be the number of
+CPUs that is deemed safe for heavyweight or other highly-intensive modules,
+such as <literal>qtwebengine</literal>, to avoid running out of memory
+during the build.</para>
+
+<para>The typical calculation is one CPU core for every 2
+gigabytes (GiB) of total memory. At least 1 core will be specified,
+and no more than <option><link linkend="conf-num-cores">num-cores</link></option>
+cores will be specified.</para>
+
+<para>Although this option is intended to support &Qt; modules, you can use it for your
+any module in the same way that <option>num-cores</option> is used.</para>
+
+<para>If &kdesrc-build; cannot detect available memory then this value will be
+set to 2.</para>
+
+<para>This option was added in version 20.07.</para>
 </entry>
 </row>
 

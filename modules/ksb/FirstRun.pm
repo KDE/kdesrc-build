@@ -4,6 +4,7 @@ use 5.014;
 use strict;
 use warnings;
 use File::Spec qw(splitpath);
+use List::Util qw(min max first);
 
 use ksb::BuildException;
 use ksb::Debug qw(colorize);
@@ -126,6 +127,31 @@ DONE
     }
 }
 
+# Return the highest number of cores we can use based on available memory. Requires
+# the number of cores we have available
+sub _getNumCoresForLowMemory
+{
+    my $num_cores = shift;
+
+    # Try to detect the amount of total memory for a corresponding option for
+    # heavyweight modules (sorry ade, not sure what's needed for FreeBSD!)
+    my $mem_total;
+    my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
+
+    if ($total_mem_line && $? == 0) {
+        ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
+        $mem_total = int $mem_total;
+    }
+
+    # 4 GiB is assumed if no info on memory is available, as this will
+    # calculate to 2 cores. sprintf is used since there's no Perl round function
+    my $rounded_mem = $mem_total ? (int sprintf("%.0f", $mem_total / 1024000.0)) : 4;
+    my $max_cores_for_mem = max(1, int $rounded_mem / 2); # Assume 2 GiB per core
+    my $num_cores_low = min($max_cores_for_mem, $num_cores);
+
+    return $num_cores_low;
+}
+
 sub _setupBaseConfiguration
 {
     my $baseDir = shift;
@@ -142,6 +168,11 @@ DONE
         my $sampleRc = $packages{'sample-rc'} or
             _throw("Embedded sample file missing!");
 
+        my $numCores = `nproc 2>/dev/null` || 4;
+        my $numCoresLow = _getNumCoresForLowMemory($numCores);
+
+        $sampleRc =~ s/%\{num_cores}/$numCores/g;
+        $sampleRc =~ s/%\{num_cores_low}/$numCoresLow/g;
         $sampleRc =~ s/%\{base_dir}/$baseDir/g;
 
         open my $sampleFh, '>', "$ENV{HOME}/.kdesrc-buildrc"
@@ -527,6 +558,19 @@ global
     include-dependencies true
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+    # kdesrc-build sets 2 options which you can use in options like make-options or set-env
+    # to help manage the number of compile jobs that # happen during a build:
+    #
+    # 1. num-cores, which is just the number of detected CPU cores, and can be passed
+    #    to tools like make (needed for parallel build) or ninja (completely optional).
+    #
+    # 2. num-cores-low-mem, which is set to largest value that appears safe for
+    #    particularly heavyweight modules based on total memory, intended for
+    #    modules like qtwebengine
+    num-cores %{num_cores}
+    num-cores-low-mem %{num_cores_low}
+
     make-options  -j ${num-cores}
 end global
 
@@ -546,7 +590,4 @@ include %{base_dir}/custom-qt5-libs-build-include
 include %{base_dir}/kf5-qt5-build-include
 
 # To change options for modules that have already been defined, use an
-# 'options' block
-options kcoreaddons
-    make-options -j4
-end options
+# 'options' block. See qt5-build-include for an example

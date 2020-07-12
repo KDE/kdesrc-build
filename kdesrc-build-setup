@@ -26,6 +26,7 @@ use File::Copy;
 use File::Temp qw/tempfile/;
 use File::Basename;
 use Cwd qw(abs_path);
+use List::Util qw(max min first);
 
 our $VERSION = 0.03; # Not user-visible yet.
 
@@ -348,6 +349,25 @@ if (grep /^qt5$/, @chosenModules) {
 EOF
 }
 
+chomp(my $num_cores = `nproc`);
+$num_cores ||= 4;
+
+# Try to detect the amount of total memory for a corresponding option for
+# heavyweight modules (sorry ade, not sure what's needed for FreeBSD!)
+my $mem_total;
+my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
+
+if ($total_mem_line && $? == 0) {
+    ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
+    $mem_total = int $mem_total;
+}
+
+# 4 GiB is assumed if no info on memory is available, as this will
+# calculate to 2 cores. sprintf is used since there's no Perl round function
+my $rounded_mem = $mem_total ? (int sprintf("%.0f", $mem_total / 1024000.0)) : 4;
+my $max_cores_for_mem = max(1, int $rounded_mem / 2); # Assume 2 GiB per core
+my $num_cores_low = min($max_cores_for_mem, $num_cores);
+
 print $output <<EOF;
 
     # Finds and includes *KDE*-based dependencies into the build.  This makes
@@ -365,6 +385,18 @@ print $output <<EOF;
     # Directory to build KDE into before installing
     # relative to source-dir by default
     build-dir $buildDir
+
+   ## kdesrc-build sets 2 options which you can use in options like make-options or set-env
+    # to help manage the number of compile jobs that # happen during a build:
+    #
+    # 1. num-cores, which is just the number of detected CPU cores, and can be passed
+    #    to tools like make (needed for parallel build) or ninja (completely optional).
+    #
+    # 2. num-cores-low-mem, which is set to largest value that appears safe for
+    #    particularly heavyweight modules based on total memory, intended for
+    #    modules like qtwebengine
+    num-cores $num_cores
+    num-cores-low-mem $num_cores_low
 
     # Use multiple cores for building. Other options to GNU make may also be
     # set.

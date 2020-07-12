@@ -100,7 +100,9 @@ our %defaultGlobalOptions = (
     "branch"               => "",
     "branch-group"         => "", # Overrides branch, uses JSON data.
     "build-dir"            => "build",
+    "cmake-generator"      => "",
     "cmake-options"        => "",
+    "cmake-toolchain"      => "",
     "configure-flags"      => "",
     "custom-build-command" => '',
     "cxxflags"             => "-pipe",
@@ -114,6 +116,9 @@ our %defaultGlobalOptions = (
     "make-install-prefix"  => "",  # Some people need sudo
     "make-options"         => "",
     "module-base-path"     => "",  # Used for tags and branches
+    "ninja-options"        => "",
+    "num-cores"            => 4,   # Used only in rc-file but documented
+    "num-cores-low-mem"    => 2,   # Used only in rc-file but documented
     "override-build-system"=> "",
     "override-url"         => "",
     "persistent-data-file" => "",
@@ -171,10 +176,6 @@ sub new
 
     assert_isa($self, 'ksb::Module');
     assert_isa($self, 'ksb::BuildContext');
-
-    # Make the number of CPUs available to the rc-file by turning it into a pre-set option
-    my $nproc = int (eval { (filter_program_output(undef, 'nproc'))[0] } // 3) + 1;
-    $self->setOption('num-cores', $nproc);
 
     return $self;
 }
