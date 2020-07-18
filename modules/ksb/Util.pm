@@ -676,8 +676,8 @@ sub is_dir_empty
     return 1;
 }
 
-# Takes in a string and returns 1 if that string exists somewhere in the 
-# path variable. 
+# Takes in a string and returns 1 if that string exists somewhere in the
+# path variable.
 sub isInPath
 {
     if (index($ENV{'PATH'}, $_[0]) != -1) {
@@ -699,6 +699,15 @@ sub fileHasLine
     }
 
     return 0;
+}
+
+sub yesNoPrompt {
+    my $msg = shift;
+
+    local $| = 1;
+    print "$msg (y/N) ";
+    chomp(my $answer = <STDIN>);
+    return lc($answer) eq 'y';
 }
 
 1;
