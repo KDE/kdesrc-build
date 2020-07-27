@@ -30,7 +30,7 @@ environments as fielded in "minimal Docker container" forms of popular distros.
 =cut
 
 use constant {
-  SHELL_RC_SNIPPET => <<'RC'
+    SHELL_RC_SNIPPET => <<'RC'
 # kdesrc-build ##################################################
 
 ## Add kdesrc-build to PATH
@@ -220,6 +220,7 @@ sub _setupShellRcFile
 
     if ($isAuto) {
         open(my $rcFh, '>>', "$rcFilepath") or _throw("Couldn't open $rcFilepath: $!");
+        say $rcFh '';
         say $rcFh SHELL_RC_SNIPPET;
         close($rcFh);
         say colorize(<<DONE);
