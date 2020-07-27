@@ -124,37 +124,53 @@ sub setHeadless
 #  initialization - Do not call <finish> from this function.
 #
 # Parameters:
-#  cmdlineOptions - hashref to hold parsed modules options to be applied later.
-#    *Note* this must be done separately, it is not handled by this subroutine.
-#    Global options will be stored in a hashref at $cmdlineOptions->{global}.
-#    Module or module-set options will be stored in a hashref at
-#    $cmdlineOptions->{$moduleName} (it will be necessary to disambiguate
-#    later in the run whether it is a module set or a single module).
-#
-#    If the global option 'start-program' is set, then the program to start and
-#    its options will be found in a listref pointed to under the
-#    'start-program' option.
-#
-#  selectors - listref to hold the list of module or module-set selectors to
-#    build, in the order desired by the user. These will just be strings, the
-#    caller will have to figure out whether the selector is a module or
-#    module-set, and create any needed objects, and then set the recommended
-#    options as listed in cmdlineOptions.
-#
 #  ctx - <BuildContext> to hold the global build state.
 #
 #  @options - The remainder of the arguments are treated as command line
 #    arguments to process.
 #
 # Returns:
-#  Nothing. An exception will be raised on failure, or this function may quit
+#  A hashref of the form:
+#    {
+#      options => {
+#        # cmdline options
+#        global => {
+#          'no-src' => 1,
+#          foo      => 'bar',
+#        },
+#        # per-module *OR* module-set options passed on cmdline
+#        module_name => {
+#          foo     => 'baz',
+#        },
+#      },
+#      # always present, possibly empty. If empty the user did not request any
+#      # specific modules and all should be built. If present, is in the order
+#      # requested by the user
+#      selectors => [ 'selector-1', 'selector-2', etc. ],
+#      run_mode => 'build', # normally 'build', could be 'query', 'install', etc.
+#      start-program => ['foo', @args], # only present if a program should be run
+#      ignore-modules => ['mod1', 'mod2'] # selectors to ignore from --ignore-modules
+#    }
+#
+#  The options and selectors returned are not applied directly to any module or context.
+#
+#  An exception will be raised on failure, or this function may quit
 #  the program directly (e.g. to handle --help, --usage).
 sub _readCommandLineOptionsAndSelectors
 {
-    my $self = shift;
-    my ($cmdlineOptionsRef, $selectorsRef, $ctx, @options) = @_;
-    my $phases = $ctx->phases();
+    my ($self, $ctx, @options) = @_;
     my @savedOptions = @options; # Copied for use in debugging.
+
+    my $result = {
+        options   => { },
+        selectors => [ ],
+    };
+
+    my $cmdlineOptionsRef = $result->{options};
+    my $selectorsRef      = $result->{selectors};
+
+    my $phases = $ctx->phases();
+
     my $os = ksb::OSSupport->new;
     my $version = "kdesrc-build " . scriptVersion();
     my $author = <<DONE;
@@ -253,8 +269,8 @@ DONE
             $phases->filterOutPhase('update'); # Implied --no-src
             $foundOptions{'no-metadata'} = 1;  # Implied --no-metadata
         },
-        verbose => sub { $foundOptions{'debug-level'} = ksb::Debug::WHISPER },
-        quiet => sub { $foundOptions{'debug-level'} = ksb::Debug::NOTE },
+        verbose        => sub { $foundOptions{'debug-level'} = ksb::Debug::WHISPER },
+        quiet          => sub { $foundOptions{'debug-level'} = ksb::Debug::NOTE },
         'really-quiet' => sub { $foundOptions{'debug-level'} = ksb::Debug::WARNING },
         debug => sub {
             $foundOptions{'debug-level'} = ksb::Debug::DEBUG;
@@ -273,7 +289,7 @@ DONE
 
         # Getopt::Long doesn't set these up for us even though we specify an
         # array. Set them up ourselves.
-        'start-program' => [ ],
+        'start-program'  => [ ],
         'ignore-modules' => [ ],
 
         # Module selectors, the <> is Getopt::Long shortcut for an
@@ -353,6 +369,8 @@ DONE
 
     @{ $cmdlineOptionsRef->{'global'} }{keys %auxOptions}
         = values %auxOptions;
+
+    return $result;
 }
 
 # Generates the build context, builds various module, dependency and branch
@@ -376,14 +394,14 @@ sub establishContext
     # doing.
 
     my $ctx = $self->context();
-    my $cmdlineOptions = { global => { }, };
-    my $cmdlineGlobalOptions = $cmdlineOptions->{global};
-    my $deferredOptions = { }; # 'options' blocks
 
     # Process --help, --install, etc. first.
-    my @selectors;
-    $self->_readCommandLineOptionsAndSelectors($cmdlineOptions, \@selectors,
-        $ctx, @argv);
+    my $optsAndSelectors = $self->_readCommandLineOptionsAndSelectors($ctx, @argv);
+
+    my @selectors = @{$optsAndSelectors->{selectors}};
+    my $cmdlineOptions = $optsAndSelectors->{options};
+    my $cmdlineGlobalOptions = $cmdlineOptions->{global};
+    my $deferredOptions = { }; # 'options' blocks
 
     # Convert list to hash for lookup
     my %ignoredSelectors =
