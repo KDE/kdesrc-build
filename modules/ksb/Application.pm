@@ -124,8 +124,6 @@ sub setHeadless
 #  initialization - Do not call <finish> from this function.
 #
 # Parameters:
-#  ctx - <BuildContext> to hold the global build state.
-#
 #  @options - The remainder of the arguments are treated as command line
 #    arguments to process.
 #
@@ -158,7 +156,7 @@ sub setHeadless
 #  the program directly (e.g. to handle --help, --usage).
 sub _readCommandLineOptionsAndSelectors
 {
-    my ($self, $ctx, @options) = @_;
+    my ($self, @options) = @_;
     my @savedOptions = @options; # Copied for use in debugging.
 
     my $result = {
@@ -169,19 +167,6 @@ sub _readCommandLineOptionsAndSelectors
     my $cmdlineOptionsRef = $result->{options};
     my $selectorsRef      = $result->{selectors};
 
-    my $phases = $ctx->phases();
-
-    my $os = ksb::OSSupport->new;
-    my $version = "kdesrc-build " . scriptVersion();
-    my $author = <<DONE;
-$version was written (mostly) by:
-  Michael Pyne <mpyne\@kde.org>
-
-Many people have contributed code, bugfixes, and documentation.
-
-Please report bugs using the KDE Bugzilla, at https://bugs.kde.org/
-DONE
-
     # Getopt::Long will store options in %foundOptions, since that is what we
     # pass in. To allow for custom subroutines to handle an option it is
     # required that the sub *also* be in %foundOptions... whereupon it will
@@ -189,53 +174,21 @@ DONE
     # subs save to %auxOptions, and read those in back over it later.
     my (%foundOptions, %auxOptions);
     %foundOptions = (
-        'show-info' => sub { say $version; say "OS: ", $os->vendorID(); exit },
-        version => sub { say $version; exit },
-        author  => sub { say $author;  exit },
-        help    => sub { _showHelpMessage(); exit 0 },
-        install => sub {
-            $self->{run_mode} = 'install';
-            $phases->phases('install');
-        },
-        uninstall => sub {
-            $self->{run_mode} = 'uninstall';
-            $phases->phases('uninstall');
-        },
-        'no-src' => sub {
-            $phases->filterOutPhase('update');
-        },
-        'no-install' => sub {
-            $phases->filterOutPhase('install');
-        },
         'no-snapshots' => sub {
             # The documented form of disable-snapshots
             $auxOptions{'disable-snapshots'} = 1;
         },
         'no-tests' => sub {
-            # The "right thing" to do
-            $phases->filterOutPhase('test');
-
-            # What actually works at this point.
+            # What actually works at this point. Filtering phases is the right thing to
+            # do though, see its usage in _updateBuildContextFromOptions
             $foundOptions{'run-tests'} = 0;
-        },
-        'no-build' => sub {
-            $phases->filterOutPhase('build');
         },
         # Mostly equivalent to the above
         'src-only' => sub {
-            $phases->phases('update');
-
             # We have an auto-switching function that we only want to run
             # if --src-only was passed to the command line, so we still
             # need to set a flag for it.
             $foundOptions{'allow-auto-repo-move'} = 1;
-        },
-        'build-only' => sub {
-            $phases->phases('build');
-        },
-        'install-only' => sub {
-            $self->{run_mode} = 'install';
-            $phases->phases('install');
         },
         prefix => sub {
             my ($optName, $arg) = @_;
@@ -266,7 +219,6 @@ DONE
         },
         resume => sub {
             $auxOptions{resume} = 1;
-            $phases->filterOutPhase('update'); # Implied --no-src
             $foundOptions{'no-metadata'} = 1;  # Implied --no-metadata
         },
         verbose        => sub { $foundOptions{'debug-level'} = ksb::Debug::WHISPER },
@@ -323,11 +275,11 @@ DONE
         # Options here should not duplicate the flags and options defined below
         # from ksb::BuildContext!
         'version|v', 'author', 'help', 'show-info',
-        'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
+        'install|install-only', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
         'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
         'verbose', 'quiet|quite|q', 'really-quiet', 'debug',
         'reconfigure', 'colorful-output|color!',
-        'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
+        'src-only|svn-only', 'build-only', 'build-system-only',
         'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
         'pretend|dry-run|p', 'refresh-build',
         'query=s', 'start-program|run=s{,}',
@@ -373,6 +325,89 @@ DONE
     return $result;
 }
 
+# Method: _updateBuildContextFromOptions
+#
+# Uses the user-requested options (as returned by
+# _readCommandLineOptionsAndSelectors) to update the build context and
+# self-options as appropriate, including functions such as updating the
+# run-mode, handling interactive options like --help, etc.
+#
+# This function may exit entirely for some options, and since the rc-file has
+# not been read yet, does not handle all possible cases where an early exit is
+# required.
+#
+# Phase:
+#  initialization - Do not call <finish> from this function.
+#
+# Parameters:
+#  ctx - <BuildContext> to hold the global build state.
+#  optsAndSelectors - As from _readCommandLineOptionsAndSelectors
+#
+# Returns:
+#  There is no return value. The function may not return at all, and exit instead.
+sub _updateBuildContextFromOptions
+{
+    my ($self, $ctx, $optsAndSelectors) = @_;
+
+    my $phases = $ctx->phases();
+
+    my $version = "kdesrc-build " . scriptVersion();
+    my $author = <<DONE;
+$version was written (mostly) by:
+  Michael Pyne <mpyne\@kde.org>
+
+Many people have contributed code, bugfixes, and documentation.
+
+Please report bugs using the KDE Bugzilla, at https://bugs.kde.org/
+DONE
+
+    my %optionHandlers = (
+        'show-info' => sub {
+            my $os = ksb::OSSupport->new;
+            say $version; say "OS: ", $os->vendorID();
+            exit;
+        },
+        version => sub { say $version; exit },
+        author  => sub { say $author;  exit },
+        help    => sub { _showHelpMessage(); exit 0 },
+        install => sub {
+            $phases->phases('install');
+            $self->{run_mode} = 'install';
+        },
+        uninstall => sub {
+            $phases->phases('uninstall');
+            $self->{run_mode} = 'uninstall';
+        },
+        'no-src' => sub {
+            $phases->filterOutPhase('update');
+        },
+        'no-install' => sub {
+            $phases->filterOutPhase('install');
+        },
+        'no-tests' => sub {
+            # The "right thing" to do... doesn't fully work yet, so see also the 'run-tests' option
+            $phases->filterOutPhase('test');
+        },
+        'no-build' => sub {
+            $phases->filterOutPhase('build');
+        },
+        # Mostly equivalent to the above
+        'src-only' => sub {
+            $phases->phases('update');
+        },
+        'build-only' => sub {
+            $phases->phases('build');
+        },
+        resume => sub {
+            $phases->filterOutPhase('update'); # Implied --no-src
+        },
+    );
+
+    while (my ($opt, $value) = each %{$optsAndSelectors->{options}->{global}}) {
+        $optionHandlers{$opt}->($value) if exists $optionHandlers{$opt};
+    }
+}
+
 # Generates the build context, builds various module, dependency and branch
 # group resolvers, and splits up the provided option/selector mix read from
 # cmdline into selectors (returned to caller, if any) and pre-built context and
@@ -396,7 +431,8 @@ sub establishContext
     my $ctx = $self->context();
 
     # Process --help, --install, etc. first.
-    my $optsAndSelectors = $self->_readCommandLineOptionsAndSelectors($ctx, @argv);
+    my $optsAndSelectors = $self->_readCommandLineOptionsAndSelectors(@argv);
+    $self->_updateBuildContextFromOptions($ctx, $optsAndSelectors); # may exit process
 
     my @selectors = @{$optsAndSelectors->{selectors}};
     my $cmdlineOptions = $optsAndSelectors->{options};
