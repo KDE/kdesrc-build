@@ -31,7 +31,6 @@ environments as fielded in "minimal Docker container" forms of popular distros.
 
 use constant {
   SHELL_RC_SNIPPET => <<'RC'
-
 # kdesrc-build ##################################################
 
 ## Add kdesrc-build to PATH
@@ -50,12 +49,8 @@ sub setupUserSystem
 {
     my $baseDir = shift;
     my $os = ksb::OSSupport->new;
-
-    if (not defined $ENV{'SHELL'}) {
-        _throw('SHELL environment variable is not defined.');
-    }
-
-    my $shellName = (split '/', $ENV{'SHELL'})[-1];
+    my $envShell = $ENV{'SHELL'} // 'undefined';
+    my $shellName = (split '/', $envShell)[-1];
 
     eval {
         _installSystemPackages($os);
@@ -166,35 +161,38 @@ sub _getNumCoresForLowMemory
 sub _setupBaseConfiguration
 {
     my $baseDir = shift;
+    my @knownLocations = ("$ENV{PWD}/kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
+    my $locatedFile = first { -e $_ } @knownLocations;
 
-    if (-e "kdesrc-buildrc" || -e "$ENV{HOME}/.kdesrc-buildrc") {
+    if (defined $locatedFile) {
         print colorize(<<DONE);
- b[*] You already have a configuration file: b[y["$ENV{HOME}/.kdesrc-buildrc"].
+ b[*] You already have a configuration file: b[y[$locatedFile].
 DONE
-    } else {
-        print colorize(<<DONE);
+        return;
+    }
+
+    print colorize(<<DONE);
  b[*] Creating b[sample configuration file]: b[y["$ENV{HOME}/.kdesrc-buildrc"]...
 DONE
 
-        my $sampleRc = $packages{'sample-rc'} or
-            _throw("Embedded sample file missing!");
+    my $sampleRc = $packages{'sample-rc'} or
+        _throw("Embedded sample file missing!");
 
-        my $numCores = `nproc 2>/dev/null` || 4;
-        my $numCoresLow = _getNumCoresForLowMemory($numCores);
+    my $numCores = `nproc 2>/dev/null` || 4;
+    my $numCoresLow = _getNumCoresForLowMemory($numCores);
 
-        $sampleRc =~ s/%\{num_cores}/$numCores/g;
-        $sampleRc =~ s/%\{num_cores_low}/$numCoresLow/g;
-        $sampleRc =~ s/%\{base_dir}/$baseDir/g;
+    $sampleRc =~ s/%\{num_cores}/$numCores/g;
+    $sampleRc =~ s/%\{num_cores_low}/$numCoresLow/g;
+    $sampleRc =~ s/%\{base_dir}/$baseDir/g;
 
-        open my $sampleFh, '>', "$ENV{HOME}/.kdesrc-buildrc"
-            or _throw("Couldn't open new ~/.kdesrc-buildrc: $!");
+    open my $sampleFh, '>', "$ENV{HOME}/.kdesrc-buildrc"
+        or _throw("Couldn't open new ~/.kdesrc-buildrc: $!");
 
-        print $sampleFh $sampleRc
-            or _throw("Couldn't write to ~/.kdesrc-buildrc: $!");
+    print $sampleFh $sampleRc
+        or _throw("Couldn't write to ~/.kdesrc-buildrc: $!");
 
-        close $sampleFh
-            or _throw("Error closing ~/.kdesrc-buildrc: $!");
-    }
+    close $sampleFh
+        or _throw("Error closing ~/.kdesrc-buildrc: $!");
 }
 
 sub _setupShellRcFile
@@ -212,12 +210,12 @@ sub _setupShellRcFile
             $rcFilepath = "$ENV{'HOME'}/.zshrc";
         }
     } else {
-        say colorize(" * Updating y[b[$shellName] shell rc file is not supported.");
+        say colorize(" b[*] Updating rc-file for shell 'y[b[$shellName]' is not supported.");
         $isAuto = 0;
     }
 
     if (defined $rcFilepath) {
-        $isAuto = ksb::Util::yesNoPrompt(colorize(" * Update your b[y[$rcFilepath]?"));
+        $isAuto = ksb::Util::yesNoPrompt(colorize(" b[*] Update your b[y[$rcFilepath]?"));
     }
 
     if ($isAuto) {
@@ -225,14 +223,16 @@ sub _setupShellRcFile
         say $rcFh SHELL_RC_SNIPPET;
         close($rcFh);
         say colorize(<<DONE);
-     - Add b[y[kdesrc-build] directory into PATH
-     - Add b[y[kdesrc-run] shell function
- * b[g[Shell rc-file is successfully setup].
+     - Added b[y[kdesrc-build] directory into PATH
+     - Added b[y[kdesrc-run] shell function
+ b[*] b[g[Shell rc-file is successfully setup].
 DONE
     } else {
-      say '';
-      say ' * You can manually configure your shell rc with the snippet below:';
-      say SHELL_RC_SNIPPET;
+        say '';
+        say colorize(<<DONE);
+ b[*] You can manually configure your shell rc-file with the snippet below:
+DONE
+        say SHELL_RC_SNIPPET;
     }
 }
 
