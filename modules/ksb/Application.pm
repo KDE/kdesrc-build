@@ -145,7 +145,6 @@ sub setHeadless
 #      # specific modules and all should be built. If present, is in the order
 #      # requested by the user
 #      selectors => [ 'selector-1', 'selector-2', etc. ],
-#      run_mode => 'build', # normally 'build', could be 'query', 'install', etc.
 #      start-program => ['foo', @args], # only present if a program should be run
 #      ignore-modules => ['mod1', 'mod2'] # selectors to ignore from --ignore-modules
 #    }
@@ -203,12 +202,14 @@ sub _readCommandLineOptionsAndSelectors
             die("Invalid query mode $arg")
                 unless $arg =~ $validMode;
 
+            die("Cannot combine multiple query modes")
+                if exists $auxOptions{query};
+
             # Add useful aliases
             $arg = 'source-dir'  if $arg =~ /^src-?dir$/;
             $arg = 'build-dir'   if $arg =~ /^build-?dir$/;
             $arg = 'install-dir' if $arg eq 'prefix';
 
-            $self->{run_mode} = 'query';
             $auxOptions{query} = $arg;
             $auxOptions{pretend} = 1; # Implied pretend mode
         },
@@ -372,11 +373,9 @@ DONE
         help    => sub { _showHelpMessage(); exit 0 },
         install => sub {
             $phases->phases('install');
-            $self->{run_mode} = 'install';
         },
         uninstall => sub {
             $phases->phases('uninstall');
-            $self->{run_mode} = 'uninstall';
         },
         'no-src' => sub {
             $phases->filterOutPhase('update');
