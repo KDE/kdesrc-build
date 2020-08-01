@@ -2470,12 +2470,6 @@ sub metadataModule
     return $self->{metadata_module};
 }
 
-sub runMode
-{
-    my $self = shift;
-    return $self->{run_mode};
-}
-
 sub modules
 {
     my $self = shift;
