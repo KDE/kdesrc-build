@@ -55,10 +55,7 @@ package ksb::Application {
 my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc-with-deps --no-include-dependencies setmod1 setmod3);
 
 {
-    my $app = ksb::Application->new;
-    my @selectors = $app->establishContext(@args);
-    my $workload = $app->modulesFromSelectors(@selectors);
-    $app->setModulesToProcess($workload);
+    my $app = ksb::Application::newFromCmdline(@args);
     my @moduleList = $app->modules();
 
     is (scalar @moduleList, 2, 'Right number of modules (include-dependencies)');
@@ -69,10 +66,7 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc-with-deps --no
 {
     push @args, '--ignore-modules', 'setmod2';
 
-    my $app = ksb::Application->new;
-    my @selectors = $app->establishContext(@args);
-    my $workload = $app->modulesFromSelectors(@selectors);
-    $app->setModulesToProcess($workload);
+    my $app = ksb::Application::newFromCmdline(@args);
     my @moduleList = $app->modules();
 
     is (scalar @moduleList, 2, 'Right number of modules (include-dependencies+ignore-modules)');

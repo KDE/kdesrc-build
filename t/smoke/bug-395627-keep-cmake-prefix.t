@@ -37,10 +37,7 @@ use ksb::Module;
 my @args = qw(--pretend --rc-file t/data/bug-395627/kdesrc-buildrc);
 
 {
-    my $app = ksb::Application->new(@args);
-    my @selectors = $app->establishContext(@args);
-    my $workload = $app->modulesFromSelectors(@selectors);
-    $app->setModulesToProcess($workload);
+    my $app = ksb::Application::newFromCmdline(@args);
     my @moduleList = $app->modules();
 
     is (scalar @moduleList, 6, 'Right number of modules');

@@ -11,10 +11,7 @@ use ksb::Application;
 my @args = (qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc
     --set-module-option-value), 'module2,tag,fake-tag10',
    '--set-module-option-value', 'setmod2,tag,tag-setmod10');
-my $app = ksb::Application->new;
-my @selectors = $app->establishContext(@args);
-my $workload = $app->modulesFromSelectors(@selectors);
-$app->setModulesToProcess($workload);
+my $app = ksb::Application::newFromCmdline(@args);
 my @moduleList = $app->modules();
 
 is(scalar @moduleList, 4, 'Right number of modules');

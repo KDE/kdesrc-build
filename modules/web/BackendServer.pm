@@ -22,8 +22,12 @@ has 'selectors';
 
 sub new
 {
-    my ($class, @opts) = @_;
-    return $class->SUPER::new(options => [@opts], ksbhome => getcwd());
+    my ($class, $optsAndSelectors) = @_;
+    return $class->SUPER::new(
+        opts_and_selectors => $optsAndSelectors,
+        options => $optsAndSelectors->{options},
+        ksbhome => getcwd()
+    );
 }
 
 # Adds a helper method to each HTTP context object to return the
@@ -39,7 +43,7 @@ sub make_new_ksb
 
     # Note that we shouldn't /have/ any selectors at this point, it's now a
     # separate user input.
-    my @selectors = $app->establishContext(@{$c->app->{options}});
+    my @selectors = $app->establishContext($c->app->{opts_and_selectors});
     $c->app->selectors([@selectors]);
 
     # Reset log handler

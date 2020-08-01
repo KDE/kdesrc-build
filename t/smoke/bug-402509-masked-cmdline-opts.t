@@ -5,7 +5,7 @@ use warnings;
 # Checks that we don't inadvertently eat non-option
 # arguments in cmdline processing, which happened with
 # some cmdline options that were inadvertently handled
-# both directly in _readCommandLineOptionsAndSelectors
+# both directly in readCommandLineOptionsAndSelectors
 # and indirectly via being in
 # ksb::BuildContext::defaultGlobalFlags)
 # See bug 402509 -- https://bugs.kde.org/show_bug.cgi?id=402509
@@ -19,10 +19,7 @@ use ksb::Module;
 my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --stop-on-failure setmod3);
 
 {
-    my $app = ksb::Application->new(@args)->setHeadless;
-    my @selectors = $app->establishContext(@args);
-    my $workload = $app->modulesFromSelectors(@selectors);
-    $app->setModulesToProcess($workload);
+    my $app = ksb::Application::newFromCmdline(@args)->setHeadless;
     my @moduleList = $app->modules();
 
     is (scalar @moduleList, 1, 'Right number of modules (just one)');
@@ -32,10 +29,7 @@ my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --stop-on-fail
 $args[-2] = '--disable-snapshots';
 
 {
-    my $app = ksb::Application->new(@args)->setHeadless;
-    my @selectors = $app->establishContext(@args);
-    my $workload = $app->modulesFromSelectors(@selectors);
-    $app->setModulesToProcess($workload);
+    my $app = ksb::Application::newFromCmdline(@args)->setHeadless;
     my @moduleList = $app->modules();
 
     is (scalar @moduleList, 1, 'Right number of modules (just one)');

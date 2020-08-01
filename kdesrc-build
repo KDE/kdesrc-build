@@ -393,16 +393,17 @@ END {
     }
 }
 
-# TODO: Need to split up option reading here to exit early for some options
-# (--help, --version, etc) and only continue on with creating a U/I if there's
-# then still work to do. But this still needs to follow reading the rc-file!
-# Until fixed this will fail t/install-and-run.t (which will handle --version in
-# ui->start() and then as an atexit handler app->ksb->finish)
+# TODO: Need to split up option reading here to exit early for options
+# that need the rc-file read (--dependency-list, --query, etc.) and don't involve
+# the web server.
 
 # Use some exception handling to avoid ucky error messages
 eval
 {
-    my $app = web::BackendServer->new(@ARGV);
+    my $optsAndSelectors = ksb::Application::readCommandLineOptionsAndSelectors(@ARGV);
+    ksb::Application::_handleEarlyOptions($optsAndSelectors); # may exit!
+
+    my $app = web::BackendServer->new($optsAndSelectors);
     my $ui  = ksb::UserInterface::TTY->new($app);
 
     push @atexit_subs, sub { $app->ksb->finish(99) };

@@ -74,6 +74,28 @@ sub new
     return $self;
 }
 
+# This is a convenience function to run a ksb::Application that is fully
+# setup (in terms of workload object, modules set to process, etc.) based
+# on the passed arguments as if they were command line arguments.
+#
+# Call as a package method, like:
+#   $app = ksb::Application::newFromCmdline(@args);
+#
+# Returns:
+#   a ksb::Application
+sub newFromCmdline
+{
+    my @args = @_;
+
+    my $app = ksb::Application->new();
+    my $optsAndSelectors = readCommandLineOptionsAndSelectors(@args);
+    my @selectors        = $app->establishContext($optsAndSelectors);
+
+    $app->setModulesToProcess($app->modulesFromSelectors(@selectors));
+
+    return $app;
+}
+
 # Call after establishContext (to read in config file and do one-time metadata
 # reading), but before you call startHeadlessBuild.
 #
@@ -92,7 +114,7 @@ sub setModulesToProcess
     croak_internal("Expecting workload object!")
         unless ref $workLoad eq 'HASH';
 
-    $self->{modules} = $workLoad->{selectedModules};
+    $self->{modules}  = $workLoad->{selectedModules};
     $self->{workLoad} = $workLoad;
 
     $self->context()->addModule($_)
@@ -153,10 +175,9 @@ sub setHeadless
 #
 #  An exception will be raised on failure, or this function may quit
 #  the program directly (e.g. to handle --help, --usage).
-sub _readCommandLineOptionsAndSelectors
+sub readCommandLineOptionsAndSelectors
 {
-    my ($self, @options) = @_;
-    my @savedOptions = @options; # Copied for use in debugging.
+    my @options = @_;
 
     my $result = {
         options   => { },
@@ -227,7 +248,7 @@ sub _readCommandLineOptionsAndSelectors
         'really-quiet' => sub { $foundOptions{'debug-level'} = ksb::Debug::WARNING },
         debug => sub {
             $foundOptions{'debug-level'} = ksb::Debug::DEBUG;
-            debug ("Commandline was: ", join(', ', @savedOptions));
+            debug ("Commandline was: ", join(', ', @options));
         },
 
         # Hack to set module options
@@ -326,12 +347,12 @@ sub _readCommandLineOptionsAndSelectors
     return $result;
 }
 
-# Method: _updateBuildContextFromOptions
+# Method: _handleEarlyOptions
 #
 # Uses the user-requested options (as returned by
-# _readCommandLineOptionsAndSelectors) to update the build context and
-# self-options as appropriate, including functions such as updating the
-# run-mode, handling interactive options like --help, etc.
+# readCommandLineOptionsAndSelectors) and handles any options that should be
+# handled without launching the backend and which would cause the script to
+# exit, such as --help and --query.
 #
 # This function may exit entirely for some options, and since the rc-file has
 # not been read yet, does not handle all possible cases where an early exit is
@@ -341,16 +362,16 @@ sub _readCommandLineOptionsAndSelectors
 #  initialization - Do not call <finish> from this function.
 #
 # Parameters:
-#  ctx - <BuildContext> to hold the global build state.
-#  optsAndSelectors - As from _readCommandLineOptionsAndSelectors
+#  optsAndSelectors - As from readCommandLineOptionsAndSelectors
 #
 # Returns:
 #  There is no return value. The function may not return at all, and exit instead.
-sub _updateBuildContextFromOptions
+sub _handleEarlyOptions
 {
-    my ($self, $ctx, $optsAndSelectors) = @_;
+    my $optsAndSelectors = shift;
 
-    my $phases = $ctx->phases();
+    croak_internal("No options and selectors passed")
+        unless $optsAndSelectors;
 
     my $version = "kdesrc-build " . scriptVersion();
     my $author = <<DONE;
@@ -363,20 +384,48 @@ Please report bugs using the KDE Bugzilla, at https://bugs.kde.org/
 DONE
 
     my %optionHandlers = (
-        'show-info' => sub {
-            my $os = ksb::OSSupport->new;
-            say $version; say "OS: ", $os->vendorID();
+        'show-info' => sub { say "$version\nOS: ", ksb::OSSupport->new->vendorID(); },
+        version     => sub { say $version },
+        author      => sub { say $author  },
+        help        => sub { _showHelpMessage() },
+    );
+
+    my $globalOpts = $optsAndSelectors->{options}->{global};
+    foreach my $early_opt (keys %optionHandlers) {
+        if (exists $globalOpts->{$early_opt}) {
+            $optionHandlers{$early_opt}->();
             exit;
-        },
-        version => sub { say $version; exit },
-        author  => sub { say $author;  exit },
-        help    => sub { _showHelpMessage(); exit 0 },
-        install => sub {
-            $phases->phases('install');
-        },
-        uninstall => sub {
-            $phases->phases('uninstall');
-        },
+        }
+    }
+}
+
+# Method: _updateBuildContextFromOptions
+#
+# Uses the user-requested options (as returned by
+# readCommandLineOptionsAndSelectors) to update the build context and
+# self-options as appropriate, including functions such as updating the
+# run-mode. Options that might cause early exit are not handled, see
+# _handleEarlyOptions for those.
+#
+# Since the rc-file has not been read yet, this does not handle all possible
+# cases where an early exit is required.
+#
+# Phase:
+#  initialization - Do not call <finish> from this function.
+#
+# Parameters:
+#  ctx - <BuildContext> to hold the global build state.
+#  optsAndSelectors - As from readCommandLineOptionsAndSelectors
+#
+# Returns:
+#  There is no return value.
+sub _updateBuildContextFromOptions
+{
+    my ($self, $ctx, $optsAndSelectors) = @_;
+
+    my $phases = $ctx->phases();
+
+    my %optionHandlers = (
         'no-src' => sub {
             $phases->filterOutPhase('update');
         },
@@ -389,6 +438,12 @@ DONE
         },
         'no-build' => sub {
             $phases->filterOutPhase('build');
+        },
+        install => sub {
+            $phases->phases('install');
+        },
+        uninstall => sub {
+            $phases->phases('uninstall');
         },
         # Mostly equivalent to the above
         'src-only' => sub {
@@ -421,8 +476,7 @@ DONE
 # Returns: List of Selectors to build.
 sub establishContext
 {
-    my $self = shift;
-    my @argv = @_;
+    my ($self, $optsAndSelectors) = @_;
 
     # Note: Don't change the order around unless you're sure of what you're
     # doing.
@@ -430,7 +484,6 @@ sub establishContext
     my $ctx = $self->context();
 
     # Process --help, --install, etc. first.
-    my $optsAndSelectors = $self->_readCommandLineOptionsAndSelectors(@argv);
     $self->_updateBuildContextFromOptions($ctx, $optsAndSelectors); # may exit process
 
     my @selectors = @{$optsAndSelectors->{selectors}};

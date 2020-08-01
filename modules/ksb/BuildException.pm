@@ -81,6 +81,10 @@ sub had_an_exception
 # don't indicate a bug in the program itself).
 sub croak_runtime
 {
+    if (exists $ENV{HARNESS_ACTIVE}) {
+        goto &croak_internal; # calls croak_internal with same params.
+    }
+
     die (make_exception('Runtime', $_[0], 1));
 }
 
