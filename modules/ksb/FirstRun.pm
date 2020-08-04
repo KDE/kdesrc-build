@@ -480,6 +480,23 @@ autoconf
 pkg-config
 wayland-protocols
 clang
+ninja
+meson
+qrencode
+signond
+libaccounts-qt
+xapian-core
+qgpgme
+poppler-qt5
+kdsoap
+xsd
+xerces-c
+qt5-webkit
+vlc
+ruby-sass
+eigen
+mlt
+freecell-solver
 
 @@ pkg/alpine/unknown
 alpine-sdk
