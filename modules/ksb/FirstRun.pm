@@ -307,6 +307,7 @@ __DATA__
 @@ pkg/debian/unknown
 libyaml-libyaml-perl libio-socket-ssl-perl libjson-xs-perl
 git shared-mime-info cmake build-essential flex bison gperf libssl-dev intltool
+libdbusmenu-qt5-dev
 liburi-perl gettext
 
 @@ pkg/opensuse/unknown
@@ -321,6 +322,7 @@ git
 gperf
 intltool
 libboost_headers-devel
+libdbusmenu-qt5-devel
 libqt5-qtbase-common-devel
 libqt5-qtbase-private-headers-devel
 libqt5-qtimageformats-devel
@@ -367,6 +369,7 @@ bison
 boost-devel
 bzr
 cmake
+dbusmenu-qt5-devel
 docbook-style-xsl
 docbook-utils
 doxygen
@@ -418,7 +421,6 @@ texinfo
 systemd-devel
 
 @@ pkg/mageia/unknown
-
 bison
 boost
 cmake
@@ -434,6 +436,7 @@ git
 gperf
 intltool
 lib64lmdb-devel
+libdbusmenu-qt5-devel
 make
 perl(IO::Socket::SSL)
 perl(IPC::Cmd)
@@ -463,6 +466,7 @@ shared-mime-info
 @@ pkg/gentoo/unknown
 dev-util/cmake
 dev-lang/perl
+dev-libs/libdbusmenu-qt
 
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
@@ -485,6 +489,7 @@ meson
 qrencode
 signond
 libaccounts-qt
+libdbusmenu-qt5
 xapian-core
 qgpgme
 poppler-qt5
@@ -515,6 +520,7 @@ gpgme-dev
 grantlee-dev
 gstreamer-dev
 gst-plugins-base-dev
+libdbusmenu-qt-dev
 libdmtx-dev
 libepoxy-dev
 libgcrypt-dev
