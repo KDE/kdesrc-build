@@ -63,6 +63,7 @@ sub notifyEvent
         build_plan      => \&onBuildPlan,
         build_done      => \&onBuildDone,
         log_entries     => \&onLogEntries,
+        new_postbuild_message => sub { return }, # no-op
     };
     state $err = sub { croak_internal("Invalid event! $_[1]"); };
 

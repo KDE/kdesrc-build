@@ -46,7 +46,7 @@ use ksb::UserInterface::DependencyGraph;
 use Mojo::Promise;
 
 use IO::Handle; # For methods on event_stream file
-use List::Util qw(max);
+use List::Util qw(max first);
 
 has ua => sub { Mojo::UserAgent->new->inactivity_timeout(0) };
 has ui => sub { ksb::StatusView->new() };
@@ -56,7 +56,10 @@ sub new
 {
     my ($class, $app) = @_;
 
-    my $self = $class->SUPER::new(app => $app);
+    my $self = $class->SUPER::new(
+        app => $app,
+        postbuild_msgs => [ ]
+    );
 
     # Mojo::UserAgent can be tied to a Mojolicious application server directly to
     # handle relative URLs, which is perfect for what we want. Making this
@@ -218,6 +221,19 @@ sub _runModeBuild
                     # to the next promise handler.
                     $stop_promise->resolve(scalar @{$module_failures_ref});
                 }
+
+                # Just hold on to these messages until the end
+                if ($modRef->{event} eq 'new_postbuild_message') {
+                    my $module_name = $modRef->{new_postbuild_message}->{module};
+                    my $module_msgs = first { $_->{name} eq $module_name } @{$self->{postbuild_msgs}};
+                    if (!$module_msgs) {
+                        $module_msgs = { name => $module_name, msgs => [ ] };
+                        push @{$self->{postbuild_msgs}}, $module_msgs;
+                    }
+
+                    push @{$module_msgs->{msgs}}, $modRef->{new_postbuild_message}->{message};
+                    next;
+                }
             }
         });
 
@@ -238,6 +254,15 @@ sub _runModeBuild
     })->finally(sub {
         $event_stream->say("]");
         $event_stream->close();
+
+        # Check for post-build messages and list them here
+        for my $module_msgs (@{$self->{postbuild_msgs}}) {
+            my $module_name = $module_msgs->{name};
+            my @msgs = @{$module_msgs->{msgs}};
+
+            warning("\ny[Important notification for b[$module_name]:");
+            warning("    $_") foreach @msgs;
+        }
 
         my $logdir = $ctx->getLogDir();
         note ("Your logs are saved in file://y[$logdir]");

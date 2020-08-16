@@ -106,8 +106,6 @@ sub _clone
         croak_runtime("Failed to make initial clone of $module");
     }
 
-    #$ipc->notifyPersistentOptionChange($module->name(), 'git-cloned-repository', $git_repo);
-
     p_chdir($srcdir);
 
     # Setup user configuration
@@ -566,13 +564,6 @@ sub countStash
     }
 }
 
-sub _notifyPostBuildMessage
-{
-    my $self = assert_isa(shift, 'ksb::Updater::Git');
-    my $module = $self->module();
-    $self->{ipc}->notifyNewPostBuildMessage($module->name(), @_);
-}
-
 # This stashes existing changes if necessary, and then runs a provided
 # update routine in order to advance the given module to the desired head.
 # Finally, if changes were stashed, they are applied and the stash stack is
@@ -607,7 +598,7 @@ sub stashAndUpdate
     # - we do not stash .gitignore'd files because they may be needed for builds?
     #   on the other hand that leaves a slight risk if upstream altered those (i.e. no longer truly .gitignore'd)
     #
-    info ("\tStashing local changes if any...");
+    whisper ("\tStashing local changes if any...");
     my $status = 0;
     $status = log_command($module, 'git-stash-push', [
         qw(git stash push -u --quiet --message), $stashName

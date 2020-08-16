@@ -119,6 +119,26 @@ sub noteLogEvents
     return $self->_announceEvent($result);
 }
 
+# Used to forward "post-build" messages, which are intended for any message
+# that is important for the user to see but might be lost in the scrolling
+# backlog. By calling these out the hope is that the U/I can ensure that the
+# user is informed of important things that may still need done after the
+# script ends.
+sub notePostBuildMessage
+{
+    my ($self, $moduleName, $message) = @_;
+
+    my $result = {
+        event => 'new_postbuild_message',
+        new_postbuild_message => {
+            module  => $moduleName,
+            message => $message,
+        },
+    };
+
+    return $self->_announceEvent($result);
+}
+
 sub markBuildDone
 {
     my ($self) = @_;
@@ -207,6 +227,11 @@ to the user interface during the build (e.g. that a git-stash has failed)
 
 build_done -- Used when all phases are done (should be redundant but this way
 you know for sure)
+
+=item 7.
+
+new_postbuild_message -- Used for messages that may get lost in the noise and should
+be announced (or re-announced) to the user right as the script ends.
 
 =back
 

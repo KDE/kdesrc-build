@@ -866,16 +866,6 @@ sub startHeadlessBuild
             _installCustomSessionDriver($ctx);
         }
 
-        # Check for post-build messages and list them here
-        for my $m (@{$self->{modules}}) {
-            my @msgs = $m->getPostBuildMessages();
-
-            next unless @msgs;
-
-            warning("\ny[Important notification for b[$m]:");
-            warning("    $_") foreach @msgs;
-        }
-
         return $result;
     });
 

@@ -1095,6 +1095,9 @@ sub runPhase_p
         $self->buildContext->resetEnvironment();
         $self->setupEnvironment();
 
+        # This will key addPostBuildMessage to store instead of fwd
+        $self->{postbuild_msgs} = [];
+
         # This coderef should return a hashref: {
         #   was_successful => bool,
         #   ... (other details)
@@ -1108,8 +1111,8 @@ sub runPhase_p
 
         return {
             result     => $resultRef->{was_successful},
-            post_msgs  => $self->{post_build_msgs},
             newOptions => \%option_bundle,
+            post_msgs  => $self->{postbuild_msgs},
             extras     => $resultRef,
         };
     })->then(sub {
@@ -1124,7 +1127,8 @@ sub runPhase_p
             $ctx->{$bundle_name}->{"$self"} = $options;
         }
 
-        push @{$self->{post_build_msgs}}, @{$resultsRef->{post_msgs}};
+        $self->addPostBuildMessage($_)
+            foreach @{$resultsRef->{post_msgs}};
 
         # TODO Make this a ->then handler?
         my $completion_p = $completion_coderef->($self, $resultsRef->{result}, $resultsRef);
@@ -1142,25 +1146,17 @@ sub runPhase_p
     });
 }
 
-# Returns a list of any 'post-build' messages that have been set for the module
-# to show after the build has ended. These may be messages such as warning of a
-# local source conflict that may have scrolled past or similar things the user
-# needs to know about.
-#
-# Each entry in the list will be a text message that should be shown (perhaps
-# with additional formatting).
-sub getPostBuildMessages
-{
-    my $self = assert_isa(shift, 'ksb::Module');
-    return @{$self->{post_build_msgs}};
-}
-
 # Adds the given message to the list of post-build messages to show to the user
 sub addPostBuildMessage
 {
     my ($self, $new_msg) = @_;
 
-    push @{$self->{post_build_msgs}}, $new_msg;
+    if (exists $self->{postbuild_msgs}) {
+        push @{$self->{postbuild_msgs}}, $new_msg;
+    } else {
+        $self->buildContext()->statusMonitor()->notePostBuildMessage($self->name(), $new_msg);
+    }
+
     return;
 }
 
