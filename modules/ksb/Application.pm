@@ -2178,51 +2178,6 @@ sub _updateModulePhases
     return @_;
 }
 
-# This subroutine extract the value from options of the form --option=value,
-# which can also be expressed as --option value.
-#
-# The first parameter is the option that the user passed to the cmd line (e.g.
-# --prefix=/opt/foo).
-# The second parameter is a reference to the list of command line options.
-#
-# The return value is the value of the option (the list of options might be
-# shorter by 1, copy it if you don't want it to change), or undef if no value
-# was provided.
-sub _extractOptionValue
-{
-    my ($option, $options_ref) = @_;
-
-    if ($option =~ /=/)
-    {
-        my @value = split(/=/, $option);
-        shift @value; # We don't need the first one, that the --option part.
-
-        return if (scalar @value == 0);
-
-        # If we have more than one element left in @value it's because the
-        # option itself has an = in it, make sure it goes back in the answer.
-        return join('=', @value);
-    }
-
-    return if scalar @{$options_ref} == 0;
-    return shift @{$options_ref};
-}
-
-# Like _extractOptionValue, but throws an exception if the value is not
-# actually present, so you don't have to check for it yourself. If you do get a
-# return value, it will be defined to something.
-sub _extractOptionValueRequired
-{
-    my ($option, $options_ref) = @_;
-    my $returnValue = _extractOptionValue($option, $options_ref);
-
-    if (not defined $returnValue) {
-        croak_runtime("Option $option needs to be set to some value instead of left blank");
-    }
-
-    return $returnValue;
-}
-
 # Function: _cleanup_log_directory
 #
 # This function removes log directories from old kdesrc-build runs.  All log
