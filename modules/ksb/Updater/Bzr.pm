@@ -20,6 +20,8 @@ sub updateInternal
     my $self = assert_isa(shift, 'ksb::Updater::Bzr');
     my $module = assert_isa($self->module(), 'ksb::Module');
 
+    p_chdir($module->getSourceDir());
+
     # Full path to source directory on-disk.
     my $srcdir = $module->fullpath('source');
     my $bzrRepoName = $module->getOption('repository');
