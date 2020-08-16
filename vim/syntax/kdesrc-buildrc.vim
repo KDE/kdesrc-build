@@ -39,7 +39,7 @@ syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
             \ binpath branch build-dir cmake-options configure-flags
             \ custom-build-command cxxflags dest-dir do-not-compile kdedir
             \ libpath log-dir make-install-prefix make-options module-base-path
-            \ ninja-options
+            \ cmake-generator cmake-toolchain ninja-options
             \ override-build-system override-url prefix qtdir repository
             \ revision source-dir svn-server tag remove-after-install
             \ qmake-options git-user
@@ -47,6 +47,7 @@ syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
 syn keyword ksbrcGlobalOption contained skipwhite nextgroup=ksbrcStringValue
             \ branch-group git-desired-protocol git-repository-base http-proxy
             \ niceness debug-level persistent-data-file set-env
+            \ num-cores num-cores-low-mem
 
 " MUST BE CONSISTENT WITH ABOVE. Used when a module-set option is used in the
 " wrong spot to highlight the error.

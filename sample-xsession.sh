@@ -26,8 +26,9 @@ fi
 
 #
 ### Start the standard kde login script.
+### (Wayland has a different script, startplasma-wayland)
 #
-"$kde_prefix/bin/startkde"
+"$kde_prefix/bin/startplasma-x11"
 
 # If you experience problems on logout it is sometimes helpful to make copies
 # of the xsession-errors file on logout.

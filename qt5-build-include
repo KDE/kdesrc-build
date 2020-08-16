@@ -10,21 +10,27 @@ module-set qt5-set
         qttools qtwayland qtwebchannel qtwebsockets qtwebview qtx11extras       \
         qtnetworkauth qtspeech qtxmlpatterns
 
+    # qtwebengine is very different to the rest of Qt. You can try ignoring it if
+    # you cannot get it to compile by uncommenting the next line.
     # ignore-modules qtwebengine
 
     # install path. This *MUST* match your qtdir setting in kdesrc-buildrc!
     prefix ${qtdir}
 
-    configure-flags -optimized-tools -reduce-relocations
-#   make-options -j7
+    configure-flags -release -reduce-relocations -force-debug-info -separate-debug-info
+
+    # Applies to every make command run for Qt build, including Qt's own attempts to
+    # run make from its configure script.
+    set-env MAKEFLAGS -j${num-cores}
 end module-set
 
 # qtwebengine is essentially the Chromium Embedded Framework with Qt bindings
-# and has source code of unusually large complexity for the compiler.
-# TL;DR: This will eat a *ton* of RAM and can lockup your system if you have a
-# lot of CPU cores. qtwebengine is disabled by default but if you enable it
-# also ensure you don't outstrip your available RAM with too high of a
-# parallelism (-j flag).
+# It has unusually complex source codes which require a lot of memory to compile..
+#
+# This module will eat a *ton* of RAM and can lockup your system if you have a
+# lot of CPU cores. qtwebengine uses a lower number of cores to compile by
+# default but you can change the setting to -j here (or in your global options)
+# to change that.
 options qtwebengine
-    make-options NINJAFLAGS=-j4
+    set-env NINJAFLAGS -j${num-cores-low-mem}
 end options

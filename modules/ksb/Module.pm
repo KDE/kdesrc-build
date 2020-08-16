@@ -1108,6 +1108,7 @@ sub runPhase_p
 
         return {
             result     => $resultRef->{was_successful},
+            post_msgs  => $self->{post_build_msgs},
             newOptions => \%option_bundle,
             extras     => $resultRef,
         };
@@ -1122,6 +1123,8 @@ sub runPhase_p
         while (my ($bundle_name, $options) = each %{$resultsRef->{newOptions}}) {
             $ctx->{$bundle_name}->{"$self"} = $options;
         }
+
+        push @{$self->{post_build_msgs}}, @{$resultsRef->{post_msgs}};
 
         # TODO Make this a ->then handler?
         my $completion_p = $completion_coderef->($self, $resultsRef->{result}, $resultsRef);
