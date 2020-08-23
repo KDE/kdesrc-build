@@ -81,13 +81,14 @@ if test "x$qt_prefix" != "x/usr"; then
     path_add "PKG_CONFIG_PATH"    "$(${qmake} -query QT_INSTALL_LIBS 2>/dev/null)/pkgconfig";
 fi
 
-# There doesn't seem to be a great way to get this from CMake easily
-# but we can reason that if there's a /usr/lib64, there will likely end
-# up being a $kde_prefix/lib64 once kdesrc-build gets done installing it
+# There doesn't seem to be a great way to get this from CMake easily but we can
+# reason that if there's a /usr/lib64 (and it's not just a compat symlink),
+# there will likely end up being a $kde_prefix/lib64 once kdesrc-build gets
+# done installing it
 libname=lib
 if test -d /usr/lib/x86_64-linux-gnu; then
 	libname=lib/x86_64-linux-gnu
-elif test -d /usr/lib64; then
+elif test -d /usr/lib64 -a '!' -L /usr/lib64; then
 	libname=lib64
 fi
 
