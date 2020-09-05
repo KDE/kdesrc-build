@@ -449,7 +449,13 @@ sub _runBuildCommand
         }));
 
     $resultRef->{warnings} = $warnings;
-    $self->{module}->setPersistentOption('last-compile-warnings', $warnings);
+
+    # TODO: Install phase can also cause warnings. This persistent option stuff
+    # should probably be done by the calling code which can intelligently
+    # decide whether to sum up all warnings, use only one phase, etc.
+    if ($filename =~ /^build/) {
+        $self->{module}->setPersistentOption('last-compile-warnings', $warnings);
+    }
 
     return $resultRef;
 }

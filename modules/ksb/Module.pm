@@ -1041,6 +1041,60 @@ sub _readAndDispatchInProcessMessages
     }
 }
 
+# Takes two hashrefs ($old, $new) and returns a hashref containing new or
+# changes options from old to new, assuming that both $old and $new have this
+# shape:
+# {
+#   'module-name' => {
+#     'option-name' => $value,
+#     ...
+#   },
+#   ...
+# }
+sub _buildModulesOptionsPatch
+{
+    my ($old, $new) = @_;
+    my $diff = {
+        del => [
+            # options that are deleted outright
+        ],
+        set => {
+            # new or changed option values
+        },
+    };
+
+    while (my ($opt_name, $opt_value) = each %{$old}) {
+        next if ref $opt_value ne ''; # ignore things like set-env
+
+        if (not exists $new->{$opt_name}) {
+            push @{$diff->{del}}, $opt_name;
+            next;
+        }
+
+        my $new_value = $new->{$opt_name};
+
+        # Avoid needless undefined warnings
+        next if not defined $opt_value and not defined $new_value;
+
+        # String compare is needed for most values and seems to still work
+        # for numeric values anyways
+        $diff->{set}->{$opt_name} = $new_value
+            if $opt_value ne $new_value;
+    }
+
+    # Look for options present in $new which weren't present in $old
+    my @new_option_names = grep {
+        not exists $old->{$_};
+    } keys %{$new};
+
+    if (@new_option_names) {
+        # Hash slice assignment to copy missing options at once
+        @{$diff->{set}}{@new_option_names} = @{$new}{@new_option_names};
+    }
+
+    return $diff
+}
+
 # Runs the given phase in a separate subprocess, using provided sub references.
 # Assumes use of promises for the provided sub references -- if launching the
 # subprocess fails, then a rejected promise is returned in the completion sub
@@ -1090,6 +1144,13 @@ sub runPhase_p
         $SIG{INT} = sub { POSIX::_exit(EINTR); };
         $0 = "kdesrc-build[$phaseName]";
 
+        # We might change options and persistent options, feed those back
+        # to the main process.
+        my @bundles_to_copy = qw(build_options persistent_options);
+        my %savedBundles;
+        $savedBundles{$_} = dclone($ctx->{$_}->{"$self"})
+            foreach @bundles_to_copy;
+
         ksb::Debug::setSubprocessOutputHandle($subprocess);
 
         $self->buildContext->resetEnvironment();
@@ -1104,14 +1165,14 @@ sub runPhase_p
         # }
         my $resultRef = $blocking_coderef->($self);
 
-        # We may have changed options and persistent options, feed those back
-        # to the main process.
-        my @bundles_to_copy = qw(build_options persistent_options);
-        my %option_bundle = map { ($_ => $ctx->{$_}->{"$self"}) } @bundles_to_copy;
+        # Construct diffs of option changes to apply back in the main process
+        my %optionChanges =
+            map { ($_ => _buildModulesOptionsPatch($savedBundles{$_}, $ctx->{$_}->{"$self"}) ) }
+            @bundles_to_copy;
 
         return {
             result     => $resultRef->{was_successful},
-            newOptions => \%option_bundle,
+            newOptions => \%optionChanges,
             post_msgs  => $self->{postbuild_msgs},
             extras     => $resultRef,
         };
@@ -1124,7 +1185,11 @@ sub runPhase_p
 
         # Apply options that may have changed during child proc execution.
         while (my ($bundle_name, $options) = each %{$resultsRef->{newOptions}}) {
-            $ctx->{$bundle_name}->{"$self"} = $options;
+            my $optionsRef = $ctx->{$bundle_name}->{"$self"};
+            delete $optionsRef->{$_} foreach (@{$options->{del}});
+            while (my ($newKey, $newValue) = each %{$options->{set}}) {
+                $optionsRef->{$newKey} = $newValue;
+            }
         }
 
         $self->addPostBuildMessage($_)
