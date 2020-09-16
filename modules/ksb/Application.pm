@@ -1639,60 +1639,6 @@ sub _handle_build
         sub { $ctx->unsetPersistentOption('global', 'resume-list') });
 }
 
-# Function: _handle_async_build
-#
-# This subroutine special-cases the handling of the update and build phases, by
-# performing them concurrently using forked processes and non-blocking I/O.
-# See Mojo::Promise and Mojo::IOLoop::Subprocess
-#
-# This procedure will use multiple processes (the main process and separate
-# processes for each update or build as they occur).
-#
-# Parameters:
-# 1. Build Context to use, from which the module lists will be determined.
-#
-# Returns 0 on success, non-zero on failure.
-sub _handle_async_build
-{
-    my ($ctx) = @_;
-    my $result = 0;
-
-    $ctx->statusMonitor()->createBuildPlan($ctx);
-
-    my $promiseChain = ksb::PromiseChain->new;
-    my $start_promise = Mojo::Promise->new;
-
-    # These succeed or die outright
-    eval {
-        $start_promise = _handle_updates ($ctx, $promiseChain, $start_promise);
-        $start_promise = _handle_build   ($ctx, $promiseChain, $start_promise);
-    };
-
-    if ($@) {
-        error ("Caught an error $@ setting up to build");
-        return 1;
-    }
-
-    my $chain = $promiseChain->makePromiseChain($start_promise)
-        ->finally(sub {
-            # Fail if we had a zero-valued result (indicates error)
-            my @results = @_;
-
-            # Must use ! here to make '0 but true' hack work
-            $result = 1 if defined first { !($_->[0] // 1) } @results;
-
-            $ctx->statusMonitor()->markBuildDone();
-        });
-
-    # Start the update/build process
-    $start_promise->resolve;
-
-    Mojo::IOLoop->stop; # Force the wait below to block
-    $chain->wait;
-
-    return $result;
-}
-
 # Function: _handle_install
 #
 # Handles the installation process.  Simply calls 'make install' in the build
