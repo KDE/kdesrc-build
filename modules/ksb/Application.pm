@@ -834,13 +834,30 @@ sub startHeadlessBuild
     });
 
     $startPromise->resolve; # allow build to start once control returned to evt loop
-    my $promise = $promiseChain->makePromiseChain($startPromise)->finally(sub {
+    my $promise = $promiseChain->makePromiseChain($startPromise);
+
+    $promise = _handle_post_completion_cleanup($ctx, $promise)
+    ->then(sub {
+        # The task completed without any exceptions being thrown, but some
+        # phases may still have failed to build. So we need to check the list
+        # of all results (from the promise chain's individual promises).
         my @results = @_;
         my $result = 0; # success, non-zero is failure
 
         # Must use ! here to make '0 but true' hack work
         $result = 1 if defined first { !($_->[0] // 1) } @results;
 
+        return $result;
+    })->catch(sub {
+        # Some kind of error definitely happened. Note it here and return an
+        # error (non-zero) code.
+        my $error = shift;
+
+        say STDERR "Caught an exception while building modules: $error!";
+        return 1;
+    })->finally(sub {
+        # This happens independent of whether we succeed or fail without
+        # changing the result of the promise chain.
         $ctx->statusMonitor()->markBuildDone();
         $ctx->closeLock();
 
@@ -865,8 +882,6 @@ sub startHeadlessBuild
         {
             _installCustomSessionDriver($ctx);
         }
-
-        return $result;
     });
 
     return $promise;
@@ -1560,7 +1575,6 @@ sub _handle_build
     _checkForEarlyBuildExit($ctx); # exception-thrower
 
     my $num_modules = scalar @modules;
-    my ($statusFile, $outfile) = _openStatusFileHandle($ctx);
     my $everFailed = 0;
 
     # This generates a bunch of subs but doesn't call them yet
@@ -1618,25 +1632,6 @@ sub _handle_build
         }
     };
 
-    # Add to the build 'queue' for promise chain so that this runs only after all
-    # other build jobs
-    $promiseChain->addDep('@postBuild', 'cpu-queue', sub {
-        if ($statusFile)
-        {
-            close $statusFile;
-
-            # Update the symlink in latest to point to this file.
-            my $logdir = $ctx->getSubdirPath('log-dir');
-            if (-l "$logdir/latest/build-status") {
-                safe_unlink("$logdir/latest/build-status");
-            }
-            symlink($outfile, "$logdir/latest/build-status");
-        }
-
-        return Mojo::Promise->new->reject if $everFailed;
-        return 0;
-    });
-
     return $start_promise->then(
         sub { $ctx->unsetPersistentOption('global', 'resume-list') });
 }
@@ -1672,6 +1667,45 @@ sub _handle_install
     }
 
     return $result;
+}
+
+# Function: _handle_post_completion_cleanup
+#
+# Handles all steps that must happen after all update/build/test/install
+# phases have completed before the script exits. This includes things
+# like update the persistent options accounting for changed metrics,
+# messages to the user, etc.
+#
+# Parameters:
+# 1. Build Context
+# 2. The main promise built by the ksb::PromiseChain, to which the needed
+#    handler will be attached.
+#
+# Return value is the promise passed to this function, with appropriate
+# post-build promises added that change neither the result nor the
+# resolve/reject status of the promise.
+sub _handle_post_completion_cleanup
+{
+    my $ctx = assert_isa(shift, 'ksb::BuildContext');
+    my $main_promise = shift;
+
+    # We really open the file now even though there's more setup to complete
+    # before we start using this.
+    my ($statusFile, $outfile) = _openStatusFileHandle($ctx);
+
+    return $main_promise->finally(sub {
+        return unless $statusFile;
+
+        close $statusFile;
+
+        # Update the symlink in latest to point to this file.
+        my $logdir = $ctx->getSubdirPath('log-dir');
+        if (-l "$logdir/latest/build-status") {
+            safe_unlink("$logdir/latest/build-status");
+        }
+
+        symlink($outfile, "$logdir/latest/build-status");
+    });
 }
 
 # Function: _handle_uninstall
