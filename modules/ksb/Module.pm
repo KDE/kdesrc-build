@@ -525,10 +525,6 @@ sub build
 
     return $buildSystemPromise->then(sub {
         return $self->runPhase_p('build');
-    })->then(sub {
-        return $self->runPhase_p('test');
-    })->then(sub {
-        return $self->runPhase_p('install');
     });
 }
 

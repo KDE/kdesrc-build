@@ -1569,14 +1569,14 @@ sub _handle_build
         my $buildSub = sub {
             return if ($everFailed && $module->getOption('stop-on-failure'));
 
-            my $fail_count = $module->getPersistentOption('failure-count') // 0;
+            my $prev_fail_count = $module->getPersistentOption('failure-count') // 0;
             my $num_updates = int ($module->getOption('#numUpdates', 'module') // 1);
 
             # check for skipped updates, --no-src forces build-when-unchanged
             # even when ordinarily disabled
             if ($num_updates == 0
                 && !$module->getOption('build-when-unchanged')
-                && $fail_count == 0)
+                && $prev_fail_count == 0)
             {
                 # TODO: Why is the param order reversed for these two?
                 $ctx->statusMonitor()->markPhaseStart("$module", 'build');
@@ -1587,7 +1587,11 @@ sub _handle_build
 
             # Can't build w/out blocking so return a promise instead, which ->build
             # already supplies
-            return $module->build()->catch(sub {
+            return $module->build()->then(sub {
+                return $module->runPhase_p('test');
+            })->then(sub {
+                return $module->runPhase_p('install');
+            })->catch(sub {
                 my $failureReason = shift;
 
                 if (!$everFailed) {
@@ -1597,14 +1601,12 @@ sub _handle_build
                     $ctx->setPersistentOption('global', 'resume-list', $moduleList);
                 }
 
-                ++$fail_count;
+                $module->setPersistentOption('failure-count', $prev_fail_count + 1);
 
                 # Force this promise chain to stay dead
                 return Mojo::Promise->new->reject('build');
             })->then(sub {
-                $fail_count = 0;
-            })->finally(sub {
-                $module->setPersistentOption('failure-count', $fail_count);
+                $module->setPersistentOption('failure-count', 0);
             });
         };
 
