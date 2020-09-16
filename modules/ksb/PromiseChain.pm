@@ -13,6 +13,10 @@ has 'orderings'    => sub { return {} }; # semi-edges for queuing
 # This imparts an implicit ordering. Maybe better to do it explicitly?
 has 'last_queue_item' => sub { return {} };
 
+# If set to true, the promise chain that is built will be configured so that
+# all new jobs are rejected once one job fails.
+has 'abort_after_failure' => 0;
+
 =head1 NAME
 
 PromiseChain - Map coderefs containing work to be done into a dependency order
@@ -42,6 +46,9 @@ using L<Mojo::Promise> to control the flow of execution.
     $deps->addItem('job2/update', 'network-io', sub {
         ... # Return a promise for long-running tasks!
     });
+
+    # Uncomment for --stop-on-failure semantics
+    # $deps->abort_after_failure(1);
 
     my $all_promise = $deps->makePromiseChain;
     $all_promise->then(sub {
@@ -261,6 +268,13 @@ sub makePromiseChain {
     my $start_promise = shift // Mojo::Promise->new->resolve;
     my @all_promises;
 
+    my $abort_if_rejected = $self->abort_after_failure;
+    my $do_abort = Mojo::Promise->new; # Used for abort_if_rejected only
+
+    $do_abort->catch(sub {
+        say "\n\n * One of the modules failed to build and 'stop-on-failure' is enabled, aborting.\n"
+    });
+
     foreach my $itemName (keys %{$self->items}) {
         my $item = $self->items->{$itemName}
             or die "No item $itemName";
@@ -287,13 +301,19 @@ sub makePromiseChain {
                 ? @deps == 1 ? $deps[0] : Mojo::Promise->all(@deps)
                 : $start_promise;
 
+        # The race ensures that every job waiting on do_abort will fail early
+        # once do_abort rejects, as we set it to do later.
+        $base_promise = Mojo::Promise->race($base_promise, $do_abort)
+            if $abort_if_rejected;
+
         # $sub will itself return a promise when called, which is needed
         # for this chain to work
-        # TODO Candidate for Mojo::Promise::all_settled once that stabilizes
         push @all_promises, $base_promise->then($sub)->catch(sub {
-            # err handler, return a value to keep Promise->all from failing
+            # err handler, return a value to keep the Promise->all below from failing
             # fast, force reject the item promise since $sub may not have run
             $item->{promise}->reject;
+
+            $do_abort->reject if $abort_if_rejected;
             0; # Failure
         });
     }

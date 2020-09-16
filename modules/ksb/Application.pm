@@ -834,6 +834,9 @@ sub startHeadlessBuild
     });
 
     $startPromise->resolve; # allow build to start once control returned to evt loop
+    $promiseChain->abort_after_failure(1)
+        if $ctx->getOption('stop-on-failure');
+
     my $promise = $promiseChain->makePromiseChain($startPromise);
 
     $promise = _handle_post_completion_cleanup($ctx, $promise)
@@ -1581,8 +1584,6 @@ sub _handle_build
     foreach my $module (@modules) {
         # Needs to happen in this loop to capture $module
         my $buildSub = sub {
-            return if ($everFailed && $module->getOption('stop-on-failure'));
-
             my $prev_fail_count = $module->getPersistentOption('failure-count') // 0;
             my $num_updates = int ($module->getOption('#numUpdates', 'module') // 1);
 

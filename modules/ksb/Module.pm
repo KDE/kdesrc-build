@@ -1144,7 +1144,7 @@ sub runPhase_p
         # to the main process.
         my @bundles_to_copy = qw(build_options persistent_options);
         my %savedBundles;
-        $savedBundles{$_} = dclone($ctx->{$_}->{"$self"})
+        $savedBundles{$_} = dclone($ctx->{$_}->{"$self"} // {})
             foreach @bundles_to_copy;
 
         ksb::Debug::setSubprocessOutputHandle($subprocess);
@@ -1172,6 +1172,15 @@ sub runPhase_p
             post_msgs  => $self->{postbuild_msgs},
             extras     => $resultRef,
         };
+    })->catch(sub {
+        # runs in this process once subprocess is done
+        # Must precede the ->then to catch internal errors and mark the phase
+        # as failed.
+        my $err = shift;
+        error("\n\n b[r[*] Failed to launch $phaseName for $self: $err");
+        $ctx->markModulePhaseFailed($phaseName, $self);
+
+        return Mojo::Promise->new->reject($err);
     })->then(sub {
         # runs in this process once subprocess is done
         my $resultsRef = shift;
@@ -1200,10 +1209,6 @@ sub runPhase_p
             $ctx->markModulePhaseFailed($phaseName, $self);
             return Mojo::Promise->reject ($completion_p);
         }
-    })->catch(sub {
-        my $err = shift;
-        $ctx->markModulePhaseFailed($phaseName, $self);
-        return Mojo::Promise->new->reject($err);
     });
 }
 
