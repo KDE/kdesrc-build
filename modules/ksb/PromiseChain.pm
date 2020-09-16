@@ -298,6 +298,9 @@ sub makePromiseChain {
         });
     }
 
+    die "No promises to chain based on provided orderings!"
+        unless @all_promises;
+
     return Mojo::Promise->all(@all_promises);
 }
 
