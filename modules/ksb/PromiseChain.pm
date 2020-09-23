@@ -270,9 +270,10 @@ sub makePromiseChain {
 
     my $abort_if_rejected = $self->abort_after_failure;
     my $do_abort = Mojo::Promise->new; # Used for abort_if_rejected only
+    my $eat_errors = sub { 0 };
 
     $do_abort->catch(sub {
-        say "\n\n * One of the modules failed to build and 'stop-on-failure' is enabled, aborting.\n"
+        say "\n * One of the modules failed to build and 'stop-on-failure' is enabled, aborting.\n"
     });
 
     foreach my $itemName (keys %{$self->items}) {
@@ -289,9 +290,13 @@ sub makePromiseChain {
         if (my $priorItemName = $self->orderings->{$itemName} // '') {
             my $priorItem = $self->items->{$priorItemName}
                 or die "No ordering item $priorItemName";
-            my $priorItemPromise = $priorItem->{promise}->catch(sub {
-                    0; # eat error so execution continues
-                });
+
+            my $priorItemPromise = $priorItem->{promise};
+            if (!$abort_if_rejected) {
+                # eat error so execution continues
+                $priorItemPromise = $priorItemPromise->catch($eat_errors);
+            }
+
             push @deps, $priorItemPromise;
         }
 
