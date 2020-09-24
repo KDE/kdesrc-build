@@ -597,25 +597,6 @@ sub establishContext
         _executeCommandLineProgram(@startProgramAndArgs); # noreturn
     }
 
-    if (!exists $ENV{HARNESS_ACTIVE} && !$self->{run_mode} eq 'headless') {
-        # In some modes (testing, acting as headless backend), we should avoid
-        # downloading metadata automatically, so don't.
-        ksb::Updater::Git::verifyGitConfig($ctx);
-        $self->_downloadKDEProjectMetadata();
-    }
-
-    # At this point we have our list of candidate modules / module-sets (as read in
-    # from rc-file). The module sets have not been expanded into modules.
-    # We also might have cmdline "selectors" to determine which modules or
-    # module-sets to choose. First let's select module sets, and expand them.
-
-    # The user might only want metadata to update to allow for a later
-    # --pretend run, check for that here.
-    # TODO: This is broken and needs to move into the promise chain.
-    #if (exists $cmdlineGlobalOptions->{'metadata-only'}) {
-    #    return;
-    #}
-
     return @selectors;
 }
 
@@ -725,41 +706,37 @@ sub _downloadKDEProjectMetadata
     my $self = shift;
     my $ctx = $self->context();
     my $updateStillNeeded = 0;
-
     my $wasPretending = pretending();
+    my $metadataModule = $ctx->getKDEProjectsMetadataModule();
 
     eval {
-        for my $metadataModule (
-#           $ctx->getKDEDependenciesMetadataModule(),
-            $ctx->getKDEProjectsMetadataModule())
-        {
-            my $sourceDir = $metadataModule->getSourceDir();
-            super_mkdir($sourceDir);
+        my $sourceDir = $metadataModule->getSourceDir();
+        super_mkdir($sourceDir);
 
-            my $moduleSource = $metadataModule->fullpath('source');
-            my $updateDesired = !$ctx->getOption('no-metadata') && $ctx->phases()->has('update');
-            my $updateNeeded = (! -e $moduleSource) || is_dir_empty($moduleSource);
-            my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
+        my $moduleSource = $metadataModule->fullpath('source');
+        my $updateDesired = !$ctx->getOption('no-metadata') && $ctx->phases()->has('update');
+        my $updateNeeded = (! -e $moduleSource) || is_dir_empty($moduleSource);
+        my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
 
-            $updateStillNeeded ||= $updateNeeded;
+        $updateStillNeeded ||= $updateNeeded;
 
-            if (!$updateDesired && $updateNeeded && (time - ($lastUpdate)) >= 7200) {
-                warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
-            }
-
-            if ($updateNeeded && pretending()) {
-                warning (" y[b[*] Ignoring y[b[--pretend] option to download required metadata\n" .
-                         " y[b[*] --pretend mode will resume after metadata is available.");
-                ksb::Debug::setPretending(0);
-            }
-
-            if ($updateDesired && (!pretending() || $updateNeeded)) {
-                $metadataModule->scm()->updateInternal();
-                $ctx->setPersistentOption('global', 'last-metadata-update', time);
-            }
-
-            ksb::Debug::setPretending($wasPretending);
+        if (!$updateDesired && $updateNeeded && (time - ($lastUpdate)) >= 7200) {
+            warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
         }
+
+        if ($updateNeeded && pretending()) {
+            warning (" y[b[*] Ignoring y[b[--pretend] option to download required metadata\n" .
+                     " y[b[*] --pretend mode will resume after metadata is available.");
+            ksb::Debug::setPretending(0);
+        }
+
+        if ($updateDesired && (!pretending() || $updateNeeded)) {
+            note (" b[*] Updating KDE repository database");
+            $metadataModule->scm()->updateInternal();
+            $ctx->setPersistentOption('global', 'last-metadata-update', time);
+        }
+
+        ksb::Debug::setPretending($wasPretending);
     };
 
     my $err = $@;

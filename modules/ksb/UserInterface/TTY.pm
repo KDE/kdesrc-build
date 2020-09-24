@@ -248,6 +248,11 @@ sub _runModeBuild
             $stop_promise->reject('Unable to start build: ' . $err->{message});
         }
 
+        # Success but nothing to do.
+        if ($tx->res->code == 204) {
+            $stop_promise->resolve(0);
+        }
+
         # Once we return here we'll wait in Mojolicious event loop for awhile until
         # the build is done, before moving into the promise handler below
         return $stop_promise;

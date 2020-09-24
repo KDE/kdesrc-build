@@ -99,6 +99,11 @@ sub startup {
     my $r = $self->routes;
     $self->_generateRoutes;
 
+    # We will need module metadata but if we're running in the test suite then
+    # assume needed metadata will be provided as part of the test.
+    $self->ksb->_downloadKDEProjectMetadata()
+        unless exists $ENV{HARNESS_ACTIVE};
+
     return;
 }
 
@@ -332,6 +337,15 @@ sub _generateRoutes {
 
     $r->post('/build' => sub {
         my $c = shift;
+
+        if ($c->context->getOption('metadata-only')) {
+            my $msg = 'There is nothing to do, only metadata update was requested.';
+            $c->res->code(204);
+            $c->app->log->info($msg);
+            $c->render(text => $msg);
+            return;
+        }
+
         if ($c->in_build) {
             $c->res->code(400);
             $c->render(text => 'Build already in progress, cancel it first.');
