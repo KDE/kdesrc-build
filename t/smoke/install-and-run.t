@@ -38,10 +38,7 @@ symlink("$curdir/kdesrc-build", "$tempInstallDir/bin/kdesrc-build");
     local $ENV{PATH} = "$tempInstallDir/bin:" . $ENV{PATH};
 
     my $output = `kdesrc-build --version --pretend`;
-    TODO: {
-        local $TODO = '--version output duplicated, see ../kdesrc-build TODO';
-        ok($output =~ /^kdesrc-build \d\d\.\d\d \(v\d\d/, '--version for git-based version is appropriate');
-    };
+    ok($output =~ /^kdesrc-build \d\d\.\d\d \(v\d\d/, '--version for git-based version is appropriate');
 
     die "kdesrc-build is supposed to be a symlink! $!"
         unless -l "$tempInstallDir/bin/kdesrc-build";
@@ -78,10 +75,7 @@ symlink("$curdir/kdesrc-build", "$tempInstallDir/bin/kdesrc-build");
     local $ENV{PATH} = "$tempInstallDir/bin:" . $ENV{PATH};
 
     my $output = `kdesrc-build --version --pretend`;
-    TODO: {
-        local $TODO = '--version output duplicated, see ../kdesrc-build TODO';
-        ok($output =~ /^kdesrc-build \d\d\.\d\d\n?$/, '--version for installed version is appropriate');
-    };
+    ok($output =~ /^kdesrc-build \d\d\.\d\d\n?$/, '--version for installed version is appropriate');
 
     chdir($curdir);
 }
