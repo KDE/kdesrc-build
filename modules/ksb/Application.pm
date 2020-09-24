@@ -822,8 +822,8 @@ sub startHeadlessBuild
     my $startPromise = Mojo::Promise->new;
 
     # These succeed or die outright
-    $startPromise = _handle_updates ($ctx, $promiseChain, $startPromise);
-    $startPromise = _handle_build   ($ctx, $promiseChain, $startPromise);
+    $startPromise = _handle_updates     ($ctx, $promiseChain, $startPromise);
+    $startPromise = _handle_build_phases($ctx, $promiseChain, $startPromise);
 
     die "Can't obtain build lock" unless $ctx->takeLock();
 
@@ -1553,9 +1553,9 @@ EOF
     return ($statusFile, $outfile);
 }
 
-# Function: _handle_build
+# Function: _handle_build_phases
 #
-# Subroutine to handle the build process.
+# Subroutine to handle all phases of the build process (i.e. non-update phases).
 #
 # Parameters:
 # 1. Build Context, which is used to determine list of modules to build.
@@ -1569,10 +1569,16 @@ EOF
 # rebuild the module (as if --refresh-build were passed for that module).
 #
 # Returns a new start promise, and can also throw exceptions on error
-sub _handle_build
+sub _handle_build_phases
 {
     my ($ctx, $promiseChain, $start_promise) = @_;
-    my @modules = $ctx->modulesInPhase('build');
+    my @modules =
+        grep {
+            my @phases = $_->phases()->phases();
+
+            # Match all modules where there are non-update phases
+            any { $_ ne 'update' } \@phases
+        } @{$ctx->moduleList()};
     my $result = 0;
 
     _checkForEarlyBuildExit($ctx); # exception-thrower
@@ -1637,39 +1643,6 @@ sub _handle_build
         sub { $ctx->unsetPersistentOption('global', 'resume-list') });
 }
 
-# Function: _handle_install
-#
-# Handles the installation process.  Simply calls 'make install' in the build
-# directory, though there is also provision for cleaning the build directory
-# afterwards, or stopping immediately if there is a build failure (normally
-# every built module is attempted to be installed).
-#
-# Parameters:
-# 1. Build Context, from which the install list is generated.
-#
-# Return value is a shell-style success code (0 == success)
-sub _handle_install
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my @modules = $ctx->modulesInPhase('install');
-
-    @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
-    my $result = 0;
-
-    for my $module (@modules)
-    {
-        $ctx->resetEnvironment();
-        $result = $module->install() || $result;
-
-        if ($result && $module->getOption('stop-on-failure')) {
-            note ("y[Stopping here].");
-            return 1; # Error
-        }
-    }
-
-    return $result;
-}
-
 # Function: _handle_post_completion_cleanup
 #
 # Handles all steps that must happen after all update/build/test/install
@@ -1707,45 +1680,6 @@ sub _handle_post_completion_cleanup
 
         symlink($outfile, "$logdir/latest/build-status");
     });
-}
-
-# Function: _handle_uninstall
-#
-# Handles the uninstal process.  Simply calls 'make uninstall' in the build
-# directory, while assuming that Qt or CMake actually handles it.
-#
-# The order of the modules is often significant, and it may work better to
-# uninstall modules in reverse order from how they were installed. However this
-# code does not automatically reverse the order; modules are uninstalled in the
-# order determined by the build context.
-#
-# This function obeys the 'stop-on-failure' option supported by _handle_install.
-#
-# Parameters:
-# 1. Build Context, from which the uninstall list is generated.
-#
-# Return value is a shell-style success code (0 == success)
-sub _handle_uninstall
-{
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my @modules = $ctx->modulesInPhase('uninstall');
-
-    @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
-    my $result = 0;
-
-    for my $module (@modules)
-    {
-        $ctx->resetEnvironment();
-        $result = $module->uninstall() || $result;
-
-        if ($result && $module->getOption('stop-on-failure'))
-        {
-            note ("y[Stopping here].");
-            return 1; # Error
-        }
-    }
-
-    return $result;
 }
 
 # Function: _applyModuleFilters

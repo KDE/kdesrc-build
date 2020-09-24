@@ -1102,6 +1102,10 @@ sub runPhase_p
     my ($self, $phaseName, $blocking_coderef, $completion_coderef) = @_;
     my $phaseSubs = $self->{builders}->{$phaseName};
 
+    # Skip phases not in our module's phase list.
+    return Mojo::Promise->new->resolve(1)
+        unless $self->phases()->has($phaseName);
+
     if (ref($phaseSubs) eq 'CODE') {
         $blocking_coderef //= $phaseSubs;
     }

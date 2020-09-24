@@ -34,7 +34,7 @@ sub addPhase
 sub has
 {
     my ($self, $phase) = @_;
-    return grep { $_ eq $phase } (@{$self});
+    return list_has($self, $phase);
 }
 
 # Get/sets number of phases depending on whether any are passed in.
