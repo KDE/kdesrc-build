@@ -488,23 +488,15 @@ sub establishContext
     my @selectors = @{$optsAndSelectors->{selectors}};
     my $cmdlineOptions = $optsAndSelectors->{options};
     my $cmdlineGlobalOptions = $cmdlineOptions->{global};
-    my $deferredOptions = { }; # 'options' blocks
 
     # Convert list to hash for lookup
     my %ignoredSelectors =
         map { $_, 1 } @{$cmdlineGlobalOptions->{'ignore-modules'}};
 
-    # Set aside debug-related and other short-circuit cmdline options
-    # for kdesrc-build CLI driver to handle
-    my @debugFlags = qw(dependency-tree list-build print-modules);
-    $self->{debugFlags} = {
-        map { ($_, 1) }
-            grep { defined $cmdlineGlobalOptions->{$_} }
-                (@debugFlags)
-    };
-
-    my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
-    delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
+    # Setup module resolver
+    my $moduleResolver
+        = $self->{module_resolver}
+        = ksb::ModuleResolver->new($ctx);
 
     # rc-file needs special handling.
     if (exists $cmdlineGlobalOptions->{'rc-file'} && $cmdlineGlobalOptions->{'rc-file'}) {
@@ -513,6 +505,16 @@ sub establishContext
 
     my $fh = $ctx->loadRcFile();
     $ctx->loadPersistentOptions();
+
+    # _readConfigurationOptions will add pending global opts to ctx while
+    # ensuring returned modules/sets have any such options stripped out. It
+    # will also add module-specific options to any returned modules/sets. This
+    # is done by adjusting the moduleResolver.
+    _readConfigurationOptions($ctx, $fh, $moduleResolver);
+    close $fh;
+
+    $moduleResolver->setCmdlineOptions($cmdlineOptions);
+    $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
 
     if (exists $cmdlineGlobalOptions->{'resume'}) {
         my $moduleList = $ctx->getPersistentOption('global', 'resume-list');
@@ -536,11 +538,21 @@ sub establishContext
         unshift @selectors, split(/,\s*/, $moduleList);
     }
 
-    # _readConfigurationOptions will add pending global opts to ctx while ensuring
-    # returned modules/sets have any such options stripped out. It will also add
-    # module-specific options to any returned modules/sets.
-    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $deferredOptions);
-    close $fh;
+    # Set aside debug-related and other short-circuit cmdline options
+    # for kdesrc-build CLI driver to handle
+    my @debugFlags = qw(dependency-tree list-build print-modules);
+    $self->{debugFlags} = {
+        map { ($_, 1) } # turns list of matches into list of key/value pairs for hash
+            grep { defined $cmdlineGlobalOptions->{$_} }
+                (@debugFlags)
+    };
+
+    my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
+    delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
+
+    # Everything else in cmdlineOptions should be OK to apply directly as a module
+    # or context option.
+    $ctx->setOption(%{$cmdlineGlobalOptions});
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
@@ -550,10 +562,6 @@ sub establishContext
         $ctx->commitEnvironmentChanges(); # Apply env options to environment
         _executeCommandLineProgram(@startProgramAndArgs); # noreturn
     }
-
-    # Everything else in cmdlineOptions should be OK to apply directly as a module
-    # or context option.
-    $ctx->setOption(%{$cmdlineGlobalOptions});
 
     if (!exists $ENV{HARNESS_ACTIVE} && !$self->{run_mode} eq 'headless') {
         # In some modes (testing, acting as headless backend), we should avoid
@@ -566,14 +574,6 @@ sub establishContext
     # from rc-file). The module sets have not been expanded into modules.
     # We also might have cmdline "selectors" to determine which modules or
     # module-sets to choose. First let's select module sets, and expand them.
-
-    my $moduleResolver
-        = $self->{module_resolver}
-        = ksb::ModuleResolver->new($ctx);
-    $moduleResolver->setCmdlineOptions($cmdlineOptions);
-    $moduleResolver->setDeferredOptions($deferredOptions);
-    $moduleResolver->setInputModulesAndOptions(\@optionModulesAndSets);
-    $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
 
     # The user might only want metadata to update to allow for a later
     # --pretend run, check for that here.
@@ -1181,15 +1181,12 @@ sub _parseModuleSetOptions
 #  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
 #  methods (e.g. <IO::Handle> subclass).
 #
-#  deferredOptions - An out parameter: a hashref holding the options set by any
-#  'options' blocks read in by this function. Each key (identified by the name
-#  of the 'options' block) will point to a hashref value holding the options to
-#  apply.
+#  moduleResolver - The <ModuleResolver> to update with the list of modules,
+#  module sets and deferred options to apply when the resolver creates new
+#  Modules.
 #
 # Returns:
-#  @module - Heterogeneous list of <Modules> and <ModuleSets> defined in the
-#  configuration file. No module sets will have been expanded out (either
-#  kde-projects or standard sets).
+#  Nothing, but see the effects on $ctx and $moduleResolver.
 #
 # Throws:
 #  - Config exceptions.
@@ -1197,7 +1194,9 @@ sub _readConfigurationOptions
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $fh = shift;
-    my $deferredOptionsRef = shift;
+    my $moduleResolver = assert_isa(shift, 'ksb::ModuleResolver');
+
+    my $deferredOptionsRef = { };
     my @module_list;
     my $rcfile = $ctx->rcFile();
     my ($option, %readModules);
@@ -1321,10 +1320,11 @@ sub _readConfigurationOptions
     # The good question is what exactly should be built, but oh well.
     if ($using_default) {
         warning (" b[y[*] There do not seem to be any modules to build in your configuration.");
-        return ();
+        @module_list = ();
     }
 
-    return @module_list;
+    $moduleResolver->setDeferredOptions($deferredOptionsRef);
+    $moduleResolver->setInputModulesAndOptions(\@module_list);
 }
 
 # Exits out of kdesrc-build, executing the user's preferred shell instead.  The
