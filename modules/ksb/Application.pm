@@ -200,7 +200,7 @@ sub readCommandLineOptionsAndSelectors
         },
         'no-tests' => sub {
             # What actually works at this point. Filtering phases is the right thing to
-            # do though, see its usage in _updateBuildContextFromOptions
+            # do though, see its usage in _applyBuildContextPhasesFromCmdline
             $foundOptions{'run-tests'} = 0;
         },
         # Mostly equivalent to the above
@@ -399,7 +399,7 @@ DONE
     }
 }
 
-# Method: _updateBuildContextFromOptions
+# Method: _applyBuildContextPhasesFromCmdline
 #
 # Uses the user-requested options (as returned by
 # readCommandLineOptionsAndSelectors) to update the build context and
@@ -419,7 +419,7 @@ DONE
 #
 # Returns:
 #  There is no return value.
-sub _updateBuildContextFromOptions
+sub _applyBuildContextPhasesFromCmdline
 {
     my ($self, $ctx, $optsAndSelectors) = @_;
 
@@ -483,8 +483,7 @@ sub establishContext
 
     my $ctx = $self->context();
 
-    # Process --help, --install, etc. first.
-    $self->_updateBuildContextFromOptions($ctx, $optsAndSelectors); # may exit process
+    $self->_applyBuildContextPhasesFromCmdline($ctx, $optsAndSelectors);
 
     my @selectors = @{$optsAndSelectors->{selectors}};
     my $cmdlineOptions = $optsAndSelectors->{options};
