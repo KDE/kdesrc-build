@@ -462,59 +462,73 @@ sub _applyBuildContextPhasesFromCmdline
     }
 }
 
-# Generates the build context, builds various module, dependency and branch
-# group resolvers, and splits up the provided option/selector mix read from
-# cmdline into selectors (returned to caller, if any) and pre-built context and
-# resolvers.
+# This subroutine creates the ksb::BuildContext using the provided cmdline
+# options/selectors and reads the config file and persistent options based on
+# those cmdline options.
 #
-# Use "modulesFromSelectors" to further generate the list of ksb::Modules in
-# dependency order.
+# After this function completes the build context and module resolver are ready
+# for operations, but no module sets have been expanded and KDE project
+# metadata has not been loaded. No changes are made to the passed-in
+# options/selectors except to remove flags which do not apply to modules (like
+# --run).
 #
-# After this function is called all module set selectors will have been
-# expanded, and we will have downloaded kde-projects metadata.
+# See also: establishContext, which is probably what you actually want.
 #
-# Returns: List of Selectors to build.
-sub establishContext
+# Exceptions are possible (e.g. for malformed rc-files)
+sub createBuildContextWithoutMetadata
 {
-    my ($self, $optsAndSelectors) = @_;
+    my ($self, $ctx, $optsAndSelectors) = @_;
 
-    # Note: Don't change the order around unless you're sure of what you're
-    # doing.
-
-    my $ctx = $self->context();
-
-    $self->_applyBuildContextPhasesFromCmdline($ctx, $optsAndSelectors);
-
-    my @selectors = @{$optsAndSelectors->{selectors}};
     my $cmdlineOptions = $optsAndSelectors->{options};
     my $cmdlineGlobalOptions = $cmdlineOptions->{global};
-
-    # Convert list to hash for lookup
-    my %ignoredSelectors =
-        map { $_, 1 } @{$cmdlineGlobalOptions->{'ignore-modules'}};
 
     # Setup module resolver
     my $moduleResolver
         = $self->{module_resolver}
         = ksb::ModuleResolver->new($ctx);
+    $moduleResolver->setCmdlineOptions($cmdlineOptions);
+    $moduleResolver->setIgnoredSelectors($cmdlineGlobalOptions->{'ignore-modules'});
 
     # rc-file needs special handling.
-    if (exists $cmdlineGlobalOptions->{'rc-file'} && $cmdlineGlobalOptions->{'rc-file'}) {
-        $ctx->setRcFile($cmdlineGlobalOptions->{'rc-file'});
+    if (my $rcFile = ($cmdlineGlobalOptions->{'rc-file'} // '')) {
+        $ctx->setRcFile($rcFile);
     }
-
-    my $fh = $ctx->loadRcFile();
-    $ctx->loadPersistentOptions();
 
     # _readConfigurationOptions will add pending global opts to ctx while
     # ensuring returned modules/sets have any such options stripped out. It
     # will also add module-specific options to any returned modules/sets. This
     # is done by adjusting the moduleResolver.
-    _readConfigurationOptions($ctx, $fh, $moduleResolver);
-    close $fh;
+    _readConfigurationOptions($ctx, $moduleResolver);
 
-    $moduleResolver->setCmdlineOptions($cmdlineOptions);
-    $moduleResolver->setIgnoredSelectors([keys %ignoredSelectors]);
+    $ctx->loadPersistentOptions();
+
+    # Set aside debug-related and other short-circuit cmdline options
+    # for kdesrc-build CLI driver to handle
+    my @debugFlags = qw(dependency-tree list-build print-modules);
+    $self->{debugFlags} = {
+        map { ($_, 1) } # turns list of matches into list of key/value pairs for hash
+            grep { defined $cmdlineGlobalOptions->{$_} }
+                (@debugFlags)
+    };
+
+    # These options are only used for cmdline handling (and in fact
+    # ksb::BuildContext will complain if we pass them) so delete them now.
+    delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
+
+    # Everything else in cmdlineOptions should be OK to apply directly as a
+    # module or context option.
+    $ctx->setOption(%{$cmdlineGlobalOptions});
+}
+
+# Returns a list of selectors that should be added to the overall selector
+# list, based on --rebuild-failures and --resume statements on the cmdline.
+# Requires the build context to be setup with persistent options loaded.
+sub getResumeSelectorsFromCmdline
+{
+    my ($self, $ctx, $optsAndSelectors) = @_;
+
+    my @selectors;
+    my $cmdlineGlobalOptions = $optsAndSelectors->{options}->{global};
 
     if (exists $cmdlineGlobalOptions->{'resume'}) {
         my $moduleList = $ctx->getPersistentOption('global', 'resume-list');
@@ -538,21 +552,41 @@ sub establishContext
         unshift @selectors, split(/,\s*/, $moduleList);
     }
 
-    # Set aside debug-related and other short-circuit cmdline options
-    # for kdesrc-build CLI driver to handle
-    my @debugFlags = qw(dependency-tree list-build print-modules);
-    $self->{debugFlags} = {
-        map { ($_, 1) } # turns list of matches into list of key/value pairs for hash
-            grep { defined $cmdlineGlobalOptions->{$_} }
-                (@debugFlags)
-    };
+    return @selectors;
+}
 
+# Generates the build context, builds various module, dependency and branch
+# group resolvers, and splits up the provided option/selector mix read from
+# cmdline into selectors (returned to caller, if any) and pre-built context and
+# resolvers.
+#
+# Use "modulesFromSelectors" to further generate the list of ksb::Modules in
+# dependency order.
+#
+# After this function is called the build context will be established, module
+# resolver created that understands how to correctly apply user options to
+# newly created Modules, but no module set selectors will have been expanded.
+# We will have downloaded kde-projects metadata if in an interactive mode.
+#
+# Returns: List of Selectors to build.
+sub establishContext
+{
+    my ($self, $optsAndSelectors) = @_;
+
+    # Note: Don't change the order around unless you're sure of what you're
+    # doing.
+
+    my $ctx = $self->context();
+    my @selectors = @{$optsAndSelectors->{selectors}};
+    my $cmdlineOptions = $optsAndSelectors->{options};
+    my $cmdlineGlobalOptions = $cmdlineOptions->{global};
+
+    # Save this for later, as it would be overwritten by this function call.
     my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
-    delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
+    $self->createBuildContextWithoutMetadata  ($ctx, $optsAndSelectors);
+    $self->_applyBuildContextPhasesFromCmdline($ctx, $optsAndSelectors);
 
-    # Everything else in cmdlineOptions should be OK to apply directly as a module
-    # or context option.
-    $ctx->setOption(%{$cmdlineGlobalOptions});
+    unshift @selectors, $self->getResumeSelectorsFromCmdline($ctx, $optsAndSelectors);
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
@@ -577,9 +611,10 @@ sub establishContext
 
     # The user might only want metadata to update to allow for a later
     # --pretend run, check for that here.
-    if (exists $cmdlineGlobalOptions->{'metadata-only'}) {
-        return;
-    }
+    # TODO: This is broken and needs to move into the promise chain.
+    #if (exists $cmdlineGlobalOptions->{'metadata-only'}) {
+    #    return;
+    #}
 
     return @selectors;
 }
@@ -1178,9 +1213,6 @@ sub _parseModuleSetOptions
 #  ctx - The <BuildContext> to update based on the configuration read and
 #  any pending command-line options (see cmdlineGlobalOptions).
 #
-#  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
-#  methods (e.g. <IO::Handle> subclass).
-#
 #  moduleResolver - The <ModuleResolver> to update with the list of modules,
 #  module sets and deferred options to apply when the resolver creates new
 #  Modules.
@@ -1193,9 +1225,9 @@ sub _parseModuleSetOptions
 sub _readConfigurationOptions
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $fh = shift;
     my $moduleResolver = assert_isa(shift, 'ksb::ModuleResolver');
 
+    my $fh = $ctx->loadRcFile();
     my $deferredOptionsRef = { };
     my @module_list;
     my $rcfile = $ctx->rcFile();
@@ -1322,6 +1354,8 @@ sub _readConfigurationOptions
         warning (" b[y[*] There do not seem to be any modules to build in your configuration.");
         @module_list = ();
     }
+
+    close $fh;
 
     $moduleResolver->setDeferredOptions($deferredOptionsRef);
     $moduleResolver->setInputModulesAndOptions(\@module_list);

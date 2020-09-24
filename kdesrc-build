@@ -125,6 +125,8 @@ eval {
 
     require Mojo::IOLoop;
     require Mojo::Server::Daemon;
+
+    require Storable;
 };
 
 if ($@) {
@@ -157,6 +159,8 @@ web::BackendServer->import();
 
 Mojo::IOLoop->import();
 Mojo::Server::Daemon->import();
+
+Storable->import(qw(dclone));
 
 # Make Perl 'plain die' exceptions use Carp::confess instead of their core
 # support. This is not supported by the Perl 5 authors but assuming it works
@@ -402,6 +406,18 @@ eval
 {
     my $optsAndSelectors = ksb::Application::readCommandLineOptionsAndSelectors(@ARGV);
     ksb::Application::_handleEarlyOptions($optsAndSelectors); # may exit!
+
+    # Try to read up through the rc-file to abort before we launch the backend
+    # if the file is malformed.
+    {
+        my $app = ksb::Application->new;
+
+        # May raise exception. If it doesn't then the backend will re-read the
+        # rc-file but that's OK.
+        $app->createBuildContextWithoutMetadata(
+            $app->context(),
+            dclone($optsAndSelectors));
+    }
 
     my $app = web::BackendServer->new($optsAndSelectors);
     my $ui  = ksb::UserInterface::TTY->new($app);
