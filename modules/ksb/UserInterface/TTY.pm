@@ -66,8 +66,6 @@ sub new
     # attachment will startup the Web server behind the scenes and allow $ua to
     # make HTTP requests.
     $self->ua->server->app($app);
-#   $self->ua->server->app->log->level('debug');
-    $self->ua->server->app->log->level('fatal');
 
     return $self;
 }

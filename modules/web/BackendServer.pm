@@ -54,8 +54,17 @@ sub make_new_ksb
         $c->app->log->level('error');
     } else {
         $c->app->log(Mojo::Log->new(
-                path => $ctx->getLogDirFor($ctx) . "/mojo-backend.log"
+                path => $ctx->getLogDirFor($ctx) . "/mojo-backend.log",
+                level => 'info',
                 ));
+    }
+
+    if (ksb::Debug::debugging()) {
+        $c->app->log->level('debug');
+        $c->app->log->on(message => sub {
+            my ($log, $level, @lines) = @_;
+            say STDERR "[$level] ", @lines;
+        });
     }
 
     if(@selectors) {
