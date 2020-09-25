@@ -45,12 +45,14 @@ sub _createMetadataModule
     my $metadataModule = ksb::Module->new($ctx, $moduleName =~ s,/,-,r);
 
     # Hardcode the results instead of expanding out the project info
-    $metadataModule->setOption('repository', "kde:$moduleName");
-    $metadataModule->setOption('#xml-full-path', $moduleName);
-    $metadataModule->setOption('#branch:stable', 'master');
     $metadataModule->setScmType('metadata');
-    $metadataModule->setOption('disable-snapshots', 1);
-    $metadataModule->setOption('branch', 'master');
+    $metadataModule->setOption(
+        'repository'        => "kde:$moduleName",
+        '#xml-full-path'    => $moduleName,
+        '#branch:stable'    => 'master',
+        'disable-snapshots' => 1,
+        'branch'            => 'master',
+    );
 
     my $moduleSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-projects dependencies>');
     $metadataModule->setModuleSet($moduleSet);
@@ -142,10 +144,12 @@ sub _expandModuleCandidates
 
         my $newModule = ksb::Module->new($ctx, $result->{'name'});
         $self->_initializeNewModule($newModule);
-        $newModule->setOption('repository', $result->{'repo'});
-        $newModule->setOption('#xml-full-path', $result->{'fullName'});
-        $newModule->setOption('#branch:stable', undef);
-        $newModule->setOption('#found-by', $result->{found_by});
+        $newModule->setOption(
+            'repository'     => $result->{'repo'},
+            '#xml-full-path' => $result->{'fullName'},
+            '#branch:stable' => undef,
+            '#found-by'      => $result->{found_by},
+        );
         $newModule->setScmType('proj');
 
         if (none_true(

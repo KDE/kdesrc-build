@@ -127,19 +127,20 @@ sub getModulesForProject
     my ($self, $proj) = @_;
 
     my $repositoryRef = $self->{repositories};
+    my @repoKeys = sort keys %{$repositoryRef};
     my @results;
     my $findResults = sub {
         my @matchList =
             grep {
                 _projectPathMatchesWildcardSearch(
                     $repositoryRef->{$_}->{'fullName'}, $proj)
-            } (sort keys %{$repositoryRef});
+            } (@repoKeys);
 
         if ($proj =~ m/\*/) {
             $repositoryRef->{$_}->{found_by} = 'wildcard' foreach @matchList;
         }
 
-        push @results, @matchList;
+        return @matchList;
     };
 
     # Wildcard matches happen as specified if asked for.
@@ -149,7 +150,7 @@ sub getModulesForProject
     if ($proj !~ /\*/ && $proj !~ /\.git$/) {
         # We have to do a search to account for over-specified module names
         # like phonon/phonon
-        $findResults->();
+        push @results, $findResults->();
 
         # Now setup for a wildcard search to find things like kde/kdelibs/baloo
         # if just 'kdelibs' is asked for.
@@ -164,7 +165,7 @@ sub getModulesForProject
         push @results, $proj;
     }
     else {
-        $findResults->();
+        push @results, $findResults->();
     }
 
     return @{$repositoryRef}{@results};
@@ -193,34 +194,19 @@ sub _projectPathMatchesWildcardSearch
     my @searchParts = split(m{/}, $searchItem);
     my @nameStack   = split(m{/}, $projectPath);
 
-    if (scalar @nameStack >= scalar @searchParts) {
-        my $sizeDifference = scalar @nameStack - scalar @searchParts;
-
-        # We might have to loop if we somehow find the wrong start point for our search.
-        # E.g. looking for a/b/* against a/a/b/c, we'd need to start with the second a.
-        my $i = 0;
-        while ($i <= $sizeDifference) {
-            # Find our common prefix, then ensure the remainder matches item-for-item.
-            for (; $i <= $sizeDifference; $i++) {
-                last if $nameStack[$i] eq $searchParts[0];
-            }
-
-            return if $i > $sizeDifference; # Not enough room to find it now
-
-            # At this point we have synched up nameStack to searchParts, ensure they
-            # match item-for-item.
-            my $found = 1;
-            for (my $j = 0; $found && ($j < @searchParts); $j++) {
-                return 1   if $searchParts[$j] eq '*'; # This always works
-                $found = 0 if $searchParts[$j] ne $nameStack[$i + $j];
-            }
-
-            return 1 if $found; # We matched every item to the substring we found.
-            $i++; # Try again
-        }
+    if ($searchParts[-1] eq '*') {
+        pop @nameStack;
+        pop @searchParts;
     }
 
-    return;
+    # Kill leading prefix so that the comparison is on the common suffix
+    splice (@nameStack, 0, scalar @nameStack - scalar @searchParts);
+
+    for (my $i = 0; $i < scalar @nameStack; $i++) {
+        return if $nameStack[$i] ne $searchParts[$i];
+    }
+
+    return 1;
 }
 
 1;
