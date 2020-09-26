@@ -367,7 +367,6 @@ shared-mime-info
 @@ pkg/fedora/unknown
 bison
 boost-devel
-bzr
 cmake
 dbusmenu-qt5-devel
 docbook-style-xsl
@@ -478,7 +477,6 @@ gperf
 docbook-xsl
 flex
 bison
-bzr
 automake
 autoconf
 pkg-config

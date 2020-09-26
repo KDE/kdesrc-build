@@ -17,7 +17,6 @@ use ksb::Util;
 
 use ksb::Updater::Svn;
 use ksb::Updater::Git;
-use ksb::Updater::Bzr;
 use ksb::Updater::KDEProject;
 use ksb::Updater::KDEProjectMetadata;
 use ksb::Updater::Qt5;
@@ -241,11 +240,6 @@ EOF
         die (make_exception('Config', 'svn-server and repository both set'));
     }
 
-    # Overload repository to allow bzr URLs?
-    if ($repository =~ /^bzr:\/\//) {
-        $self->{scm_obj} = ksb::Updater::Bzr->new($self);
-    }
-
     # If it needs a repo it's git. Everything else is svn for now.
     $self->{scm_obj} //=
         $repository
@@ -267,7 +261,7 @@ sub setScmType
         when('metadata') { $newType = ksb::Updater::KDEProjectMetadata->new($self); }
 #       when('l10n') { $newType = ksb::l10nSystem->new($self); }
         when('svn')  { $newType = ksb::Updater::Svn->new($self); }
-        when('bzr')  { $newType = ksb::Updater::Bzr->new($self); }
+#       when('bzr')  { $newType = ksb::Updater::Bzr->new($self); }
         when('qt5')  { $newType = ksb::Updater::Qt5->new($self); }
         default      { $newType = undef; }
     }
