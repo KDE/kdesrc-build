@@ -432,9 +432,9 @@ sub _applyBuildContextPhasesFromCmdline
         'no-install' => sub {
             $phases->filterOutPhase('install');
         },
-        'no-tests' => sub {
-            # The "right thing" to do... doesn't fully work yet, so see also the 'run-tests' option
-            $phases->filterOutPhase('test');
+        'run-tests' => sub {
+            $phases->filterOutPhase('test')
+                unless $_[0];
         },
         'no-build' => sub {
             $phases->filterOutPhase('build');
@@ -581,10 +581,13 @@ sub establishContext
     my $cmdlineOptions = $optsAndSelectors->{options};
     my $cmdlineGlobalOptions = $cmdlineOptions->{global};
 
+    # Must precede loading the rc-file as the module sets and modules default
+    # to the phasing of the global build context.
+    $self->_applyBuildContextPhasesFromCmdline($ctx, $optsAndSelectors);
+
     # Save this for later, as it would be overwritten by this function call.
     my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
     $self->createBuildContextWithoutMetadata  ($ctx, $optsAndSelectors);
-    $self->_applyBuildContextPhasesFromCmdline($ctx, $optsAndSelectors);
 
     unshift @selectors, $self->getResumeSelectorsFromCmdline($ctx, $optsAndSelectors);
 

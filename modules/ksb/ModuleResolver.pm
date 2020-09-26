@@ -239,7 +239,6 @@ sub _resolveSingleSelector
     else {
         # Case 3?
         $selector = ksb::Module->new($ctx, $selectorName);
-        $selector->phases()->phases($ctx->phases()->phases());
 
         if ($selectorName eq 'l10n') {
             $_->setScmType('l10n')
