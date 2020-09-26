@@ -264,6 +264,23 @@ the install directory (~/kde/usr by default) completely and rebuilding
 everything (using `--refresh-build`), but this can take a significant amount of
 time!
 
+### User Setup Requirements
+
+If installing to just a home directory without root permissions, there are
+still some things you would want to do to setup for use in a running system.
+
+1. Setup a PAM module for a 'kde' service (so that kscreenlocker can properly
+check passwords).
+
+    cd /etc/pam.d/
+    ln -sf system-local-login kde
+
+Alternately, disable PAM support in kscreenlocker, but this then requires
+installing kcheckroot as suid (to read /etc/shadow) so you're still going to
+need to do something requiring root permissions.
+
+2. Setup KAuth to tie to PolicyKit (TODO: Fill this in...)
+
 ## CONTACT INFO
 
 If you find a bug, please report it at the [KDE
