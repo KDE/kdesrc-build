@@ -27,7 +27,6 @@ use ksb::BuildException 0.20;
 use ksb::BuildSystem 0.30;
 use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
-use ksb::BuildSystem::Qt4;
 use ksb::BuildSystem::Qt5;
 use ksb::BuildSystem::KDE4;
 use ksb::BuildSystem::CMakeBootstrap;
@@ -303,7 +302,6 @@ sub buildSystemFromName
         'qmake'           => 'ksb::BuildSystem::QMake',
         'cmake-bootstrap' => 'ksb::BuildSystem::CMakeBootstrap',
         'kde'             => 'ksb::BuildSystem::KDE4',
-        'qt'              => 'ksb::BuildSystem::Qt4',
         'qt5'             => 'ksb::BuildSystem::Qt5',
         'autotools'       => 'ksb::BuildSystem::Autotools',
         'meson'           => 'ksb::BuildSystem::Meson',
@@ -332,13 +330,6 @@ sub buildSystem
     # If not set, let's guess.
     my $buildType;
     my $sourceDir = $self->fullpath('source');
-
-    if (($self->getOption('repository') =~ /gitorious\.org\/qt\//) ||
-        ($self->getOption('repository') =~ /^kde:qt$/) ||
-        (-e "$sourceDir/bin/syncqt"))
-    {
-        $buildType = ksb::BuildSystem::Qt4->new($self);
-    }
 
     # This test must come before the KDE buildsystem's as cmake's own
     # bootstrap system also has CMakeLists.txt
