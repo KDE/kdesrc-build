@@ -424,15 +424,6 @@ sub installPhasePromises
     # custom handler for the result.
     # Both subs are passed the module as the first param
     my %phaseBuilders = (
-        # Always runs, always first, the appropriate subsequent phase will
-        # be linked to this one (based on --no-src, --install-only, etc.)
-        start => sub {
-            my $self = shift;
-            my %pathinfo = $self->getInstallPathComponents('build');
-            super_mkdir($pathinfo{'path'});
-            return { was_successful => 1 };
-        },
-
         # update => [
         # See Application.pm for its custom runPhase_p
         # ],

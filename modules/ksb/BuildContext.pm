@@ -39,7 +39,7 @@ use File::Spec; # rel2abs
 
 use List::Util qw(sum);
 
-my @DefaultPhases = qw/setup update buildsystem build test install/;
+my @DefaultPhases = qw/update buildsystem build test install/;
 my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
 my $LOCKFILE_NAME = '.kdesrc-lock';
 
