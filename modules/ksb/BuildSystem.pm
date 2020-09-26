@@ -22,7 +22,7 @@ sub new
 
     # This is simply the 'default' build system at this point, also used for
     # KF5.
-    if ($class ne 'ksb::BuildSystem::KDE4') {
+    if ($class ne 'ksb::BuildSystem::CMake') {
         _maskGlobalBuildSystemOptions($self);
     }
 

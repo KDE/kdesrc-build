@@ -28,7 +28,7 @@ use ksb::BuildSystem 0.30;
 use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
 use ksb::BuildSystem::Qt5;
-use ksb::BuildSystem::KDE4;
+use ksb::BuildSystem::CMake;
 use ksb::BuildSystem::CMakeBootstrap;
 use ksb::BuildSystem::Meson;
 
@@ -301,17 +301,17 @@ sub buildSystemFromName
         'generic'         => 'ksb::BuildSystem',
         'qmake'           => 'ksb::BuildSystem::QMake',
         'cmake-bootstrap' => 'ksb::BuildSystem::CMakeBootstrap',
-        'kde'             => 'ksb::BuildSystem::KDE4',
+        'cmake'           => 'ksb::BuildSystem::CMake',
+        'kde'             => 'ksb::BuildSystem::CMake', # compat name
         'qt5'             => 'ksb::BuildSystem::Qt5',
         'autotools'       => 'ksb::BuildSystem::Autotools',
         'meson'           => 'ksb::BuildSystem::Meson',
     );
 
-    my $class = $buildSystemClasses{lc $name} // undef;
-    return $class->new($self) if ($class);
+    my $class = $buildSystemClasses{lc $name}
+        or croak_runtime("Invalid build system $name requested");
 
-    # Past here, no class found
-    croak_runtime("Invalid build system $name requested");
+    return $class->new($self);
 }
 
 sub buildSystem
@@ -342,7 +342,7 @@ sub buildSystem
     if (!$buildType && (-e "$sourceDir/CMakeLists.txt" ||
             $self->getOption('#xml-full-path')))
     {
-        $buildType = ksb::BuildSystem::KDE4->new($self);
+        $buildType = ksb::BuildSystem::CMake->new($self);
     }
 
     # We have to assign to an array to force glob to return all results,

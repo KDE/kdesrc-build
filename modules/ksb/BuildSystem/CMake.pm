@@ -1,6 +1,7 @@
-package ksb::BuildSystem::KDE4 0.20;
+package ksb::BuildSystem::CMake 0.20;
 
-# Class responsible for building KDE4 CMake-based modules.
+# Class responsible for building KDE CMake-based modules. It presumably
+# would work on other CMake-based modules as well.
 
 use strict;
 use warnings;
@@ -198,17 +199,9 @@ sub cmakeGenerator
     return $self->{cmake_generator};
 }
 
-sub needsInstalled
-{
-    my $self = shift;
-
-    return 0 if $self->name() eq 'kde-common'; # Vestigial
-    return 1;
-}
-
 sub name
 {
-    return 'KDE';
+    return 'CMake';
 }
 
 # Called by the module being built before it runs its build/install process. Should
@@ -270,7 +263,7 @@ sub configuredModuleFileName
 
 sub runTestsuite
 {
-    my $self = assert_isa(shift, 'ksb::BuildSystem::KDE4');
+    my $self = assert_isa(shift, 'ksb::BuildSystem::CMake');
     my $module = $self->module();
 
     # Note that we do not run safe_make, which should really be called
@@ -334,7 +327,7 @@ sub installInternal
 
 sub configureInternal
 {
-    my $self = assert_isa(shift, 'ksb::BuildSystem::KDE4');
+    my $self = assert_isa(shift, 'ksb::BuildSystem::CMake');
 
     # Use cmake to create the build directory (sh script return value
     # semantics).
