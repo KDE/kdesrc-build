@@ -51,10 +51,8 @@ sub watch {
   else {
     my $cb = sub {
       my ($w, $revents) = @_;
-      $self->_try('I/O watcher', $self->{io}{$fd}{cb}, 0)
-        if EV::READ & $revents;
-      $self->_try('I/O watcher', $self->{io}{$fd}{cb}, 1)
-        if EV::WRITE & $revents && $self->{io}{$fd};
+      $self->_try('I/O watcher', $self->{io}{$fd}{cb}, 0) if EV::READ & $revents;
+      $self->_try('I/O watcher', $self->{io}{$fd}{cb}, 1) if EV::WRITE & $revents && $self->{io}{$fd};
     };
     $io->{watcher} = EV::io($fd, $mode, $cb);
   }
@@ -91,8 +89,7 @@ Mojo::Reactor::EV - Low-level event reactor with libev support
 
   # Watch if handle becomes readable or writable
   my $reactor = Mojo::Reactor::EV->new;
-  $reactor->io($first => sub {
-    my ($reactor, $writable) = @_;
+  $reactor->io($first => sub ($reactor, $writable) {
     say $writable ? 'First handle is writable' : 'First handle is readable';
   });
 
@@ -101,14 +98,12 @@ Mojo::Reactor::EV - Low-level event reactor with libev support
 
   # Turn file descriptor into handle and watch if it becomes readable
   my $second = IO::Handle->new_from_fd($fd, 'r');
-  $reactor->io($second => sub {
-    my ($reactor, $writable) = @_;
+  $reactor->io($second => sub ($reactor, $writable) {
     say $writable ? 'Second handle is writable' : 'Second handle is readable';
   })->watch($second, 1, 0);
 
   # Add a timer
-  $reactor->timer(15 => sub {
-    my $reactor = shift;
+  $reactor->timer(15 => sub ($reactor) {
     $reactor->remove($first);
     $reactor->remove($second);
     say 'Timeout!';
@@ -127,16 +122,14 @@ L<Mojo::Reactor::EV> inherits all events from L<Mojo::Reactor::Poll>.
 
 =head1 METHODS
 
-L<Mojo::Reactor::EV> inherits all methods from L<Mojo::Reactor::Poll> and
-implements the following new ones.
+L<Mojo::Reactor::EV> inherits all methods from L<Mojo::Reactor::Poll> and implements the following new ones.
 
 =head2 again
 
   $reactor->again($id);
   $reactor->again($id, 0.5);
 
-Restart timer and optionally change the invocation time. Note that this method
-requires an active timer.
+Restart timer and optionally change the invocation time. Note that this method requires an active timer.
 
 =head2 new
 
@@ -159,15 +152,14 @@ Run reactor until an event occurs or no events are being watched anymore.
 
   my $id = $reactor->recurring(0.25 => sub {...});
 
-Create a new recurring timer, invoking the callback repeatedly after a given
-amount of time in seconds.
+Create a new recurring timer, invoking the callback repeatedly after a given amount of time in seconds.
 
 =head2 start
 
   $reactor->start;
 
-Start watching for I/O and timer events, this will block until L</"stop"> is
-called or no events are being watched anymore.
+Start watching for I/O and timer events, this will block until L</"stop"> is called or no events are being watched
+anymore.
 
   # Start reactor only if it is not running already
   $reactor->start unless $reactor->is_running;
@@ -182,15 +174,13 @@ Stop watching for I/O and timer events.
 
   my $id = $reactor->timer(0.5 => sub {...});
 
-Create a new timer, invoking the callback after a given amount of time in
-seconds.
+Create a new timer, invoking the callback after a given amount of time in seconds.
 
 =head2 watch
 
   $reactor = $reactor->watch($handle, $readable, $writable);
 
-Change I/O events to watch handle for with true and false values. Note that
-this method requires an active I/O watcher.
+Change I/O events to watch handle for with true and false values. Note that this method requires an active I/O watcher.
 
   # Watch only for readable events
   $reactor->watch($handle, 1, 0);

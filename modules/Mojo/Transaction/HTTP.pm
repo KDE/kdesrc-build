@@ -73,8 +73,7 @@ sub _body {
   $self->{writing} = 0 unless defined $buffer;
 
   # Finished
-  $finish ? $self->completed : ($self->{writing} = 0)
-    if defined $buffer && !length $buffer;
+  $finish ? $self->completed : ($self->{writing} = 0) if defined $buffer && !length $buffer;
 
   return $buffer // '';
 }
@@ -109,8 +108,7 @@ sub _start_line {
   $self->{offset} += $written;
 
   # Switch to headers
-  @$self{qw(http_state write offset)} = ('headers', $msg->header_size, 0)
-    if $self->{write} <= 0;
+  @$self{qw(http_state write offset)} = ('headers', $msg->header_size, 0) if $self->{write} <= 0;
 
   return $buffer;
 }
@@ -124,8 +122,7 @@ sub _write {
   # Nothing written yet
   $self->{$_} ||= 0 for qw(offset write);
   my $msg = $server ? $self->res : $self->req;
-  @$self{qw(http_state write)} = ('start_line', $msg->start_line_size)
-    unless $self->{http_state};
+  @$self{qw(http_state write)} = ('start_line', $msg->start_line_size) unless $self->{http_state};
 
   # Start-line
   my $chunk = '';
@@ -174,64 +171,45 @@ Mojo::Transaction::HTTP - HTTP transaction
 
 =head1 DESCRIPTION
 
-L<Mojo::Transaction::HTTP> is a container for HTTP transactions, based on
-L<RFC 7230|http://tools.ietf.org/html/rfc7230> and
-L<RFC 7231|http://tools.ietf.org/html/rfc7231>.
+L<Mojo::Transaction::HTTP> is a container for HTTP transactions, based on L<RFC
+7230|https://tools.ietf.org/html/rfc7230> and L<RFC 7231|https://tools.ietf.org/html/rfc7231>.
 
 =head1 EVENTS
 
-L<Mojo::Transaction::HTTP> inherits all events from L<Mojo::Transaction> and
-can emit the following new ones.
+L<Mojo::Transaction::HTTP> inherits all events from L<Mojo::Transaction> and can emit the following new ones.
 
 =head2 request
 
-  $tx->on(request => sub {
-    my $tx = shift;
-    ...
-  });
+  $tx->on(request => sub ($tx) {...});
 
 Emitted when a request is ready and needs to be handled.
 
-  $tx->on(request => sub {
-    my $tx = shift;
-    $tx->res->headers->header('X-Bender' => 'Bite my shiny metal ass!');
-  });
+  $tx->on(request => sub ($tx) { $tx->res->headers->header('X-Bender' => 'Bite my shiny metal ass!') });
 
 =head2 resume
 
-  $tx->on(resume => sub {
-    my $tx = shift;
-    ...
-  });
+  $tx->on(resume => sub ($tx) {...});
 
 Emitted when transaction is resumed.
 
 =head2 unexpected
 
-  $tx->on(unexpected => sub {
-    my ($tx, $res) = @_;
-    ...
-  });
+  $tx->on(unexpected => sub ($tx, $res) {...});
 
 Emitted for unexpected C<1xx> responses that will be ignored.
 
-  $tx->on(unexpected => sub {
-    my $tx = shift;
-    $tx->res->on(finish => sub { say 'Follow-up response is finished.' });
-  });
+  $tx->on(unexpected => sub ($tx) { $tx->res->on(finish => sub { say 'Follow-up response is finished.' }) });
 
 =head1 ATTRIBUTES
 
-L<Mojo::Transaction::HTTP> inherits all attributes from L<Mojo::Transaction>
-and implements the following new ones.
+L<Mojo::Transaction::HTTP> inherits all attributes from L<Mojo::Transaction> and implements the following new ones.
 
 =head2 previous
 
   my $previous = $tx->previous;
   $tx          = $tx->previous(Mojo::Transaction::HTTP->new);
 
-Previous transaction that triggered this follow-up transaction, usually a
-L<Mojo::Transaction::HTTP> object.
+Previous transaction that triggered this follow-up transaction, usually a L<Mojo::Transaction::HTTP> object.
 
   # Paths of previous requests
   say $tx->previous->previous->req->url->path;
@@ -239,8 +217,7 @@ L<Mojo::Transaction::HTTP> object.
 
 =head1 METHODS
 
-L<Mojo::Transaction::HTTP> inherits all methods from L<Mojo::Transaction> and
-implements the following new ones.
+L<Mojo::Transaction::HTTP> inherits all methods from L<Mojo::Transaction> and implements the following new ones.
 
 =head2 client_read
 
@@ -252,8 +229,7 @@ Read data client-side, used to implement user agents such as L<Mojo::UserAgent>.
 
   my $bytes = $tx->client_write;
 
-Write data client-side, used to implement user agents such as
-L<Mojo::UserAgent>.
+Write data client-side, used to implement user agents such as L<Mojo::UserAgent>.
 
 =head2 is_empty
 
@@ -271,8 +247,7 @@ Check if connection can be kept alive.
 
   my $redirects = $tx->redirects;
 
-Return an array reference with all previous transactions that preceded this
-follow-up transaction.
+Return an array reference with all previous transactions that preceded this follow-up transaction.
 
   # Paths of all previous requests
   say $_->req->url->path for @{$tx->redirects};
@@ -287,15 +262,13 @@ Resume transaction.
 
   $tx->server_read($bytes);
 
-Read data server-side, used to implement web servers such as
-L<Mojo::Server::Daemon>.
+Read data server-side, used to implement web servers such as L<Mojo::Server::Daemon>.
 
 =head2 server_write
 
   my $bytes = $tx->server_write;
 
-Write data server-side, used to implement web servers such as
-L<Mojo::Server::Daemon>.
+Write data server-side, used to implement web servers such as L<Mojo::Server::Daemon>.
 
 =head1 SEE ALSO
 

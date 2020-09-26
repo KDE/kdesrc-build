@@ -30,13 +30,11 @@ sub once {
   my ($self, $name, $cb) = @_;
 
   weaken $self;
-  my $wrapper;
-  $wrapper = sub {
-    $self->unsubscribe($name => $wrapper);
+  my $wrapper = sub {
+    $self->unsubscribe($name => __SUB__);
     $cb->(@_);
   };
   $self->on($name => $wrapper);
-  weaken $wrapper;
 
   return $wrapper;
 }
@@ -69,22 +67,16 @@ Mojo::EventEmitter - Event emitter base class
 =head1 SYNOPSIS
 
   package Cat;
-  use Mojo::Base 'Mojo::EventEmitter';
+  use Mojo::Base 'Mojo::EventEmitter', -signatures;
 
   # Emit events
-  sub poke {
-    my $self = shift;
-    $self->emit(roar => 3);
-  }
+  sub poke ($self) { $self->emit(roar => 3) }
 
   package main;
 
   # Subscribe to events
   my $tiger = Cat->new;
-  $tiger->on(roar => sub {
-    my ($tiger, $times) = @_;
-    say 'RAWR!' for 1 .. $times;
-  });
+  $tiger->on(roar => sub ($tiger, $times) { say 'RAWR!' for 1 .. $times });
   $tiger->poke;
 
 =head1 DESCRIPTION
@@ -97,24 +89,16 @@ L<Mojo::EventEmitter> can emit the following events.
 
 =head2 error
 
-  $e->on(error => sub {
-    my ($e, $err) = @_;
-    ...
-  });
+  $e->on(error => sub ($e, $err) {...});
 
-This is a special event for errors, it will not be emitted directly by this
-class, but is fatal if unhandled. Subclasses may choose to emit it, but are not
-required to do so.
+This is a special event for errors, it will not be emitted directly by this class, but is fatal if unhandled.
+Subclasses may choose to emit it, but are not required to do so.
 
-  $e->on(error => sub {
-    my ($e, $err) = @_;
-    say "This looks bad: $err";
-  });
+  $e->on(error => sub ($e, $err) { say "This looks bad: $err" });
 
 =head1 METHODS
 
-L<Mojo::EventEmitter> inherits all methods from L<Mojo::Base> and implements
-the following new ones.
+L<Mojo::EventEmitter> inherits all methods from L<Mojo::Base> and implements the following new ones.
 
 =head2 catch
 
@@ -144,10 +128,7 @@ Check if event has subscribers.
 
 Subscribe to event.
 
-  $e->on(foo => sub {
-    my ($e, @args) = @_;
-    ...
-  });
+  $e->on(foo => sub ($e, @args) {...});
 
 =head2 once
 
@@ -155,10 +136,7 @@ Subscribe to event.
 
 Subscribe to event and unsubscribe again after it has been emitted once.
 
-  $e->once(foo => sub {
-    my ($e, @args) = @_;
-    ...
-  });
+  $e->once(foo => sub ($e, @args) {...});
 
 =head2 subscribers
 
@@ -181,8 +159,8 @@ Unsubscribe from event.
 
 =head1 DEBUGGING
 
-You can set the C<MOJO_EVENTEMITTER_DEBUG> environment variable to get some
-advanced diagnostics information printed to C<STDERR>.
+You can set the C<MOJO_EVENTEMITTER_DEBUG> environment variable to get some advanced diagnostics information printed to
+C<STDERR>.
 
   MOJO_EVENTEMITTER_DEBUG=1
 

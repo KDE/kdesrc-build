@@ -135,12 +135,8 @@ sub _timer {
   my ($self, $recurring, $after, $cb) = @_;
 
   my $id    = $self->_id;
-  my $timer = $self->{timers}{$id} = {
-    cb        => $cb,
-    after     => $after,
-    recurring => $recurring,
-    time      => steady_time + $after
-  };
+  my $timer = $self->{timers}{$id}
+    = {cb => $cb, after => $after, recurring => $recurring, time => steady_time + $after};
 
   return $id;
 }
@@ -164,8 +160,7 @@ Mojo::Reactor::Poll - Low-level event reactor with poll support
 
   # Watch if handle becomes readable or writable
   my $reactor = Mojo::Reactor::Poll->new;
-  $reactor->io($first => sub {
-    my ($reactor, $writable) = @_;
+  $reactor->io($first => sub ($reactor, $writable) {
     say $writable ? 'First handle is writable' : 'First handle is readable';
   });
 
@@ -174,14 +169,12 @@ Mojo::Reactor::Poll - Low-level event reactor with poll support
 
   # Turn file descriptor into handle and watch if it becomes readable
   my $second = IO::Handle->new_from_fd($fd, 'r');
-  $reactor->io($second => sub {
-    my ($reactor, $writable) = @_;
+  $reactor->io($second => sub ($reactor, $writable) {
     say $writable ? 'Second handle is writable' : 'Second handle is readable';
   })->watch($second, 1, 0);
 
   # Add a timer
-  $reactor->timer(15 => sub {
-    my $reactor = shift;
+  $reactor->timer(15 => sub ($reactor) {
     $reactor->remove($first);
     $reactor->remove($second);
     say 'Timeout!';
@@ -200,27 +193,23 @@ L<Mojo::Reactor::Poll> inherits all events from L<Mojo::Reactor>.
 
 =head1 METHODS
 
-L<Mojo::Reactor::Poll> inherits all methods from L<Mojo::Reactor> and
-implements the following new ones.
+L<Mojo::Reactor::Poll> inherits all methods from L<Mojo::Reactor> and implements the following new ones.
 
 =head2 again
 
   $reactor->again($id);
   $reactor->again($id, 0.5);
 
-Restart timer and optionally change the invocation time. Note that this method
-requires an active timer.
+Restart timer and optionally change the invocation time. Note that this method requires an active timer.
 
 =head2 io
 
   $reactor = $reactor->io($handle => sub {...});
 
-Watch handle for I/O events, invoking the callback whenever handle becomes
-readable or writable.
+Watch handle for I/O events, invoking the callback whenever handle becomes readable or writable.
 
   # Callback will be executed twice if handle becomes readable and writable
-  $reactor->io($handle => sub {
-    my ($reactor, $writable) = @_;
+  $reactor->io($handle => sub ($reactor, $writable) {
     say $writable ? 'Handle is writable' : 'Handle is readable';
   });
 
@@ -234,8 +223,8 @@ Check if reactor is running.
 
   my $undef = $reactor->next_tick(sub {...});
 
-Execute callback as soon as possible, but not before returning or other
-callbacks that have been registered with this method, always returns C<undef>.
+Execute callback as soon as possible, but not before returning or other callbacks that have been registered with this
+method, always returns C<undef>.
 
 =head2 one_tick
 
@@ -252,8 +241,7 @@ Run reactor until an event occurs or no events are being watched anymore.
 
   my $id = $reactor->recurring(0.25 => sub {...});
 
-Create a new recurring timer, invoking the callback repeatedly after a given
-amount of time in seconds.
+Create a new recurring timer, invoking the callback repeatedly after a given amount of time in seconds.
 
 =head2 remove
 
@@ -272,8 +260,8 @@ Remove all handles and timers.
 
   $reactor->start;
 
-Start watching for I/O and timer events, this will block until L</"stop"> is
-called or no events are being watched anymore.
+Start watching for I/O and timer events, this will block until L</"stop"> is called or no events are being watched
+anymore.
 
   # Start reactor only if it is not running already
   $reactor->start unless $reactor->is_running;
@@ -288,15 +276,13 @@ Stop watching for I/O and timer events.
 
   my $id = $reactor->timer(0.5 => sub {...});
 
-Create a new timer, invoking the callback after a given amount of time in
-seconds.
+Create a new timer, invoking the callback after a given amount of time in seconds.
 
 =head2 watch
 
   $reactor = $reactor->watch($handle, $readable, $writable);
 
-Change I/O events to watch handle for with true and false values. Note that
-this method requires an active I/O watcher.
+Change I/O events to watch handle for with true and false values. Note that this method requires an active I/O watcher.
 
   # Watch only for readable events
   $reactor->watch($handle, 1, 0);

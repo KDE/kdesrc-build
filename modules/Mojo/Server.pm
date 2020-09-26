@@ -51,11 +51,9 @@ sub load_app {
 
     # Try to load application from script into sandbox
     delete $INC{$path};
-    my $app = eval
-      "package Mojo::Server::Sandbox::@{[md5_sum $path]}; require \$path";
+    my $app = eval "package Mojo::Server::Sandbox::@{[md5_sum $path]}; require \$path";
     die qq{Can't load application from file "$path": $@} if $@;
-    die qq{File "$path" did not return an application object.\n}
-      unless blessed $app && $app->can('handler');
+    die qq{File "$path" did not return an application object.\n} unless blessed $app && $app->can('handler');
     $self->app($app);
   };
   FindBin->again;
@@ -82,10 +80,9 @@ Mojo::Server - HTTP/WebSocket server base class
 =head1 SYNOPSIS
 
   package Mojo::Server::MyServer;
-  use Mojo::Base 'Mojo::Server';
+  use Mojo::Base 'Mojo::Server', -signatures;
 
-  sub run {
-    my $self = shift;
+  sub run ($self) {
 
     # Get a transaction
     my $tx = $self->build_tx;
@@ -96,27 +93,21 @@ Mojo::Server - HTTP/WebSocket server base class
 
 =head1 DESCRIPTION
 
-L<Mojo::Server> is an abstract base class for HTTP/WebSocket servers and server
-interfaces, like L<Mojo::Server::CGI>, L<Mojo::Server::Daemon>,
-L<Mojo::Server::Hypnotoad>, L<Mojo::Server::Morbo>, L<Mojo::Server::Prefork>
-and L<Mojo::Server::PSGI>.
+L<Mojo::Server> is an abstract base class for HTTP/WebSocket servers and server interfaces, like L<Mojo::Server::CGI>,
+L<Mojo::Server::Daemon>, L<Mojo::Server::Hypnotoad>, L<Mojo::Server::Morbo>, L<Mojo::Server::Prefork> and
+L<Mojo::Server::PSGI>.
 
 =head1 EVENTS
 
-L<Mojo::Server> inherits all events from L<Mojo::EventEmitter> and can emit the
-following new ones.
+L<Mojo::Server> inherits all events from L<Mojo::EventEmitter> and can emit the following new ones.
 
 =head2 request
 
-  $server->on(request => sub {
-    my ($server, $tx) = @_;
-    ...
-  });
+  $server->on(request => sub ($server, $tx) {...});
 
 Emitted when a request is ready and needs to be handled.
 
-  $server->on(request => sub {
-    my ($server, $tx) = @_;
+  $server->on(request => sub ($server, $tx) {
     $tx->res->code(200);
     $tx->res->headers->content_type('text/plain');
     $tx->res->body('Hello World!');
@@ -139,13 +130,11 @@ Application this server handles, defaults to a L<Mojo::HelloWorld> object.
   my $bool = $server->reverse_proxy;
   $server  = $server->reverse_proxy($bool);
 
-This server operates behind a reverse proxy, defaults to the value of the
-C<MOJO_REVERSE_PROXY> environment variable.
+This server operates behind a reverse proxy, defaults to the value of the C<MOJO_REVERSE_PROXY> environment variable.
 
 =head1 METHODS
 
-L<Mojo::Server> inherits all methods from L<Mojo::EventEmitter> and implements
-the following new ones.
+L<Mojo::Server> inherits all methods from L<Mojo::EventEmitter> and implements the following new ones.
 
 =head2 build_app
 
@@ -181,8 +170,7 @@ Load application from script and assign it to L</"app">.
   my $server = Mojo::Server->new(reverse_proxy => 1);
   my $server = Mojo::Server->new({reverse_proxy => 1});
 
-Construct a new L<Mojo::Server> object and subscribe to L</"request"> event
-with default request handling.
+Construct a new L<Mojo::Server> object and subscribe to L</"request"> event with default request handling.
 
 =head2 run
 

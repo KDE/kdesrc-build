@@ -50,17 +50,15 @@ Mojo::DynamicMethods - Fast dynamic method dispatch
 =head1 SYNOPSIS
 
   package MyClass;
-  use Mojo::Base -base;
+  use Mojo::Base -base, -signatures;
 
   use Mojo::DynamicMethods -dispatch;
 
-  sub BUILD_DYNAMIC {
-    my ($class, $method, $dyn_methods) = @_;
+  sub BUILD_DYNAMIC ($class, $method, $dyn_methods) {
     return sub {...};
   }
 
-  sub add_helper {
-    my ($self, $name, $cb) = @_;
+  sub add_helper ($self, $name, $cb) {
     Mojo::DynamicMethods::register 'MyClass', $self, $name, $cb;
   }
 
@@ -73,21 +71,18 @@ Mojo::DynamicMethods - Fast dynamic method dispatch
 
 =head1 DESCRIPTION
 
-L<Mojo::DynamicMethods> provides dynamic method dispatch for per-object helper
-methods without requiring use of C<AUTOLOAD>.
+L<Mojo::DynamicMethods> provides dynamic method dispatch for per-object helper methods without requiring use of
+C<AUTOLOAD>.
 
 To opt your class into dynamic dispatch simply pass the C<-dispatch> flag.
 
   use Mojo::DynamicMethods -dispatch;
 
-And then implement a C<BUILD_DYNAMIC> method in your class, making sure that the
-key you use to lookup methods in C<$dyn_methods> is the same thing you pass as
-C<$ref> to L</"register">.
+And then implement a C<BUILD_DYNAMIC> method in your class, making sure that the key you use to lookup methods in
+C<$dyn_methods> is the same thing you pass as C<$ref> to L</"register">.
 
-  sub BUILD_DYNAMIC {
-    my ($class, $method, $dyn_methods) = @_;
-    return sub {
-      my ($self, @args) = @_;
+  sub BUILD_DYNAMIC ($class, $method, $dyn_methods) {
+    return sub ($self, @args) {
       my $dynamic = $dyn_methods->{$self}{$method};
       return $self->$dynamic(@args) if $dynamic;
       my $package = ref $self;
@@ -105,9 +100,8 @@ L<Mojo::DynamicMethods> implements the following functions.
 
   Mojo::DynamicMethods::register $class, $ref, $name, $cb;
 
-Registers the method C<$name> as eligible for dynamic dispatch for C<$class>,
-and sets C<$cb> to be looked up for C<$name> by reference C<$ref> in a dynamic
-method constructed by C<BUILD_DYNAMIC>.
+Registers the method C<$name> as eligible for dynamic dispatch for C<$class>, and sets C<$cb> to be looked up for
+C<$name> by reference C<$ref> in a dynamic method constructed by C<BUILD_DYNAMIC>.
 
 =head1 SEE ALSO
 
