@@ -456,20 +456,23 @@ sub installPhasePromises
 
         test => sub {
             my $self = shift;
+            my $success = 1;
+            my $build_dir = $self->fullpath('build');
 
-            $self->buildSystem()->runTestsuite()
+            p_chdir($build_dir);
+            $success = $self->buildSystem()->runTestsuite()
                 if $self->getOption('run-tests');
 
             # TODO: Make test failure a blocker for install?
-            return { was_successful => 1 };
+            return { was_successful => 1, test_success => $success };
         },
 
         install => sub {
             my $self = shift;
             my $success = 1;
 
-            $success = 0
-                if $self->getOption('install-after-build') and !$self->install();
+            $success = $self->install()
+                if $self->getOption('install-after-build');
 
             return { was_successful => $success };
         },

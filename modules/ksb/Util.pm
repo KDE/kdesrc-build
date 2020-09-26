@@ -85,7 +85,7 @@ sub assert_in
     my ($val, $listRef) = @_;
 
     if (!list_has($listRef, $val)) {
-        croak_runtime("$val is not a permissible value for its argument");
+        croak_internal("$val is not a permissible value for its argument");
     }
 
     return $val;

@@ -300,12 +300,11 @@ sub runTestsuite
     if ($result != 0) {
         my $logDir = $module->getLogDir();
 
-        if ($numTests > 0) {
-            warning ("\t$numTests tests failed for y[$module], consult $logDir/test-results.log for info");
-        }
-        else {
-            warning ("\tSome tests failed for y[$module], consult $logDir/test-results.log for info");
-        }
+        $numTests = 'Some' if $numTests <= 0;
+        my $msg = "\t$numTests tests failed for y[$module], consult file://$logDir/test-results.log for info";
+
+        warning($msg);
+        $module->addPostBuildMessage($msg);
 
         return 0;
     }
@@ -414,11 +413,11 @@ sub _safe_run_cmake
     }
 
     if ($module->getOption('run-tests') &&
-        !grep { /^\s*-DKDE4_BUILD_TESTS(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
+        !grep { /^\s*-DBUILD_TESTING(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
        )
     {
         whisper ("Enabling tests");
-        push @commands, "-DKDE4_BUILD_TESTS:BOOL=ON";
+        push @commands, "-DBUILD_TESTING:BOOL=ON";
 
         # Also enable phonon tests.
         if ($module =~ /^phonon$/) {

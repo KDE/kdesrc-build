@@ -280,8 +280,8 @@ sub readCommandLineOptionsAndSelectors
 
         # Assume to set if nothing provided.
         $optValue = 1 if (!defined $optValue or $optValue eq '');
-        $optValue = 0 if lc($optValue) eq 'false';
-        $optValue = 0 if !$optValue;
+        $optValue //= 0 if lc($optValue) eq 'false';
+        $optValue //= 0 if !$optValue;
 
         $auxOptions{$optName} = $optValue;
     };
@@ -432,9 +432,11 @@ sub _applyBuildContextPhasesFromCmdline
         'no-install' => sub {
             $phases->filterOutPhase('install');
         },
+        # run-tests is handled as a 'flag' and is only cmdline accessible as
+        # --run-tests or --no-run-tests, both resulting in a value to run-tests hash
         'run-tests' => sub {
-            $phases->filterOutPhase('test')
-                unless $_[0];
+            ($_[0] // 1) ? $phases->addPhase      ('test')
+                         : $phases->filterOutPhase('test');
         },
         'no-build' => sub {
             $phases->filterOutPhase('build');
