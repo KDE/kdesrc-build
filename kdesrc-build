@@ -408,15 +408,24 @@ eval
     ksb::Application::_handleEarlyOptions($optsAndSelectors); # may exit!
 
     # Try to read up through the rc-file to abort before we launch the backend
-    # if the file is malformed.
+    # if the file is malformed. If the rc-file is malformed then the exception
+    # that results is better thrown before we start the backend.
     {
-        my $app = ksb::Application->new;
+        if (grep { $_ eq 'query' } keys %{$optsAndSelectors->{options}->{global}}) {
+            # This is quite heavyweight but necessary for query for now.
+            # TODO: Save items as persistent options for easy lookup later?
+            my $app = ksb::Application::newFromCmdline(@ARGV);
 
-        # May raise exception. If it doesn't then the backend will re-read the
-        # rc-file but that's OK.
-        $app->createBuildContextWithoutMetadata(
-            $app->context(),
-            dclone($optsAndSelectors));
+            # may exit!
+            $app->handleQueryOptions();
+        } else {
+            my $app = ksb::Application->new;
+
+            # Read rc-file to force error checking
+            $app->createBuildContextWithoutMetadata(
+                $app->context(),
+                dclone($optsAndSelectors));
+        }
     }
 
     my $app = web::BackendServer->new($optsAndSelectors);

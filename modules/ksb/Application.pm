@@ -350,13 +350,13 @@ sub readCommandLineOptionsAndSelectors
 # Method: _handleEarlyOptions
 #
 # Uses the user-requested options (as returned by
-# readCommandLineOptionsAndSelectors) and handles any options that should be
-# handled without launching the backend and which would cause the script to
-# exit, such as --help and --query.
+# readCommandLineOptionsAndSelectors) and handles any options that can be
+# handled without launching the backend or reading the configuration file, and
+# which would cause the script to exit, such as --help.
 #
 # This function may exit entirely for some options, and since the rc-file has
 # not been read yet, does not handle all possible cases where an early exit is
-# required.
+# required. For that, see handleQueryOptions.
 #
 # Phase:
 #  initialization - Do not call <finish> from this function.
@@ -394,6 +394,63 @@ DONE
     foreach my $early_opt (keys %optionHandlers) {
         if (exists $globalOpts->{$early_opt}) {
             $optionHandlers{$early_opt}->();
+            exit;
+        }
+    }
+}
+
+# Method: handleQueryOptions
+#
+# Uses the user-requested options (as held in the build context) and handles
+# any options that require the configuration file to be read (in particular
+# --query and potentially other debug-flags options), before the backend is
+# launched. Requires that selectors have been fully converted into modules.
+#
+# This function may exit entirely for some options!
+#
+# Phase:
+#  initialization - Do not call <finish> from this function.
+#
+# Parameters:
+#  None.
+#
+# Returns:
+#  There is no return value. The function may not return at all, and exit instead.
+sub handleQueryOptions
+{
+    my $self = assert_isa(shift, 'ksb::Application');
+    my $ctx = $self->context();
+
+    my %optionHandlers = (
+        query       => sub {
+            my $queryMode = shift;
+            my @modules = @{$self->{modules}};
+
+            # Default to ->getOption as query method.
+            # $_[0] is short name for first param.
+            my $query = sub { $_[0]->getOption($queryMode) };
+            $query = sub { $_[0]->fullpath('source') } if $queryMode eq 'source-dir';
+            $query = sub { $_[0]->fullpath('build') }  if $queryMode eq 'build-dir';
+            $query = sub { $_[0]->installationPath() } if $queryMode eq 'install-dir';
+            $query = sub { $_[0]->fullProjectPath() }  if $queryMode eq 'project-path';
+            $query = sub { ($_[0]->scm()->_determinePreferredCheckoutSource())[0] // '' }
+                if $queryMode eq 'branch';
+
+            if (@modules == 1) {
+                # No leading module name, just the value
+                say $query->($modules[0]);
+            }
+            else {
+                for my $m (@modules) {
+                    say "$m: ", $query->($m);
+                }
+            }
+        },
+    );
+
+    foreach my $query_opt (keys %optionHandlers) {
+        if (my $opt_value = $ctx->getOption($query_opt, 'module')) {
+            $optionHandlers{$query_opt}->($opt_value);
             exit;
         }
     }
