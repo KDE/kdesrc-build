@@ -5,7 +5,6 @@ package ksb::ModuleSet::Null 0.10;
 # Used automatically by <Module> to represent the absence of a <ModuleSet> without
 # requiring definedness checks.
 
-use strict;
 use warnings;
 use v5.22;
 

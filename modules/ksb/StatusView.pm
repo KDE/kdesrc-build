@@ -8,7 +8,6 @@ use utf8; # Source code is utf8-encoded
 # Currently supports TTY output only but it's not impossible to visualize
 # extending this to a GUI or even web server as options.
 
-use strict;
 use warnings;
 use v5.22;
 

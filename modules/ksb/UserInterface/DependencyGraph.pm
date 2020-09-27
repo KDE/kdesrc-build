@@ -2,7 +2,6 @@ package ksb::UserInterface::DependencyGraph;
 
 use utf8; # Source code is utf8-encoded
 
-use strict;
 use warnings;
 use v5.22;
 

@@ -5,7 +5,6 @@ package ksb::KDEProjectsReader 0.50;
 # Enumerates and provides basic metadata of KDE projects, based on
 # the YAML metadata included in sysadmin/repo-management.
 
-use strict;
 use warnings;
 use v5.22;
 

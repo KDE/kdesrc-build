@@ -1,7 +1,6 @@
 package ksb::FirstRun 0.10;
 
 use v5.22;
-use strict;
 use warnings;
 use File::Spec qw(splitpath);
 use List::Util qw(min max first);

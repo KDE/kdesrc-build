@@ -2,7 +2,6 @@ package ksb::Debug 0.40;
 
 # Debugging routines and constants for use with kdesrc-build
 
-use strict;
 use warnings;
 use v5.22;
 

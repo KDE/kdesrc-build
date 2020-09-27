@@ -6,7 +6,6 @@ package ksb::Module::BranchGroupResolver;
 #
 # See also https://community.kde.org/Infrastructure/Project_Metadata
 
-use strict;
 use warnings;
 use v5.22;
 

@@ -3,7 +3,6 @@ package ksb::PhaseList 0.10;
 # Handles the "phases" for kdesrc-build, e.g. a simple list of phases,
 # and methods to add, clear, or filter out phases.
 
-use strict;
 use warnings;
 use v5.22;
 

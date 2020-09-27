@@ -3,7 +3,6 @@ package ksb::BuildSystem::CMakeBootstrap 0.10;
 # This is a module used to do only one thing: Bootstrap CMake onto a system
 # that doesn't have it, or has only an older version of it.
 
-use strict;
 use warnings;
 use v5.22;
 

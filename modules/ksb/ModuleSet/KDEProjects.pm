@@ -12,7 +12,6 @@ package ksb::ModuleSet::KDEProjects 0.30;
 #
 # See also: ModuleSet
 
-use strict;
 use warnings;
 use v5.22;
 use parent qw(ksb::ModuleSet);

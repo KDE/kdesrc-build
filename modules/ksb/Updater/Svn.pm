@@ -3,7 +3,6 @@ package ksb::Updater::Svn 0.20;
 # Module responsible for source code updates on Subversion modules. Used as a
 # superclass for our l10n update/build system as well.
 
-use strict;
 use warnings;
 use v5.22;
 

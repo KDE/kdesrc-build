@@ -1,6 +1,5 @@
 package ksb::DebugOrderHints;
 
-use strict;
 use warnings;
 use v5.22;
 

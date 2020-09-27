@@ -4,7 +4,6 @@ package ksb::BuildException 0.20;
 # dispatch based on type and automatically stringified.
 
 use v5.22;
-use strict;
 use warnings;
 use Carp;
 use overload

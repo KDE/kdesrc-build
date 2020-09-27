@@ -3,7 +3,6 @@ package ksb::Util 0.30;
 # Useful utilities, which are exported into the calling module's namespace by default.
 
 use v5.22;
-use strict;
 use warnings;
 
 use Scalar::Util qw(blessed);

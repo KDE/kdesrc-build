@@ -5,7 +5,6 @@ package ksb::Application 0.20;
 # Contains the application-layer logic (i.e. creating a build context, reading
 # options, parsing command-line, etc.)
 
-use strict;
 use warnings;
 use v5.22;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';

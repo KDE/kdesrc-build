@@ -1,5 +1,4 @@
 use v5.22;
-use strict;
 use warnings;
 
 # Verify that --no-include-dependencies is recognized and results

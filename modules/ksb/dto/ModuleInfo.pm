@@ -1,6 +1,5 @@
 package ksb::dto::ModuleInfo;
 
-use strict;
 use warnings;
 use v5.22;
 

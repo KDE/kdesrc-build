@@ -1,5 +1,4 @@
 use v5.22;
-use strict;
 use warnings;
 
 # Checks that we don't inadvertently eat non-option

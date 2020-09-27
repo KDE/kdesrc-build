@@ -1,5 +1,4 @@
 use v5.22;
-use strict;
 use warnings;
 
 # Test use of --set-module-option-value

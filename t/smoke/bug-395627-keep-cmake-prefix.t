@@ -1,5 +1,4 @@
 use v5.22;
-use strict;
 use warnings;
 
 # Verify that a user-set CMAKE_PREFIX_PATH is not removed, even if we supply

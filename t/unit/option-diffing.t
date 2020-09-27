@@ -1,5 +1,4 @@
 use v5.22;
-use strict;
 use warnings;
 
 # Test the "option diffing" code used in Module.pm to help ensure that the only

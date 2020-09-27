@@ -3,7 +3,6 @@ package ksb::BuildSystem::CMake 0.20;
 # Class responsible for building KDE CMake-based modules. It presumably
 # would work on other CMake-based modules as well.
 
-use strict;
 use warnings;
 use v5.22;
 

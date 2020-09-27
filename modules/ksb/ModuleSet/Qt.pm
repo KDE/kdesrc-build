@@ -10,7 +10,6 @@ package ksb::ModuleSet::Qt 0.10;
 # Use of this module-set is controlled by the 'repository' option being set to
 # the magic value 'qt-projects', just as 'kde-projects' is used for KDE.
 
-use strict;
 use warnings;
 use v5.22;
 use parent qw(ksb::ModuleSet);

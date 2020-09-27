@@ -4,7 +4,6 @@ package ksb::BuildSystem 0.30;
 # generic functions and supports hooks for subclasses to provide needed detailed
 # functionality.
 
-use strict;
 use warnings;
 use v5.22;
 

@@ -26,7 +26,6 @@ requests necessary.
 
 =cut
 
-use strict;
 use warnings;
 use v5.22;
 

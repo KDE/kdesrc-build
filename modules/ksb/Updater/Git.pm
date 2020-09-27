@@ -4,7 +4,6 @@ package ksb::Updater::Git 0.15;
 # have some features overridden by subclassing (see ksb::Updater::KDEProject
 # for an example).
 
-use strict;
 use warnings;
 use v5.22;
 

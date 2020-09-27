@@ -1,5 +1,4 @@
 use v5.22;
-use strict;
 use warnings;
 
 # Test install and ability to run a simple status command w/out Perl failures

@@ -2,7 +2,6 @@ package ksb::Version;
 
 # Pretty much just records the program-wide version number...
 
-use strict;
 use warnings;
 use v5.22;
 

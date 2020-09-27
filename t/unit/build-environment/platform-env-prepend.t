@@ -1,5 +1,4 @@
 use v5.22;
-use strict;
 use warnings;
 
 # Test that empty kdedir and/or qtdir do not cause empty /bin settings to be

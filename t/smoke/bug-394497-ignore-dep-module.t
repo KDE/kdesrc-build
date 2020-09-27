@@ -1,5 +1,4 @@
 use v5.22;
-use strict;
 use warnings;
 
 # Verify that --ignore-modules works for modules that would be included with
