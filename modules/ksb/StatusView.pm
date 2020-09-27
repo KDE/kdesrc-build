@@ -411,7 +411,10 @@ sub update
     if ($min_width >= ($term_width - 12)) {
         # No room for fancy progress, just display what we can
         $msg = "$progress $current_modules";
-        substr($msg, $term_width - 1) = ''; # Strip off excess to avoid breaking TTY
+
+        # Strip off excess to avoid breaking TTY
+        substr($msg, $term_width - 1) = ''
+            if length($msg) >= $term_width;
     } else {
         my $max_prog_width = ($term_width - $min_width) - 5;
         my $num_all_done  = min(@{$self->{done_in_phase}}{@phases}) // 0;
