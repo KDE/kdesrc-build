@@ -196,7 +196,8 @@ sub _runModeBuild
                 # Update the U/I
                 eval {
                     $ui->notifyEvent($modRef);
-                    $event_stream->say($separator . to_json($modRef));
+                    $event_stream->say($separator . to_json($modRef))
+                        unless $modRef->{event} eq 'phase_progress';
                     $separator = ', ';
                 };
 
