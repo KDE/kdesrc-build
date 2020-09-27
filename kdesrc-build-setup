@@ -19,8 +19,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-use strict;
-use 5.018;
+use v5.22;
 use IO::Pipe;
 use File::Copy;
 use File::Temp qw/tempfile/;
@@ -28,7 +27,10 @@ use File::Basename;
 use Cwd qw(abs_path);
 use List::Util qw(max min first);
 
-our $VERSION = 0.03; # Not user-visible yet.
+use feature 'signatures';
+no warnings 'experimental::signatures';
+
+our $VERSION = 0.05; # Not user-visible yet.
 
 sub clearScreen
 {
@@ -48,10 +50,8 @@ sub clearScreen
     return 0;
 }
 
-sub runDialogExecutable
+sub runDialogExecutable (@args)
 {
-    my (@args) = @_;
-
     # Allow for 2 more file descriptors (on top of the normally allowed 0, 1,
     # 2) to survive the upcoming exec
     # See "SYSTEM_FD_MAX" in perldoc:perlvar
@@ -117,17 +117,13 @@ sub getMenuOption
     my @args = qw/--menu 20 70 18/;
     splice @args, 1, 0, $prompt;
 
-    while(my ($k, $v) = splice (@opts, 0, 2)) {
-        push @args, $k, $v;
-    }
-
-    return runDialogExecutable(@args);
+    return runDialogExecutable(@args, @opts);
 }
 
 sub showInfo
 {
     my $message = shift;
-    my @args = qw/--msgbox 20 62/;
+    my @args = qw/--msgbox 22 64/;
     splice @args, 1, 0, $message;
 
     return runDialogExecutable(@args);
@@ -213,11 +209,11 @@ installed to its final location, the "install directory".
 This program will only configure the install location, but
 all directories are configurable.
 
-The space requirements vary with the amount of software you choose
-to build, and whether you keep the build directories to speed up
-later builds.  You will probably need at least 20 GiB in total free
-space unless you take steps to customize your install to use fewer
-modules.
+The space requirements vary with the amount of software you
+choose to build, and whether you keep the build directories
+to speed up later builds.  You will probably need at least
+20 GiB in total free space unless you take steps to
+customize your install to use fewer modules.
 EOF
 }
 
@@ -263,6 +259,28 @@ if ($buildDir eq 'custom') {
 else {
     $buildDir = "~/kde/build";
 }
+
+showInfo(<<EOF);
+Should kdesrc-build automatically try to include needed KDE
+dependencies in each build?
+
+Doing this makes it easier to just get a single application
+built without worrying about the details. Most KDE software
+under active development needs these dependencies.
+IF IN ANY DOUBT, SELECT YES on the next screen.
+
+If you know exactly what you want to build or want to ensure
+that only modules you have allowed in your configuration
+file are built, then you should disable this option.
+
+You can always use the --include-dependencies or
+--no-include-dependencies command line option to
+kdesrc-build, and you can change this default at any time by
+editing the file that this script will generate.
+EOF
+
+my $includeDependencies =
+    getYesNoAnswer('Should kdesrc-build include KDE dependencies by default with each build?');
 
 my @chosenModules = getListOptions(
     "Which major module groups do you want to build?",
@@ -367,13 +385,18 @@ my $rounded_mem = $mem_total ? (int sprintf("%.0f", $mem_total / 1024000.0)) : 4
 my $max_cores_for_mem = max(1, int $rounded_mem / 2); # Assume 2 GiB per core
 my $num_cores_low = min($max_cores_for_mem, $num_cores);
 
+$includeDependencies = $includeDependencies ? 'true' : 'false';
+
+#
+### Start generating the kdesrc-buildrc
+#
 print $output <<EOF;
 
     # Finds and includes *KDE*-based dependencies into the build.  This makes
     # it easier to ensure that you have all the modules needed, but the
     # dependencies are not very fine-grained so this can result in quite a few
     # modules being installed that you didn't need.
-    include-dependencies true
+    include-dependencies $includeDependencies
 
     # Install directory for KDE software
     kdedir $installDir
@@ -452,66 +475,78 @@ if (! -e "$basedir/kf5-frameworks-build-include") {
     }
 }
 
-if (grep /^qt5$/, @chosenModules) {
-    print $output <<EOF;
+my $do_incl = '#';
+$do_incl = '' if grep { $_ eq 'qt5' } @chosenModules;
 
+print $output <<EOF;
 # Refers to the qt5 file included as part of kdesrc-build. The file
 # is simply read-in at this point as if you'd typed it in yourself.
-include $basedir/qt5-build-include
+${do_incl}include $basedir/qt5-build-include
 
 # Support libraries that use Qt5
-include $basedir/custom-qt5-libs-build-include
+${do_incl}include $basedir/custom-qt5-libs-build-include
 
 EOF
-}
 
-if (grep /^frameworks$/, @chosenModules) {
-    print $output <<EOF;
+$do_incl = '#';
+$do_incl = '' if grep { $_ eq 'frameworks' } @chosenModules;
 
+print $output <<EOF;
 # Refers to the kf5-frameworks file included as part of kdesrc-build. The file
 # is simply read-in at this point as if you'd typed it in yourself.
-include $basedir/kf5-frameworks-build-include
+${do_incl}include $basedir/kf5-frameworks-build-include
 
 EOF
-}
 
-if (grep /^workspace$/, @chosenModules) {
-    print $output <<EOF;
+$do_incl = '#';
+$do_incl = '' if grep { $_ eq 'workspace' } @chosenModules;
 
+print $output <<EOF;
 # Refers to the kf5-workspace file included as part of kdesrc-build. The file
 # is simply read-in at this point as if you'd typed it in yourself.
-include $basedir/kf5-workspace-build-include
+${do_incl}include $basedir/kf5-workspace-build-include
 
 EOF
-}
 
-if (grep /^base$/, @chosenModules) {
-    print $output <<EOF;
+$do_incl = '#';
+$do_incl = '' if grep { $_ eq 'base' } @chosenModules;
 
+print $output <<EOF;
 # Refers to the kf5-applications file included as part of kdesrc-build. The file
 # is simply read-in at this point as if you'd typed it in yourself.
-include $basedir/kf5-applications-build-include
+${do_incl}include $basedir/kf5-applications-build-include
 
 EOF
-}
 
-if (grep /^pim$/, @chosenModules) {
-    print $output <<EOF;
+$do_incl = '#';
+$do_incl = '' if grep { $_ eq 'pim' } @chosenModules;
 
+print $output <<EOF;
 # Refers to the kf5-kdepim file included as part of kdesrc-build. The file
 # is simply read-in at this point as if you'd typed it in yourself.
-include $basedir/kf5-kdepim-build-include
+${do_incl}include $basedir/kf5-kdepim-build-include
 
 EOF
-}
 
 close($output);
+
 $outputFileName =~ s/^$ENV{HOME}/~/;
 showInfo("Generated configuration has been written to $outputFileName");
+
+if (!@chosenModules) {
+    showInfo(<<EOF);
+You have not chosen any major module groups. You will have to
+add modules and module-sets to your configuration after this.
+
+To help you with this, please consult the sample files in
+$basedir
+EOF
+}
 
 # Say same thing in text mode just in case.
 system('clear');
 say "Generated configuration has been written to $outputFileName";
+say "Sample configuration files are available in $basedir/*-build-include";
 
 if ($outputFileName ne '~/.kdesrc-buildrc') {
     say <<EOF;
