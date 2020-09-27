@@ -456,11 +456,6 @@ if ($proxy) {
 EOF
 }
 
-print $output <<EOF;
-end global
-
-EOF
-
 # Assume we can refer to files present alongside kdesrc-build in the source
 # directory
 my $basedir = dirname(abs_path($0));
@@ -474,6 +469,16 @@ if (! -e "$basedir/kf5-frameworks-build-include") {
         exit 1;
     }
 }
+
+print $output <<EOF;
+end global
+
+# Common options that should be set for some KDE modules no matter how
+# kdesrc-build finds them. Do not comment these out unless you know
+# what you are doing.
+include $basedir/kf5-common-options-build-include
+
+EOF
 
 my $do_incl = '#';
 $do_incl = '' if grep { $_ eq 'qt5' } @chosenModules;

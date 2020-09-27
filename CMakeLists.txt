@@ -103,6 +103,7 @@ install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/custom-qt5-libs-build-include
             ${CMAKE_SOURCE_DIR}/qt5-build-include
             ${CMAKE_SOURCE_DIR}/kf5-applications-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-common-options-build-include
             ${CMAKE_SOURCE_DIR}/kf5-extragear-build-include
             ${CMAKE_SOURCE_DIR}/kf5-frameworks-build-include
             ${CMAKE_SOURCE_DIR}/kf5-kdepim-build-include
