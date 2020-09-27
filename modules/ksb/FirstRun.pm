@@ -612,6 +612,11 @@ end global
 # You can include other files inline using the "include" command. We do this here
 # to include files which are updated with kdesrc-build.
 
+# Common options that should be set for some KDE modules no matter how
+# kdesrc-build finds them. Do not comment these out unless you know
+# what you are doing.
+include %{base_dir}/kf5-common-options-build-include
+
 # Qt and some Qt-using middleware libraries. Uncomment if your distribution's Qt
 # tools are too old but be warned that Qt take a long time to build!
 #include %{base_dir}/qt5-build-include
@@ -621,4 +626,4 @@ end global
 include %{base_dir}/kf5-qt5-build-include
 
 # To change options for modules that have already been defined, use an
-# 'options' block. See qt5-build-include for an example
+# 'options' block. See kf5-common-options-build-include for an example
