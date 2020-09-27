@@ -5,7 +5,7 @@ package ksb::Updater::Svn 0.20;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 
 use parent qw(ksb::Updater);
 

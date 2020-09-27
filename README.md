@@ -281,6 +281,34 @@ need to do something requiring root permissions.
 
 2. Setup KAuth to tie to PolicyKit (TODO: Fill this in...)
 
+### Perl Version
+
+kdesrc-build is meant for bleeding-edge software development. As with the other
+KDE Frameworks and Applications, this implies that the current version of
+kdesrc-build at any given time can rely on having reasonably-current versions
+of its own underlying dependencies.
+
+Most KDE software depends on Qt, usually the past two major releases;
+kdesrc-build depends on Perl and a few core modules. Rather than the past two
+major Perl releases, we strive to stay current on the Perl versions available
+with major Linux and UNIX releases:
+
+| Distro   | Version     | Perl Version Supported |
+|----------|-------------|------------------------|
+| Ubuntu   | 16.04       | 5.22                   |
+| Debian   | 10 (stable) | 5.28                   |
+| Ubuntu   | 20.04       | 5.30                   |
+| Kubuntu  | 20.04       | 5.30                   |
+| Fedora   | 32          | 5.30                   |
+| OpenSuSE | Leap 15.1   | 5.26                   |
+| Arch     | 2020-09-26  | 5.32                   |
+| Manjaro  | 2020-09-26  | 5.30                   |
+| Gentoo   | 2020-09-26  | 5.30                   |
+
+As even ancient and unsupported distributions have at least Perl v5.22,
+kdesrc-build requires Perl v5.22 and will utilize the corresponding Perl
+improvements where they improve maintainability and usability.
+
 ## CONTACT INFO
 
 If you find a bug, please report it at the [KDE

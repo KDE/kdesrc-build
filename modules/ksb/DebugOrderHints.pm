@@ -2,7 +2,7 @@ package ksb::DebugOrderHints;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 
 # ksb::DebugOrderHints
 #

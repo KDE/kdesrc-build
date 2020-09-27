@@ -31,7 +31,7 @@ package ksb::ModuleSet 0.20;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
 use parent qw(ksb::OptionsBase);

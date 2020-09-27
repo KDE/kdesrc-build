@@ -14,7 +14,7 @@ package ksb::ModuleSet::KDEProjects 0.30;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 use parent qw(ksb::ModuleSet);
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 

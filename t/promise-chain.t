@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use 5.014;
+use v5.22;
 use ksb::PromiseChain;
 
 use Mojo::IOLoop;

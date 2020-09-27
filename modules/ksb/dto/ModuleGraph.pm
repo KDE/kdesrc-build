@@ -2,7 +2,7 @@ package ksb::dto::ModuleGraph;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 
 
 #

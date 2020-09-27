@@ -4,7 +4,7 @@ use utf8; # Source code is utf8-encoded
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 
 # our output to STDOUT should match locale (esp UTF-8 locale, which induces
 # warnings for UTF-8 output unless we specifically opt-in)

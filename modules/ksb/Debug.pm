@@ -4,7 +4,7 @@ package ksb::Debug 0.40;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 
 use Exporter qw(import); # Steal Exporter's import method
 our @EXPORT = qw(debug pretending debugging whisper

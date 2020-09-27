@@ -7,7 +7,7 @@ package ksb::ModuleSet::Null 0.10;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 
 use parent qw(ksb::ModuleSet);
 

@@ -3,7 +3,7 @@ package ksb::OptionsBase 0.20;
 # Common code for dealing with kdesrc-build module options
 # See POD docs below for more details.
 
-use 5.014;
+use v5.22;
 use warnings;
 
 use ksb::BuildException;

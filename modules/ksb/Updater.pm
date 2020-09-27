@@ -5,7 +5,7 @@ package ksb::Updater;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 
 our $VERSION = '0.10';
 

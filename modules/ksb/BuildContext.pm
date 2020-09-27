@@ -5,7 +5,7 @@ package ksb::BuildContext 0.36;
 # This contains the information needed about the build context, e.g.  list of
 # modules, what phases each module is in, the various options, etc.
 
-use 5.014;
+use v5.22;
 use warnings;
 no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 

@@ -8,7 +8,7 @@ package ksb::Updater::KDEProjectMetadata 0.30;
 
 use strict;
 use warnings;
-use 5.014;
+use v5.22;
 
 use parent qw(ksb::Updater::KDEProject);
 

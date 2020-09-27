@@ -4,7 +4,7 @@ package ksb::ModuleResolver 0.20;
 # handling. See POD docs below for more details.
 
 use warnings;
-use 5.014;
+use v5.22;
 
 use ksb::BuildException;
 use ksb::Debug;
