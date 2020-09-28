@@ -208,6 +208,7 @@ sub readCommandLineOptionsAndSelectors
             # if --src-only was passed to the command line, so we still
             # need to set a flag for it.
             $foundOptions{'allow-auto-repo-move'} = 1;
+            $auxOptions{'src-only'} = 1;
         },
         prefix => sub {
             my ($optName, $arg) = @_;
@@ -648,6 +649,9 @@ sub establishContext
     $self->createBuildContextWithoutMetadata  ($ctx, $optsAndSelectors);
 
     unshift @selectors, $self->getResumeSelectorsFromCmdline($ctx, $optsAndSelectors);
+
+    # The global options can also control which phases to use by default
+    _updateModulePhases($ctx);
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
@@ -1880,21 +1884,21 @@ sub _updateModulePhases
 {
     whisper ("Filtering out module phases.");
     for my $module (@_) {
-        if ($module->getOption('manual-update') ||
-            $module->getOption('no-svn') || $module->getOption('no-src'))
+        my $phaseList = $module->phases();
+        if ($module->getOption('no-svn') || $module->getOption('no-src'))
         {
-            $module->phases()->clear();
-            next;
+            $phaseList->filterOutPhase('update');
         }
 
         if ($module->getOption('manual-build')) {
-            $module->phases()->filterOutPhase('build');
-            $module->phases()->filterOutPhase('test');
-            $module->phases()->filterOutPhase('install');
+            $phaseList->filterOutPhase('buildsystem');
+            $phaseList->filterOutPhase('build');
+            $phaseList->filterOutPhase('test');
+            $phaseList->filterOutPhase('install');
         }
 
-        $module->phases()->filterOutPhase('install') unless $module->getOption('install-after-build');
-        $module->phases()->addPhase('test') if $module->getOption('run-tests');
+        $phaseList->filterOutPhase('install') unless $module->getOption('install-after-build');
+        $phaseList->filterOutPhase('test')    unless $module->getOption('run-tests');
     }
 
     return @_;
