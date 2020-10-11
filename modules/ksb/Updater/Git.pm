@@ -619,7 +619,7 @@ sub stashAndUpdate
     # - we do not stash .gitignore'd files because they may be needed for builds?
     #   on the other hand that leaves a slight risk if upstream altered those (i.e. no longer truly .gitignore'd)
     #
-    info ("\tStashing local changes if any...");
+    whisper ("\tStashing local changes if any...");
     my $status = 0;
     $status = log_command($module, 'git-stash-push', [
         qw(git stash push -u --quiet --message), $stashName
@@ -645,17 +645,28 @@ sub stashAndUpdate
     # genuine user's stash already prior to kdesrc-build taking over the reins in the repo.
     #
     my $newStashCount = $self->countStash();
-    if ($newStashCount != $oldStashCount) {
-        my $message = "b[$module] had local changes that we stashed, ".
-            "you should manually inspect the new stash: b[$stashName]";
-        warning ($message);
-        $self->_notifyPostBuildMessage($message);
-    }
 
     # finally, update to remote head
     if (!$updateSub->()) {
         error ("\tUnable to update the source code for r[b[$module]");
         log_command($module, 'git-status-after-error', [qw(git status)]);
+    }
+
+    #
+    # If the stash had been needed then try to re-apply it before we build, so that KDE
+    # developers working on changes do not have to manually re-apply.
+    #
+    if ($newStashCount != $oldStashCount) {
+        my $stashResult = log_command($module, 'git-stash-pop', [qw(git stash pop)]);
+
+        if ($stashResult != 0) {
+            my $message = "r[b[*] Unable to restore local changes for b[$module]! " .
+                "You should manually inspect the new stash: b[$stashName]";
+            warning ("\t$message");
+            $self->_notifyPostBuildMessage($message);
+        } else {
+            info ("\tb[*] You had local changes to b[$module], which have been re-applied.");
+        }
     }
 }
 
