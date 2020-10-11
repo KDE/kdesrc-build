@@ -374,12 +374,10 @@ sub _updateToRemoteHead
             croak_runtime("Unable to perform a git checkout to existing branch $branchName");
         }
 
-        #
-        # Given that we're starting with a 'clean' checkout, it's now simply a fast-forward
-        # to the remote HEAD (previously we pulled, incurring additional network I/O).
-        #
+        # On the right branch, merge in changes.
+        # --autostash requires git >= 2.6
         return 0 == log_command($module, 'git-rebase',
-                      ['git', 'reset', '--hard', "$remoteName/$branch"]);
+                      ['git', 'pull', '--rebase', '--autostash', "$remoteName", "$branch"]);
     }
 
     return 1;
@@ -455,7 +453,7 @@ sub updateExistingClone
     # With all remote branches fetched, and the checkout of our desired
     # branch completed, we can now use our update sub to complete the
     # changes.
-    $self->stashAndUpdate($updateSub);
+    $self->stashAndUpdate($updateSub, $commitType);
     return count_command_output('git', 'rev-list', "$start_commit..HEAD");
 }
 
@@ -598,6 +596,8 @@ sub _notifyPostBuildMessage
 # should need no parameters and return a boolean success indicator. It may
 # throw exceptions.
 #
+# Second parameter is the commit type (e.g. 'branch')
+#
 # Throws an exception on error.
 #
 # No return value.
@@ -605,51 +605,56 @@ sub stashAndUpdate
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
     my $updateSub = shift;
+    my $commitType = shift;
     my $module = $self->module();
     my $date = strftime ("%F-%R", gmtime()); # ISO Date, hh:mm time
     my $stashName = "kdesrc-build auto-stash at $date";
 
     # first, log a snapshot of the git status prior to kdesrc-build taking over the reins in the repo
     log_command($module, 'git-status-before-update', [qw(git status)]);
-    my $oldStashCount = $self->countStash();
 
-    #
-    # always stash:
-    # - also stash untracked files because what if upstream started to track them
-    # - we do not stash .gitignore'd files because they may be needed for builds?
-    #   on the other hand that leaves a slight risk if upstream altered those (i.e. no longer truly .gitignore'd)
-    #
-    info ("\tStashing local changes if any...");
-    my $status = 0;
-    $status = log_command($module, 'git-stash-push', [
-        qw(git stash push -u --quiet --message), $stashName
-    ]) unless pretending(); # probably best not to do anything if pretending()
+    # Only stash when switching to detached HEAD, not in the normal case of updating in a branch with git pull --rebase --autostash
+    if ($commitType ne 'branch') {
+        my $oldStashCount = $self->countStash();
 
-    #
-    # This might happen if the repo is already in merge conflict state.
-    # We could sledgehammer our way past this by marking everything as resolved using git add . before
-    # stashing, but... that might not always be appreciated by people having to figure out what the
-    # original merge conflicts were afterwards.
-    #
-    if ($status != 0) {
-        log_command($module, 'git-status-after-error', [qw(git status)]);
-        $self->_notifyPostBuildMessage(
-            "b[$module] may have local changes that we couldn't handle, so the module was left alone."
-        );
-        croak_runtime("Unable to stash local changes (if any) for $module, aborting update.");
-    }
+        #
+        # always stash:
+        # - also stash untracked files because what if upstream started to track them
+        # - we do not stash .gitignore'd files because they may be needed for builds?
+        #   on the other hand that leaves a slight risk if upstream altered those (i.e. no longer truly .gitignore'd)
+        #
+        info ("\tStashing local changes if any...");
+        my $status = 0;
+        $status = log_command($module, 'git-stash-push', [
+                qw(git stash push -u --quiet --message), $stashName
+            ]) unless pretending(); # probably best not to do anything if pretending()
 
-    #
-    # next: check if the stash was truly necessary.
-    # compare counts (not just testing if there is *any* stash) because there might have been a
-    # genuine user's stash already prior to kdesrc-build taking over the reins in the repo.
-    #
-    my $newStashCount = $self->countStash();
-    if ($newStashCount != $oldStashCount) {
-        my $message = "b[$module] had local changes that we stashed, ".
+        #
+        # This might happen if the repo is already in merge conflict state.
+        # We could sledgehammer our way past this by marking everything as resolved using git add . before
+        # stashing, but... that might not always be appreciated by people having to figure out what the
+        # original merge conflicts were afterwards.
+        #
+        if ($status != 0) {
+            log_command($module, 'git-status-after-error', [qw(git status)]);
+            $self->_notifyPostBuildMessage(
+                "b[$module] may have local changes that we couldn't handle, so the module was left alone."
+            );
+            croak_runtime("Unable to stash local changes (if any) for $module, aborting update.");
+        }
+
+        #
+        # next: check if the stash was truly necessary.
+        # compare counts (not just testing if there is *any* stash) because there might have been a
+        # genuine user's stash already prior to kdesrc-build taking over the reins in the repo.
+        #
+        my $newStashCount = $self->countStash();
+        if ($newStashCount != $oldStashCount) {
+            my $message = "b[$module] had local changes that we stashed, ".
             "you should manually inspect the new stash: b[$stashName]";
-        warning ($message);
-        $self->_notifyPostBuildMessage($message);
+            warning ($message);
+            $self->_notifyPostBuildMessage($message);
+        }
     }
 
     # finally, update to remote head
