@@ -623,17 +623,28 @@ sub stashAndUpdate
     # genuine user's stash already prior to kdesrc-build taking over the reins in the repo.
     #
     my $newStashCount = $self->countStash();
-    if ($newStashCount != $oldStashCount) {
-        my $message = "b[$module] had local changes that we stashed, ".
-            "you should manually inspect the new stash: b[$stashName]";
-        warning ($message);
-        $module->addPostBuildMessage($message);
-    }
 
     # finally, update to remote head
     if (!$updateSub->()) {
         error ("\tUnable to update the source code for r[b[$module]");
         log_command($module, 'git-status-after-error', [qw(git status)]);
+    }
+
+    #
+    # If the stash had been needed then try to re-apply it before we build, so that KDE
+    # developers working on changes do not have to manually re-apply.
+    #
+    if ($newStashCount != $oldStashCount) {
+        my $stashResult = log_command($module, 'git-stash-pop', [qw(git stash pop)]);
+
+        if ($stashResult != 0) {
+            my $message = "r[b[*] Unable to restore local changes for b[$module]! " .
+                "You should manually inspect the new stash: b[$stashName]";
+            warning ("\t$message");
+            $module->addPostBuildMessage($message);
+        } else {
+            info ("\tb[*] You had local changes to b[$module], which have been re-applied.");
+        }
     }
 }
 
