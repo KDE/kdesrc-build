@@ -363,6 +363,7 @@ pkgconfig(xcb-keysyms)
 pkgconfig(xrender)
 polkit-devel
 shared-mime-info
+libXfixes-devel
 
 @@ pkg/fedora/unknown
 bison
