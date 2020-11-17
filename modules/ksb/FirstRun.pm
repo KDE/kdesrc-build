@@ -527,6 +527,7 @@ libinput-dev
 libqrencode-dev
 libxkbfile-dev
 libxrender-dev
+libxslt-dev
 libxtst-dev
 linux-pam-dev
 lmdb-dev
