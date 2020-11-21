@@ -7,7 +7,7 @@ use strict;
 use warnings;
 
 use Scalar::Util qw(blessed);
-use File::Path qw(make_path);
+use File::Path qw(make_path remove_tree);
 use File::Find;
 use Cwd qw(getcwd);
 use Errno qw(:POSIX);
@@ -708,6 +708,130 @@ sub yesNoPrompt {
     print "$msg (y/N) ";
     chomp(my $answer = <STDIN>);
     return lc($answer) eq 'y';
+}
+
+# Subroutine to recursively symlink a directory into another location, in a
+# similar fashion to how the XFree/X.org lndir() program does it.  This is
+# reimplemented here since some systems lndir doesn't seem to work right.
+#
+# Used from ksb::l10nSystem
+#
+# As a special exception to the GNU GPL, you may use and redistribute this
+# function however you would like (i.e. consider it public domain).
+#
+# The first parameter is the directory to symlink from.
+# The second parameter is the destination directory name.
+#
+# e.g. if you have $from/foo and $from/bar, lndir would create $to/foo and
+# $to/bar.
+#
+# All intervening directories will be created as needed.  In addition, you
+# may safely run this function again if you only want to catch additional files
+# in the source directory.
+#
+# Note that this function will unconditionally output the files/directories
+# created, as it is meant to be a close match to lndir.
+#
+# RETURN VALUE: Boolean true (non-zero) if successful, Boolean false (0, "")
+#               if unsuccessful.
+sub safe_lndir
+{
+    my ($from, $to) = @_;
+
+    # Create destination directory.
+    if (not -e $to)
+    {
+        print "$to\n";
+        if (not pretending() and not super_mkdir($to))
+        {
+            error ("Couldn't create directory r[$to]: b[r[$!]");
+            return 0;
+        }
+    }
+
+    # Create closure callback subroutine.
+    my $wanted = sub {
+        my $dir = $File::Find::dir;
+        my $file = $File::Find::fullname;
+        $dir =~ s/$from/$to/;
+
+        # Ignore the .svn directory and files.
+        return if $dir =~ m,/\.svn,;
+
+        # Create the directory.
+        if (not -e $dir)
+        {
+            print "$dir\n";
+
+            if (not pretending())
+            {
+                super_mkdir ($dir) or croak_runtime("Couldn't create directory $dir: $!");
+            }
+        }
+
+        # Symlink the file.  Check if it's a regular file because File::Find
+        # has no qualms about telling you you have a file called "foo/bar"
+        # before pointing out that it was really a directory.
+        if (-f $file and not -e "$dir/$_")
+        {
+            print "$dir/$_\n";
+
+            if (not pretending())
+            {
+                symlink $File::Find::fullname, "$dir/$_" or
+                    croak_runtime("Couldn't create file $dir/$_: $!");
+            }
+        }
+    };
+
+    # Recursively descend from source dir using File::Find
+    eval {
+        find ({ 'wanted' => $wanted,
+                'follow_fast' => 1,
+                'follow_skip' => 2},
+              $from);
+    };
+
+    if ($@)
+    {
+        error ("Unable to symlink $from to $to: $@");
+        return 0;
+    }
+
+    return 1;
+}
+
+# Subroutine to delete recursively, everything under the given directory,
+# unless we're in pretend mode.
+#
+# Used from ksb::BuildSystem to handle cleaning a build directory.
+#
+# i.e. the effect is similar to "rm -r $arg/* $arg/.*".
+#
+# This assumes we're called from a separate child process.  Therefore the
+# normal logging routines are /not used/, since our output will be logged
+# by the parent kdesrc-build.
+#
+# The first parameter should be the absolute path to the directory to delete.
+#
+# Returns boolean true on success, boolean false on failure.
+sub prune_under_directory
+{
+    my $dir = shift;
+    my $errorRef;
+
+    print "starting delete of $dir\n";
+    eval {
+        remove_tree($dir, { keep_root => 1, error => \$errorRef });
+    };
+
+    if ($@ || @$errorRef)
+    {
+        error ("\tUnable to clean r[$dir]:\n\ty[b[$@]");
+        return 0;
+    }
+
+    return 1;
 }
 
 1;

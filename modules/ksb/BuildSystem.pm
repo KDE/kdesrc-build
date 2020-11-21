@@ -259,7 +259,7 @@ sub cleanBuildSystem
 
         # This variant of log_command runs the sub prune_under_directory($builddir)
         # in a forked child, so that we can log its output.
-        if (log_command($module, 'clean-builddir', [ 'kdesrc-build', 'main::prune_under_directory', $builddir ]))
+        if (log_command($module, 'clean-builddir', [ 'kdesrc-build', 'ksb::Util::prune_under_directory', $builddir ]))
         {
             error (" r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.");
             return 0; # False for this function.
@@ -299,7 +299,7 @@ sub createBuildSystem
     }
 
     if ($builddir ne $srcdir && $self->needsBuilddirHack() && 0 != log_command($module, 'lndir',
-            ['kdesrc-build', 'main::safe_lndir', $srcdir, $builddir]))
+            ['kdesrc-build', 'ksb::Util::safe_lndir', $srcdir, $builddir]))
     {
         error ("\tUnable to setup symlinked build directory for r[$module]!!");
         return 0;

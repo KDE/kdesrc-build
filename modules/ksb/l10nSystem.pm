@@ -174,7 +174,7 @@ sub prepareFakeBuilddir
     # List reference, not a real list.  The initial kdesrc-build does *NOT*
     # fork another kdesrc-build using exec, see sub log_command() for more
     # info.
-    my $args = [ 'kdesrc-build', 'main::safe_lndir', $srcdir, $builddir ];
+    my $args = [ 'kdesrc-build', 'ksb::Util::safe_lndir', $srcdir, $builddir ];
 
     info ("\tSetting up alternate build directory for l10n");
     return (0 == log_command ($module, 'create-builddir', $args));
