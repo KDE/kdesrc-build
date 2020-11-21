@@ -336,6 +336,39 @@ DONE
         = values %auxOptions;
 }
 
+sub _findMissingModules
+{
+    # should be either strings of module names to be found or a listref containing
+    # a list of modules where any one of which will work.
+    my @requiredModules = (
+        'HTTP::Tiny',
+        'IO::Socket::SSL',
+        [qw(JSON::XS JSON::PP)],
+        [qw(YAML::XS YAML::PP YAML::Syck)]
+    );
+    my @missingModules;
+    my $validateMod = sub {
+        return eval "require $_[0]; 1;";
+    };
+
+    my $description;
+    foreach my $neededModule (@requiredModules) {
+        if (ref $neededModule) { # listref of options
+            my @moduleOptions = @$neededModule;
+            next if (ksb::Util::any (sub { $validateMod->($_); }, $neededModule));
+            $description = 'one of (' . join(', ', @moduleOptions) . ')';
+        }
+        else {
+            next if $validateMod->($neededModule);
+            $description = $neededModule;
+        }
+
+        push @missingModules, $description;
+    }
+
+    return @missingModules;
+}
+
 sub _yieldModuleDependencyTreeEntry
 {
     my ($nodeInfo, $module, $context) = @_;
@@ -409,6 +442,25 @@ sub generateModuleList
     my @selectors;
     $self->_readCommandLineOptionsAndSelectors($cmdlineOptions, \@selectors,
         $ctx, @argv);
+
+    # Ensure some critical Perl modules are available so that the user isn't surprised
+    # later with a Perl exception
+    if(my @missingModuleDescriptions = _findMissingModules()) {
+        say <<EOF;
+kdesrc-build requires some minimal support to operate, including support
+from the Perl runtime that kdesrc-build is built upon.
+
+Some mandatory Perl modules are missing, and kdesrc-build cannot operate
+without them.  Please ensure these modules are installed and available to Perl:
+EOF
+        say "\t$_" foreach @missingModuleDescriptions;
+
+        say "\nkdesrc-build can do this for you on many distros:";
+        say "Run 'kdesrc-build --initial-setup'";
+
+        # TODO: Built-in mapping to popular distro package names??
+        exit 1;
+    }
 
     # Convert list to hash for lookup
     my %ignoredSelectors =
