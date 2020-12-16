@@ -362,6 +362,7 @@ pkgconfig(xcb-keysyms)
 pkgconfig(xrender)
 polkit-devel
 shared-mime-info
+libXfixes-devel
 
 @@ pkg/fedora/unknown
 bison
@@ -525,6 +526,7 @@ libinput-dev
 libqrencode-dev
 libxkbfile-dev
 libxrender-dev
+libxslt-dev
 libxtst-dev
 linux-pam-dev
 lmdb-dev

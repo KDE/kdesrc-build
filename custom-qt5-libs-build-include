@@ -2,11 +2,31 @@
 
 # So you only need to include this file if you compile your own Qt5,
 # to avoid mixing your own Qt with the distro's Qt.
+#
+
+# keep libgpg-error in sync with gpgme, see below
+module libgpg-error
+    repository git://git.gnupg.org/libgpg-error.git
+    branch master
+    # NOTE: you need to run ./autogen.sh before kdesrc-build runs configure.
+    # Maybe we can ask kdesrc-build do to that?
+    configure-flags --enable-maintainer-mode
+end module
+
+# qgpgme is part of gpgme...
+module gpgme
+    repository git://git.gnupg.org/gpgme.git
+    branch master
+    # NOTE: you need to run ./autogen.sh before kdesrc-build runs configure.
+    # Maybe we can ask kdesrc-build do to that?
+    configure-flags --enable-maintainer-mode --enable-languages=cpp,qt
+end module
+
 
 # For okular
 
 module poppler
-  repository https://anongit.freedesktop.org/git/poppler/poppler
+  repository https://gitlab.freedesktop.org/poppler/poppler.git
   branch master
   cmake-options -DWITH_GLIB=OFF -DLIB_SUFFIX=64 -DENABLE_UNSTABLE_API_ABI_HEADERS=1
 end module
@@ -70,4 +90,15 @@ module qxmpp
   repository https://github.com/qxmpp-project/qxmpp.git
   branch master
   cmake-options -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF
+end module
+
+module libquotient
+  repository https://github.com/quotient-im/libQuotient
+  branch master
+end module
+
+# for kio-extras
+module kdsoap
+  repository https://github.com/KDAB/KDSoap
+  branch master
 end module

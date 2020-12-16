@@ -101,7 +101,7 @@ sub _clone
     $commitId =~ s,^refs/tags/,,;   # git-clone -b doesn't like refs/tags/
     unshift @args, '-b', $commitId; # Checkout branch right away
 
-    if (0 != log_command($module, 'git-clone', ['git', 'clone', @args])) {
+    if (0 != log_command($module, 'git-clone', ['git', 'clone', '--recursive', @args])) {
         croak_runtime("Failed to make initial clone of $module");
     }
 
