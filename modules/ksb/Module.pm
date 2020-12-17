@@ -957,12 +957,40 @@ sub destDir
     my $destDir = $self->getOption('dest-dir');
 
     my $basePath = "";
-
+    my $layout = $self->getOption('directory-layout');
     if ($self->getOption('ignore-kde-structure')) {
+        # avoid spamming
+        if (!$self->getOption('#warned-deprecated-ignore-kde-structure')) {
+            warning("b[ignore-kde-structure] is deprecated, please use b[directory-layout] instead for b[$self]");
+        }
+        # no or equivalent layout configured, assume the user wants to use flat layout
+        if (!$layout || $layout eq 'flat') {
+            $layout = 'flat';
+        } else {
+            # avoid spamming
+            if (!$self->getOption('#warned-deprecated-ignore-kde-structure')) {
+                warning("Deprecated b[ignore-kde-structure] will be ignored in favour of b[directory-layout] for b[$self]");
+            }
+        }
+        # avoid spamming
+        $self->setOption('#warned-deprecated-ignore-kde-structure', 1);
+    }
+
+    if ($layout eq 'flat') {
         $basePath = $self->name();
     } else {
-        $basePath = shift // $self->getOption('#xml-full-path');
-        $basePath ||= $self->name(); # Default if not provided in repo-metadata
+        # invent layout only works for proper KDE projects, which have a kde:(.*).git pattern repository configured
+        if ($layout eq 'invent' && $self->getOption('repository') =~ m/kde:(.*)\.git/) {
+            $basePath = $1;
+        } else {
+            if (!$self->getOption('#warned-invalid-directory-layout') # avoid spamming
+                && $layout ne 'invent' && $layout ne 'metadata') {
+                warning("Invalid b[directory-layout] value: $layout. Will use b[default] instead for b[$self]");
+                $self->setOption('#warned-invalid-directory-layout', 1);
+            }
+            $basePath = shift // $self->getOption('#xml-full-path');
+            $basePath ||= $self->name(); # Default if not provided in repo-metadata
+        }
     }
 
     $destDir =~ s/(\$\{MODULE})|(\$MODULE\b)/$basePath/g;
