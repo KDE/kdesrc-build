@@ -342,10 +342,48 @@ sub _packagesForVendor
 
 __DATA__
 @@ pkg/debian/unknown
-libyaml-libyaml-perl libio-socket-ssl-perl libjson-xs-perl
-git shared-mime-info cmake build-essential flex bison gperf libssl-dev intltool
+# Perl support
+libyaml-libyaml-perl 
+libio-socket-ssl-perl 
+libjson-xs-perl
+liburi-perl 
+# Basic build tools
+bison 
+build-essential 
+cmake 
+flex 
+gettext
+git 
+gperf 
+libssl-dev 
+intltool
+shared-mime-info 
+# Qt-related
 libdbusmenu-qt5-dev
-liburi-perl gettext
+
+@@ pkg/neon/unknown
+# Neon is a lot like Debian, except we know Qt is sufficiently new
+# to install Qt dev-tools.
+# Perl support
+libyaml-libyaml-perl 
+libio-socket-ssl-perl 
+libjson-xs-perl
+liburi-perl 
+# Basic build tools
+bison 
+build-essential 
+cmake 
+flex 
+gettext
+git 
+gperf 
+libssl-dev 
+intltool
+shared-mime-info 
+# Qt-related
+libdbusmenu-qt5-dev
+qttools5-dev
+qtdeclarative5-dev
 
 @@ pkg/opensuse/unknown
 cmake
