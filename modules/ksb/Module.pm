@@ -667,6 +667,8 @@ sub setupEnvironment
     } else {
         my $kdedir = $self->getOption('kdedir');
         my $qtdir  = $self->getOption('qtdir');
+        my $binpath  = $self->getOption('binpath');
+        my $libpath  = $self->getOption('libpath');
 
         # Ensure the platform libraries we're building can be found, as long as they
         # are not the system's own libraries.
@@ -678,6 +680,12 @@ sub setupEnvironment
             $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$platformDir/lib/pkgconfig");
             $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/lib");
             $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
+        }
+        if (length $binpath) {
+            $ctx->prependEnvironmentValue('PATH', $binpath);
+        }
+        if (length $libpath) {
+            $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', $libpath);
         }
     }
 
