@@ -14,7 +14,7 @@ use ksb::Util;
 
 use List::Util qw(first);
 
-my $GENERATOR_MAP = {
+my $BASE_GENERATOR_MAP = {
     'Ninja' => {
         optionsName => 'ninja-options',
         installTarget => 'install',
@@ -37,6 +37,24 @@ my $GENERATOR_MAP = {
             qw{gmake make}
         ]
     }
+};
+
+# Extra generators that are compatible to the base generators above.
+# See: https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html#extra-generators
+my $GENERATOR_MAP = {
+    'Ninja' => $BASE_GENERATOR_MAP->{'Ninja'},
+    'CodeBlocks - Ninja' => $BASE_GENERATOR_MAP->{'Ninja'},
+    'CodeLite - Ninja' => $BASE_GENERATOR_MAP->{'Ninja'},
+    'Sublime Text 2 - Ninja' => $BASE_GENERATOR_MAP->{'Ninja'},
+    'Kate - Ninja' => $BASE_GENERATOR_MAP->{'Ninja'},
+    'Eclipse CDT4 - Ninja' => $BASE_GENERATOR_MAP->{'Ninja'},
+
+    'Unix Makefiles' => $BASE_GENERATOR_MAP->{'Unix Makefiles'},
+    'CodeBlocks - Unix Makefiles' => $BASE_GENERATOR_MAP->{'Unix Makefiles'},
+    'CodeLite - Unix Makefiles' => $BASE_GENERATOR_MAP->{'Unix Makefiles'},
+    'Sublime Text 2 - Unix Makefiles' => $BASE_GENERATOR_MAP->{'Unix Makefiles'},
+    'Kate - Unix Makefiles' => $BASE_GENERATOR_MAP->{'Unix Makefiles'},
+    'Eclipse CDT4 - Unix Makefiles' => $BASE_GENERATOR_MAP->{'Unix Makefiles'}
 };
 
 sub _checkGeneratorIsWhitelisted
