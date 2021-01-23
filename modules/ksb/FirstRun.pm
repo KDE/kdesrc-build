@@ -584,7 +584,7 @@ global
     source-dir ~/kde/src   # Where sources are downloaded
     build-dir  ~/kde/build # Where the source build is run
 
-    ignore-kde-structure true # Use flat structure
+    directory-layout invent # Use invent.kde.org structure
 
     # Will pull in KDE-based dependencies only, to save you the trouble of
     # listing them all below
