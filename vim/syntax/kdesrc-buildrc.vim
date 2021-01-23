@@ -42,7 +42,7 @@ syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
             \ cmake-generator cmake-toolchain ninja-options
             \ override-build-system override-url prefix qtdir repository
             \ revision source-dir svn-server tag remove-after-install
-            \ qmake-options git-user
+            \ qmake-options git-user directory-layout
 
 syn keyword ksbrcGlobalOption contained skipwhite nextgroup=ksbrcStringValue
             \ branch-group git-desired-protocol git-repository-base http-proxy
