@@ -966,10 +966,15 @@ sub destDir
 
     my $basePath = "";
     my $layout = $self->getOption('directory-layout');
-    if ($self->getOption('ignore-kde-structure')) {
+    my $oldlayout = $self->getOption('ignore-kde-structure');
+    if ($oldlayout) {
         # avoid spamming
         if (!$self->getOption('#warned-deprecated-ignore-kde-structure')) {
-            warning("b[ignore-kde-structure] is deprecated, please use b[directory-layout] instead for b[$self]");
+            if($oldlayout eq 'true' || $oldlayout == 1) {
+                warning("the option b[ignore-kde-structure true] is deprecated. Please substitute the option b[directory-layout flat] in your ~/.kdesrc-buildrc file.");
+            } else {
+                warning("The option b[ignore-kde-structure false] is deprecated. Please substitute the option b[directory-layout invent] in your ~/.kdesrc-buildrc file.");
+            }
         }
         # no or equivalent layout configured, assume the user wants to use flat layout
         if (!$layout || $layout eq 'flat') {
