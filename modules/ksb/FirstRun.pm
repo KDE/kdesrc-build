@@ -39,7 +39,7 @@ export PATH="$HOME/kde/src/kdesrc-build:$PATH"
 ## Run projects built with kdesrc-build
 function kdesrc-run
 {
-  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/$@"
+  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/${1##*/}" "${@:2:$#}"
 }
 #################################################################
 RC
