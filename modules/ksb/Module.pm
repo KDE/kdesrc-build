@@ -991,9 +991,9 @@ sub destDir
         if ($layout eq 'invent' && $self->getOption('repository') =~ m/kde:(.*)\.git/) {
             $basePath = $1;
         } else {
-            if (!$self->getOption('#warned-invalid-directory-layout') # avoid spamming
-                && $layout ne 'invent' && $layout ne 'metadata') {
-                warning("Invalid b[directory-layout] value: $layout. Will use b[default] instead for b[$self]");
+            if ($layout && $layout ne 'invent' && $layout ne 'metadata' &&
+                !$self->getOption('#warned-invalid-directory-layout')) { # avoid spamming
+                warning("Invalid b[directory-layout] value: $layout. Will use b[metadata] instead for b[$self]");
                 $self->setOption('#warned-invalid-directory-layout', 1);
             }
             $basePath = shift // $self->getOption('#xml-full-path');
