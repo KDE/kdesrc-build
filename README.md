@@ -179,7 +179,7 @@ kdesrc-build includes a limited command-line description with the --help
 option.
 
 You can read the [kdesrc-build
-handbook](https://docs.kde.org/index.php?application=kdesrc-build) online.
+handbook](https://docs.kde.org/?application=kdesrc-build) online.
 
 Once you've set up a KDE development environment, kdesrc-build itself can
 generate and build documentation (a handbook and a man page).

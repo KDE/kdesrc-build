@@ -1048,7 +1048,7 @@ There was no repository selected for the y[b[$name] module-set declared at
 A repository is needed to determine where to download the source code from.
 
 Most will want to use the b[g[kde-projects] repository. See also
-https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/kde-modules-and-selection.html#module-sets
+https://docs.kde.org/?application=kdesrc-build&branch=trunk5&path=kde-modules-and-selection.html#module-sets
 EOF
         die make_exception('Config', 'Missing repository option');
     }
@@ -2763,7 +2763,7 @@ Important Options:
       (This is enabled by default; use --no-include-dependencies to disable)
     --stop-on-failure      Stops the build as soon as a package fails to build.
 
-More docs at https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/
+More docs at https://docs.kde.org/?application=kdesrc-build
     Supported configuration options: https://go.kde.org/u/ksboptions
     Supported cmdline options:       https://go.kde.org/u/ksbcmdline
 DONE
