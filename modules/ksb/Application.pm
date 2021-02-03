@@ -1567,6 +1567,10 @@ sub _buildSingleModule
     $ctx->resetEnvironment();
     $module->setupEnvironment();
 
+    # Cache module directories, e.g. to be consumed in kdesrc-run
+    $module->setPersistentOption('build-dir', $module->fullpath('build'));
+    $module->setPersistentOption('install-dir', $module->installationPath());
+
     my $fail_count = $module->getPersistentOption('failure-count') // 0;
     my ($resultStatus, $message) = $ipc->waitForModule($module);
     $ipc->forgetModule($module);

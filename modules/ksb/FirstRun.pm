@@ -31,7 +31,7 @@ environments as fielded in "minimal Docker container" forms of popular distros.
 
 use constant {
     SHELL_RC_SNIPPET => <<'RC'
-# kdesrc-build ##################################################
+# kdesrc-build #################################################################
 
 ## Add kdesrc-build to PATH
 export PATH="$HOME/kde/src/kdesrc-build:$PATH"
@@ -39,9 +39,46 @@ export PATH="$HOME/kde/src/kdesrc-build:$PATH"
 ## Run projects built with kdesrc-build
 function kdesrc-run
 {
-  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/${1##*/}" "${@:2:$#}"
+  # get the build directory and install directory from cache. save as array.
+  local moduledirs=( $(perl -MJSON::PP -Mautodie \
+    -E "my \$dir = -e q(kdesrc-buildrc) ? q(.) : \$ENV{HOME};" \
+    -E "open my \$json, q(<), qq(\$dir/.kdesrc-build-data);" \
+    -E "local \$/; my \$m = decode_json(<\$json>);" \
+    -E "say \$m->{q($1)}->{q(build-dir)};" \
+    -E "say \$m->{q($1)}->{q(install-dir)};") )
+
+  source "${moduledirs[0]}/prefix.sh" && "${moduledirs[1]}/bin/$1" "${@:2:$#}"
 }
-#################################################################
+
+## Autocomplete for kdesrc-run
+function _comp-kdesrc-run
+{
+  local cur
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+
+  # Complete only the first argument
+  if [[ $COMP_CWORD != 1 ]]; then
+    return 0
+  fi
+
+  # Filter cache to get build modules
+  local modules=$(perl -MJSON::PP -Mautodie \
+    -E 'my $dir = -e q(kdesrc-buildrc) ? q(.) : $ENV{HOME};' \
+    -E 'open my $json, q(<), qq($dir/.kdesrc-build-data);' \
+    -E 'local $/; my $m = decode_json(<$json>);' \
+    -E 'my @modules_in_cache = keys %{$m};' \
+    -E 'print qq(@modules_in_cache);' )
+
+  # intersect lists
+  COMPREPLY=($(compgen -W "${modules}" $cur))
+
+  return 0
+}
+## register autocomplete function
+complete -o nospace -F _comp-kdesrc-run kdesrc-run
+
+################################################################################
 RC
 };
 
