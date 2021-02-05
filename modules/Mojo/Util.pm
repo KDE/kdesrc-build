@@ -15,6 +15,7 @@ use IO::Uncompress::Gunzip;
 use List::Util qw(min);
 use MIME::Base64 qw(decode_base64 encode_base64);
 use Pod::Usage qw(pod2usage);
+use Socket qw(inet_aton inet_pton AF_INET6);
 use Sub::Util qw(set_subname);
 use Symbol qw(delete_package);
 use Time::HiRes        ();
@@ -44,7 +45,7 @@ my %ENTITIES;
   open my $file, '<', $path or croak "Unable to open html entities file ($path): $!";
   my $lines = do { local $/; <$file> };
 
-  for my $line (split "\n", $lines) {
+  for my $line (split /\n/, $lines) {
     next unless $line =~ /^(\S+)\s+U\+(\S+)(?:\s+U\+(\S+))?/;
     $ENTITIES{$1} = defined $3 ? (chr(hex $2) . chr(hex $3)) : chr(hex $2);
   }
@@ -63,12 +64,10 @@ my $ENTITY_RE = qr/&(?:\#((?:[0-9]{1,7}|x[0-9a-fA-F]{1,6}));|(\w+[;=]?))/;
 my (%ENCODING, %PATTERN);
 
 our @EXPORT_OK = (
-  qw(b64_decode b64_encode camelize class_to_file class_to_path decamelize),
-  qw(decode deprecated dumper encode extract_usage getopt gunzip gzip),
-  qw(hmac_sha1_sum html_attr_unescape html_unescape humanize_bytes md5_bytes),
-  qw(md5_sum monkey_patch punycode_decode punycode_encode quote scope_guard),
-  qw(secure_compare sha1_bytes sha1_sum slugify split_cookie_header),
-  qw(split_header steady_time tablify term_escape trim unindent unquote),
+  qw(b64_decode b64_encode camelize class_to_file class_to_path decamelize decode deprecated dumper encode),
+  qw(extract_usage getopt gunzip gzip hmac_sha1_sum html_attr_unescape html_unescape humanize_bytes md5_bytes md5_sum),
+  qw(monkey_patch network_contains punycode_decode punycode_encode quote scope_guard secure_compare sha1_bytes),
+  qw(sha1_sum slugify split_cookie_header split_header steady_time tablify term_escape trim unindent unquote),
   qw(url_escape url_unescape xml_escape xor_encode)
 );
 
@@ -91,8 +90,8 @@ sub camelize {
 
   # CamelCase words
   return join '::', map {
-    join('', map { ucfirst lc } split '_')
-  } split '-', $str;
+    join('', map { ucfirst lc } split /_/)
+  } split /-/, $str;
 }
 
 sub class_to_file {
@@ -111,7 +110,7 @@ sub decamelize {
   # snake_case words
   return join '-', map {
     join('_', map {lc} grep {length} split /([A-Z]{1}[^A-Z]*)/)
-  } split '::', $str;
+  } split /::/, $str;
 }
 
 sub decode {
@@ -185,6 +184,27 @@ sub monkey_patch {
   *{"${class}::$_"} = set_subname("${class}::$_", $patch{$_}) for keys %patch;
 }
 
+sub network_contains {
+  my ($cidr, $addr) = @_;
+  return undef unless length $cidr && length $addr;
+
+  # Parse inputs
+  my ($net, $mask) = split m!/!, $cidr, 2;
+  my $v6 = $net =~ /:/;
+  return undef if $v6 xor $addr =~ /:/;
+
+  # Convert addresses to binary
+  return undef unless $net  = $v6 ? inet_pton(AF_INET6, $net)  : inet_aton($net);
+  return undef unless $addr = $v6 ? inet_pton(AF_INET6, $addr) : inet_aton($addr);
+  my $length = $v6 ? 128 : 32;
+
+  # Apply mask if given
+  $addr &= pack "B$length", '1' x $mask if defined $mask;
+
+  # Compare
+  return 0 == unpack "B$length", ($net ^ $addr);
+}
+
 # Direct translation of RFC 3492
 sub punycode_decode {
   my $input = shift;
@@ -193,7 +213,7 @@ sub punycode_decode {
   my ($n, $i, $bias, @output) = (PC_INITIAL_N, 0, PC_INITIAL_BIAS);
 
   # Consume all code points before the last delimiter
-  push @output, split('', $1) if $input =~ s/(.*)\x2d//s;
+  push @output, split(//, $1) if $input =~ s/(.*)\x2d//s;
 
   while (length $input) {
     my ($oldi, $w) = ($i, 1);
@@ -226,7 +246,7 @@ sub punycode_encode {
   my ($n, $delta, $bias) = (PC_INITIAL_N, 0, PC_INITIAL_BIAS);
 
   # Extract basic code points
-  my @input = map {ord} split '', $output;
+  my @input = map {ord} split //, $output;
   $output =~ s/[^\x00-\x7f]+//gs;
   my $h = my $basic = length $output;
   $output .= "\x2d" if $basic > 0;
@@ -276,8 +296,8 @@ sub scope_guard { Mojo::Util::_Guard->new(cb => shift) }
 
 sub secure_compare {
   my ($one, $two) = @_;
-  return undef if length $one != length $two;
-  my $r = 0;
+  my $r = length $one != length $two;
+  $two = $one if $r;
   $r |= ord(substr $one, $_) ^ ord(substr $two, $_) for 0 .. length($one) - 1;
   return $r == 0;
 }
@@ -334,7 +354,7 @@ sub trim {
 
 sub unindent {
   my $str = shift;
-  my $min = min map { m/^([ \t]*)/; length $1 || () } split "\n", $str;
+  my $min = min map { m/^([ \t]*)/; length $1 || () } split /\n/, $str;
   $str =~ s/^[ \t]{0,$min}//gm if $min;
   return $str;
 }
@@ -418,9 +438,6 @@ sub _entity {
   return '&' . reverse $rest;
 }
 
-# Supported on Perl 5.14+
-sub _global_destruction { defined ${^GLOBAL_PHASE} && ${^GLOBAL_PHASE} eq 'DESTRUCT' }
-
 sub _header {
   my ($str, $cookie) = @_;
 
@@ -475,7 +492,7 @@ sub _stash {
   my ($name, $object) = (shift, shift);
 
   # Hash
-  return $object->{$name} ||= {} unless @_;
+  return $object->{$name} //= {} unless @_;
 
   # Get
   return $object->{$name}{$_[0]} unless @_ > 1 || ref $_[0];
@@ -710,8 +727,7 @@ Unescape all HTML entities in string.
 
   my $str = humanize_bytes 1234;
 
-Turn number of bytes into a simplified human readable format. Note that this function is B<EXPERIMENTAL> and might
-change without warning!
+Turn number of bytes into a simplified human readable format.
 
   # "1B"
   humanize_bytes 1;
@@ -761,6 +777,23 @@ Punycode decode string as described in L<RFC 3492|https://tools.ietf.org/html/rf
   # "bücher"
   punycode_decode 'bcher-kva';
 
+=head2 network_contains
+
+  my $bool = network_contains $network, $address;
+
+Check that a given address is contained within a network in CIDR form. If the network is a single address, the
+addresses must be equivalent.
+
+  # True
+  network_contains('10.0.0.0/8', '10.10.10.10');
+  network_contains('10.10.10.10', '10.10.10.10');
+  network_contains('fc00::/7', 'fc::c0:ff:ee');
+
+  # False
+  network_contains('10.0.0.0/29', '10.10.10.10');
+  network_contains('10.10.10.12', '10.10.10.10');
+  network_contains('fc00::/7', '::1');
+
 =head2 punycode_encode
 
   my $punycode = punycode_encode $str;
@@ -792,7 +825,8 @@ Create anonymous scope guard object that will execute the passed callback when t
 
   my $bool = secure_compare $str1, $str2;
 
-Constant time comparison algorithm to prevent timing attacks.
+Constant time comparison algorithm to prevent timing attacks. The secret string should be the second argument, to avoid
+leaking information about the length of the string.
 
 =head2 sha1_bytes
 

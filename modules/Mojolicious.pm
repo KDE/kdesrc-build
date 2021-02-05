@@ -6,6 +6,7 @@ use Carp ();
 use Mojo::DynamicMethods -dispatch;
 use Mojo::Exception;
 use Mojo::Home;
+use Mojo::Loader;
 use Mojo::Log;
 use Mojo::Util;
 use Mojo::UserAgent;
@@ -26,23 +27,28 @@ has home             => sub { Mojo::Home->new->detect(ref shift) };
 has log              => sub {
   my $self = shift;
 
-  # Check if we have a log directory that is writable
-  my $log  = Mojo::Log->new;
-  my $home = $self->home;
   my $mode = $self->mode;
-  $log->path($home->child('log', "$mode.log")) if -d $home->child('log') && -w _;
+  my $log  = Mojo::Log->new;
+
+  # DEPRECATED!
+  my $home = $self->home;
+  if (-d $home->child('log') && -w _) {
+    $log->path($home->child('log', "$mode.log"));
+    Mojo::Util::deprecated(qq{Logging to "log/$mode.log" is DEPRECATED});
+  }
 
   # Reduced log output outside of development mode
   return $log->level($ENV{MOJO_LOG_LEVEL}) if $ENV{MOJO_LOG_LEVEL};
   return $mode eq 'development' ? $log : $log->level('info');
 };
 has 'max_request_size';
-has mode     => sub { $ENV{MOJO_MODE} || $ENV{PLACK_ENV} || 'development' };
-has moniker  => sub { Mojo::Util::decamelize ref shift };
-has plugins  => sub { Mojolicious::Plugins->new };
-has renderer => sub { Mojolicious::Renderer->new };
-has routes   => sub { Mojolicious::Routes->new };
-has secrets  => sub {
+has mode               => sub { $ENV{MOJO_MODE} || $ENV{PLACK_ENV} || 'development' };
+has moniker            => sub { Mojo::Util::decamelize ref shift };
+has plugins            => sub { Mojolicious::Plugins->new };
+has preload_namespaces => sub { [] };
+has renderer           => sub { Mojolicious::Renderer->new };
+has routes             => sub { Mojolicious::Routes->new };
+has secrets            => sub {
   my $self = shift;
 
   # Warn developers about insecure default
@@ -58,7 +64,7 @@ has ua        => sub { Mojo::UserAgent->new };
 has validator => sub { Mojolicious::Validator->new };
 
 our $CODENAME = 'Supervillain';
-our $VERSION  = '8.59';
+our $VERSION  = '8.72';
 
 sub BUILD_DYNAMIC {
   my ($class, $method, $dyn_methods) = @_;
@@ -156,7 +162,8 @@ sub new {
   push @{$self->static->paths},   $home->child('public')->to_string;
 
   # Default to controller and application namespace
-  my $r = $self->routes->namespaces(["@{[ref $self]}::Controller", ref $self]);
+  my $controller = "@{[ref $self]}::Controller";
+  my $r          = $self->preload_namespaces([$controller])->routes->namespaces([$controller, ref $self]);
 
   # Hide controller attributes/methods
   $r->hide(qw(app continue cookie every_cookie every_param every_signed_cookie finish helpers match on param render));
@@ -169,6 +176,7 @@ sub new {
   $self->hook(around_dispatch => \&_exception);
 
   $self->startup;
+  $self->warmup;
 
   return $self;
 }
@@ -187,6 +195,8 @@ sub start {
 }
 
 sub startup { }
+
+sub warmup { Mojo::Loader::load_classes $_ for @{shift->preload_namespaces} }
 
 sub _action {
   my ($next, $c, $action, $last) = @_;
@@ -400,7 +410,7 @@ The home directory of your application, defaults to a L<Mojo::Home> object which
 
 The logging layer of your application, defaults to a L<Mojo::Log> object. The level will default to either the
 C<MOJO_LOG_LEVEL> environment variable, C<debug> if the L</mode> is C<development>, or C<info> otherwise. All messages
-will be written to C<STDERR>, or a C<log/$mode.log> file if a C<log> directory exists.
+will be written to C<STDERR> by default.
 
   # Log debug message
   $app->log->debug('It works');
@@ -441,6 +451,14 @@ a plugin.
 
   # Add another namespace to load plugins from
   push @{$app->plugins->namespaces}, 'MyApp::Plugin';
+
+=head2 preload_namespaces
+
+  my $namespaces = $app->preload_namespaces;
+  $app           = $app->preload_namespaces(['MyApp:Controller']);
+
+Namespaces to preload classes from during application startup. Note that this attribute is B<EXPERIMENTAL> and might
+change without warning!
 
 =head2 renderer
 
@@ -715,6 +733,13 @@ subclass.
 
   sub startup ($self) {...}
 
+=head2 warmup
+
+  $app->warmup;
+
+Preload classes from L</"preload_namespaces"> for future use. Note that this method is B<EXPERIMENTAL> and might change
+without warning!
+
 =head1 HELPERS
 
 In addition to the L</"ATTRIBUTES"> and L</"METHODS"> above you can also call helpers on L<Mojolicious> objects. This
@@ -734,7 +759,7 @@ The L<Mojolicious> distribution includes a few files with different licenses tha
 
 =head2 Mojolicious Artwork
 
-  Copyright (C) 2010-2020, Sebastian Riedel.
+  Copyright (C) 2010-2021, Sebastian Riedel.
 
 Licensed under the CC-SA License, Version 4.0 L<http://creativecommons.org/licenses/by-sa/4.0>.
 
@@ -744,11 +769,23 @@ Licensed under the CC-SA License, Version 4.0 L<http://creativecommons.org/licen
 
 Licensed under the MIT License, L<http://creativecommons.org/licenses/MIT>.
 
-=head2 prettify.js
+=head2 highlight.js
 
-  Copyright (C) 2006, 2013 Google Inc..
+  Copyright (C) 2006, Ivan Sagalaev.
 
-Licensed under the Apache License, Version 2.0 L<http://www.apache.org/licenses/LICENSE-2.0>.
+Licensed under the BSD License, L<https://github.com/highlightjs/highlight.js/blob/master/LICENSE>.
+
+=head2 Bootstrap
+
+  Copyright 2011-2020 The Bootstrap Authors.
+  Copyright 2011-2020 Twitter, Inc.
+
+Licensed under the MIT License, L<http://creativecommons.org/licenses/MIT>.
+
+=head2 Font Awesome
+
+Licensed under the CC-BY License, Version 4.0 L<https://creativecommons.org/licenses/by/4.0/> and SIL OFL, Version 1.1
+L<https://opensource.org/licenses/OFL-1.1>.
 
 =head1 CODE NAMES
 
@@ -799,8 +836,6 @@ Current voting members of the core team in alphabetical order:
 
 =over 2
 
-CandyAngel, C<candyangel@mojolicious.org>
-
 Christopher Rasch-Olsen Raa, C<christopher@mojolicious.org>
 
 Dan Book, C<grinnz@mojolicious.org>
@@ -818,6 +853,8 @@ The following members of the core team are currently on hiatus:
 =over 2
 
 Abhijit Menon-Sen, C<ams@cpan.org>
+
+CandyAngel, C<candyangel@mojolicious.org>
 
 Glen Hinkle, C<tempire@cpan.org>
 
@@ -897,6 +934,8 @@ Chas. J. Owens IV
 
 Chase Whitener
 
+Chris Scheller
+
 Christian Hansen
 
 chromatic
@@ -930,6 +969,8 @@ Dominique Dumont
 Dotan Dimet
 
 Douglas Christopher Wilson
+
+Elmar S. Heeb
 
 Ettore Di Giacinto
 
@@ -1071,6 +1112,8 @@ Rick Delaney
 
 Robert Hicks
 
+Robert Rothenberg
+
 Robin Lee
 
 Roland Lammel
@@ -1155,7 +1198,7 @@ Zoffix Znet
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2008-2020, Sebastian Riedel and others.
+Copyright (C) 2008-2021, Sebastian Riedel and others.
 
 This program is free software, you can redistribute it and/or modify it under the terms of the Artistic License version
 2.0.

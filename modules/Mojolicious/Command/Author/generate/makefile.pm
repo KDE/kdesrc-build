@@ -18,6 +18,7 @@ Mojolicious::Command::Author::generate::makefile - Makefile generator command
 
   Usage: APPLICATION generate makefile [OPTIONS]
 
+    ./myapp.pl generate makefile
     mojo generate makefile
 
   Options:
@@ -78,6 +79,8 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
   VERSION   => '0.01',
-  PREREQ_PM => {'Mojolicious' => '<%= $Mojolicious::VERSION %>'},
-  test      => {TESTS => 't/*.t'}
+  PREREQ_PM => {
+    'Mojolicious' => '<%= $Mojolicious::VERSION %>'
+  },
+  test => {TESTS => 't/*.t'}
 );

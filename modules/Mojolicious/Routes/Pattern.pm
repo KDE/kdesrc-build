@@ -71,7 +71,7 @@ sub render {
 
     # Placeholder
     else {
-      my $name    = (split $start, $value)[0] // '';
+      my $name    = (split /\Q$start/, $value)[0] // '';
       my $default = $self->defaults->{$name};
       $part = $values->{$name} // $default // '';
       if    (!defined $default || ($default ne $part)) { $optional = 0 }
@@ -165,7 +165,7 @@ sub _tokenize {
   my $wildcard    = $self->wildcard_start;
 
   my (@tree, $spec, $more);
-  for my $char (split '', $pattern) {
+  for my $char (split //, $pattern) {
 
     # Quoted
     if    ($char eq $quote_start) { push @tree, ['placeholder', ''] if ++$spec }

@@ -35,11 +35,11 @@ sub run {
 
   # Run command
   if ($name && $name =~ /^\w[\w-]+$/ && ($name ne 'help' || $args[0])) {
-    $name =~ s/-/_/g;
 
     # Help
     $name = shift @args if my $help = $name eq 'help';
     local $ENV{MOJO_HELP} = $help = $ENV{MOJO_HELP} || $help;
+    $name =~ s/-/_/g;
 
     # Remove options shared by all commands before loading the command
     _args(\@args);
@@ -57,6 +57,8 @@ sub run {
     return $command->run(@args);
   }
 
+  elsif ($name && $name ne 'help') { die qq{Invalid command "$name".\n} }
+
   # Hide list for tests
   return 1 if $ENV{HARNESS_ACTIVE};
 
@@ -73,6 +75,7 @@ sub run {
     $command =~ s/(?<!^)_/-/g;
     push @rows, [" $command", $all{$class}];
   }
+
   return print $self->message, tablify(\@rows), $self->hint;
 }
 
@@ -176,6 +179,13 @@ List available options for generator command with short descriptions.
 
 Use L<Mojolicious::Command::Author::generate::app> to generate application directory structure for a fully functional
 L<Mojolicious> application.
+
+=head2 generate dockerfile
+
+  $ ./myapp.pl generate dockerfile
+  $ ./script/my_app generate dockerfile
+
+Use L<Mojolicious::Command::Author::generate::dockerfile> to generate C<Dockerfile> for application.
 
 =head2 generate lite-app
 

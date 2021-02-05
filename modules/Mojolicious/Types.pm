@@ -26,6 +26,7 @@ has mapping => sub {
     png      => ['image/png'],
     rss      => ['application/rss+xml'],
     svg      => ['image/svg+xml'],
+    ttf      => ['font/ttf'],
     txt      => ['text/plain;charset=UTF-8'],
     webm     => ['video/webm'],
     woff     => ['font/woff'],
@@ -50,7 +51,7 @@ sub detect {
 
   # Extract and prioritize MIME types
   my %types;
-  /^\s*([^,; ]+)(?:\s*\;\s*q\s*=\s*(\d+(?:\.\d+)?))?\s*$/i and $types{lc $1} = $2 // 1 for split ',', $accept // '';
+  /^\s*([^,; ]+)(?:\s*\;\s*q\s*=\s*(\d+(?:\.\d+)?))?\s*$/i and $types{lc $1} = $2 // 1 for split /,/, $accept // '';
   my @detected = sort { $types{$b} <=> $types{$a} } sort keys %types;
 
   # Detect extensions from MIME types
@@ -114,6 +115,7 @@ L<Mojolicious::Types> manages MIME types for L<Mojolicious>.
   png      -> image/png
   rss      -> application/rss+xml
   svg      -> image/svg+xml
+  ttf      -> font/ttf
   txt      -> text/plain;charset=UTF-8
   webm     -> video/webm
   woff     -> font/woff

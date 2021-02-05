@@ -53,8 +53,8 @@ sub listen {
     if ($path) {
       path($path)->remove if -S $path;
       $options{Local} = $path;
-      $handle = $class->new(%options) or croak "Can't create listen socket: $!";
-      $reuse = $self->{reuse} = join ':', 'unix', $path, fileno $handle;
+      $handle         = $class->new(%options) or croak "Can't create listen socket: $!";
+      $reuse          = $self->{reuse} = join ':', 'unix', $path, fileno $handle;
     }
 
     # IP socket
@@ -254,13 +254,6 @@ Path to TLS certificate authority file.
 
 Path to the TLS cert file, defaults to a built-in test certificate.
 
-=item tls_ciphers
-
-  tls_ciphers => 'AES128-GCM-SHA256:RC4:HIGH:!MD5:!aNULL:!EDH'
-
-TLS cipher specification string. For more information about the format see
-L<https://www.openssl.org/docs/manmaster/apps/ciphers.html#CIPHER-STRINGS>.
-
 =item tls_key
 
   tls_key => '/etc/tls/server.key'
@@ -268,23 +261,11 @@ L<https://www.openssl.org/docs/manmaster/apps/ciphers.html#CIPHER-STRINGS>.
 
 Path to the TLS key file, defaults to a built-in test key.
 
-=item tls_protocols
+=item tls_options
 
-  tls_protocols => ['foo', 'bar']
+  tls_options => {SSL_alpn_protocols => ['foo', 'bar'], SSL_verify_mode => 0x00}
 
-ALPN protocols to negotiate.
-
-=item tls_verify
-
-  tls_verify => 0x00
-
-TLS verification mode.
-
-=item tls_version
-
-  tls_version => 'TLSv1_2'
-
-TLS protocol version.
+Additional options for L<IO::Socket::SSL>.
 
 =back
 

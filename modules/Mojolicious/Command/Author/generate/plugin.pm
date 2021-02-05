@@ -9,12 +9,12 @@ has usage       => sub { shift->extract_usage };
 sub run {
   my ($self, @args) = @_;
 
-  getopt \@args, 'f|full' => \(my $full);
+  die $self->usage unless getopt \@args, 'f|full' => \(my $full);
 
   # Class
   my $name  = $args[0] // 'MyPlugin';
   my $class = $full ? $name : "Mojolicious::Plugin::$name";
-  my $dir   = join '-', split('::', $class);
+  my $dir   = join '-', split(/::/, $class);
   my $app   = class_to_path $class;
   $self->render_to_rel_file('class', "$dir/lib/$app", {class => $class, name => $name});
 

@@ -1,6 +1,7 @@
 package Mojo::DOM::CSS;
 use Mojo::Base -base;
 
+use Carp qw(croak);
 use Mojo::Util qw(dumper trim);
 
 use constant DEBUG => $ENV{MOJO_DOM_CSS_DEBUG} || 0;
@@ -129,7 +130,7 @@ sub _compile {
       push @$last, ['tag', $name eq '*' ? undef : _name($name), _unescape($ns)];
     }
 
-    else {last}
+    else { pos $css < length $css ? croak "Unknown CSS selector: $css" : last }
   }
 
   warn qq{-- CSS Selector ($css)\n@{[dumper $group]}} if DEBUG;
@@ -196,8 +197,9 @@ sub _namespace {
 sub _pc {
   my ($class, $args, $current, $tree, $scope) = @_;
 
-  # ":scope"
+  # ":scope" (root can only be a :scope)
   return $current eq $scope if $class eq 'scope';
+  return undef              if $current->[0] eq 'root';
 
   # ":checked"
   return exists $current->[2]{checked} || exists $current->[2]{selected} if $class eq 'checked';

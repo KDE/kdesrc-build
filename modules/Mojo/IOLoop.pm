@@ -94,10 +94,17 @@ sub remove {
 }
 
 sub reset {
-  my $self = _instance(shift)->emit('reset');
+  my ($self, $options) = (_instance(shift), shift // {});
+
+  $self->emit('reset')->stop;
+  if ($options->{freeze}) {
+    state @frozen;
+    push @frozen, {%$self};
+    delete $self->{reactor};
+  }
+  else { $self->reactor->reset }
+
   delete @$self{qw(accepting acceptors events in out stop)};
-  $self->reactor->reset;
-  $self->stop;
 }
 
 sub server {
@@ -143,7 +150,7 @@ sub stop_gracefully {
 sub stream {
   my ($self, $stream) = (_instance(shift), @_);
   return $self->_stream($stream => $self->_id) if ref $stream;
-  my $c = $self->{in}{$stream} || $self->{out}{$stream} || {};
+  my $c = $self->{in}{$stream} || $self->{out}{$stream} // {};
   return $c->{stream};
 }
 
@@ -161,7 +168,7 @@ sub _id {
   return $id;
 }
 
-sub _in { scalar keys %{shift->{in} || {}} }
+sub _in { scalar keys %{shift->{in} // {}} }
 
 sub _instance { ref $_[0] ? $_[0] : $_[0]->singleton }
 
@@ -170,18 +177,18 @@ sub _limit { $_[0]{stop} ? 1 : $_[0]->_in >= $_[0]->max_connections }
 sub _maybe_accepting {
   my $self = shift;
   return if $self->{accepting} || $self->_limit;
-  $_->start for values %{$self->{acceptors} || {}};
+  $_->start for values %{$self->{acceptors} // {}};
   $self->{accepting} = 1;
 }
 
 sub _not_accepting {
   my $self = shift;
   return $self unless delete $self->{accepting};
-  $_->stop for values %{$self->{acceptors} || {}};
+  $_->stop for values %{$self->{acceptors} // {}};
   return $self;
 }
 
-sub _out { scalar keys %{shift->{out} || {}} }
+sub _out { scalar keys %{shift->{out} // {}} }
 
 sub _remove {
   my ($self, $id) = @_;
@@ -474,8 +481,23 @@ write buffers.
 
   Mojo::IOLoop->reset;
   $loop->reset;
+  $loop->reset({freeze => 1});
 
 Remove everything and stop the event loop.
+
+These options are currently available:
+
+=over 2
+
+=item freeze
+
+  freeze => 1
+
+Freeze the current state of the event loop in time before resetting it. This will prevent active connections from
+getting closed immediately, which can help with many unintended side effects when processes are forked. Note that this
+option is B<EXPERIMENTAL> and might change without warning!
+
+=back
 
 =head2 server
 

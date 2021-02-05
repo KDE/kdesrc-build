@@ -102,7 +102,7 @@ sub render {
   return () unless $self->_render_template($c, \my $output, $options);
 
   # Inheritance
-  my $content = $stash->{'mojo.content'} ||= {};
+  my $content = $stash->{'mojo.content'} //= {};
   local $content->{content} = $output =~ /\S/ ? $output : undef if $stash->{extends} || $stash->{layout};
   while ((my $next = _next($stash)) && !defined $inline) {
     @$options{qw(handler template)} = ($stash->{handler}, $next);
@@ -141,7 +141,7 @@ sub template_for {
   # Normal default template
   my $stash = $c->stash;
   my ($controller, $action) = @$stash{qw(controller action)};
-  return join '/', split('-', decamelize $controller), $action if $controller && $action;
+  return join '/', split(/-/, decamelize $controller), $action if $controller && $action;
 
   # Try the route name if we don't have controller and action
   return undef unless my $route = $c->match->endpoint;
@@ -178,7 +178,7 @@ sub template_name {
 sub template_path {
   my ($self, $options) = @_;
   return undef unless my $name = $self->template_name($options);
-  my @parts = split '/', $name;
+  my @parts = split /\//, $name;
   -r and return $_ for map { path($_, @parts)->to_string } @{$self->paths}, $TEMPLATES;
   return undef;
 }

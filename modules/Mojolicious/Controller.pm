@@ -15,8 +15,8 @@ has match => sub { Mojolicious::Routes::Match->new(root => shift->app->routes) }
 
 # Reserved stash values
 my %RESERVED = map { $_ => 1 } (
-  qw(action app cb controller data extends format handler inline json layout namespace path status template),
-  qw(text variant)
+  qw(action app cb controller data extends format handler inline json layout namespace path status template text),
+  qw(variant)
 );
 
 sub BUILD_DYNAMIC {
@@ -40,7 +40,7 @@ sub cookie {
   if (@_) {
 
     # Cookie too big
-    my $cookie = {name => $name, value => shift, %{shift || {}}};
+    my $cookie = {name => $name, value => shift, %{shift // {}}};
     $self->helpers->log->error(qq{Cookie "$name" is bigger than 4KiB}) if length $cookie->{value} > 4096;
 
     $self->res->cookies($cookie);
@@ -58,7 +58,7 @@ sub every_param {
   my ($self, $name) = @_;
 
   # Captured unreserved values
-  my $captures = $self->stash->{'mojo.captures'} ||= {};
+  my $captures = $self->stash->{'mojo.captures'} //= {};
   if (!$RESERVED{$name} && exists $captures->{$name}) {
     my $value = $captures->{$name};
     return ref $value eq 'ARRAY' ? $value : [$value];
@@ -213,7 +213,7 @@ sub session {
   $self->app->sessions->load($self) unless exists $stash->{'mojo.active_session'};
 
   # Hash
-  my $session = $stash->{'mojo.session'} ||= {};
+  my $session = $stash->{'mojo.session'} //= {};
   return $session unless @_;
 
   # Get

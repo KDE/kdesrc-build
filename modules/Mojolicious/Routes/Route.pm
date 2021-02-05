@@ -34,7 +34,11 @@ sub any { shift->_generate_route(ref $_[0] eq 'ARRAY' ? shift : [], @_) }
 
 sub delete { shift->_generate_route(DELETE => @_) }
 
-sub detour { shift->partial(1)->to(@_) }
+# DEPRECATED!
+sub detour {
+  Mojo::Util::deprecated 'Mojolicious::Routes::Route::detour is DEPRECATED';
+  shift->partial(1)->to(@_);
+}
 
 sub find { shift->_index->{shift()} }
 
@@ -52,6 +56,14 @@ sub is_endpoint { $_[0]->inline ? undef : !@{$_[0]->children} }
 
 sub is_websocket { !!shift->{websocket} }
 
+sub methods {
+  my $self = shift;
+  return $self->{methods} unless @_;
+  my $methods = [map uc($_), @{ref $_[0] ? $_[0] : [@_]}];
+  $self->{methods} = $methods if @$methods;
+  return $self;
+}
+
 sub name {
   my $self = shift;
   return $self->{name} unless @_;
@@ -61,17 +73,11 @@ sub name {
 
 sub options { shift->_generate_route(OPTIONS => @_) }
 
+# DEPRECATED!
 sub over {
-  my $self = shift;
-
-  # Routes with conditions can't be cached
-  return $self->{over} unless @_;
-  my $conditions = ref $_[0] eq 'ARRAY' ? $_[0] : [@_];
-  return $self unless @$conditions;
-  $self->{over} = $conditions;
-  $self->root->cache->max_keys(0);
-
-  return $self;
+  Mojo::Util::deprecated
+    'Mojolicious::Routes::Route::over is DEPRECATED in favor of Mojolicious::Routes::Route::requires';
+  shift->requires(@_);
 }
 
 sub parse {
@@ -100,12 +106,23 @@ sub render {
 
 sub root { shift->_chain->[0] }
 
+sub requires {
+  my $self = shift;
+
+  # Routes with conditions can't be cached
+  return $self->{over} unless @_;
+  my $conditions = ref $_[0] eq 'ARRAY' ? $_[0] : [@_];
+  return $self unless @$conditions;
+  $self->{over} = $conditions;
+  $self->root->cache->max_keys(0);
+
+  return $self;
+}
+
+# DEPRECATED!
 sub route {
-  my $self   = shift;
-  my $route  = $self->add_child(__PACKAGE__->new->parse(@_))->children->[-1];
-  my $format = $self->pattern->constraints->{format};
-  $route->pattern->constraints->{format} //= 0 if defined $format && !$format;
-  return $route;
+  Mojo::Util::deprecated 'Mojolicious::Routes::Route::route is DEPRECATED in favor of Mojolicious::Routes::Route::any';
+  shift->_route(@_);
 }
 
 sub suggested_method {
@@ -113,7 +130,7 @@ sub suggested_method {
 
   my %via;
   for my $route (@{$self->_chain}) {
-    next unless my @via = @{$route->via || []};
+    next unless my @via = @{$route->methods // []};
     %via = map { $_ => 1 } keys %via ? grep { $via{$_} } @via : @via;
   }
 
@@ -151,12 +168,11 @@ sub to_string {
 
 sub under { shift->_generate_route(under => @_) }
 
+# DEPRECATED!
 sub via {
-  my $self = shift;
-  return $self->{via} unless @_;
-  my $methods = [map uc($_), @{ref $_[0] ? $_[0] : [@_]}];
-  $self->{via} = $methods if @$methods;
-  return $self;
+  Mojo::Util::deprecated
+    'Mojolicious::Routes::Route::via is DEPRECATED in favor of Mojolicious::Routes::Route::methods';
+  shift->methods(@_);
 }
 
 sub websocket {
@@ -196,8 +212,8 @@ sub _generate_route {
     elsif (ref $arg eq 'HASH') { %defaults = (%defaults, %$arg) }
   }
 
-  my $route = $self->route($pattern, @constraints)->over(\@conditions)->to(\%defaults);
-  $methods eq 'under' ? $route->inline(1) : $route->via($methods);
+  my $route = $self->_route($pattern, @constraints)->requires(\@conditions)->to(\%defaults);
+  $methods eq 'under' ? $route->inline(1) : $route->methods($methods);
 
   return defined $name ? $route->name($name) : $route;
 }
@@ -214,6 +230,14 @@ sub _index {
   }
 
   return {%auto, %custom};
+}
+
+sub _route {
+  my $self   = shift;
+  my $route  = $self->add_child(__PACKAGE__->new->parse(@_))->children->[-1];
+  my $format = $self->pattern->constraints->{format};
+  $route->pattern->constraints->{format} //= 0 if defined $format && !$format;
+  return $route;
 }
 
 1;
@@ -351,16 +375,6 @@ L<Mojolicious::Guides::Routing> for more information.
   # Route with destination
   $r->delete('/user')->to('user#remove');
 
-=head2 detour
-
-  $r = $r->detour(action => 'foo');
-  $r = $r->detour('controller#action');
-  $r = $r->detour(Mojolicious->new, foo => 'bar');
-  $r = $r->detour('MyApp', {foo => 'bar'});
-
-Set default parameters for this route and allow partial matching to simplify application embedding, takes the same
-arguments as L</"to">.
-
 =head2 find
 
   my $route = $r->find('foo');
@@ -411,6 +425,18 @@ Check if this route qualifies as an endpoint.
 
 Check if this route is a WebSocket.
 
+=head2 methods
+
+  my $methods = $r->methods;
+  $r          = $r->methods('GET');
+  $r          = $r->methods('GET', 'POST');
+  $r          = $r->methods(['GET', 'POST']);
+
+Restrict HTTP methods this route is allowed to handle, defaults to no restrictions.
+
+  # Route with two methods and destination
+  $r->any('/foo')->methods('GET', 'POST')->to('foo#bar');
+
 =head2 name
 
   my $name = $r->name;
@@ -438,19 +464,6 @@ L<Mojolicious::Guides::Routing> for more information.
 
   # Route with destination
   $r->options('/user')->to('user#overview');
-
-=head2 over
-
-  my $over = $r->over;
-  $r       = $r->over(foo => 1);
-  $r       = $r->over(foo => 1, bar => {baz => 'yada'});
-  $r       = $r->over([foo => 1, bar => {baz => 'yada'}]);
-
-Activate conditions for this route. Note that this automatically disables the routing cache, since conditions are too
-complex for caching.
-
-  # Route with condition and destination
-  $r->get('/foo')->over(host => qr/mojolicious\.org/)->to('foo#bar');
 
 =head2 parse
 
@@ -521,7 +534,7 @@ Remove route from parent.
   $r->find('foo')->remove;
 
   # Reattach route to new parent
-  $r->route('/foo')->add_child($r->find('bar')->remove);
+  $r->any('/foo')->add_child($r->find('bar')->remove);
 
 =head2 render
 
@@ -535,14 +548,18 @@ Render route with parameters into a path.
 
 The L<Mojolicious::Routes> object this route is a descendant of.
 
-=head2 route
+=head2 requires
 
-  my $route = $r->route;
-  my $route = $r->route('/:action');
-  my $route = $r->route('/:action', action => qr/\w+/);
-  my $route = $r->route(format => 0);
+  my $requires = $r->requires;
+  $r           = $r->requires(foo => 1);
+  $r           = $r->requires(foo => 1, bar => {baz => 'yada'});
+  $r           = $r->requires([foo => 1, bar => {baz => 'yada'}]);
 
-Low-level generator for routes matching all HTTP request methods, returns a L<Mojolicious::Routes::Route> object.
+Activate conditions for this route. Note that this automatically disables the routing cache, since conditions are too
+complex for caching.
+
+  # Route with condition and destination
+  $r->get('/foo')->requires(host => qr/mojolicious\.org/)->to('foo#bar');
 
 =head2 suggested_method
 
@@ -593,18 +610,6 @@ L<Mojolicious::Guides::Tutorial> and L<Mojolicious::Guides::Routing> for more in
   my $auth = $r->under('/user')->to('user#auth');
   $auth->get('/show')->to('#show');
   $auth->post('/create')->to('#create');
-
-=head2 via
-
-  my $methods = $r->via;
-  $r          = $r->via('GET');
-  $r          = $r->via('GET', 'POST');
-  $r          = $r->via(['GET', 'POST']);
-
-Restrict HTTP methods this route is allowed to handle, defaults to no restrictions.
-
-  # Route with two methods and destination
-  $r->route('/foo')->via('GET', 'POST')->to('foo#bar');
 
 =head2 websocket
 
