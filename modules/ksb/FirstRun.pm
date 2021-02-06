@@ -342,10 +342,96 @@ sub _packagesForVendor
 
 __DATA__
 @@ pkg/debian/unknown
-libyaml-libyaml-perl libio-socket-ssl-perl libjson-xs-perl
-git shared-mime-info cmake build-essential flex bison gperf libssl-dev intltool
+# This is woefully incomplete and not very useful.
+# Perl support
+libyaml-libyaml-perl 
+libio-socket-ssl-perl 
+libjson-xs-perl
+liburi-perl 
+# Basic build tools
+bison 
+build-essential 
+cmake 
+flex 
+gettext
+git 
+gperf 
+libssl-dev 
+intltool
+shared-mime-info 
+# Qt-related
 libdbusmenu-qt5-dev
-liburi-perl gettext
+
+@@ pkg/neon/unknown
+# Neon is a lot like Debian, except we know Qt is sufficiently new
+# to install Qt dev-tools.
+# Perl support
+libyaml-libyaml-perl 
+libio-socket-ssl-perl 
+libjson-xs-perl
+liburi-perl 
+# Basic build tools
+bison 
+build-essential 
+cmake 
+flex 
+gettext
+git 
+gperf 
+libssl-dev 
+intltool
+meson
+ninja-build
+shared-mime-info 
+# Qt-related
+libdbusmenu-qt5-dev
+libqt5svg5-dev
+libqt5waylandclient5-dev 
+libqt5x11extras5-dev 
+qtbase5-private-dev
+qtdeclarative5-dev
+qtmultimedia5-dev 
+qtquickcontrols2-5-dev 
+qtscript5-dev 
+qttools5-dev
+qtwayland5-dev-tools 
+qtxmlpatterns5-dev-tools
+# Frameworks dependencies
+# .. polkit-qt-1
+libpolkit-gobject-1-dev  
+libpolkit-agent-1-dev 
+# .. kdoctools
+libxml2-dev 
+libxslt-dev
+# .. kwindowsystem
+libwayland-dev
+libxcb-icccm4-dev 
+libxcb-keysyms1-dev 
+libxcb-res0-dev 
+libxcb-xfixes0-dev
+libxcb-xkb-dev 
+libxfixes-dev 
+libxrender-dev
+wayland-protocols 
+# .. kwallet
+libgcrypt-dev 
+libgpgme11-dev 
+libgpgmepp-dev
+# .. kactivities
+libboost-dev
+# .. kfilemetadata
+libattr1-dev
+# .. kidletime
+libxcb-sync-dev
+# And others
+qt5keychain-dev
+libopenal-dev
+libopenjp2-7-dev 
+libqt5location5
+libraw-dev 
+libsane-dev
+libsndfile1-dev 
+libxcb-glx0-dev 
 
 @@ pkg/opensuse/unknown
 cmake
