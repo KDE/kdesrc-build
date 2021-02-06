@@ -361,6 +361,11 @@ intltool
 shared-mime-info 
 # Qt-related
 libdbusmenu-qt5-dev
+# And others
+liblmdb-dev
+libsm-dev
+libnm-dev
+libqrencode-dev
 
 @@ pkg/neon/unknown
 # Neon is a lot like Debian, except we know Qt is sufficiently new
@@ -423,15 +428,20 @@ libboost-dev
 libattr1-dev
 # .. kidletime
 libxcb-sync-dev
+libx11-xcb-dev
 # And others
 qt5keychain-dev
 libopenal-dev
 libopenjp2-7-dev 
-libqt5location5
+qtlocation5-dev
 libraw-dev 
 libsane-dev
 libsndfile1-dev 
 libxcb-glx0-dev 
+liblmdb-dev
+libsm-dev
+libnm-dev
+libqrencode-dev
 
 @@ pkg/opensuse/unknown
 cmake
