@@ -370,6 +370,15 @@ sub configureInternal
         return 0;
     }
 
+    # handle the linking of compile_commands.json back to source directory if wanted
+    # allows stuff like clangd to function out of the box
+    if ($module->getOption('compile-commands-linking')) {
+        # symlink itself will keep existing files untouched!
+        my $builddir = $module->fullpath('build');
+        my $srcdir = $module->fullpath('source');
+        symlink("$builddir/compile_commands.json", "$srcdir/compile_commands.json");
+    }
+
     return 1;
 }
 
@@ -417,6 +426,9 @@ sub _safe_run_cmake
     @commands = _stripToolchainFromCMakeOptions(@commands);
 
     unshift @commands, "-DCMAKE_TOOLCHAIN_FILE=$toolchain" if $toolchain ne '';
+
+    # generate a compile_commands.json if requested for e.g. clangd tooling
+    unshift @commands, "-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON" if $module->getOption('compile-commands-export');
 
     # Add -DBUILD_foo=OFF options for the directories in do-not-compile.
     # This will only work if the CMakeLists.txt file uses macro_optional_add_subdirectory()
