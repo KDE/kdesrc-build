@@ -656,6 +656,7 @@ libdbusmenu-qt-dev
 libdmtx-dev
 libepoxy-dev
 libgcrypt-dev
+libical-dev
 libinput-dev
 libqrencode-dev
 libxkbfile-dev
