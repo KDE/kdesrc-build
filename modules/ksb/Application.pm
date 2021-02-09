@@ -31,6 +31,7 @@ use ksb::IPC::Null;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
+use Scalar::Util qw(blessed);
 use List::Util qw(first min);
 use File::Basename; # basename, dirname
 use File::Glob ':glob';
