@@ -503,10 +503,15 @@ EOF
         unshift @selectors, split(/,\s*/, $moduleList);
     }
 
+    # Everything else in cmdlineOptions should be OK to apply directly as a module
+    # or context option by now.
+    $ctx->setOption(%{$cmdlineGlobalOptions});
+
     # _readConfigurationOptions will add pending global opts to ctx while ensuring
     # returned modules/sets have any such options stripped out. It will also add
     # module-specific options to any returned modules/sets.
-    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $deferredOptions);
+    my @optionModulesAndSets =
+        _readConfigurationOptions($ctx, $fh, $cmdlineGlobalOptions, $deferredOptions);
     close $fh;
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
@@ -517,10 +522,6 @@ EOF
         $ctx->commitEnvironmentChanges(); # Apply env options to environment
         _executeCommandLineProgram(@startProgramAndArgs); # noreturn
     }
-
-    # Everything else in cmdlineOptions should be OK to apply directly as a module
-    # or context option.
-    $ctx->setOption(%{$cmdlineGlobalOptions});
 
     if (!exists $ENV{HARNESS_ACTIVE}) {
         # Running in a test harness, avoid downloading metadata which will be
@@ -1206,6 +1207,9 @@ sub _parseModuleSetOptions
 #  filehandle - The I/O object to read from. Must handle _eof_ and _readline_
 #  methods (e.g. <IO::Handle> subclass).
 #
+#  cmdlineGlobalOptions - An input hashref mapping command line options to their
+#  values (if any), so that these may override conflicting entries in the rc-file
+#
 #  deferredOptions - An out parameter: a hashref holding the options set by any
 #  'options' blocks read in by this function. Each key (identified by the name
 #  of the 'options' block) will point to a hashref value holding the options to
@@ -1221,8 +1225,7 @@ sub _parseModuleSetOptions
 sub _readConfigurationOptions
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $fh = shift;
-    my $deferredOptionsRef = shift;
+    my ($fh, $cmdlineGlobalOptions, $deferredOptionsRef) = @_;
     my @module_list;
     my $rcfile = $ctx->rcFile();
     my ($option, %readModules);
@@ -1247,7 +1250,11 @@ sub _readConfigurationOptions
         }
 
         # Now read in each global option.
-        _parseModuleOptions($ctx, $fileReader, $ctx);
+        my $globalOpts = _parseModuleOptions($ctx, $fileReader, ksb::OptionsBase->new());
+
+        # Remove any cmdline options so they don't overwrite build context
+        delete @{$globalOpts->{options}}{keys %{$cmdlineGlobalOptions}};
+        $ctx->mergeOptionsFrom($globalOpts);
 
         last;
     }

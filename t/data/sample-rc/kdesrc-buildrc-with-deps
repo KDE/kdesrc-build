@@ -10,6 +10,12 @@ global
     cxxflags # empty
     # Make sure the cmdline switch in corresponding test is picked up
     include-dependencies true
+
+    # To prevent 'global' flags from being stripped in modules
+    override-build-system kde
+
+    # Used to test indirect options expansion
+    num-cores   8
 end global
 
 module-set set1
@@ -20,7 +26,7 @@ end module-set
 
 module module2
     repository git://localhost/git/module2.git
-    make-options -j2
+    make-options -j ${num-cores}
     tag fake-tag5
 end module
 
