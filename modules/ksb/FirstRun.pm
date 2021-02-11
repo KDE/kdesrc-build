@@ -36,20 +36,6 @@ use constant {
 ## Add kdesrc-build to PATH
 export PATH="$HOME/kde/src/kdesrc-build:$PATH"
 
-## Run projects built with kdesrc-build
-function kdesrc-run
-{
-  # get the build directory and install directory from cache. save as array.
-  local moduledirs=( $(perl -MJSON::PP -Mautodie \
-    -E "my \$dir = -e q(kdesrc-buildrc) ? q(.) : \$ENV{HOME};" \
-    -E "open my \$json, q(<), qq(\$dir/.kdesrc-build-data);" \
-    -E "local \$/; my \$m = decode_json(<\$json>);" \
-    -E "say \$m->{q($1)}->{q(build-dir)};" \
-    -E "say \$m->{q($1)}->{q(install-dir)};") )
-
-  source "${moduledirs[0]}/prefix.sh" && "${moduledirs[1]}/bin/$1" "${@:2:$#}"
-}
-
 ## Autocomplete for kdesrc-run
 function _comp-kdesrc-run
 {
@@ -63,12 +49,7 @@ function _comp-kdesrc-run
   fi
 
   # Filter cache to get build modules
-  local modules=$(perl -MJSON::PP -Mautodie \
-    -E 'my $dir = -e q(kdesrc-buildrc) ? q(.) : $ENV{HOME};' \
-    -E 'open my $json, q(<), qq($dir/.kdesrc-build-data);' \
-    -E 'local $/; my $m = decode_json(<$json>);' \
-    -E 'my @modules_in_cache = keys %{$m};' \
-    -E 'print qq(@modules_in_cache);' )
+  local modules=$(kdesrc-run --list-installed)
 
   # intersect lists
   COMPREPLY=($(compgen -W "${modules}" $cur))
@@ -344,21 +325,21 @@ __DATA__
 @@ pkg/debian/unknown
 # This is woefully incomplete and not very useful.
 # Perl support
-libyaml-libyaml-perl 
-libio-socket-ssl-perl 
+libyaml-libyaml-perl
+libio-socket-ssl-perl
 libjson-xs-perl
-liburi-perl 
+liburi-perl
 # Basic build tools
-bison 
-build-essential 
-cmake 
-flex 
+bison
+build-essential
+cmake
+flex
 gettext
-git 
-gperf 
-libssl-dev 
+git
+gperf
+libssl-dev
 intltool
-shared-mime-info 
+shared-mime-info
 # Qt-related
 libdbusmenu-qt5-dev
 # And others
@@ -371,56 +352,56 @@ libqrencode-dev
 # Neon is a lot like Debian, except we know Qt is sufficiently new
 # to install Qt dev-tools.
 # Perl support
-libyaml-libyaml-perl 
-libio-socket-ssl-perl 
+libyaml-libyaml-perl
+libio-socket-ssl-perl
 libjson-xs-perl
-liburi-perl 
+liburi-perl
 # Basic build tools
-bison 
-build-essential 
-cmake 
-flex 
+bison
+build-essential
+cmake
+flex
 gettext
-git 
-gperf 
-libssl-dev 
+git
+gperf
+libssl-dev
 intltool
 meson
 ninja-build
-shared-mime-info 
+shared-mime-info
 # Qt-related
 libdbusmenu-qt5-dev
 libqt5svg5-dev
-libqt5waylandclient5-dev 
-libqt5x11extras5-dev 
+libqt5waylandclient5-dev
+libqt5x11extras5-dev
 qtbase5-private-dev
 qtdeclarative5-dev
-qtmultimedia5-dev 
-qtquickcontrols2-5-dev 
-qtscript5-dev 
+qtmultimedia5-dev
+qtquickcontrols2-5-dev
+qtscript5-dev
 qttools5-dev
-qtwayland5-dev-tools 
+qtwayland5-dev-tools
 qtxmlpatterns5-dev-tools
 # Frameworks dependencies
 # .. polkit-qt-1
-libpolkit-gobject-1-dev  
-libpolkit-agent-1-dev 
+libpolkit-gobject-1-dev
+libpolkit-agent-1-dev
 # .. kdoctools
-libxml2-dev 
+libxml2-dev
 libxslt-dev
 # .. kwindowsystem
 libwayland-dev
-libxcb-icccm4-dev 
-libxcb-keysyms1-dev 
-libxcb-res0-dev 
+libxcb-icccm4-dev
+libxcb-keysyms1-dev
+libxcb-res0-dev
 libxcb-xfixes0-dev
-libxcb-xkb-dev 
-libxfixes-dev 
+libxcb-xkb-dev
+libxfixes-dev
 libxrender-dev
-wayland-protocols 
+wayland-protocols
 # .. kwallet
-libgcrypt-dev 
-libgpgme11-dev 
+libgcrypt-dev
+libgpgme11-dev
 libgpgmepp-dev
 # .. kactivities
 libboost-dev
@@ -432,12 +413,12 @@ libx11-xcb-dev
 # And others
 qt5keychain-dev
 libopenal-dev
-libopenjp2-7-dev 
+libopenjp2-7-dev
 qtlocation5-dev
-libraw-dev 
+libraw-dev
 libsane-dev
-libsndfile1-dev 
-libxcb-glx0-dev 
+libsndfile1-dev
+libxcb-glx0-dev
 liblmdb-dev
 libsm-dev
 libnm-dev
