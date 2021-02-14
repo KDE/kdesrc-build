@@ -76,4 +76,22 @@ $ctx->resetEnvironment();
         or diag explain $ctx->{env}->{PATH};
 }
 
+# Ensure binpath and libpath options work
+
+$ctx->resetEnvironment();
+
+{
+    my $mod = ksb::Module->new($ctx, 'test');
+    local $ENV{PATH} = '/bin:/usr/bin';
+
+    $ctx->setOption('binpath', '/tmp/fake/bin');
+    $ctx->setOption('libpath', '/tmp/fake/lib:/tmp/fake/lib64');
+
+    $mod->setupEnvironment();
+
+    ok($ctx->{env}->{PATH} =~ m(/tmp/fake/bin), 'Ensure `binpath` present in generated PATH');
+    ok($ctx->{env}->{LD_LIBRARY_PATH} =~ m(/tmp/fake/lib),
+        'Ensure `libpath` present in generated LD_LIBRARY_PATH');
+}
+
 done_testing();

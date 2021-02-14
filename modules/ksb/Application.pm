@@ -33,6 +33,7 @@ use Mojo::IOLoop;
 use Mojo::Promise;
 
 use Fcntl; # For sysopen
+use Scalar::Util qw(blessed);
 use List::Util qw(first min);
 use File::Basename; # basename, dirname
 use File::Glob ':glob';
@@ -603,14 +604,6 @@ sub createBuildContextWithoutMetadata
         $ctx->setRcFile($rcFile);
     }
 
-    # _readConfigurationOptions will add pending global opts to ctx while
-    # ensuring returned modules/sets have any such options stripped out. It
-    # will also add module-specific options to any returned modules/sets. This
-    # is done by adjusting the moduleResolver.
-    _readConfigurationOptions($ctx, $moduleResolver);
-
-    $ctx->loadPersistentOptions();
-
     # Set aside debug-related and other short-circuit cmdline options
     # for kdesrc-build CLI driver to handle
     my @debugFlags = qw(dependency-tree list-build print-modules);
@@ -627,6 +620,14 @@ sub createBuildContextWithoutMetadata
     # Everything else in cmdlineOptions should be OK to apply directly as a
     # module or context option.
     $ctx->setOption(%{$cmdlineGlobalOptions});
+
+    # _readConfigurationOptions will add pending global opts to ctx while
+    # ensuring returned modules/sets have any such options stripped out. It
+    # will also add module-specific options to any returned modules/sets. This
+    # is done by adjusting the moduleResolver.
+    _readConfigurationOptions($ctx, $moduleResolver);
+
+    $ctx->loadPersistentOptions();
 }
 
 # Returns a list of selectors that should be added to the overall selector
@@ -1151,7 +1152,7 @@ There was no repository selected for the y[b[$name] module-set declared at
 A repository is needed to determine where to download the source code from.
 
 Most will want to use the b[g[kde-projects] repository. See also
-https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/kde-modules-and-selection.html#module-sets
+https://docs.kde.org/?application=kdesrc-build&branch=trunk5&path=kde-modules-and-selection.html#module-sets
 EOF
         die make_exception('Config', 'Missing repository option');
     }
@@ -1320,6 +1321,7 @@ sub _readConfigurationOptions
     my $moduleResolver = assert_isa(shift, 'ksb::ModuleResolver');
 
     my $fh = $ctx->loadRcFile();
+    my $cmdlineGlobalOptions = $moduleResolver->{cmdlineOptions}->{global};
     my $deferredOptionsRef = { };
     my @module_list;
     my $rcfile = $ctx->rcFile();
@@ -1345,7 +1347,11 @@ sub _readConfigurationOptions
         }
 
         # Now read in each global option.
-        _parseModuleOptions($ctx, $fileReader, $ctx);
+        my $globalOpts = _parseModuleOptions($ctx, $fileReader, ksb::OptionsBase->new());
+
+        # Remove any cmdline options so they don't overwrite build context
+        delete @{$globalOpts->{options}}{keys %{$cmdlineGlobalOptions}};
+        $ctx->mergeOptionsFrom($globalOpts);
 
         last;
     }
@@ -2481,7 +2487,7 @@ Important Options:
       (This is enabled by default; use --no-include-dependencies to disable)
     --stop-on-failure      Stops the build as soon as a package fails to build.
 
-More docs at https://docs.kde.org/trunk5/en/extragear-utils/kdesrc-build/
+More docs at https://docs.kde.org/?application=kdesrc-build
     Supported configuration options: https://go.kde.org/u/ksboptions
     Supported cmdline options:       https://go.kde.org/u/ksbcmdline
 DONE

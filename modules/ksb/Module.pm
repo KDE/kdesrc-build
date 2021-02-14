@@ -722,6 +722,8 @@ sub setupEnvironment
     } else {
         my $kdedir = $self->getOption('kdedir');
         my $qtdir  = $self->getOption('qtdir');
+        my $binpath  = $self->getOption('binpath');
+        my $libpath  = $self->getOption('libpath');
 
         # Ensure the platform libraries we're building can be found, as long as they
         # are not the system's own libraries.
@@ -733,6 +735,12 @@ sub setupEnvironment
             $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$platformDir/lib/pkgconfig");
             $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/lib");
             $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
+        }
+        if (length $binpath) {
+            $ctx->prependEnvironmentValue('PATH', $binpath);
+        }
+        if (length $libpath) {
+            $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', $libpath);
         }
     }
 
@@ -960,12 +968,45 @@ sub destDir
     my $destDir = $self->getOption('dest-dir');
 
     my $basePath = "";
+    my $layout = $self->getOption('directory-layout');
+    my $oldlayout = $self->getOption('ignore-kde-structure');
+    if ($oldlayout) {
+        # avoid spamming
+        if (!$self->getOption('#warned-deprecated-ignore-kde-structure')) {
+            if($oldlayout eq 'true' || $oldlayout == 1) {
+                warning("the option b[ignore-kde-structure true] is deprecated. Please substitute the option b[directory-layout flat] in your ~/.kdesrc-buildrc file.");
+            } else {
+                warning("The option b[ignore-kde-structure false] is deprecated. Please substitute the option b[directory-layout invent] in your ~/.kdesrc-buildrc file.");
+            }
+        }
+        # no or equivalent layout configured, assume the user wants to use flat layout
+        if (!$layout || $layout eq 'flat') {
+            $layout = 'flat';
+        } else {
+            # avoid spamming
+            if (!$self->getOption('#warned-deprecated-ignore-kde-structure')) {
+                warning("Deprecated b[ignore-kde-structure] will be ignored in favour of b[directory-layout] for b[$self]");
+            }
+        }
+        # avoid spamming
+        $self->setOption('#warned-deprecated-ignore-kde-structure', 1);
+    }
 
-    if ($self->getOption('ignore-kde-structure')) {
+    if ($layout eq 'flat') {
         $basePath = $self->name();
     } else {
-        $basePath = shift // $self->getOption('#xml-full-path');
-        $basePath ||= $self->name(); # Default if not provided in repo-metadata
+        # invent layout only works for proper KDE projects, which have a kde:(.*).git pattern repository configured
+        if ($layout eq 'invent' && $self->getOption('repository') =~ m/kde:(.*)\.git/) {
+            $basePath = $1;
+        } else {
+            if ($layout && $layout ne 'invent' && $layout ne 'metadata' &&
+                !$self->getOption('#warned-invalid-directory-layout')) { # avoid spamming
+                warning("Invalid b[directory-layout] value: $layout. Will use b[metadata] instead for b[$self]");
+                $self->setOption('#warned-invalid-directory-layout', 1);
+            }
+            $basePath = shift // $self->getOption('#xml-full-path');
+            $basePath ||= $self->name(); # Default if not provided in repo-metadata
+        }
     }
 
     $destDir =~ s/(\$\{MODULE})|(\$MODULE\b)/$basePath/g;

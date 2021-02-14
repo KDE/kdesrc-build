@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language: kdesrc-build configuration file
 " Maintainer: Michael Pyne <mpyne@kde.org>
-" Latest Revision: 30 April 2019
+" Latest Revision: 6 February 2021
 
-" Copyright (c) 2014-2019 Michael Pyne <mpyne@kde.org>
+" Copyright (c) 2014-2021 Michael Pyne <mpyne@kde.org>
 " Redistribution and use in source and binary forms, with or without
 " modification, are permitted provided that the following conditions
 " are met:
@@ -42,7 +42,7 @@ syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
             \ cmake-generator cmake-toolchain ninja-options
             \ override-build-system override-url prefix qtdir repository
             \ revision source-dir svn-server tag remove-after-install
-            \ qmake-options git-user
+            \ qmake-options git-user directory-layout
 
 syn keyword ksbrcGlobalOption contained skipwhite nextgroup=ksbrcStringValue
             \ branch-group git-desired-protocol git-repository-base http-proxy
@@ -54,6 +54,7 @@ syn keyword ksbrcGlobalOption contained skipwhite nextgroup=ksbrcStringValue
 syn keyword ksbrcErrorGlobalOption contained skipwhite nextgroup=ksbrcStringValue
             \ branch-group git-desired-protocol git-repository-base http-proxy
             \ kde-languages niceness debug-level persistent-data-file set-env
+            \ num-cores num-cores-low-mem
 
 syn keyword ksbrcModuleSetOption contained skipwhite nextgroup=ksbrcStringValue
             \ use-modules ignore-modules
@@ -67,7 +68,7 @@ syn keyword ksbrcBoolOption contained skipwhite nextgroup=ksbrcBoolValue
             \ build-system-only build-when-unchanged ignore-kde-structure
             \ include-dependencies install-after-build manual-build manual-update
             \ no-src reconfigure recreate-configure refresh-build run-tests
-            \ use-clean-install
+            \ use-clean-install compile-commands-export compile-commands-linking
 
 syn keyword ksbrcGlobalBoolOption contained skipwhite nextgroup=ksbrcBoolValue
             \ colorful-output disable-agent-check disable-snapshots pretend

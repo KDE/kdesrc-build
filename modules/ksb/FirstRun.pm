@@ -30,7 +30,7 @@ environments as fielded in "minimal Docker container" forms of popular distros.
 
 use constant {
     SHELL_RC_SNIPPET => <<'RC'
-# kdesrc-build ##################################################
+# kdesrc-build #################################################################
 
 ## Add kdesrc-build to PATH
 export PATH="$HOME/kde/src/kdesrc-build:$PATH"
@@ -38,9 +38,46 @@ export PATH="$HOME/kde/src/kdesrc-build:$PATH"
 ## Run projects built with kdesrc-build
 function kdesrc-run
 {
-  source "$HOME/kde/build/$1/prefix.sh" && "$HOME/kde/usr/bin/$@"
+  # get the build directory and install directory from cache. save as array.
+  local moduledirs=( $(perl -MJSON::PP -Mautodie \
+    -E "my \$dir = -e q(kdesrc-buildrc) ? q(.) : \$ENV{HOME};" \
+    -E "open my \$json, q(<), qq(\$dir/.kdesrc-build-data);" \
+    -E "local \$/; my \$m = decode_json(<\$json>);" \
+    -E "say \$m->{q($1)}->{q(build-dir)};" \
+    -E "say \$m->{q($1)}->{q(install-dir)};") )
+
+  source "${moduledirs[0]}/prefix.sh" && "${moduledirs[1]}/bin/$1" "${@:2:$#}"
 }
-#################################################################
+
+## Autocomplete for kdesrc-run
+function _comp-kdesrc-run
+{
+  local cur
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+
+  # Complete only the first argument
+  if [[ $COMP_CWORD != 1 ]]; then
+    return 0
+  fi
+
+  # Filter cache to get build modules
+  local modules=$(perl -MJSON::PP -Mautodie \
+    -E 'my $dir = -e q(kdesrc-buildrc) ? q(.) : $ENV{HOME};' \
+    -E 'open my $json, q(<), qq($dir/.kdesrc-build-data);' \
+    -E 'local $/; my $m = decode_json(<$json>);' \
+    -E 'my @modules_in_cache = keys %{$m};' \
+    -E 'print qq(@modules_in_cache);' )
+
+  # intersect lists
+  COMPREPLY=($(compgen -W "${modules}" $cur))
+
+  return 0
+}
+## register autocomplete function
+complete -o nospace -F _comp-kdesrc-run kdesrc-run
+
+################################################################################
 RC
 };
 
@@ -304,10 +341,106 @@ sub _packagesForVendor
 
 __DATA__
 @@ pkg/debian/unknown
-libyaml-libyaml-perl libio-socket-ssl-perl libjson-xs-perl
-git shared-mime-info cmake build-essential flex bison gperf libssl-dev intltool
+# This is woefully incomplete and not very useful.
+# Perl support
+libyaml-libyaml-perl 
+libio-socket-ssl-perl 
+libjson-xs-perl
+liburi-perl 
+# Basic build tools
+bison 
+build-essential 
+cmake 
+flex 
+gettext
+git 
+gperf 
+libssl-dev 
+intltool
+shared-mime-info 
+# Qt-related
 libdbusmenu-qt5-dev
-liburi-perl gettext
+# And others
+liblmdb-dev
+libsm-dev
+libnm-dev
+libqrencode-dev
+
+@@ pkg/neon/unknown
+# Neon is a lot like Debian, except we know Qt is sufficiently new
+# to install Qt dev-tools.
+# Perl support
+libyaml-libyaml-perl 
+libio-socket-ssl-perl 
+libjson-xs-perl
+liburi-perl 
+# Basic build tools
+bison 
+build-essential 
+cmake 
+flex 
+gettext
+git 
+gperf 
+libssl-dev 
+intltool
+meson
+ninja-build
+shared-mime-info 
+# Qt-related
+libdbusmenu-qt5-dev
+libqt5svg5-dev
+libqt5waylandclient5-dev 
+libqt5x11extras5-dev 
+qtbase5-private-dev
+qtdeclarative5-dev
+qtmultimedia5-dev 
+qtquickcontrols2-5-dev 
+qtscript5-dev 
+qttools5-dev
+qtwayland5-dev-tools 
+qtxmlpatterns5-dev-tools
+# Frameworks dependencies
+# .. polkit-qt-1
+libpolkit-gobject-1-dev  
+libpolkit-agent-1-dev 
+# .. kdoctools
+libxml2-dev 
+libxslt-dev
+# .. kwindowsystem
+libwayland-dev
+libxcb-icccm4-dev 
+libxcb-keysyms1-dev 
+libxcb-res0-dev 
+libxcb-xfixes0-dev
+libxcb-xkb-dev 
+libxfixes-dev 
+libxrender-dev
+wayland-protocols 
+# .. kwallet
+libgcrypt-dev 
+libgpgme11-dev 
+libgpgmepp-dev
+# .. kactivities
+libboost-dev
+# .. kfilemetadata
+libattr1-dev
+# .. kidletime
+libxcb-sync-dev
+libx11-xcb-dev
+# And others
+qt5keychain-dev
+libopenal-dev
+libopenjp2-7-dev 
+qtlocation5-dev
+libraw-dev 
+libsane-dev
+libsndfile1-dev 
+libxcb-glx0-dev 
+liblmdb-dev
+libsm-dev
+libnm-dev
+libqrencode-dev
 
 @@ pkg/opensuse/unknown
 cmake
@@ -522,6 +655,7 @@ libdbusmenu-qt-dev
 libdmtx-dev
 libepoxy-dev
 libgcrypt-dev
+libical-dev
 libinput-dev
 libqrencode-dev
 libxkbfile-dev
@@ -583,7 +717,7 @@ global
     source-dir ~/kde/src   # Where sources are downloaded
     build-dir  ~/kde/build # Where the source build is run
 
-    ignore-kde-structure true # Use flat structure
+    directory-layout invent # Use invent.kde.org structure
 
     # Will pull in KDE-based dependencies only, to save you the trouble of
     # listing them all below

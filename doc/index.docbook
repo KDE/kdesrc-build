@@ -1195,7 +1195,11 @@ decide that you'd rather not download, build, and install
 <literal>kdeutils</literal>.</para>
 
 <para>You can achieve this by using the <link
-linkend="conf-ignore-modules">ignore-modules</link> configuration option.</para>
+linkend="conf-ignore-modules">ignore-modules</link> configuration option.
+On the command line the
+<link linkend="ignoring-modules">&cmd-ignore-modules; option</link>
+does the same thing, but is more convenient for filtering out a module just once.
+</para>
 
 <example id="example-ignoring-a-module">
 <title>Example for ignoring a kde-project module in a group</title>
@@ -1974,8 +1978,10 @@ cases it supported are no longer significant issues for &kde; contributors.</par
 <entry>Module setting overrides global</entry>
 <entry><para>Use this option to specify which generator to use with &cmake;.
 Currently both <literal>Ninja</literal> and <literal>Unix Makefiles</literal>
-are supported. Invalid (unsupported) values are ignored and treated as if
-unset. If not set <literal>Unix Makefiles</literal> will be used by default.
+as well as extra generators based on them like <literal>Eclipse CDT4 - Ninja
+</literal> are supported. Invalid (unsupported) values are ignored and treated
+as if unset. If not set <literal>Unix Makefiles</literal> will be used by
+default.
 </para>
 
 <para>Note that if a valid generator is also specified through
@@ -2044,6 +2050,29 @@ are set for you automatically)</para></entry>
 This option defaults to <replaceable>true</replaceable>. Note that &kdesrc-build; will not output the
 color codes to anything but a terminal (such as xterm, &konsole;, or the normal
 &Linux; console).
+</entry>
+</row>
+
+<row id="conf-compile-commands-export">
+<entry>compile-commands-export</entry>
+<entry>Module setting overrides global</entry>
+<entry>
+<para>Enables the generation of a <literal>compile_commands.json</literal> via CMake inside the build directory.
+This option defaults to <replaceable>true</replaceable>, set it to <userinput>false</userinput> to disable
+this behavior.
+</para>
+</entry>
+</row>
+
+<row id="conf-compile-commands-linking">
+<entry>compile-commands-linking</entry>
+<entry>Module setting overrides global</entry>
+<entry>
+<para>Enables the creation of symbolic links from <literal>compile_commands.json</literal> generated via CMake
+inside the build directory to the matching source directory.
+This option defaults to <replaceable>false</replaceable>, set it to <userinput>true</userinput> to enable
+the automatic symbolic link creation.
+</para>
 </entry>
 </row>
 
@@ -2308,15 +2337,42 @@ on also use that proxy server, if possible, by setting the
 <row id="conf-ignore-kde-structure">
 <entry>ignore-kde-structure</entry>
 <entry>Module setting overrides global</entry>
-<entry><para>This option is used to store the source and the build files directly
-in the name of the module. For example,
-<literal>source/extragear/network/telepathy/ktp-text-ui</literal>
-becomes
-<literal>source/ktp-text-ui</literal>.
-This option is disabled by default. If you want to enable this option you need to set it
-to <userinput>true</userinput>.</para>
+<entry>
+<para>This option is deprecated and will be removed (again) in a future release.</para>
 
-<para>This option was introduced with &kdesrc-build; 1.16.</para>
+<para>Please use <option><link linkend="conf-directory-layout">directory-layout</link></option>
+instead, which offers more options.</para>
+</entry>
+</row>
+
+<row id="conf-directory-layout">
+<entry>directory-layout</entry>
+<entry>Module setting overrides global</entry>
+<entry><para>This option is used to configure the layout which &kdesrc-build; should use when
+creating source and build directories.</para>
+<para>Currently, there are three possible values: <userinput>metadata</userinput>,
+<userinput>invent</userinput> and <userinput>flat</userinput></para>
+<para>The <userinput>flat</userinput> layout will group all modules directly underneath the top level
+source and build directories. For example,
+<literal>source/extragear/network/telepathy/ktp-text-ui</literal> in the <userinput>metadata</userinput>
+layout would be <literal>source/ktp-text-ui</literal> using the <userinput>flat</userinput> layout
+instead.
+</para>
+<para>The <userinput>invent</userinput> layout creates a directory hierarchy mirroring the relative
+paths of repositories on <ulink url="https://invent.kde.org/">invent.kde.org</ulink>. For example
+<literal>source/kde/applications/kate</literal> in the <userinput>metadata</userinput> layout would
+be <literal>source/utilities/kate</literal> using the <userinput>invent</userinput> layout instead.
+This layout only affects KDE projects. It is a good choice for people starting out with
+&kdesrc-build;.
+</para>
+<para>Finally, the <userinput>metadata</userinput> layout is the same as the old default
+behaviour. This layout organises KDE projects according to the project paths specified in the
+project metadata for these modules. This is a good choice if you want a directory layout which
+tracks with certain KDE processes, but note that this path is therefore not always stable. As a
+result, &kdesrc-build; may abandon an old copy of the repository and clone a new one for a project
+due to changes in the project metadata.</para>
+<para>By default the <userinput>metadata</userinput> layout will be used, to preserve backwards
+compatibility for existing users of &kdesrc-build;.</para>
 </entry>
 </row>
 
