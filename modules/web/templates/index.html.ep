@@ -17,6 +17,7 @@
 <div id="modules_result_div"></div>
 <br/>
 <button id="btnStartBuild" disabled>Start Build!</button>
+<button id="btnShutdown">Shutdown kdesrc-build</button>
 
 <script defer>
 const btnSubmitModuleList = lkup('btnSubmitModuleList');
@@ -76,6 +77,31 @@ btnStartBuild.addEventListener('click', (ev) => {
     .then(text => {
         console.log(`Response received ${text}`)
         document.location.assign(text);
+    })
+    .catch(err => console.error(err));
+}, { passive: false });
+
+const btnShutdown = lkup('btnShutdown');
+btnShutdown.addEventListener('click', (ev) => {
+    const postUrl = '<%= url_for q(shutdown) %>';
+    fetch(postUrl, {
+        method: 'POST',
+    })
+    .then(resp => {
+        if(!resp.ok) {
+            console.error(resp);
+            throw new Error ('Invalid response!');
+        }
+
+        const selList = lkup('module_select');
+        while(selList.firstChild) {
+            selList.removeChild(selList.firstChild);
+        }
+
+        console.log("kdesrc-build is shutting down");
+        lkup('btnStartBuild').disabled = true;
+        lkup('btnSubmitModuleList').disabled = true;
+        lkup('btnShutdown').disabled = true;
     })
     .catch(err => console.error(err));
 }, { passive: false });
