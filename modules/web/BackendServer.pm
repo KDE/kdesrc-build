@@ -23,6 +23,9 @@ has 'selectors';
 sub new
 {
     my ($class, $optsAndSelectors) = @_;
+    $optsAndSelectors->{options}   //= {};
+    $optsAndSelectors->{selectors} //= [];
+
     return $class->SUPER::new(
         opts_and_selectors => $optsAndSelectors,
         options => $optsAndSelectors->{options},
@@ -55,7 +58,7 @@ sub make_new_ksb
     } else {
         $c->app->log(Mojo::Log->new(
                 path => $ctx->getLogDirFor($ctx) . "/mojo-backend.log",
-                level => 'info',
+                level => (exists $ENV{KDESRC_BUILD_DEBUG} ? 'debug' : 'info'),
                 ));
     }
 
@@ -124,7 +127,7 @@ sub _renderException {
 
     my $out = { };
 
-    if (ref $err eq 'STRING') {
+    if (!ref $err || ref $err eq 'STRING') {
         $out->{message}        = $err;
         $out->{exception_type} = 'Runtime';
     } else {
@@ -145,8 +148,7 @@ sub _generateRoutes {
         my $c = shift;
 
         if ($c->in_build || !defined $LAST_RESULT) {
-            $c->res->code(400);
-            return $c->render;
+            return $c->render(status => 400, json => { error => "Not ready to reset" });
         }
 
         my $old_result = $LAST_RESULT;
@@ -365,14 +367,30 @@ sub _generateRoutes {
 
         $IN_PROGRESS = 1;
 
-        $BUILD_PROMISE = $c->ksb->startHeadlessBuild->finally(sub {
+        $BUILD_PROMISE = $c->ksb->startHeadlessBuild->then(sub{
             my ($result) = @_;
-            $c->app->log->debug("Build done");
+            $c->app->log->debug("Build done, result $result");
+            $LAST_RESULT = $result;
+        })->catch(sub {
+            my @reason = @_;
+            $c->app->log->error("Exception during build @reason");
+        })->finally(sub {
             $IN_PROGRESS = 0;
-            return $LAST_RESULT = $result;
         });
 
         $c->render(text => $c->url_for('event_viewer')->to_abs->to_string);
+    });
+
+    $r->post('/shutdown' => sub {
+        my $c = shift;
+
+        # Shutdown the server once the transaction completes
+        # by invoking ksb::Application::finish
+        $c->tx->on(finish => sub {
+            $c->app->ksb->finish(0);
+        });
+
+        $c->render(text => "Shutting down.\n", status => 200);
     });
 }
 

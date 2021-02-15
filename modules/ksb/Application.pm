@@ -691,6 +691,9 @@ sub establishContext
     my $cmdlineOptions = $optsAndSelectors->{options};
     my $cmdlineGlobalOptions = $cmdlineOptions->{global};
 
+    $cmdlineGlobalOptions->{'start-program'}  //= [ ];
+    $cmdlineGlobalOptions->{'ignore-modules'} //= [ ];
+
     # Must precede loading the rc-file as the module sets and modules default
     # to the phasing of the global build context.
     $self->_applyBuildContextPhasesFromCmdline($ctx, $optsAndSelectors);
