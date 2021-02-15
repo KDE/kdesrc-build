@@ -599,7 +599,6 @@ sub install
     if (!$self->buildSystem()->installInternal(@makeInstallOpts))
     {
         error ("\tUnable to install r[$self]!");
-        $self->buildContext()->markModulePhaseFailed('install', $self);
         return 0;
     }
 
@@ -662,7 +661,6 @@ sub uninstall
     if (!$self->buildSystem()->uninstallInternal(@makeInstallOpts))
     {
         error ("\tUnable to uninstall r[$self]!");
-        $self->buildContext()->markModulePhaseFailed('install', $self);
         return 0;
     }
 
