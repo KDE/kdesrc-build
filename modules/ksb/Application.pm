@@ -981,9 +981,9 @@ sub startHeadlessBuild
     })->catch(sub {
         # Some kind of error definitely happened. Note it here and return an
         # error (non-zero) code.
-        my $error = shift;
+        my $error = shift // "unknown";
 
-        say STDERR "Caught an exception while building modules: $error!";
+        say STDERR "\nCaught an exception while building modules: $error!";
         return 1;
     })->finally(sub {
         # This happens independent of whether we succeed or fail without
@@ -1761,7 +1761,7 @@ sub _handle_build_phases
                 $module->setPersistentOption('failure-count', $prev_fail_count + 1);
 
                 # Force this promise chain to stay dead
-                return Mojo::Promise->new->reject('build');
+                return Mojo::Promise->new->reject($failureReason);
             })->then(sub {
                 $module->setPersistentOption('failure-count', 0);
             });

@@ -1140,7 +1140,7 @@ sub runPhase_p
     # Default handler
     $completion_coderef //= sub {
         my ($module, $result) = @_;
-        return $result || Mojo::Promise->new->reject;
+        return $result || Mojo::Promise->new->reject("$module failed to build");
     };
 
     my $ctx = $self->buildContext();
@@ -1206,7 +1206,6 @@ sub runPhase_p
     })->then(sub {
         # runs in this process once subprocess is done
         my $resultsRef = shift;
-        my $promise = Mojo::Promise->new;
 
         $self->{metrics}->{time_in_phase}->{$phaseName} = time - $start_time;
 
@@ -1222,15 +1221,17 @@ sub runPhase_p
         $self->addPostBuildMessage($_)
             foreach @{$resultsRef->{post_msgs}};
 
-        # TODO Make this a ->then handler?
-        my $completion_p = $completion_coderef->($self, $resultsRef->{result}, $resultsRef);
-        if ($resultsRef->{result}) {
+        # If the completion callback rejects, so will this new promise
+        return Mojo::Promise->resolve(
+            $completion_coderef->($self, $resultsRef->{result}, $resultsRef)
+        )->then(sub {
             $ctx->markModulePhaseSucceeded($phaseName, $self, $resultsRef->{extras});
-            return Mojo::Promise->resolve($completion_p);
-        } else {
+            return @_;
+        })
+        ->catch(sub {
             $ctx->markModulePhaseFailed($phaseName, $self);
-            return Mojo::Promise->reject ($completion_p);
-        }
+            return Mojo::Promise->reject(@_);
+        });
     });
 }
 

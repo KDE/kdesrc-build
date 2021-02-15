@@ -199,7 +199,7 @@ sub addOrdering {
 
 =head2 depsFor
 
-    my @dependency_item_names = $deps->depsFor('iten-name');
+    my @dependency_item_names = $deps->depsFor('item-name');
 
     # Use e.g. as
     my @item_promises = map { $deps->promiseFor($_) } @dependency_item_names;
@@ -268,21 +268,22 @@ sub makePromiseChain {
     my $start_promise = shift // Mojo::Promise->new->resolve;
     my @all_promises;
 
-    my $abort_if_rejected = $self->abort_after_failure;
-    my $do_abort = Mojo::Promise->new; # Used for abort_if_rejected only
-    my $eat_errors = sub { 0 };
+    my $eat_errors = sub { "Masked an ordering-only module failure" };
 
-    $do_abort->catch(sub {
-        say "\n * One of the modules failed to build and 'stop-on-failure' is enabled, aborting.\n"
-    });
+    # Handle --stop-on-failure by setting up a promise that we can reject when
+    # it's time to cancel remaining jobs waiting on a promise to fulfill to
+    # start
+    my $do_abort;
+
+    $do_abort = Mojo::Promise->new
+        if $self->abort_after_failure; # leave undef if we should keep going
 
     foreach my $itemName (keys %{$self->items}) {
         my $item = $self->items->{$itemName}
             or die "No item $itemName";
         my $sub = $item->{job};
         my @deps =
-            map { $_->{promise} }
-            map { $self->items->{$_} or die "No dep item $_" }
+            map { $self->items->{$_}->{promise} or die "No dep item $_" }
             $self->depsFor($itemName);
 
         # Add error-eating catch statements for order-only dependencies so that
@@ -292,12 +293,12 @@ sub makePromiseChain {
                 or die "No ordering item $priorItemName";
 
             my $priorItemPromise = $priorItem->{promise};
-            if (!$abort_if_rejected) {
-                # eat error so execution continues
-                $priorItemPromise = $priorItemPromise->catch($eat_errors);
+            if ($do_abort) {
+                # The "race" below will abort us early if needed
+                push @deps, $priorItemPromise;
+            } else {
+                push @deps, $priorItemPromise->catch($eat_errors);
             }
-
-            push @deps, $priorItemPromise;
         }
 
         # What *has* to finish before we should start?
@@ -309,24 +310,35 @@ sub makePromiseChain {
         # The race ensures that every job waiting on do_abort will fail early
         # once do_abort rejects, as we set it to do later.
         $base_promise = Mojo::Promise->race($base_promise, $do_abort)
-            if $abort_if_rejected;
+            if $do_abort;
 
         # $sub will itself return a promise when called, which is needed
         # for this chain to work
         push @all_promises, $base_promise->then($sub)->catch(sub {
-            # err handler, return a value to keep the Promise->all below from failing
-            # fast, force reject the item promise since $sub may not have run
-            $item->{promise}->reject;
+            # err handler, return a value to keep the Promise->all below from
+            # failing fast. Also force reject the item promise since $sub may
+            # not have run, but eat the error that would result to avoid
+            # Mojo::Promise warnings about unhandled rejected promises; the
+            # item promises are used for ordering only, not to manage
+            # exceptions.
+            $item->{promise}->reject("Prerequisite to $itemName failed")
+                ->catch(sub { 0 });
+            $do_abort->reject("A build step failed and stop-on-failure is enabled")
+                if $do_abort;
 
-            $do_abort->reject if $abort_if_rejected;
-            0; # Failure
+            # We've handled the error, let the rest of the build proceed if it
+            # otherwise would.
+            return 0; # Failure result
         });
     }
 
     die "No promises to chain based on provided orderings!"
         unless @all_promises;
 
-    return Mojo::Promise->all(@all_promises);
+    my $p = Mojo::Promise->all(@all_promises);
+    $p = $p->then(sub { $do_abort->resolve })
+        if $do_abort; # Avoids a warning about unused promises
+    return $p;
 }
 
 1;
