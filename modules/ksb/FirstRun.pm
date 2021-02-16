@@ -659,7 +659,6 @@ qt5-qtscript-dev
 qt5-qtsensors-dev
 qt5-qtsvg-dev
 qt5-qttools-dev
-qt5-qttools-static
 qt5-qtwayland-dev
 qt5-qtx11extras-dev
 texinfo
