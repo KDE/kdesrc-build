@@ -22,7 +22,12 @@ has 'selectors';
 
 sub new
 {
-    my ($class, $optsAndSelectors) = @_;
+    my ($class, $config) = @_;
+
+    # Mojolicious will override configuration in a dictionary keyed by 'config'
+    $config //= { config => { } };
+
+    my $optsAndSelectors = $config->{config};
     $optsAndSelectors->{options}   //= {};
     $optsAndSelectors->{selectors} //= [];
 
