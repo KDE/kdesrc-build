@@ -683,7 +683,7 @@ pacman -Syu --noconfirm --needed
 dnf -y install
 
 @@ cmd/install/alpine/unknown
-apk add
+apk add --virtual makedeps-kdesrc-build
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
