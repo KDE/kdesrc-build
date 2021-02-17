@@ -48,15 +48,22 @@ function _comp-kdesrc-run
     return 0
   fi
 
-  # Filter cache to get build modules
-  local modules=$(kdesrc-run --list-installed)
+  # Retrieve build modules through kdesrc-run
+  # If the exit status indicates failure, set the wordlist empty to avoid
+  # unrelated messages.
+  local modules
+  if ! modules=$(kdesrc-run --list-installed);
+  then
+      modules=""
+  fi
 
-  # intersect lists
-  COMPREPLY=($(compgen -W "${modules}" $cur))
+  # Return completions that match the current word
+  COMPREPLY=( $(compgen -W "${modules}" -- "$cur") )
 
   return 0
 }
-## register autocomplete function
+
+## Register autocomplete function
 complete -o nospace -F _comp-kdesrc-run kdesrc-run
 
 ################################################################################
