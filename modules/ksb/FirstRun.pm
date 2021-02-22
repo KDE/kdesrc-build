@@ -640,6 +640,7 @@ gpgme-dev
 grantlee-dev
 gstreamer-dev
 gst-plugins-base-dev
+libcanberra-dev
 libdbusmenu-qt-dev
 libdmtx-dev
 libepoxy-dev
@@ -659,9 +660,11 @@ perl-io-socket-ssl
 perl-uri
 perl-yaml-libyaml
 polkit-elogind-dev
+pulseaudio-dev
 qt5-qtbase-dev
 qt5-qtdeclarative-dev
 qt5-qtquickcontrols2-dev
+qt5-qtmultimedia-dev
 qt5-qtscript-dev
 qt5-qtsensors-dev
 qt5-qtsvg-dev
