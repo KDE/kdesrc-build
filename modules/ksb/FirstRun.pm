@@ -648,6 +648,7 @@ libgcrypt-dev
 libical-dev
 libinput-dev
 libqrencode-dev
+libsecret-dev
 libxkbfile-dev
 libxrender-dev
 libxslt-dev
