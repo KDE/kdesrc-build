@@ -409,7 +409,10 @@ sub build
     my $builddir = $pathinfo{'fullpath'};
     my $buildSystem = $self->buildSystem();
 
-    if ($buildSystem->name() eq 'generic' && !pretending()) {
+    if ($buildSystem->name() eq 'generic'
+        && !pretending()
+        && !$self->hasOption('custom-build-command')
+    ) {
         error ("\tr[b[$self] does not seem to have a build system to use.");
         return 0;
     }
@@ -456,6 +459,13 @@ sub setupBuildSystem
     my $moduleName = $self->name();
 
     my $buildSystem = $self->buildSystem();
+
+    if ($buildSystem->name() eq 'generic'
+        && $self->hasOption('custom-build-command')
+    ) {
+        info (" b[*] No build system detected for b[y[$self], assuming custom build command will handle");
+        return 1;
+    }
 
     if ($buildSystem->name() eq 'generic' && !pretending()) {
         croak_internal('Build system determination still pending when build attempted.');
