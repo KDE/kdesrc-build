@@ -105,12 +105,22 @@ for my $testcase (@{$test_data}) {
         diag(explain($ctx->phases(), explain($ctxPhases)));
     }
 
-    TODO: {
-        local $TODO = "Module-based phases require resolving the module first to get a good check.";
-
+    # Make a local sub just to avoid duplicate code in the TODO part below
+    my $modPhaseTest = sub {
         if(!is_deeply([$module->phases()->phases()], $modulePhases, "$testName: module phases ok")) {
             diag(explain($module->phases(), explain($modulePhases)));
         }
+    };
+
+    # Tests involving run-tests as an rc-file option, or module-specific
+    # manual-update, do not work so run them in a TODO label
+    if ($testcase->[1] || $testcase->[2]) {
+        TODO: {
+            local $TODO = "Module-based phases require resolving the module first to get a good check.";
+            $modPhaseTest->();
+        }
+    } else {
+        $modPhaseTest->();
     }
 }
 
