@@ -7,7 +7,7 @@ package ksb::BuildContext 0.36;
 
 use v5.22;
 use warnings;
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
+use experimental 'smartmatch';
 
 use Carp 'confess';
 use File::Basename; # dirname

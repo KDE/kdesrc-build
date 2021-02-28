@@ -15,7 +15,7 @@ package ksb::ModuleSet::KDEProjects 0.30;
 use warnings;
 use v5.22;
 use parent qw(ksb::ModuleSet);
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
+use experimental 'smartmatch';
 
 use ksb::BuildContext 0.20;
 use ksb::BuildException;

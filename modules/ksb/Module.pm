@@ -8,7 +8,7 @@ package ksb::Module 0.20;
 
 use v5.22;
 use warnings;
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
+use experimental 'smartmatch';
 
 use parent qw(ksb::OptionsBase);
 
