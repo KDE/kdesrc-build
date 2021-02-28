@@ -68,7 +68,7 @@ my $test_data = [
         'buildsystem build install',
         'buildsystem build install',
         ],
-    ["base with manual-update (non-selected)", '', 'manual-update false',
+    ["base with manual-update (non-selected)", '', 'manual-update true',
         [qw()],
         'update buildsystem build test install',
         'buildsystem build test install',
@@ -89,12 +89,13 @@ for my $testcase (@{$test_data}) {
         );
     my @selectors = $app->establishContext($optsAndSelectors);
 
+    note("--- New test $testName");
     is(scalar @selectors, 0, "$testName: Ensure selectors are empty.");
     my $module_resolver = $app->{module_resolver};
     is(scalar @{$module_resolver->{inputModulesAndOptions}}, 1, "$testName: Right number of modules read in.");
 
     my $module = $module_resolver->{definedModules}->{'kdesrc-build'};
-    isa_ok($module, 'ksb::Module');
+    isa_ok($module, 'ksb::Module', 'pre-resolved module');
     is($module->getOption('repository', 'module'),
         'https://invent.kde.org/sdk/kdesrc-build.git',
         "$testName: Read-in module option value is correct");
@@ -127,26 +128,12 @@ for my $testcase (@{$test_data}) {
 
     is($ctx->getOption($globalRcOpts[0]), $globalRcOpts[1], 'ctx global opt was properly set')
         if @globalRcOpts;
-    is($module->getOption($moduleRcOpts[0]), $moduleRcOpts[1], 'module opt was properly set')
+    is($module->getOption($moduleRcOpts[0]), $moduleRcOpts[1], "$moduleRcOpts[0] was properly set")
         if @moduleRcOpts;
 
     # Test that the phases come out right if the inputs are fed in right
-    # Make a local sub just to avoid duplicate code in the TODO part below
-    my $modPhaseTest = sub {
-        if(!is_deeply([$module->phases()->phases()], $modulePhases, "$testName: module phases ok")) {
-            diag(explain($module->phases(), explain($modulePhases)));
-        }
-    };
-
-    # Tests involving module-specific manual-update do not work so run them in
-    # a TODO label
-    if ($testcase->[2]) {
-        TODO: {
-            local $TODO = "Module-based phases require resolving the module first to get a good check.";
-            $modPhaseTest->();
-        }
-    } else {
-        $modPhaseTest->();
+    if(!is_deeply([$module->phases()->phases()], $modulePhases, "$testName: module phases ok")) {
+        diag(explain($module->phases(), explain($modulePhases)));
     }
 }
 

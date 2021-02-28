@@ -1944,7 +1944,8 @@ sub _updateModulePhases
     whisper ("Filtering out module phases.");
     for my $module (@_) {
         my $phaseList = $module->phases();
-        if ($module->getOption('no-svn') || $module->getOption('no-src'))
+
+        if (first { $module->getOption($_) } qw(no-svn no-src manual-update))
         {
             $phaseList->filterOutPhase('update');
         }
