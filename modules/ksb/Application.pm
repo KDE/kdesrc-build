@@ -705,7 +705,7 @@ sub establishContext
     unshift @selectors, $self->getResumeSelectorsFromCmdline($ctx, $optsAndSelectors);
 
     # The global options can also control which phases to use by default
-    _updateModulePhases($ctx);
+    $ctx->initializePhases();
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.
@@ -746,13 +746,6 @@ sub modulesFromSelectors
         my @rcfileModules = @{$moduleResolver->{inputModulesAndOptions}};
         @modules = $moduleResolver->expandModuleSets(@rcfileModules);
     }
-
-    # If modules were on the command line then they are effectively forced to
-    # process unless overridden by command line options as well. If phases
-    # *were* overridden on the command line, then no update pass is required
-    # (all modules already have correct phases)
-    @modules = _updateModulePhases(@modules)
-        unless @selectors;
 
     # TODO: Verify this does anything still
     my $metadataModule = $ctx->getKDEProjectsMetadataModule();
@@ -1442,6 +1435,7 @@ sub _readConfigurationOptions
             $newModule = _parseModuleOptions($ctx, $fileReader,
                 ksb::Module->new($ctx, $modulename));
             $newModule->{'#create-id'} = ++$creation_order;
+            $newModule->initializePhases();
             $seenModules{$modulename} = $newModule;
         }
 
@@ -1935,33 +1929,6 @@ EOF
     }
 
     return @moduleList[$startIndex .. $stopIndex];
-}
-
-# Updates the built-in phase list for all Modules passed into this function in
-# accordance with the options set by the user.
-sub _updateModulePhases
-{
-    whisper ("Filtering out module phases.");
-    for my $module (@_) {
-        my $phaseList = $module->phases();
-
-        if (first { $module->getOption($_) } qw(no-svn no-src manual-update))
-        {
-            $phaseList->filterOutPhase('update');
-        }
-
-        if ($module->getOption('manual-build')) {
-            $phaseList->filterOutPhase('buildsystem');
-            $phaseList->filterOutPhase('build');
-            $phaseList->filterOutPhase('test');
-            $phaseList->filterOutPhase('install');
-        }
-
-        $phaseList->filterOutPhase('install') unless $module->getOption('install-after-build');
-        $phaseList->filterOutPhase('test')    unless $module->getOption('run-tests');
-    }
-
-    return @_;
 }
 
 # Function: _cleanup_log_directory

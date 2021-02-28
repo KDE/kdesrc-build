@@ -36,6 +36,7 @@ use ksb::ModuleSet::Null;
 use Mojo::Promise;
 use Mojo::IOLoop;
 
+use List::Util qw(first);
 use POSIX qw(_exit :errno_h);
 use Storable qw(dclone);
 use Carp 'confess';
@@ -92,6 +93,30 @@ sub phases
 {
     my $self = shift;
     return $self->{phases};
+}
+
+# Performs any module-specific adjustments to build phases necessary based
+# on this module's options and the build context. Ensure any needed options
+# are set before calling.
+sub initializePhases
+{
+    my $self = shift;
+    my $phaseList = $self->phases();
+
+    if (first { $self->getOption($_) } qw(no-svn no-src manual-update))
+    {
+        $phaseList->filterOutPhase('update');
+    }
+
+    if ($self->getOption('manual-build')) {
+        $phaseList->filterOutPhase('buildsystem');
+        $phaseList->filterOutPhase('build');
+        $phaseList->filterOutPhase('test');
+        $phaseList->filterOutPhase('install');
+    }
+
+    $phaseList->filterOutPhase('install') unless $self->getOption('install-after-build');
+    $phaseList->filterOutPhase('test')    unless $self->getOption('run-tests');
 }
 
 sub moduleSet
@@ -455,7 +480,7 @@ sub installPhasePromises
 
             p_chdir($build_dir);
             $success = $self->buildSystem()->runTestsuite()
-                if $self->getOption('run-tests');
+                if $self->phases->has('test');
 
             # TODO: Make test failure a blocker for install?
             return { was_successful => 1, test_success => $success };

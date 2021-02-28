@@ -248,6 +248,7 @@ sub _resolveSingleSelector
         $selector->setOption('#guessed-kde-project', 1);
         $selector->setOption('#selected-by', 'initial-guess');
         $selector->setOption('#include-dependencies', $includingDeps);
+        $selector->initializePhases();
     }
 
     push @results, $selector unless @results;

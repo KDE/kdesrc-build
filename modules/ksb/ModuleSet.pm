@@ -127,8 +127,8 @@ sub _initializeNewModule
 
     $newModule->setModuleSet($self);
     $newModule->setScmType('git');
-    $newModule->phases->phases($self->phases()->phases());
     $newModule->mergeOptionsFrom($self);
+    $newModule->initializePhases();
     $newModule->{'#create-id'} = $self->{'#create-id'}
         if exists $self->{'#create-id'};
 }
