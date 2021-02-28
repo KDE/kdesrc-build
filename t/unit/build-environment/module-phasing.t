@@ -105,6 +105,32 @@ for my $testcase (@{$test_data}) {
         diag(explain($ctx->phases(), explain($ctxPhases)));
     }
 
+    # Run the module metadata resolution step and resolve selectors (or in this
+    # case the lack of specific selectors) to the relevant modules read from
+    # rc-file
+    my $workload = $app->modulesFromSelectors(@selectors);
+
+    is (!!$workload->{build}, 1, 'Workload tells us we can safely build');
+
+    my @modules = @{$workload->{selectedModules}};
+
+    is (scalar @modules, 1, 'Resolved to right number of modules');
+    is ($modules[0]->name(), $module->name(), 'Resolved module is same as pre-resolved.');
+
+    # Test that the test options were actually passed in properly.
+    my @globalRcOpts = split(' ', $testcase->[1]);
+    my @moduleRcOpts = split(' ', $testcase->[2]);
+
+    # Normalize getOption output like getOption does
+    $globalRcOpts[1] = '0' if $globalRcOpts[1] eq 'false';
+    $moduleRcOpts[1] = '0' if $moduleRcOpts[1] eq 'false';
+
+    is($ctx->getOption($globalRcOpts[0]), $globalRcOpts[1], 'ctx global opt was properly set')
+        if @globalRcOpts;
+    is($module->getOption($moduleRcOpts[0]), $moduleRcOpts[1], 'module opt was properly set')
+        if @moduleRcOpts;
+
+    # Test that the phases come out right if the inputs are fed in right
     # Make a local sub just to avoid duplicate code in the TODO part below
     my $modPhaseTest = sub {
         if(!is_deeply([$module->phases()->phases()], $modulePhases, "$testName: module phases ok")) {
@@ -112,9 +138,9 @@ for my $testcase (@{$test_data}) {
         }
     };
 
-    # Tests involving run-tests as an rc-file option, or module-specific
-    # manual-update, do not work so run them in a TODO label
-    if ($testcase->[1] || $testcase->[2]) {
+    # Tests involving module-specific manual-update do not work so run them in
+    # a TODO label
+    if ($testcase->[2]) {
         TODO: {
             local $TODO = "Module-based phases require resolving the module first to get a good check.";
             $modPhaseTest->();

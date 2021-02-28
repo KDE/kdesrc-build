@@ -843,7 +843,7 @@ sub _downloadKDEProjectMetadata
             warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
         }
 
-        if ($updateNeeded && pretending()) {
+        if ($updateNeeded && pretending() && !exists $ENV{HARNESS_ACTIVE}) {
             warning (" y[b[*] Ignoring y[b[--pretend] option to download required metadata\n" .
                      " y[b[*] --pretend mode will resume after metadata is available.");
             ksb::Debug::setPretending(0);
