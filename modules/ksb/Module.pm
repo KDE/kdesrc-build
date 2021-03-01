@@ -1205,6 +1205,8 @@ sub runPhase_p
         $savedBundles{$_} = dclone($ctx->{$_}->{"$self"} // {})
             foreach @bundles_to_copy;
 
+        close STDIN; # Avoid waiting forever to enter password if dev forgot to auth
+        open STDIN, '<', '/dev/null'; # But keep Perl from reopening...
         ksb::Debug::setSubprocessOutputHandle($subprocess);
 
         $self->buildContext->resetEnvironment();
