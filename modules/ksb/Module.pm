@@ -438,20 +438,10 @@ sub installPhasePromises
         # See Application.pm for its custom runPhase_p
         # ],
 
-        buildsystem => [
-            sub {
-                my $self = shift;
-                return { was_successful => $self->setupBuildSystem() };
-            },
-            sub {
-                my ($self, $was_successful) = @_;
-
-                return Mojo::Promise->new->reject('Unable to setup build system')
-                    unless $was_successful;
-
-                return $was_successful;
-            }
-        ],
+        buildsystem => sub {
+            my $self = shift;
+            return { was_successful => $self->setupBuildSystem() };
+        },
 
         build => [
             sub {
@@ -467,9 +457,6 @@ sub installPhasePromises
 
                 # $extras has metadata on number of warnings, but it's already
                 # been reported by the time we get here.
-
-                return 1 if $was_successful;
-                return Mojo::Promise->new->reject('Build failed');
             },
         ],
 
@@ -1175,8 +1162,8 @@ sub runPhase_p
 
     # Default handler
     $completion_coderef //= sub {
-        my ($module, $result) = @_;
-        return $result || Mojo::Promise->new->reject("$module failed to build");
+        my ($module, $result, $extras) = @_;
+        return $result;
     };
 
     my $ctx = $self->buildContext();
@@ -1219,7 +1206,21 @@ sub runPhase_p
         #   was_successful => bool,
         #   ... (other details)
         # }
-        my $resultRef = $blocking_coderef->($self);
+        my $resultRef = eval { $blocking_coderef->($self); };
+
+        # Capture errors so that we don't cause Mojolicious's own handler to
+        # push us into the ->catch block below. We need to get to the ->then
+        # handler to update options that may have changed as a ->finally
+        # handler has no access to the resolved values.
+        if ($@) {
+            $resultRef //= { };
+            $resultRef->{was_successful} = 0;
+            $resultRef->{error} = $@->{message} // $@;
+        }
+
+        if (!$resultRef->{was_successful} && !$resultRef->{error}) {
+            $resultRef->{error} = "The command for $phaseName failed";
+        }
 
         # Construct diffs of option changes to apply back in the main process
         my %optionChanges =
@@ -1232,18 +1233,10 @@ sub runPhase_p
             post_msgs  => $self->{postbuild_msgs},
             extras     => $resultRef,
         };
-    })->catch(sub {
-        # runs in this process once subprocess is done
-        # Must precede the ->then to catch internal errors and mark the phase
-        # as failed.
-        my $err = shift;
-        error("\n\n b[r[*] Failed to launch b[r[$phaseName] for b[r[$self]:\n\tb[$err]");
-        $ctx->markModulePhaseFailed($phaseName, $self);
-
-        return Mojo::Promise->new->reject($err);
     })->then(sub {
         # runs in this process once subprocess is done
         my $resultsRef = shift;
+        my $extras = $resultsRef->{extras};
 
         $self->{metrics}->{time_in_phase}->{$phaseName} = time - $start_time;
 
@@ -1259,17 +1252,31 @@ sub runPhase_p
         $self->addPostBuildMessage($_)
             foreach @{$resultsRef->{post_msgs}};
 
-        # If the completion callback rejects, so will this new promise
-        return Mojo::Promise->resolve(
-            $completion_coderef->($self, $resultsRef->{result}, $resultsRef)
-        )->then(sub {
-            $ctx->markModulePhaseSucceeded($phaseName, $self, $resultsRef->{extras});
-            return @_;
-        })
-        ->catch(sub {
-            $ctx->markModulePhaseFailed($phaseName, $self);
-            return Mojo::Promise->reject(@_);
-        });
+        # The completion callback is meant to act like a finally handler for
+        # setting post-build options and the like, ignore the return value
+        $completion_coderef->($self, $resultsRef->{result}, $resultsRef);
+
+        if ($resultsRef->{result}) {
+            $ctx->markModulePhaseSucceeded($phaseName, $self, $extras);
+        } else {
+            # Handle the error in the ->catch below
+            croak_runtime($extras->{error} || 'Unknown error');
+        }
+
+        return $resultsRef->{result};
+    })->catch(sub {
+        # runs in this process once subprocess is done
+        my $err = shift;
+        my $errFile = $self->getOption('#error-log-file');
+
+        print STDERR ("\e[1G\e[K") if -t STDERR; # clear the TTY if we're outputting to it.
+        error("\n b[r[*] Failed to launch b[r[$phaseName] for b[r[$self]:\n\tb[$err]");
+        error("\tb[*] See y[b[file://$errFile] for more detail.")
+            if $errFile;
+
+        $ctx->markModulePhaseFailed($phaseName, $self);
+
+        return Mojo::Promise->new->reject($err);
     });
 }
 
