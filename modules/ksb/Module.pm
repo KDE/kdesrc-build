@@ -511,8 +511,12 @@ sub build
     my $builddir = $pathinfo{'fullpath'};
     my $buildSystem = $self->buildSystem();
 
-    return Mojo::Promise->new->reject('There is no build system to use')
-        if ($buildSystem->name() eq 'generic' && !pretending());
+    if ($buildSystem->name() eq 'generic'
+        && !pretending()
+        && !$self->hasOption('custom-build-command')
+    ) {
+        return Mojo::Promise->new->reject('There is no build system to use')
+    }
 
     # Ensure we're in a known directory before we start; some options remove
     # the old build directory that a previous module might have been using.
@@ -540,6 +544,13 @@ sub setupBuildSystem
     my $moduleName = $self->name();
 
     my $buildSystem = $self->buildSystem();
+
+    if ($buildSystem->name() eq 'generic'
+        && $self->hasOption('custom-build-command')
+    ) {
+        info (" b[*] No build system detected for b[y[$self], assuming custom build command will handle");
+        return 1;
+    }
 
     if ($buildSystem->name() eq 'generic' && !pretending()) {
         croak_internal('Build system determination still pending when build attempted.');

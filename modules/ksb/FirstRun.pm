@@ -35,20 +35,6 @@ use constant {
 ## Add kdesrc-build to PATH
 export PATH="$HOME/kde/src/kdesrc-build:$PATH"
 
-## Run projects built with kdesrc-build
-function kdesrc-run
-{
-  # get the build directory and install directory from cache. save as array.
-  local moduledirs=( $(perl -MJSON::PP -Mautodie \
-    -E "my \$dir = -e q(kdesrc-buildrc) ? q(.) : \$ENV{HOME};" \
-    -E "open my \$json, q(<), qq(\$dir/.kdesrc-build-data);" \
-    -E "local \$/; my \$m = decode_json(<\$json>);" \
-    -E "say \$m->{q($1)}->{q(build-dir)};" \
-    -E "say \$m->{q($1)}->{q(install-dir)};") )
-
-  source "${moduledirs[0]}/prefix.sh" && "${moduledirs[1]}/bin/$1" "${@:2:$#}"
-}
-
 ## Autocomplete for kdesrc-run
 function _comp-kdesrc-run
 {
@@ -61,20 +47,22 @@ function _comp-kdesrc-run
     return 0
   fi
 
-  # Filter cache to get build modules
-  local modules=$(perl -MJSON::PP -Mautodie \
-    -E 'my $dir = -e q(kdesrc-buildrc) ? q(.) : $ENV{HOME};' \
-    -E 'open my $json, q(<), qq($dir/.kdesrc-build-data);' \
-    -E 'local $/; my $m = decode_json(<$json>);' \
-    -E 'my @modules_in_cache = keys %{$m};' \
-    -E 'print qq(@modules_in_cache);' )
+  # Retrieve build modules through kdesrc-run
+  # If the exit status indicates failure, set the wordlist empty to avoid
+  # unrelated messages.
+  local modules
+  if ! modules=$(kdesrc-run --list-installed);
+  then
+      modules=""
+  fi
 
-  # intersect lists
-  COMPREPLY=($(compgen -W "${modules}" $cur))
+  # Return completions that match the current word
+  COMPREPLY=( $(compgen -W "${modules}" -- "$cur") )
 
   return 0
 }
-## register autocomplete function
+
+## Register autocomplete function
 complete -o nospace -F _comp-kdesrc-run kdesrc-run
 
 ################################################################################
@@ -343,21 +331,21 @@ __DATA__
 @@ pkg/debian/unknown
 # This is woefully incomplete and not very useful.
 # Perl support
-libyaml-libyaml-perl 
-libio-socket-ssl-perl 
+libyaml-libyaml-perl
+libio-socket-ssl-perl
 libjson-xs-perl
-liburi-perl 
+liburi-perl
 # Basic build tools
-bison 
-build-essential 
-cmake 
-flex 
+bison
+build-essential
+cmake
+flex
 gettext
-git 
-gperf 
-libssl-dev 
+git
+gperf
+libssl-dev
 intltool
-shared-mime-info 
+shared-mime-info
 # Qt-related
 libdbusmenu-qt5-dev
 # And others
@@ -370,56 +358,56 @@ libqrencode-dev
 # Neon is a lot like Debian, except we know Qt is sufficiently new
 # to install Qt dev-tools.
 # Perl support
-libyaml-libyaml-perl 
-libio-socket-ssl-perl 
+libyaml-libyaml-perl
+libio-socket-ssl-perl
 libjson-xs-perl
-liburi-perl 
+liburi-perl
 # Basic build tools
-bison 
-build-essential 
-cmake 
-flex 
+bison
+build-essential
+cmake
+flex
 gettext
-git 
-gperf 
-libssl-dev 
+git
+gperf
+libssl-dev
 intltool
 meson
 ninja-build
-shared-mime-info 
+shared-mime-info
 # Qt-related
 libdbusmenu-qt5-dev
 libqt5svg5-dev
-libqt5waylandclient5-dev 
-libqt5x11extras5-dev 
+libqt5waylandclient5-dev
+libqt5x11extras5-dev
 qtbase5-private-dev
 qtdeclarative5-dev
-qtmultimedia5-dev 
-qtquickcontrols2-5-dev 
-qtscript5-dev 
+qtmultimedia5-dev
+qtquickcontrols2-5-dev
+qtscript5-dev
 qttools5-dev
-qtwayland5-dev-tools 
+qtwayland5-dev-tools
 qtxmlpatterns5-dev-tools
 # Frameworks dependencies
 # .. polkit-qt-1
-libpolkit-gobject-1-dev  
-libpolkit-agent-1-dev 
+libpolkit-gobject-1-dev
+libpolkit-agent-1-dev
 # .. kdoctools
-libxml2-dev 
+libxml2-dev
 libxslt-dev
 # .. kwindowsystem
 libwayland-dev
-libxcb-icccm4-dev 
-libxcb-keysyms1-dev 
-libxcb-res0-dev 
+libxcb-icccm4-dev
+libxcb-keysyms1-dev
+libxcb-res0-dev
 libxcb-xfixes0-dev
-libxcb-xkb-dev 
-libxfixes-dev 
+libxcb-xkb-dev
+libxfixes-dev
 libxrender-dev
-wayland-protocols 
+wayland-protocols
 # .. kwallet
-libgcrypt-dev 
-libgpgme11-dev 
+libgcrypt-dev
+libgpgme11-dev
 libgpgmepp-dev
 # .. kactivities
 libboost-dev
@@ -431,12 +419,12 @@ libx11-xcb-dev
 # And others
 qt5keychain-dev
 libopenal-dev
-libopenjp2-7-dev 
+libopenjp2-7-dev
 qtlocation5-dev
-libraw-dev 
+libraw-dev
 libsane-dev
-libsndfile1-dev 
-libxcb-glx0-dev 
+libsndfile1-dev
+libxcb-glx0-dev
 liblmdb-dev
 libsm-dev
 libnm-dev
@@ -651,6 +639,7 @@ gpgme-dev
 grantlee-dev
 gstreamer-dev
 gst-plugins-base-dev
+libcanberra-dev
 libdbusmenu-qt-dev
 libdmtx-dev
 libepoxy-dev
@@ -658,6 +647,7 @@ libgcrypt-dev
 libical-dev
 libinput-dev
 libqrencode-dev
+libsecret-dev
 libxkbfile-dev
 libxrender-dev
 libxslt-dev
@@ -670,14 +660,15 @@ perl-io-socket-ssl
 perl-uri
 perl-yaml-libyaml
 polkit-elogind-dev
+pulseaudio-dev
 qt5-qtbase-dev
 qt5-qtdeclarative-dev
 qt5-qtquickcontrols2-dev
+qt5-qtmultimedia-dev
 qt5-qtscript-dev
 qt5-qtsensors-dev
 qt5-qtsvg-dev
 qt5-qttools-dev
-qt5-qttools-static
 qt5-qtwayland-dev
 qt5-qtx11extras-dev
 texinfo
@@ -701,7 +692,7 @@ pacman -Syu --noconfirm --needed
 dnf -y install
 
 @@ cmd/install/alpine/unknown
-apk add
+apk add --virtual makedeps-kdesrc-build
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and

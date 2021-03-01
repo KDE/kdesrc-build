@@ -4,11 +4,12 @@ package ksb::StatusMonitor 0.20;
 # each module, and can be subscribed to by interested recipients.
 
 # This class is-a EventEmitter
+use v5.22;
+use warnings;
+
 use Mojo::Base 'Mojo::EventEmitter';
 
 use ksb::PhaseList 0.10;
-
-use v5.014; # Require at least Perl 5.14
 
 sub new
 {
