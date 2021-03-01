@@ -124,11 +124,9 @@ let handleEvent = (ev) => {
             return;
         }
 
-        if (progressAry[1] == 0) {
-            cell.textContent = "???????";
-        } else {
-            cell.textContent = `${progressAry[0]} / ${progressAry[1]}`;
-        }
+        // progressAry will be a float between 0 and 1
+        console.log(`Progress for ${module}/${phase} is ${progressAry}`);
+        cell.textContent = (100.0 * progressAry).toFixed(1);
     }
     else if (ev.event === "phase_completed") {
         const phase  = ev.phase_completed.phase;
@@ -165,7 +163,9 @@ let handleEvent = (ev) => {
             if (updateResult && updateResult.classList.contains('success')) {
                 const moduleRow = lkup('row_' + module);
                 if (moduleRow) {
-                    moduleRow.remove(); // "Experimental" ChildNode iface
+                    // This was clashing with another part of the script causing the row
+                    // to be immediately regenerated... fix it when you figure it out :)
+                    // moduleRow.remove(); // "Experimental" ChildNode iface
                 }
                 logEvent(module, 'Success');
             }

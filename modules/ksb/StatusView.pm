@@ -434,6 +434,18 @@ sub update
             $bar .= ('.' x ($width - length ($bar)));
         }
 
+        # Ensure there is room in the string to overlay the module's build
+        # progress with substr below
+        $bar .= (' ' x (max($max_prog_width - $width - 1, 0)));
+
+        my $cur_progress = $self->{cur_progress};
+
+        # Overwrite progress bar with module's build status until I find somewhere
+        # better to put it.
+        if (length $cur_progress > 0 && length $cur_progress < 6) {
+            substr ($bar, ($max_prog_width / 2 - 3), length $cur_progress, $cur_progress);
+        }
+
         $msg = sprintf("%s [%*s] %s", $progress, -$max_prog_width, $bar, $current_modules);
     }
 
