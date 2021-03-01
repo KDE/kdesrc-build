@@ -1237,7 +1237,7 @@ sub runPhase_p
         # Must precede the ->then to catch internal errors and mark the phase
         # as failed.
         my $err = shift;
-        error("\n\n b[r[*] Failed to launch $phaseName for $self: $err");
+        error("\n\n b[r[*] Failed to launch b[r[$phaseName] for b[r[$self]:\n\tb[$err]");
         $ctx->markModulePhaseFailed($phaseName, $self);
 
         return Mojo::Promise->new->reject($err);
