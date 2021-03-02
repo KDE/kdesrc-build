@@ -1742,6 +1742,9 @@ sub _handle_build_phases
             # Can't build w/out blocking so return a promise instead, which ->build
             # already supplies
             return $module->build()->then(sub {
+                # Cache module directories, e.g. to be consumed in kdesrc-run
+                $module->setPersistentOption('build-dir', $module->fullpath('build'));
+
                 return $module->runPhase_p('test');
             })->then(sub {
                 return $module->runPhase_p('install');
@@ -1760,6 +1763,7 @@ sub _handle_build_phases
                 # Force this promise chain to stay dead
                 return Mojo::Promise->new->reject($failureReason);
             })->then(sub {
+                $module->setPersistentOption('install-dir', $module->installationPath());
                 $module->setPersistentOption('failure-count', 0);
             });
         };
