@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html class="has-navbar-fixed-top">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -12,10 +12,79 @@
   </script>
 </head>
 <body>
+  <nav class="navbar is-fixed-top is-info" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <!-- This component is always visible, on desktop and mobile -->
+      <a class="navbar-item" href="https://kdesrc-build.kde.org/">
+        <img srcset="/logo-sm.png, /logo.png 2x" src="/logo.png">
+      </a>
+
+      %= content 'navbar-brand-extra'
+
+      <!-- Must be the LAST child in this div.navbar-brand -->
+      <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <div id="navbarBasicExample" class="navbar-menu">
+      <!-- This component is visible only on desktop sizes, taking up
+           remaining navbar space after the brand all the way to the right
+      -->
+      <div class="navbar-start">
+        <!-- These are batched up starting from the left just after the "brand" -->
+        <a class="navbar-item" target="_blank" href="/">
+          Home
+        </a>
+
+        <a class="navbar-item" target="_blank" href="https://docs.kde.org/?application=kdesrc-build&branch=trunk5">
+          Documentation
+        </a>
+      </div>
+
+      <!-- These are batched up over to the far right -->
+      <div class="navbar-end">
+        <!--
+          <div class="navbar-item">
+          </div>
+        -->
+      </div>
+    </div>
+  </nav>
+
   <section class="section">
     <div class="container">
       <%= content %>
     </div>
   </section>
+
+  <!-- Needed only for mobile users to make the burger menu work -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // Get all "navbar-burger" elements
+      const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+
+      // Check if there are any navbar burgers
+      if ($navbarBurgers.length > 0) {
+
+        // Add a click event on each of them
+        $navbarBurgers.forEach(el => {
+          el.addEventListener('click', () => {
+
+            // Get the target from the "data-target" attribute
+            const target = el.dataset.target;
+            const $target = document.getElementById(target);
+
+            // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
+            el.classList.toggle('is-active');
+            $target.classList.toggle('is-active');
+          });
+        });
+      }
+    });
+  </script>
 </body>
 </html>
