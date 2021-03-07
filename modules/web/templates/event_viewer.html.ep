@@ -188,6 +188,8 @@ let handleEvent = (ev) => {
         const module = ev.phase_completed.module;
 
         let cell = lkup(phase + "Cell_" + module);
+        const notesCell = lkup('notesCell_' + module);
+
         if (!cell) {
             console.log(`${module} ${phase} is complete but we have no U/I to indicate this`);
             return;
@@ -213,9 +215,15 @@ let handleEvent = (ev) => {
             cell.classList.add('is-warning');
         }
 
+        if (ev.phase_completed.phase === "build" && ev.phase_completed.result === "success") {
+            const num_warnings = ev.phase_completed.warnings || 0;
+            if (num_warnings > 0) {
+                notesCell.textContent = `${num_warnings} compile warnings`;
+            }
+        }
+
         if (ev.phase_completed.error_log) {
             const logUrl = ev.phase_completed.error_log;
-            const notesCell = lkup('notesCell_' + module);
             notesCell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
             logEvent(module, 'Failed to ' + phase);
         } else {
