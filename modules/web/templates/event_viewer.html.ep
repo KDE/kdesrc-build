@@ -13,7 +13,15 @@
 
 <table class="table is-striped is-hoverable">
   <thead>
-    <tr><th>Module</th><th>Update</th><th>Build / Install</th></tr>
+    <tr>
+      <th>Module</th>
+      <th>Update</th>
+      <th>Setup buildsystem</th>
+      <th>Build</th>
+      <th>Test</th>
+      <th>Install</th>
+      <th>Notes</th>
+    </tr>
   </thead>
   <tbody id="tblResult">
   </tbody>
@@ -49,20 +57,26 @@ let addRow = (moduleName) => {
 
     let eventTable = lkup('tblResult');
     let newRow = document.createElement('tr');
-    let moduleNameCell = document.createElement('td');
-    let updateDoneCell = document.createElement('td');
-    let buildDoneCell  = document.createElement('td');
-
     newRow.id = 'row_' + moduleName;
-    moduleNameCell.textContent = moduleName;
-    updateDoneCell.id = 'updateCell_' + moduleName;
-    updateDoneCell.classList.add('pending');
-    buildDoneCell.id  = 'buildCell_'  + moduleName;
-    buildDoneCell.classList.add('pending');
 
+    const phases = [
+        'update', 'buildsystem', 'build', 'test', 'install',
+        'notes' // Not a real phase but gives us a cell for info
+        ];
+
+    let moduleNameCell = document.createElement('td');
+    moduleNameCell.textContent = moduleName;
     newRow.appendChild(moduleNameCell);
-    newRow.appendChild(updateDoneCell);
-    newRow.appendChild(buildDoneCell);
+
+    for (const phase of phases) {
+      let phaseDoneCell = document.createElement('td');
+      phaseDoneCell.id = phase + "Cell_" + moduleName;
+      if (phase !== "notes") {
+          phaseDoneCell.classList.add('is-info');
+      }
+      newRow.appendChild(phaseDoneCell);
+    }
+
     eventTable.appendChild(newRow);
 }
 
@@ -76,18 +90,30 @@ const logEvent = (module, event) => {
 
 let updates_complete = 0;
 let builds_complete  = 0;
+let BUILD_PLAN = null;
+
 let handleEvent = (ev) => {
 
     if (ev.event === "build_plan") {
         const text = "Working on " + ev.build_plan.length + " modules";
+        BUILD_PLAN = ev.build_plan;
 
         let num_updates = 0;
         let num_builds  = 0;
         ev.build_plan.forEach((module_plan) => {
-            module_plan.phases.forEach((phase) => {
-                num_updates += phase === "update" ? 1 : 0;
-                num_builds  += phase === "build"  ? 1 : 0;
+            addRow(module_plan.name);
+
+            // The new row comes with every cell made already-done. Undo
+            // for cells that are in the plan
+            module_plan.phases.forEach((module_phase) => {
+                let cell = lkup(module_phase + "Cell_" + module_plan.name);
+                cell.classList.add('pending');
+                cell.classList.remove('is-info');
             });
+
+            num_updates += module_plan.phases.includes("update") ? 1 : 0;
+            // Any non-update phase is lumped into "build" for this U/I
+            num_builds  += (module_plan.phases.length >= 2) ? 1 : 0;
         });
 
         lkup('update_progress_bar').setAttribute('max', num_updates);
@@ -126,19 +152,23 @@ let handleEvent = (ev) => {
 
         let row = lkup("row_" + module);
         if (!row) {
-            addRow(module);
+            console.error(`Row for ${module} does not already exist somehow!`);
+            return;
         }
 
         let cell = lkup(phase + "Cell_" + module);
         if (!cell) {
+            console.error(`Could not find cell for ${module} starting phase ${phase}!`);
             return;
         }
 
         cell.classList.add('working');
+        cell.classList.add('notification');
         cell.classList.add('is-loading');
         cell.classList.add('is-primary');
+        cell.classList.remove('pending');
 
-        cell.textContent = 'Working...';
+        cell.textContent = '';
     }
     else if (ev.event === "phase_progress") {
         const phase  = ev.phase_progress.phase;
@@ -165,15 +195,11 @@ let handleEvent = (ev) => {
 
         if (phase === "update") {
             updates_complete++;
-        } else {
-            builds_complete++;
         }
-
-        lkup('update_progress_bar').setAttribute('value', updates_complete);
-        lkup('build_progress_bar' ).setAttribute('value', builds_complete );
 
         cell.className = 'done';
         cell.classList.remove('is-loading');
+        cell.classList.remove('notification');
         cell.classList.add('is-light');
 
         if (['success', 'error'].
@@ -181,27 +207,41 @@ let handleEvent = (ev) => {
         {
             cell.classList.add('is-' + ev.phase_completed.result);
             cell.classList.add(ev.phase_completed.result);
+        } else {
+            // Might happen with stop-on-failure for instance? Show that progress
+            // won't be made but it didn't fail or succeed either.
+            cell.classList.add('is-warning');
         }
 
         if (ev.phase_completed.error_log) {
             const logUrl = ev.phase_completed.error_log;
-            cell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
+            const notesCell = lkup('notesCell_' + module);
+            notesCell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
             logEvent(module, 'Failed to ' + phase);
-        } else if (phase !== 'update') {
-            // If all successful for the module, remove the row
-            const updateResult = lkup('updateCell_' + module);
-            if (updateResult && updateResult.classList.contains('success')) {
-                const moduleRow = lkup('row_' + module);
-                if (moduleRow) {
-                    // This was clashing with another part of the script causing the row
-                    // to be immediately regenerated... fix it when you figure it out :)
-                    // moduleRow.remove(); // "Experimental" ChildNode iface
-                }
-                logEvent(module, 'Success');
-            }
         } else {
             cell.innerHTML = ev.phase_completed.result;
+            cell.textContent = ev.phase_completed.result === "success"
+                ? '👍' : ev.phase_completed.result === "error"
+                ? '☹️'  : '🤷';
         }
+
+        // If all successful for the module, remove the row
+        const moduleRow = lkup("row_" + module);
+        if (moduleRow.querySelectorAll('td.pending').length == 0) {
+            if (moduleRow.querySelectorAll('td.done').length >= 2) {
+                // Only modules with 2 or more phases contribute to this
+                // progress bar.
+                builds_complete++;
+            }
+            console.log(`Module ${module} seems to be all done`);
+            if (moduleRow) {
+                // Need to keep the row for status updating, I think?
+                // moduleRow.remove(); // "Experimental" ChildNode iface
+            }
+        }
+
+        lkup('update_progress_bar').setAttribute('value', updates_complete);
+        lkup('build_progress_bar' ).setAttribute('value', builds_complete );
     }
     else if (ev.event === "log_entries") {
         const phase  = ev.log_entries.phase;
