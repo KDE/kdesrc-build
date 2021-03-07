@@ -147,7 +147,19 @@ sub _generateRoutes {
     my $self = shift;
     my $r = $self->routes;
 
-    $r->get('/' => 'index');
+    # Defaults to showing status and useful links
+    $r->get('/' => sub {
+        my $c = shift;
+
+        return $c->render(
+            template => 'index',
+            ctx => $c->app->ksb->context(),
+        );
+    })->name('index');
+
+    # No data needs fed to it so Mojolicious default template based on route
+    # name is all we need
+    $r->get('/setup_new_build' => 'setup_new_build');
 
     $r->post('/reset' => sub {
         my $c = shift;

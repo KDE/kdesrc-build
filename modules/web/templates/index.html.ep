@@ -1,142 +1,22 @@
 % layout 'default';
-% title 'kdesrc-build';
-<h1 class="title">kdesrc-build Web interface</h1>
+% title 'kdesrc-build - Status';
 
-<div class="columns">
-  <div class="column">
-    <h2 class="title">1. Enter your build selection</h2>
-    <div class="field">
-      <label for="modules_list">Enter list of modules to build:</label>
-      <div class="control">
-        <input class="input" id="modules_list" placeholder="dolphin kcalc"/>
-      </div>
-      <p class="help is-info">You may enter multiple module names, separated by spaces</p>
-    </div>
-    <div class="field">
-      <div class="control">
-        <label class="checkbox">
-          <input class="checkbox" type="checkbox" disabled />
-          Include known dependencies of these modules also.
-        </label>
-      </div>
-    </div>
-    <div class="field">
-      <div class="control">
-        <button class="button is-primary" id="btnSubmitModuleList">Setup to build these modules</button>
-      </div>
+<h1 class="title">kdesrc-build Status</h1>
+
+<div class="columns is-centered">
+  <div class="column content">
+    <p>kdesrc-build is online using the configuration found at:
+    <b><a href="file://<%= $ctx->rcFile() =%>"><%= $ctx->rcFile() %></a></b></p>
+
+    <div class="tags has-addons">
+      <span class="tag is-large">Build in progress:</span>
+      % if ($c->in_build) {
+        <span class="tag is-warning is-large">Yes</span>
+      % } else {
+        <span class="tag is-info is-large">No</span>
+      % }
     </div>
 
+    <a class="button is-primary is-link" href="<%= url_for('setup_new_build') %>">Begin New Build</a>
   </div>
 </div>
-
-<div class="columns">
-  <div class="column is-full">
-    <h2 class="title block">2. Begin When You're Ready</h2>
-
-    <div class="notification block is-hidden" id="modules_result_div"></div>
-
-    <div class="block">
-      <button class="is-primary button" id="btnStartBuild" disabled>Start Build!</button>
-      <span class="is-small is-info">Or</span>
-      <button class="is-warning button" id="btnShutdown">Shutdown kdesrc-build</button>
-    </div>
-  </div>
-</div>
-
-
-<script defer>
-const btnSubmitModuleList = lkup('btnSubmitModuleList');
-btnSubmitModuleList.addEventListener('click', (ev) => {
-    const modList = lkup('modules_list');
-    const modArray = modList.value.split(/[, ]+/);
-    console.dir(modArray);
-    if (modArray) {
-        const postUrl = '<%= url_for q(post_modules) %>';
-        fetch(postUrl, {
-            method: 'POST',
-            body: JSON.stringify(modArray),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(resp => {
-            if(resp.ok) {
-                return resp.json()
-            }
-            else {
-                return resp.text().then(err => {
-                    const resultsDiv = lkup('modules_result_div');
-                    resultsDiv.classList.add('is-error');
-                    resultsDiv.classList.remove('is-hidden');
-                    resultsDiv.textContent = "ERROR: " + err;
-                    throw ("Posting selectors to kdesrc-build backend led to error: " + err);
-                });
-            }
-        })
-        .then(resp => {
-            console.log(`Response received ${resp}`);
-            lkup('btnStartBuild').disabled = false;
-
-            const lookupUrl = '<%= url_for q(module_lookup) %>';
-            return fetch(lookupUrl); // TODO Merge with the result we already get?
-        })
-        .then(mod_list_resp => mod_list_resp.json())
-        .then(mod_list => {
-            const resultsDiv = lkup('modules_result_div');
-            resultsDiv.classList.add('is-success');
-            resultsDiv.classList.remove('is-hidden');
-            resultsDiv.textContent = "Building: " + mod_list.length + " modules";
-        })
-        .catch(err => console.error(err));
-    }
-}, { passive: false });
-
-const btnStartBuild = lkup('btnStartBuild');
-btnStartBuild.addEventListener('click', (ev) => {
-    const postUrl = '<%= url_for q(build) %>';
-    fetch(postUrl, {
-        method: 'POST',
-    })
-    .then(resp => {
-        if(!resp.ok) {
-            console.error(resp);
-            throw new Error ('Invalid response!');
-        }
-        return resp.text()
-    })
-    .then(text => {
-        console.log(`Response received ${text}`)
-        document.location.assign(text);
-    })
-    .catch(err => console.error(err));
-}, { passive: false });
-
-const btnShutdown = lkup('btnShutdown');
-btnShutdown.addEventListener('click', (ev) => {
-    const postUrl = '<%= url_for q(shutdown) %>';
-    fetch(postUrl, {
-        method: 'POST',
-    })
-    .then(resp => {
-        if(!resp.ok) {
-            console.error(resp);
-            throw new Error ('Invalid response!');
-        }
-
-        console.log("kdesrc-build is shutting down");
-        lkup('btnStartBuild').disabled = true;
-        lkup('btnSubmitModuleList').disabled = true;
-        lkup('btnShutdown').disabled = true;
-    })
-    .catch(err => console.error(err));
-}, { passive: false });
-
-// Load the list of all modules to see where we're at
-fetch('<%= url_for q(known_modules) %>')
-.then(resp => resp.json())
-.then(mod_list => {
-    console.dir(mod_list);
-})
-.catch(error => console.error(error));
-
-</script>
