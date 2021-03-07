@@ -1,23 +1,48 @@
 % layout 'default';
 % title 'kdesrc-build';
-<h1>kdesrc-build Web interface</h1>
+<h1 class="title">kdesrc-build Web interface</h1>
 
-<label for="modules_list">List of modules to build:</label>
-<input id="modules_list"/><br />
-<button id="btnSubmitModuleList">Enter modules to build:</button>
+<div class="columns">
+  <div class="column">
+    <h2 class="title">1. Enter your build selection</h2>
+    <div class="field">
+      <label for="modules_list">Enter list of modules to build:</label>
+      <div class="control">
+        <input class="input" id="modules_list" placeholder="dolphin kcalc"/>
+      </div>
+      <p class="help is-info">You may enter multiple module names, separated by spaces</p>
+    </div>
+    <div class="field">
+      <div class="control">
+        <label class="checkbox">
+          <input class="checkbox" type="checkbox" disabled />
+          Include known dependencies of these modules also.
+        </label>
+      </div>
+    </div>
+    <div class="field">
+      <div class="control">
+        <button class="button is-primary" id="btnSubmitModuleList">Setup to build these modules</button>
+      </div>
+    </div>
 
-<div class="module_list_div">
-    <label for="module_select">Or <strike>use the dropdown to select</strike></label>
-    <select multiple id="module_select" size="15">
-        <option value="">All</option>
-        <option value="###">--- Module names loading ---</option>
-    </select>
+  </div>
 </div>
 
-<div id="modules_result_div"></div>
-<br/>
-<button id="btnStartBuild" disabled>Start Build!</button>
-<button id="btnShutdown">Shutdown kdesrc-build</button>
+<div class="columns">
+  <div class="column is-full">
+    <h2 class="title block">2. Begin When You're Ready</h2>
+
+    <div class="notification block is-hidden" id="modules_result_div"></div>
+
+    <div class="block">
+      <button class="is-primary button" id="btnStartBuild" disabled>Start Build!</button>
+      <span class="is-small is-info">Or</span>
+      <button class="is-warning button" id="btnShutdown">Shutdown kdesrc-build</button>
+    </div>
+  </div>
+</div>
+
 
 <script defer>
 const btnSubmitModuleList = lkup('btnSubmitModuleList');
@@ -40,7 +65,10 @@ btnSubmitModuleList.addEventListener('click', (ev) => {
             }
             else {
                 return resp.text().then(err => {
-                    lkup('modules_result_div').innerHTML = "<b>ERROR</b>: " + err;
+                    const resultsDiv = lkup('modules_result_div');
+                    resultsDiv.classList.add('is-error');
+                    resultsDiv.classList.remove('is-hidden');
+                    resultsDiv.textContent = "ERROR: " + err;
                     throw ("Posting selectors to kdesrc-build backend led to error: " + err);
                 });
             }
@@ -54,8 +82,10 @@ btnSubmitModuleList.addEventListener('click', (ev) => {
         })
         .then(mod_list_resp => mod_list_resp.json())
         .then(mod_list => {
-            const strOfMods = mod_list.join("<br/>");
-            lkup('modules_result_div').innerHTML = "Building: " + strOfMods;
+            const resultsDiv = lkup('modules_result_div');
+            resultsDiv.classList.add('is-success');
+            resultsDiv.classList.remove('is-hidden');
+            resultsDiv.textContent = "Building: " + mod_list.length + " modules";
         })
         .catch(err => console.error(err));
     }
@@ -93,11 +123,6 @@ btnShutdown.addEventListener('click', (ev) => {
             throw new Error ('Invalid response!');
         }
 
-        const selList = lkup('module_select');
-        while(selList.firstChild) {
-            selList.removeChild(selList.firstChild);
-        }
-
         console.log("kdesrc-build is shutting down");
         lkup('btnStartBuild').disabled = true;
         lkup('btnSubmitModuleList').disabled = true;
@@ -111,37 +136,6 @@ fetch('<%= url_for q(known_modules) %>')
 .then(resp => resp.json())
 .then(mod_list => {
     console.dir(mod_list);
-    const selList = lkup('module_select');
-    while (selList.firstChild) {
-        selList.removeChild(selList.firstChild);
-    }
-
-    const optTag = (name) => {
-        const newOpt = document.createElement('option');
-        const newText = document.createTextNode(name);
-        newOpt.appendChild(newText);
-        return newOpt;
-    }
-
-    console.group();
-    for (const module of mod_list) {
-        var tagToAdd;
-        if (typeof module === "string") {
-            console.log("Adding " + module);
-            tagToAdd = optTag(module);
-        }
-        else {
-            // module is really an array with [ set-name, @module-names ]
-            const setName = module.shift();
-            console.log("Adding module set " + setName);
-            tagToAdd = document.createElement('optgroup');
-            tagToAdd.setAttribute('label', setName);
-            module.forEach(name => tagToAdd.appendChild(optTag(name)));
-        }
-
-        selList.appendChild(tagToAdd);
-    }
-    console.groupEnd();
 })
 .catch(error => console.error(error));
 

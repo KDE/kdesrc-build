@@ -1,20 +1,42 @@
 % layout 'default';
 % title 'kdesrc-build status viewer';
 
-<h1>kdesrc-build status</h1>
-<div id="divBanner"></div>
-<div id="divStatus">
-    Building...
-</div>
-<table id="tblResult">
-    <tr><th>Module</th><th>Update</th><th>Build / Install</th></tr>
-</table>
-<div class="progress_div" style="float: right">
-    <label for="update_progress_bar">Update progress:</label>
-    <progress id="update_progress_bar" max="100"></progress> <br/>
+<h1 class="title">kdesrc-build status</h1>
 
-    <label for="build_progress_bar">Build progress:</label>
-    <progress id="build_progress_bar" max="100"></progress>
+<div id="divBanner"></div>
+
+<div class="content">
+  <strong>Current status</strong>:
+  <span id="divStatus" class="is-info">Build in progress</span>
+  <button class="button is-warning" id="btnReset" disabled>Click to Reset</button>
+</div>
+
+<table class="table is-striped is-hoverable">
+  <thead>
+    <tr><th>Module</th><th>Update</th><th>Build / Install</th></tr>
+  </thead>
+  <tbody id="tblResult">
+  </tbody>
+</table>
+
+<!-- Horizontal container for content
+     https://bulma.io/documentation/layout/level/
+-->
+<div class="level">
+  <div class="level-left">
+    <div class="level-item">
+      <label for="update_progress_bar">Update progress:</label>
+      <progress class="progress" id="update_progress_bar" max="100"></progress> <br/>
+    </div>
+
+    <div class="level-item">
+      <label for="build_progress_bar">Build progress:</label>
+      <progress class="progress" id="build_progress_bar" max="100"></progress>
+    </div>
+  </div>
+
+  <div class="level-right">
+  </div>
 </div>
 
 <textarea id="logEntries" cols="80" rows="50">
@@ -36,9 +58,9 @@ let addRow = (moduleName) => {
     newRow.id = 'row_' + moduleName;
     moduleNameCell.textContent = moduleName;
     updateDoneCell.id = 'updateCell_' + moduleName;
-    updateDoneCell.className = 'pending';
+    updateDoneCell.classList.add('pending');
     buildDoneCell.id  = 'buildCell_'  + moduleName;
-    buildDoneCell.className  = 'pending';
+    buildDoneCell.classList.add('pending');
 
     newRow.appendChild(moduleNameCell);
     newRow.appendChild(updateDoneCell);
@@ -77,9 +99,12 @@ let handleEvent = (ev) => {
         const resetLink = '<%= url_for q(reset) %>';
         const homeLink = '<%= url_for q(index) %>';
 
-        divStatus.innerHTML = `Build complete, <button id="btnReset">click to reset</button>`;
+        divStatus.textContent = 'Build complete';
+        divStatus.classList.add('is-success'); // TODO: Ensure failed builds show failed here
+        divStatus.classList.remove('is-info');
 
         const btnReset = document.getElementById('btnReset');
+        btnReset.removeAttribute('disabled');
         btnReset.addEventListener('click', (ev) => {
             fetch(resetLink, {
                 method: 'POST'
@@ -111,7 +136,10 @@ let handleEvent = (ev) => {
             return;
         }
 
-        cell.className = 'working';
+        cell.classList.add('working');
+        cell.classList.add('is-loading');
+        cell.classList.add('is-primary');
+
         cell.textContent = 'Working...';
     }
     else if (ev.event === "phase_progress") {
@@ -125,7 +153,6 @@ let handleEvent = (ev) => {
         }
 
         // progressAry will be a float between 0 and 1
-        console.log(`Progress for ${module}/${phase} is ${progressAry}`);
         cell.textContent = (100.0 * progressAry).toFixed(1);
     }
     else if (ev.event === "phase_completed") {
@@ -134,6 +161,7 @@ let handleEvent = (ev) => {
 
         let cell = lkup(phase + "Cell_" + module);
         if (!cell) {
+            console.log(`${module} ${phase} is complete but we have no U/I to indicate this`);
             return;
         }
 
@@ -147,9 +175,13 @@ let handleEvent = (ev) => {
         lkup('build_progress_bar' ).setAttribute('value', builds_complete );
 
         cell.className = 'done';
+        cell.classList.remove('is-loading');
+        cell.classList.add('is-light');
+
         if (['success', 'error'].
             includes(ev.phase_completed.result))
         {
+            cell.classList.add('is-' + ev.phase_completed.result);
             cell.classList.add(ev.phase_completed.result);
         }
 
