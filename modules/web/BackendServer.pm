@@ -37,6 +37,7 @@ sub new
         ksb_state => {
             ksb     => undef, # Will be set automatically when needed
             ksbhome => getcwd(),
+            has_metadata => 0, # False until we've downloaded build metadata
 
             build_result => undef, # Set when the build completes
             build_promise => undef, # Set when build ongoing
@@ -124,8 +125,19 @@ sub startup {
 
     # We will need module metadata but if we're running in the test suite then
     # assume needed metadata will be provided as part of the test.
-    $self->ksb->_downloadKDEProjectMetadata()
-        unless exists $ENV{HARNESS_ACTIVE};
+    if (not exists $ENV{HARNESS_ACTIVE}) {
+        $self->ksb_state->{metadata_updater} = Mojo::IOLoop->subprocess->run_p(sub {
+            $self->ksb->_downloadKDEProjectMetadata()
+        })->then(sub {
+            $self->log->info("Completed downloading KDE project metadata");
+            $self->ksb_state->{has_metadata} = 1;
+        })->catch(sub {
+            my $err = shift;
+            $self->log->error("Could not download KDE project metadata! $err");
+        })->finally(sub {
+            delete $self->ksb_state->{metadata_updater};
+        });
+    }
 
     return;
 }
@@ -166,6 +178,14 @@ sub _generateRoutes {
     # No data needs fed to it so Mojolicious default template based on route
     # name is all we need
     $r->get('/setup_new_build' => 'setup_new_build');
+
+    $r->get('/has_metadata' => sub {
+        my $c = shift;
+
+        return $c->render(json => {
+            has_metadata => $c->app->ksb_state->{has_metadata},
+        });
+    });
 
     $r->post('/reset' => sub {
         my $c = shift;

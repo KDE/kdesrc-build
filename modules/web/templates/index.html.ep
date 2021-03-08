@@ -3,6 +3,10 @@
 
 <h1 class="title">kdesrc-build Status</h1>
 
+<div class="container is-hidden" id="msgFailure">
+  <div class="notification is-danger is-large">There must be something wrong, kdesrc-build is still not ready.</div>
+</div>
+
 <div class="columns is-centered">
   <div class="column content">
     <p>kdesrc-build is online using the configuration found at:
@@ -17,6 +21,42 @@
       % }
     </div>
 
-    <a class="button is-primary is-link" href="<%= url_for('setup_new_build') %>">Begin New Build</a>
+    <a id="btnBeginNewBuild" class="button is-loading is-primary is-link" disabled>Begin New Build</a>
+
   </div>
 </div>
+
+<script>
+  let numAttempts = 0;
+  const checkForServerReady = () => {
+    numAttempts++;
+    window.fetch('<%= url_for('has_metadata') =%>')
+      .then(resp => resp.json())
+      .then((data) => {
+        console.log(`Has metadata? ${data.has_metadata}`);
+
+        // Server will tell us if it's downloaded KDE project metadata
+        if (data.has_metadata) {
+          const buildButton = lkup("btnBeginNewBuild");
+          buildButton.removeAttribute('disabled');
+          buildButton.classList.remove('is-loading');
+          buildButton.setAttribute('href', "<%= url_for('setup_new_build') %>");
+        } else {
+          if (numAttempts < 30) {
+            // Try again
+            setTimeout(checkForServerReady, 500);
+          } else {
+            // Let user know something must be tubed up
+            lkup("msgFailure").classList.remove('is-hidden');
+          }
+        }
+      })
+      .catch((err) => {
+        console.error(`Caught an error ${err}`);
+        lkup("msgFailure").classList.remove('is-hidden');
+        lkup("msgFailure").querySelector('div').textContent = err.toString();
+      });
+  };
+
+  setTimeout(checkForServerReady, 500);
+</script>
