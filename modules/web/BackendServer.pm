@@ -35,6 +35,7 @@ sub new
 
     return $class->SUPER::new(
         ksb_state => {
+            ksb     => undef, # Will be set automatically when needed
             ksbhome => getcwd(),
 
             build_result => undef, # Set when the build completes
@@ -93,9 +94,6 @@ sub make_new_ksb
     return $app;
 }
 
-# Package-shared variables for helpers and closures
-my $KSB_APP;
-
 sub startup {
     my $self = shift;
 
@@ -110,10 +108,12 @@ sub startup {
     $self->helper(ksb => sub {
         my ($c, $new_ksb) = @_;
 
-        $KSB_APP = $new_ksb if $new_ksb;
-        $KSB_APP //= make_new_ksb($c);
+        $c->app->ksb_state->{ksb} = $new_ksb
+            if $new_ksb;
 
-        return $KSB_APP;
+        $c->app->ksb_state->{ksb} //= make_new_ksb($c);
+
+        return $c->app->ksb_state->{ksb};
     });
 
     $self->helper(in_build => sub { defined (shift->app->ksb_state->{build_promise}) });
