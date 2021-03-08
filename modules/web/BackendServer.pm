@@ -39,6 +39,7 @@ sub new
             options => $optsAndSelectors->{options},
             selectors => $optsAndSelectors->{selectors},
             opts_and_selectors => $optsAndSelectors,
+            build_result => undef, # Set when the build completes
         },
     );
 }
@@ -90,7 +91,6 @@ sub make_new_ksb
 }
 
 # Package-shared variables for helpers and closures
-my $LAST_RESULT;
 my $BUILD_PROMISE;
 my $IN_PROGRESS;
 my $KSB_APP;
@@ -169,13 +169,13 @@ sub _generateRoutes {
     $r->post('/reset' => sub {
         my $c = shift;
 
-        if ($c->in_build || !defined $LAST_RESULT) {
+        if ($c->in_build || !defined $c->app->ksb_state->{build_result}) {
             return $c->render(status => 400, json => { error => "Not ready to reset" });
         }
 
-        my $old_result = $LAST_RESULT;
+        my $old_result = $c->app->ksb_state->{build_result};
         $c->ksb(make_new_ksb($c));
-        undef $LAST_RESULT;
+        $c->app->ksb_state->{build_result} = undef;
 
         $c->render(json => { last_result => $old_result });
     });
@@ -393,7 +393,7 @@ sub _generateRoutes {
         $BUILD_PROMISE = $c->ksb->startHeadlessBuild->then(sub{
             my ($result) = @_;
             $c->app->log->debug("Build done, result $result");
-            $LAST_RESULT = $result;
+            $c->app->ksb_state->{build_result} = $result;
         })->catch(sub {
             my @reason = @_;
             $c->app->log->error("Exception during build @reason");
