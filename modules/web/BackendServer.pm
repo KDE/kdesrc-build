@@ -36,10 +36,13 @@ sub new
     return $class->SUPER::new(
         ksb_state => {
             ksbhome => getcwd(),
+
+            build_result => undef, # Set when the build completes
+            build_promise => undef, # Set when build ongoing
+
             options => $optsAndSelectors->{options},
             selectors => $optsAndSelectors->{selectors},
             opts_and_selectors => $optsAndSelectors,
-            build_result => undef, # Set when the build completes
         },
     );
 }
@@ -91,8 +94,6 @@ sub make_new_ksb
 }
 
 # Package-shared variables for helpers and closures
-my $BUILD_PROMISE;
-my $IN_PROGRESS;
 my $KSB_APP;
 
 sub startup {
@@ -115,7 +116,7 @@ sub startup {
         return $KSB_APP;
     });
 
-    $self->helper(in_build => sub { $IN_PROGRESS });
+    $self->helper(in_build => sub { defined (shift->app->ksb_state->{build_promise}) });
     $self->helper(context  => sub { shift->ksb->context() });
 
     my $r = $self->routes;
@@ -388,9 +389,7 @@ sub _generateRoutes {
 
         $c->app->log->debug('Starting build');
 
-        $IN_PROGRESS = 1;
-
-        $BUILD_PROMISE = $c->ksb->startHeadlessBuild->then(sub{
+        $c->app->ksb_state->{build_promise} = $c->ksb->startHeadlessBuild->then(sub{
             my ($result) = @_;
             $c->app->log->debug("Build done, result $result");
             $c->app->ksb_state->{build_result} = $result;
@@ -398,7 +397,7 @@ sub _generateRoutes {
             my @reason = @_;
             $c->app->log->error("Exception during build @reason");
         })->finally(sub {
-            $IN_PROGRESS = 0;
+            delete $c->app->ksb_state->{build_promise};
         });
 
         $c->render(text => $c->url_for('event_viewer')->to_abs->to_string);
