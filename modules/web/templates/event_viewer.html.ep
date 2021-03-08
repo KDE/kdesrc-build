@@ -207,7 +207,11 @@ let handleEvent = (ev) => {
         if (['success', 'error'].
             includes(ev.phase_completed.result))
         {
-            cell.classList.add('is-' + ev.phase_completed.result);
+            if (ev.phase_completed.result === 'error') {
+                cell.classList.add('is-danger');
+            } else {
+                cell.classList.add('is-' + ev.phase_completed.result);
+            }
             cell.classList.add(ev.phase_completed.result);
         } else {
             // Might happen with stop-on-failure for instance? Show that progress
@@ -224,6 +228,7 @@ let handleEvent = (ev) => {
 
         if (ev.phase_completed.error_log) {
             const logUrl = ev.phase_completed.error_log;
+            cell.textContent = '☹️';
             notesCell.innerHTML = `<a target='_blank' href='${logUrl}'>${ev.phase_completed.result}</a>`;
             logEvent(module, 'Failed to ' + phase);
         } else {
