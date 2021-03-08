@@ -17,14 +17,16 @@ use Cwd;
 # with.
 # See https://mojolicious.org/perldoc/Mojolicious/Guides/Tutorial
 
-has 'options';
-has 'selectors';
+# Used to collect kdesrc-build runtime information as part of the Mojolicious
+# web application
+has 'ksb_state';
 
 sub new
 {
     my ($class, $config) = @_;
 
-    # Mojolicious will override configuration in a dictionary keyed by 'config'
+    # Mojolicious will provide configuration input in a dictionary keyed by
+    # 'config' so that's where we need to look for it
     $config //= { config => { } };
 
     my $optsAndSelectors = $config->{config};
@@ -32,9 +34,12 @@ sub new
     $optsAndSelectors->{selectors} //= [];
 
     return $class->SUPER::new(
-        opts_and_selectors => $optsAndSelectors,
-        options => $optsAndSelectors->{options},
-        ksbhome => getcwd()
+        ksb_state => {
+            ksbhome => getcwd(),
+            options => $optsAndSelectors->{options},
+            selectors => $optsAndSelectors->{selectors},
+            opts_and_selectors => $optsAndSelectors,
+        },
     );
 }
 
@@ -46,13 +51,13 @@ sub make_new_ksb
 
     # ksb::Application startup uses current dir to find right rc-file
     # by default.
-    chdir($c->app->{ksbhome});
+    chdir($c->app->ksb_state->{ksbhome});
     my $app = ksb::Application->new->setHeadless;
 
     # Note that we shouldn't /have/ any selectors at this point, it's now a
     # separate user input.
-    my @selectors = $app->establishContext($c->app->{opts_and_selectors});
-    $c->app->selectors([@selectors]);
+    my @selectors = $app->establishContext($c->app->ksb_state->{opts_and_selectors});
+    $c->app->ksb_state->{selectors} = [@selectors];
 
     # Reset log handler
     my $ctx = $app->context();
@@ -75,7 +80,7 @@ sub make_new_ksb
         });
     }
 
-    if(@selectors) {
+    if (@selectors) {
         $c->app->log->info("Module selectors requested:" . join(', ', @selectors));
     } else {
         $c->app->log->info("All modules to be built");
@@ -244,6 +249,7 @@ sub _generateRoutes {
         eval {
             my $workload = $c->ksb->modulesFromSelectors(@selectors);
             $c->ksb->setModulesToProcess($workload);
+            $c->app->ksb_state->{selectors} = \@selectors;
         };
 
         return $self->_renderException($c, $@)
