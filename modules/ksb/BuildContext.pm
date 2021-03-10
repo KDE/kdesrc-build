@@ -689,7 +689,7 @@ sub markModulePhaseFailed
     my %details;
 
     if ((my $log = $module->getOption('#error-log-file', 'module'))) {
-        $details{error_log}  = "/error_log/$name";
+        $details{error_log_url}  = "/module/$name/logs/error";
         $details{error_file} = $log;
     }
 

@@ -281,27 +281,59 @@ sub _generateRoutes {
         $c->render(json => ["$numSels handled"]);
     }, 'post_modules');
 
-    $r->get('/module/:modname' => sub {
+    # Common handler for nested module routes; if this doesn't match then the
+    # nested routes under this one don't activate at all.
+    my $module_route = $r->under('/module/:modname' => sub {
         my $c = shift;
         my $name = $c->stash('modname');
 
         my $module = $c->ksb->context()->lookupModule($name);
         if (!$module) {
-            $c->render(template => 'does_not_exist');
-            return;
+            $c->reply->not_found;
+            return; # break dispatch chain
         }
+
+        # Found the module, add it to the stash
+        $c->stash(ksb_module => $module);
+        return 1; # continue dispatch chain
+    });
+
+    # Nested route
+    $module_route->get('/' => sub {
+        my $c = shift;
+        my $module = $c->stash('ksb_module');
 
         my $opts = {
             options => $module->{options},
-            persistent => $c->ksb->context()->{persistent_options}->{$name},
+            persistent => $c->ksb->context()->{persistent_options}->{$module->name()},
         };
-        $c->render(json => $opts);
+
+        $c->respond_to(
+            json => {          # If they want JSON...
+                json => $opts, # ... have Mojolicious give them JSON back
+            },
+     #      html => { template => 'module_view' },  # TODO Add a content template for module info
+            any  => {
+                text => $c->dumper($opts),
+                format => 'txt',
+            },
+        );
     });
 
-    $r->get('/module/:modname/logs/error' => sub {
+    # Nested route
+    $module_route->get('/logs/error' => sub {
         my $c = shift;
-        my $name = $c->stash('modname');
-        $c->render(text => "TODO: Error logs for $name");
+        my $module = $c->stash('ksb_module');
+        my $name = $module->name();
+
+        my $logFile = $module->getLogDir() . '/error.log';
+
+        if (-e $logFile) {
+            $c->res->headers->content_type('text/plain');
+            $c->reply->file($logFile);
+        } else {
+            $c->reply->not_found;
+        }
     });
 
     $r->get('/config' => sub {
