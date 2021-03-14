@@ -376,6 +376,7 @@ intltool
 meson
 ninja-build
 shared-mime-info
+clang-format
 # Qt-related
 libdbusmenu-qt5-dev
 libqt5svg5-dev
