@@ -590,6 +590,7 @@ shared-mime-info
 dev-util/cmake
 dev-lang/perl
 dev-libs/libdbusmenu-qt
+sys-devel/clang
 
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
