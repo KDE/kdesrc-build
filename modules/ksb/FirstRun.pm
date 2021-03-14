@@ -376,6 +376,7 @@ intltool
 meson
 ninja-build
 shared-mime-info
+clang-format
 # Qt-related
 libdbusmenu-qt5-dev
 libqt5svg5-dev
@@ -433,6 +434,7 @@ libqrencode-dev
 
 @@ pkg/opensuse/unknown
 cmake
+clang
 docbook-xsl-stylesheets
 docbook_4
 flex bison
@@ -588,6 +590,7 @@ shared-mime-info
 dev-util/cmake
 dev-lang/perl
 dev-libs/libdbusmenu-qt
+sys-devel/clang
 
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
