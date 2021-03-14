@@ -434,6 +434,7 @@ libqrencode-dev
 
 @@ pkg/opensuse/unknown
 cmake
+clang
 docbook-xsl-stylesheets
 docbook_4
 flex bison
