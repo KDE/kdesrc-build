@@ -357,6 +357,36 @@ sub _updateToRemoteHead
     # branch.
     my $branchName = $self->getRemoteBranchName($remoteName, $branch);
 
+    # Check if this branchName we want was already the branch we were on. If
+    # not, and if we stashed local changes, then we might dump a bunch of
+    # conflicts in the repo if we un-stash those changes after a branch switch.
+    # See issue #67.
+    my ($existingBranch, undef) = filter_program_output(undef, qw(git branch --show-current));
+    chomp $existingBranch;
+
+    # The result is empty if in 'detached HEAD' state where we should also
+    # clearly not switch branches if there are local changes.
+    if ($module->getOption('#git-was-stashed') &&
+        (!$existingBranch || ($existingBranch ne $branchName)))
+    {
+        # Make error message make more sense
+        $existingBranch ||= 'Detached HEAD';
+        $branchName     ||= "New branch to point to $remoteName/$branch";
+
+        info (<<EOF);
+ y[b[*] The module y[b[$module] had local changes from a different branch than expected:
+ y[b[*]   Expected branch: b[$branchName]
+ y[b[*]   Actual branch:   b[$existingBranch]
+ y[b[*]
+ y[b[*] To avoid conflict with your local changes, b[$module] will not be updated, and the
+ y[b[*] branch will remain unchanged, so it may be out of date from upstream.
+EOF
+
+        $self->_notifyPostBuildMessage(
+            " y[b[*] b[$module] was not updated as it had local changes against an unexpected branch.");
+        return 1;
+    }
+
     if (!$branchName) {
         my $newName = $self->makeBranchname($remoteName, $branch);
         whisper ("\tUpdating g[$module] with new remote-tracking branch y[$newName]");
@@ -645,6 +675,13 @@ sub stashAndUpdate
     # genuine user's stash already prior to kdesrc-build taking over the reins in the repo.
     #
     my $newStashCount = $self->countStash();
+
+    #
+    # mark that we applied a stash so that $updateSub (_updateToRemoteHead or
+    # _updateToDetachedHead) can know not to do dumb things
+    #
+    $module->setOption('#git-was-stashed', 1)
+        if $newStashCount != $oldStashCount;
 
     # finally, update to remote head
     if (!$updateSub->()) {
