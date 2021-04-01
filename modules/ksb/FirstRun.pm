@@ -431,6 +431,11 @@ liblmdb-dev
 libsm-dev
 libnm-dev
 libqrencode-dev
+# .. optional discover backends
+libjcat-dev
+libfwupd-dev
+libsnapd-qt-dev
+libflatpak-dev
 
 @@ pkg/opensuse/unknown
 cmake
