@@ -719,7 +719,7 @@ global
     source-dir ~/kde/src   # Where sources are downloaded
     build-dir  ~/kde/build # Where the source build is run
 
-    directory-layout invent # Use invent.kde.org structure
+    directory-layout flat # Use flattened structure
 
     # Will pull in KDE-based dependencies only, to save you the trouble of
     # listing them all below
