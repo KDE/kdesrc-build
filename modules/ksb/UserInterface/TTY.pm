@@ -292,7 +292,7 @@ sub start
         _check_error($tx);
 
         # If we get here things are mostly working?
-        my $selectorsRef = $app->{selectors};
+        my $selectorsRef = $app->{ksb_state}->{selectors};
 
         # We need to specifically ask for all modules if we're not passing a
         # specific list of modules to build.
