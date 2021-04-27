@@ -34,7 +34,7 @@ sub _makeQt5Module
     # Repo URL to the Qt5 "supermodule" that contains the documented
     # init-repository script.
     # See https://wiki.qt.io/Building_Qt_5_from_Git
-    $newModule->setOption('repository', 'https://code.qt.io/qt/qt5.git');
+    $newModule->setOption('repository', 'https://invent.kde.org/qt/qt/qt5.git');
     $newModule->setScmType('qt5');
     $newModule->setBuildSystem(ksb::BuildSystem::Qt5->new($newModule));
 
