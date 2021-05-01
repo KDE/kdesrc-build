@@ -362,7 +362,7 @@ sub _updateToRemoteHead
     # conflicts in the repo if we un-stash those changes after a branch switch.
     # See issue #67.
     my ($existingBranch, undef) = filter_program_output(undef, qw(git branch --show-current));
-    chomp $existingBranch;
+    chomp $existingBranch if defined ($existingBranch);
 
     # The result is empty if in 'detached HEAD' state where we should also
     # clearly not switch branches if there are local changes.
