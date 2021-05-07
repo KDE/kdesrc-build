@@ -701,6 +701,12 @@ xcb-util-image-dev
 xcb-util-keysyms-dev
 xcb-util-wm-dev
 
+@@ pkg/freebsd/13.0
+cmake
+
+@@ cmd/install/freebsd/13.0
+pkg install -y
+
 @@ cmd/install/debian/unknown
 apt-get -q -y --no-install-recommends install
 
