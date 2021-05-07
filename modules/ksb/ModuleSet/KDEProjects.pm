@@ -121,7 +121,10 @@ sub _expandModuleCandidates
 
     # It's possible to match modules which are marked as inactive on
     # projects.kde.org, elide those.
-    my @activeResults = grep { $_->{'active'} } (@allModuleResults);
+    my @activeResults = @allModuleResults;
+    if (!$ctx->getOption("use-inactive-modules")) {
+        @activeResults = grep { $_->{'active'} } (@allModuleResults);
+    }
 
     if (!@activeResults) {
         warning (" y[b[*] Module y[$moduleSearchItem] is apparently a KDE collection, but contains no\n" .
