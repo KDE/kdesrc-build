@@ -167,11 +167,18 @@ sub _getNumCoresForLowMemory
     # Try to detect the amount of total memory for a corresponding option for
     # heavyweight modules (sorry ade, not sure what's needed for FreeBSD!)
     my $mem_total;
-    my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
+    my $os = ksb::OSSupport->new;
+    if( $os->vendorID eq 'linux') {
+        my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
 
-    if ($total_mem_line && $? == 0) {
-        ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
-        $mem_total = int $mem_total;
+        if ($total_mem_line && $? == 0) {
+            ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
+            $mem_total = int $mem_total;
+        }
+    } elsif( $os->vendorID eq 'freebsd') {
+        chomp($mem_total = `sysctl -n hw.physmem`);
+        # FreeBSD reports memory in Bytes, not KiB. Convert to KiB so logic below still works
+	$mem_total = int sprintf("%.0f", $mem_total / 1024.0);
     }
 
     # 4 GiB is assumed if no info on memory is available, as this will
@@ -203,7 +210,13 @@ DONE
     my $sampleRc = $packages{'sample-rc'} or
         _throw("Embedded sample file missing!");
 
-    my $numCores = `nproc 2>/dev/null` || 4;
+    my $os = ksb::OSSupport->new;
+    our $numCores;
+    if ( $os->vendorID eq 'linux') {
+        $numCores = `nproc 2>/dev/null` || 4;
+    } elsif ( $os->vendorID eq 'freebsd' ) {
+        $numCores = `sysctl -n hw.ncpu`;
+    }
     my $numCoresLow = _getNumCoresForLowMemory($numCores);
 
     $sampleRc =~ s/%\{num_cores}/$numCores/g;
