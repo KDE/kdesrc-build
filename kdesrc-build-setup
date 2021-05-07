@@ -32,6 +32,8 @@ no warnings 'experimental::signatures';
 
 our $VERSION = 0.05; # Not user-visible yet.
 
+our $OS = `uname`; # Check whether we're using Linux or FreeBSD
+
 sub clearScreen
 {
     require POSIX;
@@ -366,17 +368,31 @@ if (grep /^qt5$/, @chosenModules) {
 EOF
 }
 
-chomp(my $num_cores = `nproc`);
+my $mem_total;
+my $num_cores;
+
+if ($OS == 'Linux') {
+    chomp($num_cores = `nproc`);
+}
+else ($OS == 'FreeBSD') {
+    chomp($num_cores = `sysctl -n hw.ncpu`);
+}
 $num_cores ||= 4;
 
 # Try to detect the amount of total memory for a corresponding option for
-# heavyweight modules (sorry ade, not sure what's needed for FreeBSD!)
-my $mem_total;
-my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
+# heavyweight modules
+if($OS == 'Linux') {
+    my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
 
-if ($total_mem_line && $? == 0) {
-    ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
-    $mem_total = int $mem_total;
+    if ($total_mem_line && $? == 0) {
+        ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
+        $mem_total = int $mem_total;
+    }
+}
+else ($OS == 'FreeBSD') {
+    # FreeBSD reports in Bytes, not KiB
+    chomp($mem_total = `sysctl -n hw.physmem`);
+    $mem_total = int sprintf("%.0f", $mem_total / 1024.0);
 }
 
 # 4 GiB is assumed if no info on memory is available, as this will
