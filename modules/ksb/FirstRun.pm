@@ -702,7 +702,28 @@ xcb-util-keysyms-dev
 xcb-util-wm-dev
 
 @@ pkg/freebsd/13.0
+autoconf
+automake
+bison
+boost-all
 cmake
+docbook-xsl
+doxygen
+eigen
+flex
+gmake
+gperf
+gpgme
+intltool
+kde5
+libqrencode
+mlt
+ninja
+p5-YAML
+p5-YAML-PP
+pkgconf
+qt5
+xorg
 
 @@ cmd/install/freebsd/13.0
 pkg install -y
