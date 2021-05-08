@@ -701,7 +701,7 @@ xcb-util-image-dev
 xcb-util-keysyms-dev
 xcb-util-wm-dev
 
-@@ pkg/freebsd/13.0
+@@ pkg/freebsd/unknown
 autoconf
 automake
 bison
@@ -711,21 +711,23 @@ docbook-xsl
 doxygen
 eigen
 flex
+gettext
 gmake
 gperf
 gpgme
 intltool
-kde5
 libqrencode
+lmdb
 mlt
 ninja
-p5-YAML
 p5-YAML-PP
 pkgconf
 qt5
+qt5-wayland
+wayland-protocols
 xorg
 
-@@ cmd/install/freebsd/13.0
+@@ cmd/install/freebsd/unknown
 pkg install -y
 
 @@ cmd/install/debian/unknown
