@@ -702,15 +702,12 @@ xcb-util-keysyms-dev
 xcb-util-wm-dev
 
 @@ pkg/freebsd/unknown
-autoconf
-automake
 bison
 boost-all
 cmake
 docbook-xsl
 doxygen
 eigen
-flex
 gettext
 gmake
 gperf
