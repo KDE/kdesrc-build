@@ -373,8 +373,7 @@ my $num_cores;
 
 if ($OS == 'Linux') {
     chomp($num_cores = `nproc`);
-}
-else ($OS == 'FreeBSD') {
+} elsif ($OS == 'FreeBSD') {
     chomp($num_cores = `sysctl -n hw.ncpu`);
 }
 $num_cores ||= 4;
@@ -388,8 +387,7 @@ if($OS == 'Linux') {
         ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
         $mem_total = int $mem_total;
     }
-}
-else ($OS == 'FreeBSD') {
+} elsif ($OS == 'FreeBSD') {
     # FreeBSD reports in Bytes, not KiB
     chomp($mem_total = `sysctl -n hw.physmem`);
     $mem_total = int sprintf("%.0f", $mem_total / 1024.0);
