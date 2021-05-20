@@ -707,7 +707,7 @@ apk add --virtual makedeps-kdesrc-build
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
 # controls which modules are built in the first place.
-# List of all options: https://go.kde.org/u/ksboptions
+# List of all options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
 
 global
     # Paths

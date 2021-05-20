@@ -2776,8 +2776,8 @@ Important Options:
     --stop-on-failure      Stops the build as soon as a package fails to build.
 
 More docs at https://docs.kde.org/?application=kdesrc-build
-    Supported configuration options: https://go.kde.org/u/ksboptions
-    Supported cmdline options:       https://go.kde.org/u/ksbcmdline
+    Supported configuration options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
+    Supported cmdline options:       https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdline.html
 DONE
 
     # Look for indications this is the first run.

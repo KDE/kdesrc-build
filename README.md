@@ -234,7 +234,7 @@ special in either the source or build directories.
 ### Important Command Line Options
 
 These options are the most useful. Others are documented at [the kdesrc-build
-online handbook](https://go.kde.org/u/ksbcmdline).
+online handbook](https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdline.html).
 
 | option |     Description    |
 | ------ |  ----------------- |
