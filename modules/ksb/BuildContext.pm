@@ -735,6 +735,14 @@ sub setOption
 
     # Actually set options.
     $self->SUPER::setOption(%options);
+    if (exists $options{'num-cores'}){
+        ## temporary workaround
+        my $newMakeOptions = $options{'make-options'};
+        my $findRegex ="-j\\s*\\d+";
+        my $replacePart = "-j$options{'num-cores'}";
+        $newMakeOptions=~s/$findRegex/$replacePart/g;
+        $self->SUPER::setOption('make-options' , $newMakeOptions);
+    }
 
     # Automatically respond to various global option changes.
     while (my ($key, $value) = each %options) {
