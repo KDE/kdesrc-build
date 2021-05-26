@@ -735,7 +735,7 @@ sub setOption
 
     # Actually set options.
     $self->SUPER::setOption(%options);
-    if (exists $options{'num-cores'}){
+    if (exists $options{'num-cores'} and exists $options{'make-options'}){
         ## temporary workaround
         my $newMakeOptions = $options{'make-options'};
         my $findRegex ="-j\\s*\\d+";
