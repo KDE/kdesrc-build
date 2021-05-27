@@ -547,6 +547,7 @@ python
 shared-mime-info
 texinfo
 systemd-devel
+qt5-qtbase-devel
 
 @@ pkg/mageia/unknown
 bison
