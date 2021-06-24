@@ -32,6 +32,7 @@ use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
 use ksb::BuildSystem::Qt4;
 use ksb::BuildSystem::Qt5;
+use ksb::BuildSystem::Qbs;
 use ksb::BuildSystem::KDE4;
 use ksb::BuildSystem::CMakeBootstrap;
 use ksb::BuildSystem::Meson;
@@ -293,6 +294,7 @@ sub buildSystemFromName
         'generic'         => 'ksb::BuildSystem',
         'qmake'           => 'ksb::BuildSystem::QMake',
         'cmake-bootstrap' => 'ksb::BuildSystem::CMakeBootstrap',
+        'qbs'             => 'ksb::BuildSystem::Qbs',
         'kde'             => 'ksb::BuildSystem::KDE4',
         'qt'              => 'ksb::BuildSystem::Qt4',
         'qt5'             => 'ksb::BuildSystem::Qt5',
@@ -329,6 +331,10 @@ sub buildSystem
         (-e "$sourceDir/bin/syncqt"))
     {
         $buildType = ksb::BuildSystem::Qt4->new($self);
+    }
+
+    if (!$buildType && (my @files = glob ("$sourceDir/*.qbs"))) {
+        $buildType = ksb::BuildSystem::Qbs->new($self);
     }
 
     # This test must come before the KDE buildsystem's as cmake's own
