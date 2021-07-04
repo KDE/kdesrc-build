@@ -51,6 +51,7 @@ Mojolicious::Command::Author::generate::app - App generator command
 
     mojo generate app
     mojo generate app TestApp
+    mojo generate app My::TestApp
 
   Options:
     -h, --help   Show this summary of available options
@@ -133,7 +134,7 @@ sub startup ($self) {
   my $r = $self->routes;
 
   # Normal route to controller
-  $r->get('/')->to('example#welcome');
+  $r->get('/')->to('Example#welcome');
 }
 
 1;

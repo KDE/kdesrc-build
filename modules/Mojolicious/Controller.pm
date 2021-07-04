@@ -2,7 +2,8 @@ package Mojolicious::Controller;
 use Mojo::Base -base;
 
 # No imports, for security reasons!
-use Carp ();
+use Carp        ();
+use Digest::SHA ();
 use Mojo::ByteStream;
 use Mojo::DynamicMethods -dispatch;
 use Mojo::URL;
@@ -12,12 +13,6 @@ use Scalar::Util ();
 
 has [qw(app tx)] => undef, weak => 1;
 has match => sub { Mojolicious::Routes::Match->new(root => shift->app->routes) };
-
-# Reserved stash values
-my %RESERVED = map { $_ => 1 } (
-  qw(action app cb controller data extends format handler inline json layout namespace path status template text),
-  qw(variant)
-);
 
 sub BUILD_DYNAMIC {
   my ($class, $method, $dyn_methods) = @_;
@@ -59,7 +54,7 @@ sub every_param {
 
   # Captured unreserved values
   my $captures = $self->stash->{'mojo.captures'} //= {};
-  if (!$RESERVED{$name} && exists $captures->{$name}) {
+  if (exists $captures->{$name} && !$self->app->routes->is_reserved($name)) {
     my $value = $captures->{$name};
     return ref $value eq 'ARRAY' ? $value : [$value];
   }
@@ -83,7 +78,7 @@ sub every_signed_cookie {
 
       my $valid;
       for my $secret (@$secrets) {
-        my $check = Mojo::Util::hmac_sha1_sum("$name=$value", $secret);
+        my $check = Digest::SHA::hmac_sha256_hex("$name=$value", $secret);
         ++$valid and last if Mojo::Util::secure_compare($signature, $check);
       }
       if ($valid) { push @results, $value }
@@ -153,7 +148,7 @@ sub render {
 
   # Maybe no 404
   return defined $output ? Mojo::ByteStream->new($output) : undef if $ts;
-  return $maybe          ? undef                          : !$self->helpers->reply->not_found unless defined $output;
+  return $maybe          ? undef : Carp::croak("Could not render a response") unless defined $output;
 
   $plugins->emit_hook(after_render => $self, \$output, $format);
   return $renderer->respond($self, $output, $format, $stash->{status});
@@ -233,7 +228,7 @@ sub signed_cookie {
   return $self->every_signed_cookie($name)->[-1] unless defined $value;
 
   # Response cookie
-  my $sum = Mojo::Util::hmac_sha1_sum("$name=$value", $self->app->secrets->[0]);
+  my $sum = Digest::SHA::hmac_sha256_hex("$name=$value", $self->app->secrets->[0]);
   return $self->cookie($name, "$value--$sum", $options);
 }
 
@@ -515,8 +510,8 @@ For more control you can also access request information directly.
   my $bool = $c->render('foo/index');
 
 Render content with L<Mojolicious/"renderer"> and emit hooks L<Mojolicious/"before_render"> as well as
-L<Mojolicious/"after_render">, or call L<Mojolicious::Plugin::DefaultHelpers/"reply-E<gt>not_found"> if no response
-could be generated, all additional key/value pairs get merged into the L</"stash">.
+L<Mojolicious/"after_render">, or dies if no response could be generated. All additional key/value pairs get merged into
+the L</"stash">.
 
   # Render characters
   $c->render(text => 'I ♥ Mojolicious!');
@@ -681,8 +676,8 @@ L<Mojolicious::Plugin::DefaultHelpers/"inactivity_timeout">, which usually defau
   $c          = $c->session(foo => 'bar');
 
 Persistent data storage for the next few requests, all session data gets serialized with L<Mojo::JSON> and stored
-Base64 encoded in HMAC-SHA1 signed cookies, to prevent tampering. Note that cookies usually have a C<4096> byte (4KiB)
-limit, depending on browser.
+Base64 encoded in HMAC-SHA256 signed cookies, to prevent tampering. Note that cookies usually have a C<4096> byte
+(4KiB) limit, depending on browser.
 
   # Manipulate session
   $c->session->{foo} = 'bar';
@@ -706,7 +701,7 @@ limit, depending on browser.
 
 Access signed request cookie values and create new signed response cookies. If there are multiple values sharing the
 same name, and you want to access more than just the last one, you can use L</"every_signed_cookie">. Cookies are
-cryptographically signed with HMAC-SHA1, to prevent tampering, and the ones failing signature verification will be
+cryptographically signed with HMAC-SHA256, to prevent tampering, and the ones failing signature verification will be
 automatically discarded.
 
 =head2 stash

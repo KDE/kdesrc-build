@@ -192,19 +192,17 @@ sub _finally {
   my ($self, $handled, $finally) = @_;
 
   my $new = $self->clone;
-  $self->{handled} = 1 if $handled;
-  push @{$self->{resolve}}, sub { _finally_cb($new, $finally, 'resolve', @_) };
-  push @{$self->{reject}},  sub { _finally_cb($new, $finally, 'reject',  @_) };
+  my $cb  = sub {
+    my @results = @_;
+    $new->resolve($finally->())->then(sub {@results});
+  };
 
-  $self->_defer if $self->{results};
+  my $before = $self->{handled};
+  $self->catch($cb);
+  my $next = $self->then($cb);
+  delete $self->{handled} if !$before && !$handled;
 
-  return $new;
-}
-
-sub _finally_cb {
-  my ($new, $finally, $method, @results) = @_;
-  return $new->reject($@) unless eval { $finally->(); 1 };
-  return $new->$method(@results);
+  return $next;
 }
 
 sub _settle {
@@ -367,8 +365,7 @@ rejected, with hash references that describe the outcome of each promise.
   my $new = Mojo::Promise->any(@promises);
 
 Returns a new L<Mojo::Promise> object that fulfills as soon as one of the passed L<Mojo::Promise> objects fulfills,
-with the value from that promise. If no promises fulfill, it is rejected with the reasons from the rejected promises in
-the same order as the passed promises. Note that this method is B<EXPERIMENTAL> and might change without warning!
+with the value from that promise.
 
 =head2 catch
 
@@ -412,8 +409,7 @@ original fulfillment value or rejection reason.
 
 Apply a function that returns a L<Mojo::Promise> to each item in a list of items while optionally limiting concurrency.
 Returns a L<Mojo::Promise> that collects the results in the same manner as L</all>. If any item's promise is rejected,
-any remaining items which have not yet been mapped will not be. Note that this method is B<EXPERIMENTAL> and might
-change without warning!
+any remaining items which have not yet been mapped will not be.
 
   # Perform 3 requests at a time concurrently
   Mojo::Promise->map({concurrency => 3}, sub { $ua->get_p($_) }, @urls)
@@ -507,8 +503,7 @@ return value of the called handler.
   $promise = $promise->timer(5);
 
 Create a new L<Mojo::Promise> object with a timer or attach a timer to an existing promise. The promise will be
-resolved after the given amount of time in seconds with or without a value. Note that this method is B<EXPERIMENTAL>
-and might change without warning!
+resolved after the given amount of time in seconds with or without a value.
 
 =head2 timeout
 
@@ -517,8 +512,7 @@ and might change without warning!
   $promise = $promise->timeout(5);
 
 Create a new L<Mojo::Promise> object with a timeout or attach a timeout to an existing promise. The promise will be
-rejected after the given amount of time in seconds with a reason, which defaults to C<Promise timeout>. Note that this
-method is B<EXPERIMENTAL> and might change without warning!
+rejected after the given amount of time in seconds with a reason, which defaults to C<Promise timeout>.
 
 =head2 wait
 

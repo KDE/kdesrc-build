@@ -1,3 +1,4 @@
+% use re qw(regexp_pattern);
 <!DOCTYPE html>
 <!-- Request ID: <%= $c->req->request_id %> -->
 <html>
@@ -12,13 +13,16 @@
     %= javascript '/mojo/bootstrap/bootstrap.js'
     %= stylesheet '/mojo/bootstrap/bootstrap.css'
     %= stylesheet '/mojo/highlight.js/highlight-mojo-dark.css'
-    %= stylesheet '/mojo/fontawesome/fontawesome.css'
+    %= stylesheet 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css'
     %= stylesheet '/mojo/mojo.css'
     <script>
       hljs.initHighlightingOnLoad();
+      $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+      });
     </script>
   </head>
-  <body>
+  <body class="d-flex flex-column h-100">
     <header>
       <nav class="navbar navbar-expand-lg navbar-dark mojobar">
         <a href="https://mojolicious.org" id="mojobar-brand" class="navbar-brand">
@@ -59,9 +63,10 @@
                 Community
               </a>
               <div class="dropdown-menu" aria-labelledby="communityDropdown">
-                <a class="dropdown-item" href="https://webchat.freenode.net/#mojo">Chat</a>
+                <a class="dropdown-item" href="https://web.libera.chat/#mojo">Chat</a>
                 <a class="dropdown-item" href="https://forum.mojolicious.org">Forum</a>
-                <a class="dropdown-item" href="https://twitter.com/perlmojo">Twitter</a>
+                <a class="dropdown-item" href="https://twitter.com/mojolicious_org">Twitter</a>
+                <a class="dropdown-item" href="https://blogs.mojolicious.org">Blogs</a>
                 <a class="dropdown-item" href="https://www.linkedin.com/groups/8963713/">LinkedIn</a>
                 <a class="dropdown-item" href="https://github.com/mojolicious/mojo/wiki">Wiki</a>
                 <a class="dropdown-item" href="https://metacpan.org/release/Mojolicious/">CPAN</a>
@@ -94,7 +99,7 @@
         mojoDrawer('#more', '#infos');
       });
     </script>
-    <div class="container">
+    <div class="container flex-grow-1">
       <div class="row flex-wrap">
         <main class="col-sm-12 col-md-8 col-lg-10 py-md-3 pl-md-5">
           <div class="row mojo-divider">
@@ -200,11 +205,15 @@
                 </div>
                 % my $walk = begin
                   % my ($walk, $route, $depth) = @_;
-                  <tr>
+                  % my $pattern = $route->pattern;
+                  % my $unparsed = $pattern->unparsed || '/';
+                  % $unparsed = "+$unparsed" if $depth;
+                  % $pattern->match('/', $route->is_endpoint && !$route->partial);
+                  % my $regex = (regexp_pattern $pattern->regex)[0];
+                  <tr data-toggle="tooltip" data-placement="left" data-html="true"
+                    title="<b>Regex:</b> <code><%= $regex %></code>">
                     <td class="value">
-                      % my $pattern = $route->pattern->unparsed || '/';
-                      % $pattern = "+$pattern" if $depth;
-                      <pre><%= '  ' x $depth %><%= $pattern %></pre>
+                      <pre><%= '  ' x $depth %><%= $unparsed %></pre>
                     </td>
                     <td class="value">
                       <pre><%= uc(join ',', @{$route->methods // []}) || '*' %></pre>
@@ -302,7 +311,7 @@
           </div>
           <div class="col-sm align-self-center text-center mojo-social">
             <a alt="GitHub" href="https://github.com/mojolicious/mojo"><i class="fab fa-github-alt"></i></a>
-            <a alt="Twitter" href="https://twitter.com/perlmojo"><i class="fab fa-twitter"></i></a>
+            <a alt="Twitter" href="https://twitter.com/mojolicious_org"><i class="fab fa-twitter"></i></a>
             <a alt="LinkedIn" href="https://www.linkedin.com/groups/8963713/"><i class="fab fa-linkedin"></i></a>
           </div>
         </div>

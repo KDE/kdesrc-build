@@ -4,6 +4,14 @@ use Mojo::Base 'Mojolicious::Plugin::JSONConfig';
 use CPAN::Meta::YAML;
 use Mojo::Util qw(decode encode);
 
+sub parse {
+  my ($self, $content, $file, $conf, $app) = @_;
+  my $config = eval { $self->{yaml}->(encode('UTF-8', $self->render($content, $file, $conf, $app))) };
+  die qq{Can't load configuration from file "$file": $@} if $@;
+  die qq{Configuration file "$file" did not return a YAML mapping} unless ref $config eq 'HASH';
+  return $config;
+}
+
 sub register {
   my ($self, $app, $conf) = @_;
 
@@ -14,14 +22,6 @@ sub register {
   }
 
   return $self->SUPER::register($app, $conf);
-}
-
-sub parse {
-  my ($self, $content, $file, $conf, $app) = @_;
-  my $config = eval { $self->{yaml}->(encode('UTF-8', $self->render($content, $file, $conf, $app))) };
-  die qq{Can't parse config "$file": $@} if $@;
-  die qq{Invalid config "$file"} unless ref $config eq 'HASH';
-  return $config;
 }
 
 1;
@@ -71,8 +71,25 @@ application home directory will be generated from the value of L<Mojolicious/"mo
 extend the normal configuration file C<$moniker.yml> with C<mode> specific ones like C<$moniker.$mode.yml>, which will
 be detected automatically.
 
-If the configuration value C<config_override> has been set in L<Mojolicious/"config"> when this plugin is loaded, it
-will not do anything.
+These configuration values are currently reserved:
+
+=over 2
+
+=item C<config_override>
+
+If this configuration value has been set in L<Mojolicious/"config"> when this plugin is loaded, it will not do anything
+besides loading deployment specific plugins.
+
+=item C<plugins>
+
+  plugins:
+    - SetUserGroup:
+        user: sri
+        group: staff
+
+One or more deployment specific plugins that should be loaded right after this plugin has been loaded.
+
+=back
 
 The code of this plugin is a good example for learning to build new plugins, you're welcome to fork it.
 

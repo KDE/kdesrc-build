@@ -12,7 +12,7 @@ has [qw(proxy reverse_proxy)];
 has request_id => sub {
   state $seed    = $$ . time . rand;
   state $counter = int rand 0xffffff;
-  my $b64 = substr(sha1_base64($seed . ($counter = ($counter + 1) % 0xffffff)), 0, 8);
+  my $b64 = substr(sha1_base64($seed . ($counter = ($counter + 1) % 0xffffff)), 0, 12);
   $b64 =~ tr!+/!-_!;
   return $b64;
 };
@@ -67,9 +67,12 @@ sub fix_headers {
   my $self = shift;
   $self->{fix} ? return $self : $self->SUPER::fix_headers(@_);
 
-  # Host
-  my $url     = $self->url;
+  # Empty
   my $headers = $self->headers;
+  $headers->remove('Content-Length') if ($headers->content_length // '') eq '0' && $self->method eq 'GET';
+
+  # Host
+  my $url = $self->url;
   $headers->host($url->host_port) unless $headers->host;
 
   # Basic authentication
@@ -305,7 +308,7 @@ Request has been performed through a reverse proxy.
 =head2 trusted_proxies
 
   my $proxies = $req->trusted_proxies;
-  $req        = $req->trusted_proxies(['10.0/8', '127.0.0.1', '172.16.0/12', '192.168.0/16', 'fc00::/7']);
+  $req        = $req->trusted_proxies(['10.0.0.0/8', '127.0.0.1', '172.16.0.0/12', '192.168.0.0/16', 'fc00::/7']);
 
 Trusted reverse proxies, addresses or networks in CIDR form.
 

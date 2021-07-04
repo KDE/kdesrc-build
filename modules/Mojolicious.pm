@@ -8,6 +8,7 @@ use Mojo::Exception;
 use Mojo::Home;
 use Mojo::Loader;
 use Mojo::Log;
+use Mojo::Server;
 use Mojo::Util;
 use Mojo::UserAgent;
 use Mojolicious::Commands;
@@ -27,19 +28,10 @@ has home             => sub { Mojo::Home->new->detect(ref shift) };
 has log              => sub {
   my $self = shift;
 
-  my $mode = $self->mode;
-  my $log  = Mojo::Log->new;
-
-  # DEPRECATED!
-  my $home = $self->home;
-  if (-d $home->child('log') && -w _) {
-    $log->path($home->child('log', "$mode.log"));
-    Mojo::Util::deprecated(qq{Logging to "log/$mode.log" is DEPRECATED});
-  }
-
   # Reduced log output outside of development mode
+  my $log = Mojo::Log->new;
   return $log->level($ENV{MOJO_LOG_LEVEL}) if $ENV{MOJO_LOG_LEVEL};
-  return $mode eq 'development' ? $log : $log->level('info');
+  return $self->mode eq 'development' ? $log : $log->level('info');
 };
 has 'max_request_size';
 has mode               => sub { $ENV{MOJO_MODE} || $ENV{PLACK_ENV} || 'development' };
@@ -63,8 +55,8 @@ has types     => sub { Mojolicious::Types->new };
 has ua        => sub { Mojo::UserAgent->new };
 has validator => sub { Mojolicious::Validator->new };
 
-our $CODENAME = 'Supervillain';
-our $VERSION  = '8.72';
+our $CODENAME = 'Waffle';
+our $VERSION  = '9.19';
 
 sub BUILD_DYNAMIC {
   my ($class, $method, $dyn_methods) = @_;
@@ -130,7 +122,7 @@ sub dispatch {
   # Routes
   $plugins->emit_hook(before_routes => $c);
   $c->helpers->reply->not_found
-    unless $tx->res->code || $self->routes->dispatch($c) || $tx->res->code || $c->stash->{'mojo.rendered'};
+    unless $tx->res->code || $self->routes->dispatch($c) || $tx->res->code || $stash->{'mojo.rendered'};
 }
 
 sub handler {
@@ -155,7 +147,7 @@ sub helper { shift->renderer->add_helper(@_) }
 sub hook { shift->plugins->on(@_) }
 
 sub new {
-  my $self = shift->SUPER::new(@_);
+  my $self = shift->SUPER::new((ref $_[0] ? %{shift()} : @_), @Mojo::Server::ARGS_OVERRIDE);
 
   my $home = $self->home;
   push @{$self->renderer->paths}, $home->child('templates')->to_string;
@@ -164,11 +156,6 @@ sub new {
   # Default to controller and application namespace
   my $controller = "@{[ref $self]}::Controller";
   my $r          = $self->preload_namespaces([$controller])->routes->namespaces([$controller, ref $self]);
-
-  # Hide controller attributes/methods
-  $r->hide(qw(app continue cookie every_cookie every_param every_signed_cookie finish helpers match on param render));
-  $r->hide(qw(render_later render_maybe render_to_string rendered req res send session signed_cookie stash tx url_for));
-  $r->hide(qw(write write_chunk));
 
   $self->plugin($_) for qw(HeaderCondition DefaultHelpers TagHelpers EPLRenderer EPRenderer);
 
@@ -256,8 +243,7 @@ L<Mojolicious> will emit the following hooks in the listed order.
 
 =head2 before_command
 
-Emitted right before the application runs a command through the command line interface. Note that this hook is
-B<EXPERIMENTAL> and might change without warning!
+Emitted right before the application runs a command through the command line interface.
 
   $app->hook(before_command => sub ($command, $args) {...});
 
@@ -267,7 +253,7 @@ command object and the command arguments)
 =head2 before_server_start
 
 Emitted right before the application server is started, for web servers that support it, which includes all the
-built-in ones (except for L<Mojo::Server::CGI>).
+built-in ones.
 
   $app->hook(before_server_start => sub ($server, $app) {...});
 
@@ -455,10 +441,9 @@ a plugin.
 =head2 preload_namespaces
 
   my $namespaces = $app->preload_namespaces;
-  $app           = $app->preload_namespaces(['MyApp:Controller']);
+  $app           = $app->preload_namespaces(['MyApp::Controller']);
 
-Namespaces to preload classes from during application startup. Note that this attribute is B<EXPERIMENTAL> and might
-change without warning!
+Namespaces to preload classes from during application startup.
 
 =head2 renderer
 
@@ -737,8 +722,7 @@ subclass.
 
   $app->warmup;
 
-Preload classes from L</"preload_namespaces"> for future use. Note that this method is B<EXPERIMENTAL> and might change
-without warning!
+Preload classes from L</"preload_namespaces"> for future use.
 
 =head1 HELPERS
 
@@ -782,14 +766,11 @@ Licensed under the BSD License, L<https://github.com/highlightjs/highlight.js/bl
 
 Licensed under the MIT License, L<http://creativecommons.org/licenses/MIT>.
 
-=head2 Font Awesome
-
-Licensed under the CC-BY License, Version 4.0 L<https://creativecommons.org/licenses/by/4.0/> and SIL OFL, Version 1.1
-L<https://opensource.org/licenses/OFL-1.1>.
-
 =head1 CODE NAMES
 
 Every major release of L<Mojolicious> has a code name, these are the ones that have been used in the past.
+
+9.0, C<Waffle> (U+1F9C7)
 
 8.0, C<Supervillain> (U+1F9B9)
 

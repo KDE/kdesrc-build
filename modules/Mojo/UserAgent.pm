@@ -5,7 +5,7 @@ use Mojo::Base 'Mojo::EventEmitter';
 #  Bender: August 6, 1991."
 use Mojo::IOLoop;
 use Mojo::Promise;
-use Mojo::Util qw(deprecated monkey_patch term_escape);
+use Mojo::Util qw(monkey_patch term_escape);
 use Mojo::UserAgent::CookieJar;
 use Mojo::UserAgent::Proxy;
 use Mojo::UserAgent::Server;
@@ -47,12 +47,6 @@ sub DESTROY { shift->_cleanup unless ${^GLOBAL_PHASE} eq 'DESTRUCT' }
 
 sub build_tx           { shift->transactor->tx(@_) }
 sub build_websocket_tx { shift->transactor->websocket(@_) }
-
-# DEPRECATED!
-sub local_address {
-  deprecated 'Mojo::Transaction::local_address is DEPRECATED in favor of Mojo::Transaction::socket_options';
-  @_ == 1 ? return $_[0]->socket_options->{LocalAddr} : (($_[0]->socket_options->{LocalAddr} = $_[1]) and return $_[0]);
-}
 
 sub start {
   my ($self, $tx, $cb) = @_;
@@ -353,7 +347,7 @@ sub _write {
   return unless length $chunk;
 
   weaken $self;
-  $c->{ioloop}->stream($id)->write($chunk => sub { $self->_write($id) });
+  $c->{ioloop}->stream($id)->write($chunk => sub { $self && $self->_write($id) });
 }
 
 1;
@@ -407,7 +401,7 @@ Mojo::UserAgent - Non-blocking I/O HTTP and WebSocket user agent
 
   # Follow redirects to download Mojolicious from GitHub
   $ua->max_redirects(5)
-    ->get('https://www.github.com/mojolicious/mojo/tarball/master')
+    ->get('https://www.github.com/mojolicious/mojo/tarball/main')
     ->result->save_to('/home/sri/mojo.tar.gz');
 
   # Non-blocking request

@@ -13,21 +13,21 @@ sub path_for {
   my ($self, $name, %values) = (shift, Mojo::Util::_options(@_));
 
   # Current route
-  my $route;
-  if (!$name || $name eq 'current') { return {} unless $route = $self->endpoint }
+  my ($route, $current) = (undef, !$name || $name eq 'current');
+  if ($current) { return {} unless $route = $self->endpoint }
 
   # Find endpoint
   else { return {path => $name} unless $route = $self->root->lookup($name) }
 
   # Merge values (clear format)
-  my $captures = $self->stack->[-1] // {};
-  %values = (%$captures, format => undef, %values);
-  my $pattern = $route->pattern;
-  $values{format} //= defined $captures->{format} ? $captures->{format} : $pattern->defaults->{format}
-    if $pattern->constraints->{format};
+  my $captures    = $self->stack->[-1] // {};
+  my %merged      = (%$captures, format => undef, %values);
+  my $pattern     = $route->pattern;
+  my $constraints = $pattern->constraints;
+  $merged{format} = ($current ? $captures->{format} : undef) // $pattern->defaults->{format}
+    if !exists $values{format} && $constraints->{format} && $constraints->{format} ne '1';
 
-  my $path = $route->render(\%values);
-  return {path => $path, websocket => $route->has_websocket};
+  return {path => $route->render(\%merged), websocket => $route->has_websocket};
 }
 
 sub _match {
@@ -101,19 +101,18 @@ Mojolicious::Routes::Match - Find routes
 
   # Routes
   my $r = Mojolicious::Routes->new;
-  $r->get('/:controller/:action');
-  $r->put('/:controller/:action');
+  $r->get('/user/:id');
+  $r->put('/user/:id');
 
   # Match
   my $c = Mojolicious::Controller->new;
   my $match = Mojolicious::Routes::Match->new(root => $r);
-  $match->find($c => {method => 'PUT', path => '/foo/bar'});
-  say $match->stack->[0]{controller};
-  say $match->stack->[0]{action};
+  $match->find($c => {method => 'PUT', path => '/user/23'});
+  say $match->stack->[0]{id};
 
   # Render
   say $match->path_for->{path};
-  say $match->path_for(action => 'baz')->{path};
+  say $match->path_for(id => 24)->{path};
 
 =head1 DESCRIPTION
 

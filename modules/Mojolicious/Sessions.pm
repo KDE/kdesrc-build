@@ -8,9 +8,9 @@ has [qw(cookie_domain secure)];
 has cookie_name        => 'mojolicious';
 has cookie_path        => '/';
 has default_expiration => 3600;
-has deserialize        => sub { \&Mojo::JSON::j };
+has deserialize        => sub { \&_deserialize };
 has samesite           => 'Lax';
-has serialize          => sub { \&Mojo::JSON::encode_json };
+has serialize          => sub { \&_serialize };
 
 sub load {
   my ($self, $c) = @_;
@@ -61,6 +61,14 @@ sub store {
   $c->signed_cookie($self->cookie_name, $value, $options);
 }
 
+sub _deserialize { Mojo::JSON::decode_json($_[0] =~ s/\}\KZ*$//r) }
+
+sub _serialize {
+  no warnings 'numeric';
+  my $out = Mojo::JSON::encode_json($_[0]);
+  return $out . 'Z' x (1025 - length $out);
+}
+
 1;
 
 =encoding utf8
@@ -80,7 +88,7 @@ Mojolicious::Sessions - Session manager based on signed cookies
 =head1 DESCRIPTION
 
 L<Mojolicious::Sessions> manages sessions based on signed cookies for L<Mojolicious>. All data gets serialized with
-L<Mojo::JSON> and stored Base64 encoded on the client-side, but is protected from unwanted changes with a HMAC-SHA1
+L<Mojo::JSON> and stored Base64 encoded on the client-side, but is protected from unwanted changes with a HMAC-SHA256
 signature.
 
 =head1 ATTRIBUTES

@@ -1,7 +1,7 @@
 package Mojolicious::Routes::Route;
 use Mojo::Base -base;
 
-use Carp ();
+use Carp qw(croak);
 use Mojo::DynamicMethods -dispatch;
 use Mojo::Util;
 use Mojolicious::Routes::Pattern;
@@ -11,6 +11,12 @@ has 'children' => sub { [] };
 has parent     => undef, weak => 1;
 has pattern    => sub { Mojolicious::Routes::Pattern->new };
 
+# Reserved stash values
+my %RESERVED = map { $_ => 1 } (
+  qw(action app cb controller data extends format handler inline json layout namespace path status template text),
+  qw(variant)
+);
+
 sub BUILD_DYNAMIC {
   my ($class, $method, $dyn_methods) = @_;
 
@@ -19,7 +25,7 @@ sub BUILD_DYNAMIC {
     my $dynamic = $dyn_methods->{$self->root}{$method};
     return $self->$dynamic(@_) if $dynamic;
     my $package = ref($self);
-    Carp::croak qq{Can't locate object method "$method" via package "$package"};
+    croak qq{Can't locate object method "$method" via package "$package"};
   };
 }
 
@@ -34,12 +40,6 @@ sub any { shift->_generate_route(ref $_[0] eq 'ARRAY' ? shift : [], @_) }
 
 sub delete { shift->_generate_route(DELETE => @_) }
 
-# DEPRECATED!
-sub detour {
-  Mojo::Util::deprecated 'Mojolicious::Routes::Route::detour is DEPRECATED';
-  shift->partial(1)->to(@_);
-}
-
 sub find { shift->_index->{shift()} }
 
 sub get { shift->_generate_route(GET => @_) }
@@ -53,6 +53,8 @@ sub has_websocket {
 }
 
 sub is_endpoint { $_[0]->inline ? undef : !@{$_[0]->children} }
+
+sub is_reserved { !!$RESERVED{$_[1]} }
 
 sub is_websocket { !!shift->{websocket} }
 
@@ -72,13 +74,6 @@ sub name {
 }
 
 sub options { shift->_generate_route(OPTIONS => @_) }
-
-# DEPRECATED!
-sub over {
-  Mojo::Util::deprecated
-    'Mojolicious::Routes::Route::over is DEPRECATED in favor of Mojolicious::Routes::Route::requires';
-  shift->requires(@_);
-}
 
 sub parse {
   my $self = shift;
@@ -110,19 +105,13 @@ sub requires {
   my $self = shift;
 
   # Routes with conditions can't be cached
-  return $self->{over} unless @_;
+  return $self->{requires} unless @_;
   my $conditions = ref $_[0] eq 'ARRAY' ? $_[0] : [@_];
   return $self unless @$conditions;
-  $self->{over} = $conditions;
+  $self->{requires} = $conditions;
   $self->root->cache->max_keys(0);
 
   return $self;
-}
-
-# DEPRECATED!
-sub route {
-  Mojo::Util::deprecated 'Mojolicious::Routes::Route::route is DEPRECATED in favor of Mojolicious::Routes::Route::any';
-  shift->_route(@_);
 }
 
 sub suggested_method {
@@ -167,13 +156,6 @@ sub to_string {
 }
 
 sub under { shift->_generate_route(under => @_) }
-
-# DEPRECATED!
-sub via {
-  Mojo::Util::deprecated
-    'Mojolicious::Routes::Route::via is DEPRECATED in favor of Mojolicious::Routes::Route::methods';
-  shift->methods(@_);
-}
 
 sub websocket {
   my $route = shift->get(@_);
@@ -233,10 +215,19 @@ sub _index {
 }
 
 sub _route {
-  my $self   = shift;
-  my $route  = $self->add_child(__PACKAGE__->new->parse(@_))->children->[-1];
-  my $format = $self->pattern->constraints->{format};
-  $route->pattern->constraints->{format} //= 0 if defined $format && !$format;
+  my $self = shift;
+
+  my $route       = $self->add_child(__PACKAGE__->new->parse(@_))->children->[-1];
+  my $new_pattern = $route->pattern;
+  croak qq{Route pattern "@{[$new_pattern->unparsed]}" contains a reserved stash value}
+    if grep { $self->is_reserved($_) } @{$new_pattern->placeholders};
+
+  my $old_pattern = $self->pattern;
+  my $constraints = $old_pattern->constraints;
+  $new_pattern->constraints->{format} //= $constraints->{format} if exists $constraints->{format};
+  my $defaults = $old_pattern->defaults;
+  $new_pattern->defaults->{format} //= $defaults->{format} if exists $defaults->{format};
+
   return $route;
 }
 
@@ -419,6 +410,12 @@ Check if this route has a WebSocket ancestor and cache the result for future che
 
 Check if this route qualifies as an endpoint.
 
+=head2 is_reserved
+
+  my $bool = $r->is_reserved('controller');
+
+Check if string is a reserved stash value.
+
 =head2 is_websocket
 
   my $bool = $r->is_websocket;
@@ -467,9 +464,9 @@ L<Mojolicious::Guides::Routing> for more information.
 
 =head2 parse
 
-  $r = $r->parse('/:action');
-  $r = $r->parse('/:action', action => qr/\w+/);
-  $r = $r->parse(format => 0);
+  $r = $r->parse('/user/:id');
+  $r = $r->parse('/user/:id', id => qr/\d+/);
+  $r = $r->parse(format => ['json', 'yaml']);
 
 Parse pattern.
 
@@ -597,7 +594,7 @@ Stringify the whole route.
   my $route = $r->under('/:foo' => {foo => 'bar'});
   my $route = $r->under('/:foo' => [foo => qr/\w+/]);
   my $route = $r->under('/:foo' => (agent => qr/Firefox/));
-  my $route = $r->under([format => 0]);
+  my $route = $r->under([format => ['json', 'yaml']]);
 
 Generate L<Mojolicious::Routes::Route> object for a nested route with its own intermediate destination, takes the same
 arguments as L</"any"> (except for the HTTP methods to match, which are not available). See

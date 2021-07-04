@@ -8,8 +8,8 @@ sub parse {
   my ($self, $content, $file, $conf, $app) = @_;
 
   my $config = eval { from_json $self->render($content, $file, $conf, $app) };
-  die qq{Can't parse config "$file": $@} if $@;
-  die qq{Invalid config "$file"} unless ref $config eq 'HASH';
+  die qq{Can't load configuration from file "$file": $@} if $@;
+  die qq{Configuration file "$file" did not return a JSON object} unless ref $config eq 'HASH';
 
   return $config;
 }
@@ -20,9 +20,8 @@ sub render {
   my ($self, $content, $file, $conf, $app) = @_;
 
   # Application instance and helper
-  my $prepend = q[no strict 'refs'; no warnings 'redefine';];
-  $prepend .= q[my $app = shift; sub app; local *app = sub { $app };];
-  $prepend .= q[use Mojo::Base -strict; no warnings 'ambiguous';];
+  my $prepend = q[no strict 'refs'; no warnings 'redefine'; my $app = shift; sub app; local *app = sub { $app };]
+    . q[use Mojo::Base -strict; no warnings 'ambiguous';];
 
   my $mt     = Mojo::Template->new($conf->{template} // {})->name($file);
   my $output = $mt->prepend($prepend . $mt->prepend)->render($content, $app);
@@ -78,8 +77,22 @@ application home directory will be generated from the value of L<Mojolicious/"mo
 extend the normal configuration file C<$moniker.json> with C<mode> specific ones like C<$moniker.$mode.json>, which
 will be detected automatically.
 
-If the configuration value C<config_override> has been set in L<Mojolicious/"config"> when this plugin is loaded, it
-will not do anything.
+These configuration values are currently reserved:
+
+=over 2
+
+=item C<config_override>
+
+If this configuration value has been set in L<Mojolicious/"config"> when this plugin is loaded, it will not do anything
+besides loading deployment specific plugins.
+
+=item C<plugins>
+
+  "plugins": [{"SetUserGroup": {"user": "sri", "group": "staff"}}]
+
+One or more deployment specific plugins that should be loaded right after this plugin has been loaded.
+
+=back
 
 The code of this plugin is a good example for learning to build new plugins, you're welcome to fork it.
 
