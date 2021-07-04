@@ -226,7 +226,7 @@ sub needsInstalled
 
 sub name
 {
-    return 'KDE';
+    return 'KDE CMake';
 }
 
 # Called by the module being built before it runs its build/install process. Should
@@ -366,7 +366,6 @@ sub configureInternal
     # semantics).
     if ($self->_safe_run_cmake())
     {
-        error ("\tUnable to configure r[$module] with CMake!");
         return 0;
     }
 
