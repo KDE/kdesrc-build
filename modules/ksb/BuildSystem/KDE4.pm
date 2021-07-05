@@ -389,17 +389,7 @@ sub buildInternal
     my $defaultOptionsName = $GENERATOR_MAP->{$generator}->{optionsName};
     my $optionsName = shift // "$defaultOptionsName";
 
-    return $self->safe_make({
-        target => undef,
-        message => 'Compiling...',
-        'make-options' => [
-            split(' ', $self->module()->getOption($optionsName)),
-        ],
-        logbase => 'build',
-        subdirs => [
-            split(' ', $self->module()->getOption("checkout-only"))
-        ],
-    })->{was_successful};
+    return $self->SUPER::buildInternal($optionsName);
 }
 
 ### Internal package functions.

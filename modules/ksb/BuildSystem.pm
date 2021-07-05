@@ -73,6 +73,34 @@ sub module
     return $self->{module};
 }
 
+# Returns a hashref holding the resource constraints to try to apply during the
+# build.  Buildsystems should apply the constraints they understand before
+# running the build command.
+# {
+#   'compute' => OPTIONAL, if set a max number of CPU cores to use, or '1' if unable to tell
+#   # no other constraints supported
+# }
+sub buildConstraints
+{
+    my $self = shift;
+    my $cores = $self->module()->getOption('num-cores');
+
+    if ($cores eq 'auto') {
+        $cores = eval {
+            chomp(my @out = ksb::Util::filter_program_output(undef, 'nproc'));
+            $out[0];
+        } // 0;
+    }
+
+    # If we set cores to something silly, set it to a failsafe. But let it be
+    # empty if user doesn't want us to fiddle at all.
+    $cores = 4
+        if $cores and (int $cores <= 0);
+
+    return { compute => $cores } if $cores;
+    return { };
+}
+
 # Subroutine to determine if a given module needs to have the build system
 # recreated from scratch.
 # If so, it returns a non empty string
@@ -159,12 +187,22 @@ sub buildInternal
     my $self = shift;
     my $optionsName = shift // 'make-options';
 
+    my @makeOptions = split(' ', $self->module()->getOption($optionsName));
+
+    # Look for CPU core limits to enforce. This handles core limits for all
+    # current build systems.
+    my $buildConstraints = $self->buildConstraints();
+    my $numCores = $buildConstraints->{compute};
+
+    if ($numCores) {
+        # Prepend parallelism arg to allow user settings to override
+        unshift @makeOptions, '-j', $numCores;
+    }
+
     return $self->safe_make({
         target => undef,
         message => 'Compiling...',
-        'make-options' => [
-            split(' ', $self->module()->getOption($optionsName)),
-        ],
+        'make-options' => \@makeOptions,
         logbase => 'build',
         subdirs => [
             split(' ', $self->module()->getOption("checkout-only"))
