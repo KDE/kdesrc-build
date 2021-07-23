@@ -726,8 +726,8 @@ global
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
-    # kdesrc-build sets 2 options which you can use in options like make-options or set-env
-    # to help manage the number of compile jobs that # happen during a build:
+    # kdesrc-build sets 2 options which is used in options like make-options or set-env
+    # to help manage the number of compile jobs that happen during a build:
     #
     # 1. num-cores, which is just the number of detected CPU cores, and can be passed
     #    to tools like make (needed for parallel build) or ninja (completely optional).
@@ -737,8 +737,6 @@ global
     #    modules like qtwebengine
     num-cores %{num_cores}
     num-cores-low-mem %{num_cores_low}
-
-    make-options  -j ${num-cores}
 end global
 
 # With base options set, the remainder of the file is used to define modules to build, in the
