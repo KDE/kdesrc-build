@@ -92,6 +92,12 @@ sub buildConstraints
         } // 0;
     }
 
+    # On multi-core systems, reduce number of cores by one to leave at least one
+    # core available for non-compilation activities and avoid making the machine
+    # unresponsive
+    $cores--
+        if $cores and (int $cores > 1);
+
     # If we set cores to something silly, set it to a failsafe. But let it be
     # empty if user doesn't want us to fiddle at all.
     $cores = 4
