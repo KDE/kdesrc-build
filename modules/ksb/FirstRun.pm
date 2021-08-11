@@ -665,6 +665,7 @@ libxtst-dev
 linux-pam-dev
 lmdb-dev
 networkmanager-dev
+openjpeg-dev
 perl
 perl-io-socket-ssl
 perl-uri
