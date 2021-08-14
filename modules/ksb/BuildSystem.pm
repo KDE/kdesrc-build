@@ -187,7 +187,20 @@ sub buildInternal
     my $self = shift;
     my $optionsName = shift // 'make-options';
 
-    my @makeOptions = split(' ', $self->module()->getOption($optionsName));
+    # I removed the default value to num-cores but forgot to account for old
+    # configs that needed a value for num-cores, as this is handled
+    # automatically below. So filter out the naked -j for configs where what
+    # previously might have been "-j 4" is now only "-j". See
+    # https://invent.kde.org/sdk/kdesrc-build/-/issues/78
+    my $optionVal = $self->module()->getOption($optionsName);
+
+    # Look for -j being present but not being followed by digits
+    if ($optionVal =~ /(^|[^a-zA-Z0-9_])-j$/ || $optionVal =~ /(^|[^a-zA-Z_])-j(?! *[0-9]+)/) {
+        warning(" y[b[*] Removing empty -j setting during build for y[b[" . $self->module() . "]");
+        $optionVal =~ s/(^|[^a-zA-Z_])-j */$1/; # Remove the -j entirely for now
+    }
+
+    my @makeOptions = split(' ', $optionVal);
 
     # Look for CPU core limits to enforce. This handles core limits for all
     # current build systems.
