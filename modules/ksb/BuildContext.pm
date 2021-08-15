@@ -503,10 +503,14 @@ sub getLogPathFor
     # We create this here to avoid needless empty module directories everywhere
     super_mkdir($logDir);
 
+    # Provide a directory to make it easy to see the last build for a module's
+    # given phase (like cmake, build, install, etc.) without having to find the
+    # log dir for the specific kdesrc-build run.
+    super_mkdir("$baseLogPath/latest-by-phase/$module");
+
     # Add a symlink to the latest run for this module. 'latest' itself is
     # a directory under the base log directory that holds symlinks mapping
     # each module name to the specific log directory most recently used.
-
     my $latestPath = "$baseLogPath/latest";
 
     # Handle stuff like playground/utils or KDE/kdelibs
@@ -527,6 +531,12 @@ sub getLogPathFor
         # Create symlink initially if we've never done it before.
         symlink($logDir, $symlink);
     }
+
+    if (-e "$baseLogPath/latest-by-phase/$module/$path") {
+        unlink ("$baseLogPath/latest-by-phase/$module/$path");
+    }
+
+    symlink("$logDir/$path", "$baseLogPath/latest-by-phase/$module/$path");
 
     return "$logDir/$path";
 }

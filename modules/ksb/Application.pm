@@ -2265,19 +2265,18 @@ sub _cleanup_log_directory
 
     # This glob relies on the date being in the specific format YYYY-MM-DD-ID
     my @dirs = bsd_glob("$logdir/????-??-??-??/", GLOB_NOSORT);
-    my @needed = _reachableModuleLogs("$logdir/latest");
 
-    # Convert a list to a hash lookup since Perl lacks a "list-has"
     my %needed_table;
-    @needed_table{@needed} = (1) x @needed;
+    for my $trackedLogDir ("$logdir/latest", "$logdir/latest-by-phase") {
+        next unless -d $trackedLogDir;
+        my @needed = _reachableModuleLogs($trackedLogDir);
 
-    my $length = scalar @dirs - scalar @needed;
-    if ($length > 15) { # Arbitrary man is arbitrary
-        note ("Removing y[b[$length] out of g[b[$#dirs] old log directories (this may take some time)...");
+        # Convert a list to a hash lookup since Perl lacks a "list-has"
+        @needed_table{@needed} = (1) x @needed;
     }
-    elsif ($length > 0) {
-        info ("Removing g[b[$length] out of g[b[$#dirs] old log directories...");
-    }
+
+    my $length = scalar @dirs - scalar keys %needed_table;
+    whisper ("Removing g[b[$length] out of g[b[$#dirs] old log directories...");
 
     for my $dir (@dirs) {
         my ($id) = ($dir =~ m/(\d\d\d\d-\d\d-\d\d-\d\d)/);
