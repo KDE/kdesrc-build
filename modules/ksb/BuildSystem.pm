@@ -13,7 +13,7 @@ use ksb::Debug;
 use ksb::Util;
 use ksb::StatusView;
 
-use List::Util qw(first);
+use List::Util qw(max min first);
 
 sub new
 {
@@ -85,26 +85,31 @@ sub buildConstraints
     my $self = shift;
     my $cores = $self->module()->getOption('num-cores');
 
-    if ($cores eq 'auto') {
-        $cores = eval {
-            chomp(my @out = ksb::Util::filter_program_output(undef, 'nproc'));
-            $out[0];
-        } // 0;
-    }
+    # If set to empty, accept user's decision
+    return { } unless $cores;
+
+    my $max_cores = eval {
+        chomp(my @out = ksb::Util::filter_program_output(undef, 'nproc'));
+        max(1, int $out[0]);
+    } // 1;
 
     # On multi-core systems, reduce number of cores by one to leave at least one
     # core available for non-compilation activities and avoid making the machine
     # unresponsive
-    $cores--
-        if $cores and (int $cores > 1);
+    $cores = $max_cores - 1
+        if $cores eq 'auto' and $max_cores > 1;
 
-    # If we set cores to something silly, set it to a failsafe. But let it be
-    # empty if user doesn't want us to fiddle at all.
+    # If user sets cores to something silly, set it to a failsafe.
     $cores = 4
-        if $cores and (int $cores <= 0);
+        if (int $cores) <= 0;
 
-    return { compute => $cores } if $cores;
-    return { };
+    # Finally, if user sets cores above what's possible, use 'auto' logic
+    # instead. But let user max out their CPU if they ask specifically for
+    # that.
+    $cores = min($max_cores - 1, $cores)
+        if $cores > $max_cores;
+
+    return { compute => $cores };
 }
 
 # Subroutine to determine if a given module needs to have the build system

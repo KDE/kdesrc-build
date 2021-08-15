@@ -24,11 +24,17 @@ package ksb::BuildSystem
     }
 };
 
+# Setup a shell build system
 my $ctx = ksb::BuildContext->new;
 my $module = ksb::Module->new($ctx, 'test');
 my $buildSystem = ksb::BuildSystem->new($module);
 
-# Ensure binpath and libpath options work
+# The -j logic will take off one CPU if you ask for too many so try to ensure
+# test cases don't ask for too many.
+my $max_cores = `nproc`;
+chomp $max_cores;
+$max_cores = int $max_cores // 2;
+$max_cores = 2 if $max_cores < 2;
 
 my $testOption = 'make-options';
 
@@ -47,9 +53,9 @@ for (@testMatrix) {
     $buildSystem->buildInternal($testOption);
     is_deeply(\@ksb::BuildSystem::madeArguments, $resultRef, $testName);
 
-    $module->setOption('num-cores', 4);
+    $module->setOption('num-cores', $max_cores - 1);
     $buildSystem->buildInternal($testOption);
-    is_deeply(\@ksb::BuildSystem::madeArguments, ['-j', 4, @{$resultRef}], "$testName with num-cores set");
+    is_deeply(\@ksb::BuildSystem::madeArguments, ['-j', $max_cores - 1, @{$resultRef}], "$testName with num-cores set");
     $module->setOption('num-cores', '');
 }
 
@@ -63,9 +69,9 @@ for (@testMatrix) {
     $buildSystem->buildInternal($testOption);
     is_deeply(\@ksb::BuildSystem::madeArguments, $resultRef, $testName);
 
-    $module->setOption('num-cores', 4);
+    $module->setOption('num-cores', $max_cores - 1);
     $buildSystem->buildInternal($testOption);
-    is_deeply(\@ksb::BuildSystem::madeArguments, ['-j', 4, @{$resultRef}], "$testName with num-cores set");
+    is_deeply(\@ksb::BuildSystem::madeArguments, ['-j', $max_cores - 1, @{$resultRef}], "$testName with num-cores set");
     $module->setOption('num-cores', '');
 }
 
