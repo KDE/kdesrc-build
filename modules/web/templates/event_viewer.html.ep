@@ -49,6 +49,8 @@
 </textarea>
 
 <script defer>
+'use strict';
+
 let addRow = (moduleName) => {
     if (!moduleName) {
         console.trace("Stupidity afoot");
@@ -131,6 +133,19 @@ let handleEvent = (ev) => {
         divStatus.textContent = 'Build complete';
         divStatus.classList.add('is-success'); // TODO: Ensure failed builds show failed here
         divStatus.classList.remove('is-info');
+
+        // Some phases may never have happened, in this case force the
+        // update/build counts to be fully complete.
+        const pendingPhases = document.querySelectorAll('td.pending');
+        for (const pendingDiv of pendingPhases) {
+            pendingDiv.classList.remove('pending');
+            pendingDiv.classList.add('is-skipped');
+        }
+
+        for (const progressBar of ['update_progress_bar', 'build_progress_bar']) {
+            const progressDiv = lkup(progressBar);
+            progressDiv.setAttribute('value', progressDiv.getAttribute('max'));
+        }
 
         const btnReset = document.getElementById('btnReset');
         btnReset.removeAttribute('disabled');
