@@ -321,8 +321,7 @@ sub makePromiseChain {
             # Mojo::Promise warnings about unhandled rejected promises; the
             # item promises are used for ordering only, not to manage
             # exceptions.
-            $item->{promise}->reject("Prerequisite to $itemName failed")
-                ->catch(sub { 0 });
+            $item->{promise}->reject("Prerequisite to $itemName failed");
             $do_abort->reject("A build step failed and stop-on-failure is enabled")
                 if $do_abort;
 
