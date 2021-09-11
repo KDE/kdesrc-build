@@ -366,11 +366,17 @@ sub _generateRoutes {
         $c->send({json => \@curEvents});
 
         # Hook up an event handler to send future events as they're generated
-        $monitor->on(newEvent => sub {
+        my $event_cb = $monitor->on(newEvent => sub {
             my ($monitor, $resultRef) = @_;
             $c->on(drain => sub { $c->finish })
                 if ($resultRef->{event} eq 'build_done');
             $c->send({json => [ $resultRef ]});
+        });
+
+        # Stop sending events if the browser tab closes
+        $c->on(finish => sub {
+            my $c = shift;
+            $monitor->unsubscribe(newEvent => $event_cb);
         });
     });
 
