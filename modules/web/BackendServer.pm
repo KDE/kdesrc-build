@@ -102,6 +102,9 @@ sub startup {
     # 'modules' alone
     $self->home($self->home->child('web'));
 
+    # Default to near-silence and let each make_new_ksb reset verbosity as needed
+    $self->log->level('error');
+
     # Fixup templates and public base directories
     $self->static->paths->[0]   = $self->home->child('public');
     $self->renderer->paths->[0] = $self->home->child('templates');
