@@ -165,24 +165,25 @@ sub _getNumCoresForLowMemory
     my $num_cores = shift;
 
     # Try to detect the amount of total memory for a corresponding option for
-    # heavyweight modules (sorry ade, not sure what's needed for FreeBSD!)
+    # heavyweight modules
     my $mem_total;
     my $os = ksb::OSSupport->new;
-    if( $os->vendorID eq 'linux') {
+    if ($os->vendorID eq 'linux') {
         my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
 
         if ($total_mem_line && $? == 0) {
             ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
             $mem_total = int $mem_total;
         }
-    } elsif( $os->vendorID eq 'freebsd') {
+    } elsif ($os->vendorID eq 'freebsd') {
         chomp($mem_total = `sysctl -n hw.physmem`);
         # FreeBSD reports memory in Bytes, not KiB. Convert to KiB so logic below still works
-	$mem_total = int sprintf("%.0f", $mem_total / 1024.0);
+        # sprintf is used since there's no Perl round function
+        $mem_total = int sprintf("%.0f", $mem_total / 1024.0);
     }
 
     # 4 GiB is assumed if no info on memory is available, as this will
-    # calculate to 2 cores. sprintf is used since there's no Perl round function
+    # calculate to 2 cores.
     my $rounded_mem = $mem_total ? (int sprintf("%.0f", $mem_total / 1024000.0)) : 4;
     my $max_cores_for_mem = max(1, int $rounded_mem / 2); # Assume 2 GiB per core
     my $num_cores_low = min($max_cores_for_mem, $num_cores);
@@ -211,12 +212,13 @@ DONE
         _throw("Embedded sample file missing!");
 
     my $os = ksb::OSSupport->new;
-    our $numCores;
-    if ( $os->vendorID eq 'linux') {
-        $numCores = `nproc 2>/dev/null` || 4;
-    } elsif ( $os->vendorID eq 'freebsd' ) {
-        $numCores = `sysctl -n hw.ncpu`;
+    my $numCores;
+    if ($os->vendorID eq 'linux') {
+        chomp($numCores = `nproc 2>/dev/null`);
+    } elsif ($os->vendorID eq 'freebsd') {
+        chomp($numCores = `sysctl -n hw.ncpu`);
     }
+    $numCores ||= 4;
     my $numCoresLow = _getNumCoresForLowMemory($numCores);
 
     $sampleRc =~ s/%\{num_cores}/$numCores/g;
