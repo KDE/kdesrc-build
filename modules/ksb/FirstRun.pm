@@ -375,6 +375,7 @@ intltool
 meson
 ninja-build
 shared-mime-info
+clang-format
 # Qt-related
 libdbusmenu-qt5-dev
 libqt5svg5-dev
@@ -429,9 +430,15 @@ liblmdb-dev
 libsm-dev
 libnm-dev
 libqrencode-dev
+# .. optional discover backends
+libjcat-dev
+libfwupd-dev
+libsnapd-qt-dev
+libflatpak-dev
 
 @@ pkg/opensuse/unknown
 cmake
+clang
 docbook-xsl-stylesheets
 docbook_4
 flex bison
@@ -473,13 +480,18 @@ pkgconfig(Qt5QuickControls2)
 pkgconfig(Qt5Script)
 pkgconfig(Qt5Svg)
 pkgconfig(Qt5UiTools)
+pkgconfig(Qt5WaylandClient)
 pkgconfig(Qt5WebKit)
 pkgconfig(Qt5WebKitWidgets)
 pkgconfig(Qt5X11Extras)
 pkgconfig(Qt5XmlPatterns)
 pkgconfig(sm)
+pkgconfig(wayland-protocols)
 pkgconfig(wayland-server)
+pkgconfig(xcb-cursor)
+pkgconfig(xcb-ewmh)
 pkgconfig(xcb-keysyms)
+pkgconfig(xcb-util)
 pkgconfig(xrender)
 polkit-devel
 shared-mime-info
@@ -539,6 +551,7 @@ python
 shared-mime-info
 texinfo
 systemd-devel
+qt5-qtbase-devel
 
 @@ pkg/mageia/unknown
 bison
@@ -587,6 +600,7 @@ shared-mime-info
 dev-util/cmake
 dev-lang/perl
 dev-libs/libdbusmenu-qt
+sys-devel/clang
 
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
@@ -655,6 +669,7 @@ libxtst-dev
 linux-pam-dev
 lmdb-dev
 networkmanager-dev
+openjpeg-dev
 perl
 perl-io-socket-ssl
 perl-uri
@@ -692,12 +707,12 @@ pacman -Syu --noconfirm --needed
 dnf -y install
 
 @@ cmd/install/alpine/unknown
-apk add --virtual makedeps-kdesrc-build
+apk add --virtual .makedeps-kdesrc-build
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
 # controls which modules are built in the first place.
-# List of all options: https://go.kde.org/u/ksboptions
+# List of all options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
 
 global
     # Paths
@@ -708,7 +723,7 @@ global
     source-dir ~/kde/src   # Where sources are downloaded
     build-dir  ~/kde/build # Where the source build is run
 
-    directory-layout invent # Use invent.kde.org structure
+    directory-layout flat # Use flattened structure
 
     # Will pull in KDE-based dependencies only, to save you the trouble of
     # listing them all below
@@ -716,8 +731,8 @@ global
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
-    # kdesrc-build sets 2 options which you can use in options like make-options or set-env
-    # to help manage the number of compile jobs that # happen during a build:
+    # kdesrc-build sets 2 options which is used in options like make-options or set-env
+    # to help manage the number of compile jobs that happen during a build:
     #
     # 1. num-cores, which is just the number of detected CPU cores, and can be passed
     #    to tools like make (needed for parallel build) or ninja (completely optional).
@@ -727,8 +742,6 @@ global
     #    modules like qtwebengine
     num-cores %{num_cores}
     num-cores-low-mem %{num_cores_low}
-
-    make-options  -j ${num-cores}
 end global
 
 # With base options set, the remainder of the file is used to define modules to build, in the

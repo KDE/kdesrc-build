@@ -1953,11 +1953,15 @@ sub _cleanup_log_directory
 
     # This glob relies on the date being in the specific format YYYY-MM-DD-ID
     my @dirs = bsd_glob("$logdir/????-??-??-??/", GLOB_NOSORT);
-    my @needed = _reachableModuleLogs("$logdir/latest");
 
-    # Convert a list to a hash lookup since Perl lacks a "list-has"
     my %needed_table;
-    @needed_table{@needed} = (1) x @needed;
+    for my $trackedLogDir ("$logdir/latest", "$logdir/latest-by-phase") {
+        next unless -d $trackedLogDir;
+        my @needed = _reachableModuleLogs($trackedLogDir);
+
+        # Convert a list to a hash lookup since Perl lacks a "list-has"
+        @needed_table{@needed} = (1) x @needed;
+    }
 
     for my $dir (@dirs) {
         my ($id) = ($dir =~ m/(\d\d\d\d-\d\d-\d\d-\d\d)/);
@@ -2463,8 +2467,8 @@ Important Options:
     --stop-on-failure      Stops the build as soon as a package fails to build.
 
 More docs at https://docs.kde.org/?application=kdesrc-build
-    Supported configuration options: https://go.kde.org/u/ksboptions
-    Supported cmdline options:       https://go.kde.org/u/ksbcmdline
+    Supported configuration options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
+    Supported cmdline options:       https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdline.html
 DONE
 
     # Look for indications this is the first run.

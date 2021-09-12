@@ -12,7 +12,7 @@ use ksb::Debug 0.30;
 use ksb::Util;
 use ksb::StatusView;
 
-use List::Util qw(first);
+use List::Util qw(max min first);
 
 sub new
 {
@@ -70,6 +70,45 @@ sub module
 {
     my $self = shift;
     return $self->{module};
+}
+
+# Returns a hashref holding the resource constraints to try to apply during the
+# build.  Buildsystems should apply the constraints they understand before
+# running the build command.
+# {
+#   'compute' => OPTIONAL, if set a max number of CPU cores to use, or '1' if unable to tell
+#   # no other constraints supported
+# }
+sub buildConstraints
+{
+    my $self = shift;
+    my $cores = $self->module()->getOption('num-cores');
+
+    # If set to empty, accept user's decision
+    return { } unless $cores;
+
+    my $max_cores = eval {
+        chomp(my @out = ksb::Util::filter_program_output(undef, 'nproc'));
+        max(1, int $out[0]);
+    } // 1;
+
+    # On multi-core systems, reduce number of cores by one to leave at least one
+    # core available for non-compilation activities and avoid making the machine
+    # unresponsive
+    $cores = $max_cores - 1
+        if $cores eq 'auto' and $max_cores > 1;
+
+    # If user sets cores to something silly, set it to a failsafe.
+    $cores = 4
+        if (int $cores) <= 0;
+
+    # Finally, if user sets cores above what's possible, use 'auto' logic
+    # instead. But let user max out their CPU if they ask specifically for
+    # that.
+    $cores = min($max_cores - 1, $cores)
+        if $cores > $max_cores;
+
+    return { compute => $cores };
 }
 
 # Subroutine to determine if a given module needs to have the build system
@@ -151,12 +190,35 @@ sub buildInternal
     my $self = shift;
     my $optionsName = shift // 'make-options';
 
+    # I removed the default value to num-cores but forgot to account for old
+    # configs that needed a value for num-cores, as this is handled
+    # automatically below. So filter out the naked -j for configs where what
+    # previously might have been "-j 4" is now only "-j". See
+    # https://invent.kde.org/sdk/kdesrc-build/-/issues/78
+    my $optionVal = $self->module()->getOption($optionsName);
+
+    # Look for -j being present but not being followed by digits
+    if ($optionVal =~ /(^|[^a-zA-Z0-9_])-j$/ || $optionVal =~ /(^|[^a-zA-Z_])-j(?! *[0-9]+)/) {
+        warning(" y[b[*] Removing empty -j setting during build for y[b[" . $self->module() . "]");
+        $optionVal =~ s/(^|[^a-zA-Z_])-j */$1/; # Remove the -j entirely for now
+    }
+
+    my @makeOptions = split(' ', $optionVal);
+
+    # Look for CPU core limits to enforce. This handles core limits for all
+    # current build systems.
+    my $buildConstraints = $self->buildConstraints();
+    my $numCores = $buildConstraints->{compute};
+
+    if ($numCores) {
+        # Prepend parallelism arg to allow user settings to override
+        unshift @makeOptions, '-j', $numCores;
+    }
+
     return $self->safe_make({
         target => undef,
         message => 'Compiling...',
-        'make-options' => [
-            split(' ', $self->module()->getOption($optionsName)),
-        ],
+        'make-options' => \@makeOptions,
         logbase => 'build',
     });
 }
