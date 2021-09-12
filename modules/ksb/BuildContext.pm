@@ -97,6 +97,7 @@ our %defaultGlobalFlags = (
     "use-clean-install"          => 0,
     "use-idle-io-priority"       => 0,
     "use-stable-kde"             => 0,
+    "use-inactive-modules"       => 0,
 );
 
 # Holds other cmdline-accessible options that aren't simply binary flags.

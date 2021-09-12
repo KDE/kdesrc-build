@@ -93,12 +93,11 @@ sub _readYAML
 
     my $proj_data = LoadFile($filename);
 
-    if (!$proj_data->{repoactive} ||
-        #
-        # these two are already 'covered' as special metadata modules, ignore them
-        # TODO: Remove kde-build-metadata on or after 2021-01-01 as it is removed
-        #
-        ($proj_data->{projectpath} eq 'kde-build-metadata' || $proj_data->{projectpath} eq 'repo-management'))
+    #
+    # these two are already 'covered' as special metadata modules, ignore them
+    # TODO: Remove kde-build-metadata on or after 2021-01-01 as it is removed
+    #
+    if (($proj_data->{projectpath} eq 'kde-build-metadata' || $proj_data->{projectpath} eq 'repo-management'))
     {
         return;
     };
