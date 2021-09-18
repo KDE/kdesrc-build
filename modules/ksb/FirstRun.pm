@@ -369,6 +369,9 @@ liblmdb-dev
 libsm-dev
 libnm-dev
 libqrencode-dev
+# kdoctools
+libxml2-dev
+libxslt1-dev
 
 @@ pkg/neon/unknown
 # Neon is a lot like Debian, except we know Qt is sufficiently new
