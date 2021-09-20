@@ -196,10 +196,13 @@ sub _setupBaseConfiguration
     my $baseDir = shift;
     my @knownLocations = ("$ENV{PWD}/kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
     my $locatedFile = first { -e $_ } @knownLocations;
+    my $printableLocatedFile = undef;
 
     if (defined $locatedFile) {
+        $printableLocatedFile = $locatedFile;
+        $printableLocatedFile =~ s/^$ENV{HOME}/~/;
         print colorize(<<DONE);
- b[*] You already have a configuration file: b[y[$locatedFile]
+ b[*] You already have a configuration file: b[y[$printableLocatedFile]
 DONE
         return;
     }
@@ -239,6 +242,7 @@ sub _setupShellRcFile
 {
     my $shellName = shift;
     my $rcFilepath = undef;
+    my $printableRcFilepath = undef;
     my $isAuto = 1;
 
     if ($shellName eq 'bash') {
@@ -255,7 +259,9 @@ sub _setupShellRcFile
     }
 
     if (defined $rcFilepath) {
-        $isAuto = ksb::Util::yesNoPrompt(colorize(" b[*] Update your b[y[$rcFilepath]?"));
+        $printableRcFilepath = $rcFilepath;
+        $printableRcFilepath =~ s/^$ENV{HOME}/~/;
+        $isAuto = ksb::Util::yesNoPrompt(colorize(" b[*] Update your b[y[$printableRcFilepath]?"));
     }
 
     if ($isAuto) {
