@@ -199,7 +199,7 @@ sub _setupBaseConfiguration
 
     if (defined $locatedFile) {
         print colorize(<<DONE);
- b[*] You already have a configuration file: b[y[$locatedFile].
+ b[*] You already have a configuration file: b[y[$locatedFile]
 DONE
         return;
     }
