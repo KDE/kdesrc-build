@@ -454,6 +454,13 @@ libjcat-dev
 libfwupd-dev
 libsnapd-qt-dev
 libflatpak-dev
+# kwin
+libxcb-composite0-dev
+libxcb-shm0-dev
+libxcb-cursor-dev
+libxcb-damage0-dev
+libxcb-image0-dev
+libxcb-util-dev
 
 @@ pkg/opensuse/unknown
 cmake
