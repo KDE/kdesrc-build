@@ -29,7 +29,7 @@ requests necessary.
 use warnings;
 use v5.22;
 
-use Mojo::Base -base;
+use Mojo::Base -base, -signatures;
 
 use Mojo::Server::Daemon;
 use Mojo::IOLoop;
@@ -64,6 +64,7 @@ sub new
     # handle relative URLs, which is perfect for what we want. Making this
     # attachment will startup the Web server behind the scenes and allow $ua to
     # make HTTP requests.
+    $self->ua->request_timeout(5);
     $self->ua->server->app($app);
 
     return $self;
@@ -154,17 +155,15 @@ sub _runModeDebug
     return Mojo::Promise->new->reject('Told to debug for no reason');
 }
 
-# Returns a promise chain to handle the normal build case.
-sub _runModeBuild
+# Monitors events from the /events endpoint and blocks until the websocket
+# fails or the build_done event is received.
+#
+# Returns the shell-style result of the overall build.
+sub _handleBuildEvents ($self, $module_failures_ref)
 {
-    my $self = shift;
-    my $module_failures_ref = shift;
-
     my $ui = $self->ui;
     my $ua = $self->ua;
     my $app = $self->app;
-
-    $app->log->debug("Run mode: BUILD");
 
     # Open a file to log the event stream
     my $ctx = $app->context();
@@ -236,20 +235,10 @@ sub _runModeBuild
         });
 
         $ws->on(finish => sub {
-            # Shouldn't happen in a normal build but it's probably possible
-            $stop_promise->reject; # ignored if we resolved first
+            # Might happen if the build finishes in the time between when we
+            # start it and when we subscribe to the event viewer.
+            $stop_promise->reject('events have finished'); # ignored if we resolved first
         });
-
-        # Blocking call to kick off the build
-        my $tx = $ua->post('/build');
-        if (my $err = $tx->error) {
-            $stop_promise->reject('Unable to start build: ' . $err->{message});
-        }
-
-        # Success but nothing to do.
-        if ($tx->res->code == 204) {
-            $stop_promise->resolve(0);
-        }
 
         # Once we return here we'll wait in Mojolicious event loop for awhile until
         # the build is done, before moving into the promise handler below
@@ -269,6 +258,51 @@ sub _runModeBuild
 
         my $logdir = $ctx->getLogDir();
         note ("Your logs are saved in file://y[$logdir]");
+    });
+}
+
+# Causes the build server to begin the build. You can then use /events endpoint
+# to track progress.
+#
+# Return value is:
+#   1 if the build successfully started,
+#   0 if the build started but there is nothing to do.
+sub _runModeBuild ($self)
+{
+    $self->app->log->debug("Run mode: BUILD");
+
+    # Kick off the build. This needs to be a non-blocking call because
+    # Mojo::UserAgent can maintain two different app servers behind the
+    # scenes, one for 'blocking' calls and one for 'non-blocking' calls.
+    # These have different ports and we need to ensure that the eventual
+    # $ctx->takeLock is called from the non-blocking server (which should
+    # be primary).
+    return $self->ua->post_p('/build')->then(sub ($tx) {
+        # Ensure everything is OK before moving on.
+        my $exceptionInfo = {
+            exception_type => 'Internal',
+            response       => $tx->res,
+        };
+
+        if (my $err = $tx->error) {
+            # Possible if connection aborted
+            if (!$tx->res->code) {
+                $exceptionInfo->{message} = $err->{message} // 'Request to build server timed out!';
+            } else {
+                $exceptionInfo->{message} = "Error " . $err->{code} . ': ' . $err->{message};
+            }
+
+            die $exceptionInfo;
+        }
+
+        # Success but nothing to do.
+        if ($tx->result->code == 204) {
+            return 0;
+        }
+
+        # No issues? We'll leave things alone and the build will continue
+        # until stopped for other reasons.
+        return 1; # Continue the build
     });
 }
 
@@ -316,30 +350,38 @@ sub start
         return $self->_runModeDebug()
             if (%{$app->ksb->{debugFlags} // 0});
 
-        return $self->_runModeBuild(\@module_failures);
-    })->then(sub {
+        return $self->_runModeBuild();
+    })->then(sub ($continueBuild) {
+        $app->log->debug("Ready to build, should we continue? ", $continueBuild);
+
+        if ($continueBuild) {
+            # Install event monitoring and wait until the build is done
+            return $self->_handleBuildEvents(\@module_failures);
+        } else {
+            return $result = 0; # Done
+        }
+    })->then(sub ($buildResult) {
         # Build done, value comes from runMode promise above
-        $result ||= shift;
+        $result ||= $buildResult;
         $app->log->debug("Chosen run mode complete, result (0 == success): $result");
     })->catch(sub {
-        # Catches all errors in any of the prior promises
         my $err = shift;
+        # Catches all errors in any of the prior promises
 
         if (ref $err eq 'HASH') {
-            # JSON response decoded to a hashref
+            # JSON response decoded to a hashref, or a result thrown by a
+            # rejected promise
             say STDERR "Error encountered during build:"
                 if ($err->{exception_type} // '') eq 'Internal';
             say STDERR $err->{message};
+            say STDERR $err->{response}->body
+                if $err->{response};
+            $app->log->error("Recorded an error ", $err->{message});
         }
         else {
             say STDERR "Caught an error: $err";
+            $app->log->error("Recorded an error $err");
         }
-
-        # See if we made it to an rc-file
-        # TODO: Put this into a 'show debugging info' type of option
-        #my $ctx = $app->ksb->context();
-        #my $rcFile = $ctx ? $ctx->rcFile() // 'Unknown' : undef;
-        #say STDERR "Using configuration file found at $rcFile" if $rcFile;
 
         $result = 1; # error
     })->wait;

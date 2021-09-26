@@ -14,6 +14,7 @@ use File::Basename; # dirname
 use IO::File;
 use POSIX qw(strftime);
 use Errno qw(:POSIX);
+use HTTP::Tiny;
 
 use Mojo::JSON qw(encode_json decode_json);
 
@@ -360,7 +361,7 @@ sub prependEnvironmentValue
 # Return value is a boolean success flag.
 sub takeLock
 {
-    my $self = assert_isa(shift, 'ksb::BuildContext');
+    my ($self, $homeUrl) = @_;
     my $baseDir = $self->baseConfigDirectory();
     my $lockfile = "$baseDir/$LOCKFILE_NAME";
 
@@ -368,56 +369,46 @@ sub takeLock
     sysopen LOCKFILE, $lockfile, O_WRONLY | O_CREAT | O_EXCL;
     my $errorCode = $!; # Save for later testing.
 
-    if ($errorCode == EEXIST)
-    {
+    if ($errorCode == EEXIST) {
         # Path already exists, read the PID and see if it belongs to a
         # running process.
-        open (my $pidFile, "<", $lockfile) or do
-        {
+        open (my $lockFile, "<", $lockfile) or do {
             # Lockfile is there but we can't open it?!?  Maybe a race
             # condition but I have to give up somewhere.
             warning (" WARNING: Can't open or create lockfile r[$lockfile]");
             return 1;
         };
 
-        my $pid = <$pidFile>;
-        close $pidFile;
+        my $theirUrl = <$lockFile>;
+        close $lockFile;
 
-        if ($pid)
-        {
+        if ($theirUrl && $theirUrl ne $homeUrl) {
             # Recent kdesrc-build; we wrote a PID in there.
-            chomp $pid;
+            chomp $theirUrl;
 
             # See if something's running with this PID.
-            if (kill(0, $pid) == 1)
-            {
-                # Something *is* running, likely kdesrc-build.  Don't use error,
-                # it'll scan for $!
-                print ksb::Debug::colorize(" r[*y[*r[*] kdesrc-build appears to be running.  Do you want to:\n");
-                print ksb::Debug::colorize("  (b[Q])uit, (b[P])roceed anyways?: ");
+            #
+            # Avoid using Mojo::UserAgent because making a second copy of this
+            # (in addition to the version running in ksb::UserInterface::TTY
+            # will confuse things when we're not in --backend mode)
+            my $res = HTTP::Tiny->new(
+                keep_alive => 0,
+                max_size   => 16,
+                timeout    => 4,
+            )->get("${theirUrl}building");
 
-                my $choice = <STDIN> // '';
-                chomp $choice;
-
-                if (lc $choice ne 'p')
-                {
-                    say ksb::Debug::colorize(" y[*] kdesrc-build run canceled.");
-                    return 0;
-                }
-
-                # We still can't grab the lockfile, let's just hope things
-                # work out.
-                note (" y[*] kdesrc-build run in progress by user request.");
-                return 1;
+            # $res->code is not set if the connection timed out
+            if ($res->{success}) {
+                warning ("A different kdesrc-build is currently running for these modules, accessible at");
+                warning ("$theirUrl!");
+                warning ("Stopping run to avoid potential damage to source directories.");
+                return 0;
+            } else {
+                # Stale but at least it's not running, fallthrough
             }
+        }
 
-            # If we get here, then the program isn't running (or at least not
-            # as the current user), so allow the flow of execution to fall
-            # through below and unlink the lockfile.
-        } # pid
-
-        # No pid found, optimistically assume the user isn't running
-        # twice.
+        # No server found, optimistically assume the user isn't running twice.
         warning (" y[WARNING]: stale kdesrc-build lockfile found, deleting.");
         unlink $lockfile;
 
@@ -428,14 +419,12 @@ sub takeLock
 
         # Hope the sysopen worked... fall-through
     }
-    elsif ($errorCode == ENOTTY)
-    {
+    elsif ($errorCode == ENOTTY) {
         # Stupid bugs... normally sysopen will return ENOTTY, not sure who's to blame between
         # glibc and Perl but I know that setting PERLIO=:stdio in the environment "fixes" things.
         ; # pass
     }
-    elsif ($errorCode != 0) # Some other error occurred.
-    {
+    elsif ($errorCode != 0) { # Some other error occurred.
         warning (" r[*]: Error $errorCode while creating lock file (is $baseDir available?)");
         warning (" r[*]: Continuing the script for now...");
 
@@ -445,7 +434,7 @@ sub takeLock
         return 1;
     }
 
-    say LOCKFILE "$$";
+    say LOCKFILE "$homeUrl";
     close LOCKFILE;
 
     return 1;

@@ -516,7 +516,7 @@ sub build
         if $self->getOption('build-system-only');
 
     # If we don't stop with the build system only, then keep extending that
-    # promise chain to complete the build, test, and install
+    # promise chain to complete the build
 
     return $buildSystemPromise->then(sub {
         return $self->runPhase_p('build');

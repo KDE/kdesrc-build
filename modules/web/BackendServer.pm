@@ -1,7 +1,7 @@
 package web::BackendServer;
 
 # Make this subclass a Mojolicious app
-use Mojo::Base 'Mojolicious';
+use Mojo::Base 'Mojolicious', -signatures;
 use Mojo::Util qw(trim);
 
 use ksb::Application;
@@ -72,10 +72,8 @@ sub make_new_ksb
         # if we set it. Instead just de-spam the output to TTY for now.
         $c->app->log->level('error');
     } else {
-        $c->app->log(Mojo::Log->new(
-                path => $ctx->getLogDirFor($ctx) . "/mojo-backend.log",
-                level => (exists $ENV{KDESRC_BUILD_DEBUG} ? 'debug' : 'info'),
-                ));
+        $c->app->log->path($ctx->getLogDirFor($ctx) . "/mojo-backend.log");
+        $c->app->log->level(exists $ENV{KDESRC_BUILD_DEBUG} ? 'debug' : 'info');
     }
 
     if (ksb::Debug::debugging()) {
@@ -102,11 +100,16 @@ sub startup {
     # 'modules' alone
     $self->home($self->home->child('web'));
 
+    # Cleaner error messages from Mojolicious though we may need full debugging
+    $self->mode('production');
+    $self->mode('development')
+        if exists $ENV{'KDESRC_BUILD_DEBUG'};
+
     # Default to near-silence and let each make_new_ksb reset verbosity as needed
-    $self->log->level('error');
+    $self->log->level(exists $ENV{'KDESRC_BUILD_DEBUG'} ? 'debug' : 'error');
 
     # Fixup templates and public base directories
-    $self->static->paths->[0]   = $self->home->child('public');
+    $self->static  ->paths->[0] = $self->home->child('public');
     $self->renderer->paths->[0] = $self->home->child('templates');
 
     $self->helper(ksb => sub {
@@ -361,10 +364,6 @@ sub _generateRoutes {
         my $ctx = $c->ksb->context();
         my $monitor = $ctx->statusMonitor();
 
-        # Send prior events the receiver wouldn't have received yet
-        my @curEvents = $monitor->events();
-        $c->send({json => \@curEvents});
-
         # Hook up an event handler to send future events as they're generated
         my $event_cb = $monitor->on(newEvent => sub {
             my ($monitor, $resultRef) = @_;
@@ -373,9 +372,14 @@ sub _generateRoutes {
             $c->send({json => [ $resultRef ]});
         });
 
+        # Send prior events the receiver wouldn't have received yet
+        my @curEvents = $monitor->events();
+        $c->send({json => \@curEvents});
+
         # Stop sending events if the browser tab closes
-        $c->on(finish => sub {
-            my $c = shift;
+        $c->on(finish => sub ($ws, $code, $reason) {
+            $c->app->log->error("WebSocket closed unexpectedly!")
+                if $code == 1006;
             $monitor->unsubscribe(newEvent => $event_cb);
         });
     });
@@ -448,15 +452,19 @@ sub _generateRoutes {
             return;
         }
 
-        $c->app->log->debug('Starting build');
+        $c->app->log->info('Starting build');
 
-        $c->app->ksb_state->{build_promise} = $c->ksb->startHeadlessBuild->then(sub{
-            my ($result) = @_;
+        my $homeUrl = $c->url_for('/')->to_abs;
+        my $startPromise = $c->ksb->startHeadlessBuild($homeUrl);
+
+        # We didn't throw an exception, point client to event_viewer but
+        # continue to monitor for success or failure
+        $c->app->ksb_state->{build_promise} = $startPromise->then(sub ($result) {
             $c->app->log->debug("Build done, result $result");
             $c->app->ksb_state->{build_result} = $result;
-        })->catch(sub {
-            my @reason = @_;
-            $c->app->log->error("Exception during build @reason");
+        })->catch(sub ($err) {
+            $c->app->log->error("Exception during build: $err");
+            die $err;
         })->finally(sub {
             delete $c->app->ksb_state->{build_promise};
         });

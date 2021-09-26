@@ -29,6 +29,7 @@ use ksb::DependencyResolver 0.20;
 use ksb::Updater::Git;
 use ksb::Version qw(scriptVersion);
 
+use Mojo::Base -signatures;
 use Mojo::IOLoop;
 use Mojo::Promise;
 
@@ -937,8 +938,18 @@ sub _resolveModuleDependencyGraph
 # more detail during a build.
 sub startHeadlessBuild
 {
-    my $self = shift;
+    my ($self, $homeUrl) = @_;
     my $ctx = $self->context();
+
+    die "Can't obtain build lock"
+        unless $ctx->takeLock($homeUrl);
+
+    # Install signal handlers to ensure that the lockfile gets closed.
+    _installSignalHandlers(sub {
+        @main::atexit_subs = (); # Remove their finish, doin' it manually
+        $self->finish(5);
+    });
+
     $ctx->statusMonitor()->createBuildPlan($ctx);
 
     my $promiseChain = ksb::PromiseChain->new;
@@ -947,14 +958,6 @@ sub startHeadlessBuild
     # These succeed or die outright
     $startPromise = _handle_updates     ($ctx, $promiseChain, $startPromise);
     $startPromise = _handle_build_phases($ctx, $promiseChain, $startPromise);
-
-    die "Can't obtain build lock" unless $ctx->takeLock();
-
-    # Install signal handlers to ensure that the lockfile gets closed.
-    _installSignalHandlers(sub {
-        @main::atexit_subs = (); # Remove their finish, doin' it manually
-        $self->finish(5);
-    });
 
     $startPromise->resolve; # allow build to start once control returned to evt loop
     $promiseChain->abort_after_failure(1)
@@ -1739,9 +1742,13 @@ sub _handle_build_phases
                 return 'skipped';
             }
 
-            # Can't build w/out blocking so return a promise instead, which ->build
-            # already supplies
-            return $module->build()->then(sub {
+            # Force $module->build() to happen at end of event loop to give U/I
+            # interface a chance to setup WebSockets, which seems to address
+            # some errors that happen if the build is able to complete very
+            # quickly (e.g. kdesrc-build --no-src kcalc)
+            return Mojo::Promise->new(sub ($resolve, $reject) {
+                $resolve->($module->build());
+            })->then(sub {
                 # Cache module directories, e.g. to be consumed in kdesrc-run
                 $module->setPersistentOption('build-dir', $module->fullpath('build'));
 
