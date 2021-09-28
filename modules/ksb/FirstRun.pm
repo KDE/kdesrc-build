@@ -667,6 +667,7 @@ ruby-sass
 eigen
 mlt
 freecell-solver
+sane
 
 @@ pkg/alpine/unknown
 alpine-sdk
