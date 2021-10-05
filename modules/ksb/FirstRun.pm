@@ -767,19 +767,24 @@ apk add --virtual .makedeps-kdesrc-build
 # List of all options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
 
 global
-    # Paths
 
-    kdedir ~/kde/usr # Where to install KF5-based software
-#   qtdir  ~/kde/qt5 # Where to install Qt5 if kdesrc-build supplies it
-
-    source-dir ~/kde/src   # Where sources are downloaded
-    build-dir  ~/kde/build # Where the source build is run
-
-    directory-layout flat # Use flattened structure
-
-    # Will pull in KDE-based dependencies only, to save you the trouble of
-    # listing them all below
+    # Finds and includes *KDE*-based dependencies into the build.  This makes
+    # it easier to ensure that you have all the modules needed, but the
+    # dependencies are not very fine-grained so this can result in quite a few
+    # modules being installed that you didn't need.
     include-dependencies true
+
+    # Install directory for KDE software
+    kdedir ~/kde/usr
+
+    # Directory for downloaded source code
+    source-dir ~/kde/src
+
+    # Directory to build KDE into before installing
+    # relative to source-dir by default
+    build-dir ~/kde/build
+
+#   qtdir  ~/kde/qt5 # Where to install Qt5 if kdesrc-build supplies it
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
@@ -794,6 +799,25 @@ global
     #    modules like qtwebengine
     num-cores %{num_cores}
     num-cores-low-mem %{num_cores_low}
+
+    # kdesrc-build can install a sample .xsession file for "Custom"
+    # (or "XSession") logins,
+    install-session-driver false
+
+    # or add a environment variable-setting script to
+    # ~/.config/kde-env-master.sh
+    install-environment-driver true
+
+    # Stop the build process on the first failure
+    stop-on-failure true
+
+    # Use a flat folder layout under ~/kde/src and ~/kde/build
+    # rather than nested directories
+    directory-layout flat
+
+    # Build with LSP support for everything that supports it
+    compile-commands-linking true
+    compile-commands-export true
 end global
 
 # With base options set, the remainder of the file is used to define modules to build, in the
