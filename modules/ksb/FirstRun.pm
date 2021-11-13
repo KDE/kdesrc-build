@@ -164,17 +164,25 @@ sub _getNumCoresForLowMemory
     my $num_cores = shift;
 
     # Try to detect the amount of total memory for a corresponding option for
-    # heavyweight modules (sorry ade, not sure what's needed for FreeBSD!)
+    # heavyweight modules
     my $mem_total;
-    my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
+    my $os = ksb::OSSupport->new;
+    if ($os->vendorID eq 'linux') {
+        my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
 
-    if ($total_mem_line && $? == 0) {
-        ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
-        $mem_total = int $mem_total;
+        if ($total_mem_line && $? == 0) {
+            ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
+            $mem_total = int $mem_total;
+        }
+    } elsif ($os->vendorID eq 'freebsd') {
+        chomp($mem_total = `sysctl -n hw.physmem`);
+        # FreeBSD reports memory in Bytes, not KiB. Convert to KiB so logic below still works
+        # sprintf is used since there's no Perl round function
+        $mem_total = int sprintf("%.0f", $mem_total / 1024.0);
     }
 
     # 4 GiB is assumed if no info on memory is available, as this will
-    # calculate to 2 cores. sprintf is used since there's no Perl round function
+    # calculate to 2 cores.
     my $rounded_mem = $mem_total ? (int sprintf("%.0f", $mem_total / 1024000.0)) : 4;
     my $max_cores_for_mem = max(1, int $rounded_mem / 2); # Assume 2 GiB per core
     my $num_cores_low = min($max_cores_for_mem, $num_cores);
@@ -187,10 +195,13 @@ sub _setupBaseConfiguration
     my $baseDir = shift;
     my @knownLocations = ("$ENV{PWD}/kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
     my $locatedFile = first { -e $_ } @knownLocations;
+    my $printableLocatedFile = undef;
 
     if (defined $locatedFile) {
+        $printableLocatedFile = $locatedFile;
+        $printableLocatedFile =~ s/^$ENV{HOME}/~/;
         print colorize(<<DONE);
- b[*] You already have a configuration file: b[y[$locatedFile].
+ b[*] You already have a configuration file: b[y[$printableLocatedFile]
 DONE
         return;
     }
@@ -202,7 +213,14 @@ DONE
     my $sampleRc = $packages{'sample-rc'} or
         _throw("Embedded sample file missing!");
 
-    my $numCores = `nproc 2>/dev/null` || 4;
+    my $os = ksb::OSSupport->new;
+    my $numCores;
+    if ($os->vendorID eq 'linux') {
+        chomp($numCores = `nproc 2>/dev/null`);
+    } elsif ($os->vendorID eq 'freebsd') {
+        chomp($numCores = `sysctl -n hw.ncpu`);
+    }
+    $numCores ||= 4;
     my $numCoresLow = _getNumCoresForLowMemory($numCores);
 
     $sampleRc =~ s/%\{num_cores}/$numCores/g;
@@ -223,6 +241,7 @@ sub _setupShellRcFile
 {
     my $shellName = shift;
     my $rcFilepath = undef;
+    my $printableRcFilepath = undef;
     my $isAuto = 1;
 
     if ($shellName eq 'bash') {
@@ -239,7 +258,9 @@ sub _setupShellRcFile
     }
 
     if (defined $rcFilepath) {
-        $isAuto = ksb::Util::yesNoPrompt(colorize(" b[*] Update your b[y[$rcFilepath]?"));
+        $printableRcFilepath = $rcFilepath;
+        $printableRcFilepath =~ s/^$ENV{HOME}/~/;
+        $isAuto = ksb::Util::yesNoPrompt(colorize(" b[*] Update your b[y[$printableRcFilepath]?"));
     }
 
     if ($isAuto) {
@@ -353,6 +374,9 @@ liblmdb-dev
 libsm-dev
 libnm-dev
 libqrencode-dev
+# kdoctools
+libxml2-dev
+libxslt1-dev
 
 @@ pkg/neon/unknown
 # Neon is a lot like Debian, except we know Qt is sufficiently new
@@ -435,6 +459,13 @@ libjcat-dev
 libfwupd-dev
 libsnapd-qt-dev
 libflatpak-dev
+# kwin
+libxcb-composite0-dev
+libxcb-shm0-dev
+libxcb-cursor-dev
+libxcb-damage0-dev
+libxcb-image0-dev
+libxcb-util-dev
 
 @@ pkg/opensuse/unknown
 cmake
@@ -635,6 +666,7 @@ ruby-sass
 eigen
 mlt
 freecell-solver
+sane
 
 @@ pkg/alpine/unknown
 alpine-sdk
@@ -694,6 +726,32 @@ xcb-util-image-dev
 xcb-util-keysyms-dev
 xcb-util-wm-dev
 
+@@ pkg/freebsd/unknown
+bison
+boost-all
+cmake
+docbook-xsl
+doxygen
+eigen
+gettext
+gmake
+gperf
+gpgme
+intltool
+libqrencode
+lmdb
+mlt
+ninja
+p5-YAML-PP
+pkgconf
+qt5
+qt5-wayland
+wayland-protocols
+xorg
+
+@@ cmd/install/freebsd/unknown
+pkg install -y
+
 @@ cmd/install/debian/unknown
 apt-get -q -y --no-install-recommends install
 
@@ -715,19 +773,24 @@ apk add --virtual .makedeps-kdesrc-build
 # List of all options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
 
 global
-    # Paths
 
-    kdedir ~/kde/usr # Where to install KF5-based software
-#   qtdir  ~/kde/qt5 # Where to install Qt5 if kdesrc-build supplies it
-
-    source-dir ~/kde/src   # Where sources are downloaded
-    build-dir  ~/kde/build # Where the source build is run
-
-    directory-layout flat # Use flattened structure
-
-    # Will pull in KDE-based dependencies only, to save you the trouble of
-    # listing them all below
+    # Finds and includes *KDE*-based dependencies into the build.  This makes
+    # it easier to ensure that you have all the modules needed, but the
+    # dependencies are not very fine-grained so this can result in quite a few
+    # modules being installed that you didn't need.
     include-dependencies true
+
+    # Install directory for KDE software
+    kdedir ~/kde/usr
+
+    # Directory for downloaded source code
+    source-dir ~/kde/src
+
+    # Directory to build KDE into before installing
+    # relative to source-dir by default
+    build-dir ~/kde/build
+
+#   qtdir  ~/kde/qt5 # Where to install Qt5 if kdesrc-build supplies it
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
@@ -742,6 +805,25 @@ global
     #    modules like qtwebengine
     num-cores %{num_cores}
     num-cores-low-mem %{num_cores_low}
+
+    # kdesrc-build can install a sample .xsession file for "Custom"
+    # (or "XSession") logins,
+    install-session-driver false
+
+    # or add a environment variable-setting script to
+    # ~/.config/kde-env-master.sh
+    install-environment-driver true
+
+    # Stop the build process on the first failure
+    stop-on-failure true
+
+    # Use a flat folder layout under ~/kde/src and ~/kde/build
+    # rather than nested directories
+    directory-layout flat
+
+    # Build with LSP support for everything that supports it
+    compile-commands-linking true
+    compile-commands-export true
 end global
 
 # With base options set, the remainder of the file is used to define modules to build, in the

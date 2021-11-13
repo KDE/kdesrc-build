@@ -2022,7 +2022,7 @@ sub _output_failed_module_list
         }
 
         $logfile = "No log file" unless $logfile;
-        $logfile =~ s|$homedir|~|;
+        $logfile = "file://${logfile}";
 
         warning ("r[$module]") if pretending();
         warning ("r[$module] - g[$logfile]") if not pretending();
