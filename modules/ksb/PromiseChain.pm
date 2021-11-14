@@ -316,14 +316,14 @@ sub makePromiseChain {
         # for this chain to work
         push @all_promises, $base_promise->then($sub)->catch(sub {
             # err handler, return a value to keep the Promise->all below from
-            # failing fast. Also force reject the item promise since $sub may
-            # not have run, but eat the error that would result to avoid
-            # Mojo::Promise warnings about unhandled rejected promises; the
-            # item promises are used for ordering only, not to manage
-            # exceptions.
-            $item->{promise}->reject("Prerequisite to $itemName failed");
-            $do_abort->reject("A build step failed and stop-on-failure is enabled")
-                if $do_abort;
+            # failing fast.
+            if ($do_abort) {
+                # Stop the build once event loop resumes
+                $do_abort->reject("A build step failed and stop-on-failure is enabled")
+            } else {
+                # The build will continue, but not for dependent promises
+                $item->{promise}->reject("Prerequisite to $itemName failed");
+            }
 
             # We've handled the error, let the rest of the build proceed if it
             # otherwise would.
