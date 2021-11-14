@@ -1,0 +1,43 @@
+# Use this configuration by including in the 'global' section of your kdesrc-buildrc
+# an appropriate git-repository-base, such as:
+#
+#     global
+#         ....
+#         # KDE's copy of Qt repos currently supports Qt6 modules using
+#         # 'branch' without version prefixing.
+#         git-repository-base qt6-copy https://invent.kde.org/qt/qt/
+#         ....
+#     end global
+
+module-set qt6-set
+    # This name must match the name you provided to git-repository-base
+    repository qt6-copy
+
+    override-build-system qt6  # Must be manually forced for now
+    branch 6.2                 # Specify Qt 6, due to lineage with Qt 5
+
+    # NOTE that qttools requires a git-submodule update step that must be
+    # completed separately.
+    use-modules qtbase qt5compat qtdeclarative qtdoc qtgraphicaleffects \
+        qtimageformats qtmultimedia qtshadertools qtsensors qtsvg  \
+        qttools qtwayland qtwebchannel qtwebsockets qtwebview \
+        qtnetworkauth
+
+    prefix ~/qt6
+
+    # Archiving API requires zstd support which some distros do not built into
+    # CMake yet.
+    cmake-options -DQT_AVOID_CMAKE_ARCHIVING_API=TRUE -DQT_BUILD_TESTS=FALSE \
+                  -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+    cmake-generator Ninja
+
+    # Uncomment if you want to change Ninja flags until a more appropriate
+    # config option is supported.
+#   set-env NINJAFLAGS -j4
+end module-set
+
+# qtwebengine is back and assuredly bigger than ever
+options qtwebengine
+    set-env NINJAFLAGS -j8
+end options
