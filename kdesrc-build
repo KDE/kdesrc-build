@@ -1,8 +1,9 @@
 #!/usr/bin/env perl
 
-# Script to handle building KDE from source code.  All of the configuration is
-# stored in the file ./kdesrc-buildrc (or ~/.kdesrc-buildrc, if that's not
-# present).
+# Script to handle building KDE from source code. All of the configuration is
+# stored in the file ./kdesrc-buildrc. If that file does not exist,
+# ~/.config/kdesrc-buildrc ($XDG_CONFIG_HOME/kdesrc-buildrc, if $XDG_CONFIG_HOME
+# environment variable is set) will be used.
 #
 # Please also see the documentation that should be included with this program,
 # in the doc/ directory.
@@ -126,7 +127,14 @@ Couldn't load the base platform for kdesrc-build!
 More detail might be available in error-$$.log
 DONE
 
-    if (! -e "kdesrc-buildrc" && ! -e "$ENV{HOME}/.kdesrc-buildrc") {
+    # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should default
+    # to ~/.config
+    my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
+    my @possibleConfigPaths = ("./kdesrc-buildrc",
+                               "$xdgConfigHome/kdesrc-buildrc",
+                               "$ENV{HOME}/.kdesrc-buildrc");
+
+    if (!grep { -e $_ } (@possibleConfigPaths)) {
         say STDERR <<DONE;
 It appears you've not run kdesrc-build before.
 

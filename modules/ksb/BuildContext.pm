@@ -35,13 +35,21 @@ use ksb::KDEProjectsReader 0.50;
 use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
 
+# According to XDG spec, if $XDG_CACHE_HOME is not set, then we should
+# default to ~/.cache
+my $xdgCacheHome = $ENV{XDG_CACHE_HOME} // "$ENV{HOME}/.cache";
+my $xdgCacheHomeShort = $xdgCacheHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
+# According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
+# default to ~/.config
+my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
+my $xdgConfigHomeShort = $xdgConfigHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
+
 my @DefaultPhases = qw/update build install/;
-my @rcfiles = ("./kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
+my @rcfiles = ("./kdesrc-buildrc",
+               "$xdgConfigHome/kdesrc-buildrc",
+               "$ENV{HOME}/.kdesrc-buildrc");
 my $LOCKFILE_NAME = '.kdesrc-lock';
-
-# The # will be replaced by the directory the rc File is stored in.
-my $PERSISTENT_FILE_NAME = '#/.kdesrc-build-data';
-
+my $PERSISTENT_FILE_NAME = 'kdesrc-build-data';
 my $SCRIPT_VERSION = scriptVersion();
 
 # Should be used for internal state that shouldn't be exposed as a hidden
@@ -576,6 +584,20 @@ sub loadRcFile
         if (open ($fh, '<', "$file"))
         {
             $self->{rcFile} = File::Spec->rel2abs($file);
+
+            # Check if the config file is stored in the old location
+            $file =~ s/^$ENV{HOME}/~/;
+            if ($file eq '~/.kdesrc-buildrc')
+            {
+                error (<<EOM);
+
+Your b[global configuration file] is stored in the old location. It will still be
+processed correctly, however, it's recommended to move it to the new location.
+
+Please, move b[~/.kdesrc-buildrc] to b[$xdgConfigHomeShort/kdesrc-buildrc]
+EOM
+            }
+
             return $fh;
         }
     }
@@ -610,11 +632,9 @@ b[No configuration file is present.]
 kdesrc-build requires a configuration file to select which KDE software modules
 to build, what options to build them with, the path to install to, etc.
 
-kdesrc-build looks for its configuration in the file `kdesrc-buildrc' in
-whatever directory kdesrc-build is run from.
-
-If no such file exists, kdesrc-build tries to use `~/.kdesrc-buildrc' (note the
-leading `.')
+When run, kdesrc-build will use `kdesrc-buildrc' config file located in the
+current working directory. If no such file exists, kdesrc-build will use
+`$xdgConfigHomeShort/kdesrc-buildrc' instead.
 
 A sample configuration suitable for KDE 4 software is included at the file
 `kdesrc-buildrc-sample' which can be copied to the correct location and then
@@ -764,18 +784,31 @@ sub setOption
 #
 
 # Returns the name of the file to use for persistent data.
-# Supports expanding '#' at the beginning of the filename to the directory
-# containing the rc-file in use, but only for the default name at this
-# point.
 sub persistentOptionFileName
 {
     my $self = shift;
     my $filename = $self->getOption('persistent-data-file');
 
     if (!$filename) {
-        $filename = $PERSISTENT_FILE_NAME;
-        my $dir = $self->baseConfigDirectory();
-        $filename =~ s/^#/$dir/;
+        # Check if the cache file is stored in the old location
+        if (-e "$ENV{HOME}/.kdesrc-build-data")
+        {
+            error (<<EOM);
+Your b[global cache file] is stored in the old location. It will still be
+processed correctly, however, it's recommended to move it to the new location.
+
+Please, move b[~/.kdesrc-build-data] to b[$xdgCacheHomeShort/kdesrc-build-data]
+EOM
+        }
+
+        my $configDir = $self->baseConfigDirectory();
+        if ($configDir eq $xdgConfigHome) {
+            # Global config is used - store the cache file in $xdgCacheHome
+            $filename = $xdgCacheHome . '/' . $PERSISTENT_FILE_NAME;
+        } else {
+            # Local config is used - store the cache file in the same directory
+            $filename = $configDir . '/.' . $PERSISTENT_FILE_NAME;
+        }
     }
     else {
         # Tilde-expand
@@ -786,7 +819,7 @@ sub persistentOptionFileName
 }
 
 # Reads in all persistent options from the file where they are kept
-# (.kdesrc-build-data) for use in the program.
+# (kdesrc-build-data) for use in the program.
 #
 # The directory used is the same directory that contains the rc file in use.
 sub loadPersistentOptions
@@ -838,7 +871,7 @@ sub loadPersistentOptions
     $self->{persistent_options} = $persistent_options;
 }
 
-# Writes out the persistent options to the file .kdesrc-build-data.
+# Writes out persistent options to the kdesrc-build-data file.
 #
 # The directory used is the same directory that contains the rc file in use.
 sub storePersistentOptions

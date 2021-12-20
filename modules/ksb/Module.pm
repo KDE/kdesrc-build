@@ -981,9 +981,9 @@ sub destDir
         # avoid spamming
         if (!$self->getOption('#warned-deprecated-ignore-kde-structure')) {
             if($oldlayout eq 'true' || $oldlayout == 1) {
-                warning("the option b[ignore-kde-structure true] is deprecated. Please substitute the option b[directory-layout flat] in your ~/.kdesrc-buildrc file.");
+                warning("The option b[ignore-kde-structure true] is deprecated. Please replace it with b[directory-layout flat] in your configuration file.");
             } else {
-                warning("The option b[ignore-kde-structure false] is deprecated. Please substitute the option b[directory-layout invent] in your ~/.kdesrc-buildrc file.");
+                warning("The option b[ignore-kde-structure false] is deprecated. Please replace it with b[directory-layout invent] in your configuration file.");
             }
         }
         # no or equivalent layout configured, assume the user wants to use flat layout

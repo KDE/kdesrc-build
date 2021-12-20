@@ -2733,7 +2733,16 @@ sub performInitialUserSetup
 # Shows a help message and version. Does not exit.
 sub _showHelpMessage
 {
+    # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
+    # default to ~/.config
+    my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
+    my $xdgConfigHomeShort = $xdgConfigHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
+
+    my $pwd = $ENV{PWD};
+    my $pwdShort = $pwd =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
+
     my $scriptVersion = scriptVersion();
+
     say <<DONE;
 kdesrc-build $scriptVersion
 Copyright (c) 2003 - 2020 Michael Pyne <mpyne\@kde.org> and others, and is
@@ -2742,7 +2751,8 @@ distributed under the terms of the GNU GPL v2.
 This script automates the download, build, and install process for KDE software
 using the latest available source code.
 
-Configuration is controlled from "\$PWD/kdesrc-buildrc" or "~/.kdesrc-buildrc".
+Configuration is controlled from "$pwdShort/kdesrc-buildrc" or
+"$xdgConfigHomeShort/kdesrc-build/kdesrc-buildrc".
 See kdesrc-buildrc-sample for an example.
 
 Usage: \$ $0 [--options] [module names]
@@ -2779,8 +2789,12 @@ More docs at https://docs.kde.org/?application=kdesrc-build
     Supported cmdline options:       https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdline.html
 DONE
 
-    # Look for indications this is the first run.
-    if (! -e "./kdesrc-buildrc" && ! -e "$ENV{HOME}/.kdesrc-buildrc") {
+    # Look for indications that this is the first run
+    my @possibleConfigPaths = ("./kdesrc-buildrc",
+                               "$xdgConfigHome/kdesrc-buildrc",
+                               "$ENV{HOME}/.kdesrc-buildrc");
+
+    if (!grep { -e $_ } (@possibleConfigPaths)) {
         say <<DONE;
   **  **  **  **  **
 It looks like kdesrc-build has not yet been setup. For easy setup, run:

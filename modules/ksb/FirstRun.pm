@@ -194,7 +194,13 @@ sub _getNumCoresForLowMemory
 sub _setupBaseConfiguration
 {
     my $baseDir = shift;
-    my @knownLocations = ("$ENV{PWD}/kdesrc-buildrc", "$ENV{HOME}/.kdesrc-buildrc");
+    # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
+    # default to ~/.config
+    my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
+    my $xdgConfigHomeShort = $xdgConfigHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
+    my @knownLocations = ("$ENV{PWD}/kdesrc-buildrc",
+                          "$xdgConfigHome/kdesrc-buildrc",
+                          "$ENV{HOME}/.kdesrc-buildrc");
     my $locatedFile = first { -e $_ } @knownLocations;
     my $printableLocatedFile = undef;
 
@@ -228,14 +234,14 @@ DONE
     $sampleRc =~ s/%\{num_cores_low}/$numCoresLow/g;
     $sampleRc =~ s/%\{base_dir}/$baseDir/g;
 
-    open my $sampleFh, '>', "$ENV{HOME}/.kdesrc-buildrc"
-        or _throw("Couldn't open new ~/.kdesrc-buildrc: $!");
+    open my $sampleFh, '>', "$xdgConfigHome/kdesrc-buildrc"
+        or _throw("Couldn't open new $xdgConfigHomeShort/kdesrc-buildrc: $!");
 
     print $sampleFh $sampleRc
-        or _throw("Couldn't write to ~/.kdesrc-buildrc: $!");
+        or _throw("Couldn't write to $xdgConfigHomeShort/kdesrc-buildrc: $!");
 
     close $sampleFh
-        or _throw("Error closing ~/.kdesrc-buildrc: $!");
+        or _throw("Error closing $xdgConfigHomeShort/kdesrc-buildrc: $!");
 }
 
 sub _setupShellRcFile
