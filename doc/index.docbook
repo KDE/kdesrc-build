@@ -397,15 +397,17 @@ without having to fully specify its path every time.</para></tip>
 <sect3 id="setup-rcfile">
 <title>Prepare the configuration file</title>
 
-<para>&kdesrc-build; uses a <link linkend="configure-data">configuration
-file</link> (located at <filename>~/.kdesrc-buildrc</filename>) to control
-which modules are built, where they are installed to, etc.</para>
+<para>&kdesrc-build; uses a <link linkend="configure-data">configuration file</link>
+to control which modules are built, where they are installed to, etc.
+This file is located at <filename>~/.config/kdesrc-buildrc</filename>
+(<filename>$XDG_CONFIG_HOME/kdesrc-buildrc</filename>, if
+<envar>$XDG_CONFIG_HOME</envar> is set).</para>
 
 <para>You can use a program included with &kdesrc-build;, called
 <application>kdesrc-build-setup</application> in order to prepare a simple
 kdesrc-build configuration. You can then edit the
-<filename>~/.kdesrc-buildrc</filename> from there to make any changes you see
-fit.</para>
+<filename>~/.config/kdesrc-buildrc</filename> configuration file to make
+any changes you see fit.</para>
 
 <para><application>kdesrc-build-setup</application> itself runs from a terminal
 (instead of using a graphical interface), just like &kdesrc-build;, so you can
@@ -415,17 +417,19 @@ use it even if you have no graphical interface available yet.</para>
 <title>Manual setup of configuration file</title>
 
 <para>You can also setup your configuration file manually, by copying the
-included sample configuration file
-<filename>kdesrc-buildrc-kf5-sample</filename> to
-<filename>~/.kdesrc-buildrc</filename> and then editing the file.  <xref
-linkend="kdesrc-buildrc"/> will be a useful reference for this, especially its
-<link linkend="conf-options-table">table of configuration options</link>.
+included sample configuration file <filename>kdesrc-buildrc-kf5-sample</filename>
+to <filename>~/.config/kdesrc-buildrc</filename> and then editing the file.
+<xref linkend="kdesrc-buildrc"/> will be a useful reference for this, especially
+its <link linkend="conf-options-table">table of configuration options</link>.
 </para>
 
 <para>&kdesrc-build; contains many recommended configuration files to support
-&kde; Frameworks 5, &plasma; 5, and other &kde; applications.  The <application>kdesrc-build-setup</application> refers to these files in the configuration file it generates, but you can also use them
-yourself.  See <xref linkend="kdesrc-buildrc-including"/> for information on how
-to use other configuration files from your own <filename>~/.kdesrc-buildrc</filename>.</para>
+&kde; Frameworks 5, &plasma; 5, and other &kde; applications. The
+<application>kdesrc-build-setup</application> refers to these files in the
+configuration file it generates, but you can also use them yourself. See
+<xref linkend="kdesrc-buildrc-including"/> for information on how to use other
+configuration files from your own <filename>kdesrc-buildrc</filename>.
+</para>
 
 <para>You can find more information about the syntax of the <link
 linkend="configure-data">configuration file</link> in <xref
@@ -440,15 +444,18 @@ linkend="configure-data" /> and in <xref linkend="kdesrc-buildrc" />.
 <title>Setting the Configuration Data</title>
 
 <para>
-To use &kdesrc-build;, you should have a file in your home directory called
-<filename>.kdesrc-buildrc</filename>, which sets the general options and sets the modules
-you would like to download and build.
+To use &kdesrc-build;, you should have a file in your <filename>~/.config</filename>
+(or in <envar>$XDG_CONFIG_HOME</envar>, if set) directory called
+<filename>kdesrc-buildrc</filename>, which sets the general options and
+specifies the modules you would like to download and build.
 </para>
 
-<note><para>It is possible to use different configuration files for &kdesrc-build;,
-which is described in <xref linkend="kdesrc-buildrc" />. If you need to use
-multiple configurations, please see that section. Here, we will assume the
-configuration is stored in <filename>~/.kdesrc-buildrc</filename>.</para></note>
+<note><para>
+It is possible to use different configuration files for &kdesrc-build;, which is
+described in <xref linkend="kdesrc-buildrc" />. If you need to use multiple
+configurations, please see that section. Here, we will assume that the
+configuration is stored in <filename>~/.config/kdesrc-buildrc</filename>.
+</para></note>
 
 <para>
 The easiest way to proceed is to use the
@@ -2784,12 +2791,16 @@ cannot figure out what you mean using <link linkend="conf-branch">branch</link>.
 <row id="conf-persistent-data-file">
 <entry>persistent-data-file</entry>
 <entry>Cannot be overridden</entry>
-<entry><para>Use this option to change where &kdesrc-build; stores its persistent
-data. The default is to store this data in a file called
-<filename>.kdesrc-build-data</filename> placed in the same directory as the
-configuration file in use. If you have multiple available configurations in the
-same directory you may want to manually set this option so that the different
-configurations do not end up with conflicting persistent data.</para>
+<entry><para>Use this option to change where &kdesrc-build; stores its
+persistent data. The default is to store this data in a file called
+<filename>.kdesrc-build-data</filename>, placed in the same directory as the
+configuration file in use. If the global configuration file is in use, it will
+be saved to <filename>~/.cache/kdesrc-build-data</filename>
+(<filename>$XDG_CONFIG_HOME/kdesrc-build-data</filename>, if
+<envar>$XDG_CONFIG_HOME</envar> is set). If you have multiple available
+configurations in the same directory, you may want to manually set this option,
+so that different configurations do not end up with conflicting persistent data.
+</para>
 
 <para>This option was added with &kdesrc-build; 1.15.</para>
 </entry>
@@ -3687,9 +3698,11 @@ This option was added with &kdesrc-build; 1.16. See also the
 <listitem><para>
 This interprets the next command line parameter as the file to read the
 configuration options from. The default value for this parameter is
-<filename>kdesrc-buildrc</filename> (checked in the current directory) if
-it is present, or <filename>~/.kdesrc-buildrc</filename> otherwise. See
-also <xref linkend="kdesrc-buildrc" />.
+<filename>kdesrc-buildrc</filename> (checked in the current working directory).
+If this file doesn't exist, <filename>~/.config/kdesrc-buildrc</filename>
+(<filename>$XDG_CONFIG_HOME/kdesrc-buildrc</filename>, if
+<envar>$XDG_CONFIG_HOME</envar> is set) will be used instead. See also
+<xref linkend="kdesrc-buildrc"/>.
 </para></listitem>
 </varlistentry>
 

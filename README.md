@@ -63,7 +63,7 @@ Later we will set up kdesrc-build to keep itself updated automatically.
 - Now that kdesrc-build is installed and works, you need to set up kdesrc-build
   to work appropriately on your particular system. Do this by running the
   provided set up script to generate the **configuration file**
-  (~/.kdesrc-buildrc):
+  (~/.config/kdesrc-buildrc):
 
 ```shell
 $ cd ~/kde/src/kdesrc-build
@@ -151,7 +151,7 @@ One thing to keep in mind when using kdesrc-build to manage keeping itself
 up to date is that updates won't take effect until the *next* time you run
 kdesrc-build.
 
-You may want to edit your ~/.kdesrc-buildrc to make sure any new
+You may want to edit the kdesrc-buildrc configuration file to make sure any new
 options are included. You should always read the changes for the new version
 however, as sometimes there are slight changes in behavior necessary to adapt
 to updates in the source repository. If you are running kdesrc-build from its
@@ -164,8 +164,8 @@ successfully upgraded kdesrc-build.
 ## SAMPLE CONFIGURATION
 
 A sample configuration file is included for demonstration purposes. You could
-copy it to your `~/.kdesrc-buildrc` and edit, but you should use the provided
-`kdesrc-build-setup` script instead.
+copy it to `~/.config/kdesrc-buildrc` and edit manually. However,
+it is advised to use provided `kdesrc-build-setup` script instead.
 
 ## HELP!!!
 
@@ -207,7 +207,7 @@ For each build, kdesrc-build does several things:
 
 - Finds the configuration file (based on the --rc-file option or by looking for
   `kdesrc-buildrc` in the current directory and falling back to
-  `~/.kdesrc-buildrc`)
+  `~/.config/kdesrc-buildrc`)
 - Reads the configuration file to generate:
     - Default options to apply for each module
     - A list of modules to build. Modules can be grouped in "module-sets", but
