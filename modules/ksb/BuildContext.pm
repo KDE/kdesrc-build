@@ -566,6 +566,27 @@ sub setRcFile
     $self->{rcFile} = undef;
 }
 
+# Warns a user if the config file is stored in the old location
+sub warnLegacyConfig
+{
+    my $file = shift;
+    $file =~ s/^$ENV{HOME}/~/;
+    if ($file eq '~/.kdesrc-buildrc')
+    {
+        warning (<<EOM);
+
+The b[global configuration file] is stored in the old location. It will still be
+processed correctly, however, it's recommended to move it to the new location.
+
+Please move b[~/.kdesrc-buildrc] to b[$xdgConfigHomeShort/kdesrc-buildrc]
+
+You may also move (or delete) the b[global cache file], as it won't be read from
+the current location: b[~/.kdesrc-build-data] to b[$xdgCacheHomeShort/kdesrc-build-data]
+(overwrite if needed).
+EOM
+    }
+}
+
 # Returns an open filehandle to the user's chosen rc file.  Use setRcFile
 # to choose a file to load before calling this function, otherwise
 # loadRcFile will search the default search path.  After this function is
@@ -585,18 +606,7 @@ sub loadRcFile
         {
             $self->{rcFile} = File::Spec->rel2abs($file);
 
-            # Check if the config file is stored in the old location
-            $file =~ s/^$ENV{HOME}/~/;
-            if ($file eq '~/.kdesrc-buildrc')
-            {
-                error (<<EOM);
-
-Your b[global configuration file] is stored in the old location. It will still be
-processed correctly, however, it's recommended to move it to the new location.
-
-Please, move b[~/.kdesrc-buildrc] to b[$xdgConfigHomeShort/kdesrc-buildrc]
-EOM
-            }
+            warnLegacyConfig($file);
 
             return $fh;
         }
@@ -787,35 +797,22 @@ sub setOption
 sub persistentOptionFileName
 {
     my $self = shift;
-    my $filename = $self->getOption('persistent-data-file');
+    my $file = $self->getOption('persistent-data-file');
 
-    if (!$filename) {
-        # Check if the cache file is stored in the old location
-        if (-e "$ENV{HOME}/.kdesrc-build-data")
-        {
-            error (<<EOM);
-Your b[global cache file] is stored in the old location. It will still be
-processed correctly, however, it's recommended to move it to the new location.
-
-Please, move b[~/.kdesrc-build-data] to b[$xdgCacheHomeShort/kdesrc-build-data]
-EOM
-        }
-
+    if ($file) {
+        $file =~ s/^~/$ENV{HOME}/;
+    } else {
         my $configDir = $self->baseConfigDirectory();
         if ($configDir eq $xdgConfigHome) {
             # Global config is used - store the cache file in $xdgCacheHome
-            $filename = $xdgCacheHome . '/' . $PERSISTENT_FILE_NAME;
+            $file = $xdgCacheHome . '/' . $PERSISTENT_FILE_NAME;
         } else {
             # Local config is used - store the cache file in the same directory
-            $filename = $configDir . '/.' . $PERSISTENT_FILE_NAME;
+            $file = $configDir . '/.' . $PERSISTENT_FILE_NAME;
         }
     }
-    else {
-        # Tilde-expand
-        $filename =~ s/^~\//$ENV{HOME}\//;
-    }
 
-    return $filename;
+    return $file;
 }
 
 # Reads in all persistent options from the file where they are kept
