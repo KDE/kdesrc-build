@@ -44,7 +44,7 @@ has secrets            => sub {
   my $self = shift;
 
   # Warn developers about insecure default
-  $self->log->debug('Your secret passphrase needs to be changed');
+  $self->log->trace('Your secret passphrase needs to be changed');
 
   # Default to moniker
   return [$self->moniker];
@@ -56,7 +56,7 @@ has ua        => sub { Mojo::UserAgent->new };
 has validator => sub { Mojolicious::Validator->new };
 
 our $CODENAME = 'Waffle';
-our $VERSION  = '9.19';
+our $VERSION  = '9.22';
 
 sub BUILD_DYNAMIC {
   my ($class, $method, $dyn_methods) = @_;
@@ -111,7 +111,7 @@ sub dispatch {
 
   # Start timer (ignore static files)
   my $stash = $c->stash;
-  $c->helpers->log->debug(sub {
+  $c->helpers->log->trace(sub {
     my $req    = $c->req;
     my $method = $req->method;
     my $path   = $req->url->path->to_abs_string;
@@ -139,7 +139,7 @@ sub handler {
   $self->plugins->emit_chain(around_dispatch => $c);
 
   # Delayed response
-  $c->helpers->log->debug('Nothing has been rendered, expecting delayed response') unless $c->stash->{'mojo.rendered'};
+  $c->helpers->log->trace('Nothing has been rendered, expecting delayed response') unless $c->stash->{'mojo.rendered'};
 }
 
 sub helper { shift->renderer->add_helper(@_) }
@@ -395,7 +395,7 @@ The home directory of your application, defaults to a L<Mojo::Home> object which
   $app    = $app->log(Mojo::Log->new);
 
 The logging layer of your application, defaults to a L<Mojo::Log> object. The level will default to either the
-C<MOJO_LOG_LEVEL> environment variable, C<debug> if the L</mode> is C<development>, or C<info> otherwise. All messages
+C<MOJO_LOG_LEVEL> environment variable, C<trace> if the L</mode> is C<development>, or C<info> otherwise. All messages
 will be written to C<STDERR> by default.
 
   # Log debug message
@@ -817,6 +817,8 @@ Current voting members of the core team in alphabetical order:
 
 =over 2
 
+CandyAngel, C<candyangel@mojolicious.org>
+
 Christopher Rasch-Olsen Raa, C<christopher@mojolicious.org>
 
 Dan Book, C<grinnz@mojolicious.org>
@@ -834,8 +836,6 @@ The following members of the core team are currently on hiatus:
 =over 2
 
 Abhijit Menon-Sen, C<ams@cpan.org>
-
-CandyAngel, C<candyangel@mojolicious.org>
 
 Glen Hinkle, C<tempire@cpan.org>
 
@@ -882,6 +882,8 @@ Andrey Khozov
 Andrey Kuzmin
 
 Andy Grundman
+
+Andy Lester
 
 Aristotle Pagaltzis
 

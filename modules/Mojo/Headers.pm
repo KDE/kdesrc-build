@@ -123,7 +123,7 @@ sub parse {
     }
 
     # New header
-    if ($line =~ /^(\S[^:]*)\s*:\s*(.*)$/) { push @$headers, [$1, $2] }
+    if ($line =~ /^(\S[^:]*):\s*(.*)$/) { push @$headers, [$1, $2] }
 
     # Multi-line
     elsif ($line =~ s/^\s+// && @$headers) { $headers->[-1][1] .= " $line" }
@@ -142,6 +142,7 @@ sub parse {
   return $self;
 }
 
+sub referer  { shift->referrer(@_) }
 sub referrer { shift->header(Referer => @_) }
 
 sub remove {
@@ -555,6 +556,13 @@ Get or replace current header value, shortcut for the C<Proxy-Authorization> hea
   $headers  = $headers->range('bytes=2-8');
 
 Get or replace current header value, shortcut for the C<Range> header.
+
+=head2 referer
+
+  my $referrer = $headers->referer;
+  $headers     = $headers->referer('http://example.com');
+
+Alias for L</"referrer">.
 
 =head2 referrer
 
