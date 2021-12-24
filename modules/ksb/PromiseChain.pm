@@ -228,6 +228,7 @@ L<PromiseChain::makePromiseChain>.
 
 sub promiseFor {
     my ($self, $itemName) = @_;
+    return unless $self->items->{$itemName}; # Don't autovivify an item if not present
     return $self->items->{$itemName}->{promise};
 }
 
@@ -282,6 +283,10 @@ sub makePromiseChain {
         my $item = $self->items->{$itemName}
             or die "No item $itemName";
         my $sub = $item->{job};
+
+        die "Item $itemName has no work handler!"
+            unless $self->promiseFor($itemName);
+
         my @deps =
             map { $self->items->{$_}->{promise} or die "No dep item $_" }
             $self->depsFor($itemName);
@@ -315,14 +320,14 @@ sub makePromiseChain {
         # $sub will itself return a promise when called, which is needed
         # for this chain to work
         push @all_promises, $base_promise->then($sub)->catch(sub {
-            # err handler, return a value to keep the Promise->all below from
-            # failing fast.
+            my $reason = shift;
+
             if ($do_abort) {
                 # Stop the build once event loop resumes
                 $do_abort->reject("A build step failed and stop-on-failure is enabled")
             } else {
                 # The build will continue, but not for dependent promises
-                $item->{promise}->reject("Prerequisite to $itemName failed");
+                $item->{promise}->reject("Prerequisite to $itemName failed: $reason");
             }
 
             # We've handled the error, let the rest of the build proceed if it

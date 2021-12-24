@@ -1778,9 +1778,8 @@ sub _handle_build_phases
         $promiseChain->addItem("$module/build", 'cpu-queue', $buildSub);
 
         # If there's an update phase we need to depend on it and show status
-        if (my $updatePromise = $promiseChain->promiseFor("$module/update")) {
-            $promiseChain->addDep("$module/build", "$module/update");
-        }
+        $promiseChain->addDep("$module/build", "$module/update")
+            if $promiseChain->promiseFor("$module/update");
     };
 
     return $start_promise->then(
