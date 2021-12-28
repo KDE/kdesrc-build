@@ -1,0 +1,38 @@
+# Module definitions for building KDE Frameworks 6
+# (cmake, KF6's dependencies, KDE Frameworks 6)
+
+# Usage: Write your own kdesrc-buildrc with only a "global" section
+# then include this file, like this:
+#
+# include extragear/utils/kdesrc-build/kf6-qt6-build-include
+# (or using a full path)
+#
+# You can then add additional modules if desired.
+#
+# This file uses "branch groups" to decide which git branch to use. If you
+# need to add your framework or library here please be sure to update
+# kde-build-metadata repo's "logical-module-structure". It includes a simple
+# tool you can use to validate your change works (or just "kdesrc-build -p
+# your-module" and look for the right branch).
+
+# for KAuth
+module-set kf6-support
+    repository kde-projects
+    use-modules polkit-qt-1
+    cmake-options -DQT_MAJOR_VERSION=6
+end module-set
+
+# for KFileMetaData
+module poppler
+  repository https://gitlab.freedesktop.org/poppler/poppler.git
+  branch master
+  cmake-options -DWITH_GLIB=OFF -DENABLE_UNSTABLE_API_ABI_HEADERS=1 -DENABLE_QT5=OFF -DENABLE_QT6=ON
+end module
+
+
+module-set frameworks
+    repository kde-projects
+    use-modules frameworks
+    ignore-modules kdelibs4support kdewebkit khtml kjsembed kmediaplayer kinit kjs kross kdesignerplugin kemoticons kxmlrpcclient
+    cmake-options -DBUILD_TESTING=TRUE -DBUILD_WITH_QT6=ON -DEXCLUDE_DEPRECATED_BEFORE_AND_AT=5.90.0
+end module-set

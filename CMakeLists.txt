@@ -110,6 +110,8 @@ install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/kf5-kdepim-build-include
             ${CMAKE_SOURCE_DIR}/kf5-qt5-build-include
             ${CMAKE_SOURCE_DIR}/kf5-workspace-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-qt6-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-frameworks-build-include
     DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
 install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
