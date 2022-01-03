@@ -709,6 +709,7 @@ perl-uri
 perl-yaml-libyaml
 polkit-elogind-dev
 pulseaudio-dev
+py3-sphinx
 qt5-qtbase-dev
 qt5-qtdeclarative-dev
 qt5-qtquickcontrols2-dev
