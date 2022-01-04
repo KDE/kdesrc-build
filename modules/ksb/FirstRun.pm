@@ -693,6 +693,7 @@ libepoxy-dev
 libgcrypt-dev
 libical-dev
 libinput-dev
+libnl3-dev
 libqrencode-dev
 libsecret-dev
 libxkbfile-dev
@@ -700,6 +701,7 @@ libxrender-dev
 libxslt-dev
 libxtst-dev
 linux-pam-dev
+lm-sensors-dev
 lmdb-dev
 networkmanager-dev
 openjpeg-dev
