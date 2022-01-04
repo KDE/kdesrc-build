@@ -694,6 +694,7 @@ libgcrypt-dev
 libical-dev
 libinput-dev
 libnl3-dev
+libqalculate-dev
 libqrencode-dev
 libsecret-dev
 libxkbfile-dev
