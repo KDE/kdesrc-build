@@ -318,7 +318,8 @@ sub _detectDependencyCycle
             return $depModuleGraph->{traces}->{result};
         }
         else {
-            error("Found a dependency cycle at: $depItem while tracing $item");
+            error("Found a dependency cycle at: $depItem while tracing $item")
+                unless defined $ENV{HARNESS_ACTIVE};
             $depModuleGraph->{traces}->{result} = 1;
         }
     }
