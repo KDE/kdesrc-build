@@ -1,9 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test ksb::OSSupport
 
+use ksb;
 use Test::More;
 
 use ksb::OSSupport;

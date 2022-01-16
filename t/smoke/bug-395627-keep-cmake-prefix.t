@@ -1,10 +1,9 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Verify that a user-set CMAKE_PREFIX_PATH is not removed, even if we supply
 # "magic" of our own
 # See bug 395627 -- https://bugs.kde.org/show_bug.cgi?id=395627
+
+use ksb;
+use Test::More;
 
 my @savedCommand;
 my $log_called = 0;
@@ -28,8 +27,6 @@ BEGIN {
         return 0; # success
     };
 }
-
-use Test::More;
 
 use ksb::Application;
 use ksb::Module;

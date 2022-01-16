@@ -1,10 +1,7 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test that empty num-cores settings (which could lead to blank -j being passed
 # to the build in some old configs) have their -j filtered out.
 
+use ksb;
 use Test::More;
 
 use ksb::Module;

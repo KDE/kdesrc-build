@@ -1,7 +1,3 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Global options in the rc-file can be overridden on the command line just by
 # using their option name in a cmdline argument (as long as the argument isn't
 # already allocated, that is).
@@ -11,6 +7,7 @@ use warnings;
 #
 # See issue #64
 
+use ksb;
 use Test::More;
 
 use ksb::Application;

@@ -1,9 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test detection of dependency cycles in a dependency graph
 
+use ksb;
 use Test::More;
 
 use ksb::DependencyResolver;

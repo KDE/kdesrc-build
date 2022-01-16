@@ -1,9 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test comparison operation for sorting modules into debug order
 
+use ksb;
 use Test::More;
 
 use ksb::DebugOrderHints;

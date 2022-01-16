@@ -1,9 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test sorting modules into build order
 
+use ksb;
 use Test::More;
 
 use ksb::DependencyResolver;

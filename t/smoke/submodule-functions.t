@@ -1,15 +1,13 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test submodule-related features
 
+use ksb;
 use Test::More;
-use File::Temp qw(tempdir);
 
-use ksb::Updater::Git;
+use File::Temp qw(tempdir);
 use autodie qw(:io);
 use IPC::Cmd qw(run);
+
+use ksb::Updater::Git;
 
 # Create an empty directory for a git module, ensure submodule-related things
 # work without a submodule, then add a submodule and ensure that things remain

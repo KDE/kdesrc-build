@@ -1,9 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test tag names based on time
 
+use ksb;
 use Test::More;
 
 use ksb::Application;

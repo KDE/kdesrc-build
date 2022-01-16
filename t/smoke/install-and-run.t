@@ -1,10 +1,8 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test install and ability to run a simple status command w/out Perl failures
 
+use ksb;
 use Test::More;
+
 use Cwd;
 use IPC::Cmd;
 
@@ -55,11 +53,11 @@ symlink("$curdir/kdesrc-build", "$tempInstallDir/bin/kdesrc-build");
 
     # Use IPC::Cmd to capture (and ignore) output. All we need is the exit code
     my ($buildResult, $errMsg) = IPC::Cmd::run(
-	command => [
-	    'cmake', "-DCMAKE_INSTALL_PREFIX=$tempInstallDir", "-DBUILD_doc=OFF", $curdir
-	],
-	verbose => 0,
-	timeout => 60);
+        command => [
+            'cmake', "-DCMAKE_INSTALL_PREFIX=$tempInstallDir", "-DBUILD_doc=OFF", $curdir
+        ],
+        verbose => 0,
+        timeout => 60);
     die "Couldn't run cmake! $errMsg"
         unless $buildResult;
 

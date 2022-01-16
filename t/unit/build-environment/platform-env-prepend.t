@@ -1,10 +1,7 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test that empty kdedir and/or qtdir do not cause empty /bin settings to be
 # configured in environment.
 
+use ksb;
 use Test::More;
 
 use ksb::DependencyResolver;

@@ -1,9 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test use of --set-module-option-value
 
+use ksb;
 use Test::More;
 
 use ksb::Application;

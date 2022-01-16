@@ -1,10 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
-#
 # Verify that _getDependencyPathOf() works properly
-#
+
+use ksb;
 use Test::More;
 
 use ksb::DependencyResolver;

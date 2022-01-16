@@ -21,7 +21,6 @@ use feature ();
 
 my $REQUIRED_PERL_FEATURES = ':5.28';
 
-# We also use signatures but it's no longer warned about
 my @EXPERIMENTAL_FEATURES = qw(smartmatch);
 
 sub import

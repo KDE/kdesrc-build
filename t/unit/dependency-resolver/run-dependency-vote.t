@@ -1,9 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test running the full vote for dependencies
 
+use ksb;
 use Test::More;
 
 use ksb::DependencyResolver;

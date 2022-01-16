@@ -1,11 +1,8 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Verify that --ignore-modules works for modules that would be included with
 # --include-dependencies in effect.
 # See bug 394497 -- https://bugs.kde.org/show_bug.cgi?id=394497
 
+use ksb;
 use Test::More;
 
 use ksb::Application;

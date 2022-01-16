@@ -1,9 +1,6 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Test basic option reading from rc-files
 
+use ksb;
 use Test::More;
 
 package ksb::test {

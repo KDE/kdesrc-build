@@ -1,16 +1,13 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Ensure that the custom-build-command can at least make it to the
 # $module->buildInternal() portion when no build system can be auto-detected.
+
+use ksb;
+use Test::More;
 
 use ksb::Application;
 use ksb::Module;
 use ksb::BuildSystem;
 use ksb::Debug qw();
-
-use Test::More;
 
 package ksb::Module {
     no warnings 'redefine';

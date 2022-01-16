@@ -1,10 +1,7 @@
-use 5.014;
-use strict;
-use warnings;
-
 # Verify that --no-include-dependencies is recognized and results
 # in right value.
 
+use ksb;
 use Test::More;
 
 use ksb::Application;
