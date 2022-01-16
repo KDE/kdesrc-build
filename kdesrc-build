@@ -33,7 +33,12 @@
 
 # Adding an option? Grep for 'defaultGlobalOptions' in ksb::BuildContext --mpyne
 
-use ksb; # Enable boilerplate
+####  Script start.  Step 1: Tell Perl where to find our 'ksb' modules in relation
+####  to where we are at.
+
+use v5.28;
+use strict;
+use warnings;
 
 # On many container-based distros, even FindBin is missing to conserve space.
 # But we can use File::Spec to do nearly the same.
@@ -69,14 +74,9 @@ BEGIN {
 
 use lib "$modPath"; # Make ksb:: modules available
 
-sub dumpError
-{
-    my $err = $@;
-    open my $fh, '>>', "error-$$.log" or return;
-    my $time = localtime;
-    say $fh $time;
-    say $fh $@;
-}
+####  Now that Perl can find our modules, load them and start processing command line arguments
+
+use ksb; # Enable boilerplate
 
 # When running in a limited environment, we might not be able to load
 # our modules although we can find them. In this case we should help user
@@ -91,11 +91,10 @@ eval {
 };
 
 if ($@) {
-    dumpError();
     say STDERR <<DONE;
 * Unable to even load the simplistic initial setup support for some reason??
 
-More detail might be available in error-$$.log
+$@
 
 You could:
  File a bug https://bugs.kde.org/enter_bug.cgi?product=kdesrc-build
@@ -118,19 +117,25 @@ eval {
 };
 
 if ($@) {
-    dumpError();
     say STDERR <<DONE;
 Couldn't load the base platform for kdesrc-build!
-More detail might be available in error-$$.log
+
+$@
 DONE
 
     if (! -e "kdesrc-buildrc" && ! -e "$ENV{HOME}/.kdesrc-buildrc") {
-        say STDERR <<DONE;
-It appears you've not run kdesrc-build before.
+        say STDERR <<~DONE;
+        It appears you've not run kdesrc-build before.
 
-Please run "kdesrc-build --initial-setup" and kdesrc-build will guide you
-through setting up required dependencies and environment setup.
-DONE
+        Please run "kdesrc-build --initial-setup" and kdesrc-build will guide you
+        through setting up required dependencies and environment setup.
+        DONE
+    } else {
+        say STDERR <<~DONE;
+        You could:
+         File a bug https://bugs.kde.org/enter_bug.cgi?product=kdesrc-build
+         Ask for help on irc.libera.chat in the #kde channel
+        DONE
     }
     exit 1;
 }
