@@ -8,7 +8,7 @@ use IPC::Cmd qw(run can_run);
 
 # It is expected that future git tags will be in the form 'YY.MM' and will
 # be time-based instead of event-based as with previous releases.
-our $VERSION = '20.06';
+our $VERSION = '22.01';
 
 my $SCRIPT_PATH = ''; # For auto git-versioning
 
