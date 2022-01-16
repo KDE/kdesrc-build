@@ -81,9 +81,8 @@ sub setColorfulOutput
     }
 }
 
-# Subroutine which returns true if debug mode is on.  Uses the prototype
-# feature so you don't need the parentheses to use it.
-sub debugging(;$)
+# Subroutine which returns true if debug mode is on.
+sub isLogLevel
 {
     my $level = shift // DEBUG;
     return $debugLevel <= $level;
@@ -154,27 +153,27 @@ sub print_clr(@)
 
 sub debug(@)
 {
-    print_clr(@_) if debugging;
+    print_clr(@_) if isLogLevel(DEBUG);
 }
 
 sub whisper(@)
 {
-    print_clr(@_) if $debugLevel <= WHISPER;
+    print_clr(@_) if isLogLevel(WHISPER);
 }
 
 sub info(@)
 {
-    print_clr(@_) if $debugLevel <= INFO;
+    print_clr(@_) if isLogLevel(INFO);
 }
 
 sub note(@)
 {
-    print_clr(@_) if $debugLevel <= NOTE;
+    print_clr(@_) if isLogLevel(NOTE);
 }
 
 sub warning(@)
 {
-    print_clr(@_) if $debugLevel <= WARNING;
+    print_clr(@_) if isLogLevel(WARNING);
 }
 
 sub error(@)
