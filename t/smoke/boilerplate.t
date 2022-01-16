@@ -20,4 +20,10 @@ $d = eval 'my $f = 3; $f';
 ok(!$@, "eval on valid syntax with 'use ksb' works");
 ok($d == 3, "eval with 'use ksb' returns properly");
 
+eval {
+    sub foo($arg1, $arg2) {
+    }
+};
+
+ok(!$@, "eval on block with sub signatures works");
 done_testing();
