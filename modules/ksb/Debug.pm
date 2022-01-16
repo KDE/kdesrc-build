@@ -79,11 +79,16 @@ sub setColorfulOutput
     }
 }
 
-# Subroutine which returns true if debug mode is on.
 sub isLogLevel
 {
     my $level = shift // DEBUG;
     return $debugLevel <= $level;
+}
+
+# Subroutine which returns true if debug mode is on.
+sub debugging :prototype(;$)
+{
+    return isLogLevel(DEBUG);
 }
 
 sub setDebugLevel

@@ -1,6 +1,6 @@
-package ksb::BuildSystem::KDE4 0.20;
+package ksb::BuildSystem::KDECMake 0.20;
 
-# Class responsible for building KDE4 CMake-based modules.
+# Class responsible for building CMake-based modules, with special support for KDE modules.
 
 use ksb;
 
@@ -286,7 +286,7 @@ sub configuredModuleFileName
 
 sub runTestsuite
 {
-    my $self = assert_isa(shift, 'ksb::BuildSystem::KDE4');
+    my $self = assert_isa(shift, 'ksb::BuildSystem::KDECMake');
     my $module = $self->module();
 
     # Note that we do not run safe_make, which should really be called
@@ -357,7 +357,7 @@ sub installInternal
 
 sub configureInternal
 {
-    my $self = assert_isa(shift, 'ksb::BuildSystem::KDE4');
+    my $self = assert_isa(shift, 'ksb::BuildSystem::KDECMake');
     my $module = $self->module();
 
     # Use cmake to create the build directory (sh script return value
@@ -444,16 +444,11 @@ sub _safe_run_cmake
     }
 
     if ($module->getOption('run-tests') &&
-        !grep { /^\s*-DKDE4_BUILD_TESTS(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
+        !grep { /^\s*-DBUILD_TESTING(:BOOL)?=(ON|TRUE|1)\s*$/ } (@commands)
        )
     {
         whisper ("Enabling tests");
-        push @commands, "-DKDE4_BUILD_TESTS:BOOL=ON";
-
-        # Also enable phonon tests.
-        if ($module =~ /^phonon$/) {
-            push @commands, "-DPHONON_BUILD_TESTS:BOOL=ON";
-        }
+        push @commands, "-DBUILD_TESTING:BOOL=ON";
     }
 
     if ($module->getOption('run-tests') eq 'upload')

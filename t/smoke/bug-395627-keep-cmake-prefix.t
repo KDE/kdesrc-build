@@ -38,7 +38,7 @@ my @args = qw(--pretend --rc-file t/data/bug-395627/kdesrc-buildrc);
     my @moduleList = @{$app->{modules}};
 
     is (scalar @moduleList, 6, 'Right number of modules');
-    isa_ok ($moduleList[0]->buildSystem(), 'ksb::BuildSystem::KDE4');
+    isa_ok ($moduleList[0]->buildSystem(), 'ksb::BuildSystem::KDECMake');
 
     my $result;
     my @prefixes;

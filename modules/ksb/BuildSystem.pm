@@ -18,9 +18,10 @@ sub new
     my ($class, $module) = @_;
     my $self = bless { module => $module }, $class;
 
-    # This is simply the 'default' build system at this point, also used for
-    # KF5.
-    if ($class ne 'ksb::BuildSystem::KDE4') {
+    # This is simply the 'default' build system at this point, so options
+    # intended for unique/bespoke build systems should be stripped from global
+    # before being applied to a module.
+    if ($class ne 'ksb::BuildSystem::KDECMake') {
         _maskGlobalBuildSystemOptions($self);
     }
 

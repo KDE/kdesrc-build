@@ -67,7 +67,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/BuildSystem/Autotools.pm
         modules/ksb/BuildSystem/Meson.pm
         modules/ksb/BuildSystem/CMakeBootstrap.pm
-        modules/ksb/BuildSystem/KDE4.pm
+        modules/ksb/BuildSystem/KDECMake.pm
         modules/ksb/BuildSystem/QMake.pm
         modules/ksb/BuildSystem/Qt4.pm
         modules/ksb/BuildSystem/Qt5.pm

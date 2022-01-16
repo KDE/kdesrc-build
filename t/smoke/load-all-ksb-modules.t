@@ -9,7 +9,7 @@ use ksb::BuildException;
 use ksb::BuildSystem;
 use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::CMakeBootstrap;
-use ksb::BuildSystem::KDE4;
+use ksb::BuildSystem::KDECMake;
 use ksb::BuildSystem::Meson;
 use ksb::BuildSystem::QMake;
 use ksb::BuildSystem::Qt4;
