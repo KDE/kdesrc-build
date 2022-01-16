@@ -3,9 +3,8 @@ package ksb::BuildException 0.20;
 # A class to wrap 'exception' messages for the script, allowing them to be
 # dispatch based on type and automatically stringified.
 
-use 5.014; # Needed for state keyword
-use strict;
-use warnings;
+use ksb;
+
 use Carp;
 use overload
     '""' => \&to_string;

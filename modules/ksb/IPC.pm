@@ -5,10 +5,7 @@ package ksb::IPC;
 # class, really you should use IPC::Null (which is fully synchronous) or
 # IPC::Pipe, which both fall back to common methods implemented here.
 
-use strict;
-use warnings;
-use 5.014;
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
+use ksb;
 
 our $VERSION = '0.20';
 

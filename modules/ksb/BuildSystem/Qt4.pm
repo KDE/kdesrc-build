@@ -2,9 +2,7 @@ package ksb::BuildSystem::Qt4 0.10;
 
 # Build system for the Qt4 toolkit
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::BuildSystem);
 

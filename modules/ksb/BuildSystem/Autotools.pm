@@ -2,9 +2,7 @@ package ksb::BuildSystem::Autotools 0.10;
 
 # This is a module used to support configuring with autotools.
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::BuildSystem);
 

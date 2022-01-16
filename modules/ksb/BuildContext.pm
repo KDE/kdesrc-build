@@ -5,9 +5,7 @@ package ksb::BuildContext 0.35;
 # This contains the information needed about the build context, e.g.  list of
 # modules, what phases each module is in, the various options, etc.
 
-use 5.014;
-use warnings;
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
+use ksb;
 
 use Carp 'confess';
 use File::Basename; # dirname

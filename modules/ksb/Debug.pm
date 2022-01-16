@@ -2,9 +2,7 @@ package ksb::Debug 0.20;
 
 # Debugging routines and constants for use with kdesrc-build
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use Exporter qw(import); # Steal Exporter's import method
 our @EXPORT = qw(debug pretending debugging whisper

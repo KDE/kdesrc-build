@@ -6,9 +6,7 @@ package ksb::Module 0.20;
 # and installed. Includes a stringifying overload and can be sorted amongst
 # other ksb::Modules.
 
-use 5.014;
-use warnings;
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
+use ksb;
 
 use parent qw(ksb::OptionsBase);
 

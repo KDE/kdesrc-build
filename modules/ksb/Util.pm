@@ -2,9 +2,7 @@ package ksb::Util 0.30;
 
 # Useful utilities, which are exported into the calling module's namespace by default.
 
-use 5.014; # Needed for state keyword
-use strict;
-use warnings;
+use ksb;
 
 use Scalar::Util qw(blessed);
 use File::Path qw(make_path remove_tree);

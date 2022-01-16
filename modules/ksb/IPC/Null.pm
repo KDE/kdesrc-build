@@ -2,9 +2,7 @@ package ksb::IPC::Null 0.10;
 
 # Dummy IPC module in case SysVIPC doesn't work or async mode is not needed.
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::IPC);
 

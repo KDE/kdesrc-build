@@ -6,9 +6,7 @@ package ksb::Updater::KDEProjectMetadata 0.30;
 # Note: 2020-06-20 the previous "kde-build-metadata" module was combined into
 # the "repo-metadata" module, under the '/dependencies' folder.
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::Updater::KDEProject);
 

@@ -1,8 +1,6 @@
 package ksb::RecursiveFH;
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 our $VERSION = '0.10';
 

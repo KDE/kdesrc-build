@@ -6,9 +6,7 @@ package ksb::DependencyResolver;
 # from the perspective of this resolver is simply a module full name, as
 # given by the KDE Project database.  (e.g. extragear/utils/kdesrc-build)
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 our $VERSION = '0.20';
 

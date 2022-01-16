@@ -3,8 +3,7 @@ package ksb::ModuleResolver 0.20;
 # Handle proper resolution of module selectors, including option
 # handling. See POD docs below for more details.
 
-use warnings;
-use 5.014;
+use ksb;
 
 use ksb::BuildException;
 use ksb::Debug;

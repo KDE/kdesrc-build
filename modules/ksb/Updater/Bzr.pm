@@ -2,9 +2,7 @@ package ksb::Updater::Bzr 0.10;
 
 # Support the bazaar source control manager for libdbusmenu-qt
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::Updater);
 

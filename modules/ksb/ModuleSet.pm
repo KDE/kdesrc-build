@@ -29,10 +29,7 @@ package ksb::ModuleSet 0.20;
 #
 # See also: git-repository-base, ModuleSet::KDEProjects, use-modules
 
-use strict;
-use warnings;
-use 5.014;
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
+use ksb;
 
 use parent qw(ksb::OptionsBase);
 

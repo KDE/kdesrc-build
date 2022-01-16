@@ -12,11 +12,9 @@ package ksb::ModuleSet::KDEProjects 0.30;
 #
 # See also: ModuleSet
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
+
 use parent qw(ksb::ModuleSet);
-no if $] >= 5.018, 'warnings', 'experimental::smartmatch';
 
 use ksb::BuildContext 0.20;
 use ksb::BuildException;

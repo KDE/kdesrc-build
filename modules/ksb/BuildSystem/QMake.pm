@@ -2,9 +2,7 @@ package ksb::BuildSystem::QMake 0.10;
 
 # A build system used to build modules that use qmake
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::BuildSystem);
 

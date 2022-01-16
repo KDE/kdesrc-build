@@ -3,9 +3,7 @@ package ksb::Updater::Qt5 0.10;
 # Handles updating Qt 5 source code. Requires git but uses Qt 5's dedicated
 # 'init-repository' script to keep the source up to date and coherent.
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::Updater::Git);
 

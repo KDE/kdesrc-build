@@ -2,9 +2,7 @@ package ksb::Version;
 
 # Pretty much just records the program-wide version number...
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use IPC::Cmd qw(run can_run);
 

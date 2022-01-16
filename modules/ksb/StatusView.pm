@@ -6,9 +6,7 @@ package ksb::StatusView 0.20;
 # Currently supports TTY output only but it's not impossible to visualize
 # extending this to a GUI or even web server as options.
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use ksb::Debug 0.20 qw(colorize);
 

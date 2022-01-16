@@ -2,9 +2,7 @@ package ksb::IPC::Pipe 0.20;
 
 # IPC class that uses pipes in addition to forking for IPC.
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::IPC);
 

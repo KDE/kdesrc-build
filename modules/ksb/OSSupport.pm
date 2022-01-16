@@ -1,8 +1,6 @@
 package ksb::OSSupport 0.10;
 
-use 5.014;
-use strict;
-use warnings;
+use ksb;
 
 use ksb::BuildException qw(croak_runtime);
 

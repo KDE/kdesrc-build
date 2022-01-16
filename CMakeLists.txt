@@ -35,6 +35,10 @@ set(KDESRC_BUILD_MODULE_INSTALL_PREFIX "${KDE_INSTALL_DATADIR}/kdesrc-build/modu
 if (KDESRC_BUILD_INSTALL_MODULES)
     message(STATUS "Installing component modules to ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}")
     install(FILES
+        modules/ksb.pm
+    DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX})
+
+    install(FILES
         modules/ksb/Application.pm
         modules/ksb/BuildContext.pm
         modules/ksb/BuildException.pm

@@ -2,9 +2,7 @@ package ksb::BuildSystem::Qt5 0.10;
 
 # Build system for the Qt5 toolkit
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use ksb::BuildException;
 use ksb::BuildSystem;

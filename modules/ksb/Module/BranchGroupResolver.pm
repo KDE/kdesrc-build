@@ -6,9 +6,7 @@ package ksb::Module::BranchGroupResolver;
 #
 # See also https://community.kde.org/Infrastructure/Project_Metadata
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 our $VERSION = '0.10';
 

@@ -3,9 +3,7 @@ package ksb::BuildSystem::Meson 0.10;
 # This is a module used to support configuring with Meson.
 # This is required for modules like telepathy-accounts-signon
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::BuildSystem);
 

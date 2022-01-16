@@ -2,9 +2,7 @@ package ksb::BuildSystem::KDE4 0.20;
 
 # Class responsible for building KDE4 CMake-based modules.
 
-use strict;
-use warnings;
-use 5.014;
+use ksb;
 
 use parent qw(ksb::BuildSystem);
 
