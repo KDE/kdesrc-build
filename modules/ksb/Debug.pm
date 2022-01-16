@@ -46,7 +46,7 @@ sub colorize
 
 # Subroutine which returns true if pretend mode is on.  Uses the prototype
 # feature so you don't need the parentheses to use it.
-sub pretending()
+sub pretending :prototype()
 {
     return $isPretending;
 }
@@ -121,7 +121,7 @@ sub setIPC
 # well so you don't need to manually add the ] to reset.
 
 # Subroutine used to actually display the data, calls ksb::Debug::colorize on each entry first.
-sub print_clr(@)
+sub print_clr :prototype(@)
 {
     # If we have an IPC object that means there's multiple procs trying to
     # share the same TTY. Just forward messages to the one proc that should be
@@ -149,38 +149,38 @@ sub print_clr(@)
     }
 }
 
-sub debug(@)
+sub debug :prototype(@)
 {
     print_clr(@_) if isLogLevel(DEBUG);
 }
 
-sub whisper(@)
+sub whisper :prototype(@)
 {
     print_clr(@_) if isLogLevel(WHISPER);
 }
 
-sub info(@)
+sub info :prototype(@)
 {
     print_clr(@_) if isLogLevel(INFO);
 }
 
-sub note(@)
+sub note :prototype(@)
 {
     print_clr(@_) if isLogLevel(NOTE);
 }
 
-sub warning(@)
+sub warning :prototype(@)
 {
     print_clr(@_) if isLogLevel(WARNING);
 }
 
-sub error(@)
+sub error :prototype(@)
 {
     print STDERR (colorize $_) foreach (@_);
     print STDERR (colorize "]\n");
 }
 
-sub pretend(@)
+sub pretend :prototype(@)
 {
     if (pretending() && $debugLevel <= WHISPER) {
         my @lines = @_;

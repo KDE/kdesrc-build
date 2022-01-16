@@ -408,9 +408,8 @@ sub createBuildSystem
 # {
 #   was_successful => $bool, (if successful)
 # }
-sub safe_make (@)
+sub safe_make($self, $optsRef)
 {
-    my ($self, $optsRef) = @_;
     assert_isa($self, 'ksb::BuildSystem');
     my $module = $self->module();
 

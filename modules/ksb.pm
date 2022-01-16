@@ -16,12 +16,12 @@ use warnings;
 
 # These are made available but not imported. They are only here so we can
 # re-import them into the caller's namespace.
-use experimental();
-use feature ();
+require experimental;
+require feature;
 
 my $REQUIRED_PERL_FEATURES = ':5.28';
 
-my @EXPERIMENTAL_FEATURES = qw(smartmatch);
+my @EXPERIMENTAL_FEATURES = qw(smartmatch signatures);
 
 sub import
 {

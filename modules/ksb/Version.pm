@@ -23,7 +23,7 @@ sub path
     $SCRIPT_PATH = $newPath // $SCRIPT_PATH;
 }
 
-sub scriptVersion()
+sub scriptVersion :prototype()
 {
     if ($SCRIPT_PATH && can_run('git') && -d "$SCRIPT_PATH/.git") {
         my ($ok, $err_msg, undef, $stdout) = IPC::Cmd::run(

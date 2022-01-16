@@ -105,7 +105,7 @@ sub safe_unlink
 # global option is not set.
 #
 # Returns the shell error code, so 0 means success, non-zero means failure.
-sub safe_system(@)
+sub safe_system :prototype(@)
 {
     if (!pretending())
     {
@@ -119,7 +119,7 @@ sub safe_system(@)
 
 # Is exactly like "chdir", but it will also print out a message saying that
 # we're switching to the directory when debugging.
-sub p_chdir($)
+sub p_chdir :prototype($)
 {
     my $dir = shift;
     debug ("\tcd g[$dir]\n");
@@ -563,7 +563,7 @@ sub pretend_open
 }
 
 # Returns true if the given sub returns true for any item in the given listref.
-sub any(&@)
+sub any :prototype(&@)
 {
     my ($subRef, $listRef) = @_;
     ($subRef->($_) && return 1) foreach @{$listRef};
