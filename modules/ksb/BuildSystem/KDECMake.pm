@@ -457,7 +457,7 @@ sub _safe_run_cmake
         push @commands, "-DBUILD_experimental:BOOL=ON";
     }
 
-    unshift @commands, 'cmake', $srcdir, '-G', $generator; # Add to beginning of list.
+    unshift @commands, 'cmake', '-B', '.', '-S', $srcdir, '-G', $generator; # Add to beginning of list.
 
     my $old_options =
         $module->getPersistentOption('last-cmake-options') || '';

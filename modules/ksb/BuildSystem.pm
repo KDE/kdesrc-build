@@ -414,26 +414,29 @@ sub safe_make($self, $optsRef)
     assert_isa($self, 'ksb::BuildSystem');
     my $module = $self->module();
 
-    my $buildCommand = $self->defaultBuildCommand();
-    my @buildCommandLine = $buildCommand;
+    my $commandToUse = $module->getOption('custom-build-command');
+    my $buildCommand;
+    my @buildCommandLine;
 
     # Check for custom user command. We support command line options being
     # passed to the command as well.
-    my $userCommand = $module->getOption('custom-build-command');
-    if ($userCommand) {
-        @buildCommandLine = split_quoted_on_whitespace($userCommand);
-        $buildCommand = absPathToExecutable($buildCommandLine[0]);
+    if ($commandToUse) {
+        ($buildCommand, @buildCommandLine) = split_quoted_on_whitespace($commandToUse);
+        $commandToUse = $buildCommand; # Don't need whole cmdline in any errors.
+        $buildCommand = absPathToExecutable($buildCommand);
+    }
+    else {
+        # command line options passed in optsRef
+        $commandToUse = $buildCommand = $self->defaultBuildCommand();
     }
 
     if (!$buildCommand) {
-        $buildCommand = $userCommand || $self->buildCommands();
-        error (" r[b[*] Unable to find the g[$buildCommand] executable!");
+        error (" r[b[*] Unable to find the g[$commandToUse] executable!");
         return { was_successful => 0 };
     }
 
     # Make it prettier if pretending (Remove leading directories).
     $buildCommand =~ s{^/.*/}{} if pretending();
-    shift @buildCommandLine; # $buildCommand is already the first entry.
 
     # Simplify code by forcing lists to exist.
     $optsRef->{'prefix-options'} //= [ ];
@@ -454,45 +457,14 @@ sub safe_make($self, $optsRef)
     push @args, $optsRef->{target} if $optsRef->{target};
     push @args, @{$optsRef->{'make-options'}};
 
-    # Will be output by _runBuildCommand
-    my $buildMessage = $optsRef->{message};
+    my $logname = $optsRef->{logbase} // $optsRef->{logfile} // $optsRef->{target};
 
-    # Here we're attempting to ensure that we either run the build command
-    # in each subdirectory, *or* for the whole module, but not both.
-    my @dirs = @{$optsRef->{subdirs}};
-    push (@dirs, "") if scalar @dirs == 0;
+    my $builddir = $module->fullpath('build');
+    $builddir =~ s/\/*$//; # Remove trailing /
 
-    for my $subdir (@dirs)
-    {
-        # Some subdirectories shouldn't have the build command run within
-        # them.
-        next unless $self->isSubdirBuildable($subdir);
+    p_chdir ($builddir);
 
-        my $logname = $optsRef->{logbase} // $optsRef->{logfile} // $optsRef->{target};
-
-        if ($subdir ne '')
-        {
-            $logname = $logname . "-$subdir";
-
-            # Remove slashes in favor of something else.
-            $logname =~ tr{/}{-};
-
-            # Mention subdirectory that we're working on, move ellipsis
-            # if present.
-            if ($buildMessage =~ /\.\.\.$/) {
-                $buildMessage =~ s/(\.\.\.)?$/ subdirectory g[$subdir]$1/;
-            }
-        }
-
-        my $builddir = $module->fullpath('build') . "/$subdir";
-        $builddir =~ s/\/*$//; # Remove trailing /
-
-        p_chdir ($builddir);
-
-        return $self->_runBuildCommand($buildMessage, $logname, \@args);
-    };
-
-    return { was_successful => 1 };
+    return $self->_runBuildCommand($optsRef->{message}, $logname, \@args);
 }
 
 # Subroutine to run make and process the build process output in order to
