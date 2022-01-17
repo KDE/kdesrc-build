@@ -113,6 +113,7 @@ install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/kf5-kdepim-build-include
             ${CMAKE_SOURCE_DIR}/kf5-qt5-build-include
             ${CMAKE_SOURCE_DIR}/kf5-workspace-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-applications-build-include
             ${CMAKE_SOURCE_DIR}/kf6-qt6-build-include
             ${CMAKE_SOURCE_DIR}/kf6-frameworks-build-include
             ${CMAKE_SOURCE_DIR}/kf6-workspace-build-include
