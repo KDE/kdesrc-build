@@ -244,10 +244,6 @@ sub _resolveSingleSelector
         $selector = ksb::Module->new($ctx, $selectorName);
         $selector->phases()->phases($ctx->phases()->phases());
 
-        if ($selectorName eq 'l10n') {
-            $_->setScmType('l10n')
-        }
-
         $selector->setScmType('proj');
         $selector->setOption('#guessed-kde-project', 1);
         $selector->setOption('#selected-by', 'initial-guess');

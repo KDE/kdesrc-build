@@ -319,53 +319,18 @@ EOF
     $self->_verifyCorrectServerURL();
 }
 
-# Subroutine used to handle the checkout-only option.  It handles updating
-# subdirectories of an already-checked-out module.
-#
-# This function can throw an exception in the event of a update failure.
-#
-# First parameter is the module.
-# All remaining parameters are subdirectories to check out.
-#
-# Returns the number of files changed by the update, or undef if unable to
-# be determined.
-sub update_module_subdirectories
-{
-    my $self = assert_isa(shift, 'ksb::Updater::Svn');
-    my $module = $self->module();
-    my $numChanged = 0;
-
-    # If we have elements in @path, download them now
-    for my $dir (@_)
-    {
-        info ("\tUpdating g[$dir]");
-
-        my $logname = $dir;
-        $logname =~ tr{/}{-};
-
-        my $count = $self->run_svn("svn-up-$logname", [ 'svn', 'up', $dir ]);
-        $numChanged = undef unless defined $count;
-        $numChanged += $count if defined $numChanged;
-    }
-
-    return $numChanged;
-}
-
-# Checkout a module that has not been checked out before, along with any
-# subdirectories the user desires.
+# Checkout a module that has not been checked out before.
 #
 # This function will throw an exception in the event of a failure to update.
 #
 # The first parameter is the module to checkout (including extragear and
 # playground modules).
-# All remaining parameters are subdirectories of the module to checkout.
 #
 # Returns number of files affected, or undef.
 sub checkout_module_path
 {
     my $self = assert_isa(shift, 'ksb::Updater::Svn');
     my $module = $self->module();
-    my @path = @_;
     my %pathinfo = $module->getInstallPathComponents('source');
     my @args;
 
@@ -380,7 +345,6 @@ sub checkout_module_path
     my $modulename = $pathinfo{'module'}; # i.e. kdelibs for KDE/kdelibs as $module
 
     push @args, ('svn', 'co', '--non-interactive');
-    push @args, '-N' if scalar @path; # Tells svn to only update the base dir
     push @args, $svn_url;
     push @args, $modulename;
 
@@ -388,26 +352,18 @@ sub checkout_module_path
 
     my $count = $self->run_svn('svn-co', \@args);
 
-    p_chdir ($pathinfo{'module'}) if scalar @path;
-
-    my $count2 = $self->update_module_subdirectories(@path);
-
-    return $count + $count2 if defined $count and defined $count2;
-    return undef;
+    return $count;
 }
 
-# Update a module that has already been checked out, along with any
-# subdirectories the user desires.
+# Update a module that has already been checked out.
 #
 # This function will throw an exception in the event of an update failure.
 #
 # The first parameter is the module to checkout (including extragear and
 # playground modules).
-# All remaining parameters are subdirectories of the module to checkout.
 sub update_module_path
 {
-    my ($self, @path) = @_;
-    assert_isa($self, 'ksb::Updater::Svn');
+    my $self = assert_isa(shift, 'ksb::Updater::Svn');
     my $module = $self->module();
     my $fullpath = $module->fullpath('source');
     my @args;
@@ -415,7 +371,6 @@ sub update_module_path
     p_chdir ($fullpath);
 
     push @args, ('svn', 'up', '--non-interactive');
-    push @args, '-N' if scalar @path;
 
     note ("Updating g[$module]");
 
@@ -435,10 +390,7 @@ sub update_module_path
         $count = $self->run_svn('svn-up-2', \@args);
     }
 
-    my $count2 = $self->update_module_subdirectories(@path);
-
-    return $count + $count2 if defined $count and defined $count2;
-    return undef;
+    return $count;
 }
 
 # Run the svn command.  This is a special subroutine so that we can munge
@@ -580,11 +532,10 @@ sub updateInternal
     my $self = assert_isa(shift, 'ksb::Updater::Svn');
     my $module = $self->module();
     my $fullpath = $module->fullpath('source');
-    my @options = split(' ', $module->getOption('checkout-only'));
 
     if (-e "$fullpath/.svn") {
         $self->check_module_validity();
-        my $updateCount = $self->update_module_path(@options);
+        my $updateCount = $self->update_module_path();
 
         my $log_filter = sub {
             return unless defined $_;
@@ -606,7 +557,7 @@ sub updateInternal
         return $updateCount;
     }
     else {
-        return $self->checkout_module_path(@options);
+        return $self->checkout_module_path();
     }
 }
 

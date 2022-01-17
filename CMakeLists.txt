@@ -60,7 +60,6 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/Updater.pm
         modules/ksb/Util.pm
         modules/ksb/Version.pm
-        modules/ksb/l10nSystem.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb)
 
     install(FILES

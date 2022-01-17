@@ -137,13 +137,6 @@ sub needsRefreshed
     return "";
 }
 
-# Returns true if the given subdirectory (reference from the module's root source directory)
-# can be built or not. Should be reimplemented by subclasses as appropriate.
-sub isSubdirBuildable
-{
-    return 1;
-}
-
 # Called by the module being built before it runs its build/install process. Should
 # setup any needed environment variables, build context settings, etc., in preparation
 # for the build and install phases. Should take `hasToolchain()` into account here.
@@ -227,9 +220,6 @@ sub buildInternal
         message => 'Compiling...',
         'make-options' => \@makeOptions,
         logbase => 'build',
-        subdirs => [
-            split(' ', $self->module()->getOption("checkout-only"))
-        ],
     })->{was_successful};
 }
 
@@ -276,7 +266,6 @@ sub installInternal
             target => 'install',
             message => 'Installing..',
             'prefix-options' => [@cmdPrefix],
-            subdirs => [ split(' ', $module->getOption("checkout-only")) ],
            })->{was_successful};
 }
 
@@ -293,7 +282,6 @@ sub uninstallInternal
             target => 'uninstall',
             message => "Uninstalling g[$module]",
             'prefix-options' => [@cmdPrefix],
-            subdirs => [ split(' ', $module->getOption("checkout-only")) ],
            })->{was_successful};
 }
 
@@ -370,13 +358,7 @@ sub createBuildSystem
 }
 
 # Subroutine to run the build command with the arguments given by the
-# passed hash.
-#
-# In addition to finding the proper executable, this function handles the
-# step of running the build command for individual subdirectories (as
-# specified by the checkout-only option to the module).  Due to the various
-# ways the build command is called by this script, it is required to pass
-# customization options in a hash:
+# passed hash, laid out as:
 # {
 #    target         => undef, or a valid build target e.g. 'install',
 #    message        => 'Compiling.../Installing.../etc.'
@@ -386,8 +368,6 @@ sub createBuildSystem
 #                        make command, used for make-install-prefix support for
 #                        e.g. sudo ],
 #    logbase        => 'base-log-filename',
-#    subdirs        => [ list of subdirectories of the module to build,
-#                        relative to the module's own build directory. ]
 # }
 #
 # target and message are required. logbase is required if target is left
@@ -401,9 +381,6 @@ sub createBuildSystem
 #
 # The first command name found which resolves to an executable on the
 # system will be used, if no command this function will fail.
-#
-# The first argument should be the ksb::Module object to be made.
-# The second argument should be the reference to the hash described above.
 #
 # Returns a hashref:
 # {
@@ -441,7 +418,6 @@ sub safe_make($self, $optsRef)
     # Simplify code by forcing lists to exist.
     $optsRef->{'prefix-options'} //= [ ];
     $optsRef->{'make-options'} //= [ ];
-    $optsRef->{'subdirs'} //= [ ];
 
     my @prefixOpts = @{$optsRef->{'prefix-options'}};
 

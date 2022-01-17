@@ -22,7 +22,6 @@ use ksb::IPC;
 use ksb::IPC::Null;
 use ksb::IPC::Pipe;
 use ksb::KDEProjectsReader;
-use ksb::l10nSystem;
 use ksb::Module;
 use ksb::Module::BranchGroupResolver;
 use ksb::ModuleResolver;

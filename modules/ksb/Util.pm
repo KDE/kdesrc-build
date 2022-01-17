@@ -712,8 +712,6 @@ sub yesNoPrompt {
 # similar fashion to how the XFree/X.org lndir() program does it.  This is
 # reimplemented here since some systems lndir doesn't seem to work right.
 #
-# Used from ksb::l10nSystem
-#
 # As a special exception to the GNU GPL, you may use and redistribute this
 # function however you would like (i.e. consider it public domain).
 #
