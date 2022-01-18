@@ -1,0 +1,43 @@
+# Module definitions for building kdepim framework
+
+# Usage: Write your own kdesrc-buildrc with only a "global" section
+# (including "branch-group kf5-qt5")
+# then include this file, like this:
+#
+# include extragear/utils/kdesrc-build/kf5-frameworks-build-include
+# include extragear/utils/kdesrc-build/kf5-applications-build-include
+# (or using full paths)
+#
+# You can then add additional modules if desired.
+#
+# This file uses "branch groups" to decide which git branch to use. If you
+# want to add your application here please be sure to update
+# repo-metadata repo's "dependencies/logical-module-structure". It includes a simple
+# tool you can use to validate your change works (or just "kdesrc-build -p
+# your-module" and look for the right branch).
+
+#module-set akonadi
+#    repository kde-projects
+#    use-modules akonadi
+#end module-set
+
+#module libkolabxml
+#    repository https://git.kolab.org/diffusion/LKX/libkolabxml.git
+#    cmake-options -DQT5_BUILD=true
+#    branch libkolabxml-1.1
+#end module
+
+module-set kde-pim
+    repository kde-projects
+    cmake-options -DBUILD_TESTING=TRUE -DBUILD_WITH_QT6=ON -DEXCLUDE_DEPRECATED_BEFORE_AND_AT=5.90.0
+
+    # modules not yet KF6-ready
+    ignore-modules akonadi akonadi-calendar akonadi-calendar-tools akonadiconsole akonadi-contacts akonadi-import-wizard akonadi-mime akonadi-notes akonadi-search akregator calendarsupport eventviews grantlee-editor grantleetheme incidenceeditor itinerary kaddressbook kalarm  kalarmcal kalendar kcalutils kdepim-addons kdepim-runtime kidentitymanagement kimap kitinerary kldap kleopatra kmail kmail-account-wizard kmailtransport kmime knotes kontact kontactinterface kopeninghours korganizer kosmindoormap kpimtextedit kpublictransport ktnef libgravatar libkdepim libkleo libksieve mailcommon mailimporter mbox-importer messagelib pimcommon pim-data-exporter pim-sieve-editor zanshin kdiagram
+
+    use-modules kde/pim libkgapi
+end module-set
+
+#module-set kdepim-runtime
+#    repository kde-projects
+#    use-modules kdepim-runtime
+#end module-set
