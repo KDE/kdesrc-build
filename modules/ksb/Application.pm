@@ -820,6 +820,12 @@ sub runAllModulePhases
 
     my $result;
 
+    # If power-profiles-daemon is in use and we're in balanced mode,
+    # switch to performance mode now.
+    # If we're already in performance mode, there is no need; if we're in
+    # power saver mode, we should respect that and not be a power hog!
+    $self->_enablePerformancePowerProfileIfPossible();
+
     if ($runMode eq 'build')
     {
         # No packages to install, we're in build mode
@@ -929,6 +935,10 @@ sub finish
 
     $ctx->closeLock();
     $ctx->storePersistentOptions();
+
+    # If we're using power-profiles-daemon and the profile was changed earlier,
+    # reset it to what it was before
+    $self->_returnToPreviousPowerProfileIfNeeded();
 
     my $logdir = $ctx->getLogDir();
     note ("Your logs are saved in file://y[$logdir]");
@@ -2738,6 +2748,43 @@ that can be edited from there.
 DONE
     }
 }
+
+sub _enablePerformancePowerProfileIfPossible ($self)
+{
+    my $ctx = $self->context();
+
+    my $hasPerformanceProfile = eval { filter_program_output(sub { /performance/ },
+                                       qw(powerprofilesctl list)) };
+
+    if($hasPerformanceProfile) {
+        my $starting_profile = `powerprofilesctl get`;
+        chomp $starting_profile;
+        $ctx->setOption('#starting-power-profile', $starting_profile);
+
+        if ($starting_profile eq "balanced") {
+            info("Switching to performance power profile");
+            safe_system(qw(powerprofilesctl set performance));
+        }
+    }
+}
+
+sub _returnToPreviousPowerProfileIfNeeded ($self)
+{
+    my $ctx = $self->context();
+
+    my $starting_profile = $ctx->getOption('#starting-power-profile');
+
+    if ($starting_profile) {
+        my $current_profile = `powerprofilesctl get`;
+        chomp $current_profile;
+
+        if ($starting_profile ne $current_profile) {
+            info("Returning to " . $starting_profile . " power profile");
+            safe_system('powerprofilesctl', 'set', $starting_profile);
+        }
+    }
+}
+
 
 # Accessors
 
