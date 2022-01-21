@@ -2752,7 +2752,7 @@ This script automates the download, build, and install process for KDE software
 using the latest available source code.
 
 Configuration is controlled from "$pwdShort/kdesrc-buildrc" or
-"$xdgConfigHomeShort/kdesrc-build/kdesrc-buildrc".
+"$xdgConfigHomeShort/kdesrc-buildrc".
 See kdesrc-buildrc-sample for an example.
 
 Usage: \$ $0 [--options] [module names]
