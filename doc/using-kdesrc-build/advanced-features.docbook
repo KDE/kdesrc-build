@@ -9,19 +9,69 @@ has features to make this easy. There are several complementing ways to
 do this.
 </para>
 
-<sect3 id="not-compiling">
-<title>Removing directories from a build</title>
-<para>It is possible to download an entire repository
-but have the build system leave out a few directories when it does
-the build. This requires that the module uses &cmake; and that the
-module's build system allows the directory to remove to be
-optional.
+<sect3 id="checking-out-parts">
+<title>Checking out portions of a module</title>
+
+<para>This is perhaps the best way to do this. When it works, it will save you
+download time and disk space. What happens is that &kdesrc-build; will download
+only the parts of a module that you specify. This is done using the &checkout-only;
+option for a module, which will specify a list of directories to download.
 </para>
 
-<para>This is controlled with the &do-not-compile; option.</para>
+<tip><para>
+If you do not already know what to download from a module, it may be a good idea
+to browse the &subversion; layout for a module first, using
+<ulink url="https://websvn.kde.org/branches/KDE/4.6/">WebSVN</ulink>. <!--FIXME outdated-->
+</para></tip>
+
+<informalexample>
+<para>To only grab &kuser; and <application>KSystemLog</application> from
+kdeadmin, you could use &checkout-only; like this:</para>
+
+<screen>
+module <replaceable>kdeadmin</replaceable>
+  &checkout-only; <replaceable>kuser ksystemlog</replaceable>
+end module
+</screen>
+
+</informalexample>
+
+<important><para>The directories will be built in the order they are listed
+in the option. If one of the directories needs something else from the module
+to compile, then you need to make sure they are both in the &checkout-only;
+line, and that the required dependency goes before the directory that needs it.</para>
+
+<para>Also, sometimes an application may need other directories and it is hard
+to figure out what they are, which may require some trial and error of constantly
+adding directories to the option to figure out. This option depends on support
+from the build system of the module, so it is only useful for modules that are
+collections of individual applications.</para>
+</important>
+
+<para>One final note to make about this option: If you change the value of this
+option, you should use <userinput><command>kdesrc-build</command>
+<option>&cmd-refresh-build;</option> <option><replaceable>module</replaceable></option></userinput>
+in order to ensure that the module is reconfigured properly. In addition,
+&kdesrc-build; will never remove existing files if you take away the number of
+directories from your &checkout-only; option, or add the option to a module that
+has already been checked out.</para>
+
+</sect3>
+
+<sect3 id="not-compiling">
+<title>Removing directories from a build</title>
+<para>Instead of restricting what is downloaded, it is possible to download
+everything but have the build system leave out a few directories when it does
+the build. This may be useful if one directory always breaks and is
+unnecessary to the rest of the module.
+</para>
+
+<para>This is controlled with the &do-not-compile; option. It works similar
+to the &checkout-only; option just described, in that it is simply a list of
+directories that should not be compiled.</para>
 
 <important><para>
-This option requires at least that the
+Also like &checkout-only;, this option requires at least that the
 build system for the module is reconfigured after changing
 it. This is done using the <userinput><command>kdesrc-build</command>
 <option>&cmd-reconfigure;</option>

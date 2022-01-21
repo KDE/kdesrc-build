@@ -214,9 +214,16 @@ change at all.</para></important>
 <row id="conf-checkout-only">
 <entry>checkout-only</entry>
 <entry>Module setting overrides global</entry>
-<entry><para>This option was removed in January 2022. It used to control
-the ability to checkout subsets of a module from a Subversion repository.</para>
-</entry>
+<entry><para>Set this option to checkout &subversion; sources piece by piece. The
+value for this option should be a space-separated list of directories to
+checkout.  Although this option overrides the global option, be aware that
+setting this as a global option makes no sense.
+</para>
+
+<para>Note that this setting has no effect on &git; modules due to the
+operation of the &git; source control system.</para>
+
+<para>See <xref linkend="checking-out-parts"/> for an example.</para></entry>
 </row>
 
 <row id="conf-cmake-generator">
@@ -405,13 +412,13 @@ for every module. You can disable this check by setting
 <entry><para>Use this option to select a specific set of directories not to be built in a
 module (instead of all of them). The directories not to build should be space-separated.</para>
 
-<para>Note that the sources to the programs will still be downloaded.</para>
+<para>Note that the sources to the programs will still be downloaded. You can use
+the <link linkend="conf-checkout-only">checkout-only</link>
+directive to choose directories that you want to check out.</para>
 
-<para>For example, to disable building the <literal>codeeditor</literal> and <literal>minimaltest</literal>
-directories of the <literal>syntaxhighlighting</literal> framework, you
-would add <userinput>do-not-compile codeeditor minimaltest</userinput>
-compiling, you would add "do-not-compile juk kscd" to your syntaxhighlighting
-options.</para>
+<para>For example, to hold &juk; and &kscd; in the kdemultimedia module from
+compiling, you would add "do-not-compile juk kscd" to your kdemultimedia
+settings.</para>
 
 <para>See <xref linkend="not-compiling"/> for an example.</para>
 </entry>
@@ -1025,12 +1032,16 @@ cannot figure out what you mean using <link linkend="conf-branch">branch</link>.
 <row id="conf-persistent-data-file">
 <entry>persistent-data-file</entry>
 <entry>Cannot be overridden</entry>
-<entry><para>Use this option to change where &kdesrc-build; stores its persistent
-data. The default is to store this data in a file called
-<filename>.kdesrc-build-data</filename> placed in the same directory as the
-configuration file in use. If you have multiple available configurations in the
-same directory you may want to manually set this option so that the different
-configurations do not end up with conflicting persistent data.</para>
+<entry><para>Use this option to change where &kdesrc-build; stores its
+persistent data. The default is to store this data in a file called
+<filename>.kdesrc-build-data</filename>, placed in the same directory as the
+configuration file in use. If the global configuration file is in use, it will
+be saved to <filename>~/.local/state/kdesrc-build-data</filename>
+(<filename>$XDG_STATE_HOME/kdesrc-build-data</filename>, if
+<envar>$XDG_STATE_HOME</envar> is set). If you have multiple available
+configurations in the same directory, you may want to manually set this option,
+so that different configurations do not end up with conflicting persistent data.
+</para>
 
 <para>This option was added with &kdesrc-build; 1.15.</para>
 </entry>
