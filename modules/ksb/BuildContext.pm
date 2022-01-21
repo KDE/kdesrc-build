@@ -566,23 +566,16 @@ sub setRcFile
     $self->{rcFile} = undef;
 }
 
-# Warns a user if the config file is stored in the old location
+# Warns a user if the config file is stored in the old location.
 sub warnLegacyConfig
 {
     my $file = shift;
     $file =~ s/^$ENV{HOME}/~/;
-    if ($file eq '~/.kdesrc-buildrc')
-    {
+    if ($file eq '~/.kdesrc-buildrc') {
         warning (<<EOM);
-
 The b[global configuration file] is stored in the old location. It will still be
 processed correctly, however, it's recommended to move it to the new location.
-
 Please move b[~/.kdesrc-buildrc] to b[$xdgConfigHomeShort/kdesrc-buildrc]
-
-You may also move (or delete) the b[global cache file], as it won't be read from
-the current location: b[~/.kdesrc-build-data] to b[$xdgStateHomeShort/kdesrc-build-data]
-(overwrite if needed).
 EOM
     }
 }
@@ -804,11 +797,27 @@ sub persistentOptionFileName
     } else {
         my $configDir = $self->baseConfigDirectory();
         if ($configDir eq $xdgConfigHome) {
-            # Global config is used - store the data file in $xdgStateHome
+            # Global config is used. Store the data file in XDG_STATE_HOME.
             $file = $xdgStateHome . '/' . $PERSISTENT_FILE_NAME;
         } else {
-            # Local config is used - store the data file in the same directory
+            # Local config is used. Store the data file in the same directory.
             $file = $configDir . '/.' . $PERSISTENT_FILE_NAME;
+        }
+
+        # Fallback to legacy data file if it exists and the new one doesn't.
+        my $legacyDataFile = "$ENV{HOME}/.kdesrc-build-data";
+
+        if (! -e $file && -e $legacyDataFile) {
+            $file = $legacyDataFile;
+        }
+
+        if ($file eq $legacyDataFile && !$self->getOption('#warned-legacy-data-location')) {
+            warning (<<EOM);
+The b[global data file] is stored in the old location. It will still be
+processed correctly, however, it's recommended to move it to the new location.
+Please move b[~/.kdesrc-build-data] to b[$xdgStateHomeShort/kdesrc-build-data]
+EOM
+            $self->setOption('#warned-legacy-data-location', 1);
         }
     }
 
