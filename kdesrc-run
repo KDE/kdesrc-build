@@ -66,15 +66,15 @@ if ($#ARGV == -1 && not $optListInstalled) {
 my $module = shift @ARGV;
 my $exec   = $optExec // $module;
 
-# According to XDG spec, if $XDG_CACHE_HOME is not set, then we should default
-# to ~/.cache
-my $xdgCacheHome = $ENV{XDG_CACHE_HOME} // "$ENV{HOME}/.cache";
-my $cacheFileName = "kdesrc-build-data";
-my @possibleCachePaths = ("./.$cacheFileName", "$xdgCacheHome/$cacheFileName");
-my $buildDataFile = first { -e $_ } (@possibleCachePaths);
+# According to XDG spec, if $XDG_STATE_HOME is not set, then we should default
+# to ~/.local/state
+my $xdgStateHome = $ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state";
+my $dataFileName = "kdesrc-build-data";
+my @possibleDataPaths = ("./.$dataFileName", "$xdgStateHome/$dataFileName");
+my $buildDataFile = first { -e $_ } (@possibleDataPaths);
 
 if (not defined $buildDataFile) {
-    say qq("$cacheFileName" file is not available. Exit now.);
+    say qq("$dataFileName" file is not available. Exit now.);
     exit 1;
 }
 

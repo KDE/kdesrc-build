@@ -35,10 +35,10 @@ use ksb::KDEProjectsReader 0.50;
 use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
 
-# According to XDG spec, if $XDG_CACHE_HOME is not set, then we should
-# default to ~/.cache
-my $xdgCacheHome = $ENV{XDG_CACHE_HOME} // "$ENV{HOME}/.cache";
-my $xdgCacheHomeShort = $xdgCacheHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
+# According to XDG spec, if $XDG_STATE_HOME is not set, then we should
+# default to ~/.local/state
+my $xdgStateHome = $ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state";
+my $xdgStateHomeShort = $xdgStateHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
 # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
 # default to ~/.config
 my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
@@ -581,7 +581,7 @@ processed correctly, however, it's recommended to move it to the new location.
 Please move b[~/.kdesrc-buildrc] to b[$xdgConfigHomeShort/kdesrc-buildrc]
 
 You may also move (or delete) the b[global cache file], as it won't be read from
-the current location: b[~/.kdesrc-build-data] to b[$xdgCacheHomeShort/kdesrc-build-data]
+the current location: b[~/.kdesrc-build-data] to b[$xdgStateHomeShort/kdesrc-build-data]
 (overwrite if needed).
 EOM
     }
@@ -804,10 +804,10 @@ sub persistentOptionFileName
     } else {
         my $configDir = $self->baseConfigDirectory();
         if ($configDir eq $xdgConfigHome) {
-            # Global config is used - store the cache file in $xdgCacheHome
-            $file = $xdgCacheHome . '/' . $PERSISTENT_FILE_NAME;
+            # Global config is used - store the data file in $xdgStateHome
+            $file = $xdgStateHome . '/' . $PERSISTENT_FILE_NAME;
         } else {
-            # Local config is used - store the cache file in the same directory
+            # Local config is used - store the data file in the same directory
             $file = $configDir . '/.' . $PERSISTENT_FILE_NAME;
         }
     }
