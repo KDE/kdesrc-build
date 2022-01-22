@@ -66,11 +66,15 @@ if ($#ARGV == -1 && not $optListInstalled) {
 my $module = shift @ARGV;
 my $exec   = $optExec // $module;
 
-my $buildDataFile = first { -e $_ }
-('./.kdesrc-build-data', "$ENV{HOME}/.kdesrc-build-data");
+# According to XDG spec, if $XDG_STATE_HOME is not set, then we should default
+# to ~/.local/state
+my $xdgStateHome = $ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state";
+my $dataFileName = "kdesrc-build-data";
+my @possibleDataPaths = ("./.$dataFileName", "$xdgStateHome/$dataFileName");
+my $buildDataFile = first { -e $_ } (@possibleDataPaths);
 
 if (not defined $buildDataFile) {
-    say qq(".kdesrc-build-data" file is not available. Exit now.);
+    say qq("$dataFileName" file is not available. Exit now.);
     exit 1;
 }
 
