@@ -34,14 +34,20 @@ environments as fielded in "minimal Docker container" forms of popular distros.
 =cut
 
 use constant {
-    SHELL_RC_SNIPPET => <<'RC'
+    # Used for all sh-compatible shells
+    BASE_SHELL_SNIPPET => <<'RC',
 # kdesrc-build #################################################################
 
 ## Add kdesrc-build to PATH
 export PATH="$HOME/kde/src/kdesrc-build:$PATH"
 
+RC
+
+    # Used for bash/zsh and requires non-POSIX syntax support. Use this in
+    # addition to the base above.
+    EXT_SHELL_RC_SNIPPET => <<'RC'
 ## Autocomplete for kdesrc-run
-function _comp-kdesrc-run
+function _comp_kdesrc_run
 {
   local cur
   COMPREPLY=()
@@ -68,7 +74,7 @@ function _comp-kdesrc-run
 }
 
 ## Register autocomplete function
-complete -o nospace -F _comp-kdesrc-run kdesrc-run
+complete -o nospace -F _comp_kdesrc_run kdesrc-run
 
 ################################################################################
 RC
@@ -262,7 +268,7 @@ sub _setupShellRcFile
     my $shellName = shift;
     my $rcFilepath = undef;
     my $printableRcFilepath = undef;
-    my $isAuto = 1;
+    my $extendedShell = 1;
 
     if ($shellName eq 'bash') {
         $rcFilepath = "$ENV{'HOME'}/.bashrc";
@@ -273,32 +279,42 @@ sub _setupShellRcFile
             $rcFilepath = "$ENV{'HOME'}/.zshrc";
         }
     } else {
-        say colorize(" b[*] Updating rc-file for shell 'y[b[$shellName]' is not supported.");
-        $isAuto = 0;
+        $rcFilepath = "$ENV{'HOME'}/.profile";
+        say colorize(" y[b[*] Couldn't detect the shell, using $rcFilepath.");
+        $extendedShell = 0;
     }
 
-    if (defined $rcFilepath) {
-        $printableRcFilepath = $rcFilepath;
-        $printableRcFilepath =~ s/^$ENV{HOME}/~/;
-        $isAuto = yesNoPrompt(colorize(" b[*] Update your b[y[$printableRcFilepath]?"));
-    }
+    $printableRcFilepath = $rcFilepath;
+    $printableRcFilepath =~ s/^$ENV{HOME}/~/;
+    my $addToShell = yesNoPrompt(colorize(" b[*] Update your b[y[$printableRcFilepath]?"));
 
-    if ($isAuto) {
-        open(my $rcFh, '>>', "$rcFilepath") or _throw("Couldn't open $rcFilepath: $!");
+    if ($addToShell) {
+        open(my $rcFh, '>>', $rcFilepath)
+            or _throw("Couldn't open $rcFilepath: $!");
+
         say $rcFh '';
-        say $rcFh SHELL_RC_SNIPPET;
-        close($rcFh);
+        say $rcFh BASE_SHELL_SNIPPET;
+
+        say $rcFh EXT_SHELL_RC_SNIPPET
+            if $extendedShell;
+
+        close($rcFh)
+            or _throw("Couldn't save changes to $rcFilepath: $!");
+
         say colorize(<<DONE);
+
      - Added b[y[kdesrc-build] directory into PATH
      - Added b[y[kdesrc-run] shell function
  b[*] b[g[Shell rc-file is successfully setup].
 DONE
     } else {
-        say '';
         say colorize(<<DONE);
+
  b[*] You can manually configure your shell rc-file with the snippet below:
 DONE
-        say SHELL_RC_SNIPPET;
+        say BASE_SHELL_SNIPPET;
+        say EXT_SHELL_RC_SNIPPET
+            if $extendedShell;
     }
 }
 
