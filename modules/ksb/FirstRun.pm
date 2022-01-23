@@ -6,6 +6,7 @@ use ksb;
 # a distro's base Perl install.
 use File::Spec qw(splitpath);
 use List::Util qw(min max first);
+use File::Path qw(make_path);
 
 # We can only rely on modules specifically designed to be used from FirstRun
 # to avoid problems with importing Perl modules that might not be available
@@ -214,11 +215,9 @@ sub _setupBaseConfiguration
                           "$xdgConfigHome/kdesrc-buildrc",
                           "$ENV{HOME}/.kdesrc-buildrc");
     my $locatedFile = first { -e $_ } @knownLocations;
-    my $printableLocatedFile = undef;
 
     if (defined $locatedFile) {
-        $printableLocatedFile = $locatedFile;
-        $printableLocatedFile =~ s/^$ENV{HOME}/~/;
+        my $printableLocatedFile = $locatedFile =~ s/^$ENV{HOME}/~/r;
         print colorize(<<DONE);
  b[*] You already have a configuration file: b[y[$printableLocatedFile]
 DONE
@@ -226,7 +225,7 @@ DONE
     }
 
     print colorize(<<DONE);
- b[*] Creating b[sample configuration file]: b[y["$ENV{HOME}/.kdesrc-buildrc"]...
+ b[*] Creating b[sample configuration file]: b[y["$xdgConfigHomeShort/kdesrc-buildrc"]...
 DONE
 
     my $sampleRc = $packages{'sample-rc'} or
@@ -245,6 +244,8 @@ DONE
     $sampleRc =~ s/%\{num_cores}/$numCores/g;
     $sampleRc =~ s/%\{num_cores_low}/$numCoresLow/g;
     $sampleRc =~ s/%\{base_dir}/$baseDir/g;
+
+    make_path($xdgConfigHome);
 
     open my $sampleFh, '>', "$xdgConfigHome/kdesrc-buildrc"
         or _throw("Couldn't open new $xdgConfigHomeShort/kdesrc-buildrc: $!");
