@@ -676,38 +676,6 @@ sub is_dir_empty
 
 # Takes in a string and returns 1 if that string exists somewhere in the
 # path variable.
-sub isInPath
-{
-    if (index($ENV{'PATH'}, $_[0]) != -1) {
-        return 1;
-    }  else {
-        return 0;
-    }
-}
-
-# Takes in a string and returns 1 if that string exists as a line in the given file.
-sub fileHasLine
-{
-    my ($file, $tag) = @_;
-    open(my $fh, '<', $file) or croak_runtime("Couldn't open $file: $!");
-
-    while (my $line = <$fh>) {
-        chomp $line;
-        return 1 if $line eq $tag;
-    }
-
-    return 0;
-}
-
-sub yesNoPrompt {
-    my $msg = shift;
-
-    local $| = 1;
-    print "$msg (y/N) ";
-    chomp(my $answer = <STDIN>);
-    return lc($answer) eq 'y';
-}
-
 # Subroutine to recursively symlink a directory into another location, in a
 # similar fashion to how the XFree/X.org lndir() program does it.  This is
 # reimplemented here since some systems lndir doesn't seem to work right.

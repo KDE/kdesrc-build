@@ -2,13 +2,17 @@ package ksb::FirstRun 0.10;
 
 use ksb;
 
+# Only include Perl core modules that are likely to always be present in
+# a distro's base Perl install.
 use File::Spec qw(splitpath);
 use List::Util qw(min max first);
 
+# We can only rely on modules specifically designed to be used from FirstRun
+# to avoid problems with importing Perl modules that might not be available
+# on minimal containerized distros.
 use ksb::BuildException;
 use ksb::Debug qw(colorize);
 use ksb::OSSupport;
-use ksb::Util;
 
 =head1 NAME
 
@@ -68,6 +72,15 @@ complete -o nospace -F _comp-kdesrc-run kdesrc-run
 ################################################################################
 RC
 };
+
+sub yesNoPrompt {
+    my $msg = shift;
+
+    local $| = 1;
+    print "$msg (y/N) ";
+    chomp(my $answer = <STDIN>);
+    return lc($answer) eq 'y';
+}
 
 sub setupUserSystem
 {
@@ -266,7 +279,7 @@ sub _setupShellRcFile
     if (defined $rcFilepath) {
         $printableRcFilepath = $rcFilepath;
         $printableRcFilepath =~ s/^$ENV{HOME}/~/;
-        $isAuto = ksb::Util::yesNoPrompt(colorize(" b[*] Update your b[y[$printableRcFilepath]?"));
+        $isAuto = yesNoPrompt(colorize(" b[*] Update your b[y[$printableRcFilepath]?"));
     }
 
     if ($isAuto) {
