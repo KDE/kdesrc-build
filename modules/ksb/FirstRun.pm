@@ -703,6 +703,7 @@ eigen
 mlt
 freecell-solver
 sane
+qt5-script
 
 @@ pkg/alpine/unknown
 alpine-sdk
