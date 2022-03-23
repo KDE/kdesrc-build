@@ -583,6 +583,7 @@ gperf
 intltool
 libxml2
 make
+meson
 pam-devel
 perl(IO::Socket::SSL)
 perl(IPC::Cmd)
