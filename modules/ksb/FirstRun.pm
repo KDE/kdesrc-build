@@ -45,7 +45,7 @@ RC
 
     # Used for bash/zsh and requires non-POSIX syntax support. Use this in
     # addition to the base above.
-    EXT_SHELL_RC_SNIPPET => <<'RC'
+    EXT_SHELL_RC_SNIPPET => <<'RC',
 ## Autocomplete for kdesrc-run
 function _comp_kdesrc_run
 {
@@ -77,6 +77,14 @@ function _comp_kdesrc_run
 complete -o nospace -F _comp_kdesrc_run kdesrc-run
 
 ################################################################################
+RC
+
+  BASE_FISHSHELL_SNIPPET => <<'RC'
+# kdesrc-build #################################################################
+
+## Add kdesrc-build to PATH
+set -x PATH $HOME/kde/src/kdesrc-build $PATH
+
 RC
 };
 
@@ -281,6 +289,8 @@ sub _setupShellRcFile
         } else {
             $rcFilepath = "$ENV{'HOME'}/.zshrc";
         }
+    } elsif ($shellName eq 'fish') {
+      $rcFilepath = "$ENV{'HOME'}/.config/fish/functions/kdesrc-build.fish";
     } else {
         $rcFilepath = "$ENV{'HOME'}/.profile";
         say colorize(" y[b[*] Couldn't detect the shell, using $rcFilepath.");
@@ -296,10 +306,15 @@ sub _setupShellRcFile
             or _throw("Couldn't open $rcFilepath: $!");
 
         say $rcFh '';
-        say $rcFh BASE_SHELL_SNIPPET;
 
-        say $rcFh EXT_SHELL_RC_SNIPPET
-            if $extendedShell;
+        if ($shellName ne 'fish') {
+          say $rcFh BASE_SHELL_SNIPPET;
+
+          say $rcFh EXT_SHELL_RC_SNIPPET
+              if $extendedShell;
+        } else {
+          say $rcFh BASE_FISHSHELL_SNIPPET;
+        }
 
         close($rcFh)
             or _throw("Couldn't save changes to $rcFilepath: $!");
