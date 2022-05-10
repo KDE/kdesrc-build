@@ -548,8 +548,6 @@ pkgconfig(Qt5Script)
 pkgconfig(Qt5Svg)
 pkgconfig(Qt5UiTools)
 pkgconfig(Qt5WaylandClient)
-pkgconfig(Qt5WebKit)
-pkgconfig(Qt5WebKitWidgets)
 pkgconfig(Qt5X11Extras)
 pkgconfig(Qt5XmlPatterns)
 pkgconfig(sm)
@@ -697,7 +695,6 @@ poppler-qt5
 kdsoap
 xsd
 xerces-c
-qt5-webkit
 vlc
 ruby-sass
 eigen
