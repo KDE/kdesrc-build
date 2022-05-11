@@ -517,6 +517,7 @@ gperf
 intltool
 libboost_headers-devel
 libdbusmenu-qt5-devel
+libopenssl-devel
 libqt5-qtbase-common-devel
 libqt5-qtbase-private-headers-devel
 libqt5-qtimageformats-devel
@@ -525,6 +526,7 @@ libQt5DesignerComponents5
 libxml2-tools
 lmdb-devel
 make
+openssl
 perl
 perl(IO::Socket::SSL)
 perl(JSON)
@@ -539,7 +541,6 @@ pkgconfig(libudev)
 pkgconfig(libxml-2.0)
 pkgconfig(libxslt)
 pkgconfig(ModemManager)
-pkgconfig(openssl)
 pkgconfig(Qt5Core)
 pkgconfig(Qt5Multimedia)
 pkgconfig(Qt5Qml)
