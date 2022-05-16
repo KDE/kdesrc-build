@@ -120,6 +120,7 @@ install(PROGRAMS
 	    ${CMAKE_SOURCE_DIR}/kf6-kdepim-build-include
 	    ${CMAKE_SOURCE_DIR}/custom-qt6-libs-build-include
 	    ${CMAKE_SOURCE_DIR}/kf6-common-options-build-include
+	    ${CMAKE_SOURCE_DIR}/kf6-extragear-build-include
     DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
 install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
