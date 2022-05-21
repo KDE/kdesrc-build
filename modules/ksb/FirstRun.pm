@@ -502,6 +502,13 @@ libxcb-cursor-dev
 libxcb-damage0-dev
 libxcb-image0-dev
 libxcb-util-dev
+# plasma
+libqalculate-dev
+libxcb-randr0-dev
+libxft-dev
+libxtst-dev
+# powerdevil
+libxcb-dpms0-dev
 
 @@ pkg/opensuse/unknown
 cmake
