@@ -437,6 +437,7 @@ ninja-build
 shared-mime-info
 clang-format
 # Qt-related
+qtwayland5-private-dev
 libdbusmenu-qt5-dev
 libqt5svg5-dev
 libqt5waylandclient5-dev
@@ -456,6 +457,10 @@ libpolkit-agent-1-dev
 # .. kdoctools
 libxml2-dev
 libxslt-dev
+# .. libksysguard
+libnl-3-dev
+libnl-route-3-dev
+libsensors-dev
 # .. kwindowsystem
 libwayland-dev
 libxcb-icccm4-dev
@@ -477,6 +482,17 @@ libattr1-dev
 # .. kidletime
 libxcb-sync-dev
 libx11-xcb-dev
+# .. khtml
+libjpeg-dev
+libgif-dev
+# .. kglobalaccel
+libxcb-record0-dev
+# .. karchive
+liblzma-dev
+# .. plasma-workspace
+libqalculate-dev
+libxft-dev
+libxtst-dev
 # And others
 qt5keychain-dev
 libopenal-dev
@@ -496,6 +512,11 @@ libfwupd-dev
 libsnapd-qt-dev
 libflatpak-dev
 # kwin
+libgbm-dev
+libdrm-dev
+libxcvt-dev
+libxcb-randr0-dev
+libepoxy-dev
 libxcb-composite0-dev
 libxcb-shm0-dev
 libxcb-cursor-dev
