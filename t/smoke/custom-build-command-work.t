@@ -40,6 +40,8 @@ package ksb::BuildSystem {
 
         is($self->name(), 'generic', 'custom-build-system is generic unless overridden');
         $testSucceeded = 1;
+
+        return { was_successful => 1 };
     }
 
 # Mock override

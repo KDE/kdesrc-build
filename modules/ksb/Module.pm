@@ -420,26 +420,19 @@ sub build
     return 0 if !$self->setupBuildSystem();
     return 1 if $self->getOption('build-system-only');
 
-    if (!$buildSystem->buildInternal())
-    {
-        return 0;
-    }
-
+    my $buildResults = $buildSystem->buildInternal();
+    return 0 if !$buildResults->{was_successful};
     $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
 
     # TODO: This should be a simple phase to run.
-    if ($self->getOption('run-tests'))
-    {
-        $self->buildSystem()->runTestsuite();
-    }
+    $self->buildSystem()->runTestsuite()
+        if $self->getOption('run-tests');
 
     # TODO: Likewise this should be a phase to run.
-    if ($self->getOption('install-after-build'))
-    {
+    if ($self->getOption('install-after-build')) {
         return 0 if !$self->install();
     }
-    else
-    {
+    else {
         info ("\tSkipping install for y[$self]");
     }
 

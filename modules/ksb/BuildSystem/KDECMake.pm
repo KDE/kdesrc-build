@@ -378,7 +378,7 @@ sub configureInternal
     return 1;
 }
 
-# Return value style: boolean
+# Return value style: hashref to build results object (see ksb::BuildSystem::safe_make)
 sub buildInternal
 {
     my $self = shift;

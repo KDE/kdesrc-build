@@ -184,7 +184,7 @@ sub defaultBuildCommand
     return $buildCommand;
 }
 
-# Return value style: boolean
+# Return value style: hashref to build results object (see safe_make)
 sub buildInternal
 {
     my $self = shift;
@@ -220,7 +220,7 @@ sub buildInternal
         message => 'Compiling...',
         'make-options' => \@makeOptions,
         logbase => 'build',
-    })->{was_successful};
+    });
 }
 
 # Return value style: boolean
