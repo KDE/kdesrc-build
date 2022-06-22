@@ -13,9 +13,8 @@ package ksb::BuildSystem
     no warnings 'redefine';
 
     # Defang the build command and just record the args passed to it
-    sub safe_make(@)
+    sub safe_make($self, $optsRef)
     {
-        my ($self, $optsRef) = @_;
         @madeArguments = @{$optsRef->{'make-options'}};
         return { was_successful => 1 };
     }
