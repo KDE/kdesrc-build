@@ -428,15 +428,17 @@ sub build
     $self->buildSystem()->runTestsuite()
         if $self->getOption('run-tests');
 
-    # TODO: Likewise this should be a phase to run.
-    if ($self->getOption('install-after-build')) {
-        return 0 if !$self->install();
+    if (!$buildResults->{work_done}) {
+        info ("\tNo changes from build, skipping install (--refresh-build this module to force install)");
+        return 1;
     }
-    else {
-        info ("\tSkipping install for y[$self]");
+    elsif (!$self->getOption('install-after-build')) {
+        info ("\tSkipping install due to install-after-build setting");
+        return 1;
     }
 
-    return 1;
+    # TODO: Likewise this should be a phase to run.
+    return $self->install();
 }
 
 # Subroutine to setup the build system in a directory.

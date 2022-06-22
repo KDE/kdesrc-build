@@ -385,6 +385,8 @@ sub createBuildSystem
 # Returns a hashref:
 # {
 #   was_successful => $bool, (if successful)
+#   warnings       => $int,  (num of warnings, in [0..INT_MAX])
+#   work_done      => $bool, (true if the make command had work to do, may be needlessly set)
 # }
 sub safe_make($self, $optsRef)
 {
@@ -481,10 +483,10 @@ sub _runBuildCommand
 
     # TODO More details
     my $warnings = 0;
+    my $workDoneFlag = 1;
 
     # w00t.  Check out the closure!  Maks would be so proud.
-    my $log_command_callback = sub {
-        my $input = shift;
+    my $log_command_callback = sub ($input) {
         return if not defined $input;
 
         my ($percentage) = ($input =~ /^\[\s*([0-9]+)%]/);
@@ -501,14 +503,19 @@ sub _runBuildCommand
             }
         }
 
-        $warnings++ if ($input =~ /warning: /);
+        $workDoneFlag = 0 if $input =~ /^ninja: no work to do/;
+        $warnings++ if $input =~ /warning: /;
     };
 
-    $resultRef->{was_successful} =
-        (0 == log_command($module, $filename, $argRef, {
+    my $resultCode = log_command($module, $filename, $argRef, {
             callback => $log_command_callback
-        }));
-    $resultRef->{warnings} = $warnings;
+        });
+
+    $resultRef = {
+        was_successful => $resultCode == 0,
+        warnings       => $warnings,
+        work_done      => $workDoneFlag,
+    };
 
     # Cleanup TTY output.
     $time = prettify_seconds(time - $time);
