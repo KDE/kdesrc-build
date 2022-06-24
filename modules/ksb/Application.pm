@@ -1608,11 +1608,18 @@ sub _buildSingleModule
         note ("\tNo changes to g[$module] source, proceeding to build.");
     }
 
-    $$startTimeRef = time;
-    $fail_count = $module->build() ? 0 : $fail_count + 1;
-    $module->setPersistentOption('failure-count', $fail_count);
+    # If the build gets interrupted, ensure the persistent options that are
+    # written reflect that the build failed by preemptively setting the future
+    # value to write. If the build succeeds we'll reset to 0 then.
+    $module->setPersistentOption('failure-count', $fail_count + 1);
 
-    return $fail_count > 0 ? 'build' : 0;
+    $$startTimeRef = time;
+    if ($module->build()) {
+        $module->setPersistentOption('failure-count', 0);
+        return 0;
+    }
+
+    return 'build'; # phase failed at
 }
 
 # Function: _handle_build
