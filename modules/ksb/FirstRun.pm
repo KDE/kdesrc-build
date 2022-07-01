@@ -808,7 +808,7 @@ gpgme
 intltool
 libqrencode
 lmdb
-mlt
+mlt7
 ninja
 p5-YAML-PP
 pkgconf
