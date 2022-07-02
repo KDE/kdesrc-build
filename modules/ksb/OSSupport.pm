@@ -91,6 +91,41 @@ sub vendorVersion
     return $self->{VERSION_ID} // $self->{VERSION_CODENAME} // 'unknown';
 }
 
+=head2 detectTotalMemory
+
+    my $mem_total_KiB = $os->detectTotalMemory;
+
+Returns the amount of installed memory, in kilobytes.  Linux and FreeBSD are
+supported.
+
+Throws a runtime exception if unable to autodetect memory capacity.
+
+=cut
+
+sub detectTotalMemory($self)
+{
+    my $mem_total;
+    if ($^O eq 'freebsd') {
+        chomp($mem_total = `sysctl -n hw.physmem`);
+        # FreeBSD reports memory in Bytes, not KiB. Convert to KiB so logic
+        # below still works sprintf is used since there's no Perl round
+        # function
+        $mem_total = int sprintf("%.0f", $mem_total / 1024.0);
+    } elsif ($^O eq 'linux' or -e '/proc/meminfo') {
+        # linux or potentially linux-compatible
+        my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
+
+        if ($total_mem_line && $? == 0) {
+            ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
+            $mem_total = int $mem_total;
+        }
+    } else {
+        croak_runtime("Unable to detect total memory. OS: $^O, detected vendor: ". $self->vendorID);
+    }
+
+    return $mem_total;
+}
+
 =head2 bestDistroMatch
 
     # Might return 'fedora' if running on Scientific Linux

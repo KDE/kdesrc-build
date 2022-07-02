@@ -80,6 +80,10 @@ complete -o nospace -F _comp_kdesrc_run kdesrc-run
 RC
 };
 
+=head1 FUNCTIONS
+
+=cut
+
 sub yesNoPrompt {
     my $msg = shift;
 
@@ -177,37 +181,34 @@ DONE
     }
 }
 
-# Return the highest number of cores we can use based on available memory. Requires
-# the number of cores we have available
-sub _getNumCoresForLowMemory
-{
-    my $num_cores = shift;
+=head2 suggestedNumCoresForLowMemory
 
+Returns the suggested number of cores to use for make jobs for build jobs where
+memory is a bottleneck, such as qtwebengine.
+
+    my $num_cores = ksb::FirstRun::suggestedNumCoresForLowMemory();
+
+=cut
+
+sub suggestedNumCoresForLowMemory
+{
     # Try to detect the amount of total memory for a corresponding option for
     # heavyweight modules
-    my $mem_total;
     my $os = ksb::OSSupport->new;
-    if ($os->vendorID eq 'linux') {
-        my $total_mem_line = first { /MemTotal/ } (`cat /proc/meminfo`);
-
-        if ($total_mem_line && $? == 0) {
-            ($mem_total) = ($total_mem_line =~ /^MemTotal:\s*([0-9]+) /); # Value in KiB
-            $mem_total = int $mem_total;
-        }
-    } elsif ($os->vendorID eq 'freebsd') {
-        chomp($mem_total = `sysctl -n hw.physmem`);
-        # FreeBSD reports memory in Bytes, not KiB. Convert to KiB so logic below still works
-        # sprintf is used since there's no Perl round function
-        $mem_total = int sprintf("%.0f", $mem_total / 1024.0);
-    }
 
     # 4 GiB is assumed if no info on memory is available, as this will
     # calculate to 2 cores.
-    my $rounded_mem = $mem_total ? (int sprintf("%.0f", $mem_total / 1024000.0)) : 4;
-    my $max_cores_for_mem = max(1, int $rounded_mem / 2); # Assume 2 GiB per core
-    my $num_cores_low = min($max_cores_for_mem, $num_cores);
+    my $mem_total = eval { $os->detectTotalMemory } // (4 * 1024 * 1024);
 
-    return $num_cores_low;
+    my $rounded_mem = int sprintf("%.0f", $mem_total / 1024000.0);
+    return max(1, int $rounded_mem / 2); # Assume 2 GiB per core
+}
+
+# Return the highest number of cores we can use based on available memory, but
+# without exceeding the base number of cores available.
+sub _getNumCoresForLowMemory($num_cores)
+{
+    return min(suggestedNumCoresForLowMemory(), $num_cores);
 }
 
 sub _setupBaseConfiguration
