@@ -213,6 +213,8 @@ sub _getNumCoresForLowMemory
 sub _setupBaseConfiguration
 {
     my $baseDir = shift;
+    my $packagesRef = _readPackages();
+
     # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
     # default to ~/.config
     my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
@@ -234,7 +236,7 @@ DONE
  b[*] Creating b[sample configuration file]: b[y["$xdgConfigHomeShort/kdesrc-buildrc"]...
 DONE
 
-    my $sampleRc = $packages{'sample-rc'} or
+    my $sampleRc = $packagesRef->{'sample-rc'} or
         _throw("Embedded sample file missing!");
 
     my $os = ksb::OSSupport->new;
@@ -317,8 +319,6 @@ DONE
             if $extendedShell;
     }
 }
-
-
 
 sub _findBestInstallCmd
 {
