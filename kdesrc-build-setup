@@ -59,11 +59,12 @@ use lib "$modPath"; # Make ksb:: modules available
 
 use ksb;
 
-use IO::Pipe;
-use File::Copy;
-use File::Temp qw/tempfile/;
-use File::Basename;
 use Cwd qw(abs_path);
+use File::Basename;
+use File::Copy;
+use File::Path qw(make_path);
+use File::Temp qw(tempfile);
+use IO::Pipe;
 use List::Util qw(max min first);
 
 our $VERSION = 0.10; # Not user-visible yet.
@@ -383,6 +384,10 @@ EOF
 
 # Filehandle could already be opened as a tempfile.
 if (!$output) {
+    # Ensure the directory we need exists
+    my ($vol, $dir, $file) = File::Spec->splitpath($outputFile);
+    make_path($dir) unless -d $dir;
+
     open ($output, '>', $outputFile) or do {
         my $error = "$!";
         showInfo (<<EOF);
