@@ -64,7 +64,12 @@ sub new
 
     my $vendor = $os->vendorID; # 'gentoo', 'debian', etc.
 
-Returns the vendor ID from the I<os-release> specification.
+Returns the vendor ID from the I<os-release> specification, or
+'unknown' if /etc/os-release could not be read.
+
+N.B., this is B<not the same as the operating system>!  To
+detect the OS use Perl's own L<$^O|perlvar/$OSNAME> variable,
+documented in L<perlvar>.
 
 =cut
 
