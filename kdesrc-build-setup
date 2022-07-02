@@ -19,11 +19,45 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-use 5.026;
+use v5.28;
 use strict;
 use warnings;
 
-use feature qw(signatures);
+# On many container-based distros, even FindBin is missing to conserve space.
+# But we can use File::Spec to do nearly the same.
+my $RealBin;
+my $modPath;
+
+# The File::Spec calls have to run when parsing (i.e. in BEGIN) to make the
+# 'use lib' below work (which itself implicitly uses BEGIN { })
+BEGIN {
+    use File::Spec;
+
+    # resolve symlinks
+    my $scriptPath = $0;
+    for (1..16) {
+        last unless -l $scriptPath;
+        $scriptPath = readlink $scriptPath;
+    }
+    die "Too many symlinks followed looking for script" if -l $scriptPath;
+
+    my ($volume, $directories, $script) = File::Spec->splitpath($scriptPath);
+
+    $RealBin = File::Spec->catpath($volume, $directories, '');
+    die "Couldn't find base directory!" unless $RealBin;
+
+    # Use modules in git repo if running from git dir, otherwise assume
+    # system install
+    $modPath = File::Spec->rel2abs('modules', $RealBin);
+    $modPath = ($RealBin =~ s,/bin/?$,/share/kdesrc-build/modules,r)
+        unless -d $modPath;
+
+    die "Couldn't find modules for kdesrc-build-setup!" unless $modPath;
+}
+
+use lib "$modPath"; # Make ksb:: modules available
+
+use ksb;
 
 use IO::Pipe;
 use File::Copy;
@@ -32,7 +66,7 @@ use File::Basename;
 use Cwd qw(abs_path);
 use List::Util qw(max min first);
 
-our $VERSION = 0.05; # Not user-visible yet.
+our $VERSION = 0.10; # Not user-visible yet.
 
 my $OS = `uname`; # Check whether we're using Linux or FreeBSD
 
