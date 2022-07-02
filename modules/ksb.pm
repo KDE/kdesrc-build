@@ -41,3 +41,27 @@ sub import
 }
 
 1;
+
+__END__
+
+=head1 ksb
+
+This package applies common Perl standards to all kdesrc-build modules, including
+enabling C<use strict>, C<use warnings>, requiring Perl 5.26 as a minimum version,
+and enabling L<subroutine signatures|perlsub>.
+
+=head2 RELATED MODULES
+
+Some or all of the following may be helpful as well:
+
+=over
+
+=item L<ksb::FirstRun>
+
+=item L<ksb::ModuleResolver>
+
+=item L<ksb::OptionsBase>
+
+=item L<ksb::OSSupport>
+
+=back
