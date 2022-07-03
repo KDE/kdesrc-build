@@ -237,12 +237,16 @@ sub _lookupDirectDependencies
         }
     }
 
-    while (my ($catchAll, $deps) = each %{$self->{catchAllDependencies}}) {
-        my $prefix = $catchAll;
-        $prefix =~ s/\*$//;
+    # Apply catch-all dependencies but only for KDE modules, not third-party
+    # modules. See _getDependencyPathOf for how this is detected.
+    if ($item !~ /^third-party\//) {
+        while (my ($catchAll, $deps) = each %{$self->{catchAllDependencies}}) {
+            my $prefix = $catchAll;
+            $prefix =~ s/\*$//;
 
-        if (($path =~ /^$prefix/) || !$prefix) {
-            push @directDeps, @{$deps};
+            if (($path =~ /^$prefix/) || !$prefix) {
+                push @directDeps, @{$deps};
+            }
         }
     }
 

@@ -1314,6 +1314,9 @@ sub _readConfigurationOptions
             my @moduleSetItems = $newModule->moduleNamesToFind();
             @seenModuleSetItems{@moduleSetItems} = ($newModule) x scalar @moduleSetItems;
 
+            # Reserve enough 'create IDs' for all named modules to use
+            $creation_order += scalar @moduleSetItems;
+
             $seenModuleSets{$modulename} = $newModule if $modulename;
         }
         # Duplicate module entry? (Note, this must be checked before the check

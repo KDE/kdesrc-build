@@ -38,6 +38,7 @@ use ksb::Util;
 use ksb::PhaseList;
 use ksb::Module;
 
+use List::Util qw(first);
 use Storable qw(dclone);
 
 sub new
@@ -51,6 +52,7 @@ sub new
         name => $name,
         module_search_decls => [ ],
         module_ignore_decls => [ ],
+        module_order        => { }, # maps module names to position in list
         phase_list => ksb::PhaseList->new($ctx->phases()->phases()),
     );
 
@@ -89,7 +91,11 @@ sub modulesToFind
 sub setModulesToFind
 {
     my ($self, @moduleDecls) = @_;
+    my %declOrder;
+    $declOrder{"$moduleDecls[$_]"} = $_ foreach 0..$#moduleDecls;
+
     $self->{module_search_decls} = [@moduleDecls];
+    $self->{module_order}        = \%declOrder;
     return;
 }
 
@@ -127,8 +133,14 @@ sub _initializeNewModule
     $newModule->setScmType('git');
     $newModule->phases->phases($self->phases()->phases());
     $newModule->mergeOptionsFrom($self);
-    $newModule->{'#create-id'} = $self->{'#create-id'}
-        if exists $self->{'#create-id'};
+
+    # used for dependency sorting tiebreakers, by giving a fallback sort based
+    # on order the user declared modules in use-modules, especially for third
+    # party modules. Indirect deps won't have an entry and are given the max value
+    # to sort at the end within the module-set.
+    my $startOrder = $self->{'#create-id'} // 0;
+    my $orderInList = $self->{module_order}->{"$newModule"} // scalar @{$self->{module_search_decls}};
+    $newModule->{'#create-id'} = $startOrder + $orderInList;
 }
 
 # OVERRIDE
