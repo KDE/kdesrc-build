@@ -1,0 +1,45 @@
+# Downloads and installs Qt6 from the KDE mirror, using Qt6's CMake support
+# exclusively.  Consider this an unofficial build that won't be supported by Qt
+# upstream since we don't go through the init-repository script.
+# It is probably better to install from your local distribution devel packages
+# if possible!
+module-set qt6-set
+    override-build-system qt6 # technically optional for now
+
+    repository qt6-copy # as defined in kdesrc-buildrc-kf6-sample
+    branch     6.3
+
+    # Controls where Qt6 is installed
+    prefix ~/qt6
+
+    # These have been manually placed in dependency order based on the
+    # .gitmodules file in https://code.qt.io/cgit/qt/qt5.git/tree/.gitmodules
+    # in "essential" or "addons" categories with some additions
+    # qtdoc should be last to give it best opportunity to make needed docs
+    use-modules qtbase qtdeclarative qtsvg qttools qtshadertools \
+        qtimageformats qtmultimedia qtwayland                    \
+        qtwebsockets qtwebchannel qtwebview qtsensors            \
+        qtnetworkauth qt5compat qtdoc
+
+    # if you want qtwebengine, add it to use-modules after "qtwebchannel" and
+    # comment this out. Note qtwebengine has significant and different build
+    # requirements of its own.
+    ignore-modules qtwebengine
+
+    # Archiving API requires zstd support which may not be present in your CMake
+    cmake-options -DQT_BUILD_TESTS=FALSE -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                  -DQT_AVOID_CMAKE_ARCHIVING_API=TRUE
+
+    cmake-generator Ninja # comment out if you want the default CMake generator
+end module-set
+
+options qtwebengine
+    # qtwebengine build system is weird, involving make as the top-level driver
+    # and then calling ninja for the bulk of the build.  qtwebengine is a bulky
+    # module and having ninja use all cores at once may run out of memory if
+    # not careful, so we use make to pass less aggressive Ninja flags.
+    # num-cores-low-mem needs to be defined in your kdesrc-buildrc.
+    make-options NINJAFLAGS=-j${num-cores-low-mem}
+end options
+
+# vim: set ft=kdesrc-buildrc:

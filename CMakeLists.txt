@@ -70,6 +70,7 @@ if (KDESRC_BUILD_INSTALL_MODULES)
         modules/ksb/BuildSystem/QMake.pm
         modules/ksb/BuildSystem/Qt4.pm
         modules/ksb/BuildSystem/Qt5.pm
+        modules/ksb/BuildSystem/Qt6.pm
     DESTINATION ${KDESRC_BUILD_MODULE_INSTALL_PREFIX}/ksb/BuildSystem)
 
     install(FILES
@@ -113,14 +114,15 @@ install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/kf5-kdepim-build-include
             ${CMAKE_SOURCE_DIR}/kf5-qt5-build-include
             ${CMAKE_SOURCE_DIR}/kf5-workspace-build-include
+            ${CMAKE_SOURCE_DIR}/custom-qt6-libs-build-include
+            ${CMAKE_SOURCE_DIR}/qt6-build-include
             ${CMAKE_SOURCE_DIR}/kf6-applications-build-include
-            ${CMAKE_SOURCE_DIR}/kf6-qt6-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-common-options-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-extragear-build-include
             ${CMAKE_SOURCE_DIR}/kf6-frameworks-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-kdepim-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-qt6-build-include
             ${CMAKE_SOURCE_DIR}/kf6-workspace-build-include
-	    ${CMAKE_SOURCE_DIR}/kf6-kdepim-build-include
-	    ${CMAKE_SOURCE_DIR}/custom-qt6-libs-build-include
-	    ${CMAKE_SOURCE_DIR}/kf6-common-options-build-include
-	    ${CMAKE_SOURCE_DIR}/kf6-extragear-build-include
     DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
 install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})

@@ -14,6 +14,7 @@ use ksb::BuildSystem::Meson;
 use ksb::BuildSystem::QMake;
 use ksb::BuildSystem::Qt4;
 use ksb::BuildSystem::Qt5;
+use ksb::BuildSystem::Qt6;
 use ksb::Debug;
 use ksb::DebugOrderHints;
 use ksb::DependencyResolver;

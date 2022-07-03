@@ -28,6 +28,7 @@ use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
 use ksb::BuildSystem::Qt4;
 use ksb::BuildSystem::Qt5;
+use ksb::BuildSystem::Qt6;
 use ksb::BuildSystem::KDECMake;
 use ksb::BuildSystem::CMakeBootstrap;
 use ksb::BuildSystem::Meson;
@@ -291,6 +292,7 @@ sub buildSystemFromName
         'kde'             => 'ksb::BuildSystem::KDECMake',
         'qt'              => 'ksb::BuildSystem::Qt4',
         'qt5'             => 'ksb::BuildSystem::Qt5',
+        'qt6'             => 'ksb::BuildSystem::Qt6',
         'autotools'       => 'ksb::BuildSystem::Autotools',
         'meson'           => 'ksb::BuildSystem::Meson',
     );
