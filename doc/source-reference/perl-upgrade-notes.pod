@@ -1,0 +1,315 @@
+=head1 Perl Upgrade Notes
+
+As Perl 5 evolves, they gain features that may be useful to adopt in
+kdesrc-build.
+
+This notes some of the important ones for consideration, for molding into
+modules/ksb.pm (which is the base package imported by all Perl-using code) or
+usage elsewhere.
+
+Currently we require 5.28 as a minimum.
+
+=head2 Release Dates
+
+This shows release dates for versions of Perl we don't yet mandate as a guide
+to when it might make sense to bump the Perl requirement for mainline
+development.
+
+=over
+
+=item *
+
+Perl 5.36 was released 28 May 2022
+
+=item *
+
+Perl 5.34 was released 20 May 2021
+
+=item *
+
+Perl 5.32 was released 20 June 2020
+
+=item *
+
+Perl 5.30 was released 19 May 2019
+
+=item *
+
+Perl 5.28 was released 22 June 2018 and is the I<currently mandated version> of Perl.
+
+=back
+
+=head2 Per-version notes
+
+=head3 For 5.12
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5120delta> for more detail.
+
+=over
+
+=item *
+
+New package decl syntax "package Foo v1.24"
+
+=item *
+
+"use 5.18.0" will enable *both* `strict` and extra features for that version.
+
+=item *
+
+`each keys value` functions all work on arrays now.
+
+=item *
+
+filehandles are always in IO::File.
+
+=item *
+
+`use parent` available.
+
+=item *
+
+Consider `autodie`
+
+=item *
+
+Consider `IPC::Cmd` to replace slurp\_program\_output and friends.
+
+=back
+
+=head3 For 5.14
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5140delta> for more detail.
+
+=over
+
+=item *
+
+Consider `unicode_strings` pragmas?
+
+=item *
+
+Non-destructive subs: my $old = $new =~ s/foo/bar/r; (/r flag important!)
+
+=item *
+
+ARRAY / HASH FUNCTIONS OPERATE DIRECTLY ON REFS :) :)
+
+=item *
+
+package syntax supports BLOCKs now (package Foo v1.2 { ... } does what it looks like)
+
+=item *
+
+`given` now has a return value, making `when` statements useful.
+
+=back
+
+=head3 For 5.16
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5160delta> for more detail.
+
+=over
+
+=item *
+
+__SUB__ token references current subroutine (useful for logging)
+
+=back
+
+=head3 For 5.18
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5180delta> for more detail.
+
+=over
+
+=item *
+
+Lexical subs (e.g. my sub foobar { my @foo = @\_ }, etc.).
+
+=item *
+
+Can use 'computed gotos' for next, last, redo (i.e. switch at runtime)
+
+=back
+
+=head3 For 5.20
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5200delta> for more detail.
+
+=over
+
+=item *
+
+Function signatures (experimental): sub foo($a, $b) { # use $a, $b }
+
+=item *
+
+%hash{},%array[] syntax that returns a hash (perldata Key/Value Hash Slices)
+
+=item *
+
+Postfix Deref (experimental): $aref->@*, $href->%{key}, etc.
+
+=item *
+
+use locale supports UTF-8 locales.
+
+=back
+
+=head3 For 5.22
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5220delta> for more detail.
+
+=over
+
+=item *
+
+Something about numeric/string bitwise operators.
+
+=item *
+
+Safer <<>> operator
+
+=item *
+
+re strict flag (experimental)
+
+=item *
+
+re non-capture flag
+
+=item *
+
+'constant functions' (experimental, perlsub Constant Functions)
+
+=back
+
+=head3 For 5.24
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5240delta> for more detail.
+
+=over
+
+=item *
+
+Postfix Deref no longer experimental and always enabled.
+
+=back
+
+=head3 For 5.26
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5260delta> for more detail.
+
+=over
+
+=item *
+
+Experiment to create references to scalar vars ('declared_refs')
+
+=item *
+
+Indented here docs (<<~FOO)
+
+=item *
+
+Lexical subs are no longer experimental
+
+=back
+
+=head3 For 5.28
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5280delta> for more detail.
+
+=over
+
+=item *
+
+Bitwise operators enabled by default.
+
+=item *
+
+Can delete key/value hash slices
+
+=back
+
+=head3 For 5.30
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5300delta> for more detail.
+
+=over
+
+=item *
+
+Nothing big
+
+=back
+
+=head3 For 5.32
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5320delta> for more detail.
+
+=over
+
+=item *
+
+Can turn off indirect object syntax (no feature 'indirect')
+
+=item *
+
+Experiment to add 'isa' core operator.
+
+=item *
+
+Chained comparison
+
+=back
+
+=head3 For 5.34
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5340delta> for more detail.
+
+=over
+
+=item *
+
+try/catch syntax
+
+=back
+
+=head3 For 5.36
+
+See L<perldelta for this version|https://perldoc.perl.org/perl5360delta> for more detail.
+
+=over
+
+=item *
+
+C<isa> and various other features we don't use are now enabled by default
+
+=item *
+
+You can iterate multiple variables at a time through lists and hashes using the
+experimental C<for_list> feature.
+
+ for my ($key, $value) (%hash) { ... }
+
+Seems handy!
+
+=item *
+
+Some new builtin functions under the C<builtin> namespace. Of note are C<trim>,
+C<indexed>, functions relating to reference weakening (something we do zero of
+but apparently can help save memory) and C<ceil> / C<floor>.
+
+=item *
+
+C<defer> blocks have been added, saving one from having to write an entire Perl
+package just to run a C<DESTROY> block on a blessed reference to get RAII-style
+semantics or scope guards.
+
+=item *
+
+The experimental try/catch stuff can have a C<finally> block as well now.
+
+=back
