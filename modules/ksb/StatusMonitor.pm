@@ -6,8 +6,11 @@ package ksb::StatusMonitor 0.20;
 # This class is-a EventEmitter
 use v5.22;
 use warnings;
+use feature qw(signatures);
 
 use Mojo::Base 'Mojo::EventEmitter';
+use Mojo::Log;
+use Mojo::JSON qw(j);
 
 use ksb::PhaseList 0.10;
 
@@ -18,6 +21,7 @@ sub new
     return bless {
         # 'events' already taken...
         phase_events => [ ],
+        log          => Mojo::Log->new(level => 'warn')->context('[monitor]'),
     }, $class;
 }
 
@@ -154,17 +158,48 @@ sub markBuildDone
     return $self->_announceEvent($result);
 }
 
-sub events
+=head2 numEvents
+
+Returns the number of events that have been received up to this point.
+
+ my $numEvents = $monitor->numEvents();
+
+=cut
+
+sub numEvents ($self)
 {
-    my $self = shift;
-    return @{$self->{phase_events}};
+    return scalar @{$self->{phase_events}};
 }
 
-sub _announceEvent
-{
-    my ($self, $event) = @_;
+=head2 events
 
+Returns the list of events that have been received up to this point.
+
+If called with an argument, returns the list of events starting from the
+0-indexed argument.
+
+ my @recentEvents = $monitor->events($numAlreadyReceived);
+
+=cut
+
+sub events ($self, $startFrom=0)
+{
+    my $numEvents = $self->numEvents();
+
+    $self->{log}->trace("There are $numEvents events in the list");
+
+    # needs a separate var so perl treats return value as array
+    my @events = @{$self->{phase_events}};
+
+    return @events[$startFrom..($numEvents-1)];
+}
+
+sub _announceEvent ($self, $event)
+{
     push @{$self->{phase_events}}, $event;
+
+    $self->{log}->trace("Announcing event: ", scalar @{$self->{phase_events}}, j($event));
+
     $self->emit('newEvent', $event);
 
     return $event;

@@ -32,9 +32,10 @@ use v5.22;
 use Mojo::Base -base, -signatures;
 
 use Mojo::Server::Daemon;
+use Mojo::Log;
 use Mojo::IOLoop;
 use Mojo::UserAgent;
-use Mojo::JSON qw(to_json);
+use Mojo::JSON qw(to_json j);
 use Mojo::Util qw(dumper);
 
 use ksb::BuildException;
@@ -57,7 +58,8 @@ sub new
 
     my $self = $class->SUPER::new(
         app => $app,
-        postbuild_msgs => [ ]
+        postbuild_msgs => [ ],
+        log => Mojo::Log->new(level => 'warn')->context('[  tui  ]'),
     );
 
     # Mojo::UserAgent can be tied to a Mojolicious application server directly to
@@ -128,11 +130,12 @@ sub _runModeDebug
     my $app  = $self->app;
     my $ua   = $self->ua;
     my %debugFlags = %{$app->ksb->{debugFlags}};
+    my $log  = $self->{log};
 
-    $app->log->debug("Run mode: DEBUG");
+    $log->trace("Run mode: DEBUG");
 
     if ($debugFlags{'dependency-tree'}) {
-        $app->log->debug("Dumping dependency tree");
+        $log->debug("Dumping dependency tree");
 
         return $ua->get_p('/moduleGraph')->then(sub {
             my $tx = _check_error(shift);
@@ -141,7 +144,7 @@ sub _runModeDebug
         });
     }
     elsif ($debugFlags{'list-build'} || $debugFlags{'print-modules'}) {
-        $app->log->debug("Listing modules to build");
+        $log->debug("Listing modules to build");
 
         return $ua->get_p('/modules')->then(sub {
             my $tx = _check_error(shift);
@@ -164,10 +167,16 @@ sub _handleBuildEvents ($self, $module_failures_ref)
     my $ui = $self->ui;
     my $ua = $self->ua;
     my $app = $self->app;
+    my $log = $self->{log};
+
+    # We track the build using a JSON-based event stream which is published as
+    # an HTTP resource using Mojolicious, and which we can repeatedly poll
+    # until the server is complete.
+    # We need to return a promise which  ultimately resolves to the exit status
+    # of the build.
 
     # Open a file to log the event stream
     my $ctx = $app->context();
-    my $separator = '  ';
     my $dest = pretending()
         ? '/dev/null'
         : $ctx->getLogDirFor($ctx) . '/event-stream';
@@ -175,74 +184,96 @@ sub _handleBuildEvents ($self, $module_failures_ref)
         or croak_internal("Unable to open event log $!");
     $event_stream->say("["); # Try to make it valid JSON syntax
 
-    # We track the build using a JSON-based event stream which is published as
-    # a WebSocket IPC using Mojolicious. We need to return a promise which
-    # ultimately resolves to the exit status of the build.
-    return $ua->websocket_p('/events')->then(sub {
-        # Websocket Event handler
-        my $ws = shift;
-        my $everFailed = 0;
-        my $stop_promise = Mojo::Promise->new;
+    my $build_promise = $ua->get_p('/build-plan')->then(sub ($tx) {
+        $tx = _check_error($tx);
 
-        # Websockets seem to be inherently event-driven instead of simply
-        # client/server.  So attach the event handlers and then return to the event
-        # loop to await progress.
-        $ws->on(json => sub {
-            # This handler is called by the backend when there is something notable
-            # to report
-            my ($ws, $resultRef) = @_;
-            foreach my $modRef (@{$resultRef}) {
-                # Update the U/I
-                eval {
-                    $ui->notifyEvent($modRef);
-                    $event_stream->say($separator . to_json($modRef))
-                        unless $modRef->{event} eq 'phase_progress';
-                    $separator = ', ';
-                };
+        my $eventListRef = $tx->res->json or croak_internal("Unable to get build plan!");
+        $ui->notifyEvent($eventListRef->[0]);
 
-                if ($@) {
-                    $ws->finish;
-                    $stop_promise->reject($@);
-                }
+        $log->trace("Build plan received from server");
+        $event_stream->say(to_json($eventListRef->[0]));
 
-                # See ksb::StatusMonitor for where events defined
-                if ($modRef->{event} eq 'phase_completed') {
-                    my $results = $modRef->{phase_completed};
-                    push @{$module_failures_ref}, $results
-                        if $results->{result} eq 'error';
-                }
+        return 1; # Boolean to proceed with build
+    });
 
-                if ($modRef->{event} eq 'build_done') {
-                    # We've reported the build is complete, activate the promise
-                    # holding things together. The value we pass is what is passed
-                    # to the next promise handler.
-                    $stop_promise->resolve(scalar @{$module_failures_ref});
-                }
+    $self->{build_promise} = $build_promise; # ensure lifetime extends after this fn
 
-                # Just hold on to these messages until the end
-                if ($modRef->{event} eq 'new_postbuild_message') {
-                    my $module_name = $modRef->{new_postbuild_message}->{module};
-                    my $module_msgs = first { $_->{name} eq $module_name } @{$self->{postbuild_msgs}};
-                    if (!$module_msgs) {
-                        $module_msgs = { name => $module_name, msgs => [ ] };
-                        push @{$self->{postbuild_msgs}}, $module_msgs;
-                    }
+    # Sub for handling get_p promise responses. Needs a name so we can refer back to it
+    # from within itself.
+    my $ev_handler;
+    my $numHandled = 0;
+    my $done_promise = Mojo::Promise->new;
 
-                    push @{$module_msgs->{msgs}}, $modRef->{new_postbuild_message}->{message};
-                    next;
-                }
+    $ev_handler = sub ($ev_tx) {
+        $ev_tx = _check_error($ev_tx);
+        my $eventListRef = $ev_tx->res->json
+            or croak_internal("Unable to get event list!");
+
+        if (!scalar @{$eventListRef}) {
+            # No changes since we last checked
+            $log->trace("No changes to build after handling $numHandled events, waiting");
+            return Mojo::Promise->timer(0.3)->then(sub {
+                $log->trace("Checking again for events");
+                $ua->get_p('/event-list' => form => { since => $numHandled })
+                ->then($ev_handler);
+            });
+        }
+
+        $log->trace("Received", scalar @{$eventListRef}, "events");
+
+        my $done = 0;
+        foreach my $modRef (@{$eventListRef}) {
+            # Update the U/I
+            eval {
+                $ui->notifyEvent($modRef);
+                $numHandled++;
+                $event_stream->say(', ' . to_json($modRef))
+                    unless $modRef->{event} eq 'phase_progress';
+                $log->trace("Handled event $numHandled");
+            };
+
+            if ($@) {
+                $log->error("Ran into an awful error! $@");
+                $done_promise->reject($@);
             }
-        });
 
-        $ws->on(finish => sub {
-            # Might happen if the build finishes in the time between when we
-            # start it and when we subscribe to the event viewer.
-            $stop_promise->reject('events have finished'); # ignored if we resolved first
-        });
+            # See ksb::StatusMonitor for where events defined
+            if ($modRef->{event} eq 'phase_completed') {
+                my $results = $modRef->{phase_completed};
+                push @{$module_failures_ref}, $results
+                    if $results->{result} eq 'error';
+            } elsif ($modRef->{event} eq 'build_done') {
+                $done = 1; # so we don't loop again
+                $done_promise->resolve(scalar @{$module_failures_ref});
+                delete $self->{build_promise};
+            } elsif ($modRef->{event} eq 'new_postbuild_message') {
+                # Just hold on to these messages until the end
+                my $module_name = $modRef->{new_postbuild_message}->{module};
+                my $module_msgs = first { $_->{name} eq $module_name } @{$self->{postbuild_msgs}};
+                if (!$module_msgs) {
+                    $module_msgs = { name => $module_name, msgs => [ ] };
+                    push @{$self->{postbuild_msgs}}, $module_msgs;
+                }
 
-        # Once we return here we'll wait in Mojolicious event loop for awhile until
-        # the build is done, before moving into the promise handler below
-        return $stop_promise;
+                push @{$module_msgs->{msgs}}, $modRef->{new_postbuild_message}->{message};
+            }
+        } # foreach
+
+        # We've handled all events
+        if (!$done) {
+            # form => formats the HTTP GET param with a query string
+            return $ua->get_p('/event-list' => form => { since => $numHandled })->then($ev_handler);
+        } else {
+            return $done_promise; # this promise has the results to proceed with
+        }
+    };
+
+    # Kick off the initial event handler
+    $build_promise = $build_promise->then(sub ($proceed) {
+        croak_internal("Something went wrong with build plan?")
+            unless $proceed;
+
+        return $ua->get_p('/event-list')->then($ev_handler);
     })->finally(sub {
         $event_stream->say("]");
         $event_stream->close();
@@ -259,6 +290,8 @@ sub _handleBuildEvents ($self, $module_failures_ref)
         my $logdir = $ctx->getLogDir();
         note ("Your logs are saved in file://y[$logdir]");
     });
+
+    return $build_promise
 }
 
 # Causes the build server to begin the build. You can then use /events endpoint
@@ -269,7 +302,7 @@ sub _handleBuildEvents ($self, $module_failures_ref)
 #   0 if the build started but there is nothing to do.
 sub _runModeBuild ($self)
 {
-    $self->app->log->debug("Run mode: BUILD");
+    $self->app->log->trace("Run mode: BUILD");
 
     # Kick off the build. This needs to be a non-blocking call because
     # Mojo::UserAgent can maintain two different app servers behind the
@@ -315,11 +348,12 @@ sub start
 
     my $ua = $self->ua;
     my $app = $self->app;
+    my $log = $self->{log};
     my $result = 0; # notes errors from module builds or internal errors
 
     my @module_failures;
 
-    $app->log->debug("Sending test msg to backend");
+    $log->trace("Sending test msg to backend");
     # This call just reads an option from the BuildContext as a sanity check
     $ua->get_p('/context/options/pretend')->then(sub {
         my $tx = shift;
@@ -333,7 +367,7 @@ sub start
         my $headers = { };
         $headers->{'X-BuildAllModules'} = 1 unless @{$selectorsRef};
 
-        $app->log->debug("Test msg success, sending selectors to build");
+        $log->trace("Test msg success, sending selectors to build");
         # Tell the backend which modules to build.
         return $ua->post_p('/modules', $headers, json => $selectorsRef);
     })->then(sub {
@@ -341,7 +375,7 @@ sub start
         _check_error($tx);
 
         my $result = eval { $tx->result->json->[0]; };
-        $app->log->debug("Selectors sent to backend, $result");
+        $log->trace("Selectors sent to backend, $result");
 
         # We've received a successful response from the backend that it's able to
         # build the requested modules, so proceed as appropriate based on the run mode
@@ -350,11 +384,13 @@ sub start
         return $self->_runModeDebug()
             if (%{$app->ksb->{debugFlags} // 0});
 
+        $log->trace("Building through run mode build");
         return $self->_runModeBuild();
     })->then(sub ($continueBuild) {
-        $app->log->debug("Ready to build, should we continue? ", $continueBuild);
+        $log->debug("Ready to build, should we continue? ", $continueBuild);
 
         if ($continueBuild) {
+            $log->trace("Handling build events");
             # Install event monitoring and wait until the build is done
             return $self->_handleBuildEvents(\@module_failures);
         } else {
@@ -363,7 +399,7 @@ sub start
     })->then(sub ($buildResult) {
         # Build done, value comes from runMode promise above
         $result ||= $buildResult;
-        $app->log->debug("Chosen run mode complete, result (0 == success): $result");
+        $log->debug("Chosen run mode complete, result (0 == success): $result");
     })->catch(sub {
         my $err = shift;
         # Catches all errors in any of the prior promises
@@ -376,11 +412,11 @@ sub start
             say STDERR $err->{message};
             say STDERR $err->{response}->body
                 if $err->{response};
-            $app->log->error("Recorded an error ", $err->{message});
+            $log->error("Recorded an error ", $err->{message});
         }
         else {
             say STDERR "Caught an error: $err";
-            $app->log->error("Recorded an error $err");
+            $log->error("Recorded an error $err");
         }
 
         $result = 1; # error

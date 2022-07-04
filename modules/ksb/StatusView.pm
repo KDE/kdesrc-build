@@ -30,7 +30,7 @@ sub new
 
     my $defaultOpts = {
         tty_width       => $tty_width,
-        max_name_width  => 1,   # Updated from the build plan
+        max_name_width  => 3,   # Updated from the build plan
         cur_update      => '',  # moduleName under update
         cur_working     => '',  # moduleName under any other phase
         cur_progress    => '',  # Percentage (0% - 100%)
@@ -263,13 +263,9 @@ sub onBuildDone
         %{$ev->{build_done}};
 
     # --stop-on-failure can cause modules to skip
-    my $numTotalModules = max(
-        map { $self->{todo_in_phase}->{$_} } (
-            keys %{$self->{todo_in_phase}}));
+    my $numTotalModules = max(values %{$self->{todo_in_phase}});
     my $numFailedModules = keys %{$self->{failed_at_phase}};
-    my $numBuiltModules = max(
-        map { $self->{done_in_phase}->{$_} } (
-            keys %{$self->{done_in_phase}}));
+    my $numBuiltModules = max(values %{$self->{done_in_phase}});
     my $numSuccesses = $numBuiltModules - $numFailedModules;
     my $numSkipped = $numTotalModules - $numBuiltModules;
 
@@ -393,9 +389,8 @@ sub _getMinimumOutputWidth
 
 sub update
 {
-    my @phases = qw(update build);
-
     my $self = shift;
+    my @phases = grep { ($self->{todo_in_phase}->{$_} // 0) > 0 } qw(update build);
     my $term_width = $self->{tty_width};
     $self->{min_output} //= $self->_getMinimumOutputWidth(@phases);
     my $min_width = $self->{min_output};
@@ -417,9 +412,9 @@ sub update
             if length($msg) >= $term_width;
     } else {
         my $max_prog_width = ($term_width - $min_width) - 5;
-        my $num_all_done  = min(@{$self->{done_in_phase}}{@phases}) // 0;
-        my $num_some_done = max(@{$self->{done_in_phase}}{@phases}, 0) // 0;
-        my $max_todo      = max(@{$self->{todo_in_phase}}{@phases}, 1) // 1;
+        my $num_all_done  = min(@{$self->{done_in_phase}}{@phases} // 0) // 0;
+        my $num_some_done = max(@{$self->{done_in_phase}}{@phases} // 0, 0) // 0;
+        my $max_todo      = max(@{$self->{todo_in_phase}}{@phases} // 0, 1) // 1;
 
         my $width = $max_prog_width * $num_all_done / $max_todo;
         # Leave at least one empty space if we're not fully done

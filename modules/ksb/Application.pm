@@ -959,7 +959,6 @@ sub startHeadlessBuild
     $startPromise = _handle_updates     ($ctx, $promiseChain, $startPromise);
     $startPromise = _handle_build_phases($ctx, $promiseChain, $startPromise);
 
-    $startPromise->resolve; # allow build to start once control returned to evt loop
     $promiseChain->abort_after_failure(1)
         if $ctx->getOption('stop-on-failure');
 
@@ -1013,6 +1012,7 @@ sub startHeadlessBuild
         }
     });
 
+    $startPromise->resolve; # allow build to start once control returned to evt loop
     return $promise;
 }
 

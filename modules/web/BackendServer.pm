@@ -85,9 +85,9 @@ sub make_new_ksb
     }
 
     if (@selectors) {
-        $c->app->log->info("Module selectors requested:" . join(', ', @selectors));
+        $c->app->log->trace("Module selectors requested:" . join(', ', @selectors));
     } else {
-        $c->app->log->info("All modules to be built");
+        $c->app->log->trace("All modules to be built");
     }
 
     return $app;
@@ -106,6 +106,7 @@ sub startup {
         if exists $ENV{'KDESRC_BUILD_DEBUG'};
 
     # Default to near-silence and let each make_new_ksb reset verbosity as needed
+    $self->log($self->log->context('[backend]'));
     $self->log->level(exists $ENV{'KDESRC_BUILD_DEBUG'} ? 'debug' : 'error');
 
     # Fixup templates and public base directories
@@ -135,7 +136,7 @@ sub startup {
         $self->ksb_state->{metadata_updater} = Mojo::IOLoop->subprocess->run_p(sub {
             $self->ksb->_downloadKDEProjectMetadata()
         })->then(sub {
-            $self->log->info("Completed downloading KDE project metadata");
+            $self->log->debug("Completed downloading KDE project metadata");
             $self->ksb_state->{has_metadata} = 1;
         })->catch(sub {
             my $err = shift;
@@ -261,10 +262,10 @@ sub _generateRoutes {
 
         $log->warn("We're already in a build") if $c->in_build;
         if ($build_all) {
-            $log->info("User requested to build all modules");
+            $log->trace("User requested to build all modules");
         } else {
             my $exactList = $c->req->text;
-            $log->info("User requested to build $exactList: [" . join(', ', @selectors) . "]");
+            $log->trace("User requested to build $exactList: [" . join(', ', @selectors) . "]");
         }
 
         # If not building all then ensure there's at least one module to build
@@ -356,32 +357,47 @@ sub _generateRoutes {
         die "Unimplemented";
     });
 
-    $r->websocket('/events' => sub {
-        my $c = shift;
+    my %clients;
 
-        $c->inactivity_timeout(0);
+    $r->get('/build-plan' => sub ($c) {
+        my $tx = $c->tx;
+
+        if (!$c->in_build) {
+            $c->app->log->trace("Streaming build events from completed build $tx");
+            return $self->_renderException($c, "No build plan when no build in progress");
+        }
+
+        my $ctx = $c->ksb->context();
+        my $monitor = $ctx->statusMonitor();
+        my ($plan, @curEvents) = $monitor->events();
+
+        if (!$plan || $plan->{event} ne 'build_plan') {
+            $c->render(json => [error => "Can't find the build plan that should exist!"], status => 500);
+            return;
+        }
+
+        $c->app->log->debug("Sending build plan to client");
+        $c->render(json => [$plan]);
+    });
+
+    $r->get('/event-list' => sub ($c) {
+        my $tx = $c->tx;
+
+        if (!$c->in_build) {
+            $c->app->log->trace("Streaming build events from completed build $tx");
+        } else {
+            $c->app->log->trace("Streaming build events from in-progress build $tx");
+        }
 
         my $ctx = $c->ksb->context();
         my $monitor = $ctx->statusMonitor();
 
-        # Hook up an event handler to send future events as they're generated
-        my $event_cb = $monitor->on(newEvent => sub {
-            my ($monitor, $resultRef) = @_;
-            $c->on(drain => sub { $c->finish })
-                if ($resultRef->{event} eq 'build_done');
-            $c->send({json => [ $resultRef ]});
-        });
+        my $event_since = int($c->req->query_params->param('since') // 0);
+        my @curEvents = $monitor->events(1 + $event_since); # first event is build_plan
 
-        # Send prior events the receiver wouldn't have received yet
-        my @curEvents = $monitor->events();
-        $c->send({json => \@curEvents});
-
-        # Stop sending events if the browser tab closes
-        $c->on(finish => sub ($ws, $code, $reason) {
-            $c->app->log->error("WebSocket closed unexpectedly!")
-                if $code == 1006;
-            $monitor->unsubscribe(newEvent => $event_cb);
-        });
+        $c->app->log->debug("event-list called.", scalar @curEvents, "available");
+        $c->app->log->debug("Sending", scalar @curEvents, "events to client (since $event_since)");
+        $c->render(json => \@curEvents);
     });
 
     $r->get('/event_viewer' => sub {
@@ -441,7 +457,7 @@ sub _generateRoutes {
         if ($c->context->getOption('metadata-only')) {
             my $msg = 'There is nothing to do, only metadata update was requested.';
             $c->res->code(204);
-            $c->app->log->info($msg);
+            $c->app->log->debug($msg);
             $c->render(text => $msg);
             return;
         }
@@ -452,22 +468,22 @@ sub _generateRoutes {
             return;
         }
 
-        $c->app->log->info('Starting build');
+        $c->app->log->trace('Starting build');
 
         my $homeUrl = $c->url_for('/')->to_abs;
-        my $startPromise = $c->ksb->startHeadlessBuild($homeUrl);
 
         # We didn't throw an exception, point client to event_viewer but
         # continue to monitor for success or failure
-        $c->app->ksb_state->{build_promise} = $startPromise->then(sub ($result) {
-            $c->app->log->debug("Build done, result $result");
-            $c->app->ksb_state->{build_result} = $result;
-        })->catch(sub ($err) {
-            $c->app->log->error("Exception during build: $err");
-            die $err;
-        })->finally(sub {
-            delete $c->app->ksb_state->{build_promise};
-        });
+        $c->app->ksb_state->{build_promise} =
+            $c->ksb->startHeadlessBuild($homeUrl)->then(sub ($result) {
+                $c->app->log->debug("Build done, result $result");
+                $c->app->ksb_state->{build_result} = $result;
+            })->catch(sub ($err) {
+                $c->app->log->error("Exception during build: $err");
+                die $err;
+            })->finally(sub {
+                delete $c->app->ksb_state->{build_promise};
+            });
 
         $c->render(text => $c->url_for('event_viewer')->to_abs->to_string);
     });

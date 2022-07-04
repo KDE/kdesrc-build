@@ -206,15 +206,6 @@ sub launchBackend
 launchBackend()
     if (scalar @ARGV == 1 && $ARGV[0] eq '--backend');
 
-our @atexit_subs;
-
-END {
-    # Basically used to call the finish() handler but only when appropriate.
-    foreach my $sub (@atexit_subs) {
-        &$sub();
-    }
-}
-
 # TODO: Need to split up option reading here to exit early for options
 # that need the rc-file read (--dependency-list, --query, etc.) and don't involve
 # the web server.
@@ -251,12 +242,13 @@ eval
         });
     my $ui  = ksb::UserInterface::TTY->new($app);
 
-    push @atexit_subs, sub { $app->ksb->finish(99) };
-
     # TODO: Reimplement --print-modules, --query modes, which wouldn't go through ->start
-    my $result = $ui->start();
+    my $result = eval { $ui->start(); };
 
-    @atexit_subs = (); # Clear exit handlers
+    if ($@) {
+        say STDERR "kdesrc-build failed";
+        $app->ksb->finish(99);
+    }
 
     # env driver is just the ~/.config/kde-env-*.sh, session driver is that + ~/.xsession
     # TODO: Move to Backend or UserInterface as appropriate.
