@@ -1,6 +1,7 @@
 package Mojolicious::Renderer;
 use Mojo::Base -base;
 
+use Carp qw(croak);
 use Mojo::Cache;
 use Mojo::DynamicMethods;
 use Mojo::File qw(curfile path);
@@ -8,10 +9,11 @@ use Mojo::JSON qw(encode_json);
 use Mojo::Loader qw(data_section);
 use Mojo::Util qw(decamelize deprecated encode gzip md5_sum monkey_patch);
 
-has cache   => sub { Mojo::Cache->new };
-has classes => sub { ['main'] };
-has [qw(compress default_handler)];
-has default_format         => 'html';
+has cache          => sub { Mojo::Cache->new };
+has classes        => sub { ['main'] };
+has compress       => 1;
+has default_format => 'html';
+has 'default_handler';
 has encoding               => 'UTF-8';
 has [qw(handlers helpers)] => sub { {} };
 has min_compress_size      => 860;
@@ -121,6 +123,8 @@ sub render {
 
 sub respond {
   my ($self, $c, $output, $format, $status) = @_;
+
+  croak 'A response has already been rendered' if $c->stash->{'mojo.respond'}++;
 
   # Gzip compression
   my $res = $c->res;
@@ -281,7 +285,7 @@ usually happens automatically during application startup.
   $renderer = $renderer->compress($bool);
 
 Try to negotiate compression for dynamically generated response content and C<gzip> compress it automatically, defaults
-to false.
+to true.
 
 =head2 default_format
 
