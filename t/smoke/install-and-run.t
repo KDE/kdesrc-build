@@ -72,6 +72,10 @@ symlink("$curdir/kdesrc-build", "$tempInstallDir/bin/kdesrc-build");
     # Ensure newly-installed version is first in PATH
     local $ENV{PATH} = "$tempInstallDir/bin:" . $ENV{PATH};
 
+    # Ensure we don't accidentally use the git repo modules/ path when we need to use
+    # installed or system Perl modules
+    local $ENV{PERL5LIB}; # prove turns -Ilib into an env setting
+
     my $output = `kdesrc-build --version --pretend`;
     ok($output =~ /^kdesrc-build \d\d\.\d\d\n?$/, '--version for installed version is appropriate');
 

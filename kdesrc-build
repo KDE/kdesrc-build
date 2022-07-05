@@ -1,16 +1,16 @@
 #!/usr/bin/env perl
 
-# Script to handle building KDE from source code. All of the configuration is
-# stored in the file ./kdesrc-buildrc. If that file does not exist,
-# ~/.config/kdesrc-buildrc ($XDG_CONFIG_HOME/kdesrc-buildrc, if $XDG_CONFIG_HOME
-# environment variable is set) will be used.
+# Script to handle building KDE from source code.
+#
+# Configuration is found in $XDG_CONFIG_HOME/kdesrc-buildrc,
+# with fallback at ~/.kdesrc-buildrc. $XDG_CONFIG_HOME normally ".config"
 #
 # Please also see the documentation that should be included with this program,
 # in the doc/ directory.
 #
 # Home page: https://kdesrc-build.kde.org/
 #
-# Copyright © 2003 - 2020 Michael Pyne. <mpyne@kde.org>
+# Copyright © 2003 - 2022 Michael Pyne. <mpyne@kde.org>
 # Copyright © 2018 - 2020 Johan Ouwerkerk <jm.ouwerkerk@gmail.com>
 # Copyright © 2005, 2006, 2008 - 2011 David Faure <faure@kde.org>
 # Copyright © 2005 Thiago Macieira <thiago@kde.org>
@@ -37,7 +37,7 @@
 ####  Script start.  Step 1: Tell Perl where to find our 'ksb' modules in relation
 ####  to where we are at.
 
-use v5.28;
+use v5.26;
 use strict;
 use warnings;
 
@@ -174,48 +174,42 @@ if (defined caller && caller eq 'test')
 }
 
 my $app;
-our @atexit_subs;
 
-END {
-    # Basically used to call the finish() handler but only when appropriate.
-    foreach my $sub (@atexit_subs) {
-        &$sub();
-    }
-}
-
-# Use some exception handling to avoid ucky error messages
 eval
 {
     $app = ksb::Application->new(@ARGV);
 
-    push @atexit_subs, sub { $app->finish(99) };
     my $result = $app->runAllModulePhases();
 
-    @atexit_subs = (); # Clear exit handlers
-    $app->finish($result);
+    $app->finish($result); # noreturn
 };
 
 if (my $err = $@)
 {
     if (had_an_exception()) {
-        print "kdesrc-build encountered an exceptional error condition:\n";
-        print " ========\n";
-        print "    $err\n";
-        print " ========\n";
-        print "\tCan't continue, so stopping now.\n";
+        say <<~DONE;
+        kdesrc-build encountered an exceptional error condition:
+         ========
+            $err
+         ========
+        Can't continue, so stopping now.
+
+        DONE
 
         if ($err->{'exception_type'} eq 'Internal') {
-            print "\nPlease submit a bug against kdesrc-build on https://bugs.kde.org/\n"
+            say "Please submit a bug against kdesrc-build on https://bugs.kde.org/";
         }
-    }
-    else {
-        # We encountered an error.
-        print "Encountered an error in the execution of the script.\n";
-        print "The error reported was $err\n";
-        print "Please submit a bug against kdesrc-build on https://bugs.kde.org/\n";
+    } else {
+        # We encountered some other kind of error that didn't raise a ksb::BuildException
+        say <<~DONE;
+        Encountered an error in the execution of the script.
+        --> $err
+        Please submit a bug against kdesrc-build on https://bugs.kde.org/
+        DONE
     }
 
-    exit 99;
+    $app->finish(99) if $app; # noreturn
+    exit 99; # if $app couldn't be created
 }
 
 # vim: set et sw=4 ts=4 fdm=marker:
