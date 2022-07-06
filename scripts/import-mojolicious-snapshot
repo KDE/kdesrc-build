@@ -1,0 +1,57 @@
+#!/bin/sh
+#
+# Copyright © 2022 Michael Pyne <mpyne@kde.org>
+#
+# Copies over the 85% or so of the Mojolicious install that we need to support
+# its use within kdesrc-build, so that users don't have to figure out
+# App::CPANMinus, perlbrew or etc. to get kdesrc-build working.
+#
+# Licensed under same terms as kdesrc-build
+
+### Turn on strict checking for simple mistakes
+
+set -e
+set -u
+
+### Sanity checks
+
+if [ "$#" -ne 1 ]; then
+    echo "Pass the path to your *installed* Mojolicious as the only parameter"
+    exit 1
+fi
+
+if [ ! -e ./kdesrc-build -o ! -d ./.git ]; then
+    echo "Run this command from within your kdesrc-build source checkout"
+    exit 1
+fi
+
+MOJO_PATH="$1"
+MODULES_PATH="./modules"
+
+if [ ! -e "$MOJO_PATH/Mojolicious/resources/public/mojo/jquery/jquery.js" ]; then
+    echo "$MOJO_PATH doesn't seem to be a good base directory for Mojolicious"
+    echo "If you did it right then you need to fix the check in this script"
+    exit 1
+fi
+
+# Things seem sane, let's copy some files
+
+# Easy parts, chunks of Mojolicious which can just go in as-is
+cp -r "$MOJO_PATH/Mojo"    "$MODULES_PATH"
+cp -r "$MOJO_PATH/Mojo.pm" "$MODULES_PATH"
+
+# If we end up needing all of Mojolicious, uncomment this stuff.
+#cp -r "$MOJO_PATH/Mojolicious.pm" "$MODULES_PATH"
+#cp -r "$MOJO_PATH/Mojolicious"    "$MODULES_PATH"
+
+# We don't need all of Mojolicious, remove the subtrees we don't need after
+# copying out the resources we do need.
+#mkdir -p "$MODULES_PATH/web/public/mojo" "$MODULES_PATH/web/templates/mojo"
+#cp "$MODULES_PATH/Mojolicious/resources/public/mojo/"pinstripe*.png    "$MODULES_PATH/web/public/mojo"
+#cp "$MODULES_PATH/Mojolicious/resources/public/mojo/"logo{,-white}.png "$MODULES_PATH/web/public/mojo"
+#cp "$MODULES_PATH/Mojolicious/resources/templates/mojo/debug.html.ep"  "$MODULES_PATH/web/templates/mojo"
+
+#rm -rf "$MODULES_PATH/Mojolicious/"{Guides,resources} "$MODULES_PATH/Mojolicious/Guides.pod"
+
+# Reset ability to overwrite files so they can be modified next time
+find "$MODULES_PATH" -type f -execdir chmod +w {} "+"

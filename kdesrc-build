@@ -73,7 +73,12 @@ BEGIN {
     die "Couldn't find modules for kdesrc-build!" unless $modPath;
 }
 
-use lib "$modPath"; # Make ksb:: modules available
+# We use third party embedded modules but we should prefer system versions if
+# available so add to the end of @INC rather than the beginning, this is why
+# we don't do "use lib '$modPath'"
+BEGIN {
+    push @INC, "$modPath";
+}
 
 ####  Now that Perl can find our modules, load them and start processing command line arguments
 
