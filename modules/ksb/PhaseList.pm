@@ -13,6 +13,8 @@ use ksb::Util;
 sub new
 {
     my ($class, @args) = @_;
+    push @args, qw(update build install)
+        unless @args;
     return bless [@args], $class;
 }
 

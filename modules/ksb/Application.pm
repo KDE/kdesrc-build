@@ -12,13 +12,13 @@ use ksb::Util;
 use ksb::BuildContext 0.35;
 use ksb::BuildSystem::QMake;
 use ksb::BuildException 0.20;
+use ksb::Cmdline;
 use ksb::FirstRun;
 use ksb::Module;
 use ksb::ModuleResolver 0.20;
 use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
 use ksb::ModuleSet::Qt;
-use ksb::OSSupport;
 use ksb::RecursiveFH;
 use ksb::Debug;
 use ksb::DebugOrderHints;
@@ -26,7 +26,6 @@ use ksb::DependencyResolver 0.20;
 use ksb::IPC::Pipe 0.20;
 use ksb::IPC::Null;
 use ksb::Updater::Git;
-use ksb::Version qw(scriptVersion);
 
 use Mojo::IOLoop;
 
@@ -35,7 +34,6 @@ use List::Util qw(first min);
 use File::Basename; # basename, dirname
 use File::Glob ':glob';
 use POSIX qw(:sys_wait_h _exit :errno_h);
-use Getopt::Long qw(GetOptionsFromArray :config gnu_getopt nobundling);
 use IO::Handle;
 use IO::Select;
 
@@ -94,246 +92,6 @@ sub new
     });
 
     return $self;
-}
-
-# Method: _readCommandLineOptionsAndSelectors
-#
-# Returns a list of module/module-set selectors, selected module/module-set
-# options, and global options, based on the command-line arguments passed to
-# this function.
-#
-# This is a package method, should be called as
-# $app->_readCommandLineOptionsAndSelectors
-#
-# Phase:
-#  initialization - Do not call <finish> from this function.
-#
-# Parameters:
-#  cmdlineOptions - hashref to hold parsed modules options to be applied later.
-#    *Note* this must be done separately, it is not handled by this subroutine.
-#    Global options will be stored in a hashref at $cmdlineOptions->{global}.
-#    Module or module-set options will be stored in a hashref at
-#    $cmdlineOptions->{$moduleName} (it will be necessary to disambiguate
-#    later in the run whether it is a module set or a single module).
-#
-#    If the global option 'start-program' is set, then the program to start and
-#    its options will be found in a listref pointed to under the
-#    'start-program' option.
-#
-#  selectors - listref to hold the list of module or module-set selectors to
-#    build, in the order desired by the user. These will just be strings, the
-#    caller will have to figure out whether the selector is a module or
-#    module-set, and create any needed objects, and then set the recommended
-#    options as listed in cmdlineOptions.
-#
-#  ctx - <BuildContext> to hold the global build state.
-#
-#  @options - The remainder of the arguments are treated as command line
-#    arguments to process.
-#
-# Returns:
-#  Nothing. An exception will be raised on failure, or this function may quit
-#  the program directly (e.g. to handle --help, --usage).
-sub _readCommandLineOptionsAndSelectors
-{
-    my $self = shift;
-    my ($cmdlineOptionsRef, $selectorsRef, $ctx, @options) = @_;
-    my $phases = $ctx->phases();
-    my @savedOptions = @options; # Copied for use in debugging.
-    my $os = ksb::OSSupport->new;
-    my $version = "kdesrc-build " . scriptVersion();
-    my $author = <<DONE;
-$version was written (mostly) by:
-  Michael Pyne <mpyne\@kde.org>
-
-Many people have contributed code, bugfixes, and documentation.
-
-Please report bugs using the KDE Bugzilla, at https://bugs.kde.org/
-DONE
-
-    # Getopt::Long will store options in %foundOptions, since that is what we
-    # pass in. To allow for custom subroutines to handle an option it is
-    # required that the sub *also* be in %foundOptions... whereupon it will
-    # promptly be overwritten if we're not careful. Instead we let the custom
-    # subs save to %auxOptions, and read those in back over it later.
-    my (%foundOptions, %auxOptions);
-    %foundOptions = (
-        'show-info' => sub { say $version; say "OS: ", $os->vendorID(); exit },
-        version => sub { say $version; exit },
-        author  => sub { say $author;  exit },
-        help    => sub { _showHelpMessage(); exit 0 },
-        install => sub {
-            $self->{run_mode} = 'install';
-            $phases->phases('install');
-        },
-        uninstall => sub {
-            $self->{run_mode} = 'uninstall';
-            $phases->phases('uninstall');
-        },
-        'no-src' => sub {
-            $phases->filterOutPhase('update');
-        },
-        'no-install' => sub {
-            $phases->filterOutPhase('install');
-        },
-        'no-snapshots' => sub {
-            # The documented form of disable-snapshots
-            $auxOptions{'disable-snapshots'} = 1;
-        },
-        'no-tests' => sub {
-            # The "right thing" to do
-            $phases->filterOutPhase('test');
-
-            # What actually works at this point.
-            $foundOptions{'run-tests'} = 0;
-        },
-        'no-build' => sub {
-            $phases->filterOutPhase('build');
-        },
-        # Mostly equivalent to the above
-        'src-only' => sub {
-            $phases->phases('update');
-
-            # We have an auto-switching function that we only want to run
-            # if --src-only was passed to the command line, so we still
-            # need to set a flag for it.
-            $foundOptions{'allow-auto-repo-move'} = 1;
-        },
-        'build-only' => sub {
-            $phases->phases('build');
-        },
-        'install-only' => sub {
-            $self->{run_mode} = 'install';
-            $phases->phases('install');
-        },
-        prefix => sub {
-            my ($optName, $arg) = @_;
-            $auxOptions{prefix} = $arg;
-            $foundOptions{kdedir} = $arg; #TODO: Still needed for compat?
-            $foundOptions{reconfigure} = 1;
-        },
-        query => sub {
-            my (undef, $arg) = @_;
-
-            my $validMode = qr/^[a-zA-Z0-9_][a-zA-Z0-9_-]*$/;
-            die("Invalid query mode $arg")
-                unless $arg =~ $validMode;
-
-            # Add useful aliases
-            $arg = 'source-dir'  if $arg =~ /^src-?dir$/;
-            $arg = 'build-dir'   if $arg =~ /^build-?dir$/;
-            $arg = 'install-dir' if $arg eq 'prefix';
-
-            $self->{run_mode} = 'query';
-            $auxOptions{query} = $arg;
-            $auxOptions{pretend} = 1; # Implied pretend mode
-        },
-        pretend => sub {
-            # Set pretend mode but also force the build process to run.
-            $auxOptions{pretend} = 1;
-            $foundOptions{'build-when-unchanged'} = 1;
-        },
-        resume => sub {
-            $auxOptions{resume} = 1;
-            $phases->filterOutPhase('update'); # Implied --no-src
-            $foundOptions{'no-metadata'} = 1;  # Implied --no-metadata
-        },
-        verbose => sub { $foundOptions{'debug-level'} = ksb::Debug::WHISPER },
-        quiet => sub { $foundOptions{'debug-level'} = ksb::Debug::NOTE },
-        'really-quiet' => sub { $foundOptions{'debug-level'} = ksb::Debug::WARNING },
-        debug => sub {
-            $foundOptions{'debug-level'} = ksb::Debug::DEBUG;
-            debug ("Commandline was: ", join(', ', @savedOptions));
-        },
-
-        # Hack to set module options
-        'set-module-option-value' => sub {
-            my ($optName, $arg) = @_;
-            my ($module, $option, $value) = split (',', $arg, 3);
-            if ($module && $option) {
-                $cmdlineOptionsRef->{$module} //= { };
-                $cmdlineOptionsRef->{$module}->{$option} = $value;
-            }
-        },
-
-        # Getopt::Long doesn't set these up for us even though we specify an
-        # array. Set them up ourselves.
-        'start-program' => [ ],
-        'ignore-modules' => [ ],
-
-        # Module selectors, the <> is Getopt::Long shortcut for an
-        # unrecognized non-option value (i.e. an actual argument)
-        '<>' => sub {
-            my $arg = shift;
-            push @{$selectorsRef}, $arg;
-        },
-    );
-
-    # Handle any "cmdline-eligible" options not already covered.
-    my $flagHandler = sub {
-        my ($optName, $optValue) = @_;
-
-        # Assume to set if nothing provided.
-        $optValue = 1 if (!defined $optValue or $optValue eq '');
-        $optValue = 0 if lc($optValue) eq 'false';
-        $optValue = 0 if !$optValue;
-
-        $auxOptions{$optName} = $optValue;
-    };
-
-    foreach my $option (keys %ksb::BuildContext::defaultGlobalFlags) {
-        if (!exists $foundOptions{$option}) {
-            $foundOptions{$option} = $flagHandler; # A ref to a sub here!
-        }
-    }
-
-    # Actually read the options.
-    my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
-        # Options here should not duplicate the flags and options defined below
-        # from ksb::BuildContext!
-        'version|v', 'author', 'help', 'show-info',
-        'install', 'uninstall', 'no-src|no-svn', 'no-install', 'no-build',
-        'no-tests', 'build-when-unchanged|force-build', 'no-metadata',
-        'verbose', 'quiet|quite|q', 'really-quiet', 'debug',
-        'reconfigure', 'colorful-output|color!', 'async!',
-        'src-only|svn-only', 'build-only', 'install-only', 'build-system-only',
-        'rc-file=s', 'prefix=s', 'niceness|nice:10', 'ignore-modules=s{,}',
-        'print-modules', 'pretend|dry-run|p', 'refresh-build',
-        'query=s', 'start-program|run=s{,}',
-        'revision=i', 'resume-from=s', 'resume-after=s',
-        'rebuild-failures', 'resume',
-        'stop-after=s', 'stop-before=s', 'set-module-option-value=s',
-        'metadata-only', 'list-build', 'dependency-tree',
-
-        # Special sub used (see above), but have to tell Getopt::Long to look
-        # for negatable boolean flags
-        (map { "$_!" } (keys %ksb::BuildContext::defaultGlobalFlags)),
-
-        # Default handling fine, still have to ask for strings.
-        (map { "$_:s" } (keys %ksb::BuildContext::defaultGlobalOptions)),
-
-        '<>', # Required to read non-option args
-        );
-
-    if (!$optsSuccess) {
-        croak_runtime("Error reading command-line options.");
-    }
-
-    # To store the values we found, need to strip out the values that are
-    # subroutines, as those are the ones we created. Alternately, place the
-    # subs inline as an argument to the appropriate option in the
-    # GetOptionsFromArray call above, but that's ugly too.
-    my @readOptionNames = grep {
-        ref($foundOptions{$_}) ne 'CODE'
-    } (keys %foundOptions);
-
-    # Slice assignment: $left{$key} = $right{$key} foreach $key (@keys), but
-    # with hashref syntax everywhere.
-    @{ $cmdlineOptionsRef->{'global'} }{@readOptionNames}
-        = @foundOptions{@readOptionNames};
-
-    @{ $cmdlineOptionsRef->{'global'} }{keys %auxOptions}
-        = values %auxOptions;
 }
 
 sub _findMissingModules
@@ -434,14 +192,15 @@ sub generateModuleList
     # doing.
 
     my $ctx = $self->context();
-    my $cmdlineOptions = { global => { }, };
-    my $cmdlineGlobalOptions = $cmdlineOptions->{global};
     my $deferredOptions = { }; # 'options' blocks
 
     # Process --help, --install, etc. first.
-    my @selectors;
-    $self->_readCommandLineOptionsAndSelectors($cmdlineOptions, \@selectors,
-        $ctx, @argv);
+    my $opts = ksb::Cmdline::readCommandLineOptionsAndSelectors(@argv);
+    my @selectors = @{$opts->{selectors}};
+    my $cmdlineOptions = $opts->{opts};
+    my $cmdlineGlobalOptions = $cmdlineOptions->{global};
+    $ctx->phases->phases(@{$opts->{phases}});
+    $self->{run_mode} = $opts->{run_mode};
 
     # Ensure some critical Perl modules are available so that the user isn't surprised
     # later with a Perl exception
@@ -464,18 +223,16 @@ EOF
 
     # Convert list to hash for lookup
     my %ignoredSelectors =
-        map { $_, 1 } @{$cmdlineGlobalOptions->{'ignore-modules'}};
+        map { $_, 1 } @{$opts->{'ignore-modules'}};
 
-    my @startProgramAndArgs = @{$cmdlineGlobalOptions->{'start-program'}};
-    delete @{$cmdlineGlobalOptions}{qw/ignore-modules start-program/};
+    my @startProgramAndArgs = @{$opts->{'start-program'}};
 
     # rc-file needs special handling.
-    if (exists $cmdlineGlobalOptions->{'rc-file'} && $cmdlineGlobalOptions->{'rc-file'}) {
-        $ctx->setRcFile($cmdlineGlobalOptions->{'rc-file'});
-    }
+    my $rcFile = $cmdlineGlobalOptions->{'rc-file'} // '';
+    $ctx->setRcFile($rcFile) if ($rcFile);
 
     # disable async if only running a single phase.
-    $cmdlineGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
+#   $cmdlineGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
 
     my $fh = $ctx->loadRcFile();
     $ctx->loadPersistentOptions();
@@ -2706,83 +2463,6 @@ sub performInitialUserSetup
 {
     my $self = shift;
     return ksb::FirstRun::setupUserSystem();
-}
-
-# Shows a help message and version. Does not exit.
-sub _showHelpMessage
-{
-    # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
-    # default to ~/.config
-    my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
-    my $xdgConfigHomeShort = $xdgConfigHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
-
-    my $pwd = $ENV{PWD};
-    my $pwdShort = $pwd =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
-
-    my $scriptVersion = scriptVersion();
-
-    say <<DONE;
-kdesrc-build $scriptVersion
-Copyright (c) 2003 - 2020 Michael Pyne <mpyne\@kde.org> and others, and is
-distributed under the terms of the GNU GPL v2.
-
-This script automates the download, build, and install process for KDE software
-using the latest available source code.
-
-Configuration is controlled from "$pwdShort/kdesrc-buildrc" or
-"$xdgConfigHomeShort/kdesrc-buildrc".
-See kdesrc-buildrc-sample for an example.
-
-Usage: \$ $0 [--options] [module names]
-    All configured modules are built if none are listed.
-
-Important Options:
-    --pretend              Don't actually take major actions, instead describe
-                           what would be done.
-    --list-build           List what modules would be built in the order in
-                           which they would be built.
-    --dependency-tree      Print out dependency information on the modules that
-                           would be built, using a `tree` format. Very useful
-                           for learning how modules relate to each other. May
-                           generate a lot of output.
-    --no-src               Don't update source code, just build/install.
-    --src-only             Only update the source code
-    --refresh-build        Start the build from scratch.
-
-    --rc-file=<filename>   Read configuration from filename instead of default.
-    --initial-setup        Installs Plasma env vars (~/.bashrc), required
-                           system pkgs, and a base kdesrc-buildrc.
-
-    --resume-from=<pkg>    Skips modules until just before or after the given
-    --resume-after=<pkg>       package, then operates as normal.
-    --stop-before=<pkg>    Stops just before or after the given package is
-    --stop-after=<pkg>         reached.
-
-    --include-dependencies Also builds KDE-based dependencies of given modules.
-      (This is enabled by default; use --no-include-dependencies to disable)
-    --stop-on-failure      Stops the build as soon as a package fails to build.
-
-More docs at https://docs.kde.org/?application=kdesrc-build
-    Supported configuration options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
-    Supported cmdline options:       https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdline.html
-DONE
-
-    # Look for indications that this is the first run
-    my @possibleConfigPaths = ("./kdesrc-buildrc",
-                               "$xdgConfigHome/kdesrc-buildrc",
-                               "$ENV{HOME}/.kdesrc-buildrc");
-
-    if (!grep { -e $_ } (@possibleConfigPaths)) {
-        say <<DONE;
-  **  **  **  **  **
-It looks like kdesrc-build has not yet been setup. For easy setup, run:
-    $0 --initial-setup
-
-This will adjust your ~/.bashrc to find installed software, run your system's
-package manager to install required dependencies, and setup a kdesrc-buildrc
-that can be edited from there.
-DONE
-    }
 }
 
 sub _enablePerformancePowerProfileIfPossible ($self)

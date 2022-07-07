@@ -56,12 +56,24 @@ Some or all of the following may be helpful as well:
 
 =over
 
-=item L<ksb::FirstRun>
+=item *
 
-=item L<ksb::ModuleResolver>
+L<ksb::Cmdline>
 
-=item L<ksb::OptionsBase>
+=item *
 
-=item L<ksb::OSSupport>
+L<ksb::FirstRun>
+
+=item *
+
+L<ksb::ModuleResolver>
+
+=item *
+
+L<ksb::OptionsBase>
+
+=item *
+
+L<ksb::OSSupport>
 
 =back

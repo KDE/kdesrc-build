@@ -42,7 +42,6 @@ my $xdgStateHomeShort = $xdgStateHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with
 my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
 my $xdgConfigHomeShort = $xdgConfigHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
 
-my @DefaultPhases = qw/update build install/;
 my @rcfiles = ("./kdesrc-buildrc",
                "$xdgConfigHome/kdesrc-buildrc",
                "$ENV{HOME}/.kdesrc-buildrc");
@@ -81,7 +80,8 @@ my %internalGlobalOptions = (
 
 # Holds boolean flags that could be altered from cmdline.
 # These must be completely disjoint from the options provided in
-# ksb::Application to GetOptionsFromArray!
+# ksb::Cmdline to GetOptionsFromArray! This is now checked at runtime so
+# if you forget the test suite should catch you.
 our %defaultGlobalFlags = (
     "delete-my-patches"          => 0, # Should only be set from cmdline
     "delete-my-settings"         => 0, # Should only be set from cmdline
@@ -157,7 +157,7 @@ sub new
             # Module options are stored under here as well, keyed by module->name()
         },
         # This one replaces ksb::Module::{phases}
-        phases  => ksb::PhaseList->new(@DefaultPhases),
+        phases  => ksb::PhaseList->new(),
         errors  => {
             # A map from module *names* (as in modules[] above) to the
             # phase name at which they failed.
