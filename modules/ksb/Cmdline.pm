@@ -4,6 +4,7 @@ use ksb;
 
 use ksb::BuildContext;
 use ksb::BuildException;
+use ksb::Debug;
 use ksb::PhaseList;
 use ksb::OSSupport;
 use ksb::Version qw(scriptVersion);
