@@ -68,11 +68,11 @@ sub commit_id
 sub _verifyRefPresent
 {
     my ($self, $module, $repo) = @_;
-    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+    my ($ref, $commitType) = $self->_determinePreferredCheckoutSource($module);
 
     return 1 if pretending();
 
-    my $ref = $commitId;
+    $ref = 'HEAD' if $commitType eq 'none';
 
     my $hashref = run_forked("git ls-remote --exit-code $repo $ref",
         { timeout => 10, discard_output => 1, terminate_on_parent_sudden_death => 1});
@@ -103,8 +103,11 @@ sub _clone
     p_chdir($module->getSourceDir());
 
     my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
-    $commitId =~ s,^refs/tags/,,;   # git-clone -b doesn't like refs/tags/
-    unshift @args, '-b', $commitId; # Checkout branch right away
+
+    if ($commitType ne 'none') {
+        $commitId =~ s,^refs/tags/,,;   # git-clone -b doesn't like refs/tags/
+        unshift @args, '-b', $commitId; # Checkout branch right away
+    }
 
     if (0 != log_command($module, 'git-clone', ['git', 'clone', '--recursive', @args])) {
         croak_runtime("Failed to make initial clone of $module");
@@ -461,6 +464,7 @@ sub updateExistingClone
 
     # Download updated objects. This also updates remote heads so do this
     # before we start comparing branches and such.
+    info ("Fetching remote changes to g[$module]");
     if (0 != log_command($module, 'git-fetch', ['git', 'fetch', '--tags', $remoteName])) {
         croak_runtime ("Unable to perform git fetch for $remoteName ($cur_repo)");
     }
@@ -468,8 +472,14 @@ sub updateExistingClone
     # Now we need to figure out if we should update a branch, or simply
     # checkout a specific tag/SHA1/etc.
     my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+    if ($commitType eq 'none') {
+        $commitType = 'branch';
+        my @headRef = filter_program_output(undef, # no filter
+            qw(git symbolic-ref HEAD));
+        chomp($commitId = ($headRef[0] =~ s,^refs/heads/,,r) // '???');
+    }
 
-    note ("Updating g[$module] (to $commitType b[$commitId])");
+    note ("Merging g[$module] changes from $commitType b[$commitId]");
     my $start_commit = $self->commit_id('HEAD');
 
     my $updateSub;
@@ -528,8 +538,13 @@ sub _determinePreferredCheckoutSource
         !!($checkoutSource = ($module->getOption($_->[0], $_->[2]) // ''))
     } @priorityOrderedSources;
 
+    # The user has no clear desire here (either set for the module or globally.
+    # Note that the default config doesn't generate a global 'branch' setting).
+    # In this case it's unclear which convention source modules will use between
+    # 'master', 'main', or something entirely different.  So just don't guess...
     if (!$sourceTypeRef) {
-        return qw(master branch);
+        whisper ("No branch specified for $module, will use whatever git gives us");
+        return qw(none none);
     }
 
     # One fixup is needed for use-stable-kde, to pull the actual branch name
