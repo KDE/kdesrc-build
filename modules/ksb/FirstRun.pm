@@ -290,7 +290,11 @@ sub _setupShellRcFile
             $rcFilepath = "$ENV{'HOME'}/.zshrc";
         }
     } elsif ($shellName eq 'fish') {
-      $rcFilepath = "$ENV{'HOME'}/.config/fish/functions/kdesrc-build.fish";
+      if (defined($ENV{'XDG_CONFIG_HOME'})) {
+        $rcFilepath = "$ENV{'XDG_CONFIG_HOME'}/fish/functions/kdesrc-build.fish";
+      } else { 
+        $rcFilepath = "$ENV{'HOME'}/.config/fish/functions/kdesrc-build.fish";
+      }
     } else {
         $rcFilepath = "$ENV{'HOME'}/.profile";
         say colorize(" y[b[*] Couldn't detect the shell, using $rcFilepath.");
