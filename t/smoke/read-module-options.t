@@ -1,41 +1,36 @@
 # Test basic option reading from rc-files
 
 use ksb;
+use ksb::Util qw(trimmed); # load early so we can override
+
+use Mojo::Util qw(monkey_patch);
+
 use Test::More;
+use Carp qw(confess);
 
-package ksb::test {
-    use Carp qw(confess cluck);
-    use Test::More;
+# Override ksb::Util::log_command for final test to see if it is called with
+# 'cmake'
+my @CMD;
+my %OPTS;
 
-    my %inspectors = (
-        log_command => \&_inspect_log_command,
-    );
+# Very important that this happens in a BEGIN block so that it happens before
+# ksb::Application is loaded, so that ksb::Util's log_command method can be
+# overridden before it is copied to dependents packages' symbol tables
+BEGIN {
+    monkey_patch('ksb::Util',
+        log_command => sub ($module, $filename, $argRef, $optionsRef={}) {
+            confess "No arg to module" unless $argRef;
+            my @command = @{$argRef};
+            if (grep { $_ eq 'cmake' } @command) {
+                @CMD = @command;
+                %OPTS = %{$optionsRef};
+            }
+        });
+}
 
-    our @CMD;
-    our %OPTS;
-
-    sub inspect {
-        my $mod = shift;
-        my $sub = $inspectors{$mod} or return;
-        goto $sub;
-    };
-
-    sub _inspect_log_command
-    {
-        my ($module, $filename, $argRef, $optionsRef) = @_;
-        confess "No arg to module" unless $argRef;
-        my @command = @{$argRef};
-        if (grep { $_ eq 'cmake' } @command) {
-            @CMD = @command;
-            %OPTS = %{$optionsRef};
-        }
-    };
-
-    1;
-};
-
+# Now we can load ksb::Application, which will load a bunch more modules all
+# using log_command from ksb::Util
 use ksb::Application;
-use ksb::Util qw(trimmed);
 
 my $app = ksb::Application->new(qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc));
 my @moduleList = @{$app->{modules}};
@@ -71,21 +66,21 @@ $moduleList[1]->setOption('override-build-system', 'kde');
 # Should do nothing in --pretend
 ok($moduleList[1]->setupBuildSystem(), 'setup fake build system');
 
-ok(@ksb::test::CMD, 'log_command cmake was called');
-is(scalar (@ksb::test::CMD), 12);
+ok(@CMD, 'log_command cmake was called');
+is(scalar (@CMD), 12);
 
-is($ksb::test::CMD[ 0], 'cmake', 'CMake command should start with cmake');
-is($ksb::test::CMD[ 1], '-B',    'Passed build dir to cmake');
-is($ksb::test::CMD[ 2], '.',     'Passed cur dir as build dir to cmake');
-is($ksb::test::CMD[ 3], '-S',    'Pass source dir to cmake');
-is($ksb::test::CMD[ 4], '/tmp/setmod2', 'CMake command should specify source directory after -S');
-is($ksb::test::CMD[ 5], '-G', 'CMake generator should be specified explicitly');
-is($ksb::test::CMD[ 6], 'Unix Makefiles', 'Expect the default CMake generator to be used');
-is($ksb::test::CMD[ 7], '-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON', 'Per default we generate compile_commands.json');
-is($ksb::test::CMD[ 8], '-DCMAKE_BUILD_TYPE=a b', 'CMake options can be quoted');
-is($ksb::test::CMD[ 9], 'bar=c', 'CMake option quoting does not eat all options');
-is($ksb::test::CMD[10], 'baz', 'Plain CMake options are preserved correctly');
-is($ksb::test::CMD[11], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde", 'Prefix is passed to cmake');
+is($CMD[ 0], 'cmake', 'CMake command should start with cmake');
+is($CMD[ 1], '-B',    'Passed build dir to cmake');
+is($CMD[ 2], '.',     'Passed cur dir as build dir to cmake');
+is($CMD[ 3], '-S',    'Pass source dir to cmake');
+is($CMD[ 4], '/tmp/setmod2', 'CMake command should specify source directory after -S');
+is($CMD[ 5], '-G', 'CMake generator should be specified explicitly');
+is($CMD[ 6], 'Unix Makefiles', 'Expect the default CMake generator to be used');
+is($CMD[ 7], '-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON', 'Per default we generate compile_commands.json');
+is($CMD[ 8], '-DCMAKE_BUILD_TYPE=a b', 'CMake options can be quoted');
+is($CMD[ 9], 'bar=c', 'CMake option quoting does not eat all options');
+is($CMD[10], 'baz', 'Plain CMake options are preserved correctly');
+is($CMD[11], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde", 'Prefix is passed to cmake');
 
 # See https://phabricator.kde.org/D18165
 is($moduleList[0]->getOption('cxxflags'), '', 'empty cxxflags renders with no whitespace in module');

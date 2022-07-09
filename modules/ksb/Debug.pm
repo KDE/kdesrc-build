@@ -6,7 +6,7 @@ use ksb;
 
 use Exporter qw(import); # Steal Exporter's import method
 our @EXPORT = qw(debug pretending debugging whisper
-                 note info warning error pretend ksb_debug_inspect);
+                 note info warning error pretend);
 our @EXPORT_OK = qw(colorize);
 
 # Debugging level constants.
@@ -193,28 +193,6 @@ sub pretend :prototype(@)
                                      # Clear suffix is actually implicit
         print_clr(@lines);
     }
-}
-
-# Define an empty test package that ignores the inspect method but only if it
-# isn't already defined. "AUTOLOAD" does this for us in Perl.
-package ksb::test {
-    # See perldoc perlsub
-    our $AUTOLOAD;
-    sub AUTOLOAD {
-        my $method = $AUTOLOAD;
-        return; # eat method args and ignore
-    };
-
-    1;
-};
-
-# back to ksb::Debug
-
-sub ksb_debug_inspect
-{
-    # fwd args to inspect tap-point (overridden to work during tests, ignored
-    # during normal exec)
-    goto &ksb::test::inspect;
 }
 
 1;

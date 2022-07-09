@@ -387,7 +387,6 @@ sub log_command
     my $callbackRef = $optionsRef->{'callback'};
 
     debug ("log_command(): Module $module, Command: ", join(' ', @command));
-    ksb_debug_inspect('log_command', "$module", $filename, $argRef, $optionsRef);
 
     if (pretending())
     {
