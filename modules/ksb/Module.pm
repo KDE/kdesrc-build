@@ -35,6 +35,8 @@ use ksb::BuildSystem::Meson;
 
 use ksb::ModuleSet::Null;
 
+use Mojo::Util ();
+
 use Storable 'dclone';
 use Carp 'confess';
 use Scalar::Util 'blessed';
@@ -886,7 +888,7 @@ sub getOption
     # Some options append to the global (e.g. conf flags)
     my @confFlags = qw(cmake-options configure-flags cxxflags);
     if (list_has(\@confFlags, $key) && $ctxValue) {
-        return trimmed("$ctxValue " . ($self->{options}{$key} || ''));
+        return Mojo::Util::trim("$ctxValue " . ($self->{options}{$key} || ''));
     }
 
     # Everything else overrides the global option, unless it's simply not

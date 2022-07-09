@@ -28,6 +28,7 @@ use ksb::IPC::Null;
 use ksb::Updater::Git;
 
 use Mojo::IOLoop;
+use Mojo::Util ();
 
 use Scalar::Util qw(blessed);
 use List::Util qw(first min);
@@ -771,7 +772,7 @@ sub _splitOptionAndValue
                             # So, skip spaces and pick up the rest of the line.
                             (?:\s+(.*))?$/x);
 
-    $value = trimmed($value // '');
+    $value = Mojo::Util::trim($value // '');
 
     # Simplify whitespace.
     $value =~ s/\s+/ /g;

@@ -1,7 +1,7 @@
 # Test basic option reading from rc-files
 
 use ksb;
-use ksb::Util qw(trimmed); # load early so we can override
+use ksb::Util (); # load early so we can override
 
 use Mojo::Util qw(monkey_patch);
 

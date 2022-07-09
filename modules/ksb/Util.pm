@@ -15,12 +15,14 @@ use ksb::Debug;
 use ksb::Version qw(scriptVersion);
 use ksb::BuildException;
 
+use Mojo::Util qw(trim);
+
 use Exporter qw(import); # Use Exporter's import method
 our @EXPORT = qw(assert_isa assert_in
 
                  list_has any unique_items get_list_digest
 
-                 trimmed split_quoted_on_whitespace prettify_seconds
+                 split_quoted_on_whitespace prettify_seconds
 
                  log_command filter_program_output
                  disable_locale_message_translation locate_exe
@@ -511,28 +513,18 @@ EOF
     }
 }
 
-# removes leading/trailing whitespace
-sub trimmed
-{
-    my $str = shift;
-    $str =~ s/^\s+//;
-    $str =~ s/\s+$//;
-    return $str;
-}
-
 # This subroutine acts like split(' ', $_) except that double-quoted strings
 # are not split in the process.
 #
 # First parameter: String to split on whitespace.
 # Return value: A list of the individual words and quoted values in the string.
 # The quotes themselves are not returned.
-sub split_quoted_on_whitespace
+sub split_quoted_on_whitespace ($line)
 {
     use Text::ParseWords qw(parse_line);
-    my $line = trimmed(shift);
 
     # 0 means not to keep delimiters or quotes
-    return parse_line('\s+', 0, $line);
+    return parse_line('\s+', 0, trim($line));
 }
 
 # Function: pretend_open
