@@ -32,6 +32,7 @@ use Mojo::IOLoop;
 use Scalar::Util qw(blessed);
 use List::Util qw(first min);
 use File::Basename; # basename, dirname
+use File::Copy ();  # copy
 use File::Glob ':glob';
 use POSIX qw(:sys_wait_h _exit :errno_h);
 use IO::Handle;
@@ -2223,18 +2224,15 @@ sub _installTemplatedFile
 # 4. The key name to use for searching/recording installed MD5 digest.
 #
 # Return value: There is no return value.
-sub _installCustomFile
+sub _installCustomFile ($ctx, $sourceFilePath, $destFilePath, $md5KeyName)
 {
-    use File::Copy qw(copy);
-
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my ($sourceFilePath, $destFilePath, $md5KeyName) = @_;
+    assert_isa($ctx, 'ksb::BuildContext');
     my $baseName = basename($sourceFilePath);
 
     if (-e $destFilePath) {
         my $existingMD5 = $ctx->getPersistentOption('/digests', $md5KeyName) // '';
 
-        if (fileDigestMD5($destFilePath) ne $existingMD5) {
+        if (file_digest_md5($destFilePath) ne $existingMD5) {
             if (!$ctx->getOption('#delete-my-settings')) {
                 error ("\tr[*] Installing \"b[$baseName]\" would overwrite an existing file:");
                 error ("\tr[*]  y[b[$destFilePath]");
@@ -2242,16 +2240,15 @@ sub _installCustomFile
                 error ("\tr[*] or pass b[--delete-my-settings] and re-run.");
 
                 return;
-            }
-            elsif (!pretending()) {
-                copy ($destFilePath, "$destFilePath.kdesrc-build-backup");
+            } elsif (!pretending()) {
+                File::Copy::copy ($destFilePath, "$destFilePath.kdesrc-build-backup");
             }
         }
     }
 
     if (!pretending()) {
         _installTemplatedFile($sourceFilePath, $destFilePath, $ctx);
-        $ctx->setPersistentOption('/digests', $md5KeyName, fileDigestMD5($destFilePath));
+        $ctx->setPersistentOption('/digests', $md5KeyName, file_digest_md5($destFilePath));
     }
 }
 
@@ -2361,8 +2358,8 @@ sub _checkForEssentialBuildPrograms
             meson => 'Meson',
         );
 
-        my $preferredPath = absPathToExecutable($prog, @preferred_paths);
-        my $programPath = $preferredPath || absPathToExecutable($prog);
+        my $preferredPath = locate_exe($prog, @preferred_paths);
+        my $programPath = $preferredPath || locate_exe($prog);
 
         # qmake is not necessarily named 'qmake'
         if (!$programPath && $prog eq 'qmake') {

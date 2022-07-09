@@ -180,7 +180,7 @@ sub defaultBuildCommand
     # Convert the path to an absolute path since I've encountered a sudo
     # that is apparently unable to guess.  Maybe it's better that it
     # doesn't guess anyways from a security point-of-view.
-    my $buildCommand = first { absPathToExecutable($_) } $self->buildCommands();
+    my $buildCommand = first { locate_exe($_) } $self->buildCommands();
     return $buildCommand;
 }
 
@@ -402,7 +402,7 @@ sub safe_make($self, $optsRef)
     if ($commandToUse) {
         ($buildCommand, @buildCommandLine) = split_quoted_on_whitespace($commandToUse);
         $commandToUse = $buildCommand; # Don't need whole cmdline in any errors.
-        $buildCommand = absPathToExecutable($buildCommand);
+        $buildCommand = locate_exe($buildCommand);
     }
     else {
         # command line options passed in optsRef

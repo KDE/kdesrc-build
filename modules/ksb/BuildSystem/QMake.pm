@@ -42,7 +42,7 @@ sub needsBuilddirHack
 sub absPathToQMake
 {
     my @possibilities = qw/qmake qmake4 qmake-qt4 qmake-mac qmake-qt5/;
-    return first { absPathToExecutable($_) } @possibilities;
+    return first { locate_exe($_) } @possibilities;
 }
 
 # Return value style: boolean

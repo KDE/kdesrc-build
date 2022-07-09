@@ -23,9 +23,9 @@ our @EXPORT = qw(assert_isa assert_in
                  trimmed split_quoted_on_whitespace prettify_seconds
 
                  log_command filter_program_output
-                 disable_locale_message_translation absPathToExecutable
+                 disable_locale_message_translation locate_exe
 
-                 fileDigestMD5 safe_unlink safe_system p_chdir
+                 file_digest_md5 safe_unlink safe_system p_chdir
                  pretend_open safe_rmtree is_dir_empty
                  super_mkdir
                  );
@@ -45,13 +45,13 @@ sub list_has
 # Subroutine to return the path to the given executable based on the
 # either the given paths or the current PATH.
 # E.g.:
-# absPathToExecutable('make') -> '/usr/bin/make'
-# absPathToExecutable('make', 'foo', 'bar') -> /foo/make
+# locate_exe('make') -> '/usr/bin/make'
+# locate_exe('make', 'foo', 'bar') -> /foo/make
 # If the executable is not found undef is returned.
 #
 # This assumes that the module environment has already been updated since
 # binpath doesn't exactly correspond to $ENV{'PATH'}.
-sub absPathToExecutable
+sub locate_exe
 {
     my ($prog, @preferred) = @_;
 
@@ -164,13 +164,12 @@ sub super_mkdir
 # First parameter: File name to read
 # Return value: hex string MD5 digest of file.
 # An exception is thrown if an error occurs reading the file.
-sub fileDigestMD5
+sub file_digest_md5 ($fileName)
 {
-    my $fileName = shift;
     my $md5 = Digest::MD5->new;
 
-    open my $file, '<', $fileName or croak_runtime(
-        "Unable to open $fileName: $!");
+    open (my $file, '<', $fileName)
+        or croak_runtime("Unable to open $fileName: $!");
     binmode($file);
 
     $md5->addfile($file);
@@ -227,7 +226,7 @@ sub filter_program_output
     # Check early for whether an executable exists since otherwise
     # it is possible for our fork-open below to "succeed" (i.e. fork()
     # happens OK) and then fail when it gets to the exec(2) syscall.
-    if (!absPathToExecutable($program)) {
+    if (!locate_exe($program)) {
         croak_runtime("Can't find $program in PATH!");
     }
 
