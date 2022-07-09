@@ -1,56 +1,111 @@
-package ksb::PhaseList;
-
-# Handles the "phases" for kdesrc-build, e.g. a simple list of phases,
-# and methods to add, clear, or filter out phases.
+package ksb::PhaseList 0.20;
 
 use ksb;
 
-our $VERSION = '0.10';
+=head1 SYNOPSIS
 
-use ksb::Util;
+ my $phases = ksb::PhaseList->new;
+ $mod->createBuildSystem() if $phases->has('buildsystem');
+ $phases->filterOutPhase('update') if $ctx->getOption('build-only');
 
-# Constructor. Passed in values are the initial phases in this set.
-sub new
+=cut
+
+=head1 DESCRIPTION
+
+Handles the "phases" for kdesrc-build, e.g. a simple list of phases, and
+methods to add, clear, or filter out phases.  Meant to be assigned to a
+L<ksb::Module>.
+
+=cut
+
+=head1 METHODS
+
+=head2 new
+
+ my $phases1 = ksb::PhaseList->new; # default phases
+ say "phases are " . join(', ', @{$phases1});
+
+ my $phases2 = ksb::PhaseList->new(qw(update test install));
+
+Constructs a new phase list, with the provided list of phases or
+a default set of none are provided.
+
+Returns a blessed listref.
+
+=cut
+
+sub new ($class, @args)
 {
-    my ($class, @args) = @_;
     push @args, qw(update build install)
         unless @args;
     return bless [@args], $class;
 }
 
-# Filters out the given phase from the current list of phases.
-sub filterOutPhase
+=head2 filterOutPhase
+
+Instance method which removes the given phase from the list, if present.
+Returns the instance.
+
+=cut
+
+sub filterOutPhase ($self, $phase)
 {
-    my ($self, $phase) = @_;
     @{$self} = grep { $_ ne $phase } @{$self};
+    return $self;
 }
 
-# Adds the requested phase to the list of phases to build.
-sub addPhase
+=head2 addPhase
+
+Instance method which adds the given phase to the phase list at the end.
+
+This is probably a misfeature; use L<splice|perlfunc/"splice"> to add the phase
+in the right spot if it's not at the end.
+
+=cut
+
+sub addPhase ($self, $phase)
 {
-    my ($self, $phase) = @_;
-    push @{$self}, $phase unless list_has([@{$self}], $phase);
+    push @{$self}, $phase
+        unless $self->has($phase);
+    return $self;
 }
 
-# Returns true if the given phase name is present in this list.
-sub has
+=head2 has
+
+Instance method which returns true if the given phase is in the phase list.
+
+=cut
+
+sub has ($self, $phase)
 {
-    my ($self, $phase) = @_;
     return grep { $_ eq $phase } (@{$self});
 }
 
-# Get/sets number of phases depending on whether any are passed in.
-sub phases
+=head2 phases
+
+Instance method. If provided a list, clears the existing list of phases and
+resets them to the provided list. If not provided a list, returns the list of
+phases without modifying the instance.
+
+=cut
+
+sub phases ($self, @args)
 {
-    my ($self, @args) = @_;
-    @$self = @args if scalar @args;
+    @$self = @args
+        if scalar @args;
     return @$self;
 }
 
-sub clear
+=head2 clear
+
+Instance method that empties the phase list.
+
+=cut
+
+sub clear ($self)
 {
-    my $self = shift;
     splice @$self;
+    return $self;
 }
 
 1;

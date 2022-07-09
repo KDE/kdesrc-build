@@ -11,7 +11,6 @@ our $VERSION = '0.20';
 
 use ksb::BuildException; # make_exception
 use ksb::Debug;
-use ksb::Util; # list_has
 
 # IPC message types
 use constant {
