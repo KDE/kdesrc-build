@@ -1,11 +1,13 @@
-package ksb::Updater;
-
-# Base class for classes that handle updating the source code for a given ksb::Module.
-# It should not be used directly.
+package ksb::Updater 0.20;
 
 use ksb;
 
-our $VERSION = '0.10';
+=head1 DESCRIPTION
+
+Base class for classes that handle updating the source code for a given
+L<ksb::Module>.  It should not be used directly.
+
+=cut
 
 use ksb::BuildException;
 

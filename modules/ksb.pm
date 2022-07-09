@@ -58,11 +58,19 @@ Some or all of the following may be helpful as well:
 
 =item *
 
+L<ksb::BuildSystem>
+
+=item *
+
 L<ksb::Cmdline>
 
 =item *
 
 L<ksb::FirstRun>
+
+=item *
+
+L<ksb::Module>
 
 =item *
 
@@ -79,5 +87,9 @@ L<ksb::OSSupport>
 =item *
 
 L<ksb::PhaseList>
+
+=item *
+
+L<ksb::Updater>
 
 =back

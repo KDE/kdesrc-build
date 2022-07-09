@@ -1,12 +1,29 @@
 package ksb::Module 0.20;
 
-# Class: Module
-#
-# Represents a source code module of some sort, which can be updated, built,
-# and installed. Includes a stringifying overload and can be sorted amongst
-# other ksb::Modules.
-
 use ksb;
+
+=head1 SYNOPSIS
+
+ my $module = ksb::Module->new($ctx, 'module-name');
+ $module->update() or die "no update!";
+ $module->build()  or die "no build/install!";
+
+ my @modulesFromSet = $moduleSet->convertToModules($ctx);
+ say "module name: $_" foreach @modulesFromSet;
+
+=cut
+
+=head1 DESCRIPTION
+
+A subclass of L<ksb::OptionsBase>, which represents a source code module of some
+sort that can be updated, built, tested and installed.
+
+This uses abstract interfaces to represent the buildsystem and the source code
+version control system (L<ksb::BuildSystem> and L<ksb::Updater> respectively).
+
+Includes a stringifying overload and can be sorted amongst other ksb::Modules.
+
+=cut
 
 use parent qw(ksb::OptionsBase);
 

@@ -1,10 +1,28 @@
 package ksb::BuildSystem 0.30;
 
-# Base module for the various build systems, includes built-in implementations of
-# generic functions and supports hooks for subclasses to provide needed detailed
-# functionality.
-
 use ksb;
+
+=head1 SYNOPSIS
+
+ my $buildsys = $module->buildSystem(); # auto-detects
+
+ $buildsys->prepareModuleBuildEnvironment()
+   unless $buildsys->hasToolchain();
+
+ my $results = $buildsys->buildInternal();
+
+ $buildsys->installInternal()
+   if ($results->{was_successful} && $buildsys->needsInstalled());
+
+=cut
+
+=head1 DESCRIPTION
+
+Abstract base module for the various build systems, includes built-in
+implementations of generic functions and supports hooks for subclasses to
+provide needed detailed functionality.
+
+=cut
 
 use ksb::BuildException;
 use ksb::Debug;
