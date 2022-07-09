@@ -16,13 +16,19 @@ use ksb::Version qw(scriptVersion);
 use ksb::BuildException;
 
 use Exporter qw(import); # Use Exporter's import method
-our @EXPORT = qw(list_has assert_isa assert_in any unique_items
-                 absPathToExecutable
-                 fileDigestMD5 log_command disable_locale_message_translation
-                 trimmed
-                 split_quoted_on_whitespace safe_unlink safe_system p_chdir
-                 pretend_open safe_rmtree get_list_digest is_dir_empty
-                 super_mkdir filter_program_output prettify_seconds);
+our @EXPORT = qw(assert_isa assert_in
+
+                 list_has any unique_items get_list_digest
+
+                 trimmed split_quoted_on_whitespace prettify_seconds
+
+                 log_command filter_program_output
+                 disable_locale_message_translation absPathToExecutable
+
+                 fileDigestMD5 safe_unlink safe_system p_chdir
+                 pretend_open safe_rmtree is_dir_empty
+                 super_mkdir
+                 );
 
 # Function to work around a Perl language limitation.
 # First parameter is a reference to the list to search. ALWAYS.
