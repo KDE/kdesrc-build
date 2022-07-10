@@ -58,6 +58,14 @@ Some or all of the following may be helpful as well:
 
 =item *
 
+L<ksb::Application>
+
+=item *
+
+L<ksb::BuildContext>
+
+=item *
+
 L<ksb::BuildSystem>
 
 =item *
@@ -87,6 +95,10 @@ L<ksb::OSSupport>
 =item *
 
 L<ksb::PhaseList>
+
+=item *
+
+L<ksb::TaskManager>
 
 =item *
 

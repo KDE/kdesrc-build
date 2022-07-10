@@ -1,11 +1,43 @@
 package ksb::BuildContext 0.35;
 
-# Class: BuildContext
-#
-# This contains the information needed about the build context, e.g.  list of
-# modules, what phases each module is in, the various options, etc.
-
 use ksb;
+
+=head1 SYNOPSIS
+
+ my $ctx = ksb::BuildContext->new();
+
+ $ctx->setRcFile('/path/to/kdesrc-buildrc');
+ my $fh = $ctx->loadRcFile();
+
+ ...
+
+ for my $modName (@selectors) {
+   $ctx->addModule(ksb::Module->new($modName, $ctx);
+ }
+
+ ...
+ my @moduleList = $ctx->moduleList();
+
+=head1 DESCRIPTION
+
+This contains the information needed about the build context, e.g.  list of
+modules, what phases each module is in, the various options, etc.
+
+It also records information on which modules encountered errors (and what
+error), where to put log files, persistent options that should be available on
+the next run, and basically anything else that falls into the category of state
+management.
+
+=head2 The 'global' module
+
+One interesting thing about this class is that, as a state-managing class, this
+class implements the role of L<ksb::Module> for the pseudo-module called
+'global' throughout the source code (and whose options are defined in the
+'global' section in the rc-file).  It is also a parent to every ksb::Module in
+terms of the option hierarchy, serving as a fallback source for ksb::Module's
+getOption() calls for most (though not all!) options.
+
+=cut
 
 use Carp 'confess';
 use File::Basename; # dirname
@@ -37,6 +69,7 @@ use File::Spec; # rel2abs
 # default to ~/.local/state
 my $xdgStateHome = $ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state";
 my $xdgStateHomeShort = $xdgStateHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
+
 # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
 # default to ~/.config
 my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
@@ -138,13 +171,12 @@ our %defaultGlobalOptions = (
     "tag"                  => "",
 );
 
-sub new
+sub new ($class)
 {
-    my ($class, @args) = @_;
-
     # It is very important to use the ksb::Module:: syntax instead of ksb::Module->,
     # otherwise you can't pass $class and have it used as the classname.
     my $self = ksb::Module::new($class, undef, 'global');
+
     my %newOpts = (
         modules => [],
         context => $self, # Fix link to buildContext (i.e. $self)

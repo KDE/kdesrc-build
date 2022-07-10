@@ -9,7 +9,6 @@ use parent qw(ksb::Updater::Git);
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::IPC::Null;
 use ksb::Util;
 
 sub name
