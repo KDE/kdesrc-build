@@ -13,6 +13,8 @@ use ksb::Debug;
 use ksb::IPC::Null;
 use ksb::Util;
 
+use Mojo::File;
+
 use File::Basename; # basename
 use File::Spec;     # tmpdir
 use POSIX qw(strftime);
@@ -474,9 +476,7 @@ sub updateExistingClone
     my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
     if ($commitType eq 'none') {
         $commitType = 'branch';
-        my @headRef = filter_program_output(undef, # no filter
-            qw(git symbolic-ref HEAD));
-        chomp($commitId = ($headRef[0] =~ s,^refs/heads/,,r) // '???');
+        $commitId = $self->_detectDefaultRemoteHead($remoteName);
     }
 
     note ("Merging g[$module] changes from $commitType b[$commitId]");
@@ -495,6 +495,25 @@ sub updateExistingClone
     # changes.
     $self->stashAndUpdate($updateSub);
     return count_command_output('git', 'rev-list', "$start_commit..HEAD");
+}
+
+# Tries to determine the best remote branch name to use as a default if the
+# user hasn't selected one, by resolving the remote symbolic ref "HEAD" from
+# its entry in the .git dir.  This can also be found by introspecting the
+# output of "git remote show $REMOTE_NAME" or "git branch -r" but these are
+# incredibly slow.
+sub _detectDefaultRemoteHead ($self, $remoteName)
+{
+    croak_internal ("Run " . __SUB__ . " from git repo!")
+        unless -d '.git';
+    my $data = Mojo::File->new(".git/refs/remotes/$remoteName/HEAD")->slurp;
+
+    my ($head) = ($data // '') =~ m,^ref: *refs/remotes/[^/]+/([^/]+)$,;
+    croak_runtime ("Can't find HEAD for remote $remoteName")
+        unless $head;
+
+    chomp($head);
+    return $head;
 }
 
 # Goes through all the various combination of git checkout selection options in
