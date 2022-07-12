@@ -249,8 +249,14 @@ EOF
         die (make_exception('Config', 'svn-server and repository both set'));
     }
 
-    # Overload repository to allow bzr URLs?
     if ($repository =~ /^bzr:\/\//) {
+        # DEPRECATED. REMOVE AFTER 2022-08-11
+        warning(<<EOF);
+b[y[*] Module b[$self] uses a deprecated build system. Support will be removed shortly.
+b[y[*] You should remove b[$self] from your configuration.
+EOF
+
+        $self->addPostBuildMessage("Module $self needs removed from your config file, as it uses the unsupported 'bzr' version control system");
         $self->{scm_obj} = ksb::Updater::Bzr->new($self);
     }
 
@@ -274,7 +280,7 @@ sub setScmType
         when('proj') { $newType = ksb::Updater::KDEProject->new($self); }
         when('metadata') { $newType = ksb::Updater::KDEProjectMetadata->new($self); }
         when('svn')  { $newType = ksb::Updater::Svn->new($self); }
-        when('bzr')  { $newType = ksb::Updater::Bzr->new($self); }
+        when('bzr')  { croak_internal ("Tried to set bzr scm type"); }
         when('qt5')  { $newType = ksb::Updater::Qt5->new($self); }
         default      { $newType = undef; }
     }
