@@ -26,7 +26,7 @@ provide needed detailed functionality.
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT prune_under_directory_p);
 use ksb::StatusView;
 
 use List::Util qw(max min first);
@@ -313,20 +313,25 @@ sub cleanBuildSystem
     my $srcdir = $module->fullpath('source');
     my $builddir = $module->fullpath('build');
 
-    if (pretending())
-    {
+    if (pretending()) {
         pretend ("\tWould have cleaned build system for g[$module]");
         return 1;
     }
 
     # Use an existing directory
-    if (-e $builddir && $builddir ne $srcdir)
-    {
+    if (-e $builddir && $builddir ne $srcdir) {
         info ("\tRemoving files in build directory for g[$module]");
+
+        my $result;
+        my $clean_promise = prune_under_directory_p($module, $builddir)->then(sub ($r) {
+            $result = $r;
+        });
+
+        $clean_promise->wait;
 
         # This variant of log_command runs the sub prune_under_directory($builddir)
         # in a forked child, so that we can log its output.
-        if (log_command($module, 'clean-builddir', [ 'kdesrc-build', 'ksb::Util::prune_under_directory', $builddir ]))
+        if (!$result)
         {
             error (" r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.");
             return 0; # False for this function.
@@ -335,10 +340,7 @@ sub cleanBuildSystem
         # Let users know we're done so they don't wonder why rm -rf is taking so
         # long and oh yeah, why's my HD so active?...
         info ("\tOld build system cleaned, starting new build system.");
-    }
-    # or create the directory
-    elsif (!super_mkdir ($builddir))
-    {
+    } elsif (!super_mkdir ($builddir)) {
         error ("\tUnable to create directory r[$builddir].");
         return 0;
     }

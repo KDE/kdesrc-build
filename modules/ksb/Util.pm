@@ -4,6 +4,13 @@ package ksb::Util 0.30;
 
 use ksb;
 
+=head1 DESCRIPTION
+
+Various helpful methods.  This documentation doesn't cover them all currently,
+take a peek at the source.
+
+=cut
+
 use Scalar::Util qw(blessed);
 use File::Path qw(make_path remove_tree);
 use File::Find;
@@ -32,7 +39,11 @@ our @EXPORT = qw(assert_isa assert_in
                  pretend_open safe_rmtree is_dir_empty
                  super_mkdir
                  );
-our @EXPORT_OK = qw(run_logged_p);
+our @EXPORT_OK = qw(run_logged_p prune_under_directory_p);
+
+=head1 FUNCTIONS
+
+=cut
 
 # Function to work around a Perl language limitation.
 # First parameter is a reference to the list to search. ALWAYS.
@@ -823,37 +834,62 @@ sub safe_lndir
     return 1;
 }
 
-# Subroutine to delete recursively, everything under the given directory,
-# unless we're in pretend mode.
-#
-# Used from ksb::BuildSystem to handle cleaning a build directory.
-#
-# i.e. the effect is similar to "rm -r $arg/* $arg/.*".
-#
-# This assumes we're called from a separate child process.  Therefore the
-# normal logging routines are /not used/, since our output will be logged
-# by the parent kdesrc-build.
-#
-# The first parameter should be the absolute path to the directory to delete.
-#
-# Returns boolean true on success, boolean false on failure.
-sub prune_under_directory
-{
-    my $dir = shift;
-    my $errorRef;
+=head2 prune_under_directory_p
 
-    print "starting delete of $dir\n";
-    eval {
-        remove_tree($dir, { keep_root => 1, error => \$errorRef });
+Subroutine to delete recursively, everything under the given directory, unless
+we're in pretend mode.
+
+Used from L<ksb::BuildSystem> to handle cleaning a build directory.
+
+i.e. the effect is similar to C<rm -r $arg/* $arg/.*>.
+
+ # promise resolves to a boolean success flag
+ my $promise = prune_under_directory_p($module, '/path/to/clean');
+
+Returns a promise resolving to boolean true on success, boolean false on
+failure.
+=cut
+
+sub prune_under_directory_p ($module, $dir)
+{
+    my $logpath = $module->getLogPath("clean-builddir.log");
+    open (my $log, '>', $logpath) or do {
+        error ("\tError opening logfile $logpath: r[b[$!]");
+        error ("\tContinuing without logging");
     };
 
-    if ($@ || @$errorRef)
-    {
+    say $log "starting delete of $dir";
+
+    my $promise = eval {
+        my $subprocess = Mojo::IOLoop::Subprocess->new;
+        return $subprocess->run_p(sub {
+            my $errorRef;
+            remove_tree($dir, {
+                keep_root => 1,
+                error     => \$errorRef,
+                safe      => 1,
+            });
+
+            if ($errorRef && @{$errorRef}) {
+                foreach my $err (@{$errorRef}) {
+                    my ($file, $msg) = %{$err};
+                    $file //= 'general error';
+                    say $log "$file: error: $msg";
+                }
+
+                return 0;
+            } else {
+                return 1;
+            }
+        });
+    };
+
+    if ($@) {
         error ("\tUnable to clean r[$dir]:\n\ty[b[$@]");
-        return 0;
+        return Mojo::Promise->resolve(0); # resolve, but to an error
     }
 
-    return 1;
+    return $promise;
 }
 
 1;
