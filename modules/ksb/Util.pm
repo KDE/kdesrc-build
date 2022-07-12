@@ -15,6 +15,7 @@ use ksb::Debug;
 use ksb::Version qw(scriptVersion);
 use ksb::BuildException;
 
+use Mojo::IOLoop::Subprocess;
 use Mojo::Util qw(trim);
 
 use Exporter qw(import); # Use Exporter's import method
@@ -31,6 +32,7 @@ our @EXPORT = qw(assert_isa assert_in
                  pretend_open safe_rmtree is_dir_empty
                  super_mkdir
                  );
+our @EXPORT_OK = qw(run_logged_p);
 
 # Function to work around a Perl language limitation.
 # First parameter is a reference to the list to search. ALWAYS.
@@ -333,6 +335,11 @@ sub _setErrorLogfile
 
     my $logdir = $module->getLogDir();
 
+    if ($module->hasStickyOption('error-log-file')) {
+        error("$module already has error log set, tried to set to r[b[$logfile]");
+        return;
+    }
+
     $module->setOption('#error-log-file', "$logdir/$logfile");
     debug ("Logfile for $module is $logfile");
 
@@ -395,8 +402,7 @@ sub log_command
 
     debug ("log_command(): Module $module, Command: ", join(' ', @command));
 
-    if (pretending())
-    {
+    if (pretending()) {
         pretend ("\tWould have run g['" . join ("' '", @command) . "'");
         return 0;
     }
@@ -511,6 +517,62 @@ EOF
             POSIX::_exit (1);
         };
     }
+}
+
+=head2 run_logged_p
+
+This is similar to C<log_command> in that this runs the given command and
+arguments in a separate process. The difference is that this command
+I<does not wait> for the process to finish, and instead returns a
+L<Mojo::Promise> that resolves to the exit status of the sub-process.
+
+This is useful in permitting concurrent code without needing to resolve
+significant changes from a separate thread of execution over time.
+
+ my $promise = run_logged_p($module, 'build', [qw(make -j8)]);
+ $promise->then(sub ($result) {
+   say "Process result: $result";
+ })->wait;
+
+Another important difference is that fewer options are currently supported.
+In particular there is no built-in way to filter the program output or to
+force off locale translations.
+
+=cut
+
+sub run_logged_p ($module, $filename, $argRef)
+{
+    {
+        local $" = "', '"; # list separator
+        debug ("run_logged_p(): Module $module, Command: ['$argRef->@*']");
+        if (pretending()) {
+            pretend ("\tWould have run g['$argRef->@*']");
+            return Mojo::Promise->resolve(0);
+        }
+    }
+
+    my $subprocess = Mojo::IOLoop::Subprocess->new;
+
+    my $promise = $subprocess->run_p(sub {
+        # This happens in a CHILD PROCESS, not in the main process!
+        # This means that changes made by log_command or function calls made
+        # via log_command will not be saved or noted unless they are made part
+        # of the return value, or sent earlier via a 'progress' event.
+
+        return log_command($module, $filename, $argRef);
+    })->then(sub ($exitcode) {
+        # This happens back in the main process, so we can reintegrate the
+        # changes into our data structures if needed.
+
+        debug ("run_logged_p(): $module $filename complete: $exitcode");
+
+        _setErrorLogfile($module, "$filename.log")
+            unless $exitcode == 0;
+
+        return $exitcode;
+    });
+
+    return $promise;
 }
 
 # This subroutine acts like split(' ', $_) except that double-quoted strings

@@ -104,4 +104,8 @@ L<ksb::TaskManager>
 
 L<ksb::Updater>
 
+=item *
+
+L<ksb::Util>
+
 =back

@@ -4,6 +4,7 @@ use ksb;
 use ksb::Util (); # load early so we can override
 
 use Mojo::Util qw(monkey_patch);
+use Mojo::Promise;
 
 use Test::More;
 use Carp qw(confess);
@@ -11,25 +12,24 @@ use Carp qw(confess);
 # Override ksb::Util::log_command for final test to see if it is called with
 # 'cmake'
 my @CMD;
-my %OPTS;
 
 # Very important that this happens in a BEGIN block so that it happens before
 # ksb::Application is loaded, so that ksb::Util's log_command method can be
 # overridden before it is copied to dependents packages' symbol tables
 BEGIN {
     monkey_patch('ksb::Util',
-        log_command => sub ($module, $filename, $argRef, $optionsRef={}) {
+        run_logged_p => sub ($module, $filename, $argRef) {
             confess "No arg to module" unless $argRef;
             my @command = @{$argRef};
             if (grep { $_ eq 'cmake' } @command) {
                 @CMD = @command;
-                %OPTS = %{$optionsRef};
             }
+            return Mojo::Promise->resolve(0);
         });
 }
 
 # Now we can load ksb::Application, which will load a bunch more modules all
-# using log_command from ksb::Util
+# using log_command and run_logged_p from ksb::Util
 use ksb::Application;
 
 my $app = ksb::Application->new(qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc));
@@ -66,7 +66,7 @@ $moduleList[1]->setOption('override-build-system', 'kde');
 # Should do nothing in --pretend
 ok($moduleList[1]->setupBuildSystem(), 'setup fake build system');
 
-ok(@CMD, 'log_command cmake was called');
+ok(@CMD, 'run_logged_p cmake was called');
 is(scalar (@CMD), 12);
 
 is($CMD[ 0], 'cmake', 'CMake command should start with cmake');

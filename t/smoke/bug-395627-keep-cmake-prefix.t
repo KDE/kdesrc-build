@@ -3,6 +3,7 @@
 # See bug 395627 -- https://bugs.kde.org/show_bug.cgi?id=395627
 
 use ksb;
+
 use Test::More;
 
 my @savedCommand;
@@ -14,17 +15,15 @@ my $log_called = 0;
 # package symbol tables.
 BEGIN {
     use ksb::Util;
+    use Mojo::Promise;
 
     no strict 'refs';
     no warnings 'redefine';
 
-    *ksb::Util::log_command = sub {
+    *ksb::Util::run_logged_p = sub ($module, $filename, $argRef) {
         $log_called = 1;
-
-        my ($module, $filename, $argRef, $optionsRef) = @_;
-        my @command = @{$argRef};
-        @savedCommand = @command;
-        return 0; # success
+        @savedCommand = @{$argRef};
+        return Mojo::Promise->resolve(0); # success
     };
 }
 

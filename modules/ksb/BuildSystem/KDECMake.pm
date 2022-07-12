@@ -8,7 +8,7 @@ use parent qw(ksb::BuildSystem);
 
 use ksb::BuildContext 0.30;
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT run_logged_p);
 
 use List::Util qw(first);
 
@@ -474,7 +474,14 @@ sub _safe_run_cmake
         safe_unlink ("$builddir/CMakeCache.txt") if -e "$builddir/CMakeCache.txt";
 
         $module->setPersistentOption('last-cmake-options', get_list_digest(@commands));
-        return log_command($module, "cmake", \@commands);
+
+        my $result;
+        my $promise = run_logged_p($module, "cmake", \@commands)->then(sub ($exitcode) {
+            $result = $exitcode;
+        });
+
+        $promise->wait;
+        return $result;
     }
 
     # Skip cmake run
