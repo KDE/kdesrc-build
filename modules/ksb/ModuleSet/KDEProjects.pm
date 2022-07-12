@@ -108,8 +108,6 @@ sub _expandModuleCandidates
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $moduleSearchItem = shift;
 
-    whisper("There are " . (scalar keys %{$ctx->getProjectDataReader()->{repositories}}) . " repos in db.");
-
     my @allModuleResults = $ctx->
             getProjectDataReader()->
             getModulesForProject($moduleSearchItem);
