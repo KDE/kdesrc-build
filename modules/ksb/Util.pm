@@ -485,8 +485,7 @@ sub log_command
                 error ("Error opening pipe to tee command.");
                 # Don't abort, hopefully STDOUT still works.
             };
-        }
-        else {
+        } else {
             open (STDOUT, '>', $logpath) or do {
                 error ("Error $! opening log to $logpath!");
             };
@@ -571,6 +570,10 @@ sub run_logged_p ($module, $filename, $argRef)
     }
 
     my $subprocess = Mojo::IOLoop::Subprocess->new;
+
+    # Do this before we fork so the path is finalized to prevent auto-detection
+    # in the child
+    my $logpath = $module->getLogPath("$filename.log");
 
     my $promise = $subprocess->run_p(sub {
         # This happens in a CHILD PROCESS, not in the main process!

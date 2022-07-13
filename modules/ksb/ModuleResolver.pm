@@ -83,7 +83,6 @@ sub _applyOptions
 
         # Apply deferred options first
         $m->setOption(%{$deferredOptionsRef->{$name} // {}});
-        $m->getLogDir() if $m->isa('ksb::Module');
 
         # Most of time cmdline options will be empty
         if (%$cmdlineOptionsRef) {

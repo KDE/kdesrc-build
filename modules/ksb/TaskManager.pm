@@ -370,6 +370,11 @@ sub _handle_async_build ($ipc, $ctx)
 
     print "\n"; # Space out from metadata messages.
 
+    # Before we fork we should pre-calculate where the logs will go so that the
+    # children do not try to do the same calculation independently because they
+    # didn't know it's already been figured out.
+    $_->getLogDir() foreach @{$ctx->moduleList()};
+
     my $result = 0;
     my $monitorPid = fork;
     if ($monitorPid == 0) {

@@ -702,8 +702,18 @@ sub finish ($self, $exitcode = 0)
     # reset it to what it was before
     $self->_returnToPreviousPowerProfileIfNeeded();
 
-    my $logdir = $ctx->getLogDir();
-    note ("Your logs are saved in file://y[$logdir]");
+    # modules in different source dirs may have different log dirs. If there
+    # are multiple, show them all.
+
+    my $globalLogBase = $ctx->getSubdirPath('log-dir');
+    my $globalLogDir  = $ctx->getLogDir();
+    # global first
+    note ("Your logs are saved in file://y[$globalLogDir]");
+
+    while((my $base, my $log) = each %{$ctx->{logPaths}}) {
+        note ("  (additional logs are saved in file://y[$log])")
+            if $base ne $globalLogBase;
+    }
 
     exit $exitcode;
 }
