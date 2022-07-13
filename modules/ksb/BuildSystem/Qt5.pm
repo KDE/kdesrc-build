@@ -7,7 +7,7 @@ use ksb;
 use ksb::BuildException;
 use ksb::BuildSystem;
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT run_logged_p);
 
 use parent qw(ksb::BuildSystem);
 
@@ -82,22 +82,25 @@ EOF
     my $old_flags = $module->getPersistentOption('last-configure-flags') || '';
     my $cur_flags = get_list_digest(@commands);
 
-    if(($cur_flags ne $old_flags) ||
-       ($module->getOption('reconfigure')) ||
-       1 || # TODO: Find a safe way to skip reconfiguration
-       (! -e "$builddir/Makefile")
-      )
-    {
-        note ("\tb[r[LGPL license selected for Qt].  See $srcdir/LICENSE.LGPL");
-
-        info ("\tRunning g[configure]...");
-
-        $module->setPersistentOption('last-configure-flags', $cur_flags);
-        return log_command($module, "configure", \@commands) == 0;
+    if(($cur_flags eq $old_flags)          &&
+        !$module->getOption('reconfigure') &&
+        -e "$builddir/Makefile"
+    ) {
+        return 1;
     }
 
-    # Skip execution of configure.
-    return 1;
+    note ("\tb[r[LGPL license selected for Qt].  See $srcdir/LICENSE.LGPL");
+    info ("\tRunning g[configure]...");
+
+    $module->setPersistentOption('last-configure-flags', $cur_flags);
+
+    my $result;
+    my $promise = run_logged_p($module, "configure", \@commands)->then(sub ($exitcode) {
+        $result = $exitcode;
+    });
+
+    $promise->wait;
+    return $result == 0;
 }
 
 1;
