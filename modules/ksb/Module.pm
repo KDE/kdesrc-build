@@ -505,7 +505,14 @@ sub setupBuildSystem
         }
     }
 
-    if (!$buildSystem->createBuildSystem()) {
+    my $buildsysResult;
+    my $buildsysPromise = $buildSystem->createBuildSystem()->then(sub ($result) {
+        $buildsysResult = $result;
+    });
+
+    $buildsysPromise->wait; # TODO remove by making whole function return a promise
+
+    if (!$buildsysResult) {
         error ("\tError creating r[$self]'s build system!");
         return 0;
     }

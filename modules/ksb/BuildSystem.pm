@@ -26,10 +26,16 @@ provide needed detailed functionality.
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT prune_under_directory_p);
+use ksb::Util qw(:DEFAULT prune_under_directory_p safe_lndir_p);
 use ksb::StatusView;
 
+use Mojo::Promise;
+
 use List::Util qw(max min first);
+
+=head1 METHODS
+
+=cut
 
 sub new
 {
@@ -353,7 +359,16 @@ sub needsBuilddirHack
     return 0; # By default all build systems are assumed to be sane
 }
 
-# Return convention: boolean
+=head2 createBuildSystem
+
+Creates the build directory for the associated module, and handles
+pre-configure setup that might be necessary to permit the build to complete
+from the build directory.
+
+Returns a promise that resolves to a boolean result value (true == success)
+
+=cut
+
 sub createBuildSystem
 {
     my $self = assert_isa(shift, 'ksb::BuildSystem');
@@ -361,20 +376,22 @@ sub createBuildSystem
     my $builddir = $module->fullpath('build');
     my $srcdir   = $module->fullpath('source');
 
-    if (! -e "$builddir" && !super_mkdir("$builddir"))
-    {
+    if (! -e "$builddir" && !super_mkdir("$builddir")) {
         error ("\tUnable to create build directory for r[$module]!!");
-        return 0;
+        return Mojo::Promise->resolve(0);
     }
 
-    if ($builddir ne $srcdir && $self->needsBuilddirHack() && 0 != log_command($module, 'lndir',
-            ['kdesrc-build', 'ksb::Util::safe_lndir', $srcdir, $builddir]))
-    {
-        error ("\tUnable to setup symlinked build directory for r[$module]!!");
-        return 0;
+    if ($builddir ne $srcdir && $self->needsBuilddirHack()) {
+        my $promise = safe_lndir_p($srcdir, $builddir)->then(sub ($result) {
+            error ("\tUnable to setup symlinked build directory for r[$module]!!")
+                unless $result;
+            return $result;
+        });
+
+        return $promise;
     }
 
-    return 1;
+    return Mojo::Promise->resolve(1);
 }
 
 # Subroutine to run the build command with the arguments given by the

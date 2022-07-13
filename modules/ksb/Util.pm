@@ -23,9 +23,12 @@ use ksb::Version qw(scriptVersion);
 use ksb::BuildException;
 
 use Mojo::IOLoop::Subprocess;
+use Mojo::File qw(path);
 use Mojo::Util qw(trim);
 
 use Exporter qw(import); # Use Exporter's import method
+
+# exported by default if nothing selected or if :DEFAULT given
 our @EXPORT = qw(assert_isa assert_in
 
                  list_has any unique_items get_list_digest
@@ -39,7 +42,12 @@ our @EXPORT = qw(assert_isa assert_in
                  pretend_open safe_rmtree is_dir_empty
                  super_mkdir
                  );
-our @EXPORT_OK = qw(run_logged_p prune_under_directory_p);
+
+# may be exported but only by request
+our @EXPORT_OK = qw(run_logged_p
+
+                    prune_under_directory_p safe_lndir_p
+                    );
 
 =head1 FUNCTIONS
 
@@ -743,95 +751,90 @@ sub is_dir_empty
     return 1;
 }
 
-# Takes in a string and returns 1 if that string exists somewhere in the
-# path variable.
-# Subroutine to recursively symlink a directory into another location, in a
-# similar fashion to how the XFree/X.org lndir() program does it.  This is
-# reimplemented here since some systems lndir doesn't seem to work right.
-#
-# As a special exception to the GNU GPL, you may use and redistribute this
-# function however you would like (i.e. consider it public domain).
-#
-# The first parameter is the directory to symlink from.
-# The second parameter is the destination directory name.
-#
-# e.g. if you have $from/foo and $from/bar, lndir would create $to/foo and
-# $to/bar.
-#
-# All intervening directories will be created as needed.  In addition, you
-# may safely run this function again if you only want to catch additional files
-# in the source directory.
-#
-# Note that this function will unconditionally output the files/directories
-# created, as it is meant to be a close match to lndir.
-#
-# RETURN VALUE: Boolean true (non-zero) if successful, Boolean false (0, "")
-#               if unsuccessful.
-sub safe_lndir
+=head2 safe_lndir_p
+
+Subroutine to recursively symlink a directory into another location, in a
+similar fashion to how the XFree/X.org lndir() program does it.  This is
+reimplemented here since some systems lndir doesn't seem to work right.
+
+As a special exception to the GNU GPL, you may use and redistribute this
+function however you would like (i.e. consider it public domain).
+
+Use by passing two I<absolute> paths, the first being where to symlink files
+from, and the second being what directory to symlink them into.
+
+ my $promise = safe_lndir_p('/path/to/symlink', '/where/to/put/symlinks');
+ $promise->then(sub ($result) {
+    say "success" if $result;
+ });
+
+All intervening directories will be created as needed.  In addition, you may
+safely run this function again if you only want to catch additional files in
+the source directory.
+
+RETURN VALUE: A promise that resolves to a Boolean true (non-zero) if successful,
+Boolean false if unsuccessful.
+
+=cut
+
+sub safe_lndir_p ($from, $to)
 {
-    my ($from, $to) = @_;
+    return Mojo::Promise->resolve(1)
+        if pretending();
+
+    croak_internal ("Both paths to safe_lndir_p must be absolute paths!")
+        if (!path($from)->is_abs || !path($to)->is_abs);
 
     # Create destination directory.
-    if (not -e $to)
-    {
-        print "$to\n";
-        if (not pretending() and not super_mkdir($to))
-        {
-            error ("Couldn't create directory r[$to]: b[r[$!]");
-            return 0;
-        }
+    if (!super_mkdir($to)) {
+        error ("Couldn't create directory r[$to]: b[r[$!]");
+        return 0;
     }
 
     # Create closure callback subroutine.
     my $wanted = sub {
-        my $dir = $File::Find::dir;
-        my $file = $File::Find::fullname;
+        my $dir      = $File::Find::dir;
+        my $file     = $File::Find::fullname;
+        my $filename = $_;
+
         $dir =~ s/$from/$to/;
 
-        # Ignore the .svn directory and files.
+        # Ignore version-control metadata
         return if $dir =~ m,/\.svn,;
+        return if $dir =~ m,/\.git,;
 
-        # Create the directory.
-        if (not -e $dir)
-        {
-            print "$dir\n";
-
-            if (not pretending())
-            {
-                super_mkdir ($dir) or croak_runtime("Couldn't create directory $dir: $!");
-            }
-        }
+        croak_runtime("Couldn't create directory $dir: $!")
+            unless super_mkdir ($dir);
 
         # Symlink the file.  Check if it's a regular file because File::Find
         # has no qualms about telling you you have a file called "foo/bar"
         # before pointing out that it was really a directory.
-        if (-f $file and not -e "$dir/$_")
-        {
-            print "$dir/$_\n";
-
-            if (not pretending())
-            {
-                symlink $File::Find::fullname, "$dir/$_" or
-                    croak_runtime("Couldn't create file $dir/$_: $!");
-            }
+        if (-f $file and not -e "$dir/$_") {
+            croak_runtime("Couldn't create file $dir/$_: $!")
+                unless symlink ($file, "$dir/$_");
         }
     };
 
-    # Recursively descend from source dir using File::Find
-    eval {
-        find ({ 'wanted' => $wanted,
-                'follow_fast' => 1,
-                'follow_skip' => 2},
-              $from);
-    };
+    my $subprocess = Mojo::IOLoop::Subprocess->new;
+    my $promise = $subprocess->run_p(sub {
+        # Happens in child process
+        # Recursively descend from source dir using File::Find
+        eval {
+            find ({ 'wanted' => $wanted,
+                    'follow_fast' => 1,
+                    'follow_skip' => 2},
+                  $from);
+        };
 
-    if ($@)
-    {
-        error ("Unable to symlink $from to $to: $@");
-        return 0;
-    }
+        if ($@) {
+            error ("Unable to symlink $from to $to: $@");
+            return 0;
+        }
 
-    return 1;
+        return 1;
+    });
+
+    return $promise;
 }
 
 =head2 prune_under_directory_p
