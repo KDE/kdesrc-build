@@ -45,6 +45,7 @@ sub new
         logged_module => 'global',
         messages      => { }, # Holds log output from update process
         postbuild_msg => { }, # Like above but for post-build msgs
+        why_refresh   => { }, # If module should build despite not being updated, why?
         updates_done  => 0,
         opt_update_handler => undef, # Callback for persistent option changes
     };
@@ -153,13 +154,10 @@ sub _updateSeenModulesFromMessage
             $message = 'no files affected';
             my ($ipcModuleName, $refreshReason) = split(',', $buffer);
 
-            if ($refreshReason)
-            {
+            if ($refreshReason) {
                 $updated->{$ipcModuleName} = 'success';
-                note ("\tNo source update, but $refreshReason");
-            }
-            else
-            {
+                $self->{why_refresh}->{$ipcModuleName} = $refreshReason;
+            } else {
                 $updated->{$ipcModuleName} = 'skipped';
             }
         }
@@ -201,6 +199,13 @@ sub setPersistentOptionHandler
 {
     my ($self, $handler) = @_;
     $self->{opt_update_handler} = $handler;
+}
+
+# Returns a text reason to refresh a non-updated module, or an empty string if
+# the module has been updated or has not yet been seen.
+sub refreshReasonFor ($self, $module)
+{
+    return $self->{why_refresh}->{$module} // '';
 }
 
 sub waitForEnd

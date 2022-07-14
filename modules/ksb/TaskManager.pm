@@ -165,6 +165,9 @@ sub _buildSingleModule ($ipc, $ctx, $module, $startTimeRef)
         return 'update';
     } elsif ($resultStatus eq 'success') {
         note ("\tSource update complete for g[$module]: $message");
+        my $whyRefresh = $ipc->refreshReasonFor($module->name());
+        info ("\t  Rebuilding because $whyRefresh")
+            if $whyRefresh;
     }
 
     # Skip actually building a module if the user has selected to skip
@@ -336,8 +339,6 @@ EOF
                 if $successes > 10;
         }
     }
-
-    info (' '); # Space out nicely
 
     return $result;
 }
