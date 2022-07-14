@@ -302,6 +302,8 @@ sub uninstallInternal
     my $module = $self->module();
     my @cmdPrefix = @_;
 
+    $module->unsetPersistentOption('last-install-rev');
+
     return $self->safe_make ({
             target => 'uninstall',
             message => "Uninstalling g[$module]",
@@ -342,6 +344,9 @@ sub cleanBuildSystem
             error (" r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.");
             return 0; # False for this function.
         }
+
+        $module->unsetPersistentOption('last-build-rev');
+        # keep last-install-rev since that tracks the install dir.
 
         # Let users know we're done so they don't wonder why rm -rf is taking so
         # long and oh yeah, why's my HD so active?...
