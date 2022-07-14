@@ -34,6 +34,8 @@ use Mojo::URL;
 use IO::Select;
 use POSIX qw(EINTR WNOHANG);
 
+my $DO_STOP = 0;
+
 sub new ($class, $app)
 {
     assert_isa($app, 'ksb::Application');
@@ -71,6 +73,13 @@ sub runAllTasks ($self)
             if debugging();
     } else {
         whisper ("Using no IPC mechanism\n");
+
+        # If the user sends SIGHUP during the build, we should allow the
+        # current module to complete and then exit early.
+        local $SIG{HUP} = sub {
+            say "[noasync] recv SIGHUP, will end after this module";
+            $DO_STOP = 1;
+        };
 
         note ("\n b[<<<  Update Process  >>>]\n");
         $result = _handle_updates ($ipc, $ctx);
@@ -131,6 +140,11 @@ sub _handle_updates ($ipc, $ctx)
 
     my $hadError = 0;
     foreach my $module (@update_list) {
+        if ($DO_STOP) {
+            note (" y[b[* * *] Early exit requested, aborting updates.");
+            last;
+        }
+
         $ipc->setLoggedModule($module->name());
 
         # Note that this must be in this order to avoid accidentally not
@@ -251,6 +265,11 @@ EOF
     $statusViewer->numberModulesTotal($num_modules);
 
     while (my $module = shift @modules) {
+        if ($DO_STOP) {
+            note (" y[b[* * *] Early exit requested, aborting updates.");
+            last;
+        }
+
         my $moduleName = $module->name();
         my $moduleSet = $module->moduleSet()->name();
         my $modOutput = $moduleName;
@@ -378,20 +397,40 @@ sub _handle_async_build ($ipc, $ctx)
 
     my $result = 0;
     my $monitorPid = fork;
+    my $updaterPid;
     if ($monitorPid == 0) {
         # child
         my $updaterToMonitorIPC = ksb::IPC::Pipe->new();
-        my $updaterPid = fork;
+        $updaterPid = fork;
 
         $SIG{INT} = sub { POSIX::_exit(EINTR); };
 
         if ($updaterPid) {
+            # If the user sends SIGHUP during the build, we should allow the
+            # current module to complete and then exit early.
+            local $SIG{HUP} = sub {
+                say "[updater] recv SIGHUP, will end after this module";
+
+                $DO_STOP = 1;
+            };
+
             $0 = 'kdesrc-build-updater';
             $updaterToMonitorIPC->setSender();
             ksb::Debug::setIPC($updaterToMonitorIPC);
 
             POSIX::_exit (_handle_updates ($updaterToMonitorIPC, $ctx));
         } else {
+            # If the user sends SIGHUP during the build, we should allow the
+            # current module to complete and then exit early.
+            local $SIG{HUP} = sub {
+                say "[monitor] recv SIGHUP, will end after this module";
+
+                # If we haven't recv'd yet, forward to monitor in case user didn't
+                # send to process group
+                kill 'HUP', $updaterPid unless $DO_STOP;
+                $DO_STOP = 1;
+            };
+
             $0 = 'kdesrc-build-monitor';
             $ipc->setSender();
             $updaterToMonitorIPC->setReceiver();
@@ -399,10 +438,28 @@ sub _handle_async_build ($ipc, $ctx)
             $ipc->setLoggedModule('#monitor#'); # This /should/ never be used...
             ksb::Debug::setIPC($ipc);
 
-            POSIX::_exit (_handle_monitoring ($ipc, $updaterToMonitorIPC));
+            my $exitcode = _handle_monitoring ($ipc, $updaterToMonitorIPC);
+            if (waitpid ($updaterPid, WNOHANG) == 0) {
+                error (" r[b[***] updater thread is finished but hasn't exited?!?");
+            }
+
+            POSIX::_exit ($exitcode);
         }
     } else {
         # Still the parent, let's do the build.
+
+        # If the user sends SIGHUP during the build, we should allow the current
+        # module to complete and then exit early.
+        local $SIG{HUP} = sub {
+            say "[ build ] recv SIGHUP, will end after this module";
+
+            # If we haven't recv'd yet, forward to monitor in case user didn't
+            # send to process group
+            kill 'HUP', $monitorPid unless $DO_STOP;
+            $DO_STOP = 1;
+        };
+
+        $0 = 'kdesrc-build[build]';
         $ipc->setReceiver();
         $result = _handle_build ($ipc, $ctx);
     }
