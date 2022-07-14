@@ -175,6 +175,102 @@ as well.
 
 </sect2>
 
+<sect2 id="stopping-the-build-early">
+<title>Stopping the build early</title>
+
+<sect3 id="the-build-continues">
+<title>The build normally continues even if failures occur</title>
+
+<para>&kdesrc-build; normally will update, build and install all modules
+in the specified list of modules to build, even if a module fails to build.
+This is usually a convenience to allow you to update software packages even
+if a simple mistake is made in one of the source repositories during
+development that causes the build to break.
+</para>
+
+<para>
+However you may wish for &kdesrc-build; to stop what it is doing once a
+module fails to build and install. This can help save you time that will be
+wasted trying to make progress when modules remaining in the build list will
+not be able to successfully build either, especially if you have not ever
+successfully built the modules in the list.
+</para>
+
+</sect3>
+
+<sect3 id="stop-on-failure-stops-early">
+<title>Stopping early with --stop-on-failure</title>
+
+<para>
+The primary method to do this is to use the
+<link linkend="cmdline-stop-on-failure">--stop-on-failure</link>
+command line option when you run &kdesrc-build;.
+</para>
+
+<para>This option can also be set in the
+<link linkend="conf-stop-on-failure">configuration file</link> to make
+it the normal mode of operation.
+</para>
+
+<para>It is also possible to tell &kdesrc-build; at runtime to stop building
+<emphasis>after</emphasis> completing the current module it is working on.
+This is as opposed to interrupting &kdesrc-build; using a command like
+<keycombo action="simul">&Ctrl;<keycap>C</keycap></keycombo>, which interrupts
+&kdesrc-build; immediately, losing the progress of the current module.
+</para>
+
+<important><para>Interrupting &kdesrc-build; during a module install when
+the <link linkend="conf-use-clean-install">use-clean-install</link> option
+is enabled will mean that the interrupted module will be unavailable until
+&kdesrc-build; is able to successfully build the module!</para>
+
+<para>If you need to interrupt &kdesrc-build; without permitting a graceful shutdown
+in this situation, at least try to avoid doing this while &kdesrc-build; is
+installing a module.</para>
+</important>
+
+</sect3>
+
+<sect3 id="stopping-early-without-stop-on-failure">
+<title>Stopping &kdesrc-build; early without --stop-on-failure</title>
+
+<para>As mentioned above, it is possible to cause &kdesrc-build; to gracefully
+shutdown early once it has completed the module it is currently working on.
+To do this, you need to send the POSIX <literal>HUP</literal> signal to &kdesrc-build;
+</para>
+
+<para>You can do this with a command such as <command>pkill</command> (on &Linux; systems) as follows:</para>
+
+<programlisting>
+<prompt>$ </prompt><userinput><command>pkill <option>-HUP</option> kdesrc-build</command></userinput>
+</programlisting>
+
+<para>If done successfully, you will see a message in the &kdesrc-build; output similar
+to:</para>
+
+<programlisting>
+[ build ] recv SIGHUP, will end after this module
+</programlisting>
+
+<note>
+<para>&kdesrc-build; may show this message multiple times depending on the
+number of individual &kdesrc-build; processes that are active. This is
+normal and not an indication of an error.</para>
+</note>
+
+<para>
+Once &kdesrc-build; has acknowledged the signal, it will stop processing
+after the current module is built and installed. If &kdesrc-build; is still
+updating source code when the request is received, &kdesrc-build; will stop
+after the module source code update is complete. Once both the update and build
+processes have stopped early, &kdesrc-build; will print its partial results
+and exit.
+</para>
+
+</sect3>
+
+</sect2>
+
 <sect2 id="building-successfully">
 <title>How &kdesrc-build; tries to ensure a successful build</title>
 
