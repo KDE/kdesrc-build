@@ -449,17 +449,20 @@ sub build
 
     my $buildResults = $buildSystem->buildInternal();
     return 0 if !$buildResults->{was_successful};
+
     $self->setPersistentOption('last-build-rev', $self->currentScmRevision());
 
     # TODO: This should be a simple phase to run.
     $self->buildSystem()->runTestsuite()
         if $self->getOption('run-tests');
 
-    if (!$buildResults->{work_done}) {
+    if (!$buildResults->{work_done}        &&
+        !$self->getOption('refresh-build') &&
+        defined $self->getPersistentOption('last-install-rev')
+    ) {
         info ("\tNo changes from build, skipping install (--refresh-build this module to force install)");
         return 1;
-    }
-    elsif (!$self->getOption('install-after-build')) {
+    } elsif (!$self->getOption('install-after-build')) {
         info ("\tSkipping install due to install-after-build setting");
         return 1;
     }
