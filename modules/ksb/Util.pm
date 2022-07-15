@@ -558,13 +558,15 @@ force off locale translations.
 
 =cut
 
+# TODO: For really concurrent code we need to have run_logged_p change to a
+# specific directory in the subprocess, add to this interface.
 sub run_logged_p ($module, $filename, $argRef)
 {
     {
         local $" = "', '"; # list separator
-        debug ("run_logged_p(): Module $module, Command: ['$argRef->@*']");
+        debug ("run_logged_p(): Module $module, Command: {'$argRef->@*'}");
         if (pretending()) {
-            pretend ("\tWould have run g['$argRef->@*']");
+            pretend ("\tWould have run g{'$argRef->@*'}");
             return Mojo::Promise->resolve(0);
         }
     }

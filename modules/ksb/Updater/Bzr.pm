@@ -8,16 +8,13 @@ use parent qw(ksb::Updater);
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT run_logged_p);
 
 # scm-specific update procedure.
 # May change the current directory as necessary.
 # Should return a count of files changed (or commits, or something similar)
-sub updateInternal
+sub updateInternal ($self, $module)
 {
-    my $self = assert_isa(shift, 'ksb::Updater::Bzr');
-    my $module = assert_isa($self->module(), 'ksb::Module');
-
     p_chdir($module->getSourceDir());
 
     # Full path to source directory on-disk.
@@ -27,34 +24,34 @@ sub updateInternal
     # Or whatever regex is appropriate to strip the bzr URI protocol.
     $bzrRepoName =~ s/^bzr:\/\///;
 
+    my $promise;
+    my $failMessage;
+    my $failed;
+
     if (! -e "$srcdir/.bzr") {
-        # Cmdline assumes bzr will create the $srcdir directory and then
+        # BuildContext assumes bzr will create the $srcdir directory and then
         # check the source out into that directory.
         my @cmd = ('bzr', 'branch', $bzrRepoName, $srcdir);
 
-        croak_runtime("Unable to checkout $module!")
-            if log_command($module, 'bzr-branch', \@cmd) != 0;
-
-        # TODO: Filtering the output by passing a subroutine to log_command
-        # should give us the number of revisions, or we can just somehow
-        # count files.
-        my $newRevisionCount = 1;
-        return $newRevisionCount;
-    }
-    else {
+        $promise = run_logged_p($module, 'bzr-branch', \@cmd);
+        $failMessage = "Unable to checkout $module!";
+    } else {
         # Update existing checkout. The source is currently in $srcdir
         p_chdir($srcdir);
 
-        croak_runtime("Unable to update $module!")
-            if log_command($module, 'bzr-pull', ['bzr', 'pull']) != 0;
-
-        # I haven't looked at bzr up output yet to determine how to find
-        # number of affected files or number of revisions skipped.
-        my $changeCount = 1;
-        return $changeCount;
+        $promise = run_logged_p($module, 'bzr-pull', ['bzr', 'pull']);
+        $failMessage = "Unable to update $module!";
     }
 
-    return 0;
+    $promise = $promise->then(sub ($exitcode) {
+        $failed = ($exitcode != 0);
+    });
+
+    $promise->wait; # TODO: convert to return promise
+
+    croak_runtime($failMessage)
+        if $failed;
+    return 1; # we don't count changes
 }
 
 sub name
