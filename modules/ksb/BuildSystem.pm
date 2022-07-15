@@ -26,7 +26,7 @@ provide needed detailed functionality.
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT prune_under_directory_p safe_lndir_p);
+use ksb::Util qw(:DEFAULT prune_under_directory_p safe_lndir_p run_logged_p);
 use ksb::StatusView;
 
 use Mojo::Promise;
@@ -510,10 +510,14 @@ sub _runBuildCommand
     # There are situations when we don't want progress output:
     # 1. If we're not printing to a terminal.
     # 2. When we're debugging (we'd interfere with debugging output).
-    if (! -t STDERR || debugging())
-    {
+    if (! -t STDERR || debugging()) {
         note("\t$message");
-        $resultRef->{was_successful} = (0 == log_command($module, $filename, $argRef));
+
+        my $promise = run_logged_p($module, $filename, $argRef)->then(sub ($exitcode) {
+            $resultRef->{was_successful} = ($exitcode == 0);
+        });
+
+        $promise->wait;
         return $resultRef;
     }
 
