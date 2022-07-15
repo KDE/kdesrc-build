@@ -20,7 +20,7 @@ BEGIN {
     no strict 'refs';
     no warnings 'redefine';
 
-    *ksb::Util::run_logged_p = sub ($module, $filename, $argRef) {
+    *ksb::Util::run_logged_p = sub ($module, $filename, $dir, $argRef) {
         $log_called = 1;
         @savedCommand = @{$argRef};
         return Mojo::Promise->resolve(0); # success

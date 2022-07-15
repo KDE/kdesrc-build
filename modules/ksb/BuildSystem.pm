@@ -504,6 +504,7 @@ sub _runBuildCommand
 {
     my ($self, $message, $filename, $argRef) = @_;
     my $module = $self->module();
+    my $builddir = $module->fullpath('build');
     my $resultRef = { was_successful => 0 };
     my $ctx = $module->buildContext();
 
@@ -513,7 +514,8 @@ sub _runBuildCommand
     if (! -t STDERR || debugging()) {
         note("\t$message");
 
-        my $promise = run_logged_p($module, $filename, $argRef)->then(sub ($exitcode) {
+        my $promise = run_logged_p($module, $filename, $builddir, $argRef);
+        $promise = $promise->then(sub ($exitcode) {
             $resultRef->{was_successful} = ($exitcode == 0);
         });
 

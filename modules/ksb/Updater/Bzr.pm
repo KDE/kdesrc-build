@@ -15,7 +15,7 @@ use ksb::Util qw(:DEFAULT run_logged_p);
 # Should return a count of files changed (or commits, or something similar)
 sub updateInternal ($self, $module)
 {
-    p_chdir($module->getSourceDir());
+    my $srcbase = $module->getSourceDir();
 
     # Full path to source directory on-disk.
     my $srcdir = $module->fullpath('source');
@@ -33,13 +33,13 @@ sub updateInternal ($self, $module)
         # check the source out into that directory.
         my @cmd = ('bzr', 'branch', $bzrRepoName, $srcdir);
 
-        $promise = run_logged_p($module, 'bzr-branch', \@cmd);
+        $promise = run_logged_p($module, 'bzr-branch', $srcbase, \@cmd);
         $failMessage = "Unable to checkout $module!";
     } else {
         # Update existing checkout. The source is currently in $srcdir
         p_chdir($srcdir);
 
-        $promise = run_logged_p($module, 'bzr-pull', ['bzr', 'pull']);
+        $promise = run_logged_p($module, 'bzr-pull', $srcdir, ['bzr', 'pull']);
         $failMessage = "Unable to update $module!";
     }
 

@@ -476,7 +476,8 @@ sub _safe_run_cmake
         $module->setPersistentOption('last-cmake-options', get_list_digest(@commands));
 
         my $result;
-        my $promise = run_logged_p($module, "cmake", \@commands)->then(sub ($exitcode) {
+        my $promise = run_logged_p($module, "cmake", $builddir, \@commands);
+        $promise = $promise->then(sub ($exitcode) {
             $result = $exitcode;
         });
 

@@ -544,27 +544,35 @@ arguments in a separate process. The difference is that this command
 I<does not wait> for the process to finish, and instead returns a
 L<Mojo::Promise> that resolves to the exit status of the sub-process.
 
-This is useful in permitting concurrent code without needing to resolve
-significant changes from a separate thread of execution over time.
-
- my $promise = run_logged_p($module, 'build', [qw(make -j8)]);
- $promise->then(sub ($result) {
-   say "Process result: $result";
- })->wait;
-
 Another important difference is that fewer options are currently supported.
 In particular there is no built-in way to filter the program output or to
 force off locale translations.
+
+This is useful in permitting concurrent code without needing to resolve
+significant changes from a separate thread of execution over time.
+
+Note that concurrent code should be careful about accessing global state
+simultaneously. This includes things like the current working directory, which
+is shared across the entire process.  run_logged_p allows you to pass a param
+to set the working directory to use in the *subprocess* it creates so that
+there is no contention over the main process's current working directory.
+If the C<$dir> param is C<undef> then the directory is not changed.
+
+ my $builddir = $module->fullpath('build'); # need to pass dir to use
+ my $promise = run_logged_p($module, 'build', $builddir, [qw(make -j8)]);
+ $promise->then(sub ($result) {
+   say "Process result: $result";
+ })->wait;
 
 =cut
 
 # TODO: For really concurrent code we need to have run_logged_p change to a
 # specific directory in the subprocess, add to this interface.
-sub run_logged_p ($module, $filename, $argRef)
+sub run_logged_p ($module, $filename, $dir, $argRef)
 {
     {
         local $" = "', '"; # list separator
-        debug ("run_logged_p(): Module $module, Command: {'$argRef->@*'}");
+        debug ("run_logged_p(): Module $module, Command: {'$argRef->@*'} from $dir");
         if (pretending()) {
             pretend ("\tWould have run g{'$argRef->@*'}");
             return Mojo::Promise->resolve(0);
@@ -583,6 +591,8 @@ sub run_logged_p ($module, $filename, $argRef)
         # via log_command will not be saved or noted unless they are made part
         # of the return value, or sent earlier via a 'progress' event.
 
+        p_chdir($dir)
+            if $dir;
         return log_command($module, $filename, $argRef);
     })->then(sub ($exitcode) {
         # This happens back in the main process, so we can reintegrate the

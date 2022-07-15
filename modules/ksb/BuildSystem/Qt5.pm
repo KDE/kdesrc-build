@@ -95,7 +95,8 @@ EOF
     $module->setPersistentOption('last-configure-flags', $cur_flags);
 
     my $result;
-    my $promise = run_logged_p($module, "configure", \@commands)->then(sub ($exitcode) {
+    my $promise = run_logged_p($module, "configure", $builddir, \@commands);
+    $promise = $promise->then(sub ($exitcode) {
         $result = $exitcode;
     });
 

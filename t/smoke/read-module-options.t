@@ -18,7 +18,7 @@ my @CMD;
 # overridden before it is copied to dependents packages' symbol tables
 BEGIN {
     monkey_patch('ksb::Util',
-        run_logged_p => sub ($module, $filename, $argRef) {
+        run_logged_p => sub ($module, $filename, $dir, $argRef) {
             confess "No arg to module" unless $argRef;
             my @command = @{$argRef};
             if (grep { $_ eq 'cmake' } @command) {

@@ -40,14 +40,13 @@ sub _findConfigureCommands ($self)
     # So we run autogen.sh first to create the configure command and
     # recheck for that.
     if ($configureInFile && $configureCommand eq 'autogen.sh') {
-        p_chdir($sourcedir);
-        my $promise = run_logged_p($module, 'autogen', ["$sourcedir/$configureCommand"])
+        my $promise = run_logged_p($module, 'autogen', $sourcedir, ["$sourcedir/$configureCommand"])
             ->then(sub ($exitcode) {
                 die "Autogen failed with exit code $exitcode"
                     if $exitcode != 0;
             })->then(sub {
                 # Cleanup any stray Makefiles that may be present, if generated
-                return run_logged_p($module, 'distclean', [qw(make distclean)])
+                return run_logged_p($module, 'distclean', $sourcedir, [qw(make distclean)])
                     if -e "$sourcedir/Makefile";
                 # nothing to do, return successful exit code
                 return 0;
@@ -74,6 +73,7 @@ sub configureInternal ($self)
 {
     my $module = $self->module();
     my $sourcedir = $module->fullpath('source');
+    my $builddir  = $module->fullpath('build');
     my $installdir = $module->installationPath();
 
     # 'module'-limited option grabbing can return undef, so use //
@@ -85,7 +85,7 @@ sub configureInternal ($self)
     my $promise = $self->_findConfigureCommands()->then(sub ($configureCommand) {
         p_chdir($module->fullpath('build'));
 
-        return run_logged_p($module, 'configure', [
+        return run_logged_p($module, 'configure', $builddir, [
             "$sourcedir/$configureCommand", "--prefix=$installdir",
             @bootstrapOptions
         ]);
