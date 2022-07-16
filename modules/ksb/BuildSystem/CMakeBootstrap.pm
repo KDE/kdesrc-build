@@ -1,14 +1,18 @@
 package ksb::BuildSystem::CMakeBootstrap 0.10;
 
-# This is a module used to do only one thing: Bootstrap CMake onto a system
-# that doesn't have it, or has only an older version of it.
-
 use ksb;
+
+=head1 DESCRIPTION
+
+This is a module used to do only one thing: Bootstrap CMake onto a system
+that doesn't have it, or has only an older version of it.
+
+=cut
 
 use parent qw(ksb::BuildSystem);
 
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(run_logged_p);
 
 sub name
 {
@@ -17,13 +21,12 @@ sub name
 
 sub requiredPrograms
 {
-    return qw{c++};
+    return qw{c++ make};
 }
 
 # Return value style: boolean
-sub configureInternal
+sub configureInternal ($self)
 {
-    my $self = assert_isa(shift, 'ksb::BuildSystem::CMakeBootstrap');
     my $module = $self->module();
     my $sourcedir = $module->fullpath('source');
     my $installdir = $module->installationPath();
@@ -33,12 +36,19 @@ sub configureInternal
     my @bootstrapOptions = split_quoted_on_whitespace(
         $module->getOption('configure-flags', 'module') // '');
 
-    p_chdir($module->fullpath('build'));
-
-    return log_command($module, 'cmake-bootstrap', [
+    my $builddir = $module->fullpath('build');
+    my $result;
+    my $promise = run_logged_p(
+        $module, 'cmake-bootstrap', [
             "$sourcedir/bootstrap", "--prefix=$installdir",
             @bootstrapOptions
-        ]) == 0;
+        ]
+    )->then(sub ($exitcode) {
+        $result = ($exitcode == 0);
+    });
+
+    $promise->wait;
+    return $result;
 }
 
 1;
