@@ -8,7 +8,7 @@ use parent qw(ksb::BuildSystem);
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT run_logged_p);
 
 use List::Util qw(first);
 
@@ -41,7 +41,7 @@ sub needsBuilddirHack
 # This is a "static class method" i.e. use ksb::BuildSystem::QMake::absPathToQMake()
 sub absPathToQMake
 {
-    my @possibilities = qw/qmake qmake4 qmake-qt4 qmake-mac qmake-qt5/;
+    my @possibilities = qw/qmake-qt5 qmake5 qmake-mac qmake qmake-qt4 qmake4/;
     return first { locate_exe($_) } @possibilities;
 }
 
@@ -58,7 +58,8 @@ sub configureInternal
     my @qmakeOpts = split(' ', $module->getOption('qmake-options'));
     my @projectFiles = glob("$sourcedir/*.pro");
 
-    @projectFiles = ("$module.pro") if (!@projectFiles && pretending());
+    @projectFiles = ("$module.pro")
+        if (!@projectFiles && pretending());
 
     if (!@projectFiles || !$projectFiles[0]) {
         croak_internal("No *.pro files could be found for $module");
@@ -69,13 +70,21 @@ sub configureInternal
         return 0;
     }
 
-    p_chdir($builddir);
-
     my $qmake = absPathToQMake();
     return 0 unless $qmake;
 
     info ("\tRunning g[qmake]...");
-    return log_command($module, 'qmake', [ $qmake, @qmakeOpts, $projectFiles[0] ]) == 0;
+
+    my $result;
+    my $promise = run_logged_p($module, 'qmake', $builddir,
+        [ $qmake, @qmakeOpts, $projectFiles[0] ]);
+    $promise = $promise->then(sub ($exitcode) {
+        $result = ($exitcode == 0);
+    });
+
+    $promise->wait;
+
+    return $result;
 }
 
 1;
