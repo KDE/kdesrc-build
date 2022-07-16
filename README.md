@@ -27,15 +27,17 @@ Continue on, to learn how to set it up.
 
 1. Set up minimum dependencies
 
-- You must have at least [Perl](https://www.perl.org/get.html) version 5.14
+- You must have at least [Perl](https://www.perl.org/get.html) version 5.26
   installed. Most distributions include at least a minimal Perl set up, and
   Perl is also required for some portions of Qt and KDE software builds so it
   is good to have regardless.
 
 - You must have [Git](https://git-scm.com/) installed to download KDE sources
-  and kdesrc-build itself. We recommend at least version 2.10.
+  and kdesrc-build itself. Any supported version should be fine but We
+  recommend at least version 2.26.
 
-- You must have [dialog](https://invisible-island.net/dialog/) installed to run kdesrc-build-setup.
+- If you wish to run the interactive setup script you must have [dialog](https://invisible-island.net/dialog/)
+  installed.
 
 2. Install kdesrc-build:
 
