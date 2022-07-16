@@ -110,6 +110,10 @@ L<ksb::Updater>
 
 =item *
 
+L<ksb::Updater::Qt5>
+
+=item *
+
 L<ksb::Util>
 
 =back

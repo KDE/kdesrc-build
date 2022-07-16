@@ -1,15 +1,19 @@
 package ksb::Updater::Qt5 0.10;
 
-# Handles updating Qt 5 source code. Requires git but uses Qt 5's dedicated
-# 'init-repository' script to keep the source up to date and coherent.
-
 use ksb;
+
+=head1 DESCRIPTION
+
+Handles updating Qt 5 source code. Requires git but uses Qt 5's dedicated
+'init-repository' script to keep the source up to date and coherent.
+
+=cut
 
 use parent qw(ksb::Updater::Git);
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT run_logged_p);
 
 sub name
 {
@@ -20,18 +24,14 @@ sub name
 # submodules.
 #
 # Returns number of commits updated (or rather, will...)
-sub _updateRepository
+sub _updateRepository ($self)
 {
-    my $self = assert_isa(shift, __PACKAGE__);
-
     my $module = $self->module();
     my $srcdir = $module->fullpath('source');
 
     if (!pretending() && (! -e "$srcdir/init-repository" || ! -x _)) {
         croak_runtime ("The Qt 5 repository update script could not be found, or is not executable!");
     }
-
-    p_chdir($srcdir);
 
     # See https://wiki.qt.io/Building_Qt_5_from_Git#Getting_the_source_code for
     # why we skip web engine by default. As of 2019-01-12 it is only used for
@@ -46,9 +46,16 @@ sub _updateRepository
     my @command = ("$srcdir/init-repository", '-f', "--module-subset=$subset_arg");
     note ("\tUsing Qt 5 modules: ", join(', ', @modules));
 
-    if (0 != log_command($module, 'init-repository', \@command)) {
-        croak_runtime ("Couldn't update Qt 5 repository submodules!");
-    }
+    my $result;
+    my $promise = run_logged_p($module, 'init-repository', $srcdir, \@command);
+    $promise = $promise->then(sub ($exitcode) {
+        $result = ($exitcode == 0);
+    });
+
+    $promise->wait;
+
+    croak_runtime ("Couldn't update Qt 5 repository submodules!")
+        unless $result;
 
     return 1; # TODO: Count commits
 }
@@ -56,9 +63,9 @@ sub _updateRepository
 # Updates an existing Qt5 super module checkout.
 # Throws exceptions on failure, otherwise returns number of commits updated
 # OVERRIDE from super class
-sub updateExistingClone
+sub updateExistingClone ($self)
 {
-    my $self = assert_isa(shift, __PACKAGE__);
+    assert_isa($self, __PACKAGE__);
 
     # Update init-repository and the shell of the super module itself.
     my $count = $self->SUPER::updateExistingClone();
@@ -74,17 +81,16 @@ sub updateExistingClone
 #
 # Returns the number of *commits* affected.
 # OVERRIDE from super class
-sub updateCheckout
+sub updateCheckout ($self)
 {
-    my $self = assert_isa(shift, __PACKAGE__);
+    assert_isa($self, __PACKAGE__);
     my $module = $self->module();
     my $srcdir = $module->fullpath('source');
 
     if (-d "$srcdir/.git") {
         # Note that this function will throw an exception on failure.
         return $self->updateExistingClone();
-    }
-    else {
+    } else {
         $self->_verifySafeToCloneIntoSourceDir($module, $srcdir);
 
         $self->_clone($module->getOption('repository'));
