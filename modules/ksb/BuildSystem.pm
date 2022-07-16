@@ -111,6 +111,9 @@ sub buildConstraints
     # If set to empty, accept user's decision
     return { } unless $cores;
 
+    # If the buildsystem can manage it and the user doesn't care, that's OK too
+    return { } if ($self->supportsAutoParallelism() && $cores eq 'auto');
+
     my $max_cores = eval {
         chomp(my @out = filter_program_output(undef, 'nproc'));
         max(1, int $out[0]);
@@ -203,6 +206,25 @@ sub defaultBuildCommand
     # doesn't guess anyways from a security point-of-view.
     my $buildCommand = first { locate_exe($_) } $self->buildCommands();
     return $buildCommand;
+}
+
+=head2 supportsAutoParallelism
+
+Returns a boolean value indicating if the buildsystem will automatically
+perform a parallel build without needing the -j command line option (or
+equivalent).
+
+If the build system returns false then that means auto-detection by
+kdesrc-build should be used to set the -j flag to something appropriate.
+
+The base implementation always returns false, this is meant to be overridden in
+subclasses.
+
+=cut
+
+sub supportsAutoParallelism ($self)
+{
+    return 0;
 }
 
 # Return value style: hashref to build results object (see safe_make)

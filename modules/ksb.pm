@@ -70,6 +70,10 @@ L<ksb::BuildSystem>
 
 =item *
 
+L<ksb::BuildSystem::Meson>
+
+=item *
+
 L<ksb::Cmdline>
 
 =item *

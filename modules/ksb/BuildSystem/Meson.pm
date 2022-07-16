@@ -1,9 +1,18 @@
 package ksb::BuildSystem::Meson 0.10;
 
-# This is a module used to support configuring with Meson.
-# This is required for modules like telepathy-accounts-signon
-
 use ksb;
+
+=head1 DESCRIPTION
+
+This is a build system used to support configuring with L<Meson|https://mesonbuild.com/>.
+
+This is required for modules like telepathy-accounts-signon. Note that Meson
+requires Ninja as its underlying build system so anything dealing with Meson
+can assume Ninja support is present.
+
+Control the flags passed to Meson's setup step using the C<configure-flags> option.
+
+=cut
 
 use parent qw(ksb::BuildSystem);
 
@@ -38,6 +47,12 @@ sub configureInternal
             '--prefix', $installdir,
             @setupOptions,
         ]) == 0;
+}
+
+# Override
+sub supportsAutoParallelism ($self)
+{
+    return 1; # meson requires ninja so supports this by default
 }
 
 # Override

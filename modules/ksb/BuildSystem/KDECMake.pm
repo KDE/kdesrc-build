@@ -188,6 +188,22 @@ sub hasToolchain
     return $self->cmakeToolchain() ne '';
 }
 
+# Returns true if CMake is run with ninja, which supports setting -j
+# automatically.
+sub supportsAutoParallelism ($self)
+{
+    my $generator     = $self->cmakeGenerator();
+    my $generatorOpts = $GENERATOR_MAP->{$generator}->{optionsName};
+
+    return 0
+        unless $generatorOpts;
+
+    return 1
+        if $generatorOpts eq 'ninja-options';
+
+    return 0;
+}
+
 sub _determineCmakeGenerator
 {
     my $self = shift;
