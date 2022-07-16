@@ -116,4 +116,8 @@ L<ksb::Updater::Qt5>
 
 L<ksb::Util>
 
+=item *
+
+L<ksb::Version>
+
 =back

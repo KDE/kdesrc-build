@@ -1,8 +1,13 @@
 package ksb::Version;
 
-# Pretty much just records the program-wide version number...
-
 use ksb;
+
+=head1 DESCRIPTION
+
+This package is just a place to put the kdesrc-build version number
+in one spot so it only needs changed in one place for a version bump.
+
+=cut
 
 use IPC::Cmd qw(run can_run);
 
@@ -17,11 +22,35 @@ our $SCRIPT_VERSION = $VERSION;
 use Exporter qw(import);
 our @EXPORT = qw(scriptVersion);
 
-sub path
+=head1 FUNCTIONS
+
+=cut
+
+=head2 setBasePath
+
+Should be called before using C<scriptVersion> to set the base path for the
+script.  This is needed to auto-detect the version in git for kdesrc-build
+instances running from a git repo.
+
+=cut
+
+sub setBasePath ($newPath)
 {
-    my ($self, $newPath) = @_;
     $SCRIPT_PATH = $newPath // $SCRIPT_PATH;
 }
+
+=head2 scriptVersion
+
+Call this function to return the kdesrc-build version.
+
+ my $version = scriptVersion(); # '22.07';
+
+If the script is running from within its git repository (and C<setBasePath> has
+been called), this function will try to auto-detect the git SHA1 ID of the
+current checkout and append the ID (in C<git-describe> format) to the output
+string as well.
+
+=cut
 
 sub scriptVersion :prototype()
 {
