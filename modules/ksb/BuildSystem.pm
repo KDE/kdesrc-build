@@ -26,7 +26,7 @@ provide needed detailed functionality.
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT prune_under_directory_p safe_lndir_p run_logged_p);
+use ksb::Util qw(:DEFAULT filter_program_output prune_under_directory_p safe_lndir_p run_logged_p);
 use ksb::StatusView;
 
 use Mojo::Promise;
@@ -112,14 +112,11 @@ sub buildConstraints
     return { } unless $cores;
 
     my $max_cores = eval {
-        chomp(my @out = ksb::Util::filter_program_output(undef, 'nproc'));
+        chomp(my @out = filter_program_output(undef, 'nproc'));
         max(1, int $out[0]);
     } // 1;
 
-    # On multi-core systems, reduce number of cores by one to leave at least one
-    # core available for non-compilation activities and avoid making the machine
-    # unresponsive
-    $cores = $max_cores - 1
+    $cores = $max_cores
         if $cores eq 'auto' and $max_cores > 1;
 
     # If user sets cores to something silly, set it to a failsafe.
