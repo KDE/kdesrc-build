@@ -74,6 +74,10 @@ L<ksb::BuildSystem::Meson>
 
 =item *
 
+L<ksb::BuildSystem::Qt4>
+
+=item *
+
 L<ksb::Cmdline>
 
 =item *

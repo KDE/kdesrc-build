@@ -1,8 +1,13 @@
 package ksb::BuildSystem::Qt4 0.10;
 
-# Build system for the Qt4 toolkit
-
 use ksb;
+
+=head1 DESCRIPTION
+
+Build system for the Qt4 toolkit.  It actually works for Qt6 qtbase as well
+because of how simple it is but don't tell anyone that.
+
+=cut
 
 use parent qw(ksb::BuildSystem);
 
@@ -86,7 +91,16 @@ EOF
         info ("\tRunning g[configure]...");
 
         $module->setPersistentOption('last-configure-flags', $cur_flags);
-        return log_command($module, "configure", \@commands) == 0;
+
+        my $result;
+        my $promise = run_logged_p($module, "configure", $builddir, \@commands);
+        $promise = $promise->then(sub ($exitcode) {
+            $result = ($exitcode == 0);
+        });
+
+        $promise->wait;
+
+        return $result;
     }
 
     # Skip execution of configure.
