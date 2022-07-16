@@ -75,7 +75,6 @@ path_add()
 
 # Now add the necessary directories, starting with Qt (although we don't add Qt
 # if it's system Qt to avoid moving /usr up in the PATH.
-# Note that LD_LIBRARY_PATH *should* be extraneous with KF5 and Qt5
 if test "x$qt_prefix" != "x/usr"; then
     path_add "PATH"               "$(${qmake} -query QT_INSTALL_BINS 2>/dev/null)";
     path_add "PKG_CONFIG_PATH"    "$(${qmake} -query QT_INSTALL_LIBS 2>/dev/null)/pkgconfig";
@@ -105,7 +104,6 @@ path_add "CMAKE_PREFIX_PATH"  "$kde_prefix";
 path_add "QML2_IMPORT_PATH"   "$kde_prefix/$libname/qml";
 path_add "QT_PLUGIN_PATH"     "$kde_prefix/$libname/qt5/plugins" # phonon likes this one
 path_add "QT_PLUGIN_PATH"     "$kde_prefix/$libname/plugins"     # others like this more
-path_add "LD_LIBRARY_PATH"    "$qt_prefix/lib/"
 
 # For Python bindings support.
 path_add "PYTHONPATH"         "$kde_prefix/$libname/site-packages";
@@ -124,4 +122,3 @@ export QT_PLUGIN_PATH
 export XDG_DATA_DIRS
 export XDG_CONFIG_DIRS
 export MANPATH
-export LD_LIBRARY_PATH
