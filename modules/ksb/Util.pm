@@ -587,6 +587,7 @@ sub run_logged_p ($module, $filename, $dir, $argRef)
 {
     {
         local $" = "', '"; # list separator
+        $dir //= '';
         debug ("run_logged_p(): Module $module, Command: {'$argRef->@*'} from $dir");
         if (pretending()) {
             pretend ("\tWould have run g{'$argRef->@*'}");

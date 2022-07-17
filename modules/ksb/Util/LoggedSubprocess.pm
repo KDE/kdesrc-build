@@ -6,9 +6,12 @@ use ksb;
 
  my $cmd = ksb::Util::LoggedSubprocess->new
      ->module($module)           # required
-     ->log_to($filename)         # also required
-     ->chdir_to($builddir)       # optional
+     ->log_to($filename)         # required
      ->set_command($argRef)      # required
+     ->chdir_to($builddir)       # optional
+     ->announcer(sub ($mod) {    # optional
+         note("g[$mod] starting update")
+     })
      ;
 
  # optional, can have child output forwarded back to parent for processing
@@ -98,6 +101,14 @@ disable command localization by setting the "C" locale in the shell
 environment. This can be needed for filtering command output but should be
 avoided if possible otherwise.
 
+=head2 announcer
+
+Optional. Can be set to a sub that will be called with a single parameter (the
+ksb::Module being built) in the child process just before the build starts.
+
+You can use this to make an announcement just before the command is run since
+there's no way to guarantee the timing in a longer build.
+
 =cut
 
 has 'module';
@@ -105,6 +116,7 @@ has 'log_to';
 has 'chdir_to';
 has 'set_command';
 has 'disable_translations' => 0;
+has 'announcer';
 
 =head1 METHODS
 
@@ -133,6 +145,7 @@ sub start($self)
         unless ref $argRef eq 'ARRAY';
 
     my $dir_to_run_from = $self->chdir_to;
+    my $announceSub     = $self->announcer;
     my @command = @{$argRef};
 
     if (pretending()) {
@@ -177,6 +190,8 @@ sub start($self)
             }
         }
 
+        $announceSub->($module)
+            if $announceSub;
         my $result = run_logged_command($module, $filename, $callback, @command);
         whisper("$command[0] complete, result $result");
         return $result;

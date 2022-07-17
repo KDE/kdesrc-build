@@ -12,6 +12,7 @@ use ksb::BuildException;
 use ksb::Debug;
 use ksb::IPC::Null;
 use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util::LoggedSubprocess;
 
 use Mojo::File;
 
@@ -398,32 +399,56 @@ EOF
         return 1;
     }
 
+    my $croak_reason;
+    my $promise;
+    my $cmd = ksb::Util::LoggedSubprocess->new
+        ->module  ($module)
+        ->chdir_to($module->fullpath('source'));
+
     if (!$branchName) {
         my $newName = $self->makeBranchname($remoteName, $branch);
-        whisper ("\tUpdating g[$module] with new remote-tracking branch y[$newName]");
-        if (0 != log_command($module, 'git-checkout-branch',
-                      ['git', 'checkout', '-b', $newName, "$remoteName/$branch"]))
-        {
-            croak_runtime("Unable to perform a git checkout of $remoteName/$branch to a local branch of $newName");
-        }
-    }
-    else {
-        whisper ("\tUpdating g[$module] using existing branch g[$branchName]");
-        if (0 != log_command($module, 'git-checkout-update',
-                      ['git', 'checkout', $branchName]))
-        {
-            croak_runtime("Unable to perform a git checkout to existing branch $branchName");
-        }
+        $cmd->log_to('git-checkout-branch')
+            ->set_command(['git', 'checkout', '-b', $newName, "$remoteName/$branch"])
+            ->announcer(sub {
+                whisper ("\tUpdating g[$module] with new remote-tracking branch y[$newName]");
+            })
+            ;
 
-        #
-        # Given that we're starting with a 'clean' checkout, it's now simply a fast-forward
-        # to the remote HEAD (previously we pulled, incurring additional network I/O).
-        #
-        return 0 == log_command($module, 'git-rebase',
+        $croak_reason = "Unable to perform a git checkout of $remoteName/$branch to a local branch of $newName";
+        $promise = $cmd->start;
+    } else {
+        $cmd->log_to('git-checkout-update')
+            ->set_command(['git', 'checkout', $branchName])
+            ->announcer(sub {
+                whisper ("\tUpdating g[$module] using existing branch g[$branchName]");
+            })
+            ;
+
+        $croak_reason = "Unable to perform a git checkout to existing branch $branchName";
+        $promise = $cmd->start->then(sub ($exitcode) {
+            return $exitcode
+                unless $exitcode == 0;
+
+            $croak_reason = "$module: Unable to reset to remote development branch $branch";
+
+            # Given that we're starting with a 'clean' checkout, it's now simply a fast-forward
+            # to the remote HEAD (previously we pulled, incurring additional network I/O).
+            return run_logged_p($module, 'git-rebase', undef,
                       ['git', 'reset', '--hard', "$remoteName/$branch"]);
+        });
     }
 
-    return 1;
+    my $result;
+    $promise = $promise->then(sub ($exitcode) {
+        $result = $exitcode == 0;
+    });
+
+    $promise->wait;
+
+    croak_runtime($croak_reason)
+        unless $result;
+
+    return $result;
 }
 
 # Completes the steps needed to update a git checkout to be checked-out to
