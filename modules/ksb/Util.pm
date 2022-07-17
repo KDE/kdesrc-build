@@ -44,7 +44,7 @@ our @EXPORT = qw(assert_isa assert_in
                  );
 
 # may be exported but only by request
-our @EXPORT_OK = qw(run_logged_p
+our @EXPORT_OK = qw(run_logged_p run_logged_command
 
                     prune_under_directory_p safe_lndir_p
                     );
@@ -223,43 +223,51 @@ sub disable_locale_message_translation
     }
 }
 
-# Returns an array of lines output from a program.  Use this only if you
-# expect that the output will be short.
-#
-# Since there is no way to disambiguate no output from an error, this
-# function will call die on error, wrap in eval if this bugs you.
-#
-# First parameter is subroutine reference to use as a filter (this sub will
-# be passed a line at a time and should return true if the line should be
-# returned).  If no filtering is desired pass 'undef'.
-#
-# Second parameter is the program to run (either full path or something
-# accessible in $PATH).
-#
-# All remaining arguments are passed to the program.
-#
-# Return value is an array of lines that were accepted by the filter.
-sub filter_program_output
+=head2 filter_program_output
+
+Returns an array of lines output from a program.  Use this only if you expect
+that the output after filtering will be short.
+
+ my $filter = sub { return 1 if /^U/ };
+ my @output = filter_program_output($filter, 'git', 'describe', 'HEAD');
+
+Since there is no way to disambiguate no output from an error, this function
+will call C<die> on error, wrap in C<eval> if this bugs you.
+
+First parameter is subroutine reference to use as a filter (this sub will
+be passed a line at a time and should return true if the line should be
+returned).  If no filtering is desired pass C<undef>.
+
+Second parameter is the program to run (either full path or something
+accessible in $PATH).
+
+All remaining arguments are passed to the program.
+
+=cut
+
+sub filter_program_output ($filterRef, $program, @args)
 {
-    my ($filterRef, $program, @args) = @_;
     $filterRef //= sub { return 1 }; # Default to all lines
 
-    debug ("Slurping '$program' '", join("' '", @args), "'");
+    {
+        local $" = "' '"; # temp update inter-item interpolation for strings
+        debug ("Slurping '$program' '@args'");
+    }
 
     # Check early for whether an executable exists since otherwise
     # it is possible for our fork-open below to "succeed" (i.e. fork()
     # happens OK) and then fail when it gets to the exec(2) syscall.
-    if (!locate_exe($program)) {
-        croak_runtime("Can't find $program in PATH!");
-    }
+    croak_runtime("Can't find $program in PATH!")
+        unless locate_exe($program);
 
     my $execFailedError = "\t - kdesrc-build - exec failed!\n";
     my $pid = open(my $childOutput, '-|');
-    croak_internal("Can't fork: $!") if ! defined($pid);
+    croak_internal("Can't fork: $!")
+        unless defined($pid);
 
     if ($pid) {
         # parent
-        my @lines = grep { &$filterRef; } (<$childOutput>);
+        my @lines = grep { $filterRef->($_); } (<$childOutput>);
         close $childOutput or do {
             # $! indicates a rather grievous error
             croak_internal("Unable to open pipe to read $program output: $!") if $!;
@@ -279,12 +287,12 @@ sub filter_program_output
         };
 
         return @lines;
-    }
-    else {
+    } else {
         disable_locale_message_translation();
 
         # We don't want stderr output on tty.
-        open (STDERR, '>', '/dev/null') or close (STDERR);
+        open (STDERR, '>', '/dev/null')
+            or close (STDERR);
 
         exec { $program } ($program, @args) or do {
             # Send a message back to parent
@@ -345,11 +353,8 @@ sub prettify_seconds
 # creates a symlink in the module log directory for easy viewing.
 # First parameter is the module in question.
 # Second parameter is the filename in the log directory of the error log.
-sub _setErrorLogfile
+sub _setErrorLogfile ($module, $logfile)
 {
-    my $module = assert_isa(shift, 'ksb::Module');
-    my $logfile = shift;
-
     return unless $logfile;
 
     my $logdir = $module->getLogDir();
@@ -364,10 +369,10 @@ sub _setErrorLogfile
 
     # Setup symlink in the module log directory pointing to the appropriate
     # file.  Make sure to remove it first if it already exists.
-    unlink("$logdir/error.log") if -l "$logdir/error.log";
+    unlink ("$logdir/error.log")
+        if -l "$logdir/error.log";
 
-    if(-e "$logdir/error.log")
-    {
+    if (-e "$logdir/error.log") {
         # Maybe it was a regular file?
         error ("r[b[ * Unable to create symlink to error log file]");
         return;
@@ -376,92 +381,41 @@ sub _setErrorLogfile
     symlink "$logfile", "$logdir/error.log";
 }
 
-
-# Subroutine to run a command, optionally filtering on the output of the child
-# command.
-#
-# First parameter is the module object being built (for logging purposes
-#   and such).
-# Second parameter is the name of the log file to use (relative to the log
-#   directory).
-# Third parameter is a reference to an array with the command and its
-#   arguments.  i.e. ['command', 'arg1', 'arg2']
-#
-# After the required three parameters you can pass a hash reference of
-# optional features:
-#   'callback' => a reference to a subroutine to have each line
-#   of child output passed to.  This output is not supposed to be printed
-#   to the screen by the subroutine, normally the output is only logged.
-#   However this is useful for e.g. munging out the progress of the build.
-#   USEFUL: When there is no more output from the child, the callback will be
-#     called with an undef string.  (Not just empty, it is also undefined).
-#
-#   'no_translate' => any true value will cause a flag to be set to request
-#   the executed child process to not translate (for locale purposes) its
-#   output, so that it can be screen-scraped.
-#
-# The return value is the shell return code, so 0 is success, and non-zero is
-#   failure.
-#
-# NOTE: This function has a special feature.  If the command passed into the
-#   argument reference is 'kdesrc-build', then log_command will, when it
-#   forks, execute the subroutine named by the second parameter rather than
-#   executing a child process.  The subroutine should include the full package
-#   name as well (otherwise the package containing log_command's implementation
-#   is used).  The remaining arguments in the list are passed to the
-#   subroutine that is called.
-sub log_command
+# Common code for log_command and ksb::Util::LoggedSubprocess
+sub run_logged_command ($module, $filename, $callbackRef, @command)
 {
-    my ($module, $filename, $argRef, $optionsRef) = @_;
-    assert_isa($module, 'ksb::Module');
-    my @command = @{$argRef};
-
-    $optionsRef //= { };
-    my $callbackRef = $optionsRef->{'callback'};
-
-    debug ("log_command(): Module $module, Command: ", join(' ', @command));
-
-    if (pretending()) {
-        pretend ("\tWould have run g['" . join ("' '", @command) . "'");
-        return 0;
-    }
-
-    # Do this before we fork so we can see errors
+    croak_internal("Pass only base filename for $module/$filename")
+        if ($filename =~ /\.log$/ || $filename =~ m,/,);
     my $logpath = $module->getLogPath("$filename.log");
 
     # Fork a child, with its stdout connected to CHILD.
-    my $pid = open(CHILD, '-|');
-    if ($pid)
-    {
+    my $pid = open(my $child_fd, '-|');
+
+    if ($pid) {
         # Parent
         if (!$callbackRef && debugging()) {
             # If no other callback given, pass to debug() if debug-mode is on.
-            while (<CHILD>) {
+            while (<$child_fd>) {
                 print ($_) if $_;
             }
         }
 
         if ($callbackRef) {
-            &{$callbackRef}($_) while (<CHILD>);
-
-            # Let callback know there is no more output.
-            &{$callbackRef}(undef);
+            &{$callbackRef}($_) while (<$child_fd>);
         }
 
         # This implicitly does a waitpid() as well
-        close CHILD or do {
-            if ($! == 0) {
-                _setErrorLogfile($module, "$filename.log");
-                return $?;
-            }
+        close $child_fd or do {
+            croak_internal("syscall failed waiting on log_command to finish: $!")
+                if $! != 0;
 
-            return 1;
+            # kernel stuff went OK but the child gave a failing exit code
+            debug("$module command logged to $logpath gave non-zero exit: $?");
+            return $?;
         };
 
         return 0;
-    }
-    else
-    {
+    } else {
         # Child. Note here that we need to avoid running our exit cleanup
         # handlers in here. For that we need POSIX::_exit.
 
@@ -479,7 +433,8 @@ sub log_command
         # being read from (to avoid waiting forever for e.g. a password prompt
         # that the user can't see.
 
-        open (STDIN, '<', "/dev/null") unless exists $ENV{'KDESRC_BUILD_USE_TTY'};
+        open (STDIN, '<', "/dev/null")
+            unless exists $ENV{'KDESRC_BUILD_USE_TTY'};
         if ($callbackRef || debugging()) {
             open (STDOUT, "|tee $logpath") or do {
                 error ("Error opening pipe to tee command.");
@@ -491,12 +446,8 @@ sub log_command
             };
         }
 
-        # Make sure we log everything.
-        open (STDERR, ">&STDOUT");
-
         # Call internal function, name given by $command[1]
-        if ($command[0] eq 'kdesrc-build')
-        {
+        if ($command[0] eq 'kdesrc-build') {
             # No colors!
             ksb::Debug::setColorfulOutput(0);
             debug ("Calling $command[1]");
@@ -505,21 +456,22 @@ sub log_command
             splice (@command, 0, 2); # Remove first two elements.
 
             no strict 'refs'; # Disable restriction on symbolic subroutines.
-            if (! &{$cmd}(@command)) # Call sub
-            {
-                POSIX::_exit (EINVAL);
-            }
-
-            POSIX::_exit (0); # Exit child process successfully.
+            my $exitcode = ($cmd->()) ? 0 : EINVAL;
+            POSIX::_exit ($exitcode);
         }
 
+        # Make sure we log everything.
+        open (STDERR, ">&STDOUT");
+
         # Don't leave empty output files, give an indication of the particular
-        # command run. Use print to go to stdout.
+        # command run.
         say "# kdesrc-build running: '", join("' '", @command), "'";
         say "# from directory: ", getcwd();
 
-        # If a callback is set assume no translation can be permitted.
-        disable_locale_message_translation() if $optionsRef->{'no_translate'};
+        # TODO: Implement this when appropriate, but also keep in mind that
+        # filter_program_output might be a better idea if you're parsing
+        # output, and that function already does this.
+        # disable_locale_message_translation();
 
         # External command.
         exec (@command) or do {
@@ -535,6 +487,69 @@ EOF
             POSIX::_exit (1);
         };
     }
+}
+
+=head2 log_command
+
+Subroutine to run a command, optionally filtering on the output of the child
+command. Use like:
+
+ my $exitcode = log_command($module, 'build-output', [qw(make -j4)]);
+
+After the required three parameters (module, base name for log file, and a list
+with the command and arguments) you can pass a hash reference of optional
+features:
+
+=over
+
+=item C<callback =E<gt> sub ($line) { ... }>
+
+A reference to a subroutine to have each line of child output passed to.  This
+output is not supposed to be printed to the screen by the subroutine, normally
+the output is only logged.  However this is useful for e.g. munging out the
+progress of the build.
+
+If you wish to run short commands and look through their output, prefer
+L<"filter_program_output"> instead, as this disables message translation.
+
+=for comment
+#  'no_translate' => any true value will cause a flag to be set to request
+#  the executed child process to not translate (for locale purposes) its
+#  output, so that it can be screen-scraped.
+
+=back
+
+The return value is the shell return code, so 0 is success, and non-zero is
+  failure.
+
+I<NOTE>: This function has a special feature.  If the command passed into the
+argument reference is 'kdesrc-build', then log_command will, when it forks,
+execute the subroutine named by the second parameter rather than executing a
+child process.  The subroutine should include the full package name as well
+(otherwise the package containing log_command's implementation is used).  The
+remaining arguments in the list are passed to the subroutine that is called.
+
+=head3 Pretend handling
+
+The program is not actually executed in pretend mode.  If you need the program
+to always be run, use a Perl IPC mechanism like L<system|perlfunc/"system"> or
+a utility like L<"filter_program_output">.
+
+=cut
+
+sub log_command ($module, $filename, $argRef, $optionsRef = {})
+{
+    my @command     = @{$argRef};
+    my $callbackRef = $optionsRef->{'callback'};
+
+    debug ("log_command(): Module $module, Command: ", join(' ', @command));
+
+    if (pretending()) {
+        pretend ("\tWould have run g['" . join ("' '", @command) . "'");
+        return 0;
+    }
+
+    return run_logged_command($module, $filename, $callbackRef, @{$argRef});
 }
 
 =head2 run_logged_p

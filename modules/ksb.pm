@@ -126,6 +126,10 @@ L<ksb::Util>
 
 =item *
 
+L<ksb::Util::LoggedSubprocess>
+
+=item *
+
 L<ksb::Version>
 
 =back

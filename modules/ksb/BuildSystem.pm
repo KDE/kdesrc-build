@@ -27,6 +27,7 @@ provide needed detailed functionality.
 use ksb::BuildException;
 use ksb::Debug;
 use ksb::Util qw(:DEFAULT filter_program_output prune_under_directory_p safe_lndir_p run_logged_p);
+use ksb::Util::LoggedSubprocess;
 use ksb::StatusView;
 
 use Mojo::Promise;
@@ -552,7 +553,6 @@ sub _runBuildCommand
     my $warnings = 0;
     my $workDoneFlag = 1;
 
-    # w00t.  Check out the closure!  Maks would be so proud.
     my $log_command_callback = sub ($input) {
         return if not defined $input;
 
@@ -560,8 +560,7 @@ sub _runBuildCommand
         if ($percentage) {
             $statusViewer->setProgressTotal(100);
             $statusViewer->setProgress($percentage);
-        }
-        else {
+        } else {
             my ($x, $y) = ($input =~ /^\[([0-9]+)\/([0-9]+)] /);
             if ($x && $y) {
                 # ninja-syntax
@@ -571,18 +570,33 @@ sub _runBuildCommand
         }
 
         $workDoneFlag = 0 if $input =~ /^ninja: no work to do/;
-        $warnings++ if $input =~ /warning: /;
+        $warnings++       if $input =~ /warning: /;
     };
 
-    my $resultCode = log_command($module, $filename, $argRef, {
-            callback => $log_command_callback
-        });
+    my $cmd = ksb::Util::LoggedSubprocess->new
+        ->module($module)
+        ->log_to($filename)
+        ->chdir_to($builddir)
+        ->set_command($argRef)
+        ;
 
-    $resultRef = {
-        was_successful => $resultCode == 0,
-        warnings       => $warnings,
-        work_done      => $workDoneFlag,
-    };
+    $cmd->on(child_output => sub ($cmd, $line) {
+        # called in parent!
+        $log_command_callback->($line);
+    });
+
+    my $promise = $cmd->start->then(sub ($exitcode) {
+        $resultRef = {
+            was_successful => $exitcode == 0,
+            warnings       => $warnings,
+            work_done      => $workDoneFlag,
+        };
+    })->catch(sub ($err) {
+        error (" r[b[*] Hit error building $module: b[$err]");
+        $resultRef->{was_successful} = 0;
+    });
+
+    $promise->wait;
 
     # Cleanup TTY output.
     $time = prettify_seconds(time - $time);
