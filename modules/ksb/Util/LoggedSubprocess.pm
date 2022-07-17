@@ -198,7 +198,7 @@ sub start($self)
 # support other use cases.
 sub _sendToParent($self, @data)
 {
-    $self->emit(progress => {
+    $self->progress({
         child_data => [@data],
     });
 }
