@@ -11,7 +11,7 @@ use parent qw(ksb::Updater);
 use ksb::BuildException;
 use ksb::Debug;
 use ksb::IPC::Null;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT run_logged_p);
 
 use Mojo::File;
 
@@ -111,9 +111,17 @@ sub _clone
         unshift @args, '-b', $commitId; # Checkout branch right away
     }
 
-    if (0 != log_command($module, 'git-clone', ['git', 'clone', '--recursive', @args])) {
-        croak_runtime("Failed to make initial clone of $module");
-    }
+    my $result;
+    my $promise = run_logged_p($module, 'git-clone', $module->getSourceDir(),
+        ['git', 'clone', '--recursive', @args]);
+    $promise = $promise->then(sub ($exitcode) {
+        $result = ($exitcode == 0);
+    });
+
+    $promise->wait;
+
+    croak_runtime("Failed to make initial clone of $module")
+        unless $result;
 
     $ipc->notifyPersistentOptionChange(
         $module->name(), 'git-cloned-repository', $git_repo);
@@ -129,7 +137,7 @@ sub _clone
         }
 
         whisper ("\tAdding git identity $name for new git module $module");
-        my $result = (safe_system(qw(git config --local user.name), $username)
+        $result = (safe_system(qw(git config --local user.name), $username)
                         >> 8) == 0;
 
         $result = (safe_system(qw(git config --local user.email), $email)
