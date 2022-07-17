@@ -250,18 +250,18 @@ sub waitForModule
         my $ipcType = $self->receiveIPCMessage(\$buffer);
 
         $message = $self->_updateSeenModulesFromMessage($ipcType, $buffer);
-    }
 
-    # If we have 'global' messages they are probably for the first module and
-    # include standard setup messages, etc. Print first and then print module's
-    # messages.
-    my $messagesRef = $self->{'messages'};
-    for my $item ('global', $moduleName) {
-        for my $msg (@{$messagesRef->{$item}}) {
-            _printLoggedMessage($msg);
+        # If we have 'global' messages they are probably for the first module and
+        # include standard setup messages, etc. Print first and then print module's
+        # messages.
+        my $messagesRef = $self->{'messages'};
+        for my $item ('global', $moduleName) {
+            for my $msg (@{$messagesRef->{$item}}) {
+                _printLoggedMessage($msg);
+            }
+
+            delete $messagesRef->{$item};
         }
-
-        delete $messagesRef->{$item};
     }
 
     # We won't print post-build messages now but we need to save them for when
