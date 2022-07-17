@@ -9,6 +9,7 @@ use parent qw(ksb::BuildSystem);
 use ksb::BuildContext 0.30;
 use ksb::Debug;
 use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util::LoggedSubprocess;
 
 use List::Util qw(first);
 
@@ -319,35 +320,35 @@ sub runTestsuite
     info ("\tRunning test suite...");
 
     # Step 2: Run the tests.
-    my $numTests = -1;
-    my $countCallback = sub {
-        if ($_ && /([0-9]+) tests failed out of/) {
-            $numTests = $1;
-        }
-    };
-
     my $buildCommand = $self->defaultBuildCommand();
-    my $result = log_command($module, 'test-results',
-                             [ $buildCommand, $make_target ],
-                             { callback => $countCallback, no_translate => 1});
+    my $numTests = 'Some'; # overwritten by a specific number, hopefully
 
-    if ($result != 0) {
+    my $cmd = ksb::Util::LoggedSubprocess->new
+        ->module($module)
+        ->log_to('test-results')
+        ->set_command([ $buildCommand, $make_target ]);
+
+    $cmd->on(child_output => sub ($cmd, $line) {
+        $numTests = $1
+            if ($line =~ /([0-9]+) tests failed out of/);
+    });
+
+    my $result;
+
+    my $promise = $cmd->start->then(sub ($exitcode) {
+        $result = ($exitcode == 0);
+    });
+
+    $promise->wait;
+
+    if (!$result) {
         my $logDir = $module->getLogDir();
-
-        if ($numTests > 0) {
-            warning ("\t$numTests tests failed for y[$module], consult $logDir/test-results.log for info");
-        }
-        else {
-            warning ("\tSome tests failed for y[$module], consult $logDir/test-results.log for info");
-        }
-
-        return 0;
-    }
-    else {
+        warning ("\t$numTests tests failed for y[$module], consult $logDir/test-results.log for info");
+    } else {
         info ("\tAll tests ran successfully.");
     }
 
-    return 1;
+    return $result;
 }
 
 # Re-implementing the one in BuildSystem since in CMake we want to call
