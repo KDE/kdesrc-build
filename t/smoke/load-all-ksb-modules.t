@@ -45,6 +45,7 @@ use ksb::Updater::KDEProjectMetadata;
 use ksb::Updater::Qt5;
 use ksb::Updater::Svn;
 use ksb::Util;
+use ksb::Util::LoggedSubprocess;
 use ksb::Version;
 
 ok(1 == 1, "Able to compile and load all kdesrc-build modules.");
