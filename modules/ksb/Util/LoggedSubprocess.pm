@@ -45,8 +45,9 @@ build from, etc.
 
 =cut
 
-use Mojo::Base 'Mojo::IOLoop::Subprocess';
+use Mojo::Base 'Mojo::EventEmitter';
 use Mojo::Promise;
+use Mojo::IOLoop::Subprocess;
 
 use ksb::BuildException qw(croak_internal);
 use ksb::Debug;
@@ -154,28 +155,29 @@ sub start($self)
         return Mojo::Promise->resolve(0);
     }
 
+    my $subp = Mojo::IOLoop::Subprocess->new;
+
     # Install callback handler to feed child output to parent if the parent has
     # a callback to filter through it.
     my $needsCallback = $self->has_subscribers('child_output');
 
     if ($needsCallback) {
-        $self->on(progress => sub ($subp, $data) {
+        $subp->on(progress => sub ($cmd, $data) {
             my $line = $data->{child_data} // undef;
             if ($line) {
-                $subp->emit(child_output => $line->[0]);
+                $self->emit(child_output => $line->[0]);
                 return;
             }
 
-            if (ref $data eq 'HASH') {
-                die "unimplemented ", keys %$data;
-            }
+            die "unimplemented " . join(', ', keys %$data)
+                if ref $data eq 'HASH';
             die "unimplemented $data";
         });
     }
 
     my $succeeded = 0;
 
-    return $self->run_p(sub {
+    return $subp->run_p(sub {
         # in a child process
         p_chdir($dir_to_run_from)
             if $dir_to_run_from;
@@ -186,7 +188,7 @@ sub start($self)
         if ($needsCallback) {
             $callback = sub ($line) {
                 return unless defined $line;
-                $self->_sendToParent($line);
+                $self->_sendToParent($subp, $line);
             }
         }
 
@@ -211,9 +213,9 @@ sub start($self)
 # code (to send line-by-line output back to the parent), to support future
 # expansion we send a hashref which we can add different keys to if we need to
 # support other use cases.
-sub _sendToParent($self, @data)
+sub _sendToParent($self, $cmd, @data)
 {
-    $self->progress({
+    $cmd->progress({
         child_data => [@data],
     });
 }
