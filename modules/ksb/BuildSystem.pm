@@ -26,7 +26,7 @@ provide needed detailed functionality.
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT filter_program_output prune_under_directory_p safe_lndir_p run_logged_p);
+use ksb::Util qw(:DEFAULT :await filter_program_output prune_under_directory_p safe_lndir_p run_logged_p);
 use ksb::Util::LoggedSubprocess;
 use ksb::StatusView;
 
@@ -350,17 +350,12 @@ sub cleanBuildSystem
     if (-e $builddir && $builddir ne $srcdir) {
         info ("\tRemoving files in build directory for g[$module]");
 
-        my $result;
-        my $clean_promise = prune_under_directory_p($module, $builddir)->then(sub ($r) {
-            $result = $r;
-        });
-
-        $clean_promise->wait;
+        my $clean_promise = prune_under_directory_p($module, $builddir);
+        my $result        = await_result($clean_promise);
 
         # This variant of log_command runs the sub prune_under_directory($builddir)
         # in a forked child, so that we can log its output.
-        if (!$result)
-        {
+        if (!$result) {
             error (" r[b[*]\tFailed to clean build directory.  Verify the permissions are correct.");
             return 0; # False for this function.
         }
@@ -535,11 +530,8 @@ sub _runBuildCommand
         note("\t$message");
 
         my $promise = run_logged_p($module, $filename, $builddir, $argRef);
-        $promise = $promise->then(sub ($exitcode) {
-            $resultRef->{was_successful} = ($exitcode == 0);
-        });
+        $resultRef->{was_successful} = await_exitcode($promise);
 
-        $promise->wait;
         return $resultRef;
     }
 
