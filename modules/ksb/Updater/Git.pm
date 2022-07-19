@@ -11,7 +11,7 @@ use parent qw(ksb::Updater);
 use ksb::BuildException;
 use ksb::Debug;
 use ksb::IPC::Null;
-use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util qw(:DEFAULT :await run_logged_p);
 use ksb::Util::LoggedSubprocess;
 
 use Mojo::File;
@@ -466,14 +466,17 @@ EOF
 #     much any format that git itself will respect (e.g. tag, sha1, etc.).
 #     It is recommended to use refs/$foo/$bar syntax for specificity.
 # Returns boolean success flag.
-sub _updateToDetachedHead
+sub _updateToDetachedHead ($self, $commit)
 {
-    my ($self, $commit) = @_;
     my $module = $self->module();
+    my $srcdir = $module->fullpath('source');
 
     info ("\tDetaching head to b[$commit]");
-    return 0 == log_command($module, 'git-checkout-commit',
+
+    my $promise = run_logged_p($module, 'git-checkout-commit', $srcdir,
                      ['git', 'checkout', $commit]);
+
+    return await_exitcode($promise);
 }
 
 # Updates an already existing git checkout by running git pull.

@@ -45,9 +45,14 @@ our @EXPORT = qw(assert_isa assert_in
 
 # may be exported but only by request
 our @EXPORT_OK = qw(run_logged_p run_logged_command
+                    await_promise await_exitcode await_result
 
                     prune_under_directory_p safe_lndir_p
                     );
+
+our %EXPORT_TAGS = (
+    await => [qw(await_promise await_exitcode await_result)],
+);
 
 =head1 FUNCTIONS
 
@@ -487,6 +492,78 @@ EOF
             POSIX::_exit (1);
         };
     }
+}
+
+=head2 await_promise
+
+Takes a promise on input and calls ->wait on it, blocking until the promise
+resolves.  Returns the promise passed in.
+
+You should not use this function except as a porting aid to convert
+log_command()-based async code to use promises.
+
+Throws an exception if the I/O loop is already in operation, as this indicates
+serious bugs.
+
+=cut
+
+sub await_promise ($promise)
+{
+    croak_internal("Tried to await a promise when I/O loop active!")
+        if $promise->ioloop->is_running;
+    $promise->wait;
+    return $promise;
+}
+
+=head2 await_exitcode
+
+Takes a promise on input, adds a handler to extract the final result (treating
+it as a shell-style exit code), and calls ->wait on it, blocking until the
+promise resolves or rejects.
+
+You should not use this function except as a porting aid to convert
+log_command()-based async code to use promises.
+
+Returns a boolean value (true if the promise exitcode resolved to 0, false
+otherwise).
+
+Throws an exception if the I/O loop is already in operation, as this indicates
+serious bugs.
+
+=cut
+
+sub await_exitcode ($promise)
+{
+    my $result;
+    await_promise($promise->then(sub ($exitcode) {
+        $result = ($exitcode == 0);
+    }));
+    return $result;
+}
+
+=head2 await_result
+
+Takes a promise on input, adds a handler to extract the final result (as a
+scalar), and calls ->wait on it, blocking until the promise resolves or
+rejects.
+
+You should not use this function except as a porting aid to convert
+log_command()-based async code to use promises.
+
+Returns the scalar result.
+
+Throws an exception if the I/O loop is already in operation, as this indicates
+serious bugs.
+
+=cut
+
+sub await_result ($promise)
+{
+    my $result;
+    await_promise($promise->then(sub ($result_from_p) {
+        $result = $result_from_p;
+    }));
+    return $result;
 }
 
 =head2 log_command
