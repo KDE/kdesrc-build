@@ -13,7 +13,7 @@ use parent qw(ksb::Updater::Git);
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util qw(:DEFAULT :await run_logged_p);
 
 sub name
 {
@@ -46,13 +46,9 @@ sub _updateRepository ($self)
     my @command = ("$srcdir/init-repository", '-f', "--module-subset=$subset_arg");
     note ("\tUsing Qt 5 modules: ", join(', ', @modules));
 
-    my $result;
-    my $promise = run_logged_p($module, 'init-repository', $srcdir, \@command);
-    $promise = $promise->then(sub ($exitcode) {
-        $result = ($exitcode == 0);
-    });
-
-    $promise->wait;
+    my $result = await_exitcode(
+        run_logged_p($module, 'init-repository', $srcdir, \@command)
+    );
 
     croak_runtime ("Couldn't update Qt 5 repository submodules!")
         unless $result;

@@ -18,7 +18,7 @@ use parent qw(ksb::BuildSystem);
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util qw(:DEFAULT :await run_logged_p);
 
 sub name
 {
@@ -32,6 +32,7 @@ sub configureInternal
     my $self = assert_isa(shift, 'ksb::BuildSystem::Meson');
     my $module = $self->module();
     my $sourcedir = $module->fullpath('source');
+    my $buildDir = $module->fullpath('build');
     my $installdir = $module->installationPath();
 
     # 'module'-limited option grabbing can return undef, so use //
@@ -39,19 +40,13 @@ sub configureInternal
     my @setupOptions = split_quoted_on_whitespace(
         $module->getOption('configure-flags', 'module') // '');
 
-    my $buildDir = $module->fullpath('build');
-
-    my $result;
-    my $promise = run_logged_p($module, 'meson-setup', $sourcedir, [
-        'meson', 'setup', $buildDir,
-        '--prefix', $installdir,
-        @setupOptions,
-    ])->then(sub ($exitcode) {
-        $result = $exitcode;
-    });
-
-    $promise->wait;
-    return $result == 0;
+    return await_exitcode(
+        run_logged_p($module, 'meson-setup', $sourcedir, [
+            'meson', 'setup', $buildDir,
+            '--prefix', $installdir,
+            @setupOptions,
+        ])
+    );
 }
 
 # Override

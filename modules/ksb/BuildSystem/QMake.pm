@@ -8,7 +8,7 @@ use parent qw(ksb::BuildSystem);
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util qw(:DEFAULT :await run_logged_p);
 
 use List::Util qw(first);
 
@@ -75,16 +75,10 @@ sub configureInternal
 
     info ("\tRunning g[qmake]...");
 
-    my $result;
-    my $promise = run_logged_p($module, 'qmake', $builddir,
-        [ $qmake, @qmakeOpts, $projectFiles[0] ]);
-    $promise = $promise->then(sub ($exitcode) {
-        $result = ($exitcode == 0);
-    });
-
-    $promise->wait;
-
-    return $result;
+    return await_exitcode(
+        run_logged_p($module, 'qmake', $builddir,
+            [ $qmake, @qmakeOpts, $projectFiles[0] ])
+        );
 }
 
 1;

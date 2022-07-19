@@ -8,7 +8,7 @@ use parent qw(ksb::Updater);
 
 use ksb::BuildException;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util qw(:DEFAULT :await run_logged_p);
 
 # scm-specific update procedure.
 # May change the current directory as necessary.
@@ -26,7 +26,6 @@ sub updateInternal ($self, $module)
 
     my $promise;
     my $failMessage;
-    my $failed;
 
     if (! -e "$srcdir/.bzr") {
         # BuildContext assumes bzr will create the $srcdir directory and then
@@ -43,14 +42,10 @@ sub updateInternal ($self, $module)
         $failMessage = "Unable to update $module!";
     }
 
-    $promise = $promise->then(sub ($exitcode) {
-        $failed = ($exitcode != 0);
-    });
-
-    $promise->wait; # TODO: convert to return promise
+    my $result = await_exitcode($promise); # TODO: convert to return promise
 
     croak_runtime($failMessage)
-        if $failed;
+        unless $result;
     return 1; # we don't count changes
 }
 

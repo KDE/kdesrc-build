@@ -7,7 +7,7 @@ use ksb;
 use ksb::BuildException;
 use ksb::BuildSystem;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util qw(:DEFAULT :await run_logged_p);
 
 use parent qw(ksb::BuildSystem);
 
@@ -94,14 +94,7 @@ EOF
 
     $module->setPersistentOption('last-configure-flags', $cur_flags);
 
-    my $result;
-    my $promise = run_logged_p($module, "configure", $builddir, \@commands);
-    $promise = $promise->then(sub ($exitcode) {
-        $result = $exitcode;
-    });
-
-    $promise->wait;
-    return $result == 0;
+    return await_exitcode(run_logged_p($module, "configure", $builddir, \@commands));
 }
 
 1;

@@ -8,7 +8,7 @@ use parent qw(ksb::BuildSystem);
 
 use ksb::BuildContext 0.30;
 use ksb::Debug;
-use ksb::Util qw(:DEFAULT run_logged_p);
+use ksb::Util qw(:DEFAULT :await run_logged_p);
 use ksb::Util::LoggedSubprocess;
 
 use List::Util qw(first);
@@ -333,13 +333,7 @@ sub runTestsuite
             if ($line =~ /([0-9]+) tests failed out of/);
     });
 
-    my $result;
-
-    my $promise = $cmd->start->then(sub ($exitcode) {
-        $result = ($exitcode == 0);
-    });
-
-    $promise->wait;
+    my $result = await_exitcode($cmd->start);
 
     if (!$result) {
         my $logDir = $module->getLogDir();
@@ -492,14 +486,8 @@ sub _safe_run_cmake
 
         $module->setPersistentOption('last-cmake-options', get_list_digest(@commands));
 
-        my $result;
-        my $promise = run_logged_p($module, "cmake", $builddir, \@commands);
-        $promise = $promise->then(sub ($exitcode) {
-            $result = $exitcode;
-        });
-
-        $promise->wait;
-        return $result;
+        # await_result, not await_exitcode, to match return semantic
+        return await_result(run_logged_p($module, "cmake", $builddir, \@commands));
     }
 
     # Skip cmake run

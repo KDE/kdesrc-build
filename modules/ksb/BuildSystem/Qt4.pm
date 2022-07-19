@@ -12,7 +12,7 @@ because of how simple it is but don't tell anyone that.
 use parent qw(ksb::BuildSystem);
 
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT :await run_logged_p);
 
 sub needsInstalled
 {
@@ -92,15 +92,9 @@ EOF
 
         $module->setPersistentOption('last-configure-flags', $cur_flags);
 
-        my $result;
-        my $promise = run_logged_p($module, "configure", $builddir, \@commands);
-        $promise = $promise->then(sub ($exitcode) {
-            $result = ($exitcode == 0);
-        });
-
-        $promise->wait;
-
-        return $result;
+        return await_exitcode(
+            run_logged_p($module, "configure", $builddir, \@commands)
+            );
     }
 
     # Skip execution of configure.

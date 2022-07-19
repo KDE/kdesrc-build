@@ -29,7 +29,7 @@ use parent qw(ksb::OptionsBase);
 
 use ksb::IPC;
 use ksb::Debug;
-use ksb::Util;
+use ksb::Util qw(:DEFAULT :await);
 
 use ksb::Updater::Svn;
 use ksb::Updater::Git;
@@ -508,14 +508,8 @@ sub setupBuildSystem
         }
     }
 
-    my $buildsysResult;
-    my $buildsysPromise = $buildSystem->createBuildSystem()->then(sub ($result) {
-        $buildsysResult = $result;
-    });
-
-    $buildsysPromise->wait; # TODO remove by making whole function return a promise
-
-    if (!$buildsysResult) {
+    my $result = await_result($buildSystem->createBuildSystem());
+    if (!$result) {
         error ("\tError creating r[$self]'s build system!");
         return 0;
     }

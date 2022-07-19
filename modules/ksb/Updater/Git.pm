@@ -112,14 +112,10 @@ sub _clone
         unshift @args, '-b', $commitId; # Checkout branch right away
     }
 
-    my $result;
-    my $promise = run_logged_p($module, 'git-clone', $module->getSourceDir(),
-        ['git', 'clone', '--recursive', @args]);
-    $promise = $promise->then(sub ($exitcode) {
-        $result = ($exitcode == 0);
-    });
-
-    $promise->wait;
+    my $result = await_exitcode(
+        run_logged_p($module, 'git-clone', $module->getSourceDir(),
+            ['git', 'clone', '--recursive', @args])
+        );
 
     croak_runtime("Failed to make initial clone of $module")
         unless $result;
@@ -438,12 +434,7 @@ EOF
         });
     }
 
-    my $result;
-    $promise = $promise->then(sub ($exitcode) {
-        $result = $exitcode == 0;
-    });
-
-    $promise->wait;
+    my $result = await_exitcode($promise);
 
     croak_runtime($croak_reason)
         unless $result;
