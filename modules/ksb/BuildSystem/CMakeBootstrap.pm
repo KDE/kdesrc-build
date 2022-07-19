@@ -12,7 +12,7 @@ that doesn't have it, or has only an older version of it.
 use parent qw(ksb::BuildSystem);
 
 use ksb::Debug;
-use ksb::Util qw(run_logged_p);
+use ksb::Util qw(:await run_logged_p split_quoted_on_whitespace);
 
 sub name
 {
@@ -37,18 +37,15 @@ sub configureInternal ($self)
         $module->getOption('configure-flags', 'module') // '');
 
     my $builddir = $module->fullpath('build');
-    my $result;
+
     my $promise = run_logged_p(
-        $module, 'cmake-bootstrap', [
+        $module, 'cmake-bootstrap', $builddir, [
             "$sourcedir/bootstrap", "--prefix=$installdir",
             @bootstrapOptions
         ]
-    )->then(sub ($exitcode) {
-        $result = ($exitcode == 0);
-    });
+    );
 
-    $promise->wait;
-    return $result;
+    return await_exitcode($promise);
 }
 
 1;
