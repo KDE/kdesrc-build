@@ -204,7 +204,15 @@ sub updateCheckout
 
     if (-d "$srcdir/.git") {
         # Note that this function will throw an exception on failure.
-        return $self->updateExistingClone();
+        my $err;
+        my $numCommits = await_result(
+            $self->updateExistingClone()
+                ->catch(sub ($e) {
+                    $err = $e;
+                    error (" r[b[*] Error updating $module: $err");
+                }));
+        die $err if $err;
+        return $numCommits;
     }
     else {
         _verifySafeToCloneIntoSourceDir($module, $srcdir);
@@ -335,6 +343,46 @@ sub _setupBestRemote
     return $chosenRemote;
 }
 
+# Returns true if there is a git stash active from the wrong branch, so we
+# don't mistakenly try to apply the stash after we switch branch.
+sub _warnIfStashedFromWrongBranch ($self, $remoteName, $branch, $branchName)
+{
+    my $module = $self->module();
+
+    # Check if this branchName we want was already the branch we were on. If
+    # not, and if we stashed local changes, then we might dump a bunch of
+    # conflicts in the repo if we un-stash those changes after a branch switch.
+    # See issue #67.
+    my ($existingBranch) = filter_program_output(undef, qw(git branch --show-current));
+    chomp $existingBranch
+        if defined ($existingBranch);
+
+    # The result is empty if in 'detached HEAD' state where we should also
+    # clearly not switch branches if there are local changes.
+    if ($module->getOption('#git-was-stashed') &&
+        (!$existingBranch || ($existingBranch ne $branchName)))
+    {
+        # Make error message make more sense
+        $existingBranch ||= 'Detached HEAD';
+        $branchName     ||= "New branch to point to $remoteName/$branch";
+
+        info (<<EOF);
+y[b[*] The module y[b[$module] had local changes from a different branch than expected:
+y[b[*]   Expected branch: b[$branchName]
+y[b[*]   Actual branch:   b[$existingBranch]
+y[b[*]
+y[b[*] To avoid conflict with your local changes, b[$module] will not be updated, and the
+y[b[*] branch will remain unchanged, so it may be out of date from upstream.
+EOF
+
+        $self->_notifyPostBuildMessage(
+            " y[b[*] b[$module] was not updated as it had local changes against an unexpected branch.");
+        return 1;
+    }
+
+    return;
+}
+
 # Completes the steps needed to update a git checkout to be checked-out to
 # a given remote-tracking branch. Any existing local branch with the given
 # branch set as upstream will be used if one exists, otherwise one will be
@@ -347,99 +395,71 @@ sub _setupBestRemote
 #
 # First parameter is the remote to use.
 # Second parameter is the branch to update to.
-# Returns boolean success flag.
+#
+# Returns a promise resolving to a boolean success flag.
 # Exception may be thrown if unable to create a local branch.
-sub _updateToRemoteHead
+sub _updateToRemoteHead ($self, $remoteName, $branch)
 {
-    my $self = shift;
-    my ($remoteName, $branch) = @_;
     my $module = $self->module();
 
-    # The 'branch' option requests a given head in the user's selected
-    # repository. Normally the remote head is mapped to a local branch,
-    # which can have a different name. So, first we make sure the remote
-    # head is actually available, and if it is we compare its SHA1 with
-    # local branches to find a matching SHA1. Any local branches that are
-    # found must also be remote-tracking. If this is all true we just
-    # re-use that branch, otherwise we create our own remote-tracking
-    # branch.
-    my $branchName = $self->getRemoteBranchName($remoteName, $branch);
+    return Mojo::Promise->new(sub ($resolve, $reject) {
+        # 'branch' option requests a given remote head in the user's selected
+        # repository. The local branch with 'branch' as upstream might have a
+        # different name. If there's no local branch this method creates one.
+        my $branchName = $self->getRemoteBranchName($remoteName, $branch);
 
-    # Check if this branchName we want was already the branch we were on. If
-    # not, and if we stashed local changes, then we might dump a bunch of
-    # conflicts in the repo if we un-stash those changes after a branch switch.
-    # See issue #67.
-    my ($existingBranch, undef) = filter_program_output(undef, qw(git branch --show-current));
-    chomp $existingBranch if defined ($existingBranch);
+        if ($self->_warnIfStashedFromWrongBranch($remoteName, $branch, $branchName)) {
+            $resolve->(0);
+            return;
+        }
 
-    # The result is empty if in 'detached HEAD' state where we should also
-    # clearly not switch branches if there are local changes.
-    if ($module->getOption('#git-was-stashed') &&
-        (!$existingBranch || ($existingBranch ne $branchName)))
-    {
-        # Make error message make more sense
-        $existingBranch ||= 'Detached HEAD';
-        $branchName     ||= "New branch to point to $remoteName/$branch";
+        my $croak_reason;
+        my $promise;
+        my $cmd = ksb::Util::LoggedSubprocess->new
+            ->module  ($module)
+            ->chdir_to($module->fullpath('source'));
 
-        info (<<EOF);
- y[b[*] The module y[b[$module] had local changes from a different branch than expected:
- y[b[*]   Expected branch: b[$branchName]
- y[b[*]   Actual branch:   b[$existingBranch]
- y[b[*]
- y[b[*] To avoid conflict with your local changes, b[$module] will not be updated, and the
- y[b[*] branch will remain unchanged, so it may be out of date from upstream.
-EOF
+        if (!$branchName) {
+            my $newName = $self->makeBranchname($remoteName, $branch);
+            $cmd->log_to('git-checkout-branch')
+                ->set_command(['git', 'checkout', '-b', $newName, "$remoteName/$branch"])
+                ->announcer(sub {
+                    whisper ("\tUpdating g[$module] with new remote-tracking branch y[$newName]");
+                })
+                ;
 
-        $self->_notifyPostBuildMessage(
-            " y[b[*] b[$module] was not updated as it had local changes against an unexpected branch.");
-        return 1;
-    }
+            $croak_reason = "Unable to perform a git checkout of $remoteName/$branch to a local branch of $newName";
+            $promise = $cmd->start;
+        } else {
+            $cmd->log_to('git-checkout-update')
+                ->set_command(['git', 'checkout', $branchName])
+                ->announcer(sub {
+                    whisper ("\tUpdating g[$module] using existing branch g[$branchName]");
+                })
+                ;
 
-    my $croak_reason;
-    my $promise;
-    my $cmd = ksb::Util::LoggedSubprocess->new
-        ->module  ($module)
-        ->chdir_to($module->fullpath('source'));
+            $croak_reason = "Unable to perform a git checkout to existing branch $branchName";
+            $promise = $cmd->start->then(sub ($exitcode) {
+                return $exitcode
+                    unless $exitcode == 0;
 
-    if (!$branchName) {
-        my $newName = $self->makeBranchname($remoteName, $branch);
-        $cmd->log_to('git-checkout-branch')
-            ->set_command(['git', 'checkout', '-b', $newName, "$remoteName/$branch"])
-            ->announcer(sub {
-                whisper ("\tUpdating g[$module] with new remote-tracking branch y[$newName]");
-            })
-            ;
+                $croak_reason = "$module: Unable to reset to remote development branch $branch";
 
-        $croak_reason = "Unable to perform a git checkout of $remoteName/$branch to a local branch of $newName";
-        $promise = $cmd->start;
-    } else {
-        $cmd->log_to('git-checkout-update')
-            ->set_command(['git', 'checkout', $branchName])
-            ->announcer(sub {
-                whisper ("\tUpdating g[$module] using existing branch g[$branchName]");
-            })
-            ;
+                # Given that we're starting with a 'clean' checkout, it's now simply a fast-forward
+                # to the remote HEAD (previously we pulled, incurring additional network I/O).
+                return run_logged_p($module, 'git-rebase', undef,
+                          ['git', 'reset', '--hard', "$remoteName/$branch"]);
+            });
+        }
 
-        $croak_reason = "Unable to perform a git checkout to existing branch $branchName";
-        $promise = $cmd->start->then(sub ($exitcode) {
-            return $exitcode
+        $promise = $promise->then(sub ($exitcode) {
+            croak_runtime($croak_reason)
                 unless $exitcode == 0;
-
-            $croak_reason = "$module: Unable to reset to remote development branch $branch";
-
-            # Given that we're starting with a 'clean' checkout, it's now simply a fast-forward
-            # to the remote HEAD (previously we pulled, incurring additional network I/O).
-            return run_logged_p($module, 'git-rebase', undef,
-                      ['git', 'reset', '--hard', "$remoteName/$branch"]);
+            return 1; # success
         });
-    }
 
-    my $result = await_exitcode($promise);
-
-    croak_runtime($croak_reason)
-        unless $result;
-
-    return $result;
+        $resolve->($promise);
+    });
 }
 
 # Completes the steps needed to update a git checkout to be checked-out to
@@ -456,25 +476,29 @@ EOF
 # First parameter is the commit to update to. This can be in pretty
 #     much any format that git itself will respect (e.g. tag, sha1, etc.).
 #     It is recommended to use refs/$foo/$bar syntax for specificity.
-# Returns boolean success flag.
+#
+# Returns a promise resolving to a boolean success flag.
 sub _updateToDetachedHead ($self, $commit)
 {
     my $module = $self->module();
     my $srcdir = $module->fullpath('source');
 
-    info ("\tDetaching head to b[$commit]");
-
-    my $promise = run_logged_p($module, 'git-checkout-commit', $srcdir,
-                     ['git', 'checkout', $commit]);
-
-    return await_exitcode($promise);
+    return Mojo::Promise->new(sub ($resolve, $reject) {
+        info ("\tDetaching head to b[$commit]");
+        my $promise = run_logged_p($module, 'git-checkout-commit',
+                $srcdir, ['git', 'checkout', $commit])
+            ->then(sub ($exitcode) { # need to adapt to boolean success flag
+                return $exitcode == 0;
+            });
+        $resolve->($promise);
+    });
 }
 
 # Updates an already existing git checkout by running git pull.
 #
 # Throws an exception on error.
 #
-# Return parameter is the number of affected *commits*.
+# Return parameter is a promise resolving to the number of affected *commits*.
 sub updateExistingClone
 {
     my $self     = assert_isa(shift, 'ksb::Updater::Git');
@@ -493,35 +517,34 @@ sub updateExistingClone
 
     # Download updated objects. This also updates remote heads so do this
     # before we start comparing branches and such.
-    info ("Fetching remote changes to g[$module]");
-    if (0 != log_command($module, 'git-fetch', ['git', 'fetch', '--tags', $remoteName])) {
-        croak_runtime ("Unable to perform git fetch for $remoteName ($cur_repo)");
-    }
+    return Mojo::Promise->new(sub ($resolve, $reject) {
+        info ("Fetching remote changes to g[$module]");
+        $resolve->(run_logged_p($module, 'git-fetch', undef,
+            ['git', 'fetch', '--tags', $remoteName]));
+    })->then(sub ($exitcode) {
+        croak_runtime ("Unable to perform git fetch for $remoteName ($cur_repo)")
+            unless $exitcode == 0;
 
-    # Now we need to figure out if we should update a branch, or simply
-    # checkout a specific tag/SHA1/etc.
-    my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
-    if ($commitType eq 'none') {
-        $commitType = 'branch';
-        $commitId = $self->_detectDefaultRemoteHead($remoteName);
-    }
+        # Now we need to figure out if we should update a branch, or simply
+        # checkout a specific tag/SHA1/etc.
+        my ($commitId, $commitType) = $self->_determinePreferredCheckoutSource($module);
+        if ($commitType eq 'none') {
+            $commitType = 'branch';
+            $commitId = $self->_detectDefaultRemoteHead($remoteName);
+        }
 
-    note ("Merging g[$module] changes from $commitType b[$commitId]");
-    my $start_commit = $self->commit_id('HEAD');
+        note ("Merging g[$module] changes from $commitType b[$commitId]");
+        my $start_commit = $self->commit_id('HEAD');
 
-    my $updateSub;
-    if ($commitType eq 'branch') {
-        $updateSub = sub { $self->_updateToRemoteHead($remoteName, $commitId) };
-    }
-    else {
-        $updateSub = sub { $self->_updateToDetachedHead($commitId); }
-    }
+        my $updateSub = ($commitType eq 'branch')
+            ? sub { $self->_updateToRemoteHead($remoteName, $commitId); }
+            : sub { $self->_updateToDetachedHead($commitId);            }
+            ;
 
-    # With all remote branches fetched, and the checkout of our desired
-    # branch completed, we can now use our update sub to complete the
-    # changes.
-    $self->stashAndUpdate($updateSub);
-    return count_command_output('git', 'rev-list', "$start_commit..HEAD");
+        return $self->stashAndUpdate($updateSub)->then(sub ($isOk) {
+            return count_command_output('git', 'rev-list', "$start_commit..HEAD");
+        });
+    });
 }
 
 # Tries to determine the best remote branch name to use as a default if the
@@ -687,83 +710,95 @@ sub _notifyPostBuildMessage
 # should need no parameters and return a boolean success indicator. It may
 # throw exceptions.
 #
-# Throws an exception on error.
-#
-# No return value.
-sub stashAndUpdate
+# Returns a promise that resolves to 1, or rejects with an exception.
+sub stashAndUpdate ($self, $updateSub)
 {
-    my $self = assert_isa(shift, 'ksb::Updater::Git');
-    my $updateSub = shift;
     my $module = $self->module();
     my $date = strftime ("%F-%R", gmtime()); # ISO Date, hh:mm time
     my $stashName = "kdesrc-build auto-stash at $date";
 
     # first, log a snapshot of the git status prior to kdesrc-build taking over the reins in the repo
-    log_command($module, 'git-status-before-update', [qw(git status)]);
-    my $oldStashCount = $self->countStash();
+    my $promise = run_logged_p($module, 'git-status-before-update', undef, [qw(git status)]);
 
-    #
-    # always stash:
-    # - also stash untracked files because what if upstream started to track them
-    # - we do not stash .gitignore'd files because they may be needed for builds?
-    #   on the other hand that leaves a slight risk if upstream altered those (i.e. no longer truly .gitignore'd)
-    #
-    whisper ("\tStashing local changes if any...");
-    my $status = 0;
-    $status = log_command($module, 'git-stash-push', [
-        qw(git stash push -u --quiet --message), $stashName
-    ]) unless pretending(); # probably best not to do anything if pretending()
+    my ($oldStashCount, $newStashCount); # Used in promises below
+    return $promise->then(sub ($exitcode) {
+        $oldStashCount = $self->countStash();
 
-    #
-    # This might happen if the repo is already in merge conflict state.
-    # We could sledgehammer our way past this by marking everything as resolved using git add . before
-    # stashing, but... that might not always be appreciated by people having to figure out what the
-    # original merge conflicts were afterwards.
-    #
-    if ($status != 0) {
-        log_command($module, 'git-status-after-error', [qw(git status)]);
+        # always stash:
+        # - also stash untracked files because what if upstream started to track them
+        # - we do not stash .gitignore'd files because they may be needed for builds?
+        #   on the other hand that leaves a slight risk if upstream altered those
+        #   (i.e. no longer truly .gitignore'd)
+        whisper ("\tStashing local changes if any...");
+
+        return Mojo::Promise->resolve(0)
+            if pretending(); # probably best not to do anything if pretending
+
+        return run_logged_p($module, 'git-stash-push', undef,
+            [ qw(git stash push -u --quiet --message), $stashName ]);
+    })->then(sub ($exitcode) {
+        return $exitcode
+            if $exitcode == 0;
+
+        # Might happen if the repo is already in merge conflict state.
+        # We could mark everything as resolved using git add . before stashing,
+        # but that might not always be appreciated by people having to figure
+        # out what the original merge conflicts were afterwards.
         $self->_notifyPostBuildMessage(
             "b[$module] may have local changes that we couldn't handle, so the module was left alone."
         );
-        croak_runtime("Unable to stash local changes (if any) for $module, aborting update.");
-    }
 
-    #
-    # next: check if the stash was truly necessary.
-    # compare counts (not just testing if there is *any* stash) because there might have been a
-    # genuine user's stash already prior to kdesrc-build taking over the reins in the repo.
-    #
-    my $newStashCount = $self->countStash();
+        return run_logged_p($module, 'git-status-after-error', undef,
+                [qw(git status)])
+            ->then(sub {
+                croak_runtime("Unable to stash local changes (if any) for $module, aborting update.");
+            });
+    })->then(sub ($exitcode) {
+        # next: check if the stash was truly necessary.
+        # compare counts (not just testing if there is *any* stash) because there
+        # might have been a genuine user's stash already prior to kdesrc-build
+        # taking over the reins in the repo.
+        $newStashCount = $self->countStash();
 
-    #
-    # mark that we applied a stash so that $updateSub (_updateToRemoteHead or
-    # _updateToDetachedHead) can know not to do dumb things
-    #
-    $module->setOption('#git-was-stashed', 1)
-        if $newStashCount != $oldStashCount;
+        # mark that we applied a stash so that $updateSub (_updateToRemoteHead or
+        # _updateToDetachedHead) can know not to do dumb things
+        $module->setOption('#git-was-stashed', 1)
+            if $newStashCount != $oldStashCount;
 
-    # finally, update to remote head
-    if (!$updateSub->()) {
-        error ("\tUnable to update the source code for r[b[$module]");
-        log_command($module, 'git-status-after-error', [qw(git status)]);
-    }
+        # finally, update to remote head
+        return $updateSub->();
+    })->then(sub ($updateOk) {
+        return 1
+            if $updateOk;
 
-    #
-    # If the stash had been needed then try to re-apply it before we build, so that KDE
-    # developers working on changes do not have to manually re-apply.
-    #
-    if ($newStashCount != $oldStashCount) {
-        my $stashResult = log_command($module, 'git-stash-pop', [qw(git stash pop)]);
+        return run_logged_p($module, 'git-status-after-error', undef,
+                [qw(git status)])
+            ->then(sub {
+                croak_runtime("Unable to update source code for $module");
+            });
+    })->then(sub ($exitcode) {
+        # we ignore git-status exit code deliberately, it's a debugging aid
 
-        if ($stashResult != 0) {
-            my $message = "r[b[*] Unable to restore local changes for b[$module]! " .
-                "You should manually inspect the new stash: b[$stashName]";
-            warning ("\t$message");
-            $self->_notifyPostBuildMessage($message);
-        } else {
-            info ("\tb[*] You had local changes to b[$module], which have been re-applied.");
-        }
-    }
+        return 1 # success
+            if $newStashCount == $oldStashCount;
+
+        # If the stash had been needed then try to re-apply it before we build, so
+        # that KDE developers working on changes do not have to manually re-apply.
+        return run_logged_p($module, 'git-stash-pop', undef,
+                [qw(git stash pop)])
+            ->then(sub ($exitcode) {
+                if ($exitcode != 0) {
+                    my $message = "r[b[*] Unable to restore local changes for b[$module]! " .
+                        "You should manually inspect the new stash: b[$stashName]";
+                    warning ("\t$message");
+                    $self->_notifyPostBuildMessage($message);
+                } else {
+                    info ("\tb[*] You had local changes to b[$module], which have been re-applied.");
+                }
+
+                return 1; # success
+            });
+    });
 }
 
 # This subroutine finds an existing remote-tracking branch name for the
