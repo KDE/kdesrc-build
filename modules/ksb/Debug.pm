@@ -113,6 +113,24 @@ sub setIPC
     die "$ipc isn't an IPC obj!" if (!ref ($ipc) || !$ipc->isa('ksb::IPC'));
 }
 
+# Returns true if we're in an async update thread (as determined by seeing if
+# ksb::Module::update is in the call stack or not). This is needed to help
+# avoid spamming the TTY with update-related log messages when information on
+# an entirely separate build is being shown to the user.
+sub _isInUpdateThread
+{
+    my $cur_subroutine;
+    my $i = 0;
+
+    do {
+        $cur_subroutine = (caller($i++))[3];
+        return unless $cur_subroutine;
+        return 1 if $cur_subroutine eq 'ksb::Module::update';
+    } while ($cur_subroutine !~ /::runAllTasks$/ && $i < 15);
+
+    return;
+}
+
 # The next few subroutines are used to print output at different importance
 # levels to allow for e.g. quiet switches, or verbose switches.  The levels are,
 # from least to most important:
