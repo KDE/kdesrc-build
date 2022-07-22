@@ -677,9 +677,8 @@ sub applyUserEnvironment
 
 # Establishes proper build environment in the build context. Should be run
 # before forking off commands for e.g. updates, builds, installs, etc.
-sub setupEnvironment
+sub setupEnvironment ($self)
 {
-    my $self = assert_isa(shift, 'ksb::Module');
     my $ctx = $self->buildContext();
     my $prefix = $self->installationPath();
 
@@ -689,17 +688,13 @@ sub setupEnvironment
     # Build system's environment injection
     my $buildSystem = $self->buildSystem();
 
-    #
     # Suppress injecting qtdir/kdedir related environment variables if a toolchain is also set
     # Let the toolchain files/definitions take care of themselves.
-    #
     if ($buildSystem->hasToolchain()) {
-        note ("\tNot setting environment variables for b[$self]: a custom toolchain is used");
+        whisper ("\tNot setting environment variables for b[$self]: a custom toolchain is used");
     } else {
-        my $kdedir = $self->getOption('kdedir');
-        my $qtdir  = $self->getOption('qtdir');
-        my $binpath  = $self->getOption('binpath');
-        my $libpath  = $self->getOption('libpath');
+        my $kdedir   = $self->getOption('kdedir');
+        my $qtdir    = $self->getOption('qtdir');
 
         # Ensure the platform libraries we're building can be found, as long as they
         # are not the system's own libraries.
@@ -712,12 +707,14 @@ sub setupEnvironment
             $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/lib");
             $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
         }
-        if (length $binpath) {
-            $ctx->prependEnvironmentValue('PATH', $binpath);
-        }
-        if (length $libpath) {
-            $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', $libpath);
-        }
+
+        my $binpath  = $self->getOption('binpath');
+        my $libpath  = $self->getOption('libpath');
+
+        $ctx->prependEnvironmentValue('PATH', $binpath)
+            if $binpath;
+        $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', $libpath)
+            if $libpath;
     }
 
     $buildSystem->prepareModuleBuildEnvironment($ctx, $self, $prefix);

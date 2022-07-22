@@ -362,10 +362,8 @@ sub commitEnvironmentChanges
 # All remaining parameters are prepended to the current environment path, in
 # the order given. (i.e. param1, param2, param3 ->
 # param1:param2:param3:existing)
-sub prependEnvironmentValue
+sub prependEnvironmentValue ($self, $envName, @items)
 {
-    my $self = assert_isa(shift, 'ksb::BuildContext');
-    my ($envName, @items) = @_;
     my @curPaths = split(':', $self->{env}->{$envName} // $ENV{$envName} // '');
 
     # Filter out entries to add that are already in the environment from
