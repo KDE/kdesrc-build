@@ -50,6 +50,23 @@ This package applies common Perl standards to all kdesrc-build modules, includin
 enabling C<use strict>, C<use warnings>, requiring Perl 5.26 as a minimum version,
 and enabling L<subroutine signatures|perlsub>.
 
+=head2 DEVELOPER GUIDE
+
+=over
+
+=item *
+
+Information on Perl improvements that may be worth targeting can be found in
+the L<perl-upgrade-notes> guide.
+
+=item *
+
+Information on how kdesrc-build supports inter-process communication to support
+concurrent build and updates can be found in L<IPC-notes>. Including how
+it's worked for years and what we're working to port to.
+
+=back
+
 =head2 RELATED MODULES
 
 Some or all of the following may be helpful as well:
