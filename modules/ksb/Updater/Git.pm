@@ -256,52 +256,65 @@ sub isPushUrlManaged
     return 0;
 }
 
-#
 # Ensures the given remote is pre-configured for the module's git repository.
 # The remote is either set up from scratch or its URLs are updated.
 #
 # Param $remote name (alias) of the remote to configure
 #
-# Throws an exception on error.
-#
-sub _setupRemote
+# Returns a promise that resolves to 1, or rejects with an error.
+sub _setupRemote ($self, $remote)
 {
-    my $self = assert_isa(shift, 'ksb::Updater::Git');
-    my $remote = shift;
-
     my $module = $self->module();
-    my $repo = $module->getOption('repository');
+    my $repo   = $module->getOption('repository');
     my $hasOldRemote = $self->hasRemote($remote);
 
-    if ($hasOldRemote) {
-        whisper("\tUpdating the URL for git remote $remote of $module ($repo)");
-        if (log_command($module, 'git-fix-remote', ['git', 'remote', 'set-url', $remote, $repo]) != 0) {
-            croak_runtime("Unable to update the URL for git remote $remote of $module ($repo)");
+    return Mojo::Promise->new(sub ($resolve, $reject) {
+        if ($hasOldRemote) {
+            whisper("\tUpdating the URL for git remote $remote of $module ($repo)");
+            $resolve->(run_logged_p($module, 'git-fix-remote', undef,
+                    ['git', 'remote', 'set-url', $remote, $repo]
+                )->then(sub ($exitcode) {
+                    croak_runtime("Unable to update the URL for git remote $remote of $module ($repo)")
+                        unless $exitcode == 0;
+                }));
+        } else {
+            whisper("\tAdding new git remote $remote of $module ($repo)");
+            $resolve->(run_logged_p($module, 'git-add-remote', undef,
+                    ['git', 'remote', 'add', $remote, $repo]
+                )->then(sub ($exitcode) {
+                    croak_runtime("Unable to add new git remote $remote of $module ($repo)")
+                        unless $exitcode == 0;
+                }));
         }
-    }
-    elsif (log_command($module, 'git-add-remote', ['git', 'remote', 'add', $remote, $repo]) != 0) {
-        whisper("\tAdding new git remote $remote of $module ($repo)");
-        croak_runtime("Unable to add new git remote $remote of $module ($repo)");
-    }
+    })->then(sub {
+        # If we make it here, no exceptions were thrown
+        return 1
+            unless $self->isPushUrlManaged();
 
-    if ($self->isPushUrlManaged()) {
-        #
         # pushInsteadOf does not work nicely with git remote set-url --push
         # The result would be that the pushInsteadOf kde: prefix gets ignored.
         #
-        # The next best thing is to remove any preconfigured pushurl and restore the kde: prefix mapping that way.
-        # This is effectively the same as updating the push URL directly because of the remote set-url executed
-        # previously by this function for the fetch URL.
-        #
-        chomp (my $existingPushUrl = qx"git config --get remote.$remote.pushurl");
-        if ($existingPushUrl) {
-            info("\tRemoving preconfigured push URL for git remote $remote of $module: $existingPushUrl");
+        # The next best thing is to remove any preconfigured pushurl and
+        # restore the kde: prefix mapping that way.  This is effectively the
+        # same as updating the push URL directly because of the remote set-url
+        # executed previously by this function for the fetch URL.
 
-            if (log_command($module, 'git-fix-remote', ['git', 'config', '--unset', "remote.$remote.pushurl"]) != 0) {
-                croak_runtime("Unable to remove preconfigured push URL for git remote $remote of $module: $existingPushUrl");
-            }
-        }
-    }
+        chomp (my $existingPushUrl = qx"git config --get remote.$remote.pushurl");
+
+        return 1
+            unless $existingPushUrl;
+
+        info("\tRemoving preconfigured push URL for git remote $remote of $module: $existingPushUrl");
+
+        return run_logged_p($module, 'git-fix-remote', undef,
+                ['git', 'config', '--unset', "remote.$remote.pushurl"]
+            )->then(sub ($exitcode) {
+                croak_runtime("Unable to remove preconfigured push URL for $module!")
+                    unless $exitcode == 0;
+
+                return 1; # overall success
+            });
+    });
 }
 
 # Selects a git remote for the user's selected repository (preferring a
@@ -309,9 +322,8 @@ sub _setupRemote
 #
 # Assumes the current directory is already set to the source directory.
 #
-# Throws an exception on error.
-#
-# Return value: Remote name that should be used for further updates.
+# Returns a promise that resolves to the name of the remote (which will be
+# setup by kdesrc-build) to use for updates, or rejects with an error.
 #
 # See also the 'repository' module option.
 sub _setupBestRemote
@@ -325,22 +337,22 @@ sub _setupBestRemote
     my @remoteNames = $self->bestRemoteName();
     my $chosenRemote = @remoteNames ? $remoteNames[0] : DEFAULT_GIT_REMOTE;
 
-    $self->_setupRemote($chosenRemote);
+    return $self->_setupRemote($chosenRemote)->then(sub {
+        # Make a notice if the repository we're using has moved.
+        my $old_repo = $module->getPersistentOption('git-cloned-repository');
+        if ($old_repo and ($cur_repo ne $old_repo)) {
+            note (" y[b[*]\ty[$module]'s selected repository has changed");
+            note (" y[b[*]\tfrom y[$old_repo]");
+            note (" y[b[*]\tto   b[$cur_repo]");
+            note (" y[b[*]\tThe git remote named b[", DEFAULT_GIT_REMOTE, "] has been updated");
 
-    # Make a notice if the repository we're using has moved.
-    my $old_repo = $module->getPersistentOption('git-cloned-repository');
-    if ($old_repo and ($cur_repo ne $old_repo)) {
-        note (" y[b[*]\ty[$module]'s selected repository has changed");
-        note (" y[b[*]\tfrom y[$old_repo]");
-        note (" y[b[*]\tto   b[$cur_repo]");
-        note (" y[b[*]\tThe git remote named b[", DEFAULT_GIT_REMOTE, "] has been updated");
+            # Update what we think is the current repository on-disk.
+            $ipc->notifyPersistentOptionChange(
+                $module->name(), 'git-cloned-repository', $cur_repo);
+        }
 
-        # Update what we think is the current repository on-disk.
-        $ipc->notifyPersistentOptionChange(
-            $module->name(), 'git-cloned-repository', $cur_repo);
-    }
-
-    return $chosenRemote;
+        return $chosenRemote;
+    });
 }
 
 # Returns true if there is a git stash active from the wrong branch, so we
@@ -513,14 +525,17 @@ sub updateExistingClone
         croak_runtime ("Aborting git update for $module, you appear to have a rebase or merge in progress!");
     }
 
-    my $remoteName = $self->_setupBestRemote();
+    my $remoteName;
+    my $remoteNamePromise = $self->_setupBestRemote();
 
     # Download updated objects. This also updates remote heads so do this
     # before we start comparing branches and such.
-    return Mojo::Promise->new(sub ($resolve, $reject) {
+    return $remoteNamePromise->then(sub ($_remoteName) {
+        $remoteName = $_remoteName; # save for later
+
         info ("Fetching remote changes to g[$module]");
-        $resolve->(run_logged_p($module, 'git-fetch', undef,
-            ['git', 'fetch', '--tags', $remoteName]));
+        return run_logged_p($module, 'git-fetch', undef,
+            ['git', 'fetch', '--tags', $remoteName]);
     })->then(sub ($exitcode) {
         croak_runtime ("Unable to perform git fetch for $remoteName ($cur_repo)")
             unless $exitcode == 0;
