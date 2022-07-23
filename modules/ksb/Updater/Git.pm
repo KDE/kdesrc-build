@@ -28,14 +28,23 @@ use constant {
 
 # scm-specific update procedure.
 # May change the current directory as necessary.
-sub updateInternal
+sub updateInternal ($self, $ipc = ksb::IPC::Null->new())
 {
-    my $self = assert_isa(shift, 'ksb::Updater::Git');
-    my $ipc  = shift;
+    $self->{ipc} = $ipc;
+    my $err;
 
-    $self->{ipc} = $ipc // ksb::IPC::Null->new();
-    return $self->updateCheckout();
-    delete $self->{ipc};
+    my $promise = $self->updateCheckout()
+        ->catch(sub ($_err) {
+            $err = $_err;
+        })
+        ->finally(sub {
+            delete $self->{ipc};
+        });
+
+    my $numCommits = await_result($promise);
+    die $err if $err;
+
+    return $numCommits;
 }
 
 sub name
@@ -196,51 +205,45 @@ EOF
 # Either performs the initial checkout or updates the current git checkout
 # for git-using modules, as appropriate.
 #
-# If errors are encountered, an exception is raised.
-#
-# Returns the number of *commits* affected.
+# Returns a promise that resolves to the number of *commits* affected, or
+# rejects with an update error.
 sub updateCheckout
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
     my $module = $self->module();
     my $srcdir = $module->fullpath('source');
 
+    my $promise;
+
     if (-d "$srcdir/.git") {
         # Note that this function will throw an exception on failure.
-        my $err;
-        my $numCommits = await_result(
-            $self->updateExistingClone()
-                ->catch(sub ($e) {
-                    $err = $e;
-                    error (" r[b[*] Error updating $module: $err");
-                }));
-        die $err if $err;
-        return $numCommits;
-    }
-    else {
-        _verifySafeToCloneIntoSourceDir($module, $srcdir);
+        $promise = $self->updateExistingClone();
+    } else {
+        $promise = Mojo::Promise->new(sub ($resolve, $reject) {
+            _verifySafeToCloneIntoSourceDir($module, $srcdir);
 
-        my $git_repo = $module->getOption('repository');
+            my $git_repo = $module->getOption('repository');
+            croak_internal("Unable to checkout $module, you must specify a repository to use.")
+                unless $git_repo;
 
-        if (!$git_repo) {
-            croak_internal("Unable to checkout $module, you must specify a repository to use.");
-        }
+            if (!$self->_verifyRefPresent($module, $git_repo)) {
+                croak_runtime(
+                    $self->_moduleIsNeeded()
+                        ? "$module build was requested, but it has no source code at the requested git branch"
+                        : "The required git branch does not exist at the source repository"
+                );
+            }
 
-        if (!$self->_verifyRefPresent($module, $git_repo)) {
-            croak_runtime(
-                $self->_moduleIsNeeded()
-                    ? "$module build was requested, but it has no source code at the requested git branch"
-                    : "The required git branch does not exist at the source repository"
-            );
-        }
+            $resolve->($self->_clone($git_repo)->then(sub ($result) {
+                return 1
+                    if pretending();
 
-        await_result($self->_clone($git_repo));
-
-        return 1 if pretending();
-        return count_command_output('git', '--git-dir', "$srcdir/.git", 'ls-files');
+                return count_command_output('git', '--git-dir', "$srcdir/.git", 'ls-files');
+            }));
+        });
     }
 
-    return 0;
+    return $promise;
 }
 
 # Intended to be reimplemented
