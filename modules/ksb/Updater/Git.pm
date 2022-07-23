@@ -90,7 +90,8 @@ sub _verifyRefPresent
 # Perform a git clone to checkout the latest branch of a given git module
 #
 # First parameter is the repository (typically URL) to use.
-# Throws an exception if it fails.
+#
+# Returns a promise that resolves to 1, or rejects if an error occurs.
 sub _clone
 {
     my $self = assert_isa(shift, 'ksb::Updater::Git');
@@ -112,40 +113,42 @@ sub _clone
         unshift @args, '-b', $commitId; # Checkout branch right away
     }
 
-    my $result = await_exitcode(
-        run_logged_p($module, 'git-clone', $module->getSourceDir(),
-            ['git', 'clone', '--recursive', @args])
+    my $promise = run_logged_p($module, 'git-clone', $module->getSourceDir(),
+            ['git', 'clone', '--recursive', @args]
         );
 
-    croak_runtime("Failed to make initial clone of $module")
-        unless $result;
+    $promise = $promise->then(sub ($exitcode) {
+        croak_runtime("Failed to make initial clone of $module")
+            unless $exitcode == 0;
 
-    $ipc->notifyPersistentOptionChange(
-        $module->name(), 'git-cloned-repository', $git_repo);
+        $ipc->notifyPersistentOptionChange(
+            $module->name(), 'git-cloned-repository', $git_repo);
 
-    p_chdir($srcdir);
+        p_chdir($srcdir);
 
-    # Setup user configuration
-    if (my $name = $module->getOption('git-user')) {
-        my ($username, $email) = ($name =~ /^([^<]+) +<([^>]+)>$/);
-        if (!$username || !$email) {
-            croak_runtime("Invalid username or email for git-user option: $name".
-                " (should be in format 'User Name <username\@example.net>'");
+        # Setup user configuration
+        if (my $name = $module->getOption('git-user')) {
+            my ($username, $email) = ($name =~ /^([^<]+) +<([^>]+)>$/);
+            if (!$username || !$email) {
+                croak_runtime("Invalid username or email for git-user option: $name".
+                    " (should be in format 'User Name <username\@example.net>'");
+            }
+
+            whisper ("\tAdding git identity $name for new git module $module");
+            my $result = (safe_system(qw(git config --local user.name), $username)
+                            >> 8) == 0;
+
+            $result = (safe_system(qw(git config --local user.email), $email)
+                            >> 8 == 0) || $result;
+
+            warning ("Unable to set user.name and user.email git config for y[b[$module]!")
+                unless $result;
         }
 
-        whisper ("\tAdding git identity $name for new git module $module");
-        $result = (safe_system(qw(git config --local user.name), $username)
-                        >> 8) == 0;
+        return 1; # success
+    });
 
-        $result = (safe_system(qw(git config --local user.email), $email)
-                        >> 8 == 0) || $result;
-
-        if (!$result) {
-            warning ("Unable to set user.name and user.email git config for y[b[$module]!");
-        }
-    }
-
-    return;
+    return $promise;
 }
 
 # Checks that the required source dir is either not already present or is empty.
@@ -231,7 +234,7 @@ sub updateCheckout
             );
         }
 
-        $self->_clone($git_repo);
+        await_result($self->_clone($git_repo));
 
         return 1 if pretending();
         return count_command_output('git', '--git-dir', "$srcdir/.git", 'ls-files');
