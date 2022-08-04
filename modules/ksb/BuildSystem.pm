@@ -127,12 +127,6 @@ sub buildConstraints
     $cores = 4
         if (int $cores) <= 0;
 
-    # Finally, if user sets cores above what's possible, use 'auto' logic
-    # instead. But let user max out their CPU if they ask specifically for
-    # that.
-    $cores = min($max_cores - 1, $cores)
-        if $cores > $max_cores;
-
     return { compute => $cores };
 }
 
