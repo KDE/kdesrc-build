@@ -917,7 +917,15 @@ sub storePersistentOptions
     my $self = assert_isa(shift, 'ksb::BuildContext');
     return if pretending();
 
-    my $fh = IO::File->new($self->persistentOptionFileName(), '>');
+    my $fileName = $self->persistentOptionFileName();
+    my $dir = dirname($fileName);
+
+    if (!-d $dir)
+    {
+        super_mkdir($dir);
+    }
+
+    my $fh = IO::File->new($fileName, '>');
     my $json = JSON::PP->new->ascii->pretty;
 
     if (!$fh)
