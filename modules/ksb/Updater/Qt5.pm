@@ -64,10 +64,12 @@ sub updateExistingClone ($self)
     assert_isa($self, __PACKAGE__);
 
     # Update init-repository and the shell of the super module itself.
-    my $count = $self->SUPER::updateExistingClone();
+    my $promise = $self->SUPER::updateExistingClone();
 
     # updateRepository has init-repository work to update the source
-    return $count + $self->_updateRepository();
+    $self->_updateRepository();
+
+    return $promise;
 }
 
 # Either performs the initial checkout or updates the current git checkout
