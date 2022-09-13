@@ -635,6 +635,9 @@ libxml2
 make
 meson
 pam-devel
+perl(Digest::SHA)
+perl(FindBin)
+perl(IO::Compress::Gzip)
 perl(IO::Socket::SSL)
 perl(IPC::Cmd)
 perl(JSON::PP)
