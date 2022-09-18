@@ -456,19 +456,15 @@ sub build
     $self->buildSystem()->runTestsuite()
         if $self->getOption('run-tests');
 
-    if (!$buildResults->{work_done}        &&
-        !$self->getOption('refresh-build') &&
-        defined $self->getPersistentOption('last-install-rev')
-    ) {
-        info ("\tNo changes from build, skipping install (--refresh-build this module to force install)");
-        return 1;
-    } elsif (!$self->getOption('install-after-build')) {
-        info ("\tSkipping install due to install-after-build setting");
-        return 1;
+    # TODO: Likewise this should be a phase to run.
+    if ($self->getOption('install-after-build')) {
+        return 0 if !$self->install();
+    }
+    else {
+        info ("\tSkipping install for y[$self]");
     }
 
-    # TODO: Likewise this should be a phase to run.
-    return $self->install();
+    return 1;
 }
 
 # Subroutine to setup the build system in a directory.

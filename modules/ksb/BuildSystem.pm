@@ -442,8 +442,6 @@ sub createBuildSystem
 # Returns a hashref:
 # {
 #   was_successful => $bool, (if successful)
-#   warnings       => $int,  (num of warnings, in [0..INT_MAX])
-#   work_done      => $bool, (true if the make command had work to do, may be needlessly set)
 # }
 sub safe_make($self, $optsRef)
 {
@@ -543,9 +541,10 @@ sub _runBuildCommand
 
     # TODO More details
     my $warnings = 0;
-    my $workDoneFlag = 1;
 
-    my $log_command_callback = sub ($input) {
+    # w00t.  Check out the closure!  Maks would be so proud.
+    my $log_command_callback = sub {
+        my $input = shift;
         return if not defined $input;
 
         my ($percentage) = ($input =~ /^\[\s*([0-9]+)%]/);
@@ -561,34 +560,14 @@ sub _runBuildCommand
             }
         }
 
-        $workDoneFlag = 0 if $input =~ /^ninja: no work to do/;
-        $warnings++       if $input =~ /warning: /;
+        $warnings++ if ($input =~ /warning: /);
     };
 
-    my $cmd = ksb::Util::LoggedSubprocess->new
-        ->module($module)
-        ->log_to($filename)
-        ->chdir_to($builddir)
-        ->set_command($argRef)
-        ;
-
-    $cmd->on(child_output => sub ($cmd, $line) {
-        # called in parent!
-        $log_command_callback->($line);
-    });
-
-    my $promise = $cmd->start->then(sub ($exitcode) {
-        $resultRef = {
-            was_successful => $exitcode == 0,
-            warnings       => $warnings,
-            work_done      => $workDoneFlag,
-        };
-    })->catch(sub ($err) {
-        error (" r[b[*] Hit error building $module: b[$err]");
-        $resultRef->{was_successful} = 0;
-    });
-
-    $promise->wait;
+    $resultRef->{was_successful} =
+        (0 == log_command($module, $filename, $argRef, {
+            callback => $log_command_callback
+        }));
+    $resultRef->{warnings} = $warnings;
 
     # Cleanup TTY output.
     $time = prettify_seconds(time - $time);
