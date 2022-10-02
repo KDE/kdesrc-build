@@ -1,0 +1,1383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE refentry PUBLIC "-//KDE//DTD DocBook XML V4.5-Based Variant V1.1//EN" "dtd/kdedbx45.dtd" [
+<!ENTITY % Brazilian-Portuguese "INCLUDE">
+]>
+
+<!--
+    Man page for kdesrc-build.
+    Copyright (c) 2011, 2014, 2015 Michael Pyne <mpyne@kde.org>
+
+    Permission is granted to copy, distribute and/or modify this document under
+    the terms of the GNU Free Documentation License, Version 1.2 or any later
+    version published by the Free Software Foundation; with no Invariant
+    Sections, no Front-Cover Texts, and no Back-Cover Texts.  A copy of the
+    license is included in COPYING.DOC.
+ -->
+
+<refentry lang="&language;">
+<refentryinfo>
+<title
+>Manual do Usuário do &kde;</title>
+<author
+><personname
+><firstname
+>Michael</firstname
+><surname
+>Pyne</surname
+></personname
+> <email
+>mpyne@kde.org</email
+> <personblurb
+><para
+>Autor da manpage</para
+></personblurb
+> </author>
+<date
+>07/03/2015</date>
+</refentryinfo>
+
+<refmeta>
+<refentrytitle
+><command
+>kdesrc-build</command
+></refentrytitle>
+<manvolnum
+>1</manvolnum>
+<refmiscinfo class="version"
+>1.16</refmiscinfo>
+</refmeta>
+
+<refnamediv>
+    <refname
+><command
+>kdesrc-build</command
+></refname>
+    <refpurpose
+>Transfere, compila e instala o programa &kde;.</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv id="_synopsis">
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>OPÇÔES</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>Nome do módulo | Nome do conjunto de módulos</replaceable
+></arg
+> </cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+<title
+>DESCRIÇÃO</title>
+
+<para
+>O comando <command
+>kdesrc-build</command
+> é usado para compilar o &kde; diretamente do seu repositório fonte. Ele pode transferir a partir de repositórios do Subversion ou Git, acessar o banco de dados do projeto &kde;, e suporta o controle de quais opções são passadas para o <command
+>make</command
+>(1) and <command
+>cmake</command
+>(1). A operação do <command
+>kdesrc-build</command
+> é baseada em um arquivo de configuração, tipicamente o <filename
+>~/.kdesrc-buildrc</filename
+>.</para>
+
+<para
+>O <replaceable
+>nome do módulo</replaceable
+> ou o <replaceable
+>nome do conjunto de módulos</replaceable
+> como fornecido na linha de comando deve ser como os nomes definidos no arquivo de configuração (na definição <symbol
+>module</symbol
+>, na declaração <option
+>use-modules</option
+> ou na definição <option
+>module-set</option
+>). Além disso, isto pode ser o nome de um módulo do &kde; listado no banco de dados do projeto &kde; (e você pode preceder o nome do módulo com <symbol
+>+</symbol
+> para forçar isto).</para>
+
+<para
+>O <command
+>kdesrc-build</command
+> foi criado para ser capaz de ser completamente sem cabeçalho (no entanto, veja <emphasis role="strong"
+>ENVIRONMENT</emphasis
+>), e assim tipicamente ignora sua entrada completamente. A saída do comando é registrada em vez de exibida na saída do kdesrc-build.</para>
+
+<para
+>Os módulos são compilados um após o outro. Se um módulo falha ao atualizar, então ele não é compilado. O <command
+>kdesrc-build</command
+> não cancelará a compilação apenas por causa de uma falha de módulo. Ao invés disso, ele tentará atualizar e compilar o módulo seguinte. Por padrão, o <command
+>kdesrc-build</command
+> começará a compilação de um módulo tão logo a atualização do código-fonte esteja completa para o módulo respectivo, mesmo se outras atualizações estiverem ocorrendo ao mesmo tempo.</para>
+
+<para
+>No final, o <command
+>kdesrc-build</command
+> mostrará quais módulos falharam a compilação, e onde os registros são mantidos para aquela compilação.</para
+> </refsect1>
+
+<refsect1>
+<title
+>OPÇÕES</title>
+
+<para
+><emphasis role="strong"
+>NOTA</emphasis
+>: Algumas opções possuem formas abreviadas, mas o analisador de opção do <command
+>kdesrc-build</command
+> não suporta a combinação de opções abreviadas em uma só por enquanto. (Por exemplo, <option
+>kdesrc-build -pv</option
+> não é o mesmo que <option
+>kdesrc-build --pretend --verbose</option
+>).</para>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<option
+>-h, --help</option>
+</term>
+
+<listitem>
+<para
+>Mostra uma sinopse resumida das opções de linha de comando mais frequentemente usadas. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>-p, --pretend</option>
+</term>
+
+<listitem>
+<para
+>Opera no modo "execução à seco". Nenhum acesso de rede é feito, nenhum arquivo de registro é criado, nenhum módulo é compilado e nenhuma alteração permanente em disco é feita. Uma <emphasis
+>exceção importante</emphasis
+> é que se você tentar compilar um módulo que vem do banco de dados do projeto &kde;, e o banco de dados não foi transferido ainda. O banco de dados será então transferido uma vez que a saída do modo 'pretend' pode mudar significativamente baseado nos resultados do banco de dados. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--install</option>
+</term>
+
+<listitem>
+<para
+>Pula a fase de atualização e compilação e tenta imediatamente instalar os módulos fornecidos. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--uninstall</option>
+</term>
+
+<listitem>
+<para
+>Pula a fase de atualização e compilação e tenta imediatamente desinstalar os módulos fornecidos. <emphasis role="strong"
+>NOTA</emphasis
+>: Isto somente é suportado para sistemas de compilação que suportam o comando <command
+>make uninstall</command
+> (por exemplo, baseados no CMake do &kde;). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-src</option>
+</term>
+
+<listitem>
+<para
+>Pula a fase de atualização do código. Outras fases são incluídas normalmente. A opção <option
+>--no-svn </option
+> é um apelido obsoleto para esta opção e será removida em uma versão futura. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-metadata</option>
+</term>
+
+<listitem>
+<para
+>Pula a fase da atualização dos metadados para os módulos do KDE. As outras fases (incluindo a fase de atualização do código) estão incluídas como normal. Se desejar evitar todas as atualizações de rede, deverá também indicar a opção <option
+>--no-src</option
+>. </para>
+
+<para
+>Isto pode ser útil se estiver reexecutando com frequência o <command
+>kdesrc-build</command
+>, uma vez que os metadados não mudam com muita frequência. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-install</option>
+</term>
+
+<listitem>
+<para
+>Pula a fase de instalação a partir da compilação. Outras fases são incluídas normalmente. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-build</option>
+</term>
+
+<listitem>
+<para
+>Pula a fase de compilação. Internamente, a fase de instalação depende do completamento da fase de compilação, assim isto equivale efetivamente à <option
+>--src-only</option
+>, mas a semântica pode mudar no futuro (por exemplo, quando pacotes de teste são movidos para sua própria fase). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-tests</option>
+</term>
+
+<listitem>
+<para
+>Desativa a execução do pacote de teste para os módulos baseados no CMake. Para ser completamente efetivo, isto requer a re-execução do CMake, que pode ser forçada usando as opções <option
+>--reconfigure</option
+> ou <option
+>--refresh-build</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--src-only</option>
+</term>
+
+<listitem>
+<para
+>Somente executa a fase de atualização de código, mas não compila ou instala. O <option
+>--svn-only</option
+> é um apelido obsoleto para esta opção e será removido em uma versão futura. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--build-only</option>
+</term>
+
+<listitem>
+<para
+>Força que o processo de compilação seja realizado sem atualizar o código-fonte primeiro. Além disso, a instalação não é executada. (O teste ainda é realizado se aplicável, mas isto será alterado em uma versão futura) </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--metadata-only</option>
+</term>
+
+<listitem>
+<para
+>Apenas atualiza os metadados de compilação necessários para os módulos do KDE, saindo logo a seguir. Isto é útil para permitir que a opção <option
+>--pretend</option
+> funcione, caso você nunca tenha executado o kdesrc-build. Veja também a opção <option
+>--no-metadata</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--refresh-build</option>
+</term>
+
+<listitem>
+<para
+>Remove o diretório de compilação para o módulo antes que a fase de compilação inicie. Isto tem como efeito colateral forçar o <command
+>kdesrc-build</command
+> a re-configurar o módulo e compilá-lo a partir do seu estado "primitivo", sem nenhum arquivo de saída intermediário ou temporário. Use esta opção somente se você tiver problemas para obter um módulo a ser compilado e concluir que levará algum tempo (possivelmente muito tempo) para compilar completamente como resultado. Quando estiver em dúvida, use esta opção para executar o <command
+>kdesrc-build</command
+> completo. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--reconfigure</option>
+</term>
+
+<listitem>
+<para
+>Força que o CMake seja re-executado, mas sem remover o diretório de compilação. Normalmente você desejará de fato do <option
+>--refresh-build</option
+>, mas se você estiver 100% certo que suas mudanças no <option
+>cmake-options</option
+> não invalidarão sua saída intermediária atual e então isto pode economizar algum tempo. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--build-system-only</option>
+</term>
+
+<listitem>
+<para
+>Interrompe o processo de compilação para cada módulo compilado: O processo de compilação consiste da configuração normal e inclui a execução do <command
+>cmake</command
+> ou <command
+>configure</command
+> (conforme apropriado), mas o <command
+>make</command
+> não é executado e nenhuma instalação é tentada. Isto é principalmente útil para fazer coisas como <command
+>configure --help</command
+> e <command
+>cmake-gui</command
+> funcionar. Normalmente você irá querer <option
+>--reconfigure</option
+> ou <option
+>--refresh-build</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume-from=<replaceable
+>nome</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Use esta opção para pular o processamento de módulos até que o módulo <replaceable
+>nome</replaceable
+> seja encontrado. O <replaceable
+>nome</replaceable
+> e todos os módulos seguintes serão processados normalmente conforme eles tenham sido especificados na linha de comando. Se você usar esta opção devido a uma falha na compilação você pode querer usar o <option
+>--no-src</option
+> adicionalmente para pular a fase de atualização do código. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume-after=<replaceable
+>nome</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Isto é como o <option
+>--resume-from</option
+>, exceto que o módulo <replaceable
+>nome</replaceable
+> <emphasis
+>não</emphasis
+> é incluído na lista de módulos a considerar. Você pode usar isto se você tiver compilado/instalado manualmente o módulo após corrigir a compilação e deseja apenas continuar a partir daquele ponto. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume</option>
+</term>
+
+<listitem>
+<para
+>Esta opção pode ser usada para executar o <command
+>kdesrc-build</command
+> após um problema de compilação. </para>
+
+<para
+>Ela continua com a compilação a partir do módulo que falhou, usando a lista de módulos que estavam aguardando compilação e desativando também as atualizações de código e metadados. O caso de uso é quando um erro simples ou a falta de uma dependência provocar a falha na compilação. Assim que corrigir o erro, você poderá retornar rapidamente à compilação dos módulos que estavam sendo compilados, sem precisar mexer nas opções <option
+>--resume-from</option
+> e <option
+>--stop-before</option
+>. </para>
+
+<para
+>Isso ainda é mais útil com a opção da linha de comando <option
+>--stop-on-failure</option
+>, especialmente se estiver iniciando a configuração do seu ambiente de desenvolvimento. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-before=<replaceable
+>nome</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Esta opção é semelhante à <option
+>--resume-from</option
+>. Faz com que a lista de módulos para a compilação desejada seja truncada somente <emphasis
+>antes</emphasis
+> da compilação de <replaceable
+>nome</replaceable
+>. O <replaceable
+>nome</replaceable
+> <emphasis
+>não</emphasis
+> é compilado (mas veja <option
+>--stop-after</option
+>). </para>
+
+<para
+>Esta opção pode ser usada com <option
+>--resume-from</option
+> ou <option
+>--resume-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-after=<replaceable
+>nome</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Esta opção é como a <option
+>--stop-before</option
+>, exceto que o módulo indicado <emphasis
+>é</emphasis
+> incluído na compilação. </para>
+
+<para
+>Esta opção pode ser usada com <option
+>--resume-from</option
+> ou <option
+>--resume-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--include-dependencies</option>
+</term>
+
+<listitem>
+<para
+>Faz com que o <command
+>kdesrc-build</command
+> inclua não só os módulos que iria compilar normalmente (porque foram definidos na linha de comando ou porque foram mencionados no arquivo de configuração), mas também para incluir as <emphasis
+>dependências conhecidas</emphasis
+> desses módulos na compilação. </para>
+
+<para
+>As dependências são <quote
+>conhecidas</quote
+> para o <command
+>kdesrc-build</command
+> com base no conteúdo do repositório git especial <emphasis
+>kde-build-metadata</emphasis
+>, o qual é gerenciado para você pelo script (consulte também a opção <option
+>--metadata-only</option
+>). A comunidade do KDE mantém a informação das dependências desse módulo atualizada. Dessa forma, se o <command
+>kdesrc-build</command
+> parecer mostrar as dependências erradas, então isso poderá ser devido a informações de dependências erradas ou ausentes. </para>
+
+<para
+>Todas as dependências conhecidas serão incluídas, o que pode ser mais do que você precisa. Considere usar a opção <option
+>--resume-from</option
+> (e outras similares) para controlar a lista de compilações quando usar esta opção. </para>
+
+<para
+>Para ver apenas a lista de módulos que seriam compilados, use a opção <option
+>--print-modules</option
+> ou <option
+>--pretend</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--rebuild-failures</option>
+</term>
+
+<listitem>
+<para
+>Use esta opção para compilar apenas os módulos que não conseguiram compilar em uma execução anterior do <command
+>kdesrc-build</command
+>. Isso é útil se ocorrer uma quantidade significativa de falhas em conjunto com compilações bem-sucedidas. Depois de corrigir o erro que provocou os problemas de compilação, os módulos que falharam anteriormente poderão ser facilmente compilados.</para>
+
+    <para
+>Lembre-se de que a lista de <quote
+>módulos que falharam anteriormente</quote
+> é apagada toda vez que uma execução do <command
+>kdesrc-build</command
+> termina com falha em algum módulo. Contudo, a lista não é apagada com uma compilação completamente bem-sucedida, para que você possa recompilar com sucesso um ou dois módulos e esta opção continuará funcionando.</para>
+
+    <para
+>Esta opção foi adicionada no kdesrc-build 15.09.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-on-failure</option>
+</term>
+
+<listitem>
+<para
+>Esta opção faz com que a compilação seja interrompida assim que ocorrer algum erro. É útil quando estiver configurando o seu ambiente de desenvolvimento inicial. Sem essa opção, o <command
+>kdesrc-build</command
+> irá tentar pressionar o resto dos módulos na compilação para evitar perder tempo, caso o problema ocorra apenas com um único módulo. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--ignore-modules</option>
+</term>
+
+<listitem>
+<para
+>Força que <emphasis role="strong"
+>TODOS</emphasis
+> os módulos que seguem esta opção sejam desconsiderados pelo <command
+>kdesrc-build</command
+>. Isto pode ser útil se você deseja processar todos os módulos com exceção de alguns específicos. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--rc-file=<replaceable
+>nome</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Usa o arquivo fornecido, <replaceable
+>nome</replaceable
+>, para a configuração ao invés do <filename
+>~/.kdesrc-buildrc</filename
+> ou <filename
+>./kdesrc-buildrc</filename
+>. O arquivo pode estar vazio, mas deve existir. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--prefix=<replaceable
+>nome</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Sobrepõe a configuração de <option
+>kdedir</option
+> para <replaceable
+>nome</replaceable
+> para esta execução. Adicionalmente, implicar no <option
+>--reconfigure</option
+>. Isto <emphasis
+>não</emphasis
+> faz de fato o que você acha que ele faz (sobrepõe a opção <option
+>prefix</option
+> para alterar onde os módulos serão instalados), apesar de por padrão os módulos são instalados para a configuração <option
+>kdedir</option
+> se <option
+>prefix</option
+> não estiver definido. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--nice=<replaceable
+>número</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Muda a prioridade da CPU fornecida para o <command
+>kdesrc-build</command
+> (e todos os processos usados pelo <command
+>kdesrc-build</command
+> por exemplo o <command
+>make</command
+>(1)). O <replaceable
+>número</replaceable
+> deve ser um número inteiro entre -20 e 19. Valores positivos "mais camaradas" para o resto do sistema (ou seja, prioridade menor). </para>
+
+<para
+>Observe que as prioridades possíveis disponíveis em seu sistema podem ser diferentes das listadas aqui. Veja <command
+>nice</command
+>(2) para mais informações. Observe também que isto somente altera a prioridade da <emphasis
+>CPU</emphasis
+>, e frequentemente você deseja alterar a prioridade de <emphasis
+>E/S</emphasis
+> no seu sistema onde isto é suportado. Não existe nenhuma opção de linha de comando para o ajuste da prioridade de E/S, mas existe uma opção de configuração do arquivo: <option
+>use-idle-io-priority</option
+> (apesar de como todas as opções, existe uma maneira genérica de definir isto a partir da linha de comando). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--run=<replaceable
+>nome</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Executa o programa <replaceable
+>nome</replaceable
+> usando o ambiente de compilação normal do <command
+>kdesrc-build</command
+>. Todos os argumentos de linha de comando inseridos após esta opção são passados para o <replaceable
+>nome</replaceable
+> uma vez ele tenha sido iniciado. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--print-modules</option>
+</term>
+
+<listitem>
+<para
+>Executa todas as ações e a reordenação das dependências dos módulos indicados na linha de comando (ou arquivo de configuração), apresenta os módulos que seriam processados, um em cada linha, e então sai sem nenhuma outra ação. </para>
+
+<para
+>Os metadados do <literal
+>kde-project</literal
+> são baixados primeiro (porém, veja as opções <option
+>--pretend</option
+> e <option
+>--no-src</option
+>). </para>
+
+<para
+>O resultado não é totalmente compatível com a utilização pelos scripts, como as outras mensagens do resultado podem ser geradas até que seja apresentada a lista dos módulos. </para>
+
+<para
+>Isto é útil, principalmente, para determinar rapidamente o que o <command
+>kdesrc-build</command
+> reconhece como sendo as dependências de um módulo, o que significa que é apenas útil para os módulos do <literal
+>kde-projects</literal
+>. Essa opção também é compatível com <option
+>--resume-from</option
+>, <option
+>--resume-after</option
+>, <option
+>--stop-before</option
+> e <option
+>--stop-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--color</option>
+</term>
+
+<listitem>
+<para
+>Ativa a "saída em cores". (Ativo por padrão). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-color</option>
+</term>
+
+<listitem>
+<para
+>Desativa a "saída em cores". Isto pode ser feito permanentemente definindo a opção <option
+>colorful-output</option
+> para 'false' (ou 0) no seu arquivo de configuração. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--async</option>
+</term>
+
+<listitem>
+<para
+>Faz com que o <command
+>kdesrc-build</command
+> inicie o processo de compilação para um módulo tão logo o código-fonte tenha sido transferido. Sem esta opção, o <command
+>kdesrc-build</command
+> realiza todas as atualizações de código de uma vez e somente então inicia com o processo de compilação. Esta opção está ativa por padrão. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-async</option>
+</term>
+
+<listitem>
+<para
+>Desativa a compilação assíncrona de módulos. Veja o <option
+>--async</option
+> para uma descrição mais detalhada. Observe que a saída do <command
+>kdesrc-build</command
+> será levemente diferente neste modo. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>-v, --verbose</option>
+</term>
+
+<listitem>
+<para
+>Aumenta o nível de verbosidade da saída do <command
+>kdesrc-build</command
+> (que já é bastante considerável!) </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>-q, --quiet</option>
+</term>
+
+<listitem>
+<para
+>Torna o <command
+>kdesrc-build</command
+> menos barulhento. Somente mensagens importantes são exibidas. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--really-quiet</option>
+</term>
+
+<listitem>
+<para
+>Torna o <command
+>kdesrc-build</command
+> ainda menos barulhento. Somente alertas/erros são exibidos. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--debug</option>
+</term>
+
+<listitem>
+<para
+>Isto irá preencher seu terminal com descrições e saídas de depuração, normalmente ininteligíveis, descrevendo o que o <command
+>kdesrc-build</command
+> está fazendo (e acha que está fazendo). A bandeira é incluída uma vez que a saída pode algumas vezes fornecer dados úteis para depuração. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--force-build</option>
+</term>
+
+<listitem>
+<para
+>Normalmente quando o <command
+>kdesrc-build</command
+> percebe que não ocorreu uma atualização de código em um módulo que foi previamente instalado com sucesso, ele não tenta compilar ou instalar este módulo. Você pode passar esta bandeira para desativar este comportamento e sempre executar o <command
+>make</command
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-snapshots</option>
+</term>
+
+<listitem>
+<para
+>Normalmente o <command
+>kdesrc-build</command
+> suporta o uso de 'snapshots' empacotados do repositório de código para reduzir a carga na infraestrutura do &kde; para clones do git ou alguns módulos do &kde;. Passar esta opção desativa esta funcionalidade. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--delete-my-patches</option>
+</term>
+
+<listitem>
+<para
+>Esta opção deve ser passada para permitir que o <command
+>kdesrc-build</command
+> remova conflitos dos diretórios de código. Atualmente isto somente ocorre quando se tenta clonar um módulo baseado no git se um diretório de código estiver presente. Nunca especifique esta opção a menos que isto seja sugerido pelo <command
+>kdesrc-build</command
+>, e somente se você não se importa que os diretórios de código que são referenciados sejam removidos durante a re-clonagem. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--<replaceable
+>nome</replaceable
+>=<replaceable
+>valor</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Qualquer opção não listada acima é verificada para ver se corresponde à lista de possíveis opções do arquivo de configuração. Caso positivo, a opção do <option
+>nome</option
+> do arquivo de configuração é definida temporariamente para <option
+>valor</option
+> para a duração desta execução. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--set-module-option-value=<replaceable
+>módulo</replaceable
+>,<replaceable
+>foo</replaceable
+>,<replaceable
+>bar</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Como acima, mas a opção <option
+>nome</option
+> somente é definida como <option
+>valor</option
+> para o módulo <option
+>módulo</option
+>. Isto não funciona para conjuntos de módulos ainda. Você deve repetir isto para cada módulo que deseja que seja afetado. (É claro, você pode simplesmente editar seu arquivo de configuração...). Esta opção funcionava de forma ligeiramente diferente nas versões anteriores à 1.16. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>STATUS DE SAÍDA</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>0</emphasis>
+</term>
+
+<listitem>
+<para
+>Sucesso </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>1</emphasis>
+</term>
+
+<listitem>
+<para
+>Normalmente isto significa que alguma parte do processo de atualização, compilação ou instalação falhou, mas isto também é usado para qualquer finalização anormal de programa não coberta pelas opções abaixo. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>5</emphasis>
+</term>
+
+<listitem>
+<para
+>Um sinal foi recebido que matou o <command
+>kdesrc-build</command
+>, mas ele tentou executar um fechamento normal. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>8</emphasis>
+</term>
+
+<listitem>
+<para
+>Uma opção desconhecida foi passada na linha de comando. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>99</emphasis>
+</term>
+
+<listitem>
+<para
+>Um exceção ocorreu que forçou ao <command
+>kdesrc-build</command
+> terminar mais cedo. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>AMBIENTE</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<envar
+>HOME</envar>
+</term>
+
+<listitem>
+<para
+>Usado para expansão do til de nomes de arquivos, e é a base padrão para os diretórios de código, compilação e instalação. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>PATH</envar>
+</term>
+
+<listitem>
+<para
+>Esta variável de ambiente controla o caminho de pesquisa padrão para os executáveis. Você pode usar a opção <option
+>binpath</option
+> do arquivo de configuração para adicionar caminhos à variável (por exemplo, para executar a partir do <command
+>cron</command
+>(8)). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+><envar
+>LC_</envar
+>* </term>
+
+<listitem>
+<para
+>Variáveis de ambiente iniciando com LC_ controlam a localização usada pelo <command
+>kdesrc-build</command
+>. Apesar do <command
+>kdesrc-build</command
+> não estar localizado no momento, muitos dos comandos que ele usa estão. O <command
+>kdesrc-build</command
+> normalmente define <envar
+>LC_ALL</envar
+>=C para comandos que ele deve examinar a saída mas você pode fazer isto manualmente também. Se definir <envar
+>LC_ALL</envar
+>=C corrigir um problema do <command
+>kdesrc-build</command
+>, por favor, envie um relatório de erro. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>SSH_AGENT_PID</envar>
+</term>
+
+<listitem>
+<para
+>Esta variável de ambiente é verificada para ver se o <command
+>ssh-agent</command
+>(1) está em execução, mas somente se o <command
+>kdesrc-build</command
+> determina que você está obtendo um módulo que necessita de um login SSH (mas você deve saber que nenhum módulo necessita disto por padrão). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>KDESRC_BUILD_USE_TTY</envar>
+</term>
+
+<listitem>
+<para
+>Se definido, esta variável força que o <command
+>kdesrc-build</command
+> não feche sua entrada ao executar processos do sistema. Normalmente o <command
+>kdesrc-build</command
+> fecha a <symbol
+>stdin</symbol
+> uma vez que a <symbol
+>stdout</symbol
+> e a <symbol
+>stderr</symbol
+> para seus processos-filho são redirecionados e assim o usuário nunca verá um prompt de entrada de qualquer modo. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>KDESRC_BUILD_DUMP_CONTEXT</envar>
+</term>
+
+<listitem>
+<para
+>Se definido, esta variável imprime uma descrição do "contexto de compilação" após ler as opções e os argumentos de linha de comando e determinar que módulos compilar. Você provavelmente nunca irá querer definir isto. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>outras </term>
+
+<listitem>
+<para
+>Muitos programas são usados pelo <command
+>kdesrc-build</command
+> no curso de sua execução, incluindo o <command
+>svn</command
+>(1), o <command
+>git</command
+>(1), o <command
+>make</command
+>(1), e o <command
+>cmake</command
+>(1). Cada um destes programas podem ter sua própria resposta às variáveis de ambiente definidas. O <command
+>kdesrc-build</command
+> passará as variáveis de ambiente que são definidas quando ele é executado para estes processos. Você pode certificar-se da configuração de determinada variável de ambiente (por exemplo, a <envar
+>CC</envar
+> ou <envar
+>CXX</envar
+>) usando a opção <option
+>set-env</option
+> do arquivo de configuração. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>ARQUIVOS</title>
+
+<para
+><filename
+>~/.kdesrc-buildrc</filename
+> - Arquivo de configuração globa padrão.</para>
+
+<para
+><filename
+>./kdesrc-buildrc</filename
+> - Se este arquivo (note que não existe nenhum ponto final (.) por enquanto) for encontrado no <emphasis role="strong"
+>diretório atual</emphasis
+> quando o kdesrc-build é executado, este arquivo será usado para configuração ao invés do <filename
+>~/.kdesrc-buildrc</filename
+>.</para>
+
+<para
+><filename
+>~/.kdesrc-build-data</filename
+> - O <command
+>kdesrc-build</command
+> usa este arquivo para armazenar dados persistentes (como as últimas opções do CMake usadas, última revisão instalada com sucesso, etc.). Ele pode ser removido com segurança.</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>PROBLEMAS</title>
+
+<para
+>Veja o <ulink url="http://bugs.kde.org/"
+>http://bugs.kde.org/</ulink
+>. Certifique-se de pesquisar pelo produto <command
+>kdesrc-build</command
+>.</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>EXEMPLO</title>
+
+<variablelist>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+></userinput
+> </term>
+
+<listitem>
+<para
+>Transfere, compila e instala todos os módulos listados no arquivo de configuração, na ordem definida no arquivo. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+></userinput
+> </term>
+
+<listitem>
+<para
+>O mesmo do anterior, exceto pelo fato de que nenhuma ação permanente é executada (especificamente nenhum arquivo de registro é criado, transferência realizada, processo de compilação executado, etc.). <emphasis role="strong"
+>EXCEÇÃO</emphasis
+>: Se você está tentando compilar um módulo definido no banco de dados do projeto &kde;, e o banco de dados não foi transferido ainda, o <command
+>kdesrc-build</command
+> irá transferir o banco de dados uma vez que isto pode afetar significativamente a ordem final de compilação. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--no-src</option
+> <option
+>--refresh-build</option
+> <symbol
+>kdebase</symbol
+></userinput
+> </term>
+
+<listitem>
+<para
+>Remove o diretório de compilação para o conjunto de módulos <emphasis
+>kdebase</emphasis
+> (<option
+>--refresh-build</option
+>) e então inicia o processo de compilação novamente sem atualizar o código-fonte. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--rc-file</option
+> <filename
+>/dev/null</filename
+> <option
+>--pretend</option
+></userinput
+> </term>
+
+<listitem>
+<para
+>Força que o <command
+>kdesrc-build</command
+> leia um arquivo de configuração vazio e simula o processo de compilação resultante. Isto mostra o que aconteceria por padrão sem nenhum arquivo de configuração, sem uma mensagem de erro sobre a falta deste arquivo. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <symbol
+>+kdebase/kde-baseapps</symbol
+></userinput
+> </term>
+
+<listitem>
+<para
+>Transfere, compila e instala o módulo <symbol
+>kde-baseapps</symbol
+> a partir do banco de dados do projeto &kde;. Uma vez que o nome do módulo é precedido de um <symbol
+>+</symbol
+>, ele é considerado como o definido no banco de dados do projeto &kde; mesmo que ele tenha sido especificamente configurado no arquivo de configuração. </para>
+<para
+>A porção <symbol
+>kdebase/</symbol
+> força que o <command
+>kdesrc-build</command
+> ignore qualquer módulo <symbol
+>kde-baseapps</symbol
+> que não seja filho do supermódulo <symbol
+>kdebase</symbol
+> no banco de dados do projeto (apesar disto ser planejado por este exemplo). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+>--cmake-options=<replaceable
+>"-DCMAKE_BUILD_TYPE=Debug"</replaceable
+></option
+></userinput
+> </term>
+
+<listitem>
+<para
+>Transfere, compila e instala todos os módulos definidos no arquivo de configuração mas sobrepõe a opção <symbol
+>cmake-options</symbol
+> para que tenha o valor fornecido na linha de comando somente para esta execução. Qualquer execução do <command
+>kdesrc-build</command
+> posterior usará as <symbol
+>cmake-options</symbol
+> fornecidas no arquivo de configuração. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>VEJA TAMBÉM</title>
+
+<para
+>build-tool - Um programa do Michael Jansen que pode compilar programas do &kde; baseados nas receitas próprias.</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>RECURSOS</title>
+
+<para
+>Página Web principal: <ulink url="http://kdesrc-build.kde.org/"
+>http://kdesrc-build.kde.org/</ulink
+></para>
+
+<para
+>Documentação: <ulink url="https://docs.kde.org/index.php?application=kdesrc-build"
+>https://docs.kde.org/index.php?application=kdesrc-build</ulink
+></para>
+
+<para
+>Script de configuração: <command
+>kdesrc-build-setup</command
+></para>
+
+</refsect1>
+
+<refsect1>
+<title
+>DIREITOS AUTORAIS</title>
+
+<para
+>Copyright (C) 2003-2015 Michael Pyne.</para>
+
+<para
+>Este programa é 'software' livre; você poderá distribuí-lo e/ou modificá-lo de acordo com os termos da Licença Pública Geral da GNU, tal como está publicado na Free Software Foundation;, sendo com a versão 2 da licença ou (à sua escolha) qualquer versão posterior.</para>
+
+<para
+>Este programa é distribuído na esperança que seja útil, mas SEM QUALQUER GARANTIA; nem mesmo com a garantia implícita de COMÉRCIO ou ADEQUAÇÃO A UM FIM EM PARTICULAR. Veja a Licença Pública da GNU para saber mais detalhes.</para>
+
+<para
+>Você deverá ter recebido uma cópia da Licença Pública da GNU com este programa; caso contrário, escreva para a Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA</para>
+
+</refsect1>
+
+</refentry>

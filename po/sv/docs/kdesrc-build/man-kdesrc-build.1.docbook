@@ -1,0 +1,1603 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE refentry PUBLIC "-//KDE//DTD DocBook XML V4.5-Based Variant V1.1//EN" "dtd/kdedbx45.dtd" [
+<!ENTITY % Swedish "INCLUDE">
+<!ENTITY kdesrc-build "<application
+>kdesrc-build</application
+>">
+]>
+
+<!--
+    Man page for kdesrc-build.
+    Copyright (c) 2011, 2014-2020, 2022 Michael Pyne <mpyne@kde.org>
+
+    Permission is granted to copy, distribute and/or modify this document under
+    the terms of the GNU Free Documentation License, Version 1.2 or any later
+    version published by the Free Software Foundation; with no Invariant
+    Sections, no Front-Cover Texts, and no Back-Cover Texts.  A copy of the
+    license is included in COPYING.DOC.
+ -->
+
+<refentry lang="&language;">
+<refentryinfo>
+<title
+>Användarhandbok för kdesrc-build</title>
+<author
+><personname
+><firstname
+>Michael</firstname
+><surname
+>Pyne</surname
+></personname
+> <email
+>mpyne@kde.org</email
+> <personblurb
+><para
+>Författade manualsidan</para
+></personblurb
+> </author>
+<date
+>2019-08-31</date>
+<releaseinfo
+>kdesrc-build 19.08</releaseinfo>
+</refentryinfo>
+
+<refmeta>
+<refentrytitle
+><command
+>kdesrc-build</command
+></refentrytitle>
+<manvolnum
+>1</manvolnum>
+<refmiscinfo class="version"
+>19.08</refmiscinfo>
+</refmeta>
+
+<refnamediv>
+    <refname
+><command
+>kdesrc-build</command
+></refname>
+    <refpurpose
+>Laddar ner, bygger och installerar &kde;-programvara.</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv id="_synopsis">
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>Väljare</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>Modulnamn | Moduluppsättningsnamn</replaceable
+></arg
+> </cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+<title
+>Beskrivning</title>
+
+<para
+>Kommandot <command
+>kdesrc-build</command
+> används för att bygga &kde;-programvara direkt från källkodsarkiven. Det kan ladda ner från Subversion- eller Git-arkiv, har ett gränssnitt till &kde;:s projektdatabas, och stöder styrning av vilka väljare som skickas till <command
+>make</command
+>(1) och <command
+>cmake</command
+>(1). Funktionen hos <command
+>kdesrc-build</command
+> styrs av en inställningsfil, oftast <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, om <envar
+>$XDG_CONFIG_HOME</envar
+> är angivet). </para>
+
+<para
+>Det <replaceable
+>modulnamn</replaceable
+> eller <replaceable
+>moduluppsättningsnamn</replaceable
+> som anges på kommandoraden ska motsvara de namn som definieras i inställningsfilen (antingen av en definition med <symbol
+>module</symbol
+>, en deklaration med <option
+>use-modules</option
+> eller en definition med <option
+>module-set</option
+>). Dessutom kan det vara namnet på en &kde;-modul som listas i &kde;:s projektdatabas (och du kan inleda modulnamnet med <symbol
+>+</symbol
+> för att kräva det).</para>
+
+<para
+><command
+>kdesrc-build</command
+> är konstruerat för att kunna vara fullständigt utan bildskärm (se dock <emphasis role="strong"
+>Miljö</emphasis
+>), och ignorerar i allmänhet inmatning fullständigt. Kommandoutmatning loggas istället för att visas som standardutmatning från kdesrc-build.</para>
+
+<para
+>Moduler byggs en i taget. Om uppdatering av en modul misslyckas, byggs den inte. <command
+>kdesrc-build</command
+> avbryts inte bara på grund av att en modul misslyckas, utan fortsätter att försöka uppdatera och bygga efterföljande moduler. Normalt börjar <command
+>kdesrc-build</command
+> bygga en modul så snart källkodsuppdateringen är klar för den modulen, även om andra uppdateringar pågår samtidigt.</para>
+
+<para
+>Vid slutet visar <command
+>kdesrc-build</command
+> vilka moduler som misslyckades byggas, och var loggarna för dessa byggförsök finns.</para
+> </refsect1>
+
+<refsect1>
+<title
+>Väljare</title>
+
+<para
+><emphasis role="strong"
+>Observera</emphasis
+>: Vissa väljare har kortformer, men väljartolken i <command
+>kdesrc-build</command
+> stöder för närvarande inte att kombinera korta väljare till en (t.ex. är det inte samma sak att köra <option
+>kdesrc-build -pv</option
+> som <option
+>kdesrc-build --pretend --verbose</option
+>).</para>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<option
+>-h, --help</option>
+</term>
+
+<listitem>
+<para
+>Visar en kort sammanfattning och ofta använda kommandoradsväljare. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--show-info</option>
+</term>
+
+<listitem>
+<para
+>Visar information om kdesrc-build och operativsystemet, vilket kan vara användbart i felrapporter eller när hjälp efterfrågas på forum eller e-postlistor. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--initial-setup</option>
+</term>
+
+<listitem>
+<para
+>Utför engångsinställning för användare som kör &kdesrc-build; på vanliga distributioner. Det omfattar installation av kända systemberoenden, en standardinställning av inställningsfilen, och ändrar ~/.bashrc så att programvaran installerad av &kdesrc-build; blir tillgänglig. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>-p, --pretend</option>
+</term>
+
+<listitem>
+<para
+>Fungera i "torrkörningsläge". Ingen nätverksåtkomst utförs, inga loggfiler skapas, inga moduler byggs, och inga permanenta ändringar av någonting på disk sker. Ett <emphasis
+>viktigt undantag</emphasis
+> är att om du försöker bygga moduler som kommer från &kde;:s projektdatabas och databasen inte har laddats ner än, kommer den att laddas ner, eftersom utmatningen från en torrkörning kan ändras signifikant baserat på databasens resultat. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--install</option>
+</term>
+
+<listitem>
+<para
+>Hoppar över uppdaterings- och byggfasen och försöker omedelbart installera angivna moduler. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--uninstall</option>
+</term>
+
+<listitem>
+<para
+>Hoppar över uppdaterings- och byggfasen och försöker omedelbart avinstallera angivna moduler. <emphasis role="strong"
+>Observera</emphasis
+>: Det stöds bara för byggsystem som stöder kommandot <command
+>make uninstall</command
+> (t.ex. &kde;:s CMake-baserade). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-src</option>
+</term>
+
+<listitem>
+<para
+>Hoppar över källkodsuppdateringsfasen. Andra faser ingår som vanligt. <option
+>--no-svn</option
+> är ett föråldrat alias för den här väljaren, och kommer att tas bort i en framtida utgåva. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-metadata</option>
+</term>
+
+<listitem>
+<para
+>Hoppar över fasen för uppdatering av metadata för KDE-moduler. Andra faser (inklusive fasen för uppdatering av källkod) inkluderas som vanligt. Om du vill undvika alla uppdateringar via nätverket ska du också använda <option
+>--no-src</option
+>. </para>
+
+<para
+>Väljaren kan vara användbar om du ofta kör <command
+>kdesrc-build</command
+>, eftersom metadata inte ändras särskilt ofta. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-install</option>
+</term>
+
+<listitem>
+<para
+>Hoppar över installationsfasen i bygget. Övriga faser ingår som normalt. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-build</option>
+</term>
+
+<listitem>
+<para
+>Hoppar över byggets byggfas. Internt beror installationsfasen på att byggfasen har gjorts färdigt, så det här är i praktiken ekvivalent med <option
+>--src-only</option
+>, men semantiken kan ändras i framtiden (t.ex. när testsviter flyttas till sina egna faser). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-tests</option>
+</term>
+
+<listitem>
+<para
+>Inaktiverar körning av testsviten för CMake-baserade moduler. För att vara helt effektivt kräver det att CMake körs om, vilket kan tvingas genom att använda väljarna <option
+>--reconfigure</option
+> eller <option
+>--refresh-build</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--src-only</option>
+</term>
+
+<listitem>
+<para
+>Utför bara källkodsuppdateringsfasen, bygger eller installerar inte. <option
+>--svn-only</option
+> är ett föråldrat alias för den här väljaren, och kommer att tas bort i en framtida utgåva. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--build-only</option>
+</term>
+
+<listitem>
+<para
+>Tvingar att byggprocessen utförs utan att först uppdatera källkoden. Dessutom utförs inte installationen. (Tester utförs fortfarande om tillämpligt, men det kommer att ändras i en framtida utgåva.) </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--metadata-only</option>
+</term>
+
+<listitem>
+<para
+>Uppdaterar bara metadata som behövs för att bygga KDE-moduler, och avslutar sedan. Det är användbart för att låta väljaren <option
+>--pretend</option
+> fungera om kdesrc-build aldrig har körts. Se också <option
+>--no-metadata</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--refresh-build</option>
+</term>
+
+<listitem>
+<para
+>Tar bort byggkatalogen för en modul innan byggfasen startar. Det får den önskade sidoeffekten att tvinga <command
+>kdesrc-build</command
+> att konfigurera om modulen och bygga den från ett "orört" tillstånd utan några befintliga tillfälliga eller intermediära utdatafiler. Använd väljaren om du har problem att få en modul att byggas, men inser att det kommer att ta längre tid (möjligtvis mycket längre) innan bygget är färdigt på grund av det. Om du är osäker, använd alternativet för hela körningen av <command
+>kdesrc-build</command
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--reconfigure</option>
+</term>
+
+<listitem>
+<para
+>Tvinga att CMake körs om, men utan att ta bort byggkatalogen. Oftast behöver du egentligen <option
+>--refresh-build</option
+>, men om du är 100 % säker på att ändringarna av <option
+>cmake-options</option
+> inte gör befintlig intermediär utdata ogiltig, kan det spara en del tid. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--build-system-only</option>
+</term>
+
+<listitem>
+<para
+>Avbryter byggprocessen för varje modul som byggs: Byggprocessen består av normal konfigurering till och inklusive körning av <command
+>cmake</command
+> eller <command
+>configure</command
+> (efter behov), men <command
+>make</command
+> körs inte och inget installationsförsök görs. Det är oftast bara användbart för att få saker som <command
+>configure --help</command
+> och <command
+>cmake-gui</command
+> att fungera. Normalt behöver du <option
+>--reconfigure</option
+> eller <option
+>--refresh-build</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume-from=<replaceable
+>namn</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Använd alternativet för att hoppa över behandling av modulen till modulen <replaceable
+>namn</replaceable
+> stöts på. <replaceable
+>namn</replaceable
+> och alla efterföljande moduler kommer att behandlas normalt som om de hade angivits på kommandoraden. Om du använder alternativet på grund av ett byggfel, bör du fundera på att dessutom använda <option
+>--no-src</option
+> för att hoppa över den resulterade källkodsuppdateringsfasen. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume-after=<replaceable
+>namn</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Det här är precis som <option
+>--resume-from</option
+>, förutom att modulen <replaceable
+>namn</replaceable
+> <emphasis
+>inte</emphasis
+> inkluderas i listan av moduler som tas hänsyn till. Det kan användas om du har byggt eller installerat <replaceable
+>namn</replaceable
+> manuellt efter att ha fixat bygget, och bara vill fortsätta därifrån. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume</option>
+</term>
+
+<listitem>
+<para
+>Väljaren kan användas för att köra <command
+>kdesrc-build</command
+> efter ett byggfel har uppstått. </para>
+
+<para
+>Den återupptar bygget från modulen som misslyckades, med användning av listan över moduler som tidigare väntade på att byggas, och inaktiverar dessutom källkods- och metadatauppdateringar. Användarfallet är när ett enkelt misstag eller saknat beroende orsakar byggfelet. När felet väl har rättats kan du snabbt komma tillbaka till att bygga modulerna som du tidigare byggde utan att mixtra med <option
+>--resume-from</option
+> och <option
+>--stop-before</option
+>. </para>
+
+<para
+>Detta är ännu mer behändigt med väljaren <option
+>--stop-on-failure</option
+>, särskilt om du ställer in utvecklingsmiljön från början. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-before=<replaceable
+>namn</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Det här liknar flaggan <option
+>--resume-from</option
+>. Väljaren gör att modullistan för den givna byggprocessen avkortas precis <emphasis
+>innan</emphasis
+> <replaceable
+>namn</replaceable
+> normalt skulle ha byggts. <replaceable
+>namn</replaceable
+> byggs <emphasis
+>inte</emphasis
+> (men se <option
+>--stop-after</option
+>). </para>
+
+<para
+>Flaggan kan användas tillsammans med <option
+>--resume-from</option
+> eller <option
+>--resume-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-after=<replaceable
+>namn</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Det här är precis som <option
+>--stop-before</option
+> utom att den angivna modulen <emphasis
+>ingår</emphasis
+> i byggprocessen. </para>
+
+<para
+>Flaggan kan användas tillsammans med <option
+>--resume-from</option
+> eller <option
+>--resume-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+><option
+>--include-dependencies</option
+> <option
+>--no-include-dependencies</option
+> </term>
+
+<listitem>
+<para
+>Det gör att <command
+>kdesrc-build</command
+> inte bara inkluderar modulerna som normalt skulle ha byggts (antingen på grund av att de angavs på kommandoraden eller nämndes i inställningsfilen), utan också inkluderar dessa modulers <emphasis
+>kända beroenden</emphasis
+> i byggprocessen. Det är normalt förvalt, men du kan använda <option
+>--no-include-dependencies</option
+> för att inkludera effekten. </para>
+
+<para
+>Beroenden är <quote
+>kända</quote
+> av <command
+>kdesrc-build</command
+> baserat på innehållet i det speciella Git-arkivet <emphasis
+>kde-build-metadata</emphasis
+>, som hanteras åt dig av skriptet (se också väljaren <option
+>--metadata-only</option
+>). KDE-gemenskapen håller beroendeinformationen i modulen uppdaterad, så om <command
+>kdesrc-build</command
+> verkar visa fel beroenden kan det vara orsakat av saknad eller felaktig beroendeinformation. </para>
+
+<para
+>Alla kända beroende inkluderas, vilket kan vara mer än som behövs. Överväg att använda väljaren <option
+>--resume-from</option
+> (och liknande väljare) för att hantera bygglistan när den här väljaren används. </para>
+
+<para
+>För att bara se listan över moduler som skulle ha byggts, använd <option
+>--print-modules</option
+> eller <option
+>--pretend</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--rebuild-failures</option>
+</term>
+
+<listitem>
+<para
+>Använd väljaren för att bara bygga moduler som misslyckades byggas vid en tidigare körning av <command
+>kdesrc-build</command
+>. Det är användbart om ett väsentligt antal misslyckanden inträffade, blandat med lyckade byggen. Efter att ha rättat problemet som orsakade misslyckade byggen är det enkelt att bara bygga modulerna som tidigare misslyckades.</para>
+
+    <para
+>Observera att listan med <quote
+>tidigare misslyckade moduler</quote
+> nollställs varje gång en körning av <command
+>kdesrc-build</command
+> blir klar med några misslyckade moduler. Den nollställs dock inte av ett fullständigt lyckat bygge, så det är möjligt att bygga om några moduler med lyckat resultat och ändå använda väljaren.</para>
+
+    <para
+>Väljaren har lagts till i kdesrc-build 15.09.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-on-failure</option>
+</term>
+
+<listitem>
+<para
+>Väljaren gör att bygget avbryts så fort ett fel uppstår. Den är användbar när du ställer in utvecklingsmiljön från början. Utan flaggan försöker <command
+>kdesrc-build</command
+> fortsätta med återstående moduler i bygget för att undvika att slösa tid ifall problemet gäller en enskild modul. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--ignore-modules</option>
+</term>
+
+<listitem>
+<para
+>Tvingar <emphasis role="strong"
+>alla</emphasis
+> moduler som följer väljaren att undantas från hantering av <command
+>kdesrc-build</command
+>. Det kan vara användbart om du vet att du vill behandla alla moduler, utom vissa specifika undantag. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--rc-file=<replaceable
+>namn</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Använd angiven fil, <replaceable
+>namn</replaceable
+>, för inställningen istället för <filename
+>.kdesrc-buildrc</filename
+> eller <filename
+>~/.config/kdesrc-buildrc</filename
+>. Filen kan vara tom, men den måste finnas. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--prefix=<replaceable
+>namn</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Överskrider inställningen <option
+>kdedir</option
+> och ersätter den med <replaceable
+>namn</replaceable
+> för den här körningen. Medför dessutom <option
+>--reconfigure</option
+>. Det <emphasis
+>utför inte</emphasis
+> den åtgärd man skulle förvänta sig (att överskrida alternativet <option
+>prefix</option
+> för att ändra var moduler installeras), även om moduler normalt installeras enligt inställningen <option
+>kdedir</option
+> om <option
+>prefix</option
+> inte anges. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--nice=<replaceable
+>tal</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Ändra processorprioritet som ges till <command
+>kdesrc-build</command
+> (och alla processer som används av <command
+>kdesrc-build</command
+>, t.ex. <command
+>make</command
+>(1)), <replaceable
+>tal</replaceable
+> ska vara ett heltal mellan -20 och 19. Positiva värden är "snällare" för resten av systemet (dvs. lägre prioritet). </para>
+
+<para
+>Observera att möjliga prioriteter tillgängliga på ditt system kan vara annorlunda än de som listas här, se <command
+>nice</command
+>(2) för mer information. Observera också att det bara ändrar <emphasis
+>processornprioritet</emphasis
+>, och man vill ofta ändra <emphasis
+>I/O-prioritet</emphasis
+> på system som stöder det. Det finns ingen kommandoradsväljare för justering av I/O-prioritet, men det finns ett alternativ i inställningsfilen: <option
+>use-idle-io-priority</option
+> (även om det finns ett generellt sätt att ange det på kommandoraden, liksom med alla alternativ). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--run=<replaceable
+>program</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Kör programmet som anges av <replaceable
+>program</replaceable
+> med den normala byggmiljön i <command
+>kdesrc-build</command
+>. Alla kommandoradsväljare efter alternativet skickas till <replaceable
+>program</replaceable
+> när det körs. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--query=<replaceable
+>typ</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Det här kommandot gör att <command
+>kdesrc-build</command
+> frågar efter en parameter i modulerna i bygglistan (antingen angivna på kommandoraden eller inlästa från inställningsfilen), och skriver ut resultatet på skärmen (en modul per rad). </para>
+
+<para
+>Väljaren måste anges med en <quote
+>frågetyp</quote
+>, som ska vara en av följande:</para>
+    <itemizedlist>
+    <listitem
+><para
+><option
+>source-dir</option
+>, vilket gör att <command
+>kdesrc-build</command
+> skriver ut den fullständiga sökvägen där modulens källkod är lagrad. </para
+></listitem>
+    <listitem
+><para
+><option
+>build-dir</option
+>, vilket gör att <command
+>kdesrc-build</command
+> skriver ut den fullständiga sökvägen där modulens byggprocess sker. </para
+></listitem>
+    <listitem
+><para
+><option
+>install-dir</option
+>, vilket gör att <command
+>kdesrc-build</command
+> skriver ut den fullständiga sökvägen där modulen installeras. </para
+></listitem>
+    <listitem
+><para
+><option
+>project-path</option
+>, vilket gör att <command
+>kdesrc-build</command
+> skriver ut modulens plats i hierarkin av KDE:s källkodsarkiv. </para
+></listitem>
+    <listitem
+><para
+><option
+>branch</option
+>, vilket gör att <command
+>kdesrc-build</command
+> skriver ut den upplösta grenen i git som används för varje modul, baserat på gällande inställningar för <option
+>tag</option
+>, <option
+>branch</option
+> och <option
+>branch-group</option
+>. </para
+></listitem>
+    <listitem
+><para
+>Annars kan namn som är giltiga för moduler i inställningsfilen användas som väljare, så listas det upplösta värdet för varje modul. </para
+></listitem>
+    </itemizedlist>
+
+<para
+>Om en enda modul anges på kommandoraden är utdata helt enkelt värdet på parametern som efterfrågas. Om flera (eller inga) moduler anges på kommandoraden, inleds varje rad med modulens namn. I båda fall slutar <command
+>kdesrc-build</command
+> att köra när värdena är utskrivna. </para>
+
+<para
+>Väljaren har lagts till i <command
+>kdesrc-build</command
+> 16.05.</para>
+
+<informalexample>
+<para
+>Exempelvis kommandot <quote
+><command
+>kdesrc-build</command
+> <parameter
+>--query</parameter
+> <parameter
+><replaceable
+>branch</replaceable
+></parameter
+> <parameter
+><replaceable
+>kactivities</replaceable
+></parameter
+> <parameter
+><replaceable
+>kdepim</replaceable
+></parameter
+></quote
+> kan sluta med följande utdata:</para>
+<screen
+>kactivities: master
+kdepim: master
+</screen>
+</informalexample>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--print-modules</option>
+</term>
+
+<listitem>
+<para
+>Utför alla åtgärder till och med beroendeomordning av modulerna angivna på kommandoraden (eller i inställningsfilen), skriver ut modulerna som skulle behandlats en per rad, och avslutar därefter utan ytterligare åtgärder. </para>
+
+<para
+>Metadata för <literal
+>kde-project</literal
+> laddas först ner (se dock <option
+>--pretend</option
+> eller <option
+>--no-src</option
+>). </para>
+
+<para
+>Utmatningen är inte fullständigt kompatibel med skriptanvändning, eftersom andra utmatningsmeddelanden kan genereras innan listan över moduler visas. </para>
+
+<para
+>Detta är i huvudsak användbart för att snabbt avgöra vad <command
+>kdesrc-build</command
+> anser vara beroenden för en modul, vilket betyder att det bara är användbart för moduler i <literal
+>kde-projects</literal
+>. Väljaren är också kompatibel med <option
+>--resume-from</option
+>, <option
+>--resume-after</option
+>, <option
+>--stop-before</option
+> och <option
+>--stop-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--list-build</option>
+</term>
+
+<listitem>
+<para
+>Utför alla åtgärder till och med beroendeomordning av modulerna angivna på kommandoraden (eller i inställningsfilen), skriver ut modulerna som skulle behandlats en per rad, och avslutar därefter utan ytterligare åtgärder. </para>
+<para
+>Väljaren liknar <option
+>--print-modules</option
+> men inkluderar också vilken specifik incheckning, gren eller etikett som skulle byggas. Dessutom motsvarar ordningen som modulerna listas den ordning som de skulle byggas. </para>
+
+<para
+>Metadata för <literal
+>kde-project</literal
+> laddas först ner (se dock <option
+>--pretend</option
+> eller <option
+>--no-src</option
+>). </para>
+
+<para
+>Utmatningen är inte fullständigt kompatibel med skriptanvändning, eftersom andra utmatningsmeddelanden kan genereras innan listan över moduler visas. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--dependency-tree</option>
+</term>
+
+<listitem>
+<para
+>Tar alla åtgärder upp till och inklusive beroendeomordningen av modulerna angivna på kommandoraden (eller inställningsfilen), och skriver ut beroendeinformation för varje vald modul med ett (rekursivt) trädformat. Den genererade informationen omfattar vilken specifik incheckning, gren eller etikett som modulen beror på, samt om modulen skulle byggas. Observera att utdata kan bli ganska omfattande för program med många beroenden, eller om många moduler (implicit) är valda. </para>
+
+<para
+>Metadata för <literal
+>kde-project</literal
+> laddas först ner (se dock <option
+>--pretend</option
+> eller <option
+>--no-src</option
+>). </para>
+
+<para
+>Utmatningen är inte fullständigt kompatibel med skriptanvändning, eftersom andra utmatningsmeddelanden kan genereras innan listan över moduler visas. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--color</option>
+</term>
+
+<listitem>
+<para
+>Aktiverar "färgrik utmatning" (normalt aktiverad). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-color</option>
+</term>
+
+<listitem>
+<para
+>Inaktiverar "färgrik utmatning". Det kan göras permanent genom att sätta alternativet <option
+>colorful-output</option
+> till false (eller 0) i inställningsfilen. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--async</option>
+</term>
+
+<listitem>
+<para
+>Låter <command
+>kdesrc-build</command
+> starta byggprocessen för en modul så snart nerladdningen av källkoden är klar. Utan väljaren utför <command
+>kdesrc-build</command
+> alla källkodsuppdateringar på en gång och påbörjar inte byggprocessen förrän därefter. Väljaren är normalt aktiverad. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-async</option>
+</term>
+
+<listitem>
+<para
+>Inaktiverar asynkront bygge av moduler. Se <option
+>--async</option
+> för en mer detaljerad beskrivning. Observera att utmatningen från <command
+>kdesrc-build</command
+> är något annorlunda i detta läge. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--verbose</option>
+</term>
+
+<listitem>
+<para
+>Ökar detaljnivån för utmatningen från <command
+>kdesrc-build</command
+> (som redan är ganska detaljerad). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>-q, --quiet</option>
+</term>
+
+<listitem>
+<para
+>Gör <command
+>kdesrc-build</command
+> mindre högljudd. Bara viktiga meddelanden visas. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--really-quiet</option>
+</term>
+
+<listitem>
+<para
+>Gör <command
+>kdesrc-build</command
+> ännu mindre högljudd. Bara varningar och fel visas. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--debug</option>
+</term>
+
+<listitem>
+<para
+>Fyller terminalen med beskrivningar och felsökningsutmatning, oftast obegriplig, som beskriver vad <command
+>kdesrc-build</command
+> gör (och anser ska göras). Väljaren är inkluderad eftersom utmatningen ibland kan vara användbar vid felsökning. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--force-build</option>
+</term>
+
+<listitem>
+<para
+>När <command
+>kdesrc-build</command
+> upptäcker att det inte finns någon källkodsuppdatering av en modul som tidigare har installerats med lyckat resultat, görs normalt inget försök att bygga eller installera modulen. Den här väljaren kan skickas med för att inaktivera det beteendet, och alltid köra <command
+>make</command
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-snapshots</option>
+</term>
+
+<listitem>
+<para
+>Normalt stöder <command
+>kdesrc-build</command
+> användning av sparade komprimerade arkiv för att minska lasten på &kde;:s infrastruktur för Git-kloner av vissa &kde;-moduler. Att ange väljaren inaktiverar funktionen. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--delete-my-patches</option>
+</term>
+
+<listitem>
+<para
+>Väljaren måste användas för att låta <command
+>kdesrc-build</command
+> ta bort källkodskataloger med konflikt. För närvarande sker det enbart vid försök att klona en Git-baserad modul om det finns en befintlig källkodskatalog. Ange aldrig väljaren om det inte föreslås av <command
+>kdesrc-build</command
+>, och bara om det inte spelar någon roll om källkodskatalogerna det gäller tas bort och klonas igen. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--<replaceable
+>alternativ</replaceable
+>=<replaceable
+>värde</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>En eventuell väljare som inte anges ovan kontrolleras för att se om den motsvarar listan med möjliga alternativ för inställningsfilen. Om den gör det, ställs alternativet <option
+>alternativ</option
+> i inställningsfilen tillfälligt in till <option
+>värde</option
+> medan den här körningen pågår. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--set-module-option-value=<replaceable
+>modul</replaceable
+>,<replaceable
+>alternativ</replaceable
+>,<replaceable
+>värde</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Som ovan, men alternativet <option
+>alternativ</option
+> ställs bara in till <option
+>värde</option
+> för modulen <option
+>modul</option
+>. Det fungerar inte ännu med moduluppsättningar, utan du måste upprepa det för varje modul som du vill ska påverkas (det går naturligtvis också att helt enkelt redigera inställningsfilen ...). Väljaren fungerade något annorlunda innan version 1.16. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>Avslutningsstatus</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>0</emphasis>
+</term>
+
+<listitem>
+<para
+>Lyckades </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>1</emphasis>
+</term>
+
+<listitem>
+<para
+>Betyder normalt att någon del av uppdaterings-, bygg- eller installationsprocessen misslyckades, men används också för vilken onormal programavslutning som helst som inte täcks på annat sätt nedan. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>5</emphasis>
+</term>
+
+<listitem>
+<para
+>En signal togs emot som dödade <command
+>kdesrc-build</command
+>, men ett försök till normal nedstängning gjordes. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>8</emphasis>
+</term>
+
+<listitem>
+<para
+>Okänd väljare angavs på kommandoraden. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>99</emphasis>
+</term>
+
+<listitem>
+<para
+>Ett undantag inträffade som tvingade <command
+>kdesrc-build</command
+> att avbrytas i förtid. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>Miljö</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<envar
+>HOME</envar>
+</term>
+
+<listitem>
+<para
+>Används för att expandera tilde i filnamn, och är den normala basen för källkods-, bygg- och installationskataloger. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>PATH</envar>
+</term>
+
+<listitem>
+<para
+>Miljövariabeln bestämmer standardsökvägar för körbara program. Du kan använda alternativet <option
+>binpath</option
+> i inställningsfilen för att lägga till något i variabeln (t.ex. för att köra från <command
+>cron</command
+>(8)). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+><envar
+>LC_</envar
+>* </term>
+
+<listitem>
+<para
+>Miljövariabler som börjar med LC_ styr landsinställningarna som används av <command
+>kdesrc-build</command
+>. Även om <command
+>kdesrc-build</command
+> för tillfället inte kan landsanpassas, går det med många av de kommandon som det använder. <command
+>kdesrc-build</command
+> ställer normalt in <envar
+>LC_ALL</envar
+>=C för kommandon vars utmatning måste kontrolleras, men du kan också göra det för hand. Om inställning av <envar
+>LC_ALL</envar
+>=C fixar ett problem i <command
+>kdesrc-build</command
+>, skicka då gärna in en felrapport. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>SSH_AGENT_PID</envar>
+</term>
+
+<listitem>
+<para
+>Miljövariabeln kontrolleras för att se om <command
+>ssh-agent</command
+>(1) kör, men bara om <command
+>kdesrc-build</command
+> avgör att du checkar ut en modul som kräver inloggning med SSH (men det bör du veta om, eftersom ingen modul normalt kräver det). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>KDESRC_BUILD_USE_TTY</envar>
+</term>
+
+<listitem>
+<para
+>Om satt, tvingar variabeln <command
+>kdesrc-build</command
+> att inte stänga av inmatning medan systemprocesser körs. Normalt stänger <command
+>kdesrc-build</command
+> <symbol
+>stdin</symbol
+> eftersom <symbol
+>stdout</symbol
+> och <symbol
+>stderr</symbol
+> för underprocesser är omdirigerade, och därför skulle användaren ändå inte se en inmatningsprompt. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>KDESRC_BUILD_DUMP_CONTEXT</envar>
+</term>
+
+<listitem>
+<para
+>Om satt, skriver variabeln ut en beskrivning av "byggsammanhang" precis efter alternativ och kommandoradsväljare har lästs, och vilka moduler som ska byggas. I stort sett behöver man aldrig sätta den. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>övriga </term>
+
+<listitem>
+<para
+>Många program används av <command
+>kdesrc-build</command
+> under tiden det kör, inklusive <command
+>svn</command
+>(1), <command
+>git</command
+>(1), <command
+>make</command
+>(1) och <command
+>cmake</command
+>(1). Vart och ett av dessa program kan ha sina egna svar på att miljövariabler sätts. <command
+>kdesrc-build</command
+> skickar med inställda miljövariabler när det stöter på sådana processer. Du kan försäkra dig om att vissa variabler (t.ex. <envar
+>CC</envar
+> eller <envar
+>CXX</envar
+>) är satta genom att använda alternativet <option
+>set-env</option
+> i inställningsfilen. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>SIGNALER</title>
+
+<para
+>&kdesrc-build; stöder <literal
+>SIGHUP</literal
+>, som gör att &kdesrc-build; avslutas efter de aktuella modulerna för byggtråden (och uppdateringstråden, om ännu aktiv) har slutförts, när den tas emot.</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>Filer</title>
+
+<para
+><filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, om <envar
+>$XDG_CONFIG_HOME</envar
+> är angivet): Förvald allmän inställningsfil. </para>
+
+<para
+><filename
+>kdesrc-buildrc</filename
+>: Om filen finns i <emphasis role="strong"
+>arbetskatalogen</emphasis
+> när kdesrc-build körs, används den för inställningen istället för <filename
+>~/.config/kdesrc-buildrc</filename
+>. </para>
+
+<para
+><filename
+>~/.local/state/kdesrc-build-data</filename
+> (<filename
+>$XDG_STATE_DIR/kdesrc-buildrc</filename
+>, om <envar
+>$XDG_STATE_DIR</envar
+> är angivet): <command
+>kdesrc-build</command
+> använder den här filen för att lagra bestående information (såsom senaste alternativ för CMake som användes, senaste version som installerats med lyckat resultat, etc.). Den kan tas bort utan problem. </para>
+
+</refsect1>
+
+<refsect1>
+<title
+>Fel</title>
+
+<para
+>Se <ulink url="https://bugs.kde.org/"
+>https://bugs.kde.org/</ulink
+>. Försäkra dig om att du söker efter produkten <command
+>kdesrc-build</command
+>.</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>Exempel</title>
+
+<variablelist>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+></userinput
+> </term>
+
+<listitem>
+<para
+>Laddar ner, bygger och installerar alla moduler som listas i inställningsfilen, i den ordning som definieras där. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+></userinput
+> </term>
+
+<listitem>
+<para
+>Samma som ovan, utom att inga permanenta åtgärder utförs (i synnerhet skapas inga loggfiler, inga nerladdningar utförs, inga byggprocesser körs, etc.). <emphasis role="strong"
+>Undantag</emphasis
+>: Om du försöker bygga en modul definierad i &kde;:s projektdatabas och databasen inte har laddats ner än, kommer <command
+>kdesrc-build</command
+> att ladda ner den, eftersom det kan påverka den slutliga byggordningen signifikant. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--no-src</option
+> <option
+>--refresh-build</option
+> <symbol
+>kdebase</symbol
+></userinput
+> </term>
+
+<listitem>
+<para
+>Tar bort byggkatalogen för moduluppsättningen <emphasis
+>kdebase</emphasis
+> (<option
+>--refresh-build</option
+>) och startar därefter byggprocessen igen utan att uppdatera källkoden däremellan. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--rc-file</option
+> <filename
+>/dev/null</filename
+> <option
+>--pretend</option
+></userinput
+> </term>
+
+<listitem>
+<para
+>Tvingar <command
+>kdesrc-build</command
+> att läsa en tom inställningsfil och simulera byggprocessen som resulterar av det. Det visar vad som skulle hända normalt utan någon inställningsfil, utan något felmeddelande om saknad inställningsfil. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <symbol
+>+kdebase/kde-baseapps</symbol
+></userinput
+> </term>
+
+<listitem>
+<para
+>Laddar ner, bygger och installerar modulen <symbol
+>kde-baseapps</symbol
+> från &kde;:s projektdatabas. Eftersom modulnamnet inleds med <symbol
+>+</symbol
+> antas det att den är definierad i &kde;:s projektdatabas även om den inte har angivits explicit i inställningsfilen. </para>
+<para
+>Delen <symbol
+>kdebase/</symbol
+> tvingar <command
+>kdesrc-build</command
+> att ignorera eventuella moduler i <symbol
+>kde-baseapps</symbol
+> som inte finnd under supermodulen <symbol
+>kdebase</symbol
+> i projektdatabasen (även om det är konstlat i detta exempel). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+>--cmake-options=<replaceable
+>"-DCMAKE_BUILD_TYPE=Debug"</replaceable
+></option
+></userinput
+> </term>
+
+<listitem>
+<para
+>Laddar ner, bygger och installerar alla moduler som listas i inställningsfilen, men överskrider alternativet <symbol
+>cmake-options</symbol
+> till värdet som anges på kommandoraden endast för denna körning. Alla framtida körningar av <command
+>kdesrc-build</command
+> kommer att använda <symbol
+>cmake-options</symbol
+> angiven i inställningsfilen. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>Se också</title>
+
+<para
+>build-tool: Ett program av Michael Jansen som kan bygga &kde;-programvara baserat på inkluderade recept.</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>Resurser</title>
+
+<para
+>Huvudsaklig webbsida: <ulink url="https://apps.kde.org/kdesrc_build/"
+>https://apps.kde.org/kdesrc_build/</ulink
+></para>
+
+<para
+>Dokumentation: <ulink url="https://docs.kde.org/?application=kdesrc-build"
+>https://docs.kde.org/?application=kdesrc-build</ulink
+></para>
+
+<para
+>Inställningsskript: <command
+>kdesrc-build-setup</command
+></para>
+
+</refsect1>
+
+<refsect1>
+<title
+>Kopiering</title>
+
+<para
+>Copyright © 2003-2022 Michael Pyne.</para>
+
+<para
+>Detta program är fri programvara. Du kan distribuera det och/eller ändra det under villkoren i GNU General Public License, publicerad av Free Software Foundation, antingen version 2 av licensen, eller (om du så önskar) någon senare version.</para>
+
+<para
+>Detta program distribueras i hopp om att det ska vara användbart, men UTAN NÅGON SOM HELST GARANTI, även utan underförstådd garanti om SÄLJBARHET eller LÄMPLIGHET FÖR NÅGOT SPECIELLT ÄNDAMÅL. Se GNU General Public License för ytterligare information.</para>
+
+<para
+>Du ska ha fått en kopia av GNU General Public License tillsammans med detta program. Om inte, skriv till Free Software Foundation, Inc., 51 Franklin Steet, Fifth Floor, Boston, MA 02110-1301, USA.</para>
+
+</refsect1>
+
+</refentry>

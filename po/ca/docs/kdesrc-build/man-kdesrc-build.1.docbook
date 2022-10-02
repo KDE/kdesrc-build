@@ -1,0 +1,1601 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE refentry PUBLIC "-//KDE//DTD DocBook XML V4.5-Based Variant V1.1//EN" "dtd/kdedbx45.dtd" [
+<!ENTITY % Catalan  "INCLUDE">
+<!ENTITY kdesrc-build "<application
+>kdesrc-build</application
+>">
+]>
+
+<!--
+    Man page for kdesrc-build.
+    Copyright (c) 2011, 2014-2020, 2022 Michael Pyne <mpyne@kde.org>
+
+    Permission is granted to copy, distribute and/or modify this document under
+    the terms of the GNU Free Documentation License, Version 1.2 or any later
+    version published by the Free Software Foundation; with no Invariant
+    Sections, no Front-Cover Texts, and no Back-Cover Texts.  A copy of the
+    license is included in COPYING.DOC.
+ -->
+
+<refentry lang="&language;">
+<refentryinfo>
+<title
+>Manual d'usuari de kdesrc-build</title>
+<author
+><personname
+><firstname
+>Michael</firstname
+><surname
+>Pyne</surname
+></personname
+> <email
+>mpyne@kde.org</email
+> <personblurb
+><para
+>Authored man page</para
+></personblurb
+> </author>
+<date
+>31 d'agost de 2019</date>
+<releaseinfo
+>kdesrc-build 19.08</releaseinfo>
+</refentryinfo>
+
+<refmeta>
+<refentrytitle
+><command
+>kdesrc-build</command
+></refentrytitle>
+<manvolnum
+>1</manvolnum>
+<refmiscinfo class="version"
+>19.08</refmiscinfo>
+</refmeta>
+
+<refnamediv>
+    <refname
+><command
+>kdesrc-build</command
+></refname>
+    <refpurpose
+>Descarrega, construeix i instal·la el programari &kde;.</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv id="_synopsis">
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>OPCIONS</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>Nom del mòdul | Nom del conjunt de mòduls</replaceable
+></arg
+> </cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+<title
+>DESCRIPCIÓ</title>
+
+<para
+>L'ordre <command
+>kdesrc-build</command
+> s'utilitza per a construir el programari &kde; directament des dels seus repositoris de codi font. Podeu descarregar des dels repositoris de Subversion o Git, les interfícies amb la base de dades del projecte &kde; i admet controlar quines opcions es passen al <command
+>make</command
+>(1) i <command
+>cmake</command
+>(1). L'operació de <command
+>kdesrc-build</command
+> és conduïda per un fitxer de configuració, típicament <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, si està establerta <envar
+>$XDG_CONFIG_HOME</envar
+>). </para>
+
+<para
+>El <replaceable
+>nom del mòdul</replaceable
+> o el <replaceable
+>nom del conjunt de mòduls</replaceable
+> tal com s'indica en la línia d'ordres, hauran de ser com aquests noms definits en el fitxer de configuració (sigui en una definició de <symbol
+>module</symbol
+> o en una declaració <option
+>use-modules</option
+>, o en una definició <option
+>module-set</option
+>). A més, pot ser el nom d'un mòdul &kde; que figura a la base de dades del projecte &kde; (i pot precedir el nom del mòdul amb <symbol
+>+</symbol
+> per a forçar-ho).</para>
+
+<para
+>El <command
+>kdesrc-build</command
+> està dissenyat per poder estar completament sense cap (però, vegeu <emphasis role="strong"
+>ENTORN</emphasis
+>), de manera que generalment ignora completament la seva entrada. La sortida de l'ordre és registrada en lloc de mostrar-la com a sortida estàndard.</para>
+
+<para
+>Els mòduls es construeixen un darrere l'altre. Si un mòdul falla en l'actualització, llavors no serà construït. El <command
+>kdesrc-build</command
+> no s'interromprà només per una fallada del mòdul, sinó que seguirà intentant actualitzar i construir els mòduls posteriors. De manera predeterminada, el <command
+>kdesrc-build</command
+> començarà a construir un mòdul tan aviat com es completi l'actualització del codi font per a aquest mòdul, fins i tot si les altres actualitzacions ocorren de manera simultània.</para>
+
+<para
+>Al final, el <command
+>kdesrc-build</command
+> mostrarà quins mòduls han fallat en construir i on s'han mantingut els registres per a aquesta execució de la construcció.</para
+> </refsect1>
+
+<refsect1>
+<title
+>OPCIONS</title>
+
+<para
+><emphasis role="strong"
+>NOTA</emphasis
+>: Algunes opcions tenen formes curtes, però en aquest moment l'analitzador d'opcions de <command
+>kdesrc-build</command
+> no admet combinar opcions curtes en una. (Per exemple, executar <option
+>kdesrc-build -pv</option
+> no serà el mateix que <option
+>kdesrc-build --pretend --verbose</option
+>).</para>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<option
+>-h, --help</option>
+</term>
+
+<listitem>
+<para
+>Mostra una breu sinopsi i una descripció de les opcions de la línia d'ordres emprades més sovint. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--show-info</option>
+</term>
+
+<listitem>
+<para
+>Mostra informació sobre el &kdesrc-build; i el sistema operatiu, el qual pot ser útil en els informes d'error o en demanar ajuda en els fòrums o les llistes de correu. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--initial-setup</option>
+</term>
+
+<listitem>
+<para
+>Realitza una única configuració per als usuaris que executen el &kdesrc-build; en distribucions habituals. Això inclou la instal·lació de les dependències de sistema conegudes, una configuració del fitxer de configuració predeterminat, i els canvis en el ~/.bashrc per a fer que sigui accessible el programari instal·lat pel &kdesrc-build;. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>-p, --pretend</option>
+</term>
+
+<listitem>
+<para
+>Opera en el mode «simula». No es fan accessos a la xarxa, no es creen fitxers de registre, no es construeixen els mòduls i no es realitzen altres canvis permanents en el disc. Una <emphasis
+>excepció important</emphasis
+> és que si intenteu construir un mòdul que prové de la base de dades del projecte &kde;, i la base de dades encara no s'ha descarregat, la base de dades es descarregarà, ja que el resultat del mode simulació pot canviar significativament en funció dels resultats a la base de dades. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--install</option>
+</term>
+
+<listitem>
+<para
+>Omet la fase d'actualització i construcció, i intenta instal·lar immediatament els mòduls indicats. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--uninstall</option>
+</term>
+
+<listitem>
+<para
+>Omet la fase d'actualització i construcció, i intenta desinstal·lar immediatament els mòduls indicats. <emphasis role="strong"
+>NOTA</emphasis
+>: Això només està admès pels sistemes de compilació que admeten l'ordre <command
+>make uninstall</command
+> (&pex; el &kde; basat en el CMake). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-src</option>
+</term>
+
+<listitem>
+<para
+>Omet la fase d'actualització del codi font. Les altres fases s'inclouran com a normal. L'opció <option
+>--no-svn</option
+> és un àlies en desús per aquesta opció i s'eliminarà en una versió futura. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-metadata</option>
+</term>
+
+<listitem>
+<para
+>Omet la fase d'actualització de les metadades per als mòduls del &kde;. Les altres fases (inclosa la fase d'actualització del codi font) s'inclouran com a normal. Si voleu evitar totes les actualitzacions de xarxa, també haureu de passar l'opció <option
+>--no-src</option
+>. </para>
+
+<para
+>Aquesta opció pot ser útil si executeu sovint el <command
+>kdesrc-build</command
+>, ja que les metadades en si no canvien gaire sovint. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-install</option>
+</term>
+
+<listitem>
+<para
+>Omet la fase d'instal·lació de la construcció. Les altres fases s'inclouran com a normal. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-build</option>
+</term>
+
+<listitem>
+<para
+>Omet la fase de construcció per a la construcció. Internament, la fase d'instal·lació depèn del fet que es completi la fase de construcció, de manera que això és efectivament equivalent a <option
+>--src-only</option
+>, però la semàntica pot canviar en el futur (&pex;, quan els conjunts de prova es mouen a la seva pròpia fase). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-tests</option>
+</term>
+
+<listitem>
+<para
+>Inhabilita l'execució del conjunt de proves per als mòduls basats en el CMake. Perquè sigui completament efectiu, requereix tornar a executar el CMake, el qual es pot forçar utilitzant l'opció <option
+>--reconfigure</option
+> o <option
+>--refresh-build</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--src-only</option>
+</term>
+
+<listitem>
+<para
+>Només realitza la fase d'actualització del codi font, no es construeix ni instal·la. L'opció <option
+>--svn-only</option
+> és un àlies en desús per aquesta opció i s'eliminarà en una versió futura. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--build-only</option>
+</term>
+
+<listitem>
+<para
+>Força a realitzar el procés de construcció sense actualitzar primer el codi font. A més, la instal·lació no es realitzarà. (Si correspon la prova encara es realitzarà, però això canviarà en una versió futura). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--metadata-only</option>
+</term>
+
+<listitem>
+<para
+>Només actualitza les metadades de construcció necessàries per als mòduls del &kde;, després surt. Això és útil per a permetre que l'opció <option
+>--pretend</option
+> funcioni si mai heu executat el kdesrc-build. Vegeu també <option
+>--no-metadata</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--refresh-build</option>
+</term>
+
+<listitem>
+<para
+>Elimina el directori de construcció per a un mòdul abans que comenci la fase de construcció. Això té l'efecte secundari desitjat de forçar el <command
+>kdesrc-build</command
+> a reconfigurar el mòdul i construir-lo des d'un estat «pristine» sense fitxers de sortida temporals o intermedis existents. Utilitzeu aquesta opció si teniu problemes per a construir un mòdul, però tingueu en compte que portarà més temps (possiblement molt més) completar la construcció. En cas de dubte, utilitzeu aquesta opció per a tota l'execució de <command
+>kdesrc-build</command
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--reconfigure</option>
+</term>
+
+<listitem>
+<para
+>Força el CMake a tornar-se a executar, però sense suprimir el directori de construcció. Normalment, en realitat voldreu <option
+>--refresh-build</option
+>, però si esteu 100% segur que el vostre canvi a <option
+>cmake-options</option
+> no invalida la vostra sortida intermèdia actual, això pot estalviar una mica de temps. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--build-system-only</option>
+</term>
+
+<listitem>
+<para
+>Interromp el procés de construcció per a cada mòdul construït: el procés de construcció consisteix en una configuració normal que també inclou executar el <command
+>cmake</command
+> o el <command
+>configure</command
+> (segons correspongui), però el <command
+>make</command
+> no s'executarà i no s'intentarà la instal·lació. Això és principalment útil per a fer que funcionin coses com el <command
+>configure --help</command
+> i el <command
+>cmake-gui</command
+>. Normalment voldreu <option
+>--reconfigure</option
+> o <option
+>--refresh-build</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume-from=<replaceable
+>foo</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Utilitzeu aquesta opció per ometre el processament del mòdul fins que es trobi el mòdul <replaceable
+>foo</replaceable
+>. <replaceable
+>foo</replaceable
+> i tots els mòduls subsegüents es processaran amb normalitat com si s'haguessin especificat a la línia d'ordres. Si utilitzeu aquesta opció a causa d'un error de construcció, podríeu considerar utilitzar <option
+>--no-src</option
+> a més d'ometre la resultant fase d'actualització del codi font. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume-after=<replaceable
+>foo</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Això és com <option
+>--resume-from</option
+>, excepte que el mòdul <replaceable
+>foo</replaceable
+> <emphasis
+>no</emphasis
+> està inclòs en la llista de mòduls a considerar. Podeu utilitzar això si heu construït/instal·lat manualment <replaceable
+>foo</replaceable
+> després d'arreglar la construcció i només voleu continuar des d'allà. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--resume</option>
+</term>
+
+<listitem>
+<para
+>Aquesta opció es pot utilitzar per executar <command
+>kdesrc-build</command
+> després que s'hagi produït un error de construcció. </para>
+
+<para
+>Reprèn la construcció des del mòdul que va fallar, utilitzant la llista de mòduls que esperen a ser compilats, i també inhabilita les actualitzacions del codi font i les metadades. El cas d'ús és quan un error senzill o manca d'una dependència causa la falla de la construcció. Una vegada corregiu l'error, podreu tornar ràpidament a construir els mòduls que es construïen abans, sense tocar <option
+>--resume-from</option
+> i <option
+>--stop-before</option
+>. </para>
+
+<para
+>Això és encara més útil amb l'opció <option
+>--stop-on-failure</option
+>, especialment si esteu configurant inicialment el vostre entorn de desenvolupament. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-before=<replaceable
+>foo</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Això és similar a l'indicador <option
+>--resume-from</option
+>. Aquesta opció fa que la llista de mòduls indicada per a la construcció sigui truncada just <emphasis
+>abans</emphasis
+> que s'hagi compilat <replaceable
+>foo</replaceable
+> amb normalitat. <replaceable
+>foo</replaceable
+> <emphasis
+>no</emphasis
+> està construït (però vegeu <option
+>--stop-after</option
+>). </para>
+
+<para
+>Aquest indicador es pot utilitzar amb <option
+>--resume-from</option
+> o <option
+>--resume-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-after=<replaceable
+>foo</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Això és igual que <option
+>--stop-before</option
+>, excepte que el mòdul indicat <emphasis
+>està</emphasis
+> inclòs en la construcció. </para>
+
+<para
+>Aquest indicador es pot utilitzar amb <option
+>--resume-from</option
+> o <option
+>--resume-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+><option
+>--include-dependencies</option
+> <option
+>--no-include-dependencies</option
+> </term>
+
+<listitem>
+<para
+>Això fa que el <command
+>kdesrc-build</command
+> no només inclogui els mòduls que normalment construiria (sigui perquè es van especificar a la línia d'ordres, o s'han indicat al fitxer de configuració), també inclou les <emphasis
+>dependències conegudes</emphasis
+> d'aquests mòduls durant la construcció. Això normalment és el valor predeterminat: podeu utilitzar <option
+>--no-include-dependencies</option
+> per a inhabilitar aquest efecte. </para>
+
+<para
+>Les dependències són <quote
+>conegudes</quote
+> pel <command
+>kdesrc-build</command
+> en funció del contingut del repositori git especial <emphasis
+>kde-build-metadata</emphasis
+>, el qual és gestionat per l'script (vegeu també l'opció <option
+>--metadata-only</option
+>). La comunitat &kde; manté actualitzada la informació de dependències en aquest mòdul, de manera que si el <command
+>kdesrc-build</command
+> sembla mostrar les dependències incorrectes, es pot deure a informació de dependències que manca o que és incorrecta. </para>
+
+<para
+>S'inclouran totes les dependències conegudes, el qual pot ser més del que necessiteu. Considereu utilitzar l'opció <option
+>--resume-from</option
+> (i opcions similars) per a controlar la llista de construcció quan utilitzeu aquesta opció. </para>
+
+<para
+>Per a només veure la llista de mòduls que es construirien, utilitzeu <option
+>--print-modules</option
+> o <option
+>--pretend</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--rebuild-failures</option>
+</term>
+
+<listitem>
+<para
+>Aquesta opció permet construir només aquells mòduls que no s'han pogut construir en una execució anterior de <command
+>kdesrc-build</command
+>. Això és útil si s'ha produït un nombre significatiu de fallades mesclades amb construccions amb èxit. Després de solucionar el problema que causa les fallades de construcció, podreu construir amb facilitat només els mòduls que van fallar anteriorment.</para>
+
+    <para
+>Tingueu en compte que la llista dels <quote
+>mòduls amb fallades anteriors</quote
+> es restableix cada vegada que finalitza una execució de <command
+>kdesrc-build</command
+> amb algunes fallades de mòduls. No obstant això, no es restableix amb una construcció completa amb èxit, així que podreu reconstruir amb èxit un o dos mòduls i aquest indicador seguirà funcionant.</para>
+
+    <para
+>Aquesta opció es va introduir en el kdesrc-build 15.09.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--stop-on-failure</option>
+</term>
+
+<listitem>
+<para
+>Aquesta opció fa que la construcció s'interrompi tan aviat com passi una fallada. Útil quan configureu l'entorn de desenvolupament inicial. Sense aquest indicador, el <command
+>kdesrc-build</command
+> intentarà continuar amb la resta dels mòduls en la construcció per evitar perdre temps en cas que el problema sigui amb un sol mòdul. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--ignore-modules</option>
+</term>
+
+<listitem>
+<para
+>Força a <emphasis role="strong"
+>TOTS</emphasis
+> els mòduls que segueixen aquesta opció, a ser exclosos de la consideració de <command
+>kdesrc-build</command
+>. Això pot ser útil si sabeu que voleu processar tots els mòduls, excepte alguna excepció específica. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--rc-file=<replaceable
+>foo</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Utilitza el fitxer indicat, <replaceable
+>foo</replaceable
+>, per a la configuració en lloc del <filename
+>~/.kdesrc-buildrc</filename
+> o <filename
+>~/.config/kdesrc-buildrc</filename
+>. El fitxer pot estar buit, però haurà d'existir. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--prefix=<replaceable
+>foo</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Substitueix l'opció <option
+>kdedir</option
+> per a ser <replaceable
+>foo</replaceable
+> en aquesta execució. A més, implica <option
+>--reconfigure</option
+>. En realitat, <emphasis
+>no</emphasis
+> realitza l'acció que pensaríeu que fa (substituint l'opció <option
+>prefix</option
+> per a canviar a on s'instal·len els mòduls), tot i que els mòduls s'instal·len de manera predeterminada a l'opció de <option
+>kdedir</option
+> si no s'estableix el <option
+>prefix</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--nice=<replaceable
+>foo</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Canvia la prioritat de la CPU indicada al <command
+>kdesrc-build</command
+> (i tots els processos utilitzats pel <command
+>kdesrc-build</command
+>, &pex;, <command
+>make(1)</command
+>). <replaceable
+>foo</replaceable
+> hauria de ser un nombre enter entre -20 i 19. Els valors positius són «millors» per a la resta del sistema (&ead;, de menor prioritat). </para>
+
+<para
+>Recordeu que les possibles prioritats disponibles en el vostre sistema poden ser diferents de les llistades aquí, vegeu <command
+>nice</command
+>(2) per obtenir més informació. Tingueu també en compte que això només canvia la prioritat de la CPU, sovint voldreu canviar la prioritat de l'<emphasis
+>E/S</emphasis
+> en els sistemes que ho admeten. No hi ha una opció de línia d'ordres per a l'ajust de prioritat de l'E/S, però hi ha una opció al fitxer de configuració: <option
+>use-idle-io-priority</option
+> (tot i que, com totes les opcions, hi ha una forma genèrica d'establir-ho des de la línia d'ordres). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--run=<replaceable
+>foo</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Executa el programa anomenat per <replaceable
+>foo</replaceable
+> utilitzant l'entorn de construcció normal de <command
+>kdesrc-build</command
+>. Tots els arguments de la línia d'ordres presents després d'aquesta opció es passaran a <replaceable
+>foo</replaceable
+> mentre s'executa. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--query=<replaceable
+>mode</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Aquesta ordre fa que el <command
+>kdesrc-build</command
+> consulti un paràmetre dels mòduls a la llista de construcció (sigui passat sobre la línia d'ordres o llegit des del fitxer de configuració), enviant el resultat a la pantalla (un mòdul per línia). </para>
+
+<para
+>Aquesta opció s'haurà de proporcionar amb un <quote
+>mode de consulta</quote
+>, el qual haurà de ser un dels següents:</para>
+    <itemizedlist>
+    <listitem
+><para
+><option
+>source-dir</option
+>, el qual fa que el <command
+>kdesrc-build</command
+> generi el camí sencer a on s'emmagatzema el codi font del mòdul. </para
+></listitem>
+    <listitem
+><para
+><option
+>build-dir</option
+>, el qual fa que el <command
+>kdesrc-build</command
+> generi el camí sencer a on ocorre el procés de construcció del mòdul. </para
+></listitem>
+    <listitem
+><para
+><option
+>install-dir</option
+>, el qual fa que el <command
+>kdesrc-build</command
+> generi el camí sencer a on s'instal·larà el mòdul. </para
+></listitem>
+    <listitem
+><para
+><option
+>project-path</option
+>, el qual fa que el <command
+>kdesrc-build</command
+> doni com a sortida la ubicació del mòdul dins de la jerarquia de repositoris de codi font del &kde;. </para
+></listitem>
+    <listitem
+><para
+><option
+>branch</option
+>, el qual fa que el <command
+>kdesrc-build</command
+> doni com a sortida la branca de git que s'utilitzarà per a cada mòdul, en funció de les opcions vigents <option
+>tag</option
+>, <option
+>branch</option
+> i <option
+>branch-group</option
+>. </para
+></listitem>
+    <listitem
+><para
+>D'altra manera, es poden utilitzar els noms d'opció que siguin vàlids per a mòduls al fitxer de configuració, es llistarà el valor resolt per a cada mòdul. </para
+></listitem>
+    </itemizedlist>
+
+<para
+>Si es passa un únic mòdul a la línia d'ordres, la sortida simplement serà el valor del paràmetre que s'està consultant. Si es passen múltiples mòduls (o cap) a la línia d'ordres, cada línia estarà prefixada amb el nom del mòdul. De qualsevol manera, el <command
+>kdesrc-build</command
+> s'aturarà una vegada doni com a sortida cada valor. </para>
+
+<para
+>Aquesta opció es va introduir en el <command
+>kdesrc-build</command
+> 16.05.</para>
+
+<informalexample>
+<para
+>Per exemple, l'ordre <quote
+><command
+>kdesrc-build</command
+> <parameter
+>--query</parameter
+> <parameter
+><replaceable
+>branch</replaceable
+></parameter
+> <parameter
+><replaceable
+>kactivities</replaceable
+></parameter
+> <parameter
+><replaceable
+>kdepim</replaceable
+></parameter
+></quote
+> podria acabar amb resultats com:</para>
+<screen
+>kactivities: master
+kdepim: master
+</screen>
+</informalexample>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--print-modules</option>
+</term>
+
+<listitem>
+<para
+>Realitza totes les accions i inclou el reordenament de dependències dels mòduls especificats a la línia d'ordres (o al fitxer de configuració), imprimeix un per línia els mòduls que es processaran i després surt sense més accions. </para>
+
+<para
+>Les metadades <literal
+>kde-project</literal
+> són baixades primer (però, vegeu <option
+>--pretend</option
+> o <option
+>--no-src</option
+>). </para>
+
+<para
+>La sortida no és totalment compatible amb l'ús dels scripts, ja que es poden generar altres missatges de sortida fins que es mostri la llista de mòduls. </para>
+
+<para
+>Això és principalment útil per a determinar amb rapidesa que el <command
+>kdesrc-build</command
+> entén que són les dependències d'un mòdul, el qual vol dir que només és útil per als mòduls de <literal
+>kde-projects</literal
+>. Aquesta opció també és acceptada amb <option
+>--resume-from</option
+>, <option
+>--resume-after</option
+>, <option
+>--stop-before</option
+> i <option
+>--stop-after</option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--list-build</option>
+</term>
+
+<listitem>
+<para
+>Realitza totes les accions i inclou el reordenament de dependències dels mòduls especificats a la línia d'ordres (o al fitxer de configuració), imprimeix un per línia els mòduls que es processaran i després surt sense més accions. </para>
+<para
+>Aquesta opció és similar a <option
+>--print-modules</option
+> però inclou quin commit/branca/indicador específic també es construirà. A més, l'ordre en el qual es llisten els mòduls correspon amb l'ordre en què es construiran. </para>
+
+<para
+>Les metadades <literal
+>kde-project</literal
+> són baixades primer (però, vegeu <option
+>--pretend</option
+> o <option
+>--no-src</option
+>). </para>
+
+<para
+>La sortida no és totalment compatible amb l'ús dels scripts, ja que es poden generar altres missatges de sortida fins que es mostri la llista de mòduls. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--dependency-tree</option>
+</term>
+
+<listitem>
+<para
+>Realitza totes les accions i inclou el reordenament de les dependències dels mòduls especificats a la línia d'ordres (o al fitxer de configuració) i imprimeix la informació de les dependències per a cada mòdul seleccionat en un format de sortida en arbre (recursiu). La informació generada inclou de quin commit/branca/indicador específic depèn, i si el mòdul es construirà. Recordeu que el resultat pot ser força gran per a aplicacions amb moltes dependències o quan se seleccionen (implícitament) molts mòduls. </para>
+
+<para
+>Les metadades <literal
+>kde-project</literal
+> són baixades primer (però, vegeu <option
+>--pretend</option
+> o <option
+>--no-src</option
+>). </para>
+
+<para
+>La sortida no és totalment compatible amb l'ús dels scripts, ja que es poden generar altres missatges de sortida fins que es mostri la llista de mòduls. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--color</option>
+</term>
+
+<listitem>
+<para
+>Habilita la «sortida amb color». (Habilitada de manera predeterminada). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-color</option>
+</term>
+
+<listitem>
+<para
+>Inhabilita la «sortida amb color». Pot fer-se permanent establint l'opció <option
+>colorful-output</option
+> (sortida amb color) a fals (o 0) en el vostre fitxer de configuració. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--async</option>
+</term>
+
+<listitem>
+<para
+>Fa que el <command
+>kdesrc-build</command
+> iniciï el procés de construcció d'un mòdul tan aviat com el codi font hagi acabat de descarregar-se. Sense aquesta opció, el <command
+>kdesrc-build</command
+> realitzarà alhora totes les actualitzacions del codi font i només després començarà amb el procés de construcció. De manera predeterminada aquesta opció està habilitada. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-async</option>
+</term>
+
+<listitem>
+<para
+>Inhabilita la construcció asíncrona dels mòduls. Vegeu <option
+>--async</option
+> per a una descripció més detallada. Recordeu que la sortida de <command
+>kdesrc-build</command
+> serà lleugerament diferent en aquest mode. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--verbose</option>
+</term>
+
+<listitem>
+<para
+>Augmenta el nivell de loquacitat de la sortida de <command
+>kdesrc-build</command
+> (la qual ja és prou detallada!) </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>-q, --quiet</option>
+</term>
+
+<listitem>
+<para
+>Fa que el <command
+>kdesrc-build</command
+> sigui menys sorollós. Només es mostraran els missatges importants. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--really-quiet</option>
+</term>
+
+<listitem>
+<para
+>Fa que el <command
+>kdesrc-build</command
+> sigui encara menys sorollós. Només es mostraran els avisos/errors. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--debug</option>
+</term>
+
+<listitem>
+<para
+>Això omplirà el terminal amb les descripcions i la sortida de depuració, generalment inintel·ligibles, descrivint el que està fent el <command
+>kdesrc-build</command
+> (i el que pensa que hauria d'estar fent). S'inclou l'indicador, ja que la sortida de vegades pot ser útil per a la depuració. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--force-build</option>
+</term>
+
+<listitem>
+<para
+>Normalment, quan el <command
+>kdesrc-build</command
+> s'adona que no hi ha una actualització del codi font en un mòdul que s'ha instal·lat prèviament amb èxit, no intenta construir o instal·lar aquest mòdul. Podeu passar aquest indicador per a inhabilitar aquest comportament i executar sempre el <command
+>make</command
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--no-snapshots</option>
+</term>
+
+<listitem>
+<para
+>Normalment, el <command
+>kdesrc-build</command
+> admet l'ús d'instantànies d'arxius tar del repositori de codi font (clonar amb Git) per a reduir la càrrega en la infraestructura del &kde; per a alguns mòduls del &kde;. Passar aquesta opció inhabilitarà aquesta característica. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--delete-my-patches</option>
+</term>
+
+<listitem>
+<para
+>Aquesta opció s'ha de passar per a permetre que el <command
+>kdesrc-build</command
+> elimini els directoris de codi font en conflicte. Actualment, fins i tot això només passa quan s'intenta clonar un mòdul basat en git si hi ha un directori de codi font existent. No especifiqueu mai aquesta opció si no és aconsellada pel <command
+>kdesrc-build</command
+>, i només si no us importa que els directoris de codi font als quals es fa referència se suprimeixin i es tornin a clonar. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--<replaceable
+>foo</replaceable
+>=<replaceable
+>barra</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Qualsevol opció que no estigui a la llista anterior es verificarà per a veure si coincideix amb la llista de possibles opcions del fitxer de configuració. Si és així, l'opció <option
+>foo</option
+> en el fitxer de configuració s'establirà temporalment a <option
+>barra</option
+> durant la durada d'aquesta execució. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<option
+>--set-module-option-value=<replaceable
+>mòdul</replaceable
+>,<replaceable
+>foo</replaceable
+>,<replaceable
+>barra</replaceable
+></option>
+</term>
+
+<listitem>
+<para
+>Com en el cas anterior, però l'opció <option
+>foo</option
+> només s'establirà a <option
+>barra</option
+> per a aquest <option
+>mòdul</option
+>. Això encara no funciona per als conjunts de mòduls, ho haureu de repetir per a cada mòdul que vulgueu que es vegi afectat. (Per descomptat, podreu senzillament editar el fitxer de configuració...) Aquesta opció funcionava de manera lleugerament diferent abans de la versió 1.16. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>ESTAT DE LA SORTIDA</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>0</emphasis>
+</term>
+
+<listitem>
+<para
+>Correcte </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>1</emphasis>
+</term>
+
+<listitem>
+<para
+>Normalment, això vol dir que ha fallat alguna part del procés d'actualització, construcció o instal·lació, però també s'utilitza per a qualsevol final anormal del programa que no es cobreix a continuació. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>5</emphasis>
+</term>
+
+<listitem>
+<para
+>S'ha rebut un senyal que ha matat el <command
+>kdesrc-build</command
+>, però s'ha intentat realitzar un tancament normal. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>8</emphasis>
+</term>
+
+<listitem>
+<para
+>S'ha passat una opció desconeguda a la línia d'ordres. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<emphasis role="strong"
+>99</emphasis>
+</term>
+
+<listitem>
+<para
+>S'ha plantejat una excepció que ha obligat al <command
+>kdesrc-build</command
+> a interrompre abans. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>ENTORN</title>
+
+<variablelist>
+
+<varlistentry>
+<term>
+<envar
+>HOME</envar>
+</term>
+
+<listitem>
+<para
+>S'utilitza per a l'expansió dels noms de fitxer, i és la base predeterminada per als directoris de codi font, construcció i instal·lació. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>PATH</envar>
+</term>
+
+<listitem>
+<para
+>Aquesta variable d'entorn controla el camí de cerca predeterminat per als executables. Feu servir l'opció <option
+>binpath</option
+> del fitxer de configuració per afegir a aquesta variable (&pex;, per a executar des de <command
+>cron</command
+>(8)). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+><envar
+>LC_</envar
+>* </term>
+
+<listitem>
+<para
+>Les variables d'entorn que comencen amb LC_ controlen la configuració regional utilitzada pel <command
+>kdesrc-build</command
+>. Tot i que el <command
+>kdesrc-build</command
+> encara no és traduïble (l10n) en aquest moment, moltes de les ordres que utilitza sí que ho són. El <command
+>kdesrc-build</command
+> normalment estableix <envar
+>LC_ALL</envar
+>=C per a les ordres de les quals ha d'examinar la sortida, però també podeu fer-ho manualment. Si establiu <envar
+>LC_ALL</envar
+>=C, solucionareu un problema de <command
+>kdesrc-build</command
+> i podreu enviar un informe d'error. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>SSH_AGENT_PID</envar>
+</term>
+
+<listitem>
+<para
+>Aquesta variable d'entorn és verificada per a veure si s'està executant el <command
+>ssh-agent</command
+>(1), però només si el <command
+>kdesrc-build</command
+> determina que esteu revisant un mòdul que requereix un inici de sessió SSH (però haureu de saber-ho, ja que de manera predeterminada cap mòdul ho requereix). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>KDESRC_BUILD_USE_TTY</envar>
+</term>
+
+<listitem>
+<para
+>Si s'estableix, aquesta variable forçarà al <command
+>kdesrc-build</command
+> a no tancar la seva entrada mentre executa els processos de sistema. Normalment, el <command
+>kdesrc-build</command
+> tancarà <symbol
+>stdin</symbol
+> (entrada estàndard), ja que <symbol
+>stdout</symbol
+> (sortida estàndard) i <symbol
+>stderr</symbol
+> (sortida d'error estàndard) per als seus processos fill es redirigeixen i, per tant, l'usuari mai veurà un indicatiu d'entrada. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>
+<envar
+>KDESRC_BUILD_DUMP_CONTEXT</envar>
+</term>
+
+<listitem>
+<para
+>Si s'estableix, aquesta variable imprimirà una descripció del seu «context de construcció» just després de llegir les opcions i els arguments de la línia d'ordres, i determinar quins mòduls construir. Pràcticament mai voldreu establir-la. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>altres </term>
+
+<listitem>
+<para
+>El <command
+>kdesrc-build</command
+> utilitza molts programes durant el curs de la seva execució, inclosos el <command
+>svn</command
+>(1), <command
+>git</command
+>(1), <command
+>make</command
+>(1) i <command
+>cmake</command
+>(1). Cadascun d'aquests programes pot tenir la seva pròpia resposta a les variables d'entorn establertes. El <command
+>kdesrc-build</command
+> passarà les variables d'entorn establertes quan s'executin en aquests processos. Podreu assegurar-vos que certes variables d'entorn (&pex;, <envar
+>CC</envar
+> o <envar
+>CXX</envar
+>) es configuren mitjançant l'opció <option
+>set-env</option
+> del fitxer de configuració. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>SIGNALS</title>
+
+<para
+>El &kdesrc-build; admet <literal
+>SIGHUP</literal
+>, el qual, si es rep, farà que el &kdesrc-build; surti després que s'hagin completat els mòduls actuals del fil de construcció (i el fil d'actualització, si encara està actiu).</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>FITXERS</title>
+
+<para
+><filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, si està establerta <envar
+>$XDG_CONFIG_HOME</envar
+>): el fitxer de la configuració global predeterminada. </para>
+
+<para
+><filename
+>kdesrc-buildrc</filename
+>: si aquest fitxer es troba en el <emphasis role="strong"
+>directori actual</emphasis
+> quan s'executa el kdesrc-build, aquest fitxer s'utilitzarà per a la configuració en lloc de <filename
+>~/.config/kdesrc-buildrc</filename
+>. </para>
+
+<para
+><filename
+>~/.local/state/kdesrc-build-data</filename
+> (<filename
+>$XDG_STATE_DIR/kdesrc-buildrc</filename
+>, si s'ha establert <envar
+>$XDG_STATE_DIR</envar
+>): el <command
+>kdesrc-build</command
+> utilitza aquest fitxer per a emmagatzemar les dades persistents (com les últimes opcions emprades de CMake, l'última revisió instal·lada amb èxit, &etc;). Es pot suprimir de forma segura. </para>
+
+</refsect1>
+
+<refsect1>
+<title
+>ERRORS</title>
+
+<para
+>Vegeu <ulink url="https://bugs.kde.org/"
+>https://bugs.kde.org/</ulink
+>. Assegureu-vos de fer una cerca contra el producte <command
+>kdesrc-build</command
+>.</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>EXEMPLE</title>
+
+<variablelist>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+></userinput
+> </term>
+
+<listitem>
+<para
+>Descarrega, construeix i instal·la tots els mòduls llistats al fitxer de configuració, en l'ordre definit en el mateix. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+></userinput
+> </term>
+
+<listitem>
+<para
+>Igual que l'anterior, excepte que no es prenen accions permanents (específicament no es creen fitxers de registre, es realitzen descàrregues, s'executen processos de construcció, &etc;) <emphasis role="strong"
+>EXCEPCIÓ</emphasis
+>: Si esteu intentant construir un mòdul definit a la base de dades del projecte &kde;, i la base de dades encara no s'ha descarregat, el <command
+>kdesrc-build</command
+> descarregarà la base de dades, ja que això pot afectar significativament l'ordre final de construcció. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--no-src</option
+> <option
+>--refresh-build</option
+> <symbol
+>kdebase</symbol
+></userinput
+> </term>
+
+<listitem>
+<para
+>Suprimeix el directori de construcció per al conjunt de mòduls del <emphasis
+>kdebase</emphasis
+> (<option
+>--refresh-build</option
+>) i després s'inicia de nou el procés de construcció sense actualitzar el codi font. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--rc-file</option
+> <filename
+>/dev/null</filename
+> <option
+>--pretend</option
+></userinput
+> </term>
+
+<listitem>
+<para
+>Força al <command
+>kdesrc-build</command
+> a llegir un fitxer de configuració buit i a simular el procés de construcció resultant. Això mostrarà el que succeiria de manera predeterminada sense un fitxer de configuració, sense un missatge d'error sobre la manca d'un fitxer de configuració. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <symbol
+>+kdebase/kde-baseapps</symbol
+></userinput
+> </term>
+
+<listitem>
+<para
+>Descarrega, construeix i instal·la el mòdul <symbol
+>kde-baseapps</symbol
+> des de la base de dades del projecte &kde;. Atès que el nom del mòdul està precedit per un <symbol
+>+</symbol
+>, se suposa que està definit a la base de dades del projecte &kde;, encara que no s'ha configurat específicament en el fitxer de configuració. </para>
+<para
+>La porció <symbol
+>kdebase/</symbol
+> força al <command
+>kdesrc-build</command
+> a ignorar qualsevol mòdul <symbol
+>kde-baseapps</symbol
+> que no sigui fill del supermòdul <symbol
+>kdebase</symbol
+> a la base de dades del projecte (tot i que s'ha ideat per a aquest exemple). </para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term
+>$ <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+>--cmake-options=<replaceable
+>"-DCMAKE_BUILD_TYPE=Debug"</replaceable
+></option
+></userinput
+> </term>
+
+<listitem>
+<para
+>Descarrega, construeix i instal·la tots els mòduls definits al fitxer de configuració, però substitueix l'opció <symbol
+>cmake-options</symbol
+> per tenir el valor indicat a la línia d'ordres només per a aquesta execució. Qualsevol altra execució de <command
+>kdesrc-build</command
+> utilitzarà les <symbol
+>cmake-options</symbol
+> proporcionades al fitxer de configuració. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</refsect1>
+
+<refsect1>
+<title
+>VEGEU TAMBÉ</title>
+
+<para
+>build-tool: un programa d'en Michael Jansen que pot construir programari &kde; a partir de les receptes incloses.</para>
+
+</refsect1>
+
+<refsect1>
+<title
+>RECURSOS</title>
+
+<para
+>Lloc web principal: <ulink url="https://apps.kde.org/kdesrc_build/"
+>https://apps.kde.org/kdesrc_build/</ulink
+></para>
+
+<para
+>Documentació: <ulink url="https://docs.kde.org/?application=kdesrc-build"
+>https://docs.kde.org/?application=kdesrc-build</ulink
+></para>
+
+<para
+>Script de configuració: <command
+>kdesrc-build-setup</command
+></para>
+
+</refsect1>
+
+<refsect1>
+<title
+>DRETS D'AUTOR</title>
+
+<para
+>Copyright (C) 2003-2022 Michael Pyne.</para>
+
+<para
+>Aquest programa és programari lliure. El podeu redistribuir i/o modificar sota els termes de la Llicència pública general de GNU publicada per la Free Software Foundation, ja sigui la versió 2 de la llicència o (a la vostra elecció) qualsevol versió posterior.</para>
+
+<para
+>Aquest programa es distribueix amb l'esperança que serà útil, però SENSE CAP GARANTIA. Sense tan sols la garantia implícita de COMERCIABILITAT o ADEQUACIÓ PER A UN PROPÒSIT DETERMINAT. Per a més detalls vegeu la Llicència pública general de GNU.</para>
+
+<para
+>Hauríeu d'haver rebut una còpia de la Llicència pública general de GNU juntament amb aquest programa. Si no, escriviu a la Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.</para>
+
+</refsect1>
+
+</refentry>
