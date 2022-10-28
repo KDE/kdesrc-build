@@ -50,6 +50,7 @@ use File::Basename; # basename, dirname
 use File::Copy ();  # copy
 use File::Glob ':glob';
 use POSIX qw(:sys_wait_h _exit :errno_h);
+use Net::DBus;
 
 ### Package-specific variables (not shared outside this file).
 
@@ -592,11 +593,8 @@ sub runAllModulePhases
 
     my $result; # shell-style (0 == success)
 
-    # If power-profiles-daemon is in use and we're in balanced mode,
-    # switch to performance mode now.
-    # If we're already in performance mode, there is no need; if we're in
-    # power saver mode, we should respect that and not be a power hog!
-    $self->_enablePerformancePowerProfileIfPossible();
+    # If power-profiles-daemon is in use, request switching to performance mode.
+    $self->_holdPerformancePowerProfileIfPossible();
 
     if ($runMode eq 'build') {
         # build and (by default) install.  This will involve two simultaneous
@@ -697,10 +695,6 @@ sub finish ($self, $exitcode = 0)
 
     $ctx->closeLock();
     $ctx->storePersistentOptions();
-
-    # If we're using power-profiles-daemon and the profile was changed earlier,
-    # reset it to what it was before
-    $self->_returnToPreviousPowerProfileIfNeeded();
 
     # modules in different source dirs may have different log dirs. If there
     # are multiple, show them all.
@@ -1928,43 +1922,20 @@ sub performInitialUserSetup
     my $self = shift;
     return ksb::FirstRun::setupUserSystem();
 }
-
-sub _enablePerformancePowerProfileIfPossible ($self)
+sub _holdPerformancePowerProfileIfPossible ($self)
 {
     my $ctx = $self->context();
 
-    my $hasPerformanceProfile = eval { filter_program_output(sub { /performance/ },
-                                       qw(powerprofilesctl list)) };
+    my $bus = Net::DBus->system();
+    eval {
+        my $service = $bus->get_service("net.hadess.PowerProfiles");
+        my $ppd = $service->get_object("/net/hadess/PowerProfiles", "net.hadess.PowerProfiles");
+        info("Holding performance profile");
+        # The hold will be automatically released once kdesrc-build exits
+        my $cookie = $ppd->HoldProfile("performance", "Building awesome KDE software", "kdesrc-build");
+    };
 
-    if($hasPerformanceProfile) {
-        my $starting_profile = `powerprofilesctl get`;
-        chomp $starting_profile;
-        $ctx->setOption('#starting-power-profile', $starting_profile);
-
-        if ($starting_profile eq "balanced") {
-            info("Switching to performance power profile");
-            safe_system(qw(powerprofilesctl set performance));
-        }
-    }
 }
-
-sub _returnToPreviousPowerProfileIfNeeded ($self)
-{
-    my $ctx = $self->context();
-
-    my $starting_profile = $ctx->getOption('#starting-power-profile');
-
-    if ($starting_profile) {
-        my $current_profile = `powerprofilesctl get`;
-        chomp $current_profile;
-
-        if ($starting_profile ne $current_profile) {
-            info("Returning to " . $starting_profile . " power profile");
-            safe_system('powerprofilesctl', 'set', $starting_profile);
-        }
-    }
-}
-
 
 # Accessors
 
