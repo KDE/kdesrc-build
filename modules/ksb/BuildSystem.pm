@@ -561,7 +561,10 @@ sub _runBuildCommand
             }
         }
 
-        $workDoneFlag = 0 if $input =~ /^ninja: no work to do/;
+        # see sdk/kdesrc-build#107
+        # breaks compile if there is nothing to build but just stuff to install after changes
+        # $workDoneFlag = 0 if $input =~ /^ninja: no work to do/;
+
         $warnings++       if $input =~ /warning: /;
     };
 
