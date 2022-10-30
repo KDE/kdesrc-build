@@ -1444,6 +1444,47 @@ sub _cleanup_log_directory
     }
 }
 
+# Function: _output_possible_solution
+#
+# Print out a "possible solution" message.
+# It will display a list of command lines to run.
+#
+# No message is printed out if the list of failed modules is empty, so this
+# function can be called unconditionally.
+#
+# Parameters:
+# 1. Build Context
+# 2. List of ksb::Modules that had failed to build/configure/cmake.
+#
+# No return value.
+sub _output_possible_solution
+{
+    my ($ctx, @fail_list) = @_;
+    assert_isa($ctx, 'ksb::BuildContext');
+
+    return unless @fail_list;
+    return unless not pretending();
+
+    my @moduleNames = ();
+
+    for my $module (@fail_list) {
+        my $logfile = $module->getOption('#error-log-file');
+
+        if ($logfile =~ m"/cmake\.log$") {
+            push @moduleNames, $module->name();
+        }
+    }
+
+    if (scalar(@moduleNames) > 0) {
+        my $names = join(', ', @fail_list);
+        warning ("
+Possible solution: Install the build dependencies for the modules:
+$names
+You can use 'sudo apt build-dep <source_package>', 'sudo dnf builddep <package>', 'sudo zypper source-install --build-deps-only <source_package>' or a similar command for your distro of choice.
+See https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/Install_the_dependencies");
+    }
+}
+
 # Function: _output_failed_module_list
 #
 # Print out an error message, and a list of modules that match that error
@@ -1568,6 +1609,8 @@ sub _output_failed_module_lists
             "interesting' to 'probably least interesting' failure:\n");
         info ("\tr[b[$_]") foreach (@sortedForDebug[0..($top - 1)]);
     }
+
+    _output_possible_solution($ctx, @actualFailures);
 }
 
 # Function: _installTemplatedFile
