@@ -1,0 +1,45 @@
+#compdef kdesrc-run
+
+# SPDX-FileCopyrightText: 2022 ivan tkachenko <me@ratijas.tk>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+local exec_cmd i
+
+# Scan command line for --exec argument and its value.
+# I cound't find any easier built-in way of doing this.
+for (( i = 1; i <= ${#words}; i++ )); do
+  case $words[$i] in
+    -e=*|--exec=*)
+      exec_cmd="${${words[$i]}#*=}"
+      break
+      ;;
+    -e|--exec)
+      (( i += 1 ))
+      exec_cmd="${words[$i]}"
+      break
+      ;;
+  esac
+done
+
+_kdesrc_run_precommand() {
+  local module
+
+  # trick zsh into thinking that we are now completing opitons for $exec_cmd (if any)
+  if [[ -n "$exec_cmd" ]]; then
+    module=${words[1]}
+    words[1]=$exec_cmd
+    line=${line:/$module/$exec_cmd}
+  fi
+
+  _normal
+}
+
+_arguments -s \
+  '(--list-installed -e --exec)'{-e=,--exec=}'[Specify program of the module. Default to module name.]:::_command_names -e' \
+  '(--list-installed -f --fork)'{-f,--fork}'[Launch the program in a new session]' \
+  '(-q --quiet)'{-q,--quiet}'[Do not print run information]' \
+  '(* -)'{-h,--help}'[Print usage information and exit]' \
+  '(-)--list-installed[Print installed modules and exit]' \
+  '(-)1: :_kdesrc-build_modules' \
+  '*:: :_kdesrc_run_precommand'

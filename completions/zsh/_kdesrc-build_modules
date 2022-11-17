@@ -1,0 +1,22 @@
+#autoload
+
+# SPDX-FileCopyrightText: 2022 ivan tkachenko <me@ratijas.tk>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+local expl
+local -aU kdesrc_build_modules
+
+if _cache_invalid kdesrc_build_modules || ! _retrieve_cache kdesrc_build_modules ; then
+  # [1,-2] is a slice that removes last element (count is 1-based in zsh).
+  # Then strip " -- " prefix and " *" suffix (i.e. everything after and including first whitespace).
+  # (@) array Expansion Flags are needed because we need to operate on each element separately.
+  kdesrc_build_modules=( "${(@)${(@)${(@)${(f)"$(
+    _call_program kdesrc-build-modules \
+      kdesrc-build --list-build --no-src
+    )"}[1,-2]}# ── }%% *}" )
+  _store_cache kdesrc_build_modules kdesrc_build_modules
+fi
+
+_wanted modules expl 'module' \
+  compadd -a kdesrc_build_modules

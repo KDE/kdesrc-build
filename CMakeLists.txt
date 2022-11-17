@@ -28,6 +28,10 @@ else()
     set(KDE_INSTALL_BINDIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
     set(KDE_INSTALL_METAINFODIR "${KDE_INSTALL_DATADIR}/metainfo" CACHE PATH "AppStream metadata directory")
 endif()
+# Added in ECM 5.101.0
+if (NOT DEFINED KDE_INSTALL_ZSHAUTOCOMPLETEDIR)
+    set(KDE_INSTALL_ZSHAUTOCOMPLETEDIR "${KDE_INSTALL_DATADIR}/zsh/site-functions" CACHE PATH "Zsh functions and autocompletion definitions")
+endif()
 
 set(KDESRC_BUILD_INSTALL_MODULES TRUE CACHE BOOL "Controls whether to install the modules that make up the script. Leave enabled unless running straight from source")
 set(KDESRC_BUILD_MODULE_INSTALL_PREFIX "${KDE_INSTALL_DATADIR}/kdesrc-build/modules" CACHE PATH "Prefix to install the component Perl modules to. (This is only an option to allow for installing to vendor_perl or similar)")
@@ -66,6 +70,12 @@ install(PROGRAMS
     DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
 install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
+
+install(FILES
+        completions/zsh/_kdesrc-build_modules
+        completions/zsh/_kdesrc-build
+        completions/zsh/_kdesrc-run
+    DESTINATION ${KDE_INSTALL_ZSHAUTOCOMPLETEDIR})
 
 if (ECM_FOUND)
     feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
