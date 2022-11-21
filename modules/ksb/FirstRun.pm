@@ -177,7 +177,7 @@ DONE
     my @packages = _findBestVendorPackageList($os);
     if (@packages) {
         my @installCmd = _findBestInstallCmd($os);
-        say colorize (" b[*] Running b[" . join(' ', @installCmd) . "]");
+        say colorize (" b[*] Running b[" . join(' ', @installCmd) . " " . join(' ', @packages) . "]");
         my $result = system (@installCmd, @packages);
         if ($result >> 8 == 0) {
             say colorize (" b[*] b[g[Looks like the necessary packages were successfully installed!]");
@@ -406,7 +406,6 @@ sub _packagesForVendor
 
 __DATA__
 @@ pkg/debian/unknown
-# This is woefully incomplete and not very useful.
 # Perl support
 libyaml-libyaml-perl
 libio-socket-ssl-perl
@@ -423,17 +422,104 @@ git
 gperf
 libssl-dev
 intltool
+meson
+ninja-build
 shared-mime-info
+clang-format
 # Qt-related
+qtwayland5-private-dev
 libdbusmenu-qt5-dev
+libqt5svg5-dev
+libqt5waylandclient5-dev
+libqt5x11extras5-dev
+qtbase5-private-dev
+qtdeclarative5-dev
+qtmultimedia5-dev
+qtquickcontrols2-5-dev
+qtscript5-dev
+qttools5-dev
+qtwayland5-dev-tools
+qtxmlpatterns5-dev-tools
+# Frameworks dependencies
+# .. polkit-qt-1
+libpolkit-gobject-1-dev
+libpolkit-agent-1-dev
+# .. kdoctools
+libxml2-dev
+libxslt-dev
+# .. libksysguard
+libnl-3-dev
+libnl-route-3-dev
+libsensors-dev
+# .. kwindowsystem
+libwayland-dev
+libxcb-icccm4-dev
+libxcb-keysyms1-dev
+libxcb-res0-dev
+libxcb-xfixes0-dev
+libxcb-xkb-dev
+libxfixes-dev
+libxrender-dev
+wayland-protocols
+# .. kwallet
+libgcrypt-dev
+libgpgme11-dev
+libgpgmepp-dev
+# .. kactivities
+libboost-dev
+# .. kfilemetadata
+libattr1-dev
+# .. kidletime
+libxcb-sync-dev
+libx11-xcb-dev
+# .. khtml
+libjpeg-dev
+libgif-dev
+# .. kglobalaccel
+libxcb-record0-dev
+# .. karchive
+liblzma-dev
+# .. plasma-workspace
+libqalculate-dev
+libxft-dev
+libxtst-dev
 # And others
+qt5keychain-dev
+libopenal-dev
+libopenjp2-7-dev
+qtlocation5-dev
+libraw-dev
+libsane-dev
+libsndfile1-dev
+libxcb-glx0-dev
 liblmdb-dev
 libsm-dev
 libnm-dev
 libqrencode-dev
-# kdoctools
-libxml2-dev
-libxslt1-dev
+# .. optional discover backends
+libjcat-dev
+libfwupd-dev
+libsnapd-qt-dev
+libflatpak-dev
+# kwin
+libgbm-dev
+libdrm-dev
+libxcvt-dev
+libxcb-randr0-dev
+libepoxy-dev
+libxcb-composite0-dev
+libxcb-shm0-dev
+libxcb-cursor-dev
+libxcb-damage0-dev
+libxcb-image0-dev
+libxcb-util-dev
+# plasma
+libqalculate-dev
+libxcb-randr0-dev
+libxft-dev
+libxtst-dev
+# powerdevil
+libxcb-dpms0-dev
 
 @@ pkg/neon/unknown
 # Neon is a lot like Debian, except we know Qt is sufficiently new
@@ -952,7 +1038,7 @@ xorg
 pkg install -y
 
 @@ cmd/install/debian/unknown
-apt-get -q -y --no-install-recommends install
+apt-get -q -y --no-install-recommends --ignore-missing install
 
 @@ cmd/install/opensuse/unknown
 zypper install -y --no-recommends
