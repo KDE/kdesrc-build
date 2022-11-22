@@ -96,6 +96,18 @@ sub vendorVersion
     return $self->{VERSION_ID} // $self->{VERSION_CODENAME} // 'unknown';
 }
 
+=head2 isDebianBased
+
+Returns boolean. 1 (true) if this is a Linux distribution based on Debian, 0 (false) otherwise.
+
+=cut
+
+sub isDebianBased
+{
+    my $self = shift;
+    return $self->{ID_LIKE} eq 'debian' ? 1 : 0;
+}
+
 =head2 detectTotalMemory
 
     my $mem_total_KiB = $os->detectTotalMemory;
