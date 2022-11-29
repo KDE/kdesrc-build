@@ -504,7 +504,7 @@ sub _resolveModuleDependencyGraph
         my $dependencyResolver = ksb::DependencyResolver->new($self->{module_factory});
         my $branchGroup = $ctx->effectiveBranchGroup();
 
-        for my $file ('dependency-data-common', "dependency-data-$branchGroup")
+        for my $file ("dependency-data-$branchGroup")
         {
             my $dependencyFile = $metadataModule->fullpath('source') . "/dependencies/$file";
             my $dependencies = pretend_open($dependencyFile)
