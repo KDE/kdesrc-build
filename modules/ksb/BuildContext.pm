@@ -129,7 +129,7 @@ our %defaultGlobalFlags = (
     "install-session-driver"     => 0, # Above, + ~/.xsession
     "purge-old-logs"             => 1,
     "run-tests"                  => 0,  # 1 = make test, upload = make Experimental
-    "stop-on-failure"            => 0,
+    "stop-on-failure"            => 1,
     "use-clean-install"          => 0,
     "use-idle-io-priority"       => 0,
     "use-stable-kde"             => 0,
