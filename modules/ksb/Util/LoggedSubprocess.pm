@@ -53,6 +53,8 @@ use ksb::BuildException qw(croak_internal);
 use ksb::Debug;
 use ksb::Util qw(assert_isa disable_locale_message_translation p_chdir run_logged_command);
 
+use experimental 'signatures';
+
 =head1 EVENTS
 
 =head2 child_output
