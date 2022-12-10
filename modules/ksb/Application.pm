@@ -1581,7 +1581,6 @@ sub _output_failed_module_lists
         my $num_failures = $m->getPersistentOption('failure-count');
 
         $m->addPostBuildMessage("y[$m] has failed to build b[$num_failures] times.");
-        $m->addPostBuildMessage("You can check https://build.kde.org/search/?q=$m to see if this is expected.");
     }
 
     my $top = 5;
