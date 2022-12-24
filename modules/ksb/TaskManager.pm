@@ -191,10 +191,10 @@ sub _buildSingleModule ($ipc, $ctx, $module, $startTimeRef)
         !$module->getOption('build-when-unchanged') &&
         $fail_count == 0)
     {
-        note ("\tSkipping g[$module], its source code has not changed.");
+        note ("\tSkipping g[$module] because its source code has not changed.");
         return 0;
     } elsif ($resultStatus eq 'skipped') {
-        note ("\tNo changes to g[$module] source, proceeding to build.");
+        note ("\tNo changes to g[$module] source code, but proceeding to build anyway.");
     }
 
     # If the build gets interrupted, ensure the persistent options that are
