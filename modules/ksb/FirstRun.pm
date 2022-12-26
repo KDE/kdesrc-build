@@ -759,6 +759,8 @@ mlt
 freecell-solver
 sane
 qt5-script
+qtkeychain-qt5
+qt5-websockets
 
 @@ pkg/alpine/unknown
 alpine-sdk
