@@ -630,11 +630,17 @@ gettext-devel
 giflib-devel
 git
 gperf
+gpgmepp-devel
 intltool
+libgcrypt-devel
+libical-devel
+libjpeg-turbo-devel
+libXext-devel
 libxml2
 make
 meson
 pam-devel
+pcre-devel  
 perl(Digest::SHA)
 perl(FindBin)
 perl(IO::Compress::Gzip)
@@ -674,6 +680,18 @@ shared-mime-info
 texinfo
 systemd-devel
 qt5-qtbase-devel
+qt5-qtbase-static
+qt5-qttools-devel
+qt5-qttools-static
+qt5-qtdeclarative-devel
+qt5-qtbase-private-devel
+qt5-qtx11extras-devel
+qt5-qtwayland-devel
+qt5-qtsvg-devel
+phonon-qt5-devel
+qt5-qtquickcontrols2-devel
+qt5-qtscript-devel
+qt5-qtwebkit-devel
 
 @@ pkg/mageia/unknown
 bison
