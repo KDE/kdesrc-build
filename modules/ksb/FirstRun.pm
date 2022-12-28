@@ -570,6 +570,7 @@ libdbusmenu-qt5-devel
 libopenssl-devel
 libqt5-qtbase-common-devel
 libqt5-qtbase-private-headers-devel
+libqt5-qtwayland-private-headers-devel
 libqt5-qtimageformats-devel
 libQt5Core-private-headers-devel
 libQt5DesignerComponents5
@@ -591,6 +592,7 @@ pkgconfig(libqrencode)
 pkgconfig(libudev)
 pkgconfig(libxml-2.0)
 pkgconfig(libxslt)
+pkgconfig(libpcre)
 pkgconfig(ModemManager)
 pkgconfig(Qt5Core)
 pkgconfig(Qt5Multimedia)
@@ -610,9 +612,13 @@ pkgconfig(xcb-ewmh)
 pkgconfig(xcb-keysyms)
 pkgconfig(xcb-util)
 pkgconfig(xrender)
+pkgconfig(xtst)
+pkgconfig(xfixes)
+pkgconfig(epoxy)
+pkgconfig(poppler-qt5)
 polkit-devel
 shared-mime-info
-libXfixes-devel
+libepub-devel
 
 @@ pkg/fedora/unknown
 aha
