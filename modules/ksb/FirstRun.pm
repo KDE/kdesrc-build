@@ -565,8 +565,10 @@ giflib-devel
 git
 gperf
 intltool
+ruby3.1-rubygem-sass
 libboost_headers-devel
 libdbusmenu-qt5-devel
+qcoro-qt5-devel
 libopenssl-devel
 libqt5-qtbase-common-devel
 libqt5-qtbase-private-headers-devel
@@ -604,6 +606,12 @@ pkgconfig(Qt5UiTools)
 pkgconfig(Qt5WaylandClient)
 pkgconfig(Qt5X11Extras)
 pkgconfig(Qt5XmlPatterns)
+pkgconfig(Qt5WebEngine)
+pkgconfig(Qt5WebView)
+pkgconfig(Qt5Sensors)
+pkgconfig(Qt5QuickTemplates2)
+pkgconfig(accounts-qt5)
+pkgconfig(libsignon-qt5)
 pkgconfig(sm)
 pkgconfig(wayland-protocols)
 pkgconfig(wayland-server)
@@ -614,11 +622,31 @@ pkgconfig(xcb-util)
 pkgconfig(xrender)
 pkgconfig(xtst)
 pkgconfig(xfixes)
+pkgconfig(xcursor)
+pkgconfig(xft)
+pkgconfig(xxf86vm)
+pkgconfig(xkbfile)
 pkgconfig(epoxy)
 pkgconfig(poppler-qt5)
+pkgconfig(pam)
+pkgconfig(libpipewire-0.3)
+pkgconfig(libavcodec)
+pkgconfig(libavformat)
+pkgconfig(libswscale)
+pkgconfig(gbm)
+pkgconfig(libnl-3.0)
+pkgconfig(exiv2)
+pkgconfig(libxcvt)
+pkgconfig(libqalculate)
+pkgconfig(libcanberra)
+pkgconfig(libcec)
+pkgconfig(libevdev)
 polkit-devel
 shared-mime-info
 libepub-devel
+libsensors4-devel
+libAppStreamQt-devel
+gtk3-devel
 
 @@ pkg/fedora/unknown
 aha
