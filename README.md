@@ -80,6 +80,14 @@ $ ./kdesrc-build-setup
   kdesrc-build repository that you downloaded earlier. As kdesrc-build
   self-updates, these changes will reflect for your configuration as well.
 
+- After a configuration has been generated, kdesrc-build is able to bootstrap
+  its environment on most distributions by running:
+```shell
+$ ./kdesrc-build --initial-setup
+```
+  This will install the dependencies required by kdesrc-build as well as add
+  itself to your path for convenience.
+
 3. Download the KDE project and dependency data:
 
 ```shell
