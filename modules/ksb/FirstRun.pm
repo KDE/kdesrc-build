@@ -183,11 +183,16 @@ DONE
         my $result = system (@installCmd, @packages);
         my $exitStatus = $result >> 8;
 
-        if (($exitStatus != 0) && ($os->isDebianBased)){
-            my $commandLine = 'for i in ' . join(' ', @packages) . '; do sudo apt-get -q -y --no-install-recommends install $i; done';
-            say colorize ("Failed with exit status $exitStatus.\n\n b[*] Running b[$commandLine]");
-            my $result = system ($commandLine);
-            $exitStatus = $result >> 8;
+        if (($exitStatus != 0) && ($os->isDebianBased)) {
+            foreach my $onePackage (@packages) {
+                my $commandLine = "sudo apt-get -q -y --no-install-recommends install $onePackage";
+                my @commandLineAsArray = split(' ', $commandLine);
+                say colorize (" b[*] Running b[$commandLine]");
+                system(@commandLineAsArray);
+            }
+
+            # It is normal if some packages are not available.
+            $exitStatus = 0;
         }
 
         if ($exitStatus == 0) {
