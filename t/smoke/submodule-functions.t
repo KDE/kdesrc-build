@@ -29,7 +29,7 @@ ok($result, "git init worked");
 
 {
     open my $file, '>', 'README.md';
-    say $file, "Initial content";
+    say $file "Initial content";
     close $file;
 }
 
@@ -80,7 +80,7 @@ ok($result, "git supermodule init worked");
 
 {
     open my $file, '>', 'README.md';
-    say $file, "Initial content";
+    say $file "Initial content";
     close $file;
 }
 
@@ -120,8 +120,11 @@ ok($result, "git supermodule commit worked");
 
 ok(!ksb::Updater::Git::_hasSubmodules(), "No submodules detected when none present");
 
+# git now prevents use of local clones of other git repos on the file system
+# unless specifically enabled, due to security risks from symlinks. See
+# https://github.blog/2022-10-18-git-security-vulnerabilities-announced/#cve-2022-39253
 $result = run(
-    command => [qw(git submodule add ../submodule)],
+    command => [qw(git -c protocol.file.allow=always submodule add ../submodule)],
     verbose => 0,
     timeout => 10,
 );
