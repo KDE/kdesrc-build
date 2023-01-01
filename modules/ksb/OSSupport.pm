@@ -105,7 +105,10 @@ Returns boolean. 1 (true) if this is a Linux distribution based on Debian, 0 (fa
 sub isDebianBased
 {
     my $self = shift;
-    return $self->{ID_LIKE} eq 'debian' ? 1 : 0;
+
+    return 1 if $self->{ID} eq 'debian';
+    return 1 if ($self->{ID_LIKE} // '') eq 'debian';
+    return 0;
 }
 
 =head2 detectTotalMemory
