@@ -14,6 +14,7 @@ use File::Path qw(make_path);
 use ksb::BuildException;
 use ksb::Debug qw(colorize);
 use ksb::OSSupport;
+use ksb::Util qw(locate_exe);
 
 =head1 NAME
 
@@ -177,30 +178,37 @@ DONE
     my @packages = _findBestVendorPackageList($os);
     if (!@packages) {
         say colorize (" r[b[*] Packages could not be installed, because kdesrc-build does not know your distribution (" . $vendor .")");
+        return;
+    }
+
+    local $, = ' '; # string to use when joining arrays in a string
+
+    my @installCmd = _findBestInstallCmd($os);
+    say colorize (" b[*] Running 'b[@installCmd @packages]'");
+    my $result = system (@installCmd, @packages);
+    my $exitStatus = $result >> 8;
+
+    # Install one at a time if we can, but check if sudo is present
+    my $hasSudo = defined locate_exe('sudo');
+    if (($exitStatus != 0) && ($os->isDebianBased) && $hasSudo) {
+        my $everFailed = 0;
+        foreach my $onePackage (@packages) {
+            my @commandLine = (qw(sudo apt-get -q -y --no-install-recommends install), $onePackage);
+            say colorize (" b[*] Running 'b[@commandLine]'");
+            system(@commandLine);
+            $everFailed ||= ($result >> 8) != 0;
+        }
+
+        $exitStatus = 0; # It is normal if some packages are not available.
+        if ($everFailed) {
+            say colorize (" y[b[*] Some packages failed to install, continuing to build.");
+        }
+    }
+
+    if ($exitStatus == 0) {
+        say colorize (" b[*] b[g[Looks like the necessary packages were successfully installed!]");
     } else {
-        my @installCmd = _findBestInstallCmd($os);
-        say colorize (" b[*] Running b[" . join(' ', @installCmd) . " " . join(' ', @packages) . "]");
-        my $result = system (@installCmd, @packages);
-        my $exitStatus = $result >> 8;
-
-        if (($exitStatus != 0) && ($os->isDebianBased)) {
-            foreach my $onePackage (@packages) {
-                my $commandLine = "sudo apt-get -q -y --no-install-recommends install $onePackage";
-                my @commandLineAsArray = split(' ', $commandLine);
-                say colorize (" b[*] Running b[$commandLine]");
-                system(@commandLineAsArray);
-            }
-
-            # It is normal if some packages are not available.
-            $exitStatus = 0;
-        }
-
-        if ($exitStatus == 0) {
-            say colorize (" b[*] b[g[Looks like the necessary packages were successfully installed!]");
-        }
-        else {
-            say colorize (" r[b[*] Failed with exit status $exitStatus. Ran into an error with the installer!");
-        }
+        say colorize (" r[b[*] Failed with exit status $exitStatus. Ran into an error with the installer!");
     }
 }
 
