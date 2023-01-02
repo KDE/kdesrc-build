@@ -434,7 +434,6 @@ libyaml-libyaml-perl
 libio-socket-ssl-perl
 libjson-xs-perl
 liburi-perl
-libnet-dbus-perl
 # Basic build tools
 bison
 build-essential
@@ -576,7 +575,6 @@ perl(IO::Socket::SSL)
 perl(JSON)
 perl(URI)
 perl(YAML::LibYAML)
-perl(Net::DBus)
 pkgconfig(libattr)
 pkgconfig(libical)
 pkgconfig(libnm)
@@ -711,7 +709,6 @@ perl(IO::Compress::Gzip)
 perl(IO::Socket::SSL)
 perl(IPC::Cmd)
 perl(JSON::PP)
-perl(Net::DBus)
 perl(URI)
 perl(YAML::LibYAML)
 phonon-qt5-devel
@@ -780,7 +777,6 @@ perl(IPC::Cmd)
 perl(JSON::PP)
 perl(URI)
 perl(YAML::LibYAML)
-perl(Net::DBus)
 pkgconfig(dbus-1)
 pkgconfig(gl)
 pkgconfig(gstreamer-1.0)
@@ -808,7 +804,7 @@ dev-libs/libdbusmenu-qt
 sys-devel/clang
 
 @@ pkg/arch/unknown
-perl-json perl-yaml-libyaml perl-io-socket-ssl perl-net-dbus
+perl-json perl-yaml-libyaml perl-io-socket-ssl
 cmake gcc make qt5-base
 doxygen
 boost
@@ -887,7 +883,6 @@ openjpeg-dev
 openldap-dev
 perl
 perl-io-socket-ssl
-perl-net-dbus
 perl-uri
 perl-yaml-libyaml
 polkit-elogind-dev

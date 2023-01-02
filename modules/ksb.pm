@@ -103,6 +103,10 @@ L<ksb::Cmdline>
 
 =item *
 
+L<ksb::DBus>
+
+=item *
+
 L<ksb::FirstRun>
 
 =item *

@@ -27,6 +27,7 @@ use ksb::BuildContext 0.35;
 use ksb::BuildException 0.20;
 use ksb::BuildSystem::QMake;
 use ksb::Cmdline;
+use ksb::DBus;
 use ksb::Debug;
 use ksb::DebugOrderHints;
 use ksb::DependencyResolver 0.20;
@@ -50,7 +51,6 @@ use File::Basename; # basename, dirname
 use File::Copy ();  # copy
 use File::Glob ':glob';
 use POSIX qw(:sys_wait_h _exit :errno_h);
-use Net::DBus;
 
 ### Package-specific variables (not shared outside this file).
 
@@ -594,7 +594,7 @@ sub runAllModulePhases
     my $result; # shell-style (0 == success)
 
     # If power-profiles-daemon is in use, request switching to performance mode.
-    $self->_holdPerformancePowerProfileIfPossible();
+    my $dbusConnection = $self->_holdPerformancePowerProfileIfPossible();
 
     if ($runMode eq 'build') {
         # build and (by default) install.  This will involve two simultaneous
@@ -1921,19 +1921,24 @@ sub performInitialUserSetup
     my $self = shift;
     return ksb::FirstRun::setupUserSystem();
 }
+
 sub _holdPerformancePowerProfileIfPossible ($self)
 {
     my $ctx = $self->context();
 
-    my $bus = Net::DBus->system();
+    my $dbusConnection;
     eval {
-        my $service = $bus->get_service("net.hadess.PowerProfiles");
-        my $ppd = $service->get_object("/net/hadess/PowerProfiles", "net.hadess.PowerProfiles");
         info("Holding performance profile");
+
+        return if pretending();
+
         # The hold will be automatically released once kdesrc-build exits
-        my $cookie = $ppd->HoldProfile("performance", "Building awesome KDE software", "kdesrc-build");
+        ksb::DBus::requestPerformanceProfile()->then(sub ($stream) {
+            $dbusConnection = $stream;
+        });
     };
 
+    return $dbusConnection;
 }
 
 # Accessors
