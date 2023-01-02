@@ -652,7 +652,6 @@ doxygen
 ebook-tools-devel
 eigen3-devel
 erfa-devel
-ffmpeg-devel
 flex
 fuse3-devel
 fuse-devel
@@ -749,7 +748,6 @@ shared-mime-info
 stellarsolver-devel
 systemd-devel
 texinfo
-vlc-devel
 wcslib-devel
 xmlto
 xorg-x11-drv-wacom-devel
