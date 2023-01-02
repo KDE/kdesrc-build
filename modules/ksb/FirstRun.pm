@@ -195,6 +195,8 @@ DONE
         foreach my $onePackage (@packages) {
             my @commandLine = (qw(sudo apt-get -q -y --no-install-recommends install), $onePackage);
             say colorize (" b[*] Running 'b[@commandLine]'");
+            # Allow for Ctrl+C.
+            select(undef, undef, undef, 0.25);
             system(@commandLine);
             $everFailed ||= ($result >> 8) != 0;
         }
@@ -315,7 +317,7 @@ sub _setupShellRcFile
     } elsif ($shellName eq 'fish') {
       if (defined($ENV{'XDG_CONFIG_HOME'})) {
         $rcFilepath = "$ENV{'XDG_CONFIG_HOME'}/fish/functions/kdesrc-build.fish";
-      } else { 
+      } else {
         $rcFilepath = "$ENV{'HOME'}/.config/fish/functions/kdesrc-build.fish";
       }
     } else {

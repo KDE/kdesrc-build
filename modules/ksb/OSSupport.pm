@@ -107,7 +107,14 @@ sub isDebianBased
     my $self = shift;
 
     return 1 if $self->{ID} eq 'debian';
-    return 1 if ($self->{ID_LIKE} // '') eq 'debian';
+
+    if (my $likeDistros = $self->{ID_LIKE} // '') {
+        my @likeDistrosAsArray = split(' ', $likeDistros);
+        if ( grep( /^debian$/, @likeDistrosAsArray ) ) {
+            return 1
+        }
+    }
+
     return 0;
 }
 
