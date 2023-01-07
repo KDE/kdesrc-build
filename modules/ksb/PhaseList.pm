@@ -18,6 +18,8 @@ L<ksb::Module>.
 
 =cut
 
+use List::Util qw(any); # Since Perl 5.20
+
 =head1 METHODS
 
 =head2 new
@@ -78,7 +80,7 @@ Instance method which returns true if the given phase is in the phase list.
 
 sub has ($self, $phase)
 {
-    return grep { $_ eq $phase } (@{$self});
+    return any { $_ eq $phase } @{$self};
 }
 
 =head2 phases

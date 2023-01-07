@@ -700,11 +700,32 @@ sub baseConfigDirectory
     return dirname($rcfile);
 }
 
-sub modulesInPhase
+sub modulesInPhase ($self, $phase)
 {
-    my ($self, $phase) = @_;
-    my @list = grep { list_has([$_->phases()->phases()], $phase) } (@{$self->moduleList()});
+    my @list = grep { $_->phases()->has($phase) } (@{$self->moduleList()});
     return @list;
+}
+
+sub usesConcurrentPhases ($self)
+{
+    # If we have an 'update' phase and any other phase (build / test / install
+    # / etc) we should use concurrency if it is available.
+    my $has_update = 0;
+    my $has_other  = 0;
+
+    for my $mod (@{$self->moduleList()}) {
+        for my $phase ($mod->phases()->phases()) {
+            if ($phase eq 'update') {
+                $has_update = 1;
+            } else {
+                $has_other  = 1;
+            }
+        }
+
+        return 1 if ($has_update && $has_other);
+    }
+
+    return 0;
 }
 
 # Searches for a module with a name that matches the provided parameter,

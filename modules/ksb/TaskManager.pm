@@ -61,10 +61,12 @@ sub runAllTasks ($self)
         $ctx->setPersistentOption($modName, $k, $v);
     };
 
-    $ipc = ksb::IPC::Pipe->new()
-        if $ctx->getOption('async');
+    if ($ctx->usesConcurrentPhases() && $ctx->getOption('async')) {
+        $ipc = ksb::IPC::Pipe->new()
+    } else {
+        $ipc = ksb::IPC::Null->new();
+    }
 
-    $ipc //= ksb::IPC::Null->new();
     $ipc->setPersistentOptionHandler($updateOptsSub);
 
     if ($ipc->supportsConcurrency()) {
