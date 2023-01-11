@@ -678,6 +678,8 @@ kf5-kdnssd-devel
 kf5-kplotting-devel
 kf5-libkdcraw-devel
 kimageannotator-devel
+libblack-hole-solver-devel
+libfreecell-solver-devel
 libgcrypt-devel
 libgit2-devel
 libical-devel
@@ -686,6 +688,7 @@ libjpeg-turbo-devel
 libmtp-devel
 libnova-devel
 libsmbclient-devel
+libsndfile-devel
 libsodium-devel
 libspectre-devel
 libssh-devel
