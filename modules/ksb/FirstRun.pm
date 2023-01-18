@@ -745,6 +745,7 @@ python
 python3-psutil
 qaccessibilityclient-devel
 qcoro-qt5-devel
+qgpgme-devel
 qt5-*-devel
 qt5-qttools-static
 qtkeychain-qt5-devel
