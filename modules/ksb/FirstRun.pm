@@ -654,6 +654,7 @@ doxygen
 ebook-tools-devel
 eigen3-devel
 erfa-devel
+exiv2-devel
 flex
 fuse3-devel
 fuse-devel
@@ -673,6 +674,7 @@ ibus-devel
 intltool
 itstool
 json-c-devel
+kcolorpicker-devel
 kdsoap-devel
 kf5-kdnssd-devel
 kf5-kplotting-devel
@@ -687,6 +689,7 @@ libindi-devel
 libjpeg-turbo-devel
 libmtp-devel
 libnova-devel
+LibRaw-devel
 libsmbclient-devel
 libsndfile-devel
 libsodium-devel
@@ -697,6 +700,7 @@ libuuid-devel
 libwacom-devel
 libxcvt-devel
 libXext-devel
+libxkbcommon-devel
 libxml2
 libzip-devel
 make
