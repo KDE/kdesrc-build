@@ -473,10 +473,14 @@ sub _handle_async_build ($ipc, $ctx)
     # built.
     my $unseenModulesRef = $ipc->unacknowledgedModules();
     if (%$unseenModulesRef) {
-        note ("The following modules were updated but not built:");
-        foreach my $modulename (keys %$unseenModulesRef) {
-            note ("\t$modulename");
-        }
+        # The only current way we should get unacknowledged modules is if the
+        # build thread manages to end earlier than the update thread.  This
+        # should only happen under --stop-on-failure if an early build fails.
+        #
+        # If an update fails the message will still be printed to the user, so
+        # we don't need to note it separately here, and there's no need to list
+        # one-by-one the modules that successfully updated.
+        whisper ("Some modules were updated but not built");
     }
 
     # It's possible if build fails on first module that git or svn is still
