@@ -86,20 +86,12 @@ sub _readProjectData
         unless $files_searched > 0;
 }
 
-sub _readYAML
+sub _readYAML ($self, $filename)
 {
-    my ($self, $filename) = @_;
-
     my $proj_data = LoadFile($filename);
 
-    #
-    # these two are already 'covered' as special metadata modules, ignore them
-    # TODO: Remove kde-build-metadata on or after 2021-01-01 as it is removed
-    #
-    if (($proj_data->{projectpath} eq 'kde-build-metadata' || $proj_data->{projectpath} eq 'repo-management'))
-    {
-        return;
-    };
+    # This is already 'covered' as a special metadata modules, ignore
+    return if $proj_data->{projectpath} eq 'repo-management';
 
     my $repoPath = $proj_data->{repopath};
     my $repoName = $proj_data->{identifier} // $repoPath;
