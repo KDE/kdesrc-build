@@ -966,6 +966,7 @@ apk add --virtual .makedeps-kdesrc-build
 # List of all options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
 
 global
+    branch-group kf5-qt5
 
     # Finds and includes *KDE*-based dependencies into the build.  This makes
     # it easier to ensure that you have all the modules needed, but the
