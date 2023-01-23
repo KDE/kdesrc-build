@@ -415,7 +415,7 @@ sub _showInfoAndExit
 sub _showAuthorAndExit
 {
     my $version = "kdesrc-build " . scriptVersion();
-    my $author = <<~DONE;
+    say <<~DONE;
         $version was written (mostly) by:
           Michael Pyne <mpyne\@kde.org>
 
