@@ -753,6 +753,7 @@ qaccessibilityclient-devel
 qcoro-qt5-devel
 qgpgme-devel
 qt5-*-devel
+qt5-qtbase-static
 qt5-qttools-static
 qtkeychain-qt5-devel
 SDL2-devel
