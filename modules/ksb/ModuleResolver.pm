@@ -182,10 +182,13 @@ sub _resolveSingleSelector
     my $forcedToKDEProject = substr($selectorName, 0, 1) eq '+';
     substr($selectorName, 0, 1, '') if $forcedToKDEProject;
 
-    # Checks cmdline options only
+    # Checks cmdline options only.  This is intended to make
+    # --no-include-dependencies suppress the action of include-dependencies in
+    # the config file so make the absence of the flag imply
+    # include-dependencies for now.
+    my $defIncluding = $ctx->getOption('include-dependencies');
     my $includingDeps =
-        exists $self->{cmdlineOptions}->{$selectorName}->{'include-dependencies'} ||
-        exists $self->{cmdlineOptions}->{'global'}->{'include-dependencies'};
+        ($self->{cmdlineOptions}->{'global'}->{'include-dependencies'} // $defIncluding);
 
     # See resolveSelectorsIntoModules for what the 3 "cases" mentioned below are.
 
