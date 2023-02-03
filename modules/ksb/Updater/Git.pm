@@ -1057,7 +1057,7 @@ sub verifyGitConfig
     }
 
     my $configOutput =
-        qx'git config --global --get url.https://invent.kde.org/.insteadOf kde:';
+        qx'git config --global --includes --get url.https://invent.kde.org/.insteadOf kde:';
 
     # 0 means no error, 1 means no such section exists -- which is OK
     if ((my $errNum = $? >> 8) >= 2) {
@@ -1088,7 +1088,7 @@ sub verifyGitConfig
     }
 
     $configOutput =
-        qx"git config --global --get url.$pushUrlPrefix.pushInsteadOf kde:";
+        qx"git config --global --includes --get url.$pushUrlPrefix.pushInsteadOf kde:";
 
     if ($configOutput !~ /^kde:\s*$/) {
         whisper ("\tAdding git upload kde: alias (push: $pushUrlPrefix)");
