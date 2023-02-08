@@ -298,8 +298,9 @@ EOF
         # Running in a test harness, avoid downloading metadata which will be
         # ignored in the test or making changes to git config
         ksb::Updater::Git::verifyGitConfig($ctx);
-        $self->_downloadKDEProjectMetadata();
     }
+
+    $self->_downloadKDEProjectMetadata(); # Uses test data automatically
 
     # The user might only want metadata to update to allow for a later
     # --pretend run, check for that here.
@@ -441,7 +442,6 @@ sub _downloadKDEProjectMetadata
 
     eval {
         for my $metadataModule (
-#           $ctx->getKDEDependenciesMetadataModule(),
             $ctx->getKDEProjectsMetadataModule())
         {
             my $sourceDir = $metadataModule->getSourceDir();
@@ -504,9 +504,20 @@ sub _resolveModuleDependencyGraph
         my $dependencyResolver = ksb::DependencyResolver->new($self->{module_factory});
         my $branchGroup = $ctx->effectiveBranchGroup();
 
-        for my $file ("dependency-data-$branchGroup")
-        {
-            my $dependencyFile = $metadataModule->fullpath('source') . "/dependencies/$file";
+        if (isTesting()) {
+            my $testDeps = <<~END;
+            juk: kcalc
+            dolphin: konsole
+            kdesrc-build: juk
+            END
+
+            open my $dependencies, '<', \$testDeps;
+            debug (" -- Reading dependencies from test data");
+            $dependencyResolver->readDependencyData($dependencies);
+            close $dependencies;
+        } else {
+            my $srcdir = $metadataModule->fullpath('source');
+            my $dependencyFile = "$srcdir/dependencies/dependency-data-$branchGroup";
             my $dependencies = pretend_open($dependencyFile)
                 or die "Unable to open $dependencyFile: $!";
 
@@ -515,7 +526,7 @@ sub _resolveModuleDependencyGraph
             close $dependencies;
         }
 
-        return $dependencyResolver->resolveToModuleGraph(@modules);
+        $dependencyResolver->resolveToModuleGraph(@modules);
     };
 
     if ($@) {

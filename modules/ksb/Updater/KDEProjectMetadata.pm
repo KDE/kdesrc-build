@@ -12,6 +12,7 @@ use parent qw(ksb::Updater::KDEProject);
 
 use ksb::BuildException;
 use ksb::Debug;
+use ksb::IPC::Null;
 use ksb::Util;
 
 use JSON::PP;
@@ -66,6 +67,21 @@ sub logicalModuleGroups
 
     croak_runtime ("Unable to load module group data from $path! :(\n\t$e") if $e;
     return $json_hashref;
+}
+
+sub updateInternal ($self, $ipc = ksb::IPC::Null->new())
+{
+    return $self->_mockTestMetadata()
+        if isTesting();
+
+    $self->SUPER::updateInternal($ipc);
+}
+
+sub _mockTestMetadata($self)
+{
+    # Nothing to do currently, mock data is handled directly by
+    # ksb::Application (dependencies) or ksb::KDEProjectReader (project
+    # metadata).
 }
 
 1;
