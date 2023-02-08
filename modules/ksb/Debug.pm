@@ -5,7 +5,7 @@ package ksb::Debug 0.20;
 use ksb;
 
 use Exporter qw(import); # Steal Exporter's import method
-our @EXPORT = qw(debug pretending debugging whisper
+our @EXPORT = qw(debug pretending debugging isTesting whisper
                  note info warning error pretend);
 our @EXPORT_OK = qw(colorize);
 
@@ -54,6 +54,11 @@ sub pretending :prototype()
 sub setPretending
 {
     $isPretending = shift;
+}
+
+sub isTesting
+{
+    exists $ENV{HARNESS_ACTIVE};
 }
 
 sub setColorfulOutput
