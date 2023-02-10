@@ -747,6 +747,7 @@ pkgconfig(xfixes)
 pkgconfig(xrender)
 python
 python3-psutil
+python3-sphinx
 qaccessibilityclient-devel
 qcoro-qt5-devel
 qgpgme-devel
