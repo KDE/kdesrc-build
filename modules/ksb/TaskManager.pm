@@ -152,6 +152,12 @@ sub _handle_updates ($ipc, $ctx)
         # Note that this must be in this order to avoid accidentally not
         # running ->update() from short-circuiting if an error is noted.
         $hadError = !$module->update($ipc, $ctx) || $hadError;
+
+        # Cache module directories, e.g. to be consumed in kdesrc-run
+        # This is needed for --no-async mode where the buildSingleModule won't run
+        # But the other one is needed for --async mode since persistent options
+        # only work from within the build process
+        $module->setPersistentOption('source-dir', $module->fullpath('source'));
     }
 
     $ipc->sendIPCMessage(ksb::IPC::ALL_DONE, "had_errors: $hadError");

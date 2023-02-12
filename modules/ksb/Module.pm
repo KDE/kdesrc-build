@@ -53,6 +53,7 @@ use ksb::BuildSystem::Meson;
 use ksb::ModuleSet::Null;
 
 use Mojo::Util ();
+use Mojo::File;
 
 use Storable 'dclone';
 use Carp 'confess';
@@ -93,6 +94,11 @@ sub new
     );
 
     @{$self}{keys %newOptions} = values %newOptions;
+
+    # Record current values of what would be last source/build dir, if present,
+    # before they are potentially reset during the module build.
+    $self->setOption('#last-source-dir', $self->getPersistentOption('source-dir') // '');
+    $self->setOption('#last-build-dir',  $self->getPersistentOption('build-dir') // '');
 
     return $self;
 }
@@ -491,6 +497,34 @@ sub setupBuildSystem
         croak_internal('Build system determination still pending when build attempted.');
     }
 
+    # Check if a previous build has happened in a different directory (which
+    # can happen due to name changes on KDE.org side or flat-layout option
+    # toggled)
+    my $builddir = $self->fullpath('build');
+    my $oldBuildDir = $self->getOption('#last-build-dir');
+    if (!pretending()             &&
+        $builddir ne $oldBuildDir &&
+        -d $oldBuildDir           &&
+        ! -e $builddir)
+    {
+        note (" y[b[*] Build directory setting has changed to $builddir.");
+        note (" y[b[*] Moving old build directory at $oldBuildDir to the new location.");
+
+        eval {
+            Mojo::File->new($oldBuildDir)->move_to($builddir);
+        };
+
+        if ($@) {
+            warning(<<~MSG);
+                r[b[*] Unable to move $oldBuildDir
+                r[b[*] to $builddir
+                r[b[*] Error: $@
+                y[b[*]
+                y[b[*] Will proceed, generating a new build dir.
+                MSG
+        }
+    }
+
     my $refreshReason = $buildSystem->needsRefreshed();
     if ($refreshReason ne "")
     {
@@ -517,7 +551,7 @@ sub setupBuildSystem
     # Now we're in the checkout directory
     # So, switch to the build dir.
     # builddir is automatically set to the right value for qt
-    p_chdir ($self->fullpath('build'));
+    p_chdir ($builddir);
 
     if (!$buildSystem->configureInternal()) {
         error ("\tUnable to configure r[$self] with " . $self->buildSystemType());
@@ -773,7 +807,33 @@ sub update
         }
     }
 
+    # Check for whether path to source dir has changed due to directory-layout
+    # option or changes to metadata.
     my $fullpath = $self->fullpath('source');
+    my $oldSourceDir = $self->getOption('#last-source-dir');
+    if (!pretending()              &&
+        $fullpath ne $oldSourceDir &&
+        -d $oldSourceDir           &&
+        ! -e $fullpath)
+    {
+        note (" y[b[*] Source directory setting has changed to $fullpath.");
+        note (" y[b[*] Moving old source directory at $oldSourceDir to the new location.");
+
+        eval {
+            Mojo::File->new($oldSourceDir)->move_to($fullpath);
+        };
+
+        if ($@) {
+            warning(<<~MSG);
+                r[b[*] Unable to move $oldSourceDir
+                r[b[*] to $fullpath
+                r[b[*] Error: $@
+                y[b[*]
+                y[b[*] Will proceed, generating a new source dir.
+                MSG
+        }
+    }
+
     my $count;
     my $returnValue;
 
