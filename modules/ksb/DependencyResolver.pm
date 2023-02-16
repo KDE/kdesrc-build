@@ -13,6 +13,8 @@ our $VERSION = '0.20';
 use ksb::BuildException;
 use ksb::Debug;
 use ksb::Util;
+
+use Mojo::JSON qw(decode_json);
 use List::Util qw(first);
 
 sub uniq
@@ -84,6 +86,44 @@ sub _shortenModuleName
     my $name = shift;
     $name =~ s{^.*/}{}; # Uses greedy capture by default
     return $name;
+}
+
+=head2 _addDependency
+
+Adds an edge in the dependency graph from C<$depName> (at the given branch) to
+C<$srcName> (at its respective branch). Use C<*> as the branch name if it is
+not important.
+
+=cut
+
+sub _addDependency($self, $depName, $depBranch, $srcName, $srcBranch, $depKey = '+')
+{
+    my $dependenciesOfRef  = $self->{dependenciesOf};
+
+    # Initialize with hashref if not already defined. The hashref will hold
+    #     - => [ ] (list of explicit *NON* dependencies of item:$branch),
+    #     + => [ ] (list of dependencies of item:$branch)
+    #
+    # Each dependency item is tracked at the module:branch level, and there
+    # is always at least an entry for module:*, where '*' means branch
+    # is unspecified and should only be used to add dependencies, never
+    # take them away.
+    #
+    # Finally, all (non-)dependencies in a list are also of the form
+    # fullname:branch, where "*" is a valid branch.
+    $dependenciesOfRef->{"$depName:*"} //= {
+        '-' => [ ],
+        '+' => [ ],
+    };
+
+    # Create actual branch entry if not present
+    $dependenciesOfRef->{"$depName:$depBranch"} //= {
+        '-' => [ ],
+        '+' => [ ],
+    };
+
+    push @{$dependenciesOfRef->{"$depName:$depBranch"}->{$depKey}},
+         "$srcName:$srcBranch";
 }
 
 # Method: readDependencyData
@@ -160,30 +200,52 @@ sub readDependencyData
 
         $dependentItem = _shortenModuleName($dependentItem);
 
-        # Initialize with hashref if not already defined. The hashref will hold
-        #     - => [ ] (list of explicit *NON* dependencies of item:$branch),
-        #     + => [ ] (list of dependencies of item:$branch)
-        #
-        # Each dependency item is tracked at the module:branch level, and there
-        # is always at least an entry for module:*, where '*' means branch
-        # is unspecified and should only be used to add dependencies, never
-        # take them away.
-        #
-        # Finally, all (non-)dependencies in a list are also of the form
-        # fullname:branch, where "*" is a valid branch.
-        $dependenciesOfRef->{"$dependentItem:*"} //= {
-            '-' => [ ],
-            '+' => [ ],
-        };
+        $self->_addDependency($dependentItem, $dependentBranch,
+                              $sourceItem,    $sourceBranch,
+                              $depKey);
+    }
 
-        # Create actual branch entry if not present
-        $dependenciesOfRef->{"$dependentItem:$dependentBranch"} //= {
-            '-' => [ ],
-            '+' => [ ],
-        };
+    $self->_canonicalizeDependencies();
+}
 
-        push @{$dependenciesOfRef->{"$dependentItem:$dependentBranch"}->{$depKey}},
-             "$sourceItem:$sourceBranch";
+=head2 readDependencyData_v2
+
+Reads in v2-format dependency data from KDE repository database, using the KDE
+'invent' repository naming convention.
+
+Throws exception on read failure.
+
+ open my $fh, '<', "/path/to/dependency-data.json" or die;
+ $resolver->readDependencyData_v2($fh);
+=cut
+
+sub readDependencyData_v2($self, $fh)
+{
+    note("b[***] USING y[b[V2 DEPENDENCY METADATA], BUILD IS UNSUPPORTED");
+
+    my $json_data = do {
+        local $/; # set slurp mode on $fh;
+        <$fh>;
+    };
+
+    croak_runtime ("Unable to read JSON dependency data")
+        unless $json_data;
+
+    my $dependencies = decode_json $json_data;
+
+    croak_runtime ("Unable to decode V2 dependencies")
+        unless $dependencies;
+    croak_runtime ("Unknown dependency version")
+        unless ($dependencies->{metadata_version} // 1 == 2);
+    croak_runtime ("V2 dependencies contain no dependencies")
+        unless (%{$dependencies->{module_dependencies}});
+
+    while (my ($depModule, $srcList) = each %{$dependencies->{module_dependencies}}) {
+        my $depName = _shortenModuleName($depModule);
+        for my $srcModule (@{$srcList}) {
+            my $srcName = _shortenModuleName($srcModule);
+            $self->_addDependency($depName, '*', $srcName, '*');
+        }
     }
 
     $self->_canonicalizeDependencies();

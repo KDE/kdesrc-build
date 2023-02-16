@@ -517,12 +517,24 @@ sub _resolveModuleDependencyGraph
             close $dependencies;
         } else {
             my $srcdir = $metadataModule->fullpath('source');
-            my $dependencyFile = "$srcdir/dependencies/dependency-data-$branchGroup";
-            my $dependencies = pretend_open($dependencyFile)
-                or die "Unable to open $dependencyFile: $!";
+            my $dependencies;
 
-            debug (" -- Reading dependencies from $dependencyFile");
-            $dependencyResolver->readDependencyData($dependencies);
+            my $dependencyFile = "$srcdir/dependencies/dependencies_v2-$branchGroup.json";
+            if (-e $dependencyFile && exists $ENV{KDESRC_BUILD_BETA}) {
+                $dependencies = pretend_open($dependencyFile)
+                    or die "Unable to open $dependencyFile: $!";
+
+                debug (" -- Reading dependencies from $dependencyFile");
+                $dependencyResolver->readDependencyData_v2($dependencies);
+            } else {
+                $dependencyFile = "$srcdir/dependencies/dependency-data-$branchGroup";
+                $dependencies = pretend_open($dependencyFile)
+                    or die "Unable to open $dependencyFile: $!";
+
+                debug (" -- Reading dependencies from $dependencyFile");
+                $dependencyResolver->readDependencyData($dependencies);
+            }
+
             close $dependencies;
         }
 
