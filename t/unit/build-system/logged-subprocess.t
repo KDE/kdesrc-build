@@ -55,7 +55,7 @@ my $promise = $cmd->start->then(sub ($exitcode) {
         $prog2Exit = $exit2;
     });
 
-    $promise2->wait;
+    return $promise2; # Resolve to another promise that requires resolution
 });
 
 isa_ok($promise, 'Mojo::Promise', 'A promise should be a promise!');
