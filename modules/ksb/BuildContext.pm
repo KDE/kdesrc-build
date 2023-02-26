@@ -65,6 +65,8 @@ use ksb::KDEProjectsReader 0.50;
 use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
 
+use Mojo::File;
+
 # According to XDG spec, if $XDG_STATE_HOME is not set, then we should
 # default to ~/.local/state
 my $xdgStateHome = $ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state";
@@ -881,43 +883,13 @@ EOM
 # (kdesrc-build-data) for use in the program.
 #
 # The directory used is the same directory that contains the rc file in use.
-sub loadPersistentOptions
+sub loadPersistentOptions ($self)
 {
-    my $self = assert_isa(shift, 'ksb::BuildContext');
-    my $fh = IO::File->new($self->persistentOptionFileName(), '<');
-
-    return unless $fh;
-
-    # $persistent_data should be a JSON object which we can store directly as a
-    # hash.
-    my $persistent_data;
-    {
-        local $/ = undef; # Read in whole file with <> operator.
-        $persistent_data = <$fh>;
-    }
-
-    my $persistent_options;
-
-    eval { $persistent_options = decode_json($persistent_data); };
-    if ($@) {
-        # Apparently wasn't JSON, try falling back to old format for compat.
-        # Previously, this was a Perl code which, when evaluated would give
-        # us a hash called persistent_options which we can then merge into our
-        # persistent options.
-        # TODO: Remove compat code after 2018-06-30
-        eval $persistent_data; # Runs Perl code read from file
-        if ($@)
-        {
-            # Failed.
-            error ("Failed to read persistent module data: r[b[$@]");
-            return;
-        }
-    }
-
     # We need to keep persistent data with the context instead of with the
     # applicable modules since otherwise we might forget to write out
     # persistent data for modules we didn't build in this run. So, we just
     # store it all.
+    #
     # Layout of this data:
     #  $self->persistent_options = {
     #    'module-name' => {
@@ -926,7 +898,22 @@ sub loadPersistentOptions
     #    },
     #    # foreach module
     #  }
-    $persistent_options = {} if ref $persistent_options ne 'HASH';
+    $self->{persistent_options} = {};
+
+    my $fname = $self->persistentOptionFileName();
+    return unless -e $fname;
+
+    my $persistent_data = Mojo::File->new($fname)->slurp;
+
+    # $persistent_data should be a JSON object which we can store directly as a
+    # hash.
+    my $persistent_options = eval { decode_json($persistent_data) };
+
+    if ($@ || (ref $persistent_options ne 'HASH')) {
+        error ("Failed to read persistent module data: r[b[$@]");
+        return;
+    }
+
     $self->{persistent_options} = $persistent_options;
 }
 
