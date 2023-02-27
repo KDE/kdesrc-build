@@ -164,9 +164,16 @@ sub p_chdir :prototype($)
     };
 }
 
-# Helper subroutine to create a directory, including any parent
-# directories that may also need created.
-# Throws an exception on failure. See File::Path.
+=head2 super_mkdir
+
+Creates a directory, including any parent directories that may also need
+created.  Does nothing in pretend mode (but it does remember that it would
+have created the path to avoid message spam).
+
+Throws an exception on failure. See L<File::Path>.
+
+=cut
+
 sub super_mkdir
 {
     my $pathname = shift;

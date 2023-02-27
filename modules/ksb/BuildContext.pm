@@ -44,7 +44,6 @@ use File::Basename; # dirname
 use IO::File;
 use POSIX qw(strftime);
 use Errno qw(:POSIX);
-use JSON::PP;
 
 # We derive from ksb::Module so that BuildContext acts like the 'global'
 # ksb::Module, with some extra functionality.
@@ -66,6 +65,7 @@ use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
 
 use Mojo::File;
+use Mojo::JSON qw(encode_json decode_json);
 
 # According to XDG spec, if $XDG_STATE_HOME is not set, then we should
 # default to ~/.local/state
@@ -920,31 +920,24 @@ sub loadPersistentOptions ($self)
 # Writes out persistent options to the kdesrc-build-data file.
 #
 # The directory used is the same directory that contains the rc file in use.
-sub storePersistentOptions
+sub storePersistentOptions ($self)
 {
-    my $self = assert_isa(shift, 'ksb::BuildContext');
     return if pretending();
 
     my $fileName = $self->persistentOptionFileName();
     my $dir = dirname($fileName);
 
-    if (!-d $dir)
-    {
-        super_mkdir($dir);
-    }
+    super_mkdir($dir) unless -d $dir;
 
-    my $fh = IO::File->new($fileName, '>');
-    my $json = JSON::PP->new->ascii->pretty;
+    eval {
+        my $encodedJSON = encode_json($self->{persistent_options});
+        Mojo::File->new($fileName)->spurt($encodedJSON);
+    };
 
-    if (!$fh)
-    {
+    if ($@) {
         error ("Unable to save persistent module data: b[r[$!]");
         return;
     }
-
-    my $encodedJSON = $json->encode($self->{persistent_options});
-    print $fh $encodedJSON;
-    undef $fh; # Closes the file
 }
 
 # Returns the value of a "persistent" option (normally read in as part of
