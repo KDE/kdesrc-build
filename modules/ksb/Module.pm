@@ -352,13 +352,6 @@ sub buildSystem
     my $buildType;
     my $sourceDir = $self->fullpath('source');
 
-    if (($self->getOption('repository') =~ /gitorious\.org\/qt\//) ||
-        ($self->getOption('repository') =~ /^kde:qt$/) ||
-        (-e "$sourceDir/bin/syncqt"))
-    {
-        $buildType = ksb::BuildSystem::Qt4->new($self);
-    }
-
     # This test must come before the KDE buildsystem's as cmake's own
     # bootstrap system also has CMakeLists.txt
     if (!$buildType && (-e "$sourceDir/CMakeLists.txt") &&
