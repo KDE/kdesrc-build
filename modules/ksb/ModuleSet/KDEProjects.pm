@@ -121,8 +121,9 @@ sub _expandModuleCandidates ($self, $ctx, $moduleSearchItem)
     if (!@activeResults) {
         warning (" y[b[*] Module y[$moduleSearchItem] is apparently a KDE collection, but contains no\n" .
                  "active modules to build!");
-        my $count = scalar @allModuleResults;
-        if ($count > 0) {
+
+        if (@allModuleResults) {
+            my $count = scalar @allModuleResults;
             warning ("\tAlthough no active modules are available, there were\n" .
                      "\t$count inactive modules. Perhaps the git modules are not ready?");
         }
@@ -141,6 +142,9 @@ sub _expandModuleCandidates ($self, $ctx, $moduleSearchItem)
         $newModule->setOption('#xml-full-path', $result->{'fullName'});
         $newModule->setOption('#branch:stable', undef);
         $newModule->setOption('#found-by', $result->{found_by});
+        # Temp flag during metadata transition
+        $newModule->setOption('#upcoming-name-change', $result->{nameChangingTo})
+            if exists $result->{nameChangingTo};
         $newModule->setScmType('proj');
 
         if (none_true(

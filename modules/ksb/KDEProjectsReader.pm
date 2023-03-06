@@ -121,11 +121,21 @@ sub _readYAML ($self, $filename)
     # Keep in sync with _loadMockProjectData
     my $curRepository = {
         'fullName' => $proj_data->{projectpath},
+        'inventName' => $repoPath,
         'repo' => "kde:$repoPath.git",
         'name' => $repoName,
         'active' => !!$proj_data->{repoactive},
         'found_by' => 'direct', # can be changed in getModulesForProject
     };
+
+    # Find everything after last /
+    my ($inventSuffix) = ($proj_data->{repopath} =~ m,([^/]+$),);
+    my ($legacySuffix) = ($proj_data->{projectpath} =~ m,([^/]+$),);
+
+    # We can print a message later for modules where the name will change if
+    # the module is actually used
+    $curRepository->{nameChangingTo} = $inventSuffix
+        if $inventSuffix ne $legacySuffix;
 
     $self->{repositories}->{$repoName} = $curRepository;
 }
