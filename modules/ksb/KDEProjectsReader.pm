@@ -74,20 +74,19 @@ sub _readProjectData ($self, $projectMetadataModule)
     croak_runtime("No such source directory $srcdir!")
         unless -d $srcdir;
 
-    my $files_searched = 0;
-
-    File::Find::find({
-        wanted => sub {
-            if ($_ eq 'metadata.yaml') {
-                $self->_readYAML($_);
-                $files_searched++;
-            }
-        },
-        follow => 1,
-    }, "$srcdir/projects");
+    # NOTE: This is approx 1280 entries as of Feb 2023.  Need to memoize this
+    # so that only entries that are used end up being read.
+    # The obvious thing of using path info to guess module name doesn't work
+    # (e.g. maui-booth has a disk path of maui/booth in repo-metadata, not maui/maui-booth)
+    my $repoMetaFiles = Mojo::File->new("$srcdir/projects")
+        ->realpath  # resolve /projects symlink first
+        ->list_tree # then recurse through dir tree
+        ->grep(sub ($file) { $file->basename eq 'metadata.yaml' })
+        ->each(sub ($metadataPath, $) { $self->_readYAML("$metadataPath") })
+        ;
 
     croak_runtime("Failed to find KDE project entries from $srcdir!")
-        unless $files_searched > 0;
+        unless $repoMetaFiles->size > 0;
 }
 
 # Load some sample projects for use in test mode
@@ -113,7 +112,7 @@ sub _readYAML ($self, $filename)
 {
     my $proj_data = LoadFile($filename);
 
-    # This is already 'covered' as a special metadata modules, ignore
+    # This is already 'covered' as a special metadata module, ignore
     return if $proj_data->{projectpath} eq 'repo-management';
 
     my $repoPath = $proj_data->{repopath};

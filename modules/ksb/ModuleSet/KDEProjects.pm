@@ -102,12 +102,8 @@ sub getProjectMetadataModule
 #  downloaded or read.
 #  Runtime - if the git-desired-protocol is unsupported.
 #  Runtime - if an "assumed" kde-projects module was not actually one.
-sub _expandModuleCandidates
+sub _expandModuleCandidates ($self, $ctx, $moduleSearchItem)
 {
-    my $self = assert_isa(shift, 'ksb::ModuleSet::KDEProjects');
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $moduleSearchItem = shift;
-
     my @allModuleResults = $ctx->
             getProjectDataReader()->
             getModulesForProject($moduleSearchItem);
