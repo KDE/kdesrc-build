@@ -360,8 +360,8 @@ sub buildSystem
         $buildType = ksb::BuildSystem::CMakeBootstrap->new($self);
     }
 
-    if (!$buildType && (-e "$sourceDir/CMakeLists.txt" ||
-            $self->getOption('#xml-full-path')))
+    if (!$buildType &&
+        (-e "$sourceDir/CMakeLists.txt" || $self->isKDEProject()))
     {
         $buildType = ksb::BuildSystem::KDECMake->new($self);
     }
@@ -1019,17 +1019,15 @@ sub fullpath
 # the description, this only works for modules with an scm type that is a
 # Updater::KDEProject (or its subclasses), but modules that don't fall into this
 # hierarchy will just return the module name (with no path components) anyways.
-sub fullProjectPath
+sub fullProjectPath ($self)
 {
-    my $self = shift;
-    return ($self->getOption('#xml-full-path', 'module') || $self->name());
+    return ($self->getOption('#kde-project-path', 'module') || $self->name());
 }
 
 # Returns true if this module is (or was derived from) a kde-projects module.
-sub isKDEProject
+sub isKDEProject ($self)
 {
-    my $self = shift;
-    return $self->hasOption('#xml-full-path');
+    return $self->scmType() eq 'proj';
 }
 
 # Subroutine to return the name of the destination directory for the
@@ -1050,7 +1048,7 @@ sub destDir
     my $oldlayout = $self->getOption('ignore-kde-structure');
     if ($oldlayout) {
         # avoid spamming
-        if (!$self->getOption('#warned-deprecated-ignore-kde-structure')) {
+        if (!$self->hasOption('#warned-deprecated-ignore-kde-structure')) {
             if($oldlayout eq 'true' || $oldlayout == 1) {
                 warning("The option b[ignore-kde-structure true] is deprecated. Please replace it with b[directory-layout flat] in your configuration file.");
             } else {
@@ -1062,11 +1060,11 @@ sub destDir
             $layout = 'flat';
         } else {
             # avoid spamming
-            if (!$self->getOption('#warned-deprecated-ignore-kde-structure')) {
+            if (!$self->hasOption('#warned-deprecated-ignore-kde-structure')) {
                 warning("Deprecated b[ignore-kde-structure] will be ignored in favour of b[directory-layout] for b[$self]");
             }
         }
-        # avoid spamming
+
         $self->setOption('#warned-deprecated-ignore-kde-structure', 1);
     }
 
@@ -1078,11 +1076,12 @@ sub destDir
             $basePath = $1;
         } else {
             if ($layout && $layout ne 'invent' && $layout ne 'metadata' &&
-                !$self->getOption('#warned-invalid-directory-layout')) { # avoid spamming
+                !$self->hasOption('#warned-invalid-directory-layout')) # avoid spamming
+            {
                 warning("Invalid b[directory-layout] value: $layout. Will use b[metadata] instead for b[$self]");
                 $self->setOption('#warned-invalid-directory-layout', 1);
             }
-            $basePath = shift // $self->getOption('#xml-full-path');
+            $basePath = shift // $self->getOption('#kde-project-path');
             $basePath ||= $self->name(); # Default if not provided in repo-metadata
         }
     }

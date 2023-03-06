@@ -44,7 +44,7 @@ sub _createMetadataModule
 
     # Hardcode the results instead of expanding out the project info
     $metadataModule->setOption('repository', "kde:$moduleName");
-    $metadataModule->setOption('#xml-full-path', $moduleName);
+    $metadataModule->setOption('#kde-project-path', $moduleName);
     $metadataModule->setOption('#branch:stable', 'master');
     $metadataModule->setScmType('metadata');
     $metadataModule->setOption('disable-snapshots', 1);
@@ -136,12 +136,12 @@ sub _expandModuleCandidates ($self, $ctx, $moduleSearchItem)
     foreach (@activeResults) {
         my $result = $_;
 
-        my $newModule = ksb::Module->new($ctx, $result->{'name'});
+        my $newModule = ksb::Module->new($ctx, $result->{name});
         $self->_initializeNewModule($newModule);
-        $newModule->setOption('repository', $result->{'repo'});
-        $newModule->setOption('#xml-full-path', $result->{'fullName'});
-        $newModule->setOption('#branch:stable', undef);
-        $newModule->setOption('#found-by', $result->{found_by});
+        $newModule->setOption('repository',        $result->{repo});
+        $newModule->setOption('#kde-project-path', $result->{fullName});
+        $newModule->setOption('#branch:stable',    undef);
+        $newModule->setOption('#found-by',         $result->{found_by});
         # Temp flag during metadata transition
         $newModule->setOption('#upcoming-name-change', $result->{nameChangingTo})
             if exists $result->{nameChangingTo};
