@@ -138,8 +138,11 @@ sub _expandModuleCandidates ($self, $ctx, $moduleSearchItem)
 
         my $newModule = ksb::Module->new($ctx, $result->{name});
         $self->_initializeNewModule($newModule);
+
+        # Copy metadata from KDE project YAML file
         $newModule->setOption('repository',        $result->{repo});
         $newModule->setOption('#kde-project-path', $result->{fullName});
+        $newModule->setOption('#kde-repo-path',    $result->{inventName});
         $newModule->setOption('#branch:stable',    undef);
         $newModule->setOption('#found-by',         $result->{found_by});
         # Temp flag during metadata transition

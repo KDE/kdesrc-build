@@ -204,9 +204,6 @@ sub getInstallPathComponents
     $result{'path'} = join('/', @parts);
     $result{'fullpath'} = "$result{path}/$result{module}";
 
-    my $compatDestDir = $module->destDir($module->name());
-    my $fullCompatPath = "$srcbase/$compatDestDir";
-
     # We used to have code here to migrate very old directory layouts. It was
     # removed as of about 2013-09-29.
 
@@ -1035,15 +1032,11 @@ sub isKDEProject ($self)
 # value will be relative to the src/build dir.  The user may use the
 # '$MODULE' or '${MODULE}' sequences, which will be replaced by the name of
 # the module in question.
-#
-# The first parameter is optional, but if provided will be used as the base
-# path to replace $MODULE entries in dest-dir.
-sub destDir
+sub destDir ($self)
 {
-    my $self = assert_isa(shift, 'ksb::Module');
     my $destDir = $self->getOption('dest-dir');
+    my $basePath;
 
-    my $basePath = "";
     my $layout = $self->getOption('directory-layout');
     my $oldlayout = $self->getOption('ignore-kde-structure');
     if ($oldlayout) {
@@ -1071,9 +1064,9 @@ sub destDir
     if ($layout eq 'flat') {
         $basePath = $self->name();
     } else {
-        # invent layout only works for proper KDE projects, which have a kde:(.*).git pattern repository configured
-        if ($layout eq 'invent' && $self->getOption('repository') =~ m/kde:(.*)\.git/) {
-            $basePath = $1;
+        # invent layout is the modern layout for proper KDE projects
+        if ($layout eq 'invent') {
+            $basePath = $self->getOption('#kde-repo-path', 'module');
         } else {
             if ($layout && $layout ne 'invent' && $layout ne 'metadata' &&
                 !$self->hasOption('#warned-invalid-directory-layout')) # avoid spamming
@@ -1081,11 +1074,13 @@ sub destDir
                 warning("Invalid b[directory-layout] value: $layout. Will use b[metadata] instead for b[$self]");
                 $self->setOption('#warned-invalid-directory-layout', 1);
             }
-            $basePath = shift // $self->getOption('#kde-project-path');
-            $basePath ||= $self->name(); # Default if not provided in repo-metadata
+            $basePath = $self->getOption('#kde-project-path', 'module');
         }
+
+        $basePath ||= $self->name(); # Default if not provided in repo-metadata
     }
 
+    # Note the default dest-dir option is '${MODULE}' so this normally is used
     $destDir =~ s/(\$\{MODULE})|(\$MODULE\b)/$basePath/g;
 
     return $destDir;
