@@ -848,6 +848,7 @@ sane
 qt5-script
 qtkeychain-qt5
 qt5-websockets
+qt6
 
 @@ pkg/alpine/unknown
 alpine-sdk
