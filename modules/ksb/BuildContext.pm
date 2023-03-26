@@ -859,6 +859,23 @@ sub persistentOptionFileName
             $file = $configDir . '/.' . $PERSISTENT_FILE_NAME;
         }
 
+        my @rcFiles = @{$self->{rcFiles}};
+        if (scalar @rcFiles == 1) {
+            # This can only mean that the user specified an rcfile on the command
+            # line and did not set persistent-data-file in their config file. In
+            # this case, append the name of the rcfile to the persistent build
+            # data file to associate it with that specific rcfile.
+            my $rcFilePath = $rcFiles[0];
+            # ...But only if the specified rcfile isn't one of the default ones,
+            # to prevent the user from making an oopsie
+            if (grep { $_ eq $rcFilePath } @rcfiles) {
+                warning("The specified rc file is one of the default ones. Ignoring it.");
+            } else {
+                my $rcFileName = basename($rcFilePath);
+                $file = "${file}-$rcFileName";
+            }
+        }
+
         # Fallback to legacy data file if it exists and the new one doesn't.
         my $legacyDataFile = "$ENV{HOME}/.kdesrc-build-data";
 
