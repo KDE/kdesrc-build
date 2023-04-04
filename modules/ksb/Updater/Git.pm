@@ -215,7 +215,9 @@ sub updateCheckout
 
     my $promise;
 
-    if (-d "$srcdir/.git") {
+    # While .git is usually a directory, it can also be a file in case of a
+    # worktree checkout (https://git-scm.com/docs/gitrepository-layout)
+    if (-e "$srcdir/.git") {
         # Note that this function will throw an exception on failure.
         $promise = $self->updateExistingClone();
     } else {
