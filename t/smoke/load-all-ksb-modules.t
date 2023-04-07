@@ -12,6 +12,7 @@ use ksb::BuildSystem::CMakeBootstrap;
 use ksb::BuildSystem::KDECMake;
 use ksb::BuildSystem::Meson;
 use ksb::BuildSystem::QMake;
+use ksb::BuildSystem::QMake6;
 use ksb::BuildSystem::Qt4;
 use ksb::BuildSystem::Qt5;
 use ksb::BuildSystem::Qt6;

@@ -43,6 +43,7 @@ use ksb::BuildException 0.20;
 use ksb::BuildSystem 0.30;
 use ksb::BuildSystem::Autotools;
 use ksb::BuildSystem::QMake;
+use ksb::BuildSystem::QMake6;
 use ksb::BuildSystem::Qt4;
 use ksb::BuildSystem::Qt5;
 use ksb::BuildSystem::Qt6;
@@ -316,6 +317,7 @@ sub buildSystemFromName
     my %buildSystemClasses = (
         'generic'         => 'ksb::BuildSystem',
         'qmake'           => 'ksb::BuildSystem::QMake',
+        'qmake6'           => 'ksb::BuildSystem::QMake6',
         'cmake-bootstrap' => 'ksb::BuildSystem::CMakeBootstrap',
         'kde'             => 'ksb::BuildSystem::KDECMake',
         'qt'              => 'ksb::BuildSystem::Qt4',
