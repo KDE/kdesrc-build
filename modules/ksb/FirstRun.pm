@@ -921,6 +921,7 @@ xcb-util-keysyms-dev
 xcb-util-wm-dev
 
 @@ pkg/freebsd/unknown
+automake
 bison
 boost-all
 cmake
@@ -934,6 +935,7 @@ gpgme
 intltool
 libqrencode
 lmdb
+meson
 mlt7
 ninja
 p5-YAML-PP
