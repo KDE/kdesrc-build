@@ -861,13 +861,15 @@ cmake
 cyrus-sasl-dev
 doxygen
 eudev-dev
+exiv2-dev
 flex
 giflib-dev
 gperf
 gpgme-dev
 grantlee-dev
-gstreamer-dev
 gst-plugins-base-dev
+gstreamer-dev
+lcms2-dev
 libaccounts-qt-dev
 libcanberra-dev
 libdbusmenu-qt-dev
@@ -880,6 +882,8 @@ libnl3-dev
 libqalculate-dev
 libqrencode-dev
 libsecret-dev
+libva-dev
+libxcvt-dev
 libxkbfile-dev
 libxrender-dev
 libxslt-dev
@@ -887,6 +891,7 @@ libxtst-dev
 linux-pam-dev
 lm-sensors-dev
 lmdb-dev
+modemmanager-dev
 networkmanager-dev
 openjpeg-dev
 openldap-dev
@@ -894,6 +899,7 @@ perl
 perl-io-socket-ssl
 perl-uri
 perl-yaml-libyaml
+pipewire-dev
 polkit-elogind-dev
 pulseaudio-dev
 py3-sphinx
@@ -911,6 +917,11 @@ qt5-qttools-dev
 qt5-qtwayland-dev
 qt5-qtx11extras-dev
 qt5-qtxmlpatterns-dev
+qt6-qt5compat-dev
+qt6-qtbase-dev
+qt6-qtsvg-dev
+qt6-qttools-dev
+qt6-qtwayland-dev
 signond-dev
 texinfo
 wayland-protocols
@@ -919,6 +930,7 @@ xcb-util-cursor-dev
 xcb-util-image-dev
 xcb-util-keysyms-dev
 xcb-util-wm-dev
+xkeyboard-config-dev
 
 @@ pkg/freebsd/unknown
 automake
