@@ -893,6 +893,7 @@ lm-sensors-dev
 lmdb-dev
 modemmanager-dev
 networkmanager-dev
+olm-dev
 openjpeg-dev
 openldap-dev
 perl
@@ -919,6 +920,7 @@ qt5-qtx11extras-dev
 qt5-qtxmlpatterns-dev
 qt6-qt5compat-dev
 qt6-qtbase-dev
+qt6-qtmultimedia-dev
 qt6-qtsvg-dev
 qt6-qttools-dev
 qt6-qtwayland-dev
@@ -931,6 +933,7 @@ xcb-util-image-dev
 xcb-util-keysyms-dev
 xcb-util-wm-dev
 xkeyboard-config-dev
+xmlto
 
 @@ pkg/freebsd/unknown
 automake
