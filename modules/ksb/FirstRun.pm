@@ -557,7 +557,7 @@ giflib-devel
 git
 gperf
 intltool
-ruby3.1-rubygem-sass
+ruby3.2-rubygem-sass
 libboost_headers-devel
 libdbusmenu-qt5-devel
 qcoro-qt5-devel
