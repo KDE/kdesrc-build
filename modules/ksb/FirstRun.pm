@@ -848,6 +848,12 @@ sane
 qt5-script
 qtkeychain-qt5
 qt5-websockets
+vala
+check
+libolm
+xmlto
+itstool
+libdisplay-info
 
 @@ pkg/alpine/unknown
 alpine-sdk
