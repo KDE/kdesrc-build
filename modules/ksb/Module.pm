@@ -721,6 +721,7 @@ sub setupEnvironment ($self)
     } else {
         my $kdedir   = $self->getOption('kdedir');
         my $qtdir    = $self->getOption('qtdir');
+        my $libname  = $self->getOption('libname'); # e.g. "lib" or "lib64"
 
         # Ensure the platform libraries we're building can be found, as long as they
         # are not the system's own libraries.
@@ -729,8 +730,8 @@ sub setupEnvironment ($self)
             next if $platformDir eq '/usr'; # Don't 'fix' things if system platform
                                             # manually set
 
-            $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$platformDir/lib/pkgconfig");
-            $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/lib");
+            $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$platformDir/$libname/pkgconfig");
+            $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/$libname");
             $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
         }
 

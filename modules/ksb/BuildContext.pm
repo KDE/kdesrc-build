@@ -84,6 +84,14 @@ my $LOCKFILE_NAME = '.kdesrc-lock';
 my $PERSISTENT_FILE_NAME = 'kdesrc-build-data';
 my $SCRIPT_VERSION = scriptVersion();
 
+# There doesn't seem to be a great way to get this from CMake easily but we can
+# reason that if there's a /usr/lib64 (and it's not just a compat symlink),
+# there will likely end up being a ${kdedir}/lib64 once kdesrc-build gets
+# done installing it
+my $libname = "lib";
+$libname = "lib64" if (-d "/usr/lib64" and not -l "/usr/lib64");
+$libname = "lib/x86_64-linux-gnu" if (-d "/usr/lib/x86_64-linux-gnu");
+
 # Should be used for internal state that shouldn't be exposed as a hidden
 # cmdline option, or has other cmdline switches (e.g. debug/verbose handling).
 my %internalGlobalOptions = (
@@ -155,6 +163,7 @@ our %defaultGlobalOptions = (
     "http-proxy"           => '', # Proxy server to use for HTTP.
     "kdedir"               => "$ENV{HOME}/kde",
     "kde-languages"        => "",
+    "libname"              => $libname,
     "libpath"              => "",
     "log-dir"              => "log",
     "make-install-prefix"  => "",  # Some people need sudo
