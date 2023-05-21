@@ -263,6 +263,8 @@ sub prepareModuleBuildEnvironment
         $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $prefix);
         # Try to ensure that older "module" mode find_package() calls also point to right directory
         $ctx->prependEnvironmentValue('CMAKE_MODULE_PATH', "$prefix/lib64/cmake:$prefix/lib/cmake");
+        # Set the plugin path correctly for configuration-time access e.g. by Extra CMake Modules
+        $ctx->prependEnvironmentValue('QT_PLUGIN_PATH', "$prefix/lib64/plugins:$prefix/lib/plugins");
         $ctx->prependEnvironmentValue('XDG_DATA_DIRS', "$prefix/share");
     }
 
