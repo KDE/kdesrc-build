@@ -805,12 +805,12 @@ pkgconfig(xrender)
 python
 shared-mime-info
 
-
 @@ pkg/gentoo/unknown
 dev-util/cmake
 dev-lang/perl
 dev-libs/libdbusmenu-qt
 sys-devel/clang
+dev-perl/YAML-PP
 
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
@@ -983,6 +983,9 @@ dnf -y install
 
 @@ cmd/install/alpine/unknown
 apk add --virtual .makedeps-kdesrc-build
+
+@@ cmd/install/gentoo/unknown
+emerge -v --noreplace
 
 @@ sample-rc
 # This file controls options to apply when configuring/building modules, and
