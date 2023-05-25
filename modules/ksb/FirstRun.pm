@@ -806,11 +806,41 @@ python
 shared-mime-info
 
 @@ pkg/gentoo/unknown
-dev-util/cmake
 dev-lang/perl
+dev-libs/icu
 dev-libs/libdbusmenu-qt
-sys-devel/clang
+dev-perl/IO-Socket-SSL
 dev-perl/YAML-PP
+dev-perl/YAML-Syck
+dev-qt/designer:5
+dev-qt/linguist-tools:5
+dev-qt/linguist
+dev-qt/pixeltool
+dev-qt/qdoc:5
+dev-qt/qtconcurrent:5
+dev-qt/qtcore:5
+dev-qt/qtdbus:5
+dev-qt/qtdeclarative:5
+dev-qt/qtdiag:5
+dev-qt/qtgui:5
+dev-qt/qthelp:5
+dev-qt/qtmultimedia:5
+dev-qt/qtnetwork:5
+dev-qt/qtpaths:5
+dev-qt/qtprintsupport:5
+dev-qt/qtquickcontrols:5
+dev-qt/qtsql:5
+dev-qt/qttest:5
+dev-qt/qtwidgets:5
+dev-qt/qtx11extras:5
+dev-qt/qtxml:5
+dev-util/cmake
+dev-util/gperf
+dev-util/meson
+dev-util/ninja
+dev-vcs/git
+sys-devel/clang
+virtual/libintl
 
 @@ pkg/arch/unknown
 perl-json perl-yaml-libyaml perl-io-socket-ssl
