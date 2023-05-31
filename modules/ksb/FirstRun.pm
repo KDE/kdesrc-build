@@ -884,6 +884,7 @@ libolm
 xmlto
 itstool
 libdisplay-info
+python-sphinx
 
 @@ pkg/alpine/unknown
 alpine-sdk
