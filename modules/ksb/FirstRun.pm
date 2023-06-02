@@ -450,6 +450,7 @@ meson
 ninja-build
 shared-mime-info
 clang-format
+apt-file
 # Qt-related
 qtwayland5-private-dev
 libdbusmenu-qt5-dev
