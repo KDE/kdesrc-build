@@ -931,6 +931,7 @@ linux-pam-dev
 lm-sensors-dev
 lmdb-dev
 modemmanager-dev
+mpv-dev
 networkmanager-dev
 olm-dev
 openjpeg-dev
