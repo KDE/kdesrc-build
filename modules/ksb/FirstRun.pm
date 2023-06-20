@@ -500,6 +500,8 @@ libx11-xcb-dev
 # .. khtml
 libjpeg-dev
 libgif-dev
+# .. kjs
+libpcre3-dev
 # .. kglobalaccel
 libxcb-record0-dev
 # .. karchive
