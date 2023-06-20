@@ -507,6 +507,8 @@ libgif-dev
 libpcre3-dev
 # .. kglobalaccel
 libxcb-record0-dev
+# .. knotifications
+libcanberra-dev
 # .. karchive
 liblzma-dev
 # .. plasma-workspace
