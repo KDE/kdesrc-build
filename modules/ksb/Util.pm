@@ -396,6 +396,8 @@ sub _setErrorLogfile ($module, $logfile)
 # Common code for log_command and ksb::Util::LoggedSubprocess
 sub run_logged_command ($module, $filename, $callbackRef, @command)
 {
+    debug ("run_logged_command(): Module $module, Command: ", join(' ', @command));
+
     croak_internal("Pass only base filename for $module/$filename")
         if ($filename =~ /\.log$/ || $filename =~ m,/,);
     my $logpath = $module->getLogPath("$filename.log");
@@ -626,8 +628,6 @@ sub log_command ($module, $filename, $argRef, $optionsRef = {})
     my @command     = @{$argRef};
     my $callbackRef = $optionsRef->{'callback'};
 
-    debug ("log_command(): Module $module, Command: ", join(' ', @command));
-
     if (pretending()) {
         pretend ("\tWould have run g['" . join ("' '", @command) . "'");
         return 0;
@@ -672,7 +672,6 @@ sub run_logged_p ($module, $filename, $dir, $argRef)
     {
         local $" = "', '"; # list separator
         $dir //= '';
-        debug ("run_logged_p(): Module $module, Command: {'$argRef->@*'} from $dir");
         if (pretending()) {
             pretend ("\tWould have run g{'$argRef->@*'}");
             return Mojo::Promise->resolve(0);
