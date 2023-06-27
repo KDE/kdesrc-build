@@ -849,6 +849,9 @@ virtual/libintl
 perl-json
 perl-yaml-libyaml
 perl-io-socket-ssl
+perl-libwww
+perl-xml-parser
+perl-yaml-syck
 # Basic build tools
 # .. gnu
 autoconf
@@ -858,6 +861,7 @@ flex
 gcc
 gperf
 make
+kdesdk
 # .. llvm
 clang
 cmake
@@ -870,14 +874,21 @@ docbook-xsl
 doxygen
 intltool
 pkg-config
+git
+bzr
 # Qt-related
 qt5-base
 qt5-script
 qt5-websockets
+qt5-svg
+qt5-tools
+qt5-x11extras
+qca-qt5
 libaccounts-qt
 libdbusmenu-qt5
 poppler-qt5
 qtkeychain-qt5
+phonon-qt5
 # Others/Unsorted
 wayland-protocols
 qrencode
@@ -900,6 +911,23 @@ xmlto
 itstool
 libdisplay-info
 python-sphinx
+enchant
+jasper
+openexr
+libutempter
+docbook-xsl
+shared-mime-info
+giflib
+libxss
+upower
+udisks2
+xorg-server-devel
+libpwquality
+libfakekey
+eigen
+xapian-core
+libdmtx
+ruby-test-unit
 # appstream
 gobject-introspection
 
