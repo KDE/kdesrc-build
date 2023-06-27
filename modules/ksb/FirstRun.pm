@@ -845,29 +845,45 @@ sys-devel/clang
 virtual/libintl
 
 @@ pkg/arch/unknown
-perl-json perl-yaml-libyaml perl-io-socket-ssl
-cmake gcc make qt5-base
-doxygen
-boost
-intltool
-gperf
-docbook-xsl
-flex
-bison
-automake
+# Perl support
+perl-json
+perl-yaml-libyaml
+perl-io-socket-ssl
+# Basic build tools
+# .. gnu
 autoconf
-pkg-config
-wayland-protocols
+automake
+bison
+flex
+gcc
+gperf
+make
+# .. llvm
 clang
+cmake
+# .. build systems
 ninja
 meson
-qrencode
-signond
+# .. others
+boost
+docbook-xsl
+doxygen
+intltool
+pkg-config
+# Qt-related
+qt5-base
+qt5-script
+qt5-websockets
 libaccounts-qt
 libdbusmenu-qt5
+poppler-qt5
+qtkeychain-qt5
+# Others/Unsorted
+wayland-protocols
+qrencode
+signond
 xapian-core
 qgpgme
-poppler-qt5
 kdsoap
 xsd
 xerces-c
@@ -877,9 +893,6 @@ eigen
 mlt
 freecell-solver
 sane
-qt5-script
-qtkeychain-qt5
-qt5-websockets
 vala
 check
 libolm
@@ -887,6 +900,8 @@ xmlto
 itstool
 libdisplay-info
 python-sphinx
+# appstream
+gobject-introspection
 
 @@ pkg/alpine/unknown
 alpine-sdk
