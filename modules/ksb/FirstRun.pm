@@ -1004,6 +1004,7 @@ qt5-qtxmlpatterns-dev
 qt6-qt5compat-dev
 qt6-qtbase-dev
 qt6-qtmultimedia-dev
+qt6-qtpositioning-dev
 qt6-qtsvg-dev
 qt6-qttools-dev
 qt6-qtwayland-dev
