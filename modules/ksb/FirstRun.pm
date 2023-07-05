@@ -1145,6 +1145,9 @@ global
     # rather than nested directories
     directory-layout flat
 
+    # Use Ninja as cmake generator instead of gmake
+    cmake-generator Kate - Ninja
+
     # Build with LSP support for everything that supports it
     compile-commands-linking true
     compile-commands-export true
