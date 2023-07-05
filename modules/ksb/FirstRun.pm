@@ -711,6 +711,7 @@ libwacom-devel
 libxcvt-devel
 libXext-devel
 libxkbcommon-devel
+libxkbcommon-x11-devel
 libxml2
 libzip-devel
 make
