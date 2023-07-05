@@ -688,6 +688,7 @@ libavcodec-free-devel
 libavformat-free-devel
 libavutil-free-devel
 libblack-hole-solver-devel
+libcanberra-devel
 libepoxy-devel
 libfreecell-solver-devel
 libgcrypt-devel
