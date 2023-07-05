@@ -782,6 +782,7 @@ texinfo
 wcslib-devel
 xmlto
 xorg-x11-drv-wacom-devel
+xkeyboard-config
 
 @@ pkg/mageia/unknown
 bison
