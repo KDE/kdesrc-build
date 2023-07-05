@@ -701,6 +701,7 @@ libmtp-devel
 libnl3-devel
 libnova-devel
 LibRaw-devel
+libsass-devel
 libsmbclient-devel
 libsndfile-devel
 libsodium-devel
