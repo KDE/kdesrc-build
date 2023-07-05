@@ -641,6 +641,7 @@ libAppStreamQt-devel
 gtk3-devel
 
 @@ pkg/fedora/unknown
+appstream-qt-devel
 aha
 bison
 boost-devel
@@ -695,6 +696,7 @@ libical-devel
 libindi-devel
 libjpeg-turbo-devel
 libpcap-devel
+libqalculate-devel
 libmtp-devel
 libnl3-devel
 libnova-devel
@@ -708,8 +710,11 @@ libssh-devel
 libtirpc-devel
 libuuid-devel
 libwacom-devel
+libXcursor-devel
+libXft-devel
 libxcvt-devel
 libXext-devel
+libXtst-devel
 libxkbcommon-devel
 libxkbcommon-x11-devel
 libxml2
