@@ -888,6 +888,8 @@ cmake
 # .. build systems
 ninja
 meson
+# .. rust
+corrosion
 # .. others
 boost
 docbook-xsl
