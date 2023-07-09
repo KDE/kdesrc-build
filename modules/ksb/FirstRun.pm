@@ -497,6 +497,8 @@ libattr1-dev
 # .. kidletime
 libxcb-sync-dev
 libx11-xcb-dev
+# .. kcalendarcore
+libical-dev
 # .. khtml
 libjpeg-dev
 libgif-dev
