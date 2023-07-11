@@ -641,6 +641,7 @@ libepub-devel
 libsensors4-devel
 libAppStreamQt-devel
 gtk3-devel
+olm-devel
 
 @@ pkg/fedora/unknown
 appstream-qt-devel
