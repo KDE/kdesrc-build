@@ -988,6 +988,7 @@ sub prune_under_directory_p ($module, $dir)
                 safe      => 1,
             });
 
+            my $retval;
             if ($errorRef && @{$errorRef}) {
                 foreach my $err (@{$errorRef}) {
                     my ($file, $msg) = %{$err};
@@ -995,10 +996,12 @@ sub prune_under_directory_p ($module, $dir)
                     say $log "$file: error: $msg";
                 }
 
-                return 0;
+                $retval = 0;
             } else {
-                return 1;
+                $retval = 1;
             }
+            close $log;
+            return $retval;
         });
     };
 
