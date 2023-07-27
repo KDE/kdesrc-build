@@ -523,7 +523,6 @@ libsndfile1-dev
 libxcb-glx0-dev
 liblmdb-dev
 libsm-dev
-libnm-dev
 libqrencode-dev
 # .. optional discover backends
 libjcat-dev
@@ -549,6 +548,11 @@ libxft-dev
 libxtst-dev
 # powerdevil
 libxcb-dpms0-dev
+# plasma-nm
+libnm-dev
+modemmanager-dev
+# plasma-pa
+libpulse-dev
 
 @@ pkg/opensuse/unknown
 cmake
