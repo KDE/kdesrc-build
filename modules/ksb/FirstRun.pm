@@ -40,8 +40,6 @@ use constant {
 # kdesrc-build #################################################################
 
 ## Add kdesrc-build to PATH
-export PATH="$HOME/kde/src/kdesrc-build:$PATH"
-
 RC
 
     # Used for bash/zsh and requires non-POSIX syntax support. Use this in
@@ -84,8 +82,6 @@ RC
 # kdesrc-build #################################################################
 
 ## Add kdesrc-build to PATH
-set -x PATH $HOME/kde/src/kdesrc-build $PATH
-
 RC
 };
 
@@ -112,7 +108,7 @@ sub setupUserSystem
     eval {
         _installSystemPackages($os);
         _setupBaseConfiguration($baseDir);
-        _setupShellRcFile($shellName);
+        _setupShellRcFile($shellName, $baseDir);
     };
 
     if (had_an_exception($@)) {
@@ -301,7 +297,7 @@ DONE
 
 sub _setupShellRcFile
 {
-    my $shellName = shift;
+    my ($shellName, $baseDir) = @_;
     my $rcFilepath = undef;
     my $printableRcFilepath = undef;
     my $extendedShell = 1;
@@ -337,12 +333,12 @@ sub _setupShellRcFile
         say $rcFh '';
 
         if ($shellName ne 'fish') {
-          say $rcFh BASE_SHELL_SNIPPET;
+          say $rcFh BASE_SHELL_SNIPPET . "export PATH=\"$baseDir:\$PATH\"\n";
 
           say $rcFh EXT_SHELL_RC_SNIPPET
               if $extendedShell;
         } else {
-          say $rcFh BASE_FISHSHELL_SNIPPET;
+          say $rcFh BASE_FISHSHELL_SNIPPET . "set -x PATH $baseDir \$PATH\n";
         }
 
         close($rcFh)
