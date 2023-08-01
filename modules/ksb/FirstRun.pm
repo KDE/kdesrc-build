@@ -461,6 +461,7 @@ qtscript5-dev
 qttools5-dev
 qtwayland5-dev-tools
 qtxmlpatterns5-dev-tools
+packagekit
 # Frameworks dependencies
 # .. polkit-qt-1
 libpolkit-gobject-1-dev
@@ -573,6 +574,7 @@ libqt5-qtwayland-private-headers-devel
 libqt5-qtimageformats-devel
 libQt5Core-private-headers-devel
 libQt5DesignerComponents5
+packagekit
 libxml2-tools
 lmdb-devel
 make
@@ -779,6 +781,7 @@ qt5-*-devel
 qt5-qtbase-static
 qt5-qttools-static
 qtkeychain-qt5-devel
+PackageKit
 SDL2-devel
 shared-mime-info
 signon-devel
@@ -916,6 +919,7 @@ libdbusmenu-qt5
 poppler-qt5
 qtkeychain-qt5
 phonon-qt5
+packagekit
 # Others/Unsorted
 wayland-protocols
 qrencode
