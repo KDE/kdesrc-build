@@ -550,6 +550,8 @@ libnm-dev
 modemmanager-dev
 # plasma-pa
 libpulse-dev
+# plymouth-kcm
+libplymouth-dev
 
 @@ pkg/opensuse/unknown
 cmake
@@ -575,6 +577,7 @@ libqt5-qtimageformats-devel
 libQt5Core-private-headers-devel
 libQt5DesignerComponents5
 packagekit
+plymouth-devel
 libxml2-tools
 lmdb-devel
 make
@@ -777,6 +780,7 @@ python3-sphinx
 qaccessibilityclient-devel
 qcoro-qt5-devel
 qgpgme-devel
+plymouth-devel
 qt5-*-devel
 qt5-qtbase-static
 qt5-qttools-static
@@ -959,6 +963,7 @@ eigen
 xapian-core
 libdmtx
 ruby-test-unit
+plymouth
 # appstream
 gobject-introspection
 
