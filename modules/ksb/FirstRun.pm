@@ -1034,9 +1034,11 @@ lmdb-dev
 modemmanager-dev
 mpv-dev
 networkmanager-dev
+ninja
 olm-dev
 openjpeg-dev
 openldap-dev
+pcre-dev
 perl
 perl-io-socket-ssl
 perl-uri
