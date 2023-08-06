@@ -12,6 +12,7 @@ use ksb::ModuleSet::KDEProjects;
 use ksb::Module;
 
 use List::Util qw(first);
+use Storable qw(dclone);
 
 # Public API
 
@@ -26,6 +27,8 @@ sub new
         # Read in from rc-file
         inputModulesAndOptions => [ ],
         cmdlineOptions         => { },
+
+        # Holds options from 'options' blocks for modules
         deferredOptions        => { },
 
         # Holds Modules defined in course of expanding module-sets
@@ -45,10 +48,51 @@ sub setCmdlineOptions
     return;
 }
 
+# Set options to apply later if a module set resolves to a named module, used
+# for 'options' blocks.
 sub setDeferredOptions
 {
     my ($self, $deferredOptionsRef) = @_;
-    $self->{deferredOptions} = $deferredOptionsRef;
+
+    # Each object in the hash can be either options for a later ksb::Module,
+    # or options for an entire set of ksb::Modules (as determined by use of
+    # repository/use-module items).  We want to handle the latter first, since
+    # we assume single 'options' blocks should still be able to override these.
+
+    my $proj_db = $self->{context}->getProjectDataReader();
+    my %finalOpts;
+
+    while(my ($name, $opts) = each %{$deferredOptionsRef}) {
+        my $repo = $opts->{repository};
+        my $referencedModules = $opts->{'use-modules'};
+
+        # Skip options blocks that don't reference module-sets
+        next if (!$referencedModules || $repo ne 'kde-projects');
+
+        delete $opts->{'use-modules'};
+        delete $opts->{repository};
+
+        # Use KDE project database to pull list of matching ksb::Modules
+        for my $m (split(' ', $referencedModules)) {
+            my @mods = $proj_db->getModulesForProject($m);
+            $finalOpts{$_->{name}} //= dclone($opts) foreach @mods;
+        }
+
+        delete $deferredOptionsRef->{$name};
+    }
+
+    # Go through list a second time (which should be only single module options)
+    # and overlay any new options on
+
+    while(my ($name, $opts) = each %{$deferredOptionsRef}) {
+        if (exists $finalOpts{$name}) {
+            @{$finalOpts{$name}}{keys %$opts} = values %$opts;
+        } else {
+            $finalOpts{$name} = $opts;
+        }
+    }
+
+    $self->{deferredOptions} = \%finalOpts;
     return;
 }
 
@@ -108,13 +152,12 @@ sub _applyOptions
 # declarations for any ModuleSets included within the input list.  Each entry
 # in the hash table will map the referenced module name to the source
 # ModuleSet.
-sub _listReferencedModules
+sub _listReferencedModules (@moduleRefs)
 {
     my %setEntryLookupTable;
-    my @results;
 
-    for my $moduleSet (grep { $_->isa('ksb::ModuleSet') } (@_)) {
-        @results = $moduleSet->moduleNamesToFind();
+    for my $moduleSet (grep { $_->isa('ksb::ModuleSet') } (@moduleRefs)) {
+        my @results = $moduleSet->moduleNamesToFind();
 
         # The parens in front of 'x' are semantically required for repetition!
         @setEntryLookupTable{@results} = ($moduleSet) x scalar @results;
