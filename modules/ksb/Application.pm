@@ -207,7 +207,7 @@ sub generateModuleList
     # doing.
 
     my $ctx = $self->context();
-    my $deferredOptions = { }; # 'options' blocks
+    my $deferredOptions = [ ]; # 'options' blocks
 
     # Process --help, --install, etc. first.
     my $opts = ksb::Cmdline::readCommandLineOptionsAndSelectors(@argv);
@@ -883,12 +883,11 @@ EOF
 #
 # The return value is the ksb::OptionsBase provided, with options set as given in
 # the configuration file section being processed.
-sub _parseModuleOptions
+sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
 {
-    my ($ctx, $fileReader, $module, $endRE) = @_;
-    assert_isa($ctx, 'ksb::BuildContext');
     assert_isa($module, 'ksb::OptionsBase');
 
+    state $moduleID = 0;
     my $endWord = $module->isa('ksb::BuildContext') ? 'global'     :
                   $module->isa('ksb::ModuleSet')    ? 'module-set' :
                   $module->isa('ksb::Module')       ? 'module'     :
@@ -898,6 +897,7 @@ sub _parseModuleOptions
     $endRE //= qr/^end[\w\s]*$/;
 
     _markModuleSource($module, $fileReader->currentFilename() . ":$.");
+    $module->setOption('#entry_num', $moduleID++);
 
     # Read in each option
     while (($_ = _readNextLogicalLine($fileReader)) && ($_ !~ $endRE))
@@ -1002,10 +1002,10 @@ sub _parseModuleSetOptions
 #  cmdlineGlobalOptions - An input hashref mapping command line options to their
 #  values (if any), so that these may override conflicting entries in the rc-file
 #
-#  deferredOptions - An out parameter: a hashref holding the options set by any
-#  'options' blocks read in by this function. Each key (identified by the name
-#  of the 'options' block) will point to a hashref value holding the options to
-#  apply.
+#  deferredOptions - An out parameter: a listref containing hashrefs mapping
+#  module names to options set by any 'options' blocks read in by this function.
+#  Each key (identified by the name of the 'options' block) will point to a
+#  hashref value holding the options to apply.
 #
 # Returns:
 #  @module - Heterogeneous list of <Modules> and <ModuleSets> defined in the
@@ -1014,10 +1014,8 @@ sub _parseModuleSetOptions
 #
 # Throws:
 #  - Config exceptions.
-sub _readConfigurationOptions
+sub _readConfigurationOptions ($ctx, $fh, $cmdlineGlobalOptions, $deferredOptionsRef)
 {
-    my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my ($fh, $cmdlineGlobalOptions, $deferredOptionsRef) = @_;
     my @module_list;
     my $rcfile = $ctx->rcFile();
     my ($option, %readModules);
@@ -1119,7 +1117,10 @@ sub _readConfigurationOptions
             my $options = _parseModuleOptions($ctx, $fileReader,
                 ksb::OptionsBase->new());
 
-            $deferredOptionsRef->{$modulename} = $options->{options};
+            push @{$deferredOptionsRef}, {
+                name => $modulename,
+                opts => $options->{options},
+            };
 
             # NOTE: There is no duplicate options block checking here, and we
             # now currently rely on there being no duplicate checks to allow

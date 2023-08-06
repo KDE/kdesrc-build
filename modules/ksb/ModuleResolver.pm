@@ -50,19 +50,19 @@ sub setCmdlineOptions
 
 # Set options to apply later if a module set resolves to a named module, used
 # for 'options' blocks.
-sub setDeferredOptions
+sub setDeferredOptions ($self, $deferredOptionsRef)
 {
-    my ($self, $deferredOptionsRef) = @_;
-
     # Each object in the hash can be either options for a later ksb::Module,
     # or options for an entire set of ksb::Modules (as determined by use of
     # repository/use-module items).  We want to handle the latter first, since
     # we assume single 'options' blocks should still be able to override these.
 
     my $proj_db = $self->{context}->getProjectDataReader();
+    my @setIndices;
     my %finalOpts;
 
-    while(my ($name, $opts) = each %{$deferredOptionsRef}) {
+    while(my ($idx, $deferredEntry) = each @{$deferredOptionsRef}) {
+        my $opts = $deferredEntry->{opts};
         my $repo = $opts->{repository};
         my $referencedModules = $opts->{'use-modules'};
 
@@ -71,20 +71,27 @@ sub setDeferredOptions
 
         delete $opts->{'use-modules'};
         delete $opts->{repository};
+        push @setIndices, $idx; # so we can delete this once loop complete
 
         # Use KDE project database to pull list of matching ksb::Modules
         for my $m (split(' ', $referencedModules)) {
             my @mods = $proj_db->getModulesForProject($m);
             $finalOpts{$_->{name}} //= dclone($opts) foreach @mods;
         }
-
-        delete $deferredOptionsRef->{$name};
     }
+
+    # Delete options for module sets so we don't accidentally process them now
+    # that use-modules/repository keys are gone.  Must be done back-to-front so
+    # indices don't change.
+    splice (@{$deferredOptionsRef}, $_, 1) foreach reverse @setIndices;
 
     # Go through list a second time (which should be only single module options)
     # and overlay any new options on
 
-    while(my ($name, $opts) = each %{$deferredOptionsRef}) {
+    while(my ($idx, $deferredEntry) = each @{$deferredOptionsRef}) {
+        my $name = $deferredEntry->{name};
+        my $opts = $deferredEntry->{opts};
+
         if (exists $finalOpts{$name}) {
             @{$finalOpts{$name}}{keys %$opts} = values %$opts;
         } else {
@@ -124,9 +131,14 @@ sub _applyOptions
 
     foreach my $m (@modules) {
         my $name = $m->name();
+        my $opts = dclone($deferredOptionsRef->{$name} // {});
 
         # Apply deferred options first
-        $m->setOption(%{$deferredOptionsRef->{$name} // {}});
+        if (($m->{options}->{"#entry_num"} // 0) > ($opts->{"#entry_num"} // 0)) {
+            # Our existing options were read in later so should not be overridden
+            delete @{$opts}{keys %{$m->{options}}};
+        }
+        $m->setOption(%{$opts});
 
         # Most of time cmdline options will be empty
         if (%$cmdlineOptionsRef) {
