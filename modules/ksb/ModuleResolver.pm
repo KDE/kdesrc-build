@@ -439,12 +439,12 @@ selectors into actual modules.
 =item new
 
 Creates a new C<ModuleResolver>. You must pass the appropriate
-C<BuildContext> Don't forget to call setPendingOptions(),
+C<BuildContext> Don't forget to call setCmdlineOptions(),
 setIgnoredSelectors() and setInputModulesAndOptions().
 
  my $resolver = ModuleResolver->new($ctx);
 
-=item setPendingOptions
+=item setCmdlineOptions
 
 Sets the options that should be applied to modules when they are created.
 No special handling for global options is performed here (but see
@@ -453,7 +453,7 @@ ksb::OptionsBase::getOption and its friends).
 You should pass in a hashref, where module-names are keys to values which
 are themselves hashrefs of option-name => value pairs:
 
- $resolver->setPendingOptions(
+ $resolver->setCmdlineOptions(
     { mod1 => { 'cmake-options' => 'foo', ... },
       mod2 => { }
     })
