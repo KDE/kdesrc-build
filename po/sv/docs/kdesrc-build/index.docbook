@@ -2,7 +2,7 @@
 <!DOCTYPE book PUBLIC "-//KDE//DTD DocBook XML V4.5-Based Variant V1.1//EN" "dtd/kdedbx45.dtd" [
   <!--
     Documentation for kdesrc-build.
-    Copyright (c) 2005-2008, 2010-2020 Michael Pyne <mpyne@kde.org>
+    Copyright (c) 2005-2008, 2010-2022 Michael Pyne <mpyne@kde.org>
 
     Copyright (c) 2005 Carlos Leonhard Woelz <carloswoelz@imap-mail.com>
     Copyright (c) 2009 Burkhard Lück <lueck@hube-lueck.de>
@@ -114,6 +114,9 @@
 >'>
   <!ENTITY set-env '<link linkend="conf-set-env"
 >set-env</link
+>'>
+  <!ENTITY libname '<link linkend="conf-libname"
+>libname</link
 >'>
   <!ENTITY libpath '<link linkend="conf-libpath"
 >libpath</link
@@ -283,7 +286,7 @@
 >&kde;-programvara</ulink
 > från <ulink url="https://git-scm.com/"
 >&git;</ulink
-> och <ulink url="http://subversion.tigris.org/"
+> och <ulink url="https://subversion.apache.org"
 >&subversion;</ulink
 > källkodsarkiv, och fortsätta att uppdatera programvaran efteråt. Det är i synnerhet avsett att stödja de som behöver hantera testning och utveckling av &kde;-programvara, inklusive användare som testar felrättningar och utvecklare som arbetar på nya funktioner. </para>
 
@@ -3204,16 +3207,16 @@ end module
 >Alternativet används för att ställa in den layout som &kdesrc-build; ska använda när källkods- och byggkataloger skapas.</para>
 <para
 >För närvarande finns tre möjliga värden: <userinput
->metadata</userinput
+>flat</userinput
 >, <userinput
 >invent</userinput
 > och <userinput
->flat</userinput
+>metadata</userinput
 ></para>
 <para
 >Layouten <userinput
 >flat</userinput
-> grupperar alla moduler direkt under källkods- och byggkatalogerna på toppnivå. Exempelvis skulle <literal
+> är förvalt värde grupperar alla moduler direkt under källkods- och byggkatalogerna på toppnivå. Exempelvis skulle <literal
 >source/extragear/network/telepathy/ktp-text-ui</literal
 > med layouten<userinput
 >metadata</userinput
@@ -3240,10 +3243,6 @@ end module
 >Slutligen är layouten <userinput
 >metadata</userinput
 > samma som det tidigare förvalda beteendet. Layouten organiserar KDE-projekt enligt projektsökvägarna specificerade i projektets metadata för modulerna. Det är ett bra val om du vill ha en kataloglayout som följer vissa KDE-processer, men observera att sökvägen därför inte alltid är stabil. Resultatet kan bli att &kdesrc-build; överger en gammal kopia av arkivet och skapar en dubblett för ett projekt på grund av ändringar av projektets metadata.</para>
-<para
->Normalt används layouten <userinput
->metadata</userinput
->, för att bevara bakåtkompatibilitet för befintliga användare av &kdesrc-build;.</para>
 </entry>
 </row>
 
@@ -3492,6 +3491,19 @@ end module
 </entry>
 </row>
 
+<row id="conf-libname">
+<entry
+>libname</entry>
+<entry
+>Modulinställning överskrider allmän</entry>
+<entry
+>Ställ in det här alternativet för att ändra standardnamnet på det installerade bibliotekskatalogen inuti $<envar
+>KDEDIR</envar
+> och $<envar
+>QTDIR</envar
+>. På många system är detta antingen "lib" eller "lib64". Automatisk identifiering försöker göras för att ställa in rätt namn som förval, men om gissningen är fel så kan det ändras med inställningen. </entry>
+</row>
+
 <row id="conf-libpath">
 <entry
 >libpath</entry>
@@ -3503,11 +3515,15 @@ end module
 > under byggprocessen. Du kan inte överskrida inställningen med ett modulalternativ. Förvalt värde är tomt, men sökvägarna <filename class="directory"
 >$<envar
 >KDEDIR</envar
->/lib</filename
+>/$<envar
+>LIBNAME</envar
+></filename
 > och <filename class="directory"
 >$<envar
 >QTDIR</envar
->/lib</filename
+>/$<envar
+>LIBNAME</envar
+></filename
 > läggs automatiskt till. Du kan använda tilde (~) i alla sökvägar du lägger till med alternativet. </entry>
 </row>
 
@@ -5906,6 +5922,102 @@ end module
 
 </listitem>
 </itemizedlist>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="stopping-the-build-early">
+<title
+>Stoppar bygget i förtid</title>
+
+<sect3 id="the-build-continues">
+<title
+>Bygget fortsätter normalt även om allvarliga fel uppstår</title>
+
+<para
+>&kdesrc-build; uppdaterar, bygger och installerar normalt alla moduler i den angivna listan över moduler att bygga, även om en modul misslyckas att bygga. Detta är vanligtvis en bekvämlighet för att du ska kunna uppdatera programvarupaket även om ett enkelt misstag görs i ett av källkodsarkiven under utvecklingen som gör att bygget fallerar. </para>
+
+<para
+>Du kan dock önska att &kdesrc-build; stoppar vad det gör när det inte lyckas att bygga och installera en modul. Det kan hjälpa dig att spara tid som kommer att gå till spillo på att komma vidare när moduler som finns kvar i bygglistan inte heller kommer att kunna byggas med lyckat resultat, särskilt om du aldrig har lyckats bygga modulerna i listan. </para>
+
+</sect3>
+
+<sect3 id="stop-on-failure-stops-early">
+<title
+>Stoppar i förtid med --stop-on-failure</title>
+
+<para
+>Den primära metoden för att göra det är att använda kommandoradsväljaren <link linkend="cmdline-stop-on-failure"
+>--stop-on-failure</link
+> när &kdesrc-build; körs. </para>
+
+<para
+>Väljaren kan också anges i <link linkend="configure-data"
+>inställningsfilen</link
+> för att göra den till normalt beteende. </para>
+
+<para
+>Det är också möjligt att tala om för &kdesrc-build; att sluta bygga under körning <emphasis
+>efter</emphasis
+> att ha slutfört den aktuella modulen den arbetar med. Det är i motsats till att avbryta &kdesrc-build; med ett kommando som <keycombo action="simul"
+>&Ctrl;<keycap
+>C</keycap
+></keycombo
+>, vilket avbryter &kdesrc-build; omedelbart, och förlorar arbetet för den aktuella modulen. </para>
+
+<important
+><para
+>Avbryta &kdesrc-build; under installation av en module när alternativet <link linkend="conf-use-clean-install"
+>use-clean-install</link
+> är aktiverat innebär att den avbrutna modulen är otillgänglig tills &kdesrc-build; kan bygga modulen med lyckat resultat.</para>
+
+<para
+>Om du behöver avbryta &kdesrc-build; utan att tillåta en snygg avstängning i detta fall, försök åtminstone undvika att göra detta medan &kdesrc-build; installerar en modul.</para>
+</important>
+
+</sect3>
+
+<sect3 id="stopping-early-without-stop-on-failure">
+<title
+>Stoppar &kdesrc-build; i förtid utan --stop-on-failure</title>
+
+<para
+>Som nämnts ovan är det möjligt att få &kdesrc-build; att snyggt avsluta tidigt när det väl har slutfört modulen det arbetar med. För att göra det måste du skicka signalen POSIX <literal
+>HUP</literal
+> till &kdesrc-build; </para>
+
+<para
+>Du kan göra detta med ett kommando som <command
+>pkill</command
+> (på &Linux;-system) enligt följande:</para>
+
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>pkill <option
+>-HUP</option
+> kdesrc-build</command
+></userinput
+>
+</programlisting>
+
+<para
+>Om det lyckas kommer du att se ett meddelande i utmatningen från &kdesrc-build; som liknar:</para>
+
+<programlisting
+>[ build ] tog emot SIGHUP, kommer att avsluta efter den här modulen
+</programlisting>
+
+<note>
+<para
+>&kdesrc-build; kan visa meddelandet flera gånger beroende på antalet individuella &kdesrc-build; processer som är aktiva. Det är normalt och inte en indikation av ett fel.</para>
+</note>
+
+<para
+>När &kdesrc-build; har bekräftat signalen kommer den att sluta bearbetningen efter att den aktuella modulen har byggts och installerats. Om &kdesrc-build; fortfarande uppdaterar källkoden när begäran tas emot, kommer &kdesrc-build; att stoppa efter uppdateringen av modulens källkod är klar. När både uppdaterings- och byggprocessen har stoppats tidigt, kommer &kdesrc-build; skriva ut sina delresultat och avsluta. </para>
 
 </sect3>
 
