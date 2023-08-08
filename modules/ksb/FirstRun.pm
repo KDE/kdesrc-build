@@ -355,7 +355,7 @@ DONE
 
  b[*] You can manually configure your shell rc-file with the snippet below:
 DONE
-        say BASE_SHELL_SNIPPET;
+        say BASE_SHELL_SNIPPET . "export PATH=\"$baseDir:\$PATH\"\n";
         say EXT_SHELL_RC_SNIPPET
             if $extendedShell;
     }
