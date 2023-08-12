@@ -484,6 +484,7 @@ libxcb-keysyms1-dev
 libxcb-res0-dev
 libxcb-xfixes0-dev
 libxcb-xkb-dev
+libxcb-xtest0-dev
 libxfixes-dev
 libxrender-dev
 wayland-protocols
@@ -558,6 +559,8 @@ modemmanager-dev
 libpulse-dev
 # plymouth-kcm
 libplymouth-dev
+# kscreenlocker
+libpam0g-dev
 
 @@ pkg/opensuse/unknown
 cmake
