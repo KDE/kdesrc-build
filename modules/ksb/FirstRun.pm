@@ -468,6 +468,7 @@ libpolkit-gobject-1-dev
 libpolkit-agent-1-dev
 # .. kdoctools
 libxml2-dev
+libxml2-utils
 libxslt-dev
 # .. libksysguard
 libnl-3-dev
