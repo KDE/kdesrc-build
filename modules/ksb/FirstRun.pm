@@ -470,6 +470,9 @@ libpolkit-agent-1-dev
 libxml2-dev
 libxml2-utils
 libxslt-dev
+docbook
+docbook-xsl
+docbook-xml
 # .. libksysguard
 libnl-3-dev
 libnl-route-3-dev
