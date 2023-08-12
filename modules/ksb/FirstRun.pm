@@ -998,6 +998,7 @@ bison
 boost-dev
 clang-extra-tools
 cmake
+curl-dev
 cyrus-sasl-dev
 doxygen
 eudev-dev
@@ -1006,6 +1007,7 @@ flex
 giflib-dev
 gperf
 gpgme-dev
+graphviz
 grantlee-dev
 gst-plugins-base-dev
 gstreamer-dev
@@ -1025,12 +1027,14 @@ libsecret-dev
 libva-dev
 libxcvt-dev
 libxkbfile-dev
+libxmlb-dev
 libxrender-dev
 libxslt-dev
 libxtst-dev
 linux-pam-dev
 lm-sensors-dev
 lmdb-dev
+meson
 modemmanager-dev
 mpv-dev
 networkmanager-dev
@@ -1069,6 +1073,7 @@ qt6-qtsvg-dev
 qt6-qttools-dev
 qt6-qtwayland-dev
 signond-dev
+stb
 texinfo
 wayland-protocols
 xapian-core-dev
@@ -1078,6 +1083,7 @@ xcb-util-keysyms-dev
 xcb-util-wm-dev
 xkeyboard-config-dev
 xmlto
+yaml-dev
 
 @@ pkg/freebsd/unknown
 automake
