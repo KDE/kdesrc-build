@@ -545,6 +545,9 @@ libxcb-cursor-dev
 libxcb-damage0-dev
 libxcb-image0-dev
 libxcb-util-dev
+libxcb-present-dev
+libxcb-xinerama0-dev
+libxkbcommon-x11-dev
 # plasma
 libqalculate-dev
 libxcb-randr0-dev
