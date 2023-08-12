@@ -561,6 +561,11 @@ libpulse-dev
 libplymouth-dev
 # kscreenlocker
 libpam0g-dev
+# kpipewire
+libpipewire-0.3-dev
+libavcodec-dev
+libavformat-dev
+libswscale-dev
 
 @@ pkg/opensuse/unknown
 cmake
