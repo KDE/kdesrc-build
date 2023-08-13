@@ -516,6 +516,9 @@ liblzma-dev
 libqalculate-dev
 libxft-dev
 libxtst-dev
+libappstreamqt-dev
+libpackagekitqt5-dev
+libxcursor-dev
 # And others
 qt5keychain-dev
 libopenal-dev
