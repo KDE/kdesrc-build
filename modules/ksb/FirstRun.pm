@@ -677,6 +677,7 @@ appstream-qt-devel
 aha
 bison
 boost-devel
+bzip2
 cfitsio-devel
 chmlib-devel
 cmake
