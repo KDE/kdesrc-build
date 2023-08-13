@@ -569,6 +569,8 @@ libpipewire-0.3-dev
 libavcodec-dev
 libavformat-dev
 libswscale-dev
+# libkexiv2
+libexiv2-dev
 
 @@ pkg/opensuse/unknown
 cmake
