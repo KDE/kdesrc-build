@@ -1004,6 +1004,7 @@ cyrus-sasl-dev
 doxygen
 eudev-dev
 exiv2-dev
+ffmpeg-dev
 flex
 giflib-dev
 gperf
@@ -1012,10 +1013,12 @@ graphviz
 grantlee-dev
 gst-plugins-base-dev
 gstreamer-dev
+kdsoap-dev
 lcms2-dev
 libaccounts-qt-dev
 libcanberra-dev
 libdbusmenu-qt-dev
+libdisplay-info-dev
 libdmtx-dev
 libepoxy-dev
 libgcrypt-dev
@@ -1073,6 +1076,7 @@ qt6-qtpositioning-dev
 qt6-qtsvg-dev
 qt6-qttools-dev
 qt6-qtwayland-dev
+qt6-qtwebengine-dev
 signond-dev
 stb
 texinfo
