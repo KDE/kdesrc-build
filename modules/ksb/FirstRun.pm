@@ -754,6 +754,7 @@ libxkbcommon-devel
 libxkbcommon-x11-devel
 libxml2
 libzip-devel
+lm_sensors-devel
 make
 meson
 mpv-libs-devel
