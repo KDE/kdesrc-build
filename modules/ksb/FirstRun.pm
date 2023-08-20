@@ -808,6 +808,7 @@ plymouth-devel
 qt5-*-devel
 qt5-qtbase-static
 qt5-qttools-static
+qt6-*-devel
 qtkeychain-qt5-devel
 PackageKit
 SDL2-devel
