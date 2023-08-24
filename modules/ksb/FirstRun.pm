@@ -603,6 +603,7 @@ plymouth-devel
 libxml2-tools
 lmdb-devel
 make
+ninja
 openssl
 perl
 perl(IO::Socket::SSL)
