@@ -838,11 +838,9 @@ sub setOption
     while (my ($key, $value) = each %options) {
         my $normalizedKey = $key;
         $normalizedKey =~ s/^#//; # Remove sticky key modifier.
-        given ($normalizedKey) {
-            when ('colorful-output') { ksb::Debug::setColorfulOutput($value); }
-            when ('debug-level')     { ksb::Debug::setDebugLevel($value); }
-            when ('pretend')         { ksb::Debug::setPretending($value); }
-        }
+        if ($normalizedKey eq 'colorful-output')    { ksb::Debug::setColorfulOutput($value); }
+        elsif ($normalizedKey eq 'debug-level')     { ksb::Debug::setDebugLevel($value); }
+        elsif ($normalizedKey eq 'pretend')         { ksb::Debug::setPretending($value); }
     }
 }
 
