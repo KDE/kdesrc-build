@@ -598,7 +598,7 @@ libqt5-qtwayland-private-headers-devel
 libqt5-qtimageformats-devel
 libQt5Core-private-headers-devel
 libQt5DesignerComponents5
-packagekit
+PackageKit
 plymouth-devel
 libxml2-tools
 lmdb-devel
