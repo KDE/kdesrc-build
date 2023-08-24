@@ -279,15 +279,13 @@ sub setScmType
 
     my $newType;
 
-    given($scmType) {
-        when('git')  { $newType = ksb::Updater::Git->new($self); }
-        when('proj') { $newType = ksb::Updater::KDEProject->new($self); }
-        when('metadata') { $newType = ksb::Updater::KDEProjectMetadata->new($self); }
-        when('svn')  { $newType = ksb::Updater::Svn->new($self); }
-        when('bzr')  { croak_internal ("Tried to set bzr scm type"); }
-        when('qt5')  { $newType = ksb::Updater::Qt5->new($self); }
-        default      { $newType = undef; }
-    }
+    if ($scmType eq 'git')          { $newType = ksb::Updater::Git->new($self); }
+    elsif ($scmType eq 'proj')     { $newType = ksb::Updater::KDEProject->new($self); }
+    elsif ($scmType eq 'metadata') { $newType = ksb::Updater::KDEProjectMetadata->new($self); }
+    elsif ($scmType eq 'svn')      { $newType = ksb::Updater::Svn->new($self); }
+    elsif ($scmType eq 'bzr')      { croak_internal ("Tried to set bzr scm type"); }
+    elsif ($scmType eq 'qt5')      { $newType = ksb::Updater::Qt5->new($self); }
+    else                            { $newType = undef; }
 
     $self->{scm_obj} = $newType;
 }
