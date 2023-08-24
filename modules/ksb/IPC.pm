@@ -124,70 +124,58 @@ sub _updateSeenModulesFromMessage
 
     croak_runtime("IPC failure: no IPC mechanism defined") unless $ipcType;
 
-    given ($ipcType) {
-        when (ksb::IPC::MODULE_SUCCESS) {
-            my ($ipcModuleName, $msg) = split(/,/, $buffer);
-            $message = $msg;
+    if ($ipcType eq ksb::IPC::MODULE_SUCCESS) {
+        my ($ipcModuleName, $msg) = split(/,/, $buffer);
+        $message = $msg;
+        $updated->{$ipcModuleName} = 'success';
+    } elsif ($ipcType eq ksb::IPC::MODULE_SKIPPED) {
+        # The difference between success here and 'skipped' below
+        # is that success means we should build even though we
+        # didn't perform an update, while 'skipped' means the
+        # *build* should be skipped even though there was no
+        # failure.
+        $message = 'skipped';
+        $updated->{$buffer} = 'success';
+    } elsif ($ipcType eq ksb::IPC::MODULE_CONFLICT) {
+        $message = 'conflicts present';
+        $updated->{$buffer} = 'failed';
+    } elsif ($ipcType eq ksb::IPC::MODULE_FAILURE) {
+        $message = 'update failed';
+        $updated->{$buffer} = 'failed';
+    } elsif ($ipcType eq ksb::IPC::MODULE_UPTODATE) {
+        # Although the module source hasn't changed, the user might be forcing a
+        # rebuild, so our message should reflect what's actually going to happen.
+        $message = 'no files affected';
+        my ($ipcModuleName, $refreshReason) = split(',', $buffer);
+
+        if ($refreshReason) {
             $updated->{$ipcModuleName} = 'success';
+            $self->{why_refresh}->{$ipcModuleName} = $refreshReason;
+        } else {
+            $updated->{$ipcModuleName} = 'skipped';
+        }
+    } elsif ($ipcType eq ksb::IPC::MODULE_PERSIST_OPT) {
+        my ($ipcModuleName, $optName, $value) = split(',', $buffer);
+        if ($self->{opt_update_handler}) {
+            # Call into callback to update persistent options
+            $self->{opt_update_handler}->($ipcModuleName, $optName, $value);
+        }
+    } elsif ($ipcType eq ksb::IPC::MODULE_LOGMSG) {
+        my ($ipcModuleName, $logMessage) = split(',', $buffer, 2);
 
-        }
-        when (ksb::IPC::MODULE_SKIPPED) {
-            # The difference between success here and 'skipped' below
-            # is that success means we should build even though we
-            # didn't perform an update, while 'skipped' means the
-            # *build* should be skipped even though there was no
-            # failure.
-            $message = 'skipped';
-            $updated->{$buffer} = 'success';
-        }
-        when (ksb::IPC::MODULE_CONFLICT) {
-            $message = 'conflicts present';
-            $updated->{$buffer} = 'failed';
-        }
-        when (ksb::IPC::MODULE_FAILURE) {
-            $message = 'update failed';
-            $updated->{$buffer} = 'failed';
-        }
-        when (ksb::IPC::MODULE_UPTODATE) {
-            # Although the module source hasn't changed, the user might be forcing a
-            # rebuild, so our message should reflect what's actually going to happen.
-            $message = 'no files affected';
-            my ($ipcModuleName, $refreshReason) = split(',', $buffer);
+        # Save it for later if we can't print it yet.
+        $messagesRef->{$ipcModuleName} //= [ ];
+        push @{$messagesRef->{$ipcModuleName}}, $logMessage;
+    } elsif ($ipcType eq ksb::IPC::ALL_DONE) {
+        $self->{updates_done} = 1;
+    } elsif ($ipcType eq ksb::IPC::MODULE_POSTBUILD_MSG) {
+        my ($ipcModuleName, $postBuildMsg) = split(',', $buffer, 2);
 
-            if ($refreshReason) {
-                $updated->{$ipcModuleName} = 'success';
-                $self->{why_refresh}->{$ipcModuleName} = $refreshReason;
-            } else {
-                $updated->{$ipcModuleName} = 'skipped';
-            }
-        }
-        when (ksb::IPC::MODULE_PERSIST_OPT) {
-            my ($ipcModuleName, $optName, $value) = split(',', $buffer);
-            if ($self->{opt_update_handler}) {
-                # Call into callback to update persistent options
-                $self->{opt_update_handler}->($ipcModuleName, $optName, $value);
-            }
-        }
-        when (ksb::IPC::MODULE_LOGMSG) {
-            my ($ipcModuleName, $logMessage) = split(',', $buffer, 2);
-
-            # Save it for later if we can't print it yet.
-            $messagesRef->{$ipcModuleName} //= [ ];
-            push @{$messagesRef->{$ipcModuleName}}, $logMessage;
-        }
-        when (ksb::IPC::ALL_DONE) {
-            $self->{updates_done} = 1;
-        }
-        when (ksb::IPC::MODULE_POSTBUILD_MSG) {
-            my ($ipcModuleName, $postBuildMsg) = split(',', $buffer, 2);
-
-            $self->{postbuild_msg}->{$ipcModuleName} //= [ ];
-            push @{$self->{postbuild_msg}->{$ipcModuleName}}, $postBuildMsg;
-        }
-        default {
-            croak_internal("Unhandled IPC type: $ipcType");
-        }
-    };
+        $self->{postbuild_msg}->{$ipcModuleName} //= [ ];
+        push @{$self->{postbuild_msg}->{$ipcModuleName}}, $postBuildMsg;
+    } else {
+        croak_internal("Unhandled IPC type: $ipcType");
+    }
 
     return $message;
 }
