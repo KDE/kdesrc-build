@@ -1128,6 +1128,7 @@ qt6-qtsvg-dev
 qt6-qttools-dev
 qt6-qtwayland-dev
 qt6-qtwebengine-dev
+qtkeychain-dev
 signond-dev
 stb
 texinfo
