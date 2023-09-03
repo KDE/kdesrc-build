@@ -1040,6 +1040,8 @@ ruby-test-unit
 plymouth
 # appstream
 gobject-introspection
+xf86-input-evdev
+python-chai
 
 @@ pkg/alpine/unknown
 alpine-sdk
