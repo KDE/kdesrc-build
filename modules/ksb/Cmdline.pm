@@ -9,7 +9,7 @@ use ksb::PhaseList;
 use ksb::OSSupport;
 use ksb::Version qw(scriptVersion);
 
-use Getopt::Long qw(GetOptionsFromArray :config gnu_getopt nobundling);
+use Getopt::Long qw(GetOptionsFromArray :config gnu_getopt nobundling no_ignore_case);
 
 =head1 SYNOPSIS
 
@@ -145,7 +145,17 @@ sub readCommandLineOptionsAndSelectors (@options)
         author      => sub { _showAuthorAndExit();  },
         help        => sub { _showHelpAndExit();    },
 
-        install   => sub {
+        # Intended as a short option, -d would imply --include-dependencies and
+        # -D implies --no-include-dependencies.
+        d => sub {
+            $auxOptions{'include-dependencies'} = 1;
+        },
+
+        D => sub {
+            $auxOptions{'include-dependencies'} = 0;
+        },
+
+        install => sub {
             $opts->{run_mode} = 'install';
             $phases->phases('install');
         },
@@ -336,7 +346,7 @@ sub _showHelpAndExit
 
     say <<~DONE;
         kdesrc-build $scriptVersion
-        Copyright (c) 2003 - 2022 Michael Pyne <mpyne\@kde.org> and others, and is
+        Copyright (c) 2003 - 2023 Michael Pyne <mpyne\@kde.org> and others, and is
         distributed under the terms of the GNU GPL v2.
 
         This script automates the download, build, and install process for KDE software
@@ -350,7 +360,7 @@ sub _showHelpAndExit
             All configured modules are built if none are listed.
 
         Important Options:
-            --pretend              Don't actually take major actions, instead describe
+            --pretend (or -p)      Don't actually take major actions, instead describe
                                    what would be done.
             --list-build           List what modules would be built in the order in
                                    which they would be built.
@@ -358,10 +368,11 @@ sub _showHelpAndExit
                                    would be built, using a `tree` format. Very useful
                                    for learning how modules relate to each other. May
                                    generate a lot of output.
-            --no-src               Don't update source code, just build/install.
-            --src-only             Only update the source code
+            --no-src   (or -S)     Don't update source code, just build/install.
+            --src-only (or -s)     Only update the source code
+            --metadata-only        Only update dependency info and KDE project database
             --refresh-build        Start the build from scratch.
-
+              (or -r)
             --rc-file=<filename>   Read configuration from filename instead of default.
             --initial-setup        Installs Plasma env vars (~/.bashrc), required
                                    system pkgs, and a base kdesrc-buildrc.
@@ -371,8 +382,10 @@ sub _showHelpAndExit
             --stop-before=<pkg>    Stops just before or after the given package is
             --stop-after=<pkg>         reached.
 
-            --include-dependencies Also builds KDE-based dependencies of given modules.
-              (This is enabled by default; use --no-include-dependencies to disable)
+            --include-dependencies
+             -d                    Also builds KDE-based dependencies of given modules.
+              (This is enabled by default; use --no-include-dependencies or -D to disable)
+
             --stop-on-failure      Stops the build as soon as a package fails to build.
 
         More docs at https://docs.kde.org/?application=kdesrc-build
@@ -443,17 +456,19 @@ sub _supportedOptions
         'colorful-output|color!',
         'debug',
         'dependency-tree',
-        'help',
-        'ignore-modules=s{,}',
+        'help|h',
+        'ignore-modules|!=s{,}',
+        'd', # --include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
         'install',
         'install-only',
         'list-build',
         'metadata-only',
         'niceness|nice:10',
         'no-build',
+        'D', # --no-include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
         'no-install',
         'no-metadata',
-        'no-src|no-svn',
+        'no-src|no-svn|S',
         'no-tests',
         'prefix=s',
         'pretend|dry-run|p',
@@ -464,35 +479,36 @@ sub _supportedOptions
         'really-quiet',
         'rebuild-failures',
         'reconfigure',
-        'refresh-build',
+        'refresh-build|r',
         'resume',
-        'resume-after=s',
-        'resume-from=s',
+        'resume-after|after|a=s',
+        'resume-from|from|f=s',
         'revision=i',
         'set-module-option-value=s',
         'show-info',
-        'src-only|svn-only',
+        'src-only|svn-only|s',
         'start-program|run=s{,}',
-        'stop-after=s',
-        'stop-before=s',
+        'stop-after|to=s',
+        'stop-before|until=s',
         'uninstall',
         'verbose',
         'version|v',
     );
 
     # Remove stuff like ! and =s from list above;
-    my @optNames = map { m/([a-z-]+)/; $1 } @options;
+    my @optNames = map { m/([a-zA-Z-]+)/; $1 } @options;
 
     # Make sure this doesn't overlap with BuildContext default flags and options
     my %optsSeen;
 
-    $optsSeen{$_}++ foreach @optNames;
+    @optsSeen{@optNames} = (1) x @optNames;
+
     $optsSeen{$_}++ foreach keys %ksb::BuildContext::defaultGlobalFlags;
     $optsSeen{$_}++ foreach keys %ksb::BuildContext::defaultGlobalOptions;
 
     my @violators = grep { $optsSeen{$_} > 1 } keys %optsSeen;
     if (@violators) {
-        die "Options " . join(', ', @violators) . "overlap in ksb::Cmdline!";
+        die "The following options overlap in ksb::Cmdline: [" . join(', ', @violators) . "]!";
     }
 
     return @options;
