@@ -985,6 +985,7 @@ pkg-config
 git
 bzr
 # Qt-related
+qt6
 qt5-base
 qt5-script
 qt5-websockets
