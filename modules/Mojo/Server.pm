@@ -1,11 +1,11 @@
 package Mojo::Server;
 use Mojo::Base 'Mojo::EventEmitter';
 
-use Carp qw(croak);
-use Mojo::File qw(path);
+use Carp         qw(croak);
+use Mojo::File   qw(path);
 use Mojo::Loader qw(load_class);
-use Mojo::Util qw(md5_sum);
-use POSIX ();
+use Mojo::Util   qw(md5_sum);
+use POSIX        ();
 use Scalar::Util qw(blessed);
 
 has app             => sub { shift->build_app('Mojo::HelloWorld') };
@@ -54,9 +54,9 @@ sub load_app {
     local @ARGS_OVERRIDE = @args;
 
     # Try to load application from script into sandbox
-    delete $INC{$path};
-    my $app = eval "package Mojo::Server::Sandbox::@{[md5_sum $path]}; require \$path";
-    die qq{Can't load application from file "$path": $@} if $@;
+    my $app = eval "package Mojo::Server::Sandbox::@{[md5_sum $path]}; do \$path";
+    my $err = $app ? undef : $@ || $! || "$path did not return a true value";
+    die qq{Can't load application from file "$path": $err} if $err;
     die qq{File "$path" did not return an application object.\n} unless blessed $app && $app->can('handler');
     $self->app($app);
   };

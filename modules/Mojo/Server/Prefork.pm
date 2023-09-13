@@ -3,10 +3,10 @@ use Mojo::Base 'Mojo::Server::Daemon';
 
 use Config;
 use File::Spec::Functions qw(tmpdir);
-use Mojo::File qw(path);
-use Mojo::Util qw(steady_time);
-use POSIX qw(WNOHANG);
-use Scalar::Util qw(weaken);
+use Mojo::File            qw(path);
+use Mojo::Util            qw(steady_time);
+use POSIX                 qw(WNOHANG);
+use Scalar::Util          qw(weaken);
 
 has accepts            => 10000;
 has cleanup            => 1;
@@ -39,7 +39,7 @@ sub ensure_pid_file {
   return if -e (my $file = path($self->pid_file));
 
   # Create PID file
-  if (my $err = eval { $file->spurt("$pid\n")->chmod(0644) } ? undef : $@) {
+  if (my $err = eval { $file->spew("$pid\n")->chmod(0644) } ? undef : $@) {
     $self->app->log->error(qq{Can't create process id file "$file": $err})
       and die qq{Can't create process id file "$file": $err};
   }
@@ -110,7 +110,7 @@ sub _manage {
     next unless my $w = $self->{pool}{$pid};
 
     # No heartbeat (graceful stop)
-    $log->error("Worker $pid has no heartbeat ($ht seconds), restarting") and $w->{graceful} = $time
+    $log->error("Worker $pid has no heartbeat ($ht seconds), restarting (see FAQ for more)") and $w->{graceful} = $time
       if !$w->{graceful} && ($w->{time} + $interval + $ht <= $time);
 
     # Graceful stop with timeout
@@ -181,7 +181,10 @@ sub _wait {
   while ($chunk =~ /(\d+):(\d)\n/g) {
     next unless my $w = $self->{pool}{$1};
     @$w{qw(healthy time)} = (1, $time) and $self->emit(heartbeat => $1);
-    $w->{graceful} ||= $time if $2;
+    if ($2) {
+      $w->{graceful} ||= $time;
+      $w->{quit}++;
+    }
   }
 }
 

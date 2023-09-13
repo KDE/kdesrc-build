@@ -955,7 +955,7 @@ sub storePersistentOptions ($self)
 
     eval {
         my $encodedJSON = encode_json($self->{persistent_options});
-        Mojo::File->new($fileName)->spurt($encodedJSON);
+        Mojo::File->new($fileName)->spew($encodedJSON);
     };
 
     if ($@) {

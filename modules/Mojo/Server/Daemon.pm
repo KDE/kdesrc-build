@@ -5,9 +5,9 @@ use Carp qw(croak);
 use Mojo::IOLoop;
 use Mojo::Transaction::WebSocket;
 use Mojo::URL;
-use Mojo::Util qw(term_escape);
+use Mojo::Util      qw(term_escape);
 use Mojo::WebSocket qw(server_handshake);
-use Scalar::Util qw(weaken);
+use Scalar::Util    qw(weaken);
 
 use constant DEBUG => $ENV{MOJO_SERVER_DEBUG} || 0;
 
@@ -194,13 +194,13 @@ sub _listen {
       my ($loop, $stream, $id) = @_;
 
       $self->{connections}{$id} = {tls => $tls};
-      warn "-- Accept $id (@{[$stream->handle->peerhost]})\n" if DEBUG;
+      warn "-- Accept $id (@{[_peer($stream->handle)]})\n" if DEBUG;
       $stream->timeout($self->inactivity_timeout);
 
       $stream->on(close   => sub { $self && $self->_close($id) });
       $stream->on(error   => sub { $self && $self->app->log->error(pop) && $self->_close($id) });
       $stream->on(read    => sub { $self->_read($id => pop) });
-      $stream->on(timeout => sub { $self->_trace($id, 'Inactivity timeout') });
+      $stream->on(timeout => sub { $self->_trace($id, 'Inactivity timeout (see FAQ for more)') });
     }
   );
 
@@ -211,6 +211,8 @@ sub _listen {
   $url->port($self->ports->[-1]) if !$options->{path} && !$url->port;
   say 'Web application available at ', $options->{path} // $url;
 }
+
+sub _peer { $_[0]->isa('IO::Socket::UNIX') ? $_[0]->peerpath : $_[0]->peerhost }
 
 sub _read {
   my ($self, $id, $chunk) = @_;

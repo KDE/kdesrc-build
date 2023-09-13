@@ -1,28 +1,28 @@
 package Mojo::Util;
 use Mojo::Base -strict;
 
-use Carp qw(carp croak);
-use Data::Dumper ();
-use Digest::MD5 qw(md5 md5_hex);
-use Digest::SHA qw(hmac_sha1_hex sha1 sha1_hex);
-use Encode qw(find_encoding);
-use Exporter qw(import);
+use Carp           qw(carp croak);
+use Data::Dumper   ();
+use Digest::MD5    qw(md5 md5_hex);
+use Digest::SHA    qw(hmac_sha1_hex sha1 sha1_hex);
+use Encode         qw(find_encoding);
+use Exporter       qw(import);
 use File::Basename qw(dirname);
-use Getopt::Long qw(GetOptionsFromArray);
+use Getopt::Long   qw(GetOptionsFromArray);
 use IO::Compress::Gzip;
 use IO::Poll qw(POLLIN POLLPRI);
 use IO::Uncompress::Gunzip;
-use List::Util qw(min);
-use MIME::Base64 qw(decode_base64 encode_base64);
-use Pod::Usage qw(pod2usage);
-use Socket qw(inet_pton AF_INET6 AF_INET);
-use Sub::Util qw(set_subname);
-use Symbol qw(delete_package);
+use List::Util         qw(min);
+use MIME::Base64       qw(decode_base64 encode_base64);
+use Pod::Usage         qw(pod2usage);
+use Socket             qw(inet_pton AF_INET6 AF_INET);
+use Sub::Util          qw(set_subname);
+use Symbol             qw(delete_package);
 use Time::HiRes        ();
 use Unicode::Normalize ();
 
 # Check for monotonic clock support
-use constant MONOTONIC => eval { !!Time::HiRes::clock_gettime(Time::HiRes::CLOCK_MONOTONIC()) };
+use constant MONOTONIC => !!eval { Time::HiRes::clock_gettime(Time::HiRes::CLOCK_MONOTONIC()) };
 
 # Punycode bootstring parameters
 use constant {
@@ -57,6 +57,10 @@ my %XML = ('&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;', '\'' =
 # "Sun, 06 Nov 1994 08:49:37 GMT" and "Sunday, 06-Nov-94 08:49:37 GMT"
 my $EXPIRES_RE = qr/(\w+\W+\d+\W+\w+\W+\d+\W+\d+:\d+:\d+\W*\w+)/;
 
+# Header key/value pairs
+my $QUOTED_VALUE_RE   = qr/\G=\s*("(?:\\\\|\\"|[^"])*")/;
+my $UNQUOTED_VALUE_RE = qr/\G=\s*([^;, ]*)/;
+
 # HTML entities
 my $ENTITY_RE = qr/&(?:\#((?:[0-9]{1,7}|x[0-9a-fA-F]{1,6}));|(\w+[;=]?))/;
 
@@ -65,10 +69,10 @@ my (%ENCODING, %PATTERN);
 
 our @EXPORT_OK = (
   qw(b64_decode b64_encode camelize class_to_file class_to_path decamelize decode deprecated dumper encode),
-  qw(extract_usage getopt gunzip gzip hmac_sha1_sum html_attr_unescape html_unescape humanize_bytes md5_bytes md5_sum),
-  qw(monkey_patch network_contains punycode_decode punycode_encode quote scope_guard secure_compare sha1_bytes),
-  qw(sha1_sum slugify split_cookie_header split_header steady_time tablify term_escape trim unindent unquote),
-  qw(url_escape url_unescape xml_escape xor_encode)
+  qw(extract_usage getopt gunzip gzip header_params hmac_sha1_sum html_attr_unescape html_unescape humanize_bytes),
+  qw(md5_bytes md5_sum monkey_patch network_contains punycode_decode punycode_encode quote scope_guard secure_compare),
+  qw(sha1_bytes sha1_sum slugify split_cookie_header split_header steady_time tablify term_escape trim unindent),
+  qw(unquote url_escape url_unescape xml_escape xor_encode)
 );
 
 # Aliases
@@ -160,6 +164,23 @@ sub gzip {
   my $uncompressed = shift;
   IO::Compress::Gzip::gzip \$uncompressed, \my $compressed or croak "Couldn't gzip: $IO::Compress::Gzip::GzipError";
   return $compressed;
+}
+
+sub header_params {
+  my $value = shift;
+
+  my $params = {};
+  while ($value =~ /\G[;\s]*([^=;, ]+)\s*/gc) {
+    my $name = $1;
+
+    # Quoted value
+    if ($value =~ /$QUOTED_VALUE_RE/gco) { $params->{$name} //= unquote($1) }
+
+    # Unquoted value
+    elsif ($value =~ /$UNQUOTED_VALUE_RE/gco) { $params->{$name} //= $1 }
+  }
+
+  return ($params, substr($value, pos($value) // 0));
 }
 
 sub html_attr_unescape { _html(shift, 1) }
@@ -450,10 +471,10 @@ sub _header {
     if ($expires && $str =~ /\G=\s*$EXPIRES_RE/gco) { $part[-1] = $1 }
 
     # Quoted value
-    elsif ($str =~ /\G=\s*("(?:\\\\|\\"|[^"])*")/gc) { $part[-1] = unquote $1 }
+    elsif ($str =~ /$QUOTED_VALUE_RE/gco) { $part[-1] = unquote $1 }
 
     # Unquoted value
-    elsif ($str =~ /\G=\s*([^;, ]*)/gc) { $part[-1] = $1 }
+    elsif ($str =~ /$UNQUOTED_VALUE_RE/gco) { $part[-1] = $1 }
 
     # Separator
     next unless $str =~ /\G[;\s]*,\s*/gc;
@@ -691,6 +712,13 @@ Uncompress bytes with L<IO::Compress::Gunzip>.
   my $compressed = gzip $uncompressed;
 
 Compress bytes with L<IO::Compress::Gzip>.
+
+=head2 header_params
+
+  my ($params, $remainder) = header_params 'one=foo; two="bar", three=baz';
+
+Extract HTTP header field parameters until the first comma according to L<RFC 5987|http://tools.ietf.org/html/rfc5987>.
+Note that this function is B<EXPERIMENTAL> and might change without warning!
 
 =head2 hmac_sha1_sum
 

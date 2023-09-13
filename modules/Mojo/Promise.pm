@@ -1,7 +1,7 @@
 package Mojo::Promise;
 use Mojo::Base -base;
 
-use Carp qw(carp);
+use Carp qw(carp croak);
 use Mojo::Exception;
 use Mojo::IOLoop;
 use Scalar::Util qw(blessed);
@@ -11,17 +11,16 @@ use constant DEBUG => $ENV{MOJO_PROMISE_DEBUG} || 0;
 has ioloop => sub { Mojo::IOLoop->singleton }, weak => 1;
 
 sub AWAIT_CHAIN_CANCEL { }
-
-sub AWAIT_CLONE { _await('clone', @_) }
-
-sub AWAIT_DONE { shift->resolve(@_) }
-sub AWAIT_FAIL { shift->reject(@_) }
+sub AWAIT_CLONE        { _await('clone', @_) }
+sub AWAIT_DONE         { _settle_await(resolve => @_) }
+sub AWAIT_FAIL         { _settle_await(reject  => @_) }
 
 sub AWAIT_GET {
   my $self    = shift;
   my @results = @{$self->{results} // []};
-  die $results[0] unless $self->{status} eq 'resolve';
-  return wantarray ? @results : $results[0];
+  return wantarray ? @results : $results[0] if $self->{status} eq 'resolve';
+  die $results[0]                           if ref $results[0] || $results[0] =~ m!\n!;
+  croak $results[0];
 }
 
 sub AWAIT_IS_CANCELLED {undef}
@@ -73,7 +72,8 @@ sub map {
   my @wait  = map { $start[0]->clone } 0 .. $#items;
 
   my $start_next = sub {
-    return () unless my $item = shift @items;
+    return () unless @items;
+    my $item = shift @items;
     my ($start_next, $chain) = (__SUB__, shift @wait);
     $_->$cb->then(sub { $chain->resolve(@_); $start_next->() }, sub { $chain->reject(@_); @items = () }) for $item;
     return ();
@@ -223,13 +223,20 @@ sub _settle {
   if ($thenable && $status eq 'resolve') {
     $results[0]->then(sub { $self->resolve(@_); () }, sub { $self->reject(@_); () });
   }
-
   elsif (!$self->{results}) {
     @{$self}{qw(results status)} = (\@results, $status);
     $self->_defer;
   }
 
   return $self;
+}
+
+sub _settle_await {
+  my ($status, $self, @results) = @_;
+  return $results[0]->then(sub { $self->resolve(@_); () }, sub { $self->reject(@_); () })
+    if blessed $results[0] && $results[0]->can('then');
+  @{$self}{qw(results status)} = ([@results], $status) if !$self->{results};
+  $self->_defer;
 }
 
 sub _then_cb {

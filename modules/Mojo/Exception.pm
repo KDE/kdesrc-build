@@ -2,9 +2,9 @@ package Mojo::Exception;
 use Mojo::Base -base;
 use overload bool => sub {1}, '""' => sub { shift->to_string }, fallback => 1;
 
-use Carp qw(croak);
-use Exporter qw(import);
-use Mojo::Util qw(decode);
+use Carp         qw(croak);
+use Exporter     qw(import);
+use Mojo::Util   qw(decode);
 use Scalar::Util qw(blessed);
 
 has [qw(frames line lines_after lines_before)] => sub { [] };
@@ -99,7 +99,7 @@ sub to_string {
 
   if (my $max = @$frames) {
     $str .= "Traceback (most recent call first):\n";
-    $str .= qq{  File "$_->[1]", line $_->[2], in "$_->[0]"\n} for @$frames;
+    $str .= qq{  File "$_->[1]", line $_->[2], in "$_->[3]"\n} for @$frames;
   }
 
   return $str;
