@@ -1039,6 +1039,8 @@ xapian-core
 libdmtx
 ruby-test-unit
 plymouth
+#plasma-desktop
+xdotool
 # appstream
 gobject-introspection
 xf86-input-evdev
