@@ -984,7 +984,6 @@ sub prune_under_directory_p ($module, $dir)
             remove_tree($dir, {
                 keep_root => 1,
                 error     => \$errorRef,
-                safe      => 1,
             });
 
             my $retval;
