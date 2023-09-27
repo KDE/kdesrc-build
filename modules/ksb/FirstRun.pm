@@ -581,6 +581,7 @@ clang
 cmake
 cmake(packagekitqt5)
 cmake(packagekitqt6)
+cmake(QCoro6)
 cmake(Qt5Core)
 cmake(Qt5Multimedia)
 cmake(Qt5Qml)
