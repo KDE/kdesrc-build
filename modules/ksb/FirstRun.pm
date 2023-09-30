@@ -987,6 +987,7 @@ intltool
 pkg-config
 git
 bzr
+gi-docgen
 # Qt-related
 qt6
 qt5-base
