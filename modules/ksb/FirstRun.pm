@@ -775,6 +775,7 @@ libavutil-free-devel
 libblack-hole-solver-devel
 libcanberra-devel
 libepoxy-devel
+libfakekey-devel
 libfreecell-solver-devel
 libgcrypt-devel
 libgit2-devel
