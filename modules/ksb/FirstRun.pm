@@ -970,7 +970,6 @@ flex
 gcc
 gperf
 make
-kdesdk
 # .. llvm
 clang
 cmake
