@@ -627,6 +627,7 @@ docbook-xsl-stylesheets
 docbook_4
 doxygen
 flex
+libsndfile-devel
 gettext-runtime
 gettext-tools
 giflib-devel
@@ -723,6 +724,18 @@ qt6-waylandclient-private-devel
 shared-mime-info
 snowball-devel
 vlc-devel
+qt6-multimediawidgets-devel
+openal-soft-devel
+libxapian-devel
+cyrus-sasl-devel
+qt6-webenginewidgets-devel
+qt6-networkauth-devel
+zxing-cpp-devel
+libpoppler-qt6-devel
+liblcms2-devel
+qt6-statemachine-devel
+AppStream-devel
+xdotool
 
 @@ pkg/fedora/unknown
 appstream-qt-devel
