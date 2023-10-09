@@ -461,6 +461,9 @@ qtscript5-dev
 qttools5-dev
 qtwayland5-dev-tools
 qtxmlpatterns5-dev-tools
+qt6-wayland-dev-tools
+libqt6svg6-dev
+libqt6core5compat6-dev
 packagekit
 # Frameworks dependencies
 # .. polkit-qt-1
@@ -574,6 +577,11 @@ libavformat-dev
 libswscale-dev
 # libkexiv2
 libexiv2-dev
+# kcalc
+graphviz
+doxygen
+xsltproc
+xmlto
 
 @@ pkg/opensuse/unknown
 bison
