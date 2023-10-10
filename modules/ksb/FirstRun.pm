@@ -461,9 +461,16 @@ qtscript5-dev
 qttools5-dev
 qtwayland5-dev-tools
 qtxmlpatterns5-dev-tools
+qt6-tools-dev
+qt6-declarative-dev
+qt6-wayland
+qt6-wayland-dev
 qt6-wayland-dev-tools
+qt6-base-private-dev
 libqt6svg6-dev
 libqt6core5compat6-dev
+libqt6opengl6-dev
+libqt6shadertools6-dev
 packagekit
 # Frameworks dependencies
 # .. polkit-qt-1
@@ -1231,7 +1238,7 @@ emerge -v --noreplace
 # List of all options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
 
 global
-    branch-group kf5-qt5
+    branch-group kf6-qt6
 
     # Finds and includes *KDE*-based dependencies into the build.  This makes
     # it easier to ensure that you have all the modules needed, but the
@@ -1249,7 +1256,7 @@ global
     # relative to source-dir by default
     build-dir ~/kde/build
 
-#   qtdir  ~/kde/qt5 # Where to install Qt5 if kdesrc-build supplies it
+#   qtdir  ~/kde/qt # Where to install Qt6 if kdesrc-build supplies it
 
     cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
@@ -1299,15 +1306,15 @@ end global
 # Common options that should be set for some KDE modules no matter how
 # kdesrc-build finds them. Do not comment these out unless you know
 # what you are doing.
-include %{base_dir}/kf5-common-options-build-include
+include %{base_dir}/kf6-common-options-build-include
 
 # Qt and some Qt-using middleware libraries. Uncomment if your distribution's Qt
 # tools are too old but be warned that Qt take a long time to build!
-#include %{base_dir}/qt5-build-include
-#include %{base_dir}/custom-qt5-libs-build-include
+#include %{base_dir}/qt6-build-include
+#include %{base_dir}/custom-qt6-libs-build-include
 
-# KF5 and Plasma :)
-include %{base_dir}/kf5-qt5-build-include
+# KF6 and Plasma :)
+include %{base_dir}/kf6-qt6-build-include
 
 # To change options for modules that have already been defined, use an
-# 'options' block. See kf5-common-options-build-include for an example
+# 'options' block. See kf6-common-options-build-include for an example
