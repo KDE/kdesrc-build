@@ -582,6 +582,9 @@ graphviz
 doxygen
 xsltproc
 xmlto
+# poppler
+libnss3-dev
+libtiff-dev
 
 @@ pkg/opensuse/unknown
 bison
