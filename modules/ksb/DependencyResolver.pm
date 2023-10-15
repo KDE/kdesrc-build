@@ -103,6 +103,7 @@ sub _addDependency($self, $depName, $depBranch, $srcName, $srcBranch, $depKey = 
     # Initialize with hashref if not already defined. The hashref will hold
     #     - => [ ] (list of explicit *NON* dependencies of item:$branch),
     #     + => [ ] (list of dependencies of item:$branch)
+    #     @ => [ ] (list of runtime dependencies of item:$branch)
     #
     # Each dependency item is tracked at the module:branch level, and there
     # is always at least an entry for module:*, where '*' means branch
@@ -114,12 +115,14 @@ sub _addDependency($self, $depName, $depBranch, $srcName, $srcBranch, $depKey = 
     $dependenciesOfRef->{"$depName:*"} //= {
         '-' => [ ],
         '+' => [ ],
+        '@' => [ ],
     };
 
     # Create actual branch entry if not present
     $dependenciesOfRef->{"$depName:$depBranch"} //= {
         '-' => [ ],
         '+' => [ ],
+        '@' => [ ],
     };
 
     push @{$dependenciesOfRef->{"$depName:$depBranch"}->{$depKey}},
@@ -184,8 +187,14 @@ sub readDependencyData
         $sourceBranch ||= '*';
 
         # _shortenModuleName may remove negation marker so check now
-        my $depKey = (index($sourceItem, '-') == 0) ? '-' : '+';
-        $sourceItem =~ s/^-//; # remove negation marker if name already short
+        my $depKey = '+';
+        if (index($sourceItem, '-') == 0) {
+            $depKey = '-';
+            $sourceItem =~ s/^-//; # remove negation marker if name already short
+        } elsif (index($sourceItem, '@') == 0) {
+            $depKey = '@'; # Runtime dependency marker
+            $sourceItem =~ s/^@//;
+        }
 
         # Source can never be a catch-all so we can shorten early. Also,
         # we *must* shorten early to avoid a dependency on a long path.
@@ -268,6 +277,7 @@ sub _canonicalizeDependencies
     foreach my $dependenciesRef (values %{$dependenciesOfRef}) {
         @{$dependenciesRef->{'-'}} = sort @{$dependenciesRef->{'-'}};
         @{$dependenciesRef->{'+'}} = sort @{$dependenciesRef->{'+'}};
+        @{$dependenciesRef->{'@'}} = sort @{$dependenciesRef->{'@'}};
     }
 }
 
@@ -279,6 +289,7 @@ sub _lookupDirectDependencies
     my $dependenciesOfRef = $self->{dependenciesOf};
 
     my @directDeps = ();
+    my @runtimeDeps = ();
     my @exclusions = ();
 
     my $item = _shortenModuleName($path);
@@ -287,6 +298,7 @@ sub _lookupDirectDependencies
     if ($moduleDepEntryRef) {
         debug("handling dependencies for: $item without branch (*)");
         push @directDeps, @{$moduleDepEntryRef->{'+'}};
+        push @runtimeDeps, @{$moduleDepEntryRef->{'@'}};
         push @exclusions, @{$moduleDepEntryRef->{'-'}};
     }
 
@@ -295,6 +307,7 @@ sub _lookupDirectDependencies
         if ($moduleDepEntryRef) {
             debug("handling dependencies for: $item with branch ($branch)");
             push @directDeps, @{$moduleDepEntryRef->{'+'}};
+            push @runtimeDeps, @{$moduleDepEntryRef->{'@'}};
             push @exclusions, @{$moduleDepEntryRef->{'-'}};
         }
     }
@@ -323,7 +336,8 @@ sub _lookupDirectDependencies
     my $result = {
         syntaxErrors => 0,
         trivialCycles => 0,
-        dependencies => {}
+        dependencies => {},
+        runtimeDependencies => {}
     };
 
     for my $dep (@directDeps) {
@@ -349,6 +363,36 @@ sub _lookupDirectDependencies
             # branch name/value
             $depBranch = undef if ($depBranch eq '' || $depBranch eq '*');
             $result->{dependencies}->{$depItem} = {
+                item => $depItem,
+                path => $depPath,
+                branch => $depBranch
+            };
+        }
+    }
+
+    for my $dep (@runtimeDeps) {
+        my ($depPath, $depBranch) = ($dep =~ m/^([^:]+):(.*)$/);
+        if (!$depPath) {
+            error("r[Invalid runtime dependency declaration: b[$dep]]");
+            ++($result->{syntaxErrors});
+            next;
+        }
+        my $depItem = _shortenModuleName($depPath);
+        if ($depItem eq $item) {
+            debug("\tBreaking trivial cycle of b[$depItem] -> b[$item]");
+            ++($result->{trivialCycles});
+            next;
+        }
+
+        if ($result->{runtimeDependencies}->{$depItem}) {
+            debug("\tSkipping duplicate direct dependency b[$depItem] of b[$item]");
+        }
+        else {
+            $depBranch //= '';
+            # work-around: wildcard branches are a don't care, not an actual
+            # branch name/value
+            $depBranch = undef if ($depBranch eq '' || $depBranch eq '*');
+            $result->{runtimeDependencies}->{$depItem} = {
                 item => $depItem,
                 path => $depPath,
                 branch => $depBranch
@@ -385,7 +429,7 @@ sub _detectDependencyCycle
         }
         else {
             error("Found a dependency cycle at: $depItem while tracing $item")
-                unless isTesting();
+                unless isTesting() || $depModuleGraph->{isRuntimeDep};
             $depModuleGraph->{traces}->{result} = 1;
         }
     }
@@ -570,6 +614,89 @@ sub _resolveDependenciesForModuleDescription
                 build => $depModule && $includeDependencies ? 1 : 0,
                 branch => $depBranch,
                 deps => $depLookupResult->{dependencies},
+                runtimeDeps => $depLookupResult->{runtimeDependencies},
+                isRuntimeDep => 0,
+                allDeps => {},
+                module => $depModule,
+                traces => {}
+            };
+
+            my $depModuleDesc = {
+                includeDependencies => $includeDependencies,
+                module => $depModule,
+                item => $depItem,
+                path => $resolvedPath,
+                branch => $depBranch
+            };
+
+            if (!$moduleGraph->{$depItem}->{build}) {
+                debug (" y[b[*] $item depends on $depItem, but no module builds $depItem for this run.]");
+            }
+
+            if($depModule && $depBranch && (_getBranchOf($depModule) // '') ne "$depBranch") {
+                my $wrongBranch = _getBranchOf($depModule) // '?';
+                error(" r[b[*] $item needs $depItem:$prettyDepBranch, not $depItem:$wrongBranch]");
+                ++($errors->{branchErrors});
+            }
+
+            debug("Resolving transitive dependencies for module: b[$item] (via: b[$depItem:$prettyDepBranch])");
+            my $resolvErrors = $self->_resolveDependenciesForModuleDescription(
+                $moduleGraph,
+                $depModuleDesc
+            );
+
+            $errors->{branchErrors} += $resolvErrors->{branchErrors};
+            $errors->{syntaxErrors} += $resolvErrors->{syntaxErrors};
+            $errors->{trivialCycles} += $resolvErrors->{trivialCycles};
+        }
+    }
+
+    while (my ($depItem, $depInfo) = each %{$moduleGraph->{$item}->{runtimeDeps}}) {
+        my $depPath = $depInfo->{path};
+        my $depBranch = $depInfo->{branch};
+
+        my $prettyDepBranch = $depBranch ? "$depBranch" : "*";
+
+        debug ("\tdep-resolv: b[$item:$prettyBranch] depends on b[$depItem:$prettyDepBranch]");
+
+        my $depModuleGraph = $moduleGraph->{$depItem};
+
+        if($depModuleGraph) {
+            my $previouslySelectedBranch = _detectBranchConflict($moduleGraph, $depItem, $depBranch);
+            if($previouslySelectedBranch) {
+                error("r[Found a dependency conflict in branches ('b[$previouslySelectedBranch]' is not 'b[$prettyDepBranch]') for b[$depItem]! :(");
+                ++($errors->{branchErrors});
+            }
+            else {
+                if($depBranch) {
+                    $depModuleGraph->{branch} = $depBranch;
+                }
+            }
+        }
+        else {
+            my $depModule = $self->{moduleFactoryRef}($depItem);
+            my $resolvedPath = _getDependencyPathOf($depModule, $depItem, $depPath);
+            # May not exist, e.g. misspellings or 'virtual' dependencies like kf5umbrella.
+            if(!$depModule) {
+                debug("\tdep-resolve: Will not build virtual or undefined module: b[$depItem]\n");
+            }
+
+            my $depLookupResult = $self->_lookupDirectDependencies(
+                $resolvedPath,
+                $depBranch
+            );
+
+            $errors->{trivialCycles} += $depLookupResult->{trivialCycles};
+            $errors->{syntaxErrors} += $depLookupResult->{syntaxErrors};
+
+            $moduleGraph->{$depItem} = {
+                votes => {},
+                path => $resolvedPath,
+                build => $depModule && $includeDependencies ? 1 : 0,
+                branch => $depBranch,
+                deps => $depLookupResult->{dependencies},
+                runtimeDeps => $depLookupResult->{runtimeDependencies},
+                isRuntimeDep => 1, # The dependency is pulled in by a runtime dependency
                 allDeps => {},
                 module => $depModule,
                 traces => {}
@@ -671,6 +798,8 @@ sub resolveToModuleGraph
                 branch => $branch,
                 module => $module,
                 deps => $depLookupResult->{dependencies},
+                runtimeDeps => $depLookupResult->{runtimeDependencies},
+                isRuntimeDep => 0,
                 allDeps => {},
                 traces => {}
             };
