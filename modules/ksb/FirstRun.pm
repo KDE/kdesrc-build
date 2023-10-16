@@ -585,6 +585,8 @@ xmlto
 # poppler
 libnss3-dev
 libtiff-dev
+# gpgme
+texinfo
 
 @@ pkg/opensuse/unknown
 bison
