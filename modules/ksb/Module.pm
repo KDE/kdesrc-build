@@ -463,8 +463,63 @@ sub build
         return 1;
     }
 
+
+    # TODO: Only try to run this if the user requested.
+    $self->generateCodevisAnalysis();
+
     # TODO: Likewise this should be a phase to run.
     return $self->install();
+}
+
+# subroutine to run codevis and produce a project file on the build
+# directory of this module.
+
+sub generateCodevisAnalysis
+{
+    my $self = assert_isa(shift, 'ksb::Module');
+    my $builddir = $self->fullpath('build');
+    my $buildSysFile = $self->buildSystem()->configuredModuleFileName();
+    my $name = $self->name();
+
+    my $compile_commands_file = "$builddir/compile_commands.json";
+    if (not -e $compile_commands_file) {
+        say("\tCompile comamnds file doesn't exist, ignoring.");
+        return 0;
+    }
+
+    say ("\tRunning codevis code analysis tool");
+    my $cmd = ksb::Util::LoggedSubprocess->new
+        ->module($self)
+        ->log_to('codevis-results')
+        ->set_command([
+            "codevis_create_codebase_db",
+            "--replace",
+            "--compile-commands-json", "$builddir/compile_commands.json",
+            "--output", "$builddir/code_database.db"]);
+
+    my $result = await_exitcode($cmd->start);
+    if (!$result) {
+        warning ("\tError running codevis analysis tool.");
+        return;
+    }
+
+    my $cmd2 = ksb::Util::LoggedSubprocess->new
+        ->module($self)
+        ->log_to('codevis-create-prj-results')
+        ->set_command([
+            "codevis_create_prj_from_db",
+            "$builddir/code_database.db",
+            "$builddir/${name}.lks"]);
+
+    my $result2 = await_exitcode($cmd2->start);
+
+    if (!$result2) {
+        warning ("\tError generating codevis project file at $builddir/${name}.lks");
+        return;
+    }
+    say ("\tCodevis project file generated sucessfully at $builddir/${name}.lks");
+
+    return $result2;
 }
 
 # Subroutine to setup the build system in a directory.

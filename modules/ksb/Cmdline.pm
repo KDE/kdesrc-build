@@ -362,6 +362,12 @@ sub _showHelpAndExit
         Important Options:
             --pretend (or -p)      Don't actually take major actions, instead describe
                                    what would be done.
+
+            --generate-codevis-analysis
+                                   Uses codevis, if installed, to generate a codebase
+                                   analysis tool on the build folder of the project.
+                                   the resulting file will be called `project_name.lks`
+
             --list-build           List what modules would be built in the order in
                                    which they would be built.
             --dependency-tree      Print out dependency information on the modules that
@@ -456,6 +462,7 @@ sub _supportedOptions
         'colorful-output|color!',
         'debug',
         'dependency-tree',
+        'generate-codevis-analysis',
         'help|h',
         'ignore-modules|!=s{,}',
         'd', # --include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
