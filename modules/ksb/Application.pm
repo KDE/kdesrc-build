@@ -779,6 +779,7 @@ sub _splitOptionAndValue
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $input = shift;
+    my $fileName = shift->currentFilename();
     my $optionRE = qr/\$\{([a-zA-Z0-9-]+)\}/;
 
     # The option is the first word, followed by the
@@ -805,7 +806,7 @@ sub _splitOptionAndValue
     {
         my $sub_var_value = $ctx->getOption($sub_var_name) || '';
         if(!$ctx->hasOption($sub_var_name)) {
-            warning (" *\n * WARNING: $sub_var_name is not set at line y[$.]\n *");   ## TODO: filename is missing
+            warning (" *\n * WARNING: $sub_var_name is not set at y[$fileName:$.]\n *");
         }
 
         debug ("Substituting \${$sub_var_name} with $sub_var_value");
@@ -912,7 +913,7 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
             die make_exception('Config', "Invalid file $current_file");
         }
 
-        my ($option, $value) = _splitOptionAndValue($ctx, $_);
+        my ($option, $value) = _splitOptionAndValue($ctx, $_, $fileReader);
 
         eval { $module->setOption($option, $value); };
         if (my $err = $@) {
