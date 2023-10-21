@@ -1498,8 +1498,8 @@ sub _output_possible_solution
         warning ("
 Possible solution: Install the build dependencies for the modules:
 $names
-You can use 'sudo apt build-dep <source_package>', 'sudo dnf builddep <package>', 'sudo zypper source-install --build-deps-only <source_package>' or a similar command for your distro of choice.
-See https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/Install_the_dependencies");
+You can use 'sudo apt build-dep <source_package>', 'sudo dnf builddep <package>', 'sudo zypper --plus-content repo-source source-install --build-deps-only <source_package>' or a similar command for your distro of choice.
+See https://community.kde.org/Get_Involved/development/Install_the_dependencies");
     }
 }
 
