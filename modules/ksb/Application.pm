@@ -1488,7 +1488,7 @@ sub _output_possible_solution
     for my $module (@fail_list) {
         my $logfile = $module->getOption('#error-log-file');
 
-        if ($logfile =~ m"/cmake\.log$") {
+        if (($logfile =~ m"/cmake\.log$") or ($logfile =~ m"/meson\-setup\.log$")) {
             push @moduleNames, $module->name();
         }
     }
