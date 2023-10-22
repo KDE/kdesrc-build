@@ -467,6 +467,8 @@ qt6-wayland
 qt6-wayland-dev
 qt6-wayland-dev-tools
 qt6-base-private-dev
+qt6-speech-dev
+qt6-multimedia-dev
 libqt6svg6-dev
 libqt6core5compat6-dev
 libqt6opengl6-dev
@@ -594,6 +596,14 @@ libnss3-dev
 libtiff-dev
 # gpgme
 texinfo
+# appstream
+libyaml-dev
+libsystemd-dev
+libgirepository1.0-dev
+libstemmer-dev
+itstool
+gi-docgen
+libzstd-dev
 
 @@ pkg/opensuse/unknown
 bison
