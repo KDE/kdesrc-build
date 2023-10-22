@@ -1106,6 +1106,7 @@ bison
 boost-dev
 clang-extra-tools
 cmake
+corrosion
 curl-dev
 cyrus-sasl-dev
 doxygen
@@ -1116,8 +1117,8 @@ flex
 giflib-dev
 gperf
 gpgme-dev
-graphviz
 grantlee-dev
+graphviz
 gst-plugins-base-dev
 gstreamer-dev
 kdsoap-dev
@@ -1129,6 +1130,7 @@ libdisplay-info-dev
 libdmtx-dev
 libepoxy-dev
 libgcrypt-dev
+libgit2-dev
 libical-dev
 libinput-dev
 libnl3-dev
@@ -1148,6 +1150,7 @@ lmdb-dev
 meson
 modemmanager-dev
 mpv-dev
+musl-fts-dev
 networkmanager-dev
 ninja
 olm-dev
@@ -1181,11 +1184,13 @@ qt6-qt5compat-dev
 qt6-qtbase-dev
 qt6-qtmultimedia-dev
 qt6-qtpositioning-dev
+qt6-qtsensors-dev
 qt6-qtspeech-dev
 qt6-qtsvg-dev
 qt6-qttools-dev
 qt6-qtwayland-dev
 qt6-qtwebengine-dev
+qt6-qtwebview-dev
 qtkeychain-dev
 signond-dev
 stb
