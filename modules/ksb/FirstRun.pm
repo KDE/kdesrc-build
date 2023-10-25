@@ -543,6 +543,7 @@ libxcb-glx0-dev
 liblmdb-dev
 libsm-dev
 libqrencode-dev
+python3-setuptools
 # .. optional discover backends
 libjcat-dev
 libfwupd-dev
@@ -745,6 +746,7 @@ pkgconfig(xxf86vm)
 pkgconfig(yaml-0.1)
 plymouth-devel
 polkit-devel
+python3-setuptools
 qcoro-qt5-devel
 qt6-core-private-devel
 qt6-gui-private-devel
@@ -897,6 +899,7 @@ pkgconfig(xrender)
 python
 python3-psutil
 python3-sphinx
+python3-setuptools
 qaccessibilityclient-devel
 qcoro-qt5-devel
 qgpgme-devel
@@ -1068,6 +1071,7 @@ xmlto
 itstool
 libdisplay-info
 python-sphinx
+python-setuptools
 enchant
 jasper
 openexr
@@ -1158,6 +1162,7 @@ pipewire-dev
 polkit-elogind-dev
 pulseaudio-dev
 py3-sphinx
+py3-setuptools
 qca-dev
 qcoro-dev
 qt5-qtbase-dev
