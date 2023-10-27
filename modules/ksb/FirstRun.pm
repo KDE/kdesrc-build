@@ -920,6 +920,15 @@ wcslib-devel
 xmlto
 xorg-x11-drv-wacom-devel
 xkeyboard-config
+# wayland
+expat-devel
+# poppler
+nss-devel
+libcurl-devel
+# appstream
+libyaml-devel
+libstemmer-devel
+gi-docgen
 
 @@ pkg/mageia/unknown
 bison
