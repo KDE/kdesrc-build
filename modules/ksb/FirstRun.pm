@@ -788,6 +788,7 @@ ebook-tools-devel
 eigen3-devel
 erfa-devel
 exiv2-devel
+flatpak-devel
 flex
 fuse3-devel
 fuse-devel
@@ -815,10 +816,13 @@ kf5-libkdcraw-devel
 kimageannotator-devel
 libaccounts-qt5-devel
 libavcodec-free-devel
+libavfilter-free-devel
 libavformat-free-devel
 libavutil-free-devel
 libblack-hole-solver-devel
+libcap-devel
 libcanberra-devel
+libdisplay-info-devel
 libepoxy-devel
 libfakekey-devel
 libfreecell-solver-devel
@@ -842,14 +846,17 @@ libswscale-free-devel
 libssh-devel
 libtirpc-devel
 libuuid-devel
+libva-devel
 libwacom-devel
 libXcursor-devel
 libXft-devel
 libxcvt-devel
 libXext-devel
 libXtst-devel
+libXxf86vm-devel
 libxkbcommon-devel
 libxkbcommon-x11-devel
+libxkbfile-devel
 libxml2
 libzip-devel
 lm_sensors-devel
@@ -871,6 +878,7 @@ perl(URI)
 perl(YAML::LibYAML)
 phonon-qt5-devel
 pipewire-devel
+pipewire-utils
 pkgconfig(dbus-1)
 pkgconfig(gbm)
 pkgconfig(gl)
@@ -897,6 +905,7 @@ pkgconfig(xcb-util)
 pkgconfig(xfixes)
 pkgconfig(xrender)
 python
+python3-chai
 python3-psutil
 python3-sphinx
 python3-setuptools
@@ -911,15 +920,19 @@ qt6-*-devel
 qtkeychain-qt5-devel
 PackageKit
 SDL2-devel
+sassc
 shared-mime-info
 signon-devel
 stellarsolver-devel
 systemd-devel
 texinfo
 wcslib-devel
+xdotool
 xmlto
+xorg-x11-drv-evdev-devel
+xorg-x11-drv-libinput-devel
 xorg-x11-drv-wacom-devel
-xkeyboard-config
+xkeyboard-config-devel
 # wayland
 expat-devel
 # poppler
