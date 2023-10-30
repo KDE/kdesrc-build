@@ -1058,6 +1058,10 @@ bzr
 gi-docgen
 # Qt-related
 qt6
+poppler-qt6
+qca-qt6
+qtkeychain-qt6
+qcoro-qt6
 qt5-base
 qt5-script
 qt5-websockets
