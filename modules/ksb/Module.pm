@@ -33,7 +33,6 @@ use ksb::Util qw(:DEFAULT :await);
 
 use ksb::Updater::Svn;
 use ksb::Updater::Git;
-use ksb::Updater::Bzr;
 use ksb::Updater::KDEProject;
 use ksb::Updater::KDEProjectMetadata;
 use ksb::Updater::Qt5;
@@ -253,17 +252,6 @@ EOF
         die (make_exception('Config', 'svn-server and repository both set'));
     }
 
-    if ($repository =~ /^bzr:\/\//) {
-        # DEPRECATED. REMOVE AFTER 2022-08-11
-        warning(<<EOF);
-b[y[*] Module b[$self] uses a deprecated build system. Support will be removed shortly.
-b[y[*] You should remove b[$self] from your configuration.
-EOF
-
-        $self->addPostBuildMessage("Module $self needs removed from your config file, as it uses the unsupported 'bzr' version control system");
-        $self->{scm_obj} = ksb::Updater::Bzr->new($self);
-    }
-
     # If it needs a repo it's git. Everything else is svn for now.
     $self->{scm_obj} //=
         $repository
@@ -283,7 +271,6 @@ sub setScmType
     elsif ($scmType eq 'proj')     { $newType = ksb::Updater::KDEProject->new($self); }
     elsif ($scmType eq 'metadata') { $newType = ksb::Updater::KDEProjectMetadata->new($self); }
     elsif ($scmType eq 'svn')      { $newType = ksb::Updater::Svn->new($self); }
-    elsif ($scmType eq 'bzr')      { croak_internal ("Tried to set bzr scm type"); }
     elsif ($scmType eq 'qt5')      { $newType = ksb::Updater::Qt5->new($self); }
     else                            { $newType = undef; }
 

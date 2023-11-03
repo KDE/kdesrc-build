@@ -39,7 +39,6 @@ use ksb::RecursiveFH;
 use ksb::StatusView;
 use ksb::TaskManager;
 use ksb::Updater;
-use ksb::Updater::Bzr;
 use ksb::Updater::Git;
 use ksb::Updater::KDEProject;
 use ksb::Updater::KDEProjectMetadata;

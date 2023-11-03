@@ -1054,7 +1054,6 @@ doxygen
 intltool
 pkg-config
 git
-bzr
 gi-docgen
 # Qt-related
 qt6
