@@ -317,6 +317,7 @@ sub _expandAllUnexpandedModuleSets
     my $self = shift;
 
     my @unexpandedModuleSets = unique_items(values %{$self->{referencedModules}});
+    @unexpandedModuleSets = sort { $a->{name} cmp $b->{name} } @unexpandedModuleSets;
     $self->_expandSingleModuleSet($_) foreach @unexpandedModuleSets;
     return;
 }
