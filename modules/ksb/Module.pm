@@ -31,7 +31,6 @@ use ksb::IPC;
 use ksb::Debug;
 use ksb::Util qw(:DEFAULT :await);
 
-use ksb::Updater::Svn;
 use ksb::Updater::Git;
 use ksb::Updater::KDEProject;
 use ksb::Updater::KDEProjectMetadata;
@@ -231,32 +230,7 @@ sub scm
 
     return $self->{scm_obj} if $self->{scm_obj};
 
-    # Look for specific setting of repository and svn-server. If both is
-    # set it's a bug, if one is set, that's the type (because the user says
-    # so...). Don't use getOption($key) as it will try to fallback to
-    # global options.
-
-    my $svn_status = $self->getOption('svn-server', 'module');
-    my $repository = $self->getOption('repository', 'module') // '';
-    my $rcfile = $self->buildContext()->rcFile();
-
-    if ($svn_status && $repository) {
-        error (<<EOF);
-You have specified both y[b[svn-server] and y[b[repository] options for the
-b[$self] module in $rcfile.
-
-You should only specify one or the other -- a module cannot be both types
-- svn-server uses Subversion.
-- repository uses git.
-EOF
-        die (make_exception('Config', 'svn-server and repository both set'));
-    }
-
-    # If it needs a repo it's git. Everything else is svn for now.
-    $self->{scm_obj} //=
-        $repository
-            ? ksb::Updater::Git->new($self)
-            : ksb::Updater::Svn->new($self);
+    $self->{scm_obj} //= ksb::Updater::Git->new($self);
 
     return $self->{scm_obj};
 }
@@ -270,7 +244,6 @@ sub setScmType
     if ($scmType eq 'git')          { $newType = ksb::Updater::Git->new($self); }
     elsif ($scmType eq 'proj')     { $newType = ksb::Updater::KDEProject->new($self); }
     elsif ($scmType eq 'metadata') { $newType = ksb::Updater::KDEProjectMetadata->new($self); }
-    elsif ($scmType eq 'svn')      { $newType = ksb::Updater::Svn->new($self); }
     elsif ($scmType eq 'qt5')      { $newType = ksb::Updater::Qt5->new($self); }
     else                            { $newType = undef; }
 
@@ -278,7 +251,7 @@ sub setScmType
 }
 
 # Returns a string describing the scm platform of the given module.
-# Return value: 'git' or 'svn' at this point, as appropriate.
+# Return value: 'git' at this point, as appropriate.
 sub scmType
 {
     my $self = shift;
@@ -625,8 +598,7 @@ sub install
     return 1;
 }
 
-# Handles uninstalling this module (or its sub-directories as given by the checkout-only
-# option).
+# Handles uninstalling this module
 #
 # Returns boolean false on failure, boolean true otherwise.
 sub uninstall

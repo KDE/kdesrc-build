@@ -490,8 +490,8 @@ sub _handle_async_build ($ipc, $ctx)
         whisper ("Some modules were updated but not built");
     }
 
-    # It's possible if build fails on first module that git or svn is still
-    # running. Make them stop too.
+    # It's possible if build fails on first module that git is still
+    # running. Make it stop too.
     if (waitpid ($monitorPid, WNOHANG) == 0) {
         kill 'INT', $monitorPid;
 

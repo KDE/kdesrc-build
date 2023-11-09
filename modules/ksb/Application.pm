@@ -1407,7 +1407,7 @@ sub _updateModulePhases
     whisper ("Filtering out module phases.");
     for my $module (@_) {
         if ($module->getOption('manual-update') ||
-            $module->getOption('no-svn') || $module->getOption('no-src'))
+            $module->getOption('no-src'))
         {
             $module->phases()->clear();
             next;

@@ -468,7 +468,7 @@ sub _supportedOptions
         'D', # --no-include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
         'no-install',
         'no-metadata',
-        'no-src|no-svn|S',
+        'no-src|S',
         'no-tests',
         'prefix=s',
         'pretend|dry-run|p',
@@ -486,7 +486,7 @@ sub _supportedOptions
         'revision=i',
         'set-module-option-value=s',
         'show-info',
-        'src-only|svn-only|s',
+        'src-only|s',
         'start-program|run=s{,}',
         'stop-after|to=s',
         'stop-before|until=s',

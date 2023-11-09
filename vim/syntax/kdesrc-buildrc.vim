@@ -36,12 +36,12 @@ setlocal iskeyword+=-
 
 " Keywords
 syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
-            \ binpath branch build-dir checkout-only cmake-options configure-flags
+            \ binpath branch build-dir cmake-options configure-flags
             \ custom-build-command cxxflags dest-dir do-not-compile kdedir libname
             \ libpath log-dir make-install-prefix make-options module-base-path
             \ cmake-generator cmake-toolchain ninja-options
             \ override-build-system override-url prefix qtdir repository
-            \ revision source-dir svn-server tag remove-after-install
+            \ revision source-dir tag remove-after-install
             \ qmake-options git-user directory-layout
 
 syn keyword ksbrcGlobalOption contained skipwhite nextgroup=ksbrcStringValue

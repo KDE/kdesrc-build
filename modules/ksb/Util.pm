@@ -914,7 +914,6 @@ sub safe_lndir_p ($from, $to)
         $dir =~ s/$from/$to/;
 
         # Ignore version-control metadata
-        return if $dir =~ m,/\.svn,;
         return if $dir =~ m,/\.git,;
 
         croak_runtime("Couldn't create directory $dir: $!")

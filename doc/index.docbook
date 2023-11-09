@@ -30,7 +30,6 @@
   <!ENTITY ninja '<application>Ninja</application>'>
   <!ENTITY ssh '<application>SSH</application>'>
   <!ENTITY cron '<application>Cron</application>'>
-  <!ENTITY subversion '<application>Subversion</application>'>
   <!ENTITY sudo '<application>Sudo</application>'>
   <!ENTITY url '<acronym>URL</acronym>'>
 
@@ -51,8 +50,7 @@
   <!ENTITY tag '<link linkend="conf-tag">tag</link>'>
   <!ENTITY branch '<link linkend="conf-branch">branch</link>'>
   <!ENTITY do-not-compile '<link linkend="conf-do-not-compile">do-not-compile</link>'>
-  <!ENTITY checkout-only '<link linkend="conf-checkout-only">checkout-only</link>'>
-  <!ENTITY svn-server '<link linkend="conf-svn-server">svn-server</link>'>
+  <!ENTITY repository '<link linkend="conf-repository">repository</link>'>
   <!ENTITY make-install-prefix '<link linkend="conf-make-install-prefix">make-install-prefix</link>'>
   <!ENTITY niceness '<link linkend="conf-niceness">niceness</link>'>
   <!ENTITY set-env '<link linkend="conf-set-env">set-env</link>'>
@@ -123,13 +121,8 @@ directly from the &kde; project's source code repositories.</para>
 <keywordset>
 <keyword>KDE</keyword>
 <keyword>kdesdk</keyword>
-<keyword>SVN</keyword>
-<keyword>Subversion</keyword>
 <keyword>git</keyword>
 <keyword>KDE development</keyword>
-<!-- Older names for the software -->
-<keyword>kdesvn-build</keyword>
-<keyword>kdecvs-build</keyword>
 </keywordset>
 
 </bookinfo>
@@ -146,8 +139,7 @@ directly from the &kde; project's source code repositories.</para>
 <para>
 &kdesrc-build; is a script to help the &kde; community install <ulink
 url="https://www.kde.org/">&kde;</ulink> software from its <ulink
-url="https://git-scm.com/">&git;</ulink> and <ulink
-url="https://subversion.apache.org">&subversion;</ulink> source repositories,
+url="https://git-scm.com/">&git;</ulink> source repositories,
 and continue to update that software afterwards.
 It is particularly intended to support those who need to supporting testing and
 development of &kde; software, including users testing bugfixes and developers
@@ -1286,11 +1278,9 @@ doing, try using the <option>--debug</option> option.
 </para></listitem>
 
 <listitem><para>
-&kdesrc-build; can (with the assistance of the &kde; FTP server) allow for
-speedy checkouts of
-some Subversion modules. If the module you are checking out has already been
-packaged at the website, then &kdesrc-build; will download the snapshot and
-prepare it for use on your computer.
+&kdesrc-build; allows you to checkout modules quickly. If the module you are checking out
+has already been checked out previously, then &kdesrc-build; will download only commits
+that are not yet on your computer.
 </para>
 
 <tip><para>There is generally no need for any special preparation to perform
@@ -1299,7 +1289,7 @@ downloaded anyways, so it is easy for the server to determine what to
 send.</para></tip>
 
 <para>This is faster for you, and helps to ease the load on the kde.org
-anonymous &subversion; servers.</para>
+anonymous &git; servers.</para>
 </listitem>
 
 <listitem><para>
@@ -1353,7 +1343,7 @@ large module.
 
 <listitem><para>
 For developers: &kdesrc-build; will <link linkend="ssh-agent-reminder">remind
-you</link> if you use svn+ssh:// but <application>ssh-agent</application> is
+you</link> if you use git+ssh:// but <application>ssh-agent</application> is
 not running, as this will lead to repeated password requests from
 &ssh;.
 </para></listitem>
@@ -1437,12 +1427,6 @@ log of a script run. Also, a special symlink called latest is created to
 always point to the most recent log entry in the log directory.
 </para></listitem>
 
-<listitem><para>
-You can check out only a portion of a &kde; &subversion; module. For example,
-you could check out only the <application>taglib</application> from
-<application>kdesupport</application>.
-</para></listitem>
-
 </itemizedlist>
 
 </sect1>
@@ -1495,8 +1479,8 @@ and not under <filename class="directory"><symbol>${log-dir}</symbol>/latest/kde
 
 <para>In each module log directory, you will find a set of files for each
 operation that &kdesrc-build; performs. If &kdesrc-build; updates a module,
-you may see filenames such as <filename>svn-co.log</filename> (for a
-module checkout) or <filename>svn-up.log</filename> (when updating a module
+you may see filenames such as <filename>git-checkout-update.log</filename> (for a
+module checkout or when updating a module
 that has already been checked out). If the <command>configure</command>
 command was run, then you would expect to see a <filename>configure.log</filename>
 in that directory.</para>
@@ -1518,7 +1502,7 @@ none.</para>
 
 <para>Also, some commands will evade &kdesrc-build;'s output redirection and
 bypass the log file in certain circumstances (normally when performing the
-first &subversion; checkout), and the error output in that case is not in the log file
+first &git; checkout), and the error output in that case is not in the log file
 but is instead at the &konsole; or terminal where you ran &kdesrc-build;.</para>
 </tip>
 
@@ -1596,10 +1580,10 @@ end module-set
 for Git-based modules</emphasis>.</para></important>
 
 <para>
-For Subversion modules, <replaceable>module-name</replaceable> must be a module
-from the &kde; &subversion; repository (for example, kdeartwork or
+For Git modules, <replaceable>module-name</replaceable> must be a module
+from the &kde; &git; repository (for example, kdeartwork or
 kde-wallpapers), although it is possible to get around this if you
-<link linkend="conf-override-url">manually specify the &subversion; URL</link>.
+<link linkend="conf-override-url">manually specify the &git; URL</link>.
 </para>
 
 <para>
@@ -1748,7 +1732,7 @@ option to find out more about it. To see the full list of options, see
 
 <itemizedlist>
 <listitem><para><link linkend="conf-cmake-options">cmake-options</link> to define what flags to configure a module with using &cmake;.</para></listitem>
-<listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of /trunk (for &subversion;) or <literal>master</literal> (for Git).</para></listitem>
+<listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of <literal>master</literal>.</para></listitem>
 <listitem><para><link linkend="conf-configure-flags">configure-flags</link> to define what flags to configure &Qt; with.</para></listitem>
 <listitem><para><link linkend="conf-kdedir">kdedir</link>, to set the directory to install &kde; to.</para></listitem>
 <listitem><para><link linkend="conf-make-options">make-options</link>, to pass options to the &make; program (such as number of CPUs to use).</para></listitem>
@@ -1840,8 +1824,7 @@ may use the tilde (~) for any paths you add using this option.</para>
 <entry>branch</entry>
 <entry>Module setting overrides global</entry>
 <entry><para>Set this option to checkout from a branch of &kde; instead of the
-default of <replaceable>master</replaceable> (for &git; modules) or
-<replaceable>trunk</replaceable> (for &subversion;), where &kde; development
+default of <replaceable>master</replaceable> where &kde; development
 occurs.</para>
 
 <para>
@@ -1921,7 +1904,7 @@ are three different ways to use it:
 
 <orderedlist>
 
-<listitem><para>Relative to the &kde; &subversion; source directory (see <link
+<listitem><para>Relative to the &kde; &git; source directory (see <link
 linkend="conf-source-dir">the source-dir option</link>). This is the default,
 and is selected if you type a directory name that does not start with a tilde
 (~) or a slash (/).</para> <para>The default value is <filename
@@ -1968,14 +1951,6 @@ other optimizations, there are trade-offs for the correctness of your
 installation. For instance, changes to the qt or kdelibs modules may cause
 a rebuild of other modules to be necessary, even if the source code doesn't
 change at all.</para></important>
-</entry>
-</row>
-
-<row id="conf-checkout-only">
-<entry>checkout-only</entry>
-<entry>Module setting overrides global</entry>
-<entry><para>This option was removed in January 2022. It used to control
-the ability to checkout subsets of a module from a Subversion repository.</para>
 </entry>
 </row>
 
@@ -2150,8 +2125,8 @@ or directory separators in the name as this will interfere with any
 <row id="conf-disable-agent-check">
 <entry>disable-agent-check</entry>
 <entry>Cannot be overridden</entry>
-<entry>Normally if you are using &ssh; to download the &subversion; sources
-(such as if you are using the svn+ssh protocol), &kdesrc-build; will try and
+<entry>Normally if you are using &ssh; to download the &git; sources
+(such as if you are using the git+ssh protocol), &kdesrc-build; will try and
 make sure that if you are using ssh-agent, it is actually managing some &ssh;
 identities. This is to try and prevent &ssh; from asking for your pass phrase
 for every module. You can disable this check by setting
@@ -2595,7 +2570,7 @@ setting.</para>
 <entry>Module setting overrides global</entry>
 <entry>Set the option value to <userinput>true</userinput> to keep the
 build process from attempting to build this module. It will still be kept
-up-to-date when updating from &subversion;.  This option is exactly equivalent
+up-to-date when updating from &git;. This option is exactly equivalent
 to the <link linkend="cmdline-no-build"><option>--no-build</option></link>
 command line option.
 </entry>
@@ -2616,17 +2591,17 @@ commented it out.
 <entry>Module setting overrides global</entry>
 <entry><para>Set this option to override &kdesrc-build;'s default directory path to the
 module in question. This can be used, for example, to pull specific branches
-or tagged versions of libraries. <ulink url="https://websvn.kde.org/">The &kde;
+or tagged versions of libraries. <ulink url="https://invent.kde.org/">The &kde;
 Source Viewer</ulink> is invaluable in helping to pick the right path.</para>
 
 <para>Note that &kdesrc-build; constructs the final path according to the
 following template:
-<filename class="directory"><varname>$svn-server</varname>/home/kde/<varname>$module-base-path</varname></filename>.
+<filename class="directory"><varname>$repository</varname>/home/kde/<varname>$module-base-path</varname></filename>.
 </para>
 
 <para>The default value is either <filename
-class="directory">trunk/<varname>$module</varname></filename> or <filename
-class="directory">trunk/KDE/<varname>$module</varname></filename>, depending on
+class="directory"><varname>$module</varname></filename> or <filename
+class="directory">KDE/<varname>$module</varname></filename>, depending on
 the module name.</para>
 
 <tip><para>Use the <link linkend="conf-branch">branch</link> or <link
@@ -2674,11 +2649,11 @@ end options
 </entry>
 </row>
 
-<row id="conf-no-svn">
-<entry>no-svn</entry>
+<row id="conf-no-src">
+<entry>no-src</entry>
 <entry>Module setting overrides global</entry>
 <entry>If this option is set to true then &kdesrc-build; will not update the
-source code for the module automatically.  It will still try to build the
+source code for the module automatically. It will still try to build the
 module if it normally would have tried anyways.</entry>
 </row>
 
@@ -2784,7 +2759,7 @@ the auto-detection. In this case you can manually specify the correct build type
 <entry>override-url</entry>
 <entry>Module setting overrides global</entry>
 <entry>If you set this option, &kdesrc-build; will use its value as the &url;
-to pass to &subversion; <emphasis>completely unchanged</emphasis>. You should
+to pass to &git; <emphasis>completely unchanged</emphasis>. You should
 generally use this if you want to download a specific release but &kdesrc-build;
 cannot figure out what you mean using <link linkend="conf-branch">branch</link>.
 </entry>
@@ -2929,8 +2904,8 @@ globally).</para>
 <entry>source-dir</entry>
 <entry>Module setting overrides global</entry>
 <entry>This option is used to set the directory on your computer to store the &kde;
-&subversion; sources at. If you do not specify this value, the default is
-<filename class="directory">~/kdesrc</filename>. You may use the tilde (~)
+&git; sources at. If you do not specify this value, the default is
+<filename class="directory">~/kde/src</filename>. You may use the tilde (~)
 to represent the home directory if using this option.
 </entry>
 </row>
@@ -2953,17 +2928,6 @@ linkend="ssh-agent-reminder"/>.</para>
 <entry>Module setting overrides global</entry>
 <entry>Set this option value to <userinput>true</userinput> to cause the script to stop execution
 after an error occurs during the build or install process. This option is true by default.
-</entry>
-</row>
-
-<row id="conf-svn-server">
-<entry>svn-server</entry>
-<entry>Module setting overrides global</entry>
-<entry><para>This option is used to set the server used to check out from &subversion;.
-The default is the anonymous &subversion; repository, <filename>svn://anonsvn.kde.org/</filename></para>
-<note><para>If you are developing for KDE, use the &subversion; repository that
-was provided to you when you received your developer account, instead of the
-anonymous repository.</para></note>
 </entry>
 </row>
 
@@ -3351,10 +3315,9 @@ Be very descriptive about what is going on, and what &kdesrc-build; is doing.
 </varlistentry>
 
 <varlistentry id="cmdline-src-only">
-<term><parameter>--src-only</parameter> (or <parameter>--svn-only</parameter> or <parameter>-s</parameter>)</term>
+<term><parameter>--src-only</parameter> (or <parameter>-s</parameter>)</term>
 <listitem><para>
-Only perform the source update. (The <parameter>--svn-only</parameter> is
-only supported for compatibility with older scripts).
+Only perform the source update.
 </para></listitem>
 </varlistentry>
 
@@ -3430,11 +3393,9 @@ a few).
 </varlistentry>
 
 <varlistentry id="cmdline-no-src">
-<term><parameter>--no-src</parameter> (or <parameter>--no-svn</parameter> or <parameter>-S</parameter>)</term>
+<term><parameter>--no-src</parameter> (or <parameter>-S</parameter>)</term>
 <listitem><para>
-Skip contacting the &subversion; server. (The <parameter>--no-svn</parameter>
-parameter is only supported for compatibility with older versions of the
-script).
+Skip contacting the &git; server.
 </para></listitem>
 </varlistentry>
 
@@ -3810,7 +3771,7 @@ may still be required.
 <term><parameter>--revision</parameter></term>
 <listitem><para>
 This option causes &kdesrc-build; to checkout a specific numbered revision
-for each &subversion; module, overriding any <link linkend="conf-branch">branch</link>,
+for each &git; module, overriding any <link linkend="conf-branch">branch</link>,
 <link linkend="conf-tag">tag</link>, or <link linkend="conf-revision">revision</link>
 options already set for these modules.</para>
 
@@ -3864,8 +3825,7 @@ contain user data, so that the module can be re-downloaded. This would normally
 only be useful for &kde; developers (who might have local changes that would be
 deleted).</para>
 
-<para>This is currently only used to checkout modules that have been converted
-from &subversion; to &git;. You should not use this option normally,
+<para>You should not use this option normally,
 &kdesrc-build; will prompt to be re-run with it if it is needed.</para>
 </listitem>
 </varlistentry>
@@ -4137,7 +4097,7 @@ end global
 </para>
 
 <screen>
-module <replaceable>svn-module-name</replaceable>
+module <replaceable>some-module-name</replaceable>
   &make-install-prefix; <replaceable>sudo</replaceable>
 end module
 </screen>
@@ -4212,7 +4172,7 @@ end module
 <sect3 id="branches-and-tags">
 <title>What are branches and tags?</title>
 
-<para>&subversion; supports managing the history of the &kde; source code. &kde;
+<para>&git; supports managing the history of the &kde; source code. &kde;
 uses this support to create branches for development, and to tag the repository
 every so often with a new version release.
 </para>
@@ -4220,19 +4180,13 @@ every so often with a new version release.
 <para>For example, the &kmail; developers may be working on a new feature in
 a different branch in order to avoid breaking the version being used by most
 developers. This branch has development ongoing inside it, even while the
-main branch (called /trunk) may have development going on inside of it.
+main branch (called master) may have development going on inside of it.
 </para>
 
 <para>A tag, on the other hand, is a snapshot of the source code repository
 at a position in time. This is used by the &kde; administration team to mark
 off a version of code suitable for release and still allow the developers to
 work on the code.
-</para>
-
-<para>In &subversion;, there is no difference between branches, tags, or trunk within
-the code. It is only a convention used by the developers. This makes it
-difficult to properly support branches and tags within &kdesrc-build;. However,
-there are some things that can be done.
 </para>
 
 </sect3>
@@ -4289,7 +4243,7 @@ guess the correct path improperly: &module-base-path; and &override-url;.
 <listitem><para>
 &module-base-path; is used to help &kdesrc-build; fill in the missing part of
 a module's path. In the &kde; repository, all of the paths are of the form
-<filename class="directory">svnRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesrc-build;
+<filename class="directory">gitRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesrc-build;
 can figure out the appropriate middle part by itself. When it cannot, you can use
 &module-base-path;, like this:
 </para>
@@ -4304,7 +4258,7 @@ end module
 </screen>
 
 <para>This would cause &kdesrc-build; to download kdesupport from (in this example),
-<filename>svn://anonsvn.kde.org/home/kde/<replaceable>tags/kdesupport-for-4.5</replaceable></filename>.
+<filename>git://invent.kde.org/home/kde/<replaceable>tags/kdesupport-for-4.5</replaceable></filename>.
 </para>
 </informalexample>
 <tip><para>In previous versions of &kdesrc-build;, the &module-base-path; was
@@ -4317,13 +4271,13 @@ expects by using the <link linkend="cmdline-pretend">--pretend</link> option.
 <listitem><para>The &override-url; option, on the other hand, requires you to
 specify the exact path to download from. However, this allows you to pull from
 paths that previous versions of &kdesrc-build; would have no hope of downloading from.
-Currently, the &module-base-path; option should be sufficient for any Subversion
+Currently, the &module-base-path; option should be sufficient for any Git
 source URL.
 </para>
 
 <important><para>
 &kdesrc-build; will not touch or correct the value you specify for &override-url;
-at all, so if you change your &svn-server; setting, you may need to update this
+at all, so if you change your &repository; setting, you may need to update this
 as well.
 </para></important>
 
@@ -4651,9 +4605,7 @@ so by default &kdesrc-build; will check if the Agent is running before
 performing source updates.
 </para>
 
-<note><para>This is only done for &kde; developers using &ssh;. This is because
-no password is required for the default anonymous checkout. &subversion; will
-handle passwords for the second possible protocol for &kde; developers, https.
+<note><para>This is only done for &kde; developers using &ssh;.
 </para></note>
 
 <para>You may wish to disable the &ssh; Agent check, in case of situations where
@@ -4729,7 +4681,7 @@ end global
 <title>Removing unneeded directories after a build</title>
 <para>Are you short on disk space but still want to run a bleeding-edge
 &kde; checkout?  &kdesrc-build; can help reduce your disk usage when building
-&kde; from &subversion;.</para>
+&kde; from &git;.</para>
 
 <note><para>Be aware that building &kde; does take a lot of space. There are
 several major space-using pieces when using &kdesrc-build;:</para></note>
@@ -4749,12 +4701,6 @@ if you are actually using them, at least until you are done using
 the odds are good that you do), you probably do not need to install the
 qt module. That will shave about 200 megabytes off of the on-disk source
 size.</para>
-
-<para>One thing to note is that due to the way &subversion; works: there are actually
-two files on disk for every file checked-out from the repository. &kdesrc-build;
-does not have code at this point to try and minimize the source size when the
-source is not being used.
-</para>
 </listitem>
 
 <listitem>
@@ -4884,7 +4830,7 @@ tested, and installed.
 <title>Individual modules</title>
 
 <para>It is easy to set &kdesrc-build; to build a single module. The following
-listing is an example of what a declaration for a Subversion-based module would
+listing is an example of what a declaration for a Git-based module would
 look like in <link linkend="kdesrc-buildrc">the configuration
 file</link>.</para>
 
@@ -4894,7 +4840,7 @@ module <replaceable>kdefoo</replaceable>
 end module
 </programlisting>
 
-<tip><para>This is a Subversion-based module since it doesn't use a <link
+<tip><para>This is a Git-based module since it doesn't use a <link
 linkend="conf-repository">repository</link> option. Also, the
 <option>cmake-options</option> option is listed as an example only, it is not
 required.</para></tip>
@@ -5065,10 +5011,10 @@ If you are not using a dedicated user, set a different $<envar>KDEHOME</envar>
 for your new environment in your <filename>.bash_profile</filename>:
 
 <programlisting>
-export KDEHOME="${HOME}/.kde-svn"
+export KDEHOME="${HOME}/.kde-git"
 
 # Create it if needed
-[ ! -e ~/.kde-svn ] &amp;&amp; mkdir ~/.kde-svn
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
 </programlisting>
 </para>
 
@@ -5145,7 +5091,7 @@ You can run the &kde; from sources and the old &kde; at the same time! Log in
 using your regular user, start the stable &kde; desktop. Press <keycombo
 action="simul">&Ctrl;&Alt;<keycap>F2</keycap></keycombo> (or
 <keycap>F1</keycap>, <keycap>F3</keycap>, etc..), and you will be presented
-with a text terminal. Log in using the dedicated &kde; &subversion; user and
+with a text terminal. Log in using the dedicated &kde; &git; user and
 type:</para>
 
 <screen>

@@ -190,9 +190,9 @@ FILES IN THE DIRECTORY.
 
 EOF
 
-            if (-e "$srcdir/.svn") {
-                error ("svn status of $srcdir:");
-                system('svn', 'st', '--non-interactive', $srcdir);
+            if (-e "$srcdir/.git") {
+                error ("git status of $srcdir:");
+                system('git', 'status', $srcdir);
             }
 
             croak_runtime('Conflicting source-dir present');

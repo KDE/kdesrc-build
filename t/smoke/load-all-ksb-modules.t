@@ -43,7 +43,6 @@ use ksb::Updater::Git;
 use ksb::Updater::KDEProject;
 use ksb::Updater::KDEProjectMetadata;
 use ksb::Updater::Qt5;
-use ksb::Updater::Svn;
 use ksb::Util;
 use ksb::Util::LoggedSubprocess;
 use ksb::Version;
