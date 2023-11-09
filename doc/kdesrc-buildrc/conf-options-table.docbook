@@ -80,8 +80,7 @@ may use the tilde (~) for any paths you add using this option.</para>
 <entry>branch</entry>
 <entry>Module setting overrides global</entry>
 <entry><para>Set this option to checkout from a branch of &kde; instead of the
-default of <replaceable>master</replaceable> (for &git; modules) or
-<replaceable>trunk</replaceable> (for &subversion;), where &kde; development
+default of <replaceable>master</replaceable> where &kde; development
 occurs.</para>
 
 <para>
@@ -161,7 +160,7 @@ are three different ways to use it:
 
 <orderedlist>
 
-<listitem><para>Relative to the &kde; &subversion; source directory (see <link
+<listitem><para>Relative to the &kde; &git; source directory (see <link
 linkend="conf-source-dir">the source-dir option</link>). This is the default,
 and is selected if you type a directory name that does not start with a tilde
 (~) or a slash (/).</para> <para>The default value is <filename
@@ -208,14 +207,6 @@ other optimizations, there are trade-offs for the correctness of your
 installation. For instance, changes to the qt or kdelibs modules may cause
 a rebuild of other modules to be necessary, even if the source code doesn't
 change at all.</para></important>
-</entry>
-</row>
-
-<row id="conf-checkout-only">
-<entry>checkout-only</entry>
-<entry>Module setting overrides global</entry>
-<entry><para>This option was removed in January 2022. It used to control
-the ability to checkout subsets of a module from a Subversion repository.</para>
 </entry>
 </row>
 
@@ -390,8 +381,8 @@ or directory separators in the name as this will interfere with any
 <row id="conf-disable-agent-check">
 <entry>disable-agent-check</entry>
 <entry>Cannot be overridden</entry>
-<entry>Normally if you are using &ssh; to download the &subversion; sources
-(such as if you are using the svn+ssh protocol), &kdesrc-build; will try and
+<entry>Normally if you are using &ssh; to download the &git; sources
+(such as if you are using the git+ssh protocol), &kdesrc-build; will try and
 make sure that if you are using ssh-agent, it is actually managing some &ssh;
 identities. This is to try and prevent &ssh; from asking for your pass phrase
 for every module. You can disable this check by setting
@@ -835,7 +826,7 @@ setting.</para>
 <entry>Module setting overrides global</entry>
 <entry>Set the option value to <userinput>true</userinput> to keep the
 build process from attempting to build this module. It will still be kept
-up-to-date when updating from &subversion;.  This option is exactly equivalent
+up-to-date when updating from &git;. This option is exactly equivalent
 to the <link linkend="cmdline-no-build"><option>--no-build</option></link>
 command line option.
 </entry>
@@ -856,17 +847,17 @@ commented it out.
 <entry>Module setting overrides global</entry>
 <entry><para>Set this option to override &kdesrc-build;'s default directory path to the
 module in question. This can be used, for example, to pull specific branches
-or tagged versions of libraries. <ulink url="https://websvn.kde.org/">The &kde;
+or tagged versions of libraries. <ulink url="https://invent.kde.org/">The &kde;
 Source Viewer</ulink> is invaluable in helping to pick the right path.</para>
 
 <para>Note that &kdesrc-build; constructs the final path according to the
 following template:
-<filename class="directory"><varname>$svn-server</varname>/home/kde/<varname>$module-base-path</varname></filename>.
+<filename class="directory"><varname>$repository</varname>/home/kde/<varname>$module-base-path</varname></filename>.
 </para>
 
 <para>The default value is either <filename
-class="directory">trunk/<varname>$module</varname></filename> or <filename
-class="directory">trunk/KDE/<varname>$module</varname></filename>, depending on
+class="directory"><varname>$module</varname></filename> or <filename
+class="directory">KDE/<varname>$module</varname></filename>, depending on
 the module name.</para>
 
 <tip><para>Use the <link linkend="conf-branch">branch</link> or <link
@@ -914,11 +905,11 @@ end options
 </entry>
 </row>
 
-<row id="conf-no-svn">
-<entry>no-svn</entry>
+<row id="conf-no-src">
+<entry>no-src</entry>
 <entry>Module setting overrides global</entry>
 <entry>If this option is set to true then &kdesrc-build; will not update the
-source code for the module automatically.  It will still try to build the
+source code for the module automatically. It will still try to build the
 module if it normally would have tried anyways.</entry>
 </row>
 
@@ -1024,7 +1015,7 @@ the auto-detection. In this case you can manually specify the correct build type
 <entry>override-url</entry>
 <entry>Module setting overrides global</entry>
 <entry>If you set this option, &kdesrc-build; will use its value as the &url;
-to pass to &subversion; <emphasis>completely unchanged</emphasis>. You should
+to pass to &git; <emphasis>completely unchanged</emphasis>. You should
 generally use this if you want to download a specific release but &kdesrc-build;
 cannot figure out what you mean using <link linkend="conf-branch">branch</link>.
 </entry>
@@ -1169,8 +1160,8 @@ globally).</para>
 <entry>source-dir</entry>
 <entry>Module setting overrides global</entry>
 <entry>This option is used to set the directory on your computer to store the &kde;
-&subversion; sources at. If you do not specify this value, the default is
-<filename class="directory">~/kdesrc</filename>. You may use the tilde (~)
+&git; sources at. If you do not specify this value, the default is
+<filename class="directory">~/kde/src</filename>. You may use the tilde (~)
 to represent the home directory if using this option.
 </entry>
 </row>
@@ -1193,17 +1184,6 @@ linkend="ssh-agent-reminder"/>.</para>
 <entry>Module setting overrides global</entry>
 <entry>Set this option value to <userinput>true</userinput> to cause the script to stop execution
 after an error occurs during the build or install process. This option is true by default.
-</entry>
-</row>
-
-<row id="conf-svn-server">
-<entry>svn-server</entry>
-<entry>Module setting overrides global</entry>
-<entry><para>This option is used to set the server used to check out from &subversion;.
-The default is the anonymous &subversion; repository, <filename>svn://anonsvn.kde.org/</filename></para>
-<note><para>If you are developing for KDE, use the &subversion; repository that
-was provided to you when you received your developer account, instead of the
-anonymous repository.</para></note>
 </entry>
 </row>
 

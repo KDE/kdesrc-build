@@ -53,7 +53,7 @@ end module
 <sect3 id="branches-and-tags">
 <title>What are branches and tags?</title>
 
-<para>&subversion; supports managing the history of the &kde; source code. &kde;
+<para>&git; supports managing the history of the &kde; source code. &kde;
 uses this support to create branches for development, and to tag the repository
 every so often with a new version release.
 </para>
@@ -61,19 +61,13 @@ every so often with a new version release.
 <para>For example, the &kmail; developers may be working on a new feature in
 a different branch in order to avoid breaking the version being used by most
 developers. This branch has development ongoing inside it, even while the
-main branch (called /trunk) may have development going on inside of it.
+main branch (called master) may have development going on inside of it.
 </para>
 
 <para>A tag, on the other hand, is a snapshot of the source code repository
 at a position in time. This is used by the &kde; administration team to mark
 off a version of code suitable for release and still allow the developers to
 work on the code.
-</para>
-
-<para>In &subversion;, there is no difference between branches, tags, or trunk within
-the code. It is only a convention used by the developers. This makes it
-difficult to properly support branches and tags within &kdesrc-build;. However,
-there are some things that can be done.
 </para>
 
 </sect3>
@@ -130,7 +124,7 @@ guess the correct path improperly: &module-base-path; and &override-url;.
 <listitem><para>
 &module-base-path; is used to help &kdesrc-build; fill in the missing part of
 a module's path. In the &kde; repository, all of the paths are of the form
-<filename class="directory">svnRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesrc-build;
+<filename class="directory">gitRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesrc-build;
 can figure out the appropriate middle part by itself. When it cannot, you can use
 &module-base-path;, like this:
 </para>
@@ -145,7 +139,7 @@ end module
 </screen>
 
 <para>This would cause &kdesrc-build; to download kdesupport from (in this example),
-<filename>svn://anonsvn.kde.org/home/kde/<replaceable>tags/kdesupport-for-4.5</replaceable></filename>.
+<filename>git://invent.kde.org/home/kde/<replaceable>tags/kdesupport-for-4.5</replaceable></filename>.
 </para>
 </informalexample>
 <tip><para>In previous versions of &kdesrc-build;, the &module-base-path; was
@@ -158,13 +152,13 @@ expects by using the <link linkend="cmdline-pretend">--pretend</link> option.
 <listitem><para>The &override-url; option, on the other hand, requires you to
 specify the exact path to download from. However, this allows you to pull from
 paths that previous versions of &kdesrc-build; would have no hope of downloading from.
-Currently, the &module-base-path; option should be sufficient for any Subversion
+Currently, the &module-base-path; option should be sufficient for any Git
 source URL.
 </para>
 
 <important><para>
 &kdesrc-build; will not touch or correct the value you specify for &override-url;
-at all, so if you change your &svn-server; setting, you may need to update this
+at all, so if you change your &repository; setting, you may need to update this
 as well.
 </para></important>
 
