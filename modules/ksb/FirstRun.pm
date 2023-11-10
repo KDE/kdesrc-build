@@ -180,6 +180,31 @@ DONE
     local $, = ' '; # string to use when joining arrays in a string
 
     my @installCmd = _findBestInstallCmd($os);
+
+    # Remake the command for Arch Linux to not require running sudo command when not needed
+    if ($vendor eq "arch") {
+        my @required_packages_and_required_groups = @packages;
+        my @missing_packages_and_required_groups = `pacman -T @required_packages_and_required_groups`;
+        chomp(@missing_packages_and_required_groups);
+        my @all_possible_groups = `pacman -Sg`;
+        chomp(@all_possible_groups);
+
+        my @required_groups = grep { $_ ~~ @all_possible_groups } (@missing_packages_and_required_groups);
+        my @missing_packages_not_grouped = grep { $_ !~ @required_groups } (@missing_packages_and_required_groups);
+        my @missing_packages_from_required_groups;
+        if (@required_groups) {
+            for my $required_group (@required_groups) {
+                my @missing_packages_from_required_group = `pacman -Sqg $required_group | xargs pacman -T`;
+                chomp(@missing_packages_from_required_group);
+                push @missing_packages_from_required_groups, (@missing_packages_from_required_group);
+            }
+        }
+        @packages = (@missing_packages_not_grouped, @missing_packages_from_required_groups);
+        if (!@packages) {
+            @installCmd = "# All dependencies are already installed. No need to run pacman. :)";
+        }
+    }
+
     say colorize (" b[*] Running 'b[@installCmd @packages]'");
     my $result = system (@installCmd, @packages);
     my $exitStatus = $result >> 8;
@@ -1266,7 +1291,7 @@ apt-get -q -y --no-install-recommends install
 zypper install -y --no-recommends
 
 @@ cmd/install/arch/unknown
-pacman -Syu --noconfirm --needed
+pacman -S --noconfirm
 
 @@ cmd/install/fedora/unknown
 dnf -y install
