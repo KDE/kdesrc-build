@@ -47,9 +47,6 @@
   <!ENTITY cron '<application
 >Cron</application
 >'>
-  <!ENTITY subversion '<application
->Subversion</application
->'>
   <!ENTITY sudo '<application
 >Sudo</application
 >'>
@@ -100,11 +97,8 @@
   <!ENTITY do-not-compile '<link linkend="conf-do-not-compile"
 >do-not-compile</link
 >'>
-  <!ENTITY checkout-only '<link linkend="conf-checkout-only"
->checkout-only</link
->'>
-  <!ENTITY svn-server '<link linkend="conf-svn-server"
->svn-server</link
+  <!ENTITY repository '<link linkend="conf-repository"
+>repository</link
 >'>
   <!ENTITY make-install-prefix '<link linkend="conf-make-install-prefix"
 >make-install-prefix</link
@@ -231,18 +225,9 @@
 <keyword
 >kdesdk</keyword>
 <keyword
->SVN</keyword>
-<keyword
->Subversion</keyword>
-<keyword
 >git</keyword>
 <keyword
 >Desenvolupament del KDE</keyword>
-<!-- Older names for the software -->
-<keyword
->kdesvn-build</keyword>
-<keyword
->kdecvs-build</keyword>
 </keywordset>
 
 </bookinfo>
@@ -264,8 +249,6 @@
 >&kde;</ulink
 > des dels seus repositoris de codi font <ulink url="https://git-scm.com/"
 >&git;</ulink
-> i <ulink url="https://subversion.apache.org/"
->&subversion;</ulink
 >, i després continuar actualitzant aquest programari. Està especialment destinat a ajudar a aquells que necessiten recolzar les proves i el desenvolupament del programari &kde;, inclosos els usuaris que proven les correccions d'errors i els desenvolupadors que treballen en noves característiques. </para>
 
 <para
@@ -1784,7 +1767,7 @@ end module-set
 
 <listitem
 ><para
->El &kdesrc-build; pot (amb l'ajuda del servidor FTP del &kde;) permetre extreure ràpidament alguns mòduls de Subversion. Si el mòdul que esteu extraient ja s'ha empaquetat en el lloc web, llavors el &kdesrc-build; descarregarà la instantània i la prepararà per utilitzar-la al vostre ordinador. </para>
+>El &kdesrc-build; permet extreure ràpidament els mòduls. Si el mòdul que esteu extraient ja s'ha extret anteriorment, llavors el &kdesrc-build; descarregarà només les comissions que encara no estan al vostre ordinador. </para>
 
 <tip
 ><para
@@ -1792,7 +1775,7 @@ end module-set
 ></tip>
 
 <para
->Això és més ràpid i ajuda a manllevar la càrrega en els servidors anònims de &subversion; de kde.org.</para>
+>Això és més ràpid i ajuda a manllevar la càrrega en els servidors anònims de &git; de kde.org.</para>
 </listitem>
 
 <listitem
@@ -1851,7 +1834,7 @@ end module-set
 ><para
 >Per als desenvolupadors: el &kdesrc-build; <link linkend="ssh-agent-reminder"
 >recordarà</link
-> si feu servir svn+ssh:// però que el <application
+> si feu servir git+ssh:// però que el <application
 >ssh-agent</application
 > no s'està executant, ja que això conduirà a repetides sol·licituds de la contrasenya per a &ssh;. </para
 ></listitem>
@@ -1952,15 +1935,6 @@ end module-set
 >Registre de les ordres. Els registres estan datats i numerats perquè sempre tingueu un registre d'un script executat. A més, es crea un enllaç simbòlic especial cridat últim per apuntar sempre a l'entrada de registre més recent en el directori de registre. </para
 ></listitem>
 
-<listitem
-><para
->Podeu extreure només una part d'un mòdul de &subversion; del &kde;. Per exemple, podeu extreure només la <application
->taglib</application
-> des de <application
->kdesupport</application
->. </para
-></listitem>
-
 </itemizedlist>
 
 </sect1>
@@ -2031,10 +2005,8 @@ end module-set
 
 <para
 >A cada directori de registre del mòdul, trobareu un conjunt de fitxers per a cada operació que realitza el &kdesrc-build;. Si el &kdesrc-build; actualitza un mòdul, és possible que vegeu noms de fitxer com <filename
->svn-co.log</filename
-> (per a extreure un mòdul) o <filename
->svn-up.log</filename
-> (en actualitzar un mòdul que ja s'ha extret). Si s'ha executat l'ordre <command
+>git-checkout-update.log</filename
+> (per a extreure un mòdul o en actualitzar un mòdul que ja s'ha extret). Si s'ha executat l'ordre <command
 >configure</command
 >, llavors esperaríeu veure un <filename
 >configure.log</filename
@@ -2063,7 +2035,7 @@ end module-set
 > està buit (especialment després d'una instal·lació), llavors potser no hi ha hagut cap error. Algunes de les eines utilitzades pel sistema de construcció del &kde;, de vegades informen erròniament d'un error quan no n'hi havia cap.</para>
 
 <para
->A més, algunes ordres evadiran la redirecció de la sortida de &kdesrc-build; i obviaran el fitxer de registre en certes circumstàncies (normalment quan es realitza la primera extracció des de &subversion;), i la sortida d'error en aquest cas no estarà en el fitxer de registre sinó al &konsole; o terminal on vàreu executar el &kdesrc-build;.</para>
+>A més, algunes ordres evadiran la redirecció de la sortida de &kdesrc-build; i obviaran el fitxer de registre en certes circumstàncies (normalment quan es realitza la primera extracció des de &git;), i la sortida d'error en aquest cas no estarà en el fitxer de registre sinó al &konsole; o terminal on vàreu executar el &kdesrc-build;.</para>
 </tip>
 
 </sect3>
@@ -2157,10 +2129,10 @@ end module-set
 ></important>
 
 <para
->Per als mòduls basats en Subversion, el <replaceable
+>Per als mòduls Git, el <replaceable
 >nom_mòdul</replaceable
-> haurà de ser un mòdul del repositori de &subversion; del &kde; (per exemple, kdeartwork o kde-wallpapers), encara que és possible evitar-ho si <link linkend="conf-override-url"
->especifiqueu manualment l'URL de &subversion;</link
+> haurà de ser un mòdul del repositori &git; del &kde; (per exemple, kdeartwork o kde-wallpapers), encara que és possible evitar-ho si <link linkend="conf-override-url"
+>especifiqueu manualment l'URL del &git;</link
 >. </para>
 
 <para
@@ -2364,9 +2336,9 @@ end global
 ><para
 ><link linkend="conf-branch"
 >branch</link
->, per extreure des d'una branca en lloc de /trunk (per a &subversion;) o <literal
+>, per extreure des d'una branca en lloc de <literal
 >master</literal
-> (per a Git).</para
+>.</para
 ></listitem>
 <listitem
 ><para
@@ -2523,9 +2495,7 @@ end global
 ><para
 >Establiu aquesta opció per a extreure des d'una branca del &kde; en lloc de la <replaceable
 >master</replaceable
-> predeterminada (per a mòduls de &git;) o ​​<replaceable
->trunk</replaceable
-> (per a mòduls de &subversion;), on es realitza el desenvolupament del &kde;.</para>
+> a on es realitza el desenvolupament del &kde;.</para>
 
 <para
 >Per exemple, per a extreure la branca 4.6 del &kde;, establireu aquesta opció a <replaceable
@@ -2630,7 +2600,7 @@ end global
 >Utilitzeu aquesta opció per a canviar el directori que conté el codi font compilat. Hi ha tres maneres diferents d'utilitzar-la: <orderedlist
 > <listitem
 ><para
->Relativa al directori de codi font de &subversion; del &kde; (vegeu l'opció «<link linkend="conf-source-dir"
+>Relativa al directori de codi font de &git; del &kde; (vegeu l'opció «<link linkend="conf-source-dir"
 >source-dir</link
 >»). Aquest és el valor predeterminat i se selecciona si escriviu un nom de directori que no comenci amb una titlla (~) o una barra diagonal (/).</para
 > <para
@@ -2683,17 +2653,6 @@ end global
 ><para
 >Aquesta característica es proporciona només com una optimització. Com moltes altres optimitzacions, hi ha compensacions per a l'exactitud de la vostra instal·lació. Per exemple, els canvis en els mòduls qt o kdelibs poden fer que sigui necessari reconstruir altres mòduls, encara que el codi font no hagi canviat.</para
 ></important>
-</entry>
-</row>
-
-<row id="conf-checkout-only">
-<entry
->checkout-only</entry>
-<entry
->La configuració del mòdul superposa la global</entry>
-<entry
-><para
->Aquesta opció es va eliminar el gener de 2022. Solia controlar la capacitat d'extreure subconjunts d'un mòdul des d'un repositori de Subversion.</para>
 </entry>
 </row>
 
@@ -2914,7 +2873,7 @@ end global
 <entry
 >No es pot superposar</entry>
 <entry
->Normalment, si esteu utilitzant &ssh; per a descarregar el codi font de &subversion; (com quan s'utilitza el protocol svn+ssh), el &kdesrc-build; intentarà assegurar-se que si utilitzeu el ssh-agent, en realitat s'estaran gestionant algunes identitats &ssh;. Això és per evitar que &ssh; sol·liciti una contrasenya per a cada mòdul. És possible inhabilitar aquesta verificació establint «<option
+>Normalment, si esteu utilitzant &ssh; per a descarregar el codi font de &git; (com quan s'utilitza el protocol git+ssh), el &kdesrc-build; intentarà assegurar-se que si utilitzeu el ssh-agent, en realitat s'estaran gestionant algunes identitats &ssh;. Això és per evitar que &ssh; sol·liciti una contrasenya per a cada mòdul. És possible inhabilitar aquesta verificació establint «<option
 >disable-agent-check</option
 >» a «<userinput
 >true</userinput
@@ -3583,7 +3542,7 @@ end module
 <entry
 >Establiu el valor de l'opció a «<userinput
 >true</userinput
->» (cert) per evitar que el procés de construcció intenti construir aquest mòdul. Encara es mantindrà actualitzat quan s'actualitzi des de &subversion;. Aquesta opció és exactament equivalent a l'opció <link linkend="cmdline-no-build"
+>» (cert) per evitar que el procés de construcció intenti construir aquest mòdul. Encara es mantindrà actualitzat quan s'actualitzi des de &git;. Aquesta opció és exactament equivalent a l'opció <link linkend="cmdline-no-build"
 ><option
 >--no-build</option
 ></link
@@ -3608,14 +3567,14 @@ end module
 >La configuració del mòdul superposa la global</entry>
 <entry
 ><para
->Establiu aquesta opció per a superposar el camí del directori predeterminat de &kdesrc-build; al mòdul en qüestió. Això es pot utilitzar, per exemple, per obtenir branques específiques o versions etiquetades de les biblioteques. El <ulink url="https://websvn.kde.org/"
+>Establiu aquesta opció per a superposar el camí del directori predeterminat de &kdesrc-build; al mòdul en qüestió. Això es pot utilitzar, per exemple, per obtenir branques específiques o versions etiquetades de les biblioteques. El <ulink url="https://invent.kde.org/"
 >Visualitzador de codi font del &kde;</ulink
 > és molt valuós per ajudar a triar el camí correcte.</para>
 
 <para
 >Recordeu que el &kdesrc-build; construeix el camí final d'acord amb la següent plantilla: <filename class="directory"
 ><varname
->$svn-server</varname
+>$repository</varname
 >/home/kde/<varname
 >$module-base-path</varname
 ></filename
@@ -3623,11 +3582,11 @@ end module
 
 <para
 >El valor predeterminat és <filename class="directory"
->trunk/<varname
+><varname
 >$module</varname
 ></filename
 > o <filename class="directory"
->trunk/KDE/<varname
+>KDE/<varname
 >$module</varname
 ></filename
 >, segons el nom del mòdul.</para>
@@ -3705,9 +3664,9 @@ end options
 </entry>
 </row>
 
-<row id="conf-no-svn">
+<row id="conf-no-src">
 <entry
->no-svn</entry>
+>no-src</entry>
 <entry
 >La configuració del mòdul superposa la global</entry>
 <entry
@@ -3862,7 +3821,7 @@ end options
 <entry
 >La configuració del mòdul superposa la global</entry>
 <entry
->Si establiu aquesta opció, el &kdesrc-build; utilitzarà el seu valor com l'&url; per passar a &subversion; <emphasis
+>Si establiu aquesta opció, el &kdesrc-build; utilitzarà el seu valor com l'&url; per passar a &git; <emphasis
 >completament sense canvis</emphasis
 >. En general, haureu d'utilitzar aquesta opció si voleu descarregar una versió específica, però el &kdesrc-build; no pot entendre el que voleu dir utilitzant «<link linkend="conf-branch"
 >branch</link
@@ -4062,8 +4021,8 @@ end options
 <entry
 >La configuració del mòdul superposa la global</entry>
 <entry
->Aquesta opció s'utilitza per a configurar el directori a l'ordinador per emmagatzemar el codi font de &subversion; del &kde;. Si no especifiqueu aquest valor, el valor predeterminat és <filename class="directory"
->~/kdesrc</filename
+>Aquesta opció s'utilitza per a configurar el directori a l'ordinador per emmagatzemar el codi font de &git; del &kde;. Si no especifiqueu aquest valor, el valor predeterminat és <filename class="directory"
+>~/kde/src</filename
 >. Si utilitzeu aquesta opció, utilitzeu la titlla (~) per a representar el directori d'inici. </entry>
 </row>
 
@@ -4092,23 +4051,6 @@ end options
 >Establiu el valor d'aquesta opció a «<userinput
 >true</userinput
 >» (cert) perquè l'script aturi l'execució després que succeeixi un error durant el procés de construcció o instal·lació. De manera predeterminada aquesta opció és «true». </entry>
-</row>
-
-<row id="conf-svn-server">
-<entry
->svn-server</entry>
-<entry
->La configuració del mòdul superposa la global</entry>
-<entry
-><para
->Aquesta opció s'utilitza per a configurar el servidor que s'utilitzarà per extreure des de &subversion;. De manera predeterminada és el repositori anònim de &subversion;, <filename
->svn://anonsvn.kde.org/</filename
-></para>
-<note
-><para
->Si esteu desenvolupant per al &kde;, utilitzeu el repositori de &subversion; que se us ha proporcionat quan vàreu rebre el vostre compte de desenvolupador, en lloc del repositori anònim.</para
-></note>
-</entry>
 </row>
 
 <row id="conf-tag">
@@ -4655,15 +4597,11 @@ end options
 ><parameter
 >--src-only</parameter
 > (o <parameter
->--svn-only</parameter
-> o <parameter
 >-s</parameter
 >)</term>
 <listitem
 ><para
->Només realitza l'actualització del codi font. (El <parameter
->--svn-only</parameter
-> només s'admet per compatibilitat amb els scripts antics). </para
+>Només realitza l'actualització del codi font. </para
 ></listitem>
 </varlistentry>
 
@@ -4779,15 +4717,11 @@ end options
 ><parameter
 >--no-src</parameter
 > (o <parameter
->--no-svn</parameter
-> o <parameter
 >-S</parameter
 >)</term>
 <listitem
 ><para
->Omet posar-se en contacte amb el servidor de &subversion;. (El paràmetre <parameter
->--no-svn</parameter
-> només és admès per a la compatibilitat amb les versions antigues de l'script). </para
+>Omet contactar amb el servidor &git;. </para
 ></listitem>
 </varlistentry>
 
@@ -5349,7 +5283,7 @@ QMAIL_CONTROLDIR=/var/qmail/control
 ></term>
 <listitem
 ><para
->Aquesta opció farà que el &kdesrc-build; extregui una revisió numerada específica per a cada mòdul de &subversion;, superposant qualsevol opció «<link linkend="conf-branch"
+>Aquesta opció farà que el &kdesrc-build; extregui una revisió numerada específica per a cada mòdul de &git;, superposant qualsevol opció «<link linkend="conf-branch"
 >branch</link
 >», «<link linkend="conf-tag"
 >tag</link
@@ -5420,7 +5354,7 @@ QMAIL_CONTROLDIR=/var/qmail/control
 >Aquesta opció s'utilitza per a permetre que el &kdesrc-build; suprimeixi els directoris de codi font que poden contenir dades de l'usuari, de manera que el mòdul es pugui tornar a descarregar. Això normalment només seria útil per als desenvolupadors del &kde; (podrien tenir canvis locals que seran suprimits).</para>
 
 <para
->Actualment, això només s'utilitza per extreure els mòduls que s'han convertit des de &subversion; a &git;. No heu d'utilitzar aquesta opció normalment, si cal, el &kdesrc-build; sol·licitarà que es torni a executar amb ella.</para>
+>No heu d'utilitzar aquesta opció normalment, si cal, el &kdesrc-build; sol·licitarà que es torni a executar amb ella.</para>
 </listitem>
 </varlistentry>
 
@@ -5758,7 +5692,7 @@ end global
 
 <screen
 >module <replaceable
->nom_mòdul_svn</replaceable>
+>un_nom_de_mòdul</replaceable>
   &make-install-prefix; <replaceable
 >sudo</replaceable>
 end module
@@ -5845,16 +5779,13 @@ end module
 >Què són les branques i les etiquetes?</title>
 
 <para
->El &subversion; admet la gestió de l'historial del codi font del &kde;. El &kde; utilitza aquest suport per a crear branques per al desenvolupament i per etiquetar el repositori de tant en tant amb una nova versió. </para>
+>El &git; admet la gestió de l'historial del codi font del &kde;. El &kde; utilitza aquest suport per a crear branques per al desenvolupament i per etiquetar el repositori de tant en tant amb una nova versió. </para>
 
 <para
->Per exemple, els desenvolupadors del &kmail; poden estar treballant en una nova característica en una branca diferent per evitar trencar la versió utilitzada per la majoria dels desenvolupadors. Aquesta branca té un desenvolupament continu en el seu interior, fins i tot mentre la branca principal (anomenada /trunk) pot seguir amb el seu desenvolupament. </para>
+>Per exemple, els desenvolupadors del &kmail; poden estar treballant en una nova característica en una branca diferent per evitar trencar la versió utilitzada per la majoria dels desenvolupadors. Aquesta branca té un desenvolupament continu en el seu interior, fins i tot mentre la branca principal (anomenada master) pot seguir amb el seu desenvolupament. </para>
 
 <para
 >Una etiqueta, d'altra banda, és una instantània del repositori de codi font en una posició en el temps. L'equip d'administració del &kde;, l'utilitza per a marcar una versió de codi adequada per al seu llançament i permetre que els desenvolupadors encara treballin en el codi. </para>
-
-<para
->En el &subversion;, no hi ha diferència entre les branques, etiquetes o trunk dins del codi. Només és una convenció utilitzada pels desenvolupadors. Això dificulta el suport adequat de branques i etiquetes dins del &kdesrc-build;. No obstant això, hi ha algunes coses que es poden fer. </para>
 
 </sect3>
 
@@ -5910,7 +5841,7 @@ end module
 <listitem
 ><para
 >«&module-base-path;» s'utilitza per ajudar al &kdesrc-build; a completar la part que falta del camí d'un mòdul. Al repositori del &kde;, tots els camins tenen la forma <filename class="directory"
->svnRoot/module-base-path/<replaceable
+>gitRoot/module-base-path/<replaceable
 >nom_mòdul</replaceable
 ></filename
 >. Normalment, el &kdesrc-build; pot descobrir la part mitjana apropiada per si mateix. Quan no pot, podreu utilitzar «&module-base-path;», així: </para>
@@ -5926,7 +5857,7 @@ end module
 
 <para
 >Això farà que el &kdesrc-build; descarregui el kdesupport des de (en aquest exemple), <filename
->svn://anonsvn.kde.org/home/kde/<replaceable
+>git://invent.kde.org/home/kde/<replaceable
 >tags/kdesupport-for-4.5</replaceable
 ></filename
 >. </para>
@@ -5941,11 +5872,11 @@ end module
 
 <listitem
 ><para
->L'opció «&override-url;», d'altra banda, requereix que especifiqueu el camí exacte per descarregar. No obstant això, permet extreure camins que les versions anteriors de &kdesrc-build; no tindrien l'esperança de descarregar. Actualment, l'opció «&module-base-path;» hauria de ser suficient per a qualsevol &url;: de codi font de Subversion. </para>
+>L'opció «&override-url;», d'altra banda, requereix que especifiqueu el camí exacte per descarregar. No obstant això, permet extreure camins que les versions anteriors de &kdesrc-build; no tindrien l'esperança de descarregar. Actualment, l'opció «&module-base-path;» hauria de ser suficient per a qualsevol &url;: de codi font del Git. </para>
 
 <important
 ><para
->El &kdesrc-build; no tocarà ni corregirà el valor que especifiqueu per a «&override-url;», de manera que si canvieu l'opció del «&svn-server;», és possible que també hàgiu d'actualitzar això. </para
+>El &kdesrc-build; no tocarà ni corregirà el valor que especifiqueu per a «&override-url;», de manera que si canvieu l'opció del &repository;, és possible que també hàgiu d'actualitzar això. </para
 ></important>
 
 </listitem>
@@ -6396,7 +6327,7 @@ end global
 
 <note
 ><para
->Això només es fa per als desenvolupadors del &kde; que utilitzen &ssh;. Això es deu al fet que de manera predeterminada no es requereix contrasenya per a extreure anònimament. El &subversion; gestionarà les contrasenyes per al segon protocol possible per als desenvolupadors del &kde;, https. </para
+>Això només es fa per als desenvolupadors de &kde; que empren &ssh;. </para
 ></note>
 
 <para
@@ -6499,7 +6430,7 @@ end global
 <title
 >Eliminar directoris innecessaris després d'una construcció</title>
 <para
->Disposeu de poc espai al disc però encara voleu executar una extracció del &kde; per a la darrera generació? El &kdesrc-build; pot ajudar a reduir l'ús del disc en construir el &kde; des de &subversion;.</para>
+>Disposeu de poc espai al disc però encara voleu executar una extracció del &kde; per a la darrera generació? El &kdesrc-build; pot ajudar a reduir l'ús del disc en construir el &kde; des del &git;.</para>
 
 <note
 ><para
@@ -6517,9 +6448,6 @@ end global
 
 <para
 >A més, si ja té instal·lades les &Qt; per la vostra distribució (i el més probable és que ho feu), probablement no necessitareu instal·lar el mòdul qt. Això reduirà en uns 200 megabytes la mida del codi font en el disc.</para>
-
-<para
->Una cosa a tenir en compte, és que a causa de la manera en què funciona &subversion;: en realitat hi ha dos fitxers en el disc per cada fitxer extret des del repositori. En aquest moment, el &kdesrc-build; no té codi per intentar minimitzar la mida del codi font quan no s'està utilitzant. </para>
 </listitem>
 
 <listitem>
@@ -6648,7 +6576,7 @@ end global
 >Mòduls individuals</title>
 
 <para
->És fàcil establir el &kdesrc-build; per a construir un sol mòdul. La següent llista és un exemple de com es veuria una declaració per a un mòdul basat en Subversion al <link linkend="kdesrc-buildrc"
+>És fàcil establir el &kdesrc-build; per a construir un sol mòdul. La següent llista és un exemple de com es veuria una declaració per a un mòdul basat en Git al <link linkend="kdesrc-buildrc"
 >fitxer de configuració</link
 >.</para>
 
@@ -6664,7 +6592,7 @@ end module
 
 <tip
 ><para
->Aquest és un mòdul basat en Subversion, ja que no utilitza una opció «<link linkend="conf-repository"
+>Aquest és un mòdul basat en Git, ja que no utilitza una opció «<link linkend="conf-repository"
 >repository</link
 >». A més, l'opció «<option
 >cmake-options</option
@@ -6866,10 +6794,10 @@ export KDEDIRS PATH LD_LIBRARY_PATH
 > diferent per al nou entorn al <filename
 >.bash_profile</filename
 >: <programlisting
->export KDEHOME="${HOME}/.kde-svn"
+>export KDEHOME="${HOME}/.kde-git"
 
 # Crea si cal
-[ ! -e ~/.kde-svn ] &amp;&amp; mkdir ~/.kde-svn
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
 </programlisting>
 </para>
 
@@ -6964,7 +6892,7 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 >F1</keycap
 >, <keycap
 >F3</keycap
->, &etc;) i se us presentarà un terminal de text. Inicieu la sessió amb l'usuari dedicat de &subversion; per al &kde; i escriviu:</para>
+>, &etc;) i se us presentarà un terminal de text. Inicieu la sessió amb l'usuari dedicat de &git; per al &kde; i escriviu:</para>
 
 <screen
 ><command
