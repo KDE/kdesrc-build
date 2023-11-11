@@ -134,8 +134,7 @@ sub readLine
             my ($filename) = ($line =~ /^\s*include\s+(.+?)\s*$/);
 
             if (!$filename) {
-                die make_exception('Config',
-                    "Unable to handle file include on line $., '$line'");
+                die make_exception('Config', "Unable to handle file include '$line' from $self->{current_fn}:$.");
             }
 
             my $newFh;
@@ -145,8 +144,7 @@ sub readLine
             $filename = "$prefix/$filename" unless $filename =~ m(^/);
 
             open ($newFh, '<', $filename) or
-                die make_exception('Config',
-                    "Unable to open file $filename which was included from line $.");
+                die make_exception('Config', "Unable to open file '$filename' which was included from $self->{current_fn}:$.");
 
             $prefix = dirname($filename); # Recalculate base path
             $self->addFile($newFh, $filename);
