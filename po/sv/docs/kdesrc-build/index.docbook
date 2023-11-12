@@ -47,9 +47,6 @@
   <!ENTITY cron '<application
 >Cron</application
 >'>
-  <!ENTITY subversion '<application
->Subversion</application
->'>
   <!ENTITY sudo '<application
 >Sudo</application
 >'>
@@ -100,11 +97,8 @@
   <!ENTITY do-not-compile '<link linkend="conf-do-not-compile"
 >do-not-compile</link
 >'>
-  <!ENTITY checkout-only '<link linkend="conf-checkout-only"
->checkout-only</link
->'>
-  <!ENTITY svn-server '<link linkend="conf-svn-server"
->svn-server</link
+  <!ENTITY repository '<link linkend="conf-repository"
+>repository</link
 >'>
   <!ENTITY make-install-prefix '<link linkend="conf-make-install-prefix"
 >make-install-prefix</link
@@ -253,18 +247,9 @@
 <keyword
 >kdesdk</keyword>
 <keyword
->SVN</keyword>
-<keyword
->Subversion</keyword>
-<keyword
 >git</keyword>
 <keyword
 >KDE-utveckling</keyword>
-<!-- Older names for the software -->
-<keyword
->kdesvn-build</keyword>
-<keyword
->kdecvs-build</keyword>
 </keywordset>
 
 </bookinfo>
@@ -286,8 +271,6 @@
 >&kde;-programvara</ulink
 > från <ulink url="https://git-scm.com/"
 >&git;</ulink
-> och <ulink url="https://subversion.apache.org"
->&subversion;</ulink
 > källkodsarkiv, och fortsätta att uppdatera programvaran efteråt. Det är i synnerhet avsett att stödja de som behöver hantera testning och utveckling av &kde;-programvara, inklusive användare som testar felrättningar och utvecklare som arbetar på nya funktioner. </para>
 
 <para
@@ -1801,7 +1784,7 @@ end module-set
 
 <listitem
 ><para
->&kdesrc-build; kan (med hjälp av &kde;:s FTP-server) tillåta snabb utcheckning av vissa Subversion moduler. Om modulen du checkar ut redan har paketerats på hemsidan, laddar &kdesrc-build; ner den versionen och förbereder den för användning på datorn. </para>
+>&kdesrc-build; kan (med hjälp av &kde;:s FTP-server) tillåta snabb utcheckning av moduler. Om modulen du checkar ut redan har paketerats på hemsidan, laddar &kdesrc-build; ner den versionen och förbereder den för användning på datorn. </para>
 
 <tip
 ><para
@@ -1809,7 +1792,7 @@ end module-set
 ></tip>
 
 <para
->Det är snabbare för dig, och hjälper till att minska lasten på de anonyma &subversion;-servrarna.</para>
+>Det är snabbare för dig, och hjälper till att minska lasten på de anonyma &git;-servrarna.</para>
 </listitem>
 
 <listitem
@@ -1866,7 +1849,7 @@ end module-set
 ><para
 >För utvecklare: &kdesrc-build; kommer att <link linkend="ssh-agent-reminder"
 >påminna dig</link
-> om du använder svn+ssh:// men <application
+> om du använder git+ssh:// men <application
 >ssh-agent</application
 > inte kör, eftersom det leder till upprepad begäran om lösenord från &ssh;. </para
 ></listitem>
@@ -1967,15 +1950,6 @@ end module-set
 >Kommandologgning. Loggar dateras och numreras så att du alltid har en logg av en körning av skriptet. Dessutom skapas en symbolisk länk som heter latest, som alltid pekar på den senaste loggen i loggkatalogen. </para
 ></listitem>
 
-<listitem
-><para
->Du kan checka ut bara en delmängd av en &kde; &subversion;-modul. Du skulle till exempel kunna checka ut bara <application
->taglib</application
-> från <application
->kdesupport</application
->. </para
-></listitem>
-
 </itemizedlist>
 
 </sect1>
@@ -2046,10 +2020,8 @@ end module-set
 
 <para
 >Du hittar en uppsättning filer för varje åtgärd som &kdesrc-build; utför i varje modulloggkatalog. Om &kdesrc-build; uppdaterar en modul, kan du se filnamn såsom <filename
->svn-co.log</filename
-> (för en utcheckning av en modul) eller <filename
->svn-up.log</filename
-> (när en modul uppdateras som redan har checkats ut). Om kommandot <command
+>git-checkout-update.log</filename
+> (för en utcheckning av en modul eller när en modul uppdateras som redan har checkats ut). Om kommandot <command
 >configure</command
 > kördes, kan du förvänta dig att se filen <filename
 >configure.log</filename
@@ -2078,7 +2050,7 @@ end module-set
 > är tom (särskilt efter en installation), kanske det inte var något fel. Vissa verktyg som används av &kde;:s byggsystem rapporterar ibland av misstag ett fel när det inte fanns något.</para>
 
 <para
->Dessutom kringgår några kommandon omdirigeringen av utmatning som &kdesrc-build; gör, och går förbi loggfilen under vissa omständigheter (normalt när den första utcheckningen från &subversion; sker), och felutmatningen finns inte i loggfilen i detta fall, utan istället i terminalen där &kdesrc-build; kördes</para>
+>Dessutom kringgår några kommandon omdirigeringen av utmatning som &kdesrc-build; gör, och går förbi loggfilen under vissa omständigheter (normalt när den första utcheckningen från &git; sker), och felutmatningen finns inte i loggfilen i detta fall, utan istället i terminalen där &kdesrc-build; kördes</para>
 </tip>
 
 </sect3>
@@ -2172,10 +2144,10 @@ end module-set
 ></important>
 
 <para
->För &subversion;-moduler måste <replaceable
+>För Git-moduler måste <replaceable
 >modul-namn</replaceable
-> vara en modul i &kde;:s &subversion;-arkiv (till exempel kdeartwork eller kde-wallpapers), även om det går att undvika det om du <link linkend="conf-override-url"
->anger webbadressen i &subversion; manuellt</link
+> vara en modul i &kde;:s &git;-arkiv (till exempel kdeartwork eller kde-wallpapers), även om det går att undvika det om du <link linkend="conf-override-url"
+>anger webbadressen i &git; manuellt</link
 >. </para>
 
 <para
@@ -2375,9 +2347,9 @@ end global
 ><para
 ><link linkend="conf-branch"
 >branch</link
->, för att checka ut från en gren istället för /trunk (för &subversion;) eller <literal
+>, för att checka ut från en gren istället för <literal
 >master</literal
-> (för Git).</para
+>.</para
 ></listitem>
 <listitem
 ><para
@@ -2532,9 +2504,7 @@ end global
 ><para
 >Ställ in alternativet för att checka ut från en gren av &kde; istället för standardvärdet <replaceable
 >master</replaceable
-> (för &git;-moduler) eller <replaceable
->trunk</replaceable
-> (för &subversion;) där utveckling av &kde; sker.</para>
+> där utveckling av &kde; sker.</para>
 
 <para
 >För att till exempel checka ut grenen &kde; 4.6, skulle du ställa in alternativet till <replaceable
@@ -2639,7 +2609,7 @@ end global
 >Använd det här alternativet för att byta katalog som innehåller källkoden att bygga. Det finns tre olika sätt att använda det: <orderedlist
 ><listitem
 ><para
->Relativt till &kde;:s &subversion;-källkodskatalog (se <link linkend="conf-source-dir"
+>Relativt till &kde;:s &git;-källkodskatalog (se <link linkend="conf-source-dir"
 >alternativet source-dir</link
 >). Det är förvalt, och väljes om du skriver in ett katalognamn som inte börjar med tilde (~) eller snedstreck (/).</para
 ><para
@@ -2692,17 +2662,6 @@ end global
 ><para
 >Funktionen tillhandahålls enbart som en optimering. Liksom många andra optimeringar, finns det överväganden gällande installationens riktighet. Exempelvis kan ändringar av modulen qt eller kdelibs leda till att andra moduler måste byggas om, även om källkoden inte ändras alls.</para
 ></important>
-</entry>
-</row>
-
-<row id="conf-checkout-only">
-<entry
->checkout-only</entry>
-<entry
->Modulinställning överskrider allmän</entry>
-<entry
-><para
->Alternativet togs bort januari 2022. Det hanterade tidigare möjligheten att checka ut delmängder av en modul from Subversion-arkivet.</para>
 </entry>
 </row>
 
@@ -2919,7 +2878,7 @@ end global
 <entry
 >Kan inte överskridas</entry>
 <entry
->Om du använder &ssh; för att ladda ner källkod från &subversion; (om du använder protokollet svn+ssh), försöker &kdesrc-build; normalt att försäkra sig om att när du använder ssh-agent, så hanterar det verkligen några &ssh;-identiteter. Det görs för att försöka förhindra att &ssh; frågar efter din lösenordsfras för varje modul. Du kan inaktivera kontrollen genom att sätta <option
+>Om du använder &ssh; för att ladda ner källkod från &git; (om du använder protokollet git+ssh), försöker &kdesrc-build; normalt att försäkra sig om att när du använder ssh-agent, så hanterar det verkligen några &ssh;-identiteter. Det görs för att försöka förhindra att &ssh; frågar efter din lösenordsfras för varje modul. Du kan inaktivera kontrollen genom att sätta <option
 >disable-agent-check</option
 > till <userinput
 >true</userinput
@@ -3588,7 +3547,7 @@ end module
 <entry
 >Sätt alternativvärdet till <userinput
 >true</userinput
-> för att förhindra att byggprocessen försöker bygga modulen. Den hålls fortfarande uppdaterad vid uppdatering från &subversion;. Alternativet motsvarar exakt kommandoradsväljaren <link linkend="cmdline-no-build"
+> för att förhindra att byggprocessen försöker bygga modulen. Den hålls fortfarande uppdaterad vid uppdatering från &git;. Alternativet motsvarar exakt kommandoradsväljaren <link linkend="cmdline-no-build"
 ><option
 >--no-build</option
 ></link
@@ -3613,14 +3572,14 @@ end module
 >Modulinställning överskrider allmän</entry>
 <entry
 ><para
->Sätt det här alternativet för att överskrida &kdesrc-build;s förvalda katalogväg till modulen i fråga. Det kan till exempel användas för att hämta specifika grenar eller taggade versioner av bibliotek. <ulink url="https://websvn.kde.org/"
+>Sätt det här alternativet för att överskrida &kdesrc-build;s förvalda katalogväg till modulen i fråga. Det kan till exempel användas för att hämta specifika grenar eller taggade versioner av bibliotek. <ulink url="https://invent.kde.org/"
 >&kde;:s källkodsvisning</ulink
 > är ovärderlig som hjälp för att välja rätt sökväg.</para>
 
 <para
 >Observera att &kdesrc-build; konstruerar den slutliga sökvägen enligt följande mall: <filename class="directory"
 ><varname
->$svn-server</varname
+>$repository</varname
 >/home/kde/<varname
 >$module-base-path</varname
 ></filename
@@ -3628,11 +3587,11 @@ end module
 
 <para
 >Förvalt värde är antingen <filename class="directory"
->trunk/<varname
+><varname
 >$module</varname
 ></filename
 > eller <filename class="directory"
->trunk/KDE/<varname
+>KDE/<varname
 >$module</varname
 ></filename
 >, beroende på modulnamnet.</para>
@@ -3711,9 +3670,9 @@ end options
 </entry>
 </row>
 
-<row id="conf-no-svn">
+<row id="conf-no-src">
 <entry
->no-svn</entry>
+>no-src</entry>
 <entry
 >Modulinställning överskrider allmän</entry>
 <entry
@@ -3864,7 +3823,7 @@ end options
 <entry
 >Modulinställning överskrider allmän</entry>
 <entry
->Om du anger det här alternativet, använder &kdesrc-build; dess värde som webbadress att skicka till &kdesrc-build; <emphasis
+>Om du anger det här alternativet, använder &kdesrc-build; dess värde som webbadress att skicka till &git; <emphasis
 >helt oförändrad</emphasis
 >. Du bör i allmänhet använda det om du vill ladda ner en specifik utgåva, men &kdesrc-build; inte kan räkna ut vad du menar genom att använda <link linkend="conf-branch"
 >branch</link
@@ -4064,8 +4023,8 @@ end options
 <entry
 >Modulinställning överskrider allmän</entry>
 <entry
->Det här alternativet används för att ange katalogen på datorn där &kde;:s &subversion;-källkod ska lagras. Om du inte anger värdet, är förvalt värde <filename class="directory"
->~/kdesrc</filename
+>Det här alternativet används för att ange katalogen på datorn där &kde;:s &git;-källkod ska lagras. Om du inte anger värdet, är förvalt värde <filename class="directory"
+>~/kde/src</filename
 >. Tilde (~) kan utnyttjas för att representera hemkatalogen om alternativet används. </entry>
 </row>
 
@@ -4094,23 +4053,6 @@ end options
 >Ställ in det här alternativvärdet till <userinput
 >true</userinput
 > för att göra att skriptet slutar köra efter ett fel uppstår i bygg- eller installationsprocessen. Alternativet är normalt true. </entry>
-</row>
-
-<row id="conf-svn-server">
-<entry
->svn-server</entry>
-<entry
->Modulinställning överskrider allmän</entry>
-<entry
-><para
->Det här alternativet används för att ange servern som används vid utcheckning från &subversion;. Förval är det anonyma &subversion;-arkivet, <emphasis
->svn://anonsvn.kde.org/</emphasis
-></para>
-<note
-><para
->Om du utvecklar för KDE, använd &subversion;-arkivet som du tillhandahölls när du erhöll ditt utvecklingskonto, istället för det anonyma arkivet.</para
-></note>
-</entry>
 </row>
 
 <row id="conf-tag">
@@ -4657,15 +4599,11 @@ end options
 ><parameter
 >--src-only</parameter
 > (eller <parameter
->--svn-only</parameter
-> eller <parameter
 >-s</parameter
 >)</term>
 <listitem
 ><para
->Utför bara uppdatering av källkod (<parameter
->--svn-only</parameter
-> stöds bara för kompatibilitet med äldre skript). </para
+>Utför bara uppdatering av källkoden. </para
 ></listitem>
 </varlistentry>
 
@@ -4781,15 +4719,11 @@ end options
 ><parameter
 >--no-src</parameter
 > (eller <parameter
->--no-svn</parameter
-> eller <parameter
 >-S</parameter
 >)</term>
 <listitem
 ><para
->Hoppa över att kontakta &subversion;-servern (väljaren <parameter
->--no-svn</parameter
-> stöds bara för kompatibilitet med äldre versioner av skriptet). </para
+>Hoppa över att kontakta &git;-servern. </para
 ></listitem>
 </varlistentry>
 
@@ -5345,7 +5279,7 @@ QMAIL_CONTROLDIR=/var/qmail/control
 ></term>
 <listitem
 ><para
->Väljaren gör att &kdesrc-build; checkar ut en särskilt numrerad version av varje &subversion;-modul, och överskrider eventuella alternativ som <link linkend="conf-branch"
+>Väljaren gör att &kdesrc-build; checkar ut en särskilt numrerad version av varje &git;-modul, och överskrider eventuella alternativ som <link linkend="conf-branch"
 >branch</link
 >, <link linkend="conf-tag"
 >tag</link
@@ -5416,7 +5350,7 @@ QMAIL_CONTROLDIR=/var/qmail/control
 >Väljaren används för att låta &kdesrc-build; ta bort källkataloger som kan innehålla användardata, så att modulerna kan laddas ner igen. Den är normalt bara användbar för &kde;-utvecklare (som kan ha lokala ändringar som skulle tas bort).</para>
 
 <para
->För närvarande används den bara för att checka ut moduler som har konverterats från &subversion; till &git;. Normalt ska inte väljaren användas, utan &kdesrc-build; ber att få köras om med den vid behov.</para>
+>Normalt ska inte väljaren användas, utan &kdesrc-build; ber att få köras om med den vid behov.</para>
 </listitem>
 </varlistentry>
 
@@ -5756,7 +5690,7 @@ end global
 
 <screen
 >module <replaceable
->svn-modul-namn</replaceable>
+>något-modul-namn</replaceable>
   &make-install-prefix; <replaceable
 >sudo</replaceable>
 end module
@@ -5843,16 +5777,13 @@ end module
 >Vad är grenar och taggar?</title>
 
 <para
->&subversion; stöder hantering av historik för &kde;:s källkod. &kde; använder stödet för att skapa grenar för utveckling, och att ge arkivet en tagg då och då med utgåvan av en ny version. </para>
+>&git; stöder hantering av historik för &kde;:s källkod. &kde; använder stödet för att skapa grenar för utveckling, och att ge arkivet en tagg då och då med utgåvan av en ny version. </para>
 
 <para
->Till exempel kan utvecklarna av &kmail; arbeta med en ny funktion i en annan gren för att undvika att förstöra versionen som används av de flesta utvecklare. Grenen har pågående utveckling, samtidigt som huvudgrenen (som kallas /trunk) kan ha pågående utveckling. </para>
+>Till exempel kan utvecklarna av &kmail; arbeta med en ny funktion i en annan gren för att undvika att förstöra versionen som används av de flesta utvecklare. Grenen har pågående utveckling, samtidigt som huvudgrenen (som kallas master) kan ha pågående utveckling. </para>
 
 <para
 >En tagg är å andra sidan en ögonblicksbild av källkodsarkivet vid en viss tid. Det används av &kde;:s administrationsgrupp för att markera en version av koden som är lämplig för en utgåva och fortfarande tillåta att utvecklare arbetar med koden. </para>
-
-<para
->Det finns ingen skillnad i koden mellan grenar, taggar eller huvudgrenen i &subversion;. Det är bara en konvention som används av utvecklarna. Det gör det svårt att stödja grenar och taggar i &kdesrc-build; på ett riktigt sätt. Det finns dock några saker som kan göras. </para>
 
 </sect3>
 
@@ -5908,7 +5839,7 @@ end module
 <listitem
 ><para
 >Alternativet &module-base-path; används för att hjälpa &kdesrc-build; fylla i saknade delar av modulens sökväg. I &kde;:s arkiv är alla sökvägar av formen <filename class="directory"
->svnRoot/module-base-path/<replaceable
+>gitRoot/module-base-path/<replaceable
 >modulnamn</replaceable
 ></filename
 >. Normalt kan &kdesrc-build; räkna ut den lämpliga delen i mitten själv. När det inte går, kan du använda &module-base-path; så här: </para>
@@ -5924,7 +5855,7 @@ end module
 
 <para
 >Det skulle göra att &kdesrc-build; laddar ner kdesupport från (i det här exemplet) <filename
->svn://anonsvn.kde.org/home/kde/<replaceable
+>git://invent.kde.org/home/kde<replaceable
 >tags/kdesupport-for-4.5</replaceable
 ></filename
 >. </para>
@@ -5939,11 +5870,11 @@ end module
 
 <listitem
 ><para
->Alternativet &override-url; kräver å andra sidan att du anger den exakta sökvägen att ladda ner från. Det låter dig dock hämta från sökvägar som &kdesrc-build; inte skulle ha någon möjlighet att ladda ner från. För närvarande bör alternativet &module-base-path; vara tillräckligt för alla webbadresser för Subversion källkod. </para>
+>Alternativet &override-url; kräver å andra sidan att du anger den exakta sökvägen att ladda ner från. Det låter dig dock hämta från sökvägar som &kdesrc-build; inte skulle ha någon möjlighet att ladda ner från. För närvarande bör alternativet &module-base-path; vara tillräckligt för alla webbadresser för Git källkod. </para>
 
 <important
 ><para
->&kdesrc-build; rör inte eller korrigerar något värde som du anger för &override-url; överhuvudtaget, så om du byter inställningen &svn-server;, kan du också behöva uppdatera det här. </para
+>&kdesrc-build; rör inte eller korrigerar något värde som du anger för &override-url; överhuvudtaget, så om du byter inställningen &repository;, kan du också behöva uppdatera det här. </para
 ></important>
 
 </listitem>
@@ -6390,7 +6321,7 @@ end global
 
 <note
 ><para
->Det görs bara för &kde;-utvecklare som använder &ssh;. Det beror på att inget lösenord krävs för den vanliga anonyma utcheckningen. &subversion; hanterar lösenord för det andra möjliga protokollet för &kde;-utvecklare, https. </para
+>Det görs bara för &kde;-utvecklare som användare &ssh;. </para
 ></note>
 
 <para
@@ -6493,7 +6424,7 @@ end global
 <title
 >Ta bort onödiga kataloger efter en byggprocess</title>
 <para
->Har du ont om diskutrymme men vill ändå köra de allra senaste utcheckningen av &kde;? &kdesrc-build; kan hjälpa dig att reducera diskanvändning medan du bygger &kde; från &subversion;.</para>
+>Har du ont om diskutrymme men vill ändå köra de allra senaste utcheckningen av &kde;? &kdesrc-build; kan hjälpa dig att reducera diskanvändning medan du bygger &kde; från &git;.</para>
 
 <note
 ><para
@@ -6511,9 +6442,6 @@ end global
 
 <para
 >Om du dessutom har installerat &Qt; från distributionen (och chansen är stor att du har det), behöver du troligen inte installera modulen qt. Det hyvlar av omkring 200 Mibyte från källkodsstorleken på disk.</para>
-
-<para
->En sak att observera är att på grund av sättet som &subversion; fungerar, finns det i själva verket två filer på disk för varje fil som checkas ut från arkivet. &kdesrc-build; har för närvarande inte kod för att försöka minimera källkodsstorleken när källkoden inte används. </para>
 </listitem>
 
 <listitem>
@@ -6644,7 +6572,7 @@ end global
 >Enskilda moduler</title>
 
 <para
->Det är enkelt att ställa in &kdesrc-build; att bygga en enstaka modul. Följande listning är ett exempel på hur en deklaration för en modul baserad på Subversion skulle se ut i <link linkend="kdesrc-buildrc"
+>Det är enkelt att ställa in &kdesrc-build; att bygga en enstaka modul. Följande listning är ett exempel på hur en deklaration för en modul baserad på Git skulle se ut i <link linkend="kdesrc-buildrc"
 >inställningsfilen</link
 >.</para>
 
@@ -6660,7 +6588,7 @@ end module
 
 <tip
 ><para
->Det är en modul baserad på Subversion eftersom den inte använder alternativet <link linkend="conf-repository"
+>Det är en modul baserad på Git eftersom den inte använder alternativet <link linkend="conf-repository"
 >repository</link
 >. Dessutom listas alternativet <option
 >cmake-options</option
@@ -6862,10 +6790,10 @@ export KDEDIRS PATH LD_LIBRARY_PATH
 > för din nya miljö i <filename
 >.bash_profile</filename
 >: <programlisting
->export KDEHOME="${HOME}/.kde-svn"
+>export KDEHOME="${HOME}/.kde-git"
 
-# Skapa om det behövs
-[ ! -e ~/.kde-svn ] &amp;&amp; mkdir ~/.kde-svn
+# Create it if needed
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
 </programlisting>
 </para>
 
@@ -6962,7 +6890,7 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 >F1</keycap
 >, <keycap
 >F3</keycap
->, etc.) så visas en textterminal. Logga in som den särskilda &kde; &subversion;-användaren och skriv:</para>
+>, etc.) så visas en textterminal. Logga in som den särskilda &kde; &git;-användaren och skriv:</para>
 
 <screen
 ><command
