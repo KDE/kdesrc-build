@@ -350,9 +350,9 @@ sub _setupShellRcFile
         }
     } elsif ($shellName eq 'fish') {
       if (defined($ENV{'XDG_CONFIG_HOME'})) {
-        $rcFilepath = "$ENV{'XDG_CONFIG_HOME'}/fish/functions/kdesrc-build.fish";
+        $rcFilepath = "$ENV{'XDG_CONFIG_HOME'}/fish/conf.d/kdesrc-build.fish";
       } else {
-        $rcFilepath = "$ENV{'HOME'}/.config/fish/functions/kdesrc-build.fish";
+        $rcFilepath = "$ENV{'HOME'}/.config/fish/conf.d/kdesrc-build.fish";
       }
     } else {
         $rcFilepath = "$ENV{'HOME'}/.profile";
@@ -376,7 +376,7 @@ sub _setupShellRcFile
           say $rcFh EXT_SHELL_RC_SNIPPET
               if $extendedShell;
         } else {
-          say $rcFh BASE_FISHSHELL_SNIPPET . "set -x PATH $baseDir \$PATH\n";
+          say $rcFh BASE_FISHSHELL_SNIPPET . "fish_add_path --global $baseDir\n";
         }
 
         close($rcFh)
