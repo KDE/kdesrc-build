@@ -616,6 +616,9 @@ sub runAllModulePhases
 
     my $result; # shell-style (0 == success)
 
+    # If fd.o power management is in use, request inhibiting sleep
+    my $dbusConnection = $self->_inhibitSuspensionIfPossible();
+
     # If power-profiles-daemon is in use, request switching to performance mode.
     my $dbusConnection = $self->_holdPerformancePowerProfileIfPossible();
 
@@ -1945,6 +1948,25 @@ sub performInitialUserSetup
 {
     my $self = shift;
     return ksb::FirstRun::setupUserSystem();
+}
+
+sub _inhibitSuspensionIfPossible ($self)
+{
+    my $ctx = $self->context();
+
+    my $dbusConnection;
+    eval {
+        info("Inhibiting sleep");
+
+        return if pretending();
+
+        # The hold will be automatically released once kdesrc-build exits
+        ksb::DBus::requestInhibitSuspension()->then(sub ($stream) {
+            $dbusConnection = $stream;
+        });
+    };
+
+    return $dbusConnection;
 }
 
 sub _holdPerformancePowerProfileIfPossible ($self)

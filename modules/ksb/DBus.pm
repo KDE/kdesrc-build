@@ -238,6 +238,87 @@ sub _waitForDrain($stream)
 
     return $promise;
 }
+=head2 requestIhibitSuspension
+
+Connects to the session D-Bus and if that succeeds, sends a C<Inhibit> request to the
+C<org.freedesktop.PowerManagement> service to request the B<performance> profile be
+enabled.
+
+Returns a cookie to release the inhibition later.
+
+=cut
+
+sub requestInhibitSuspension
+{
+    return _connectToDBus(_getPathToSessionDBus())->then(sub ($stream) {
+            # connection open, send authentication EXTERNAL ...
+
+            # Required before auth request sent
+            $stream->write("\x00");
+
+            # $< (uid) must be quoted to force string conversion
+            my $hexEncodedUid = unpack("H*", "$<");
+            $stream->write("AUTH EXTERNAL $hexEncodedUid\r\n");
+
+            return _getDBusResponse($stream);
+        })->then(sub ($stream, $bytes) {
+            my ($res, $guid) = split(' ', $bytes);
+
+            die "Unexpected response" unless $res eq 'OK';
+
+            # OK GUID recv'd, send BEGIN and first message (Hello)
+            $stream->write("BEGIN\r\n");
+
+            # Hello message
+            my %fields = (
+                obj_path => '/org/freedesktop/DBus',
+                bus_dest => 'org.freedesktop.DBus',
+                iface    => 'org.freedesktop.DBus',
+                method   => 'Hello',
+                sig      => '',
+                response => 1,
+            );
+
+            $stream->write(_buildDBusMessageHeader('', %fields));
+
+            return _getDBusResponse($stream);
+        })->then(sub ($stream, $bytes) {
+            # check response, should be METHOD_REPLY
+            die 'empty response' unless $bytes;
+
+            my ($endian, $msg_type, undef, undef, $body_len) =
+                unpack('A1 C C C V', $bytes);
+            die "unhandled endianness $endian" unless $endian eq 'l';
+
+            # 2 == METHOD_RETURN. 3 would be an ERROR.
+            die "Message type $msg_type incorrect" unless $msg_type == 2;
+
+            # Three params are both strings, the program that placed the
+            # inhibition and the reason
+            # Each string is serialized by a 4-byte length
+            # (exclusive of required terminating null) then the
+            # string
+
+            my @args = ('kdesrc-build', 'Building software');
+            my $body = pack("V Z* x!4 V Z* x!4 V Z*",
+                map { (length $_, $_) } @args);
+
+            my %fields = (
+                obj_path => '/org/freedesktop/PowerManagement',
+                bus_dest => 'org.freedesktop.PowerManagement',
+                iface    => 'org.freedesktop.PowerManagement.Inhibit',
+                method   => 'Inhibit',
+                sig      => 'ss',
+            );
+
+            my $hdr = _buildDBusMessageHeader($body, %fields);
+            $stream->write($hdr . $body);
+
+            return _waitForDrain($stream);
+        })->catch(sub ($err) {
+            say STDERR "Caught error $err!";
+        });
+}
 
 =head2 requestPerformanceProfile
 
