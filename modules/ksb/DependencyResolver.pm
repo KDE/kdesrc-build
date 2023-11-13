@@ -411,7 +411,7 @@ sub _checkDependencyCycles
 
     my $errors = 0;
 
-    for my $item (keys(%$moduleGraph)) {
+    for my $item (sort keys(%$moduleGraph)) {
         if(_detectDependencyCycle($moduleGraph, $item, $item)) {
             error("Somehow there is a circular dependency involving b[$item]! :(");
             error("Please file a bug against repo-metadata about this!");
@@ -526,7 +526,8 @@ sub _resolveDependenciesForModuleDescription
 
     debug("Resolving dependencies for module: b[$item]");
 
-    while (my ($depItem, $depInfo) = each %{$moduleGraph->{$item}->{deps}}) {
+    foreach my $depItem (sort keys %{$moduleGraph->{$item}->{deps}}) {
+        my $depInfo = $moduleGraph->{$item}->{deps}->{$depItem};
         my $depPath = $depInfo->{path};
         my $depBranch = $depInfo->{branch};
 
