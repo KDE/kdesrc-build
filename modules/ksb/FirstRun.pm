@@ -562,6 +562,7 @@ libxcb-record0-dev
 libcanberra-dev
 # .. karchive
 liblzma-dev
+libbz2-dev
 # .. plasma-workspace
 libqalculate-dev
 libxft-dev
