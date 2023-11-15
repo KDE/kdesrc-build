@@ -47,9 +47,6 @@
   <!ENTITY cron '<application
 >Cron</application
 >'>
-  <!ENTITY subversion '<application
->Subversion</application
->'>
   <!ENTITY sudo '<application
 >Sudo</application
 >'>
@@ -100,11 +97,8 @@
   <!ENTITY do-not-compile '<link linkend="conf-do-not-compile"
 >do-not-compile</link
 >'>
-  <!ENTITY checkout-only '<link linkend="conf-checkout-only"
->checkout-only</link
->'>
-  <!ENTITY svn-server '<link linkend="conf-svn-server"
->svn-server</link
+  <!ENTITY repository '<link linkend="conf-repository"
+>repository</link
 >'>
   <!ENTITY make-install-prefix '<link linkend="conf-make-install-prefix"
 >make-install-prefix</link
@@ -255,18 +249,9 @@
 <keyword
 >kdesdk</keyword>
 <keyword
->SVN</keyword>
-<keyword
->Subversion</keyword>
-<keyword
 >git</keyword>
 <keyword
 >Sviluppo di KDE</keyword>
-<!-- Older names for the software -->
-<keyword
->kdesrc-build</keyword>
-<keyword
->kdecvs-build</keyword>
 </keywordset>
 
 </bookinfo>
@@ -284,13 +269,11 @@
 >Cos'è &kdesrc-build;?</title>
 
 <para
->&kdesrc-build; è uno script che aiuta la comunità di &kde; ad installare il software <ulink url="https://www.kde.org/"
+>&kdesrc-build; è uno script che aiuta la comunità di &kde; a installare il software <ulink url="https://www.kde.org/"
 >&kde;</ulink
 > dai depositi dei sorgenti <ulink url="https://git-scm.com/"
 >&git;</ulink
-> e <ulink url="https://subversion.apache.org"
->&subversion;</ulink
->, e a continuare ad aggiornarlo dopo l'installazione. È rivolto in particolare a coloro i quali hanno bisogno di supporto nel test e nello sviluppo del software &kde;, inclusi gli utenti che verificano le correzioni di errori e gli sviluppatori che lavorano su nuove funzionalità. </para>
+> e a continuare ad aggiornarlo dopo l'installazione. È rivolto in particolare a coloro i quali hanno bisogno di supporto nel test e nello sviluppo del software &kde;, inclusi gli utenti che verificano le correzioni di errori e gli sviluppatori che lavorano su nuove funzionalità. </para>
 
 <para
 >Lo script &kdesrc-build; può essere usato per mantenere un solo modulo individuale, un desktop &plasma; completo con un set di applicazioni &kde;, o anche una via di mezzo. </para>
@@ -1073,7 +1056,7 @@ Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
 ><literal
 >xsession</literal
 ></quote
-> personalizzato. Questo tipo di sessione dovrebbe normalmente funzionare con il gestore d'accesso &kdm; (dove compare come la sessione <quote
+> personalizzato. Questo tipo di sessione dovrebbe normalmente funzionare con il gestore d'accesso sddm (dove compare come la sessione <quote
 >Custom</quote
 >), ma altri gestori (come <application
 >LightDM</application
@@ -1804,7 +1787,7 @@ end module-set
 
 <listitem
 ><para
->&kdesrc-build; può (con l'aiuto del server FTP di &kde;) permettere il ritiro rapido di alcuni moduli di &subversion;. Se il modulo che stai ritirando è già stato preparato sul sito Web, &kdesrc-build; ne scaricherà una copia e la preparerà per l'uso sul tuo computer. </para>
+>&kdesrc-build; ti permette di ritirare i moduli rapidamente. Se il modulo che stai ritirando è già stato ritirato altre volte, &kdesrc-build; ne scaricherà una copia e la preparerà per l'uso sul tuo computer. </para>
 
 <tip
 ><para
@@ -1812,7 +1795,7 @@ end module-set
 ></tip>
 
 <para
->Ciò è più veloce per te, e aiuta a ridurre il carico sui server &subversion; anonimi di kde.org.</para>
+>Ciò è più veloce per te, e aiuta a ridurre il carico sui server &git; anonimi di kde.org.</para>
 </listitem>
 
 <listitem
@@ -1869,7 +1852,7 @@ end module-set
 ><para
 >Per gli sviluppatori: &kdesrc-build; vi <link linkend="ssh-agent-reminder"
 >ricorderà</link
-> se usate svn+ssh:// ma <application
+> se usate git+ssh:// ma <application
 >ssh-agent</application
 > non è in esecuzione, visto che ciò porterebbe a richieste di password multiple da &ssh;. </para
 ></listitem>
@@ -1972,15 +1955,6 @@ end module-set
 > viene creato e punta sempre al file più recente della cartella dei registri. </para
 ></listitem>
 
-<listitem
-><para
->Puoi ritirare anche solo una parte di un modulo &subversion; di &kde;. Per esempio, potresti ritirare solo <application
->taglib</application
-> da <application
->kdesupport</application
->. </para
-></listitem>
-
 </itemizedlist>
 
 </sect1>
@@ -2051,10 +2025,8 @@ end module-set
 
 <para
 >In ogni cartella di registro dei moduli troverai una serie di file per ogni operazione effettuata da &kdesrc-build;. Se &kdesrc-build; aggiorna un modulo, potresti vedere dei file come <filename
->svn-co.log</filename
-> (per il ritiro di un modulo) o <filename
->svn-up.log</filename
-> (per l'aggiornamento di un modulo che è stato ritirato in precedenza). Se è stato eseguito il comando <command
+>git-checkout-update.log</filename
+> (per il ritiro di un modulo o per l'aggiornamento di un modulo che è stato ritirato in precedenza). Se è stato eseguito il comando <command
 >configure</command
 >, dovresti aspettarti di vedere un <filename
 >configure.log</filename
@@ -2083,7 +2055,7 @@ end module-set
 > è vuoto (soprattutto dopo un'installazione), forse non c'è davvero stato nessun errore. Alcuni degli strumenti usati dal sistema di generazione di &kde; segnaleranno errori per sbaglio anche se in realtà non ce ne sono.</para>
 
 <para
->Inoltre, alcuni comandi evaderanno il redirezionamento dell'output di &kdesrc-build; ed eviteranno il file di registro in certe circostanze (di solito quando si effettua il primo ritiro da &subversion;), e l'output di errore in quel caso non è nel file di registro ma nella &konsole; o nel terminale dove hai eseguito &kdesrc-build;.</para>
+>Inoltre, alcuni comandi evaderanno il redirezionamento dell'output di &kdesrc-build; ed eviteranno il file di registro in certe circostanze (di solito quando si effettua il primo ritiro da &git;), e l'output di errore in quel caso non è nel file di registro ma nella &konsole; o nel terminale dove hai eseguito &kdesrc-build;.</para>
 </tip>
 
 </sect3>
@@ -2177,10 +2149,10 @@ end module-set
 ></important>
 
 <para
->Per i moduli di Subversion, <replaceable
+>Per i moduli di Git, <replaceable
 >nome-modulo</replaceable
-> deve essere un modulo del deposito &subversion; di &kde; (per esempio, kdeartwork o kde-wallpapers), anche se è possibile aggirare questa limitazione se <link linkend="conf-override-url"
->specifichi manualmente l'URL di &subversion;</link
+> deve essere un modulo del deposito &git; di &kde; (per esempio, kdeartwork o kde-wallpapers), anche se è possibile aggirare questa limitazione se <link linkend="conf-override-url"
+>specifichi manualmente l'URL di &git;</link
 >. </para>
 
 <para
@@ -2384,9 +2356,9 @@ end global
 ><para
 ><link linkend="conf-branch"
 >branch</link
->, per ritirare da un ramo invece che /trunk (per &subversion;) o <literal
+>, per ritirare da un ramo invece che <literal
 >master</literal
-> (per Git).</para
+>.</para
 ></listitem>
 <listitem
 ><para
@@ -2543,11 +2515,9 @@ end global
 >L'impostazione del modulo ha precedenza su quella globale</entry>
 <entry
 ><para
->Imposta questa opzione per ritirare i file da un ramo di &kde; invece che dal ramo predefinito, cioè <replaceable
+>Imposta questa opzione per ritirare i file da un ramo di &kde; invece che dal ramo predefinito <replaceable
 >master</replaceable
-> per i moduli su &git; e <replaceable
->trunk</replaceable
-> per i moduli su &subversion;, dove si svolge lo sviluppo di &kde;.</para>
+> dove si svolge lo sviluppo di &kde;.</para>
 
 <para
 >Per esempio, per ritirare il ramo 4.6 di &kde;, devi impostare questa opzione a <replaceable
@@ -2652,7 +2622,7 @@ end global
 >Usa questa opzione per cambiare la cartella che conterrà il codice costruito. Ci sono tre diversi modi di usarla: <orderedlist
 ><listitem
 ><para
->Relativa alla cartella sorgente della cartella del codice sorgente &subversion; di &kde; (vedi <link linkend="conf-source-dir"
+>Relativa alla cartella sorgente della cartella del codice sorgente &git; di &kde; (vedi <link linkend="conf-source-dir"
 >l'opzione source-dir</link
 >). Questa è la modalità predefinita, e viene selezionata se scrivi un nome di cartella che non comincia per tilde (~) o sbarra (/).</para
 ><para
@@ -2705,17 +2675,6 @@ end global
 ><para
 >Questa funzionalità viene fornita solo come ottimizzazione. Come per molte altre ottimizzazioni, ci sono dei compromessi sulla correttezza dell'installazione. Per esempio, le modifiche ai moduli qt o kdelibs potrebbero causare una rigenerazione di tutti gli altri moduli, anche se il codice sorgente non è cambiato affatto.</para
 ></important>
-</entry>
-</row>
-
-<row id="conf-checkout-only">
-<entry
->checkout-only</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Questa opzione è stata rimossa nel gennaio 2022. Controllava la capacità di ritirare sottoinsiemi di un module da un deposito Subversion.</para>
 </entry>
 </row>
 
@@ -2938,8 +2897,8 @@ end global
 <entry
 >Non sostituibile</entry>
 <entry
->Normalmente, se stai usando &ssh; per scaricare i sorgenti da &subversion; (come nel caso in cui stessi usando il protocollo <filename
->svn+ssh</filename
+>Normalmente, se stai usando &ssh; per scaricare i sorgenti da &git; (come nel caso in cui stessi usando il protocollo <filename
+>git+ssh</filename
 >), &kdesrc-build; cercherà di assicurarsi che se stai usando <application
 >ssh-agent</application
 >, questo stia effettivamente gestendo delle identità &ssh;. Questo è per cercare di prevenire che &ssh; chieda la password per ogni modulo. Puoi disabilitare questa opzione impostando <option
@@ -3612,7 +3571,7 @@ end module
 <entry
 >Imposta il valore dell'opzione a <userinput
 >true</userinput
-> (vero) per impedire al processo di cercare di generare questo modulo. Sarà comunque aggiornato quando si aggiorna da &subversion;. Questa opzione è esattamente equivalente all'opzione da riga di comando <link linkend="cmdline-no-build"
+> (vero) per impedire al processo di cercare di generare questo modulo. Sarà comunque aggiornato quando si aggiorna da &git;. Questa opzione è esattamente equivalente all'opzione da riga di comando <link linkend="cmdline-no-build"
 ><option
 >--no-build</option
 ></link
@@ -3637,14 +3596,14 @@ end module
 >L'impostazione del modulo ha precedenza su quella globale</entry>
 <entry
 ><para
->Imposta questa opzione per sostituire il percorso alla cartella predefinita di &kdesrc-build; per il modulo. Si può usare, per esempio, per ritirare particolari rami o versioni di alcune librerie. <ulink url="https://websvn.kde.org/"
+>Imposta questa opzione per sostituire il percorso alla cartella predefinita di &kdesrc-build; per il modulo. Si può usare, per esempio, per ritirare particolari rami o versioni di alcune librerie. <ulink url="https://invent.kde.org/"
 >Il visore del sorgente di &kde;</ulink
 > è utilissimo per capire quale percorso scegliere.</para>
 
 <para
 >Nota che &kdesrc-build; costruisce il percorso finale secondo il modello seguente: <filename class="directory"
 ><varname
->$svn-server</varname
+>$repository</varname
 >/home/kde/<varname
 >$module-base-path</varname
 ></filename
@@ -3652,11 +3611,11 @@ end module
 
 <para
 >Il valore predefinito è <filename class="directory"
->trunk/<varname
+><varname
 >$module</varname
 ></filename
 > o <filename class="directory"
->trunk/KDE/<varname
+>KDE/<varname
 >$module</varname
 ></filename
 >, a seconda del nome del modulo.</para>
@@ -3735,9 +3694,9 @@ end options
 </entry>
 </row>
 
-<row id="conf-no-svn">
+<row id="conf-no-src">
 <entry
->no-svn</entry>
+>no-src</entry>
 <entry
 >L'impostazione del modulo ha precedenza su quella globale</entry>
 <entry
@@ -3890,7 +3849,7 @@ end options
 <entry
 >L'impostazione del modulo ha precedenza su quella globale</entry>
 <entry
->Se imposti questa opzione, &kdesrc-build; userà il suo valore come l'&url; da passare a &subversion; <emphasis
+>Se imposti questa opzione, &kdesrc-build; userà il suo valore come l'&url; da passare a &git; <emphasis
 >esattamente com'è</emphasis
 >. Generalmente dovresti usarla se vuoi scaricare un rilascio particolare ma &kdesrc-build; non riesce a capire quello che vuoi fare usando <link linkend="conf-branch"
 >branch</link
@@ -4098,8 +4057,8 @@ end options
 <entry
 >L'impostazione del modulo ha precedenza su quella globale</entry>
 <entry
->Questa opzione viene usata per impostare la cartelle in cui tenere il codice sorgente &subversion; di &kde; sul tuo computer. Se non specifichi questo valore, quello predefinito sarà <filename class="directory"
->~/kdesrc</filename
+>Questa opzione viene usata per impostare la cartelle in cui tenere il codice sorgente &git; di &kde; sul tuo computer. Se non specifichi questo valore, quello predefinito sarà <filename class="directory"
+>~/kde/src</filename
 >. Puoi usare la tilde (<userinput
 >~</userinput
 >) per rappresentare la cartella Home usando questa opzione. </entry>
@@ -4130,23 +4089,6 @@ end options
 >Imposta questa opzione a <userinput
 >true</userinput
 > (vero) per far fermare l'esecuzione dello script a seguito del verificarsi di un errore durante il processo di generazione o installazione. Il valore predefinito di questa opzione è true (vero). </entry>
-</row>
-
-<row id="conf-svn-server">
-<entry
->svn-server</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Questa opzione viene usata per impostare il server usato per ritirare i file da &subversion;. Il valore predefinito è il deposito &subversion; anonimo, <filename
->svn://anonsvn.kde.org/</filename
->.</para>
-<note
-><para
->Se stai sviluppando per &kde;, usa il deposito di &subversion; che ti è stato dato quando hai ricevuto il tuo account di sviluppatore, invece di quello anonimo.</para
-></note>
-</entry>
 </row>
 
 <row id="conf-tag">
@@ -4697,15 +4639,11 @@ end options
 ><parameter
 >--src-only</parameter
 > (o <parameter
->--svn-only</parameter
-> oppure <parameter
 >-s</parameter
 >)</term>
 <listitem
 ><para
->Effettua solo l'aggiornamento del codice sorgente (<parameter
->--svn-only</parameter
-> è supportato solo per retrocompatibilità). </para
+>Fai solo l'aggiornamento del codice sorgente. </para
 ></listitem>
 </varlistentry>
 
@@ -4821,15 +4759,11 @@ end options
 ><parameter
 >--no-src</parameter
 > (o <parameter
->--no-svn</parameter
-> oppure <parameter
 >-S</parameter
 >)</term>
 <listitem
 ><para
->Non contattare il server &subversion; (<parameter
->--no-svn</parameter
-> è supportato solo per retrocompatibilità). </para
+>Salta la connessione al server &git;. </para
 ></listitem>
 </varlistentry>
 
@@ -5385,7 +5319,7 @@ QMAIL_CONTROLDIR=/var/qmail/control
 ></term>
 <listitem
 ><para
->Questa opzione fa ritirare a &kdesrc-build; la revisione corrispondente a un certo numero per ogni modulo di &subversion;, sostituendosi a qualsiasi opzione di <link linkend="conf-branch"
+>Questa opzione fa ritirare a &kdesrc-build; la revisione corrispondente a un certo numero per ogni modulo di &git;, sostituendosi a qualsiasi opzione di <link linkend="conf-branch"
 >ramo</link
 >, <link linkend="conf-tag"
 >tag</link
@@ -5456,7 +5390,7 @@ QMAIL_CONTROLDIR=/var/qmail/control
 >Questa opzione si usa per far eliminare a &kdesrc-build; le cartelle sorgente che potrebbero contenere dati dell'utente, in modo che i moduli possano essere scaricati di nuovo. Questo è normalmente utile solo agli sviluppatori di &kde; (che potrebbero avere delle modifiche locali da eliminare).</para>
 
 <para
->Al momento questo si usa solo per ritirare i moduli che sono stati convertiti da &subversion; a &git;. Normalmente non dovresti usare questa opzione; &kdesrc-build; richiederà di venire eseguito una seconda volta, se necessario.</para>
+>Normalmente non dovresti usare questa opzione; &kdesrc-build; richiederà di venire eseguito una seconda volta, se necessario.</para>
 </listitem>
 </varlistentry>
 
@@ -5802,7 +5736,7 @@ end global
 
 <screen
 >module <replaceable
->nome_modulo_svn</replaceable>
+>nome_modulo_qualcosa</replaceable>
   &make-install-prefix; <replaceable
 >sudo</replaceable>
 end module
@@ -5889,16 +5823,13 @@ end module
 >Cosa sono i rami e i tag?</title>
 
 <para
->&subversion; supporta la gestione della cronologia del codice di &kde;. &kde; usa questo supporto per creare rami di sviluppo e per segnare il deposito ogni volta che c'è un nuovo rilascio. </para>
+>&git; supporta la gestione della cronologia del codice di &kde;. &kde; usa questo supporto per creare rami di sviluppo e per segnare il deposito ogni volta che c'è un nuovo rilascio. </para>
 
 <para
->Per esempio, gli sviluppatori di &kmail; potrebbero lavorare a una nuova funzionalità in un ramo diverso per non interferire con la versione usata dagli altri sviluppatori. Questo ramo contiene dei lavori in corso, mentre il ramo principale (detto tronco) potrebbe averne altri. </para>
+>Per esempio, gli sviluppatori di &kmail; potrebbero lavorare a una nuova funzionalità in un ramo diverso per non interferire con la versione usata dagli altri sviluppatori. Questo ramo contiene dei lavori in corso, mentre il ramo principale (detto master) potrebbe averne altri. </para>
 
 <para
 >Un tag, invece, è un'istantanea del deposito del codice sorgente in un certo momento. Ciò viene usato dalla squadra di amministrazione di &kde; per segnare una versione del codice sorgente adatta al rilascio, lasciando allo stesso tempo che gli sviluppatori possano lavorare sul codice. </para>
-
-<para
->In &subversion; non ci sono differenze tra rami, tag o tronco nel codice. È solo una convenzione usata dagli sviluppatori. Ciò rende difficile supportare bene i rami e i tag con &kdesrc-build;. Tuttavia, alcune cose si possono fare. </para>
 
 </sect3>
 
@@ -5954,7 +5885,7 @@ end module
 <listitem
 ><para
 >&module-base-path; si usa per aiutare &kdesrc-build; a scrivere la parte mancante del percorso di un modulo. Nel deposito di &kde;, tutti i percorsi sono nella forma <filename class="directory"
->radiceSvn/percorso-base-modulo/<replaceable
+>radiceGit/percorso-base-modulo/<replaceable
 >nome-modulo</replaceable
 ></filename
 >. Normalmente &kdesrc-build; riesce a capire da sé la parte in mezzo. Quando non ci riesce, puoi usare &module-base-path;, così: </para>
@@ -5970,7 +5901,7 @@ end module
 
 <para
 >Ciò farà scaricare a &kdesrc-build; kdesupport da (in questo esempio) <filename
->svn://anonsvn.kde.org/home/kde/<replaceable
+>git://invent.kde.org/home/kde/<replaceable
 >tags/kdesupport-for-4.5</replaceable
 ></filename
 >. </para>
@@ -5985,11 +5916,11 @@ end module
 
 <listitem
 ><para
->L'opzione &override-url;, invece, ti richiede di specificare il percorso esatto da cui scaricare. Però, ti permette di scaricare da percorsi che le versioni precedenti di &kdesrc-build; non riuscirebbero mai a raggiungere. Attualmente, l'opzione &module-base-path; dovrebbe bastare per qualsiasi &URL; sorgente di &subversion;. </para>
+>L'opzione &override-url;, invece, ti richiede di specificare il percorso esatto da cui scaricare. Però, ti permette di scaricare da percorsi che le versioni precedenti di &kdesrc-build; non riuscirebbero mai a raggiungere. Attualmente, l'opzione &module-base-path; dovrebbe bastare per qualsiasi &URL; sorgente di &git;. </para>
 
 <important
 ><para
->&kdesrc-build; non toccherà né modificherà il valore che specifichi per &override-url;, quindi se cambi le tue impostazioni di &svn-server; dovresti cambiare anche questa. </para
+>&kdesrc-build; non toccherà né modificherà il valore che specifichi per &override-url;, quindi se cambi le tue impostazioni del &repository; dovresti cambiare anche questa. </para
 ></important>
 
 </listitem>
@@ -6440,7 +6371,7 @@ end global
 
 <note
 ><para
->Questo viene fatto solo per gli sviluppatori di &kde; che usano &ssh;. Questo perché non serve nessuna password per il ritiro anonimo predefinito. &subversion; gestirà le password per il secondo protocollo possibile per gli sviluppatori di &kde;, https. </para
+>Questo è concepito solo per gli sviluppatori di &kde; che utilizzano &ssh;. </para
 ></note>
 
 <para
@@ -6543,7 +6474,7 @@ end global
 <title
 >Rimuovere cartelle non necessarie dopo la generazione</title>
 <para
->Se hai poco spazio su disco ma vuoi comunque avere l'ultimo codice sorgente di &kde;, &kdesrc-build; può ridurre l'occupazione del disco durante la generazione di &kde; da &subversion;.</para>
+>Se hai poco spazio su disco ma vuoi comunque avere l'ultimo codice sorgente di &kde;, &kdesrc-build; può ridurre l'occupazione del disco durante la generazione di &kde; da &git;.</para>
 
 <note
 ><para
@@ -6561,9 +6492,6 @@ end global
 
 <para
 >Inoltre, se hai già una versione di &Qt; installata dalla tua distribuzione (e ce ne sono buone probabilità), probabilmente non hai bisogno di installare il modulo qt. Ciò risparmierà circa 200 megabyte di spazio su disco.</para>
-
-<para
->Una cosa da tener presente è il modo in cui funziona &subversion;: per ogni file ritirato dal deposito ci sono due file su disco. &kdesrc-build; al momento non ha codice per cercare di minimizzare la dimensione del codice sorgente quando non viene utilizzato. </para>
 </listitem>
 
 <listitem>
@@ -6696,7 +6624,7 @@ end global
 >Moduli singoli</title>
 
 <para
->È facile far generare un singolo modulo a &kdesrc-build;. L'elenco seguente è un esempio di come può essere scritta una dichiarazione per un modulo basato su &subversion; nel <link linkend="kdesrc-buildrc"
+>È facile far generare un singolo modulo a &kdesrc-build;. L'elenco seguente è un esempio di come può essere scritta una dichiarazione per un modulo basato su &git; nel <link linkend="kdesrc-buildrc"
 >file di configurazione</link
 >.</para>
 
@@ -6712,7 +6640,7 @@ end module
 
 <tip
 ><para
->Questo è un modulo basato su &subversion; perché non usa un'opzione <link linkend="conf-repository"
+>Questo è un modulo basato su &git; perché non usa un'opzione <link linkend="conf-repository"
 >repository</link
 >. Inoltre, l'opzione <option
 >cmake-options</option
@@ -6920,10 +6848,10 @@ export KDEDIRS PATH LD_LIBRARY_PATH
 > per il nuovo ambiente nel file <filename
 >.bash_profile</filename
 >: <programlisting
->export KDEHOME="${HOME}/.kde-svn"
+>export KDEHOME="${HOME}/.kde-git"
 
 # Crealo se necessario
-[ ! -e ~/.kde-svn ] &amp;&amp; mkdir ~/.kde-svn
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
 </programlisting>
 </para>
 
@@ -6968,7 +6896,7 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 ><para
 >Su alcune distribuzioni, potrebbe essere necessario effettuare gli stessi passi con il file <filename
 >.xsession</filename
->, anch'esso nella cartella Home. Ciò è vero in particolare quando si usano gestori di accesso grafici come &kdm;, <application
+>, anch'esso nella cartella Home. Ciò è vero in particolare quando si usano gestori di accesso grafici come sddm, <application
 >gdm</application
 > o <application
 >xdm</application
@@ -6987,7 +6915,7 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 >vengono usate per selezionare le console virtuali dalla 1 alla 12. Ciò permette di avere più di un ambiente desktop allo stesso tempo. Le prime sei sono terminali di testo, e le seguenti sono terminali grafici. </para>
 
 <para
->Se invece quando avvii il computer ti viene presentato un gestore grafico, puoi usare il nuovo ambiente &kde; anche se non è elencato nelle opzioni. La maggior parte dei gestori d'accesso grafici, &kdm; incluso, hanno l'opzione di usare una <quote
+>Se invece quando avvii il computer ti viene presentato un gestore grafico, puoi usare il nuovo ambiente &kde; anche se non è elencato nelle opzioni. La maggior parte dei gestori d'accesso grafici, sddm incluso, hanno l'opzione di usare una <quote
 >sessione personalizzata</quote
 > all'accesso. Con questa opzione, vengono caricate le tue impostazioni di sessione dal file <filename
 >.xsession</filename
@@ -7020,7 +6948,7 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 >F1</keycap
 >, <keycap
 >F3</keycap
->, eccetera) e ti sarà presentato un terminale testuale. Accedi con l'utente &subversion; dedicato a &kde; e scrivi:</para>
+>, eccetera) e ti sarà presentato un terminale testuale. Accedi con l'utente &git; dedicato a &kde; e scrivi:</para>
 
 <screen
 ><command
