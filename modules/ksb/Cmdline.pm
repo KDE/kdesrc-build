@@ -236,7 +236,7 @@ sub readCommandLineOptionsAndSelectors (@options)
         'really-quiet' => sub { $foundOptions{'debug-level'} = ksb::Debug::WARNING },
         debug          => sub {
             $foundOptions{'debug-level'} = ksb::Debug::DEBUG;
-            debug ("Commandline was: ", join(', ', @savedOptions));
+            say ("Commandline was: ", join(', ', @savedOptions));  # cannot use Debug::debug() yet, as debugLevel is not yet initialized
         },
 
         # Hack to set module options
