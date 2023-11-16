@@ -161,7 +161,6 @@ our %defaultGlobalOptions = (
     "do-not-compile"       => "",
     "http-proxy"           => '', # Proxy server to use for HTTP.
     "kdedir"               => "$ENV{HOME}/kde",
-    "kde-languages"        => "",
     "libname"              => $libname,
     "libpath"              => "",
     "log-dir"              => "log",

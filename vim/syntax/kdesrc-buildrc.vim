@@ -46,14 +46,14 @@ syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
 
 syn keyword ksbrcGlobalOption contained skipwhite nextgroup=ksbrcStringValue
             \ branch-group git-desired-protocol git-repository-base http-proxy
-            \ kde-languages niceness debug-level persistent-data-file set-env
+            \ niceness debug-level persistent-data-file set-env
             \ num-cores num-cores-low-mem
 
 " MUST BE CONSISTENT WITH ABOVE. Used when a module-set option is used in the
 " wrong spot to highlight the error.
 syn keyword ksbrcErrorGlobalOption contained skipwhite nextgroup=ksbrcStringValue
             \ branch-group git-desired-protocol git-repository-base http-proxy
-            \ kde-languages niceness debug-level persistent-data-file set-env
+            \ niceness debug-level persistent-data-file set-env
             \ num-cores num-cores-low-mem
 
 syn keyword ksbrcModuleSetOption contained skipwhite nextgroup=ksbrcStringValue
