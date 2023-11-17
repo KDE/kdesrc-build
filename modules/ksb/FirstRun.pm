@@ -189,8 +189,20 @@ DONE
         my @all_possible_groups = `pacman -Sg`;
         chomp(@all_possible_groups);
 
-        my @required_groups = grep { $_ ~~ @all_possible_groups } (@missing_packages_and_required_groups);
-        my @missing_packages_not_grouped = grep { $_ !~ @required_groups } (@missing_packages_and_required_groups);
+        my @required_groups;
+        foreach my $package_or_group (@missing_packages_and_required_groups) {
+            if (grep { $_ eq $package_or_group } @all_possible_groups) {
+                push @required_groups, $package_or_group;
+            }
+        }
+
+        my @missing_packages_not_grouped;
+        foreach my $package_or_group (@missing_packages_and_required_groups) {
+            if (!grep { $package_or_group eq $_ } @required_groups) {
+                push @missing_packages_not_grouped, $package_or_group;
+            }
+        }
+
         my @missing_packages_from_required_groups;
         if (@required_groups) {
             for my $required_group (@required_groups) {
@@ -199,6 +211,7 @@ DONE
                 push @missing_packages_from_required_groups, (@missing_packages_from_required_group);
             }
         }
+
         @packages = (@missing_packages_not_grouped, @missing_packages_from_required_groups);
         if (!@packages) {
             @installCmd = "# All dependencies are already installed. No need to run pacman. :)";
