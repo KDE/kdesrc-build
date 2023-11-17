@@ -6,13 +6,17 @@
 # https://docs.kde.org/?application=kdesrc-build
 global
     branch-group kf5-qt5
-    kdedir ~/kde-5 # Where to install KF5-based software
-    # Uncomment this and edit value to choose a different Qt5
-#    qtdir /usr     # Where to find Qt5
+    kdedir ~/kde5 # Where to install KF5-based software
+
+    # Update your PATH to find Qt5, it should contain "<qt_install_path>/bin".
+    # Alternatively, and also if you build your own Qt with this script, set it's install path here
+    # qtdir ~/kde5/qt   # Where to find Qt5
+
+    cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
     # Where to download source code. By default the build directory and
     # logs will be kept under this directory as well.
-    source-dir ~/kde/src
+    source-dir ~/kde5/src
 
     # These values should be set to the number of cores to use during build (if
     # in doubt, run "nproc" to see how many cores you have)
@@ -22,7 +26,22 @@ global
     # qtwebengine, though you can use it for modules yourself. A conservative
     # thumbrule is one core for every 2 GiB of total memory.
     num-cores-low-mem 2
+
+    # For CMake modules this configures CMake to use Ninja as the build
+    # controller and generate metadata to make editing with Kate easier.
+    cmake-generator Kate - Ninja
+
+    # Build with LSP support for everything that supports it
+    compile-commands-linking true
+    compile-commands-export true
 end global
+
+# Uncomment this if you want kdesrc-build to try to install Qt5.  We recommend
+# your distribution's Qt5 *development* packages instead though, if recent enough.
+#
+# NOTE: You MUST change the path below to include the actual path to your
+# kdesrc-build installation.
+#include ~/kde5/src/kdesrc-build/qt5-build-include
 
 # Instead of specifying modules here, the current best practice is to refer to
 # KF5 module lists maintained with kdesrc-build by the KF5 developers. As new
@@ -32,7 +51,7 @@ end global
 
 # NOTE: You MUST change the path below to include the actual path to your
 # kdesrc-build installation.
-include /path/to/kdesrc-build/kf5-qt5-build-include
+include ~/kde5/src/kdesrc-build/kf5-qt5-build-include
 
 # If you wish to maintain the module list yourself that is possible, simply
 # look at the files pointed to above and use the "module-set" declarations that
