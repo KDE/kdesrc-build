@@ -45,7 +45,6 @@ sub _createMetadataModule
     # Hardcode the results instead of expanding out the project info
     $metadataModule->setOption('repository', "kde:$moduleName");
     $metadataModule->setOption('#kde-project-path', $moduleName);
-    $metadataModule->setOption('#branch:stable', 'master');
     $metadataModule->setScmType('metadata');
     $metadataModule->setOption('disable-snapshots', 1);
     $metadataModule->setOption('branch', 'master');
@@ -143,7 +142,6 @@ sub _expandModuleCandidates ($self, $ctx, $moduleSearchItem)
         $newModule->setOption('repository',        $result->{repo});
         $newModule->setOption('#kde-project-path', $result->{fullName});
         $newModule->setOption('#kde-repo-path',    $result->{inventName});
-        $newModule->setOption('#branch:stable',    undef);
         $newModule->setOption('#found-by',         $result->{found_by});
         # Temp flag during metadata transition
         $newModule->setOption('#upcoming-name-change', $result->{nameChangingTo})

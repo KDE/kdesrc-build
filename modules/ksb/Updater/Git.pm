@@ -608,19 +608,17 @@ sub _determinePreferredCheckoutSource
         [qw(tag            tag    module)],
         [qw(branch         branch module)],
         [qw(branch-group   branch module)],
-        [qw(use-stable-kde branch module)],
         # commit/rev/tag don't make sense for git as globals
         [qw(branch         branch allow-inherit)],
         [qw(branch-group   branch allow-inherit)],
-        [qw(use-stable-kde branch allow-inherit)],
     );
 
     # For modules that are not actually a 'proj' module we skip branch-group
-    # and use-stable-kde entirely to allow for global/module branch selection
+    # entirely to allow for global/module branch selection
     # options to be selected... kind of complicated, but more DWIMy
     if (!$module->scm()->isa('ksb::Updater::KDEProject')) {
         @priorityOrderedSources = grep {
-            $_->[0] ne 'branch-group' && $_->[0] ne 'use-stable-kde'
+            $_->[0] ne 'branch-group'
         } @priorityOrderedSources;
     }
 
@@ -637,13 +635,6 @@ sub _determinePreferredCheckoutSource
     if (!$sourceTypeRef) {
         whisper ("No branch specified for $module, will use whatever git gives us");
         return qw(none none);
-    }
-
-    # One fixup is needed for use-stable-kde, to pull the actual branch name
-    # from the right spot. Although if no branch name is set we use master,
-    # without trying to search again.
-    if ($sourceTypeRef->[0] eq 'use-stable-kde') {
-        $checkoutSource = $module->getOption('#branch:stable', 'module') || 'master';
     }
 
     # Likewise branch-group requires special handling. checkoutSource is

@@ -131,7 +131,6 @@ our %defaultGlobalFlags = (
     "disable-snapshots"          => 1, # 2016-07-31 Temp. disabled until kde.org fixed to supply snapshots
     "compile-commands-export"    => 1, # 2021-02-06 allow to generate compile_commands.json via cmake, for clangd tooling
     "compile-commands-linking"   => 0, # 2021-02-06 link generated compile_commands.json back to the source directory
-    "ignore-kde-structure"       => 0, # Whether to use kde dir structure like extragear/network. Deprecated as of late December 2020/January 2021
     "include-dependencies"       => 0, # 2019-08-31 Made negatable from cmdline (NB: false here but true in rcfile)
     "install-after-build"        => 1,
     "install-environment-driver" => 1, # Setup ~/.config/kde-env-*.sh for login scripts
@@ -141,7 +140,6 @@ our %defaultGlobalFlags = (
     "stop-on-failure"            => 1,
     "use-clean-install"          => 0,
     "use-idle-io-priority"       => 0,
-    "use-stable-kde"             => 0,
     "use-inactive-modules"       => 0,
 );
 
@@ -1058,16 +1056,7 @@ sub getProjectDataReader
 sub effectiveBranchGroup
 {
     my $self = shift;
-    my $branchGroup = $self->getOption('branch-group') // '';
-
-    if (!$branchGroup) {
-        $branchGroup = $self->getOption('use-stable-kde')
-            ? 'latest-qt4'
-            : ($self->hasOption('use-stable-kde') # Could also be false if unset
-                ? 'kf5-qt5'      # Really set to false
-                : 'latest-qt4'); # Unset / this is default branch group if no option set
-    }
-
+    my $branchGroup = $self->getOption('branch-group') // 'kf5-qt5';
     return $branchGroup;
 }
 

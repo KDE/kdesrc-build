@@ -135,9 +135,8 @@ but for now they're at least worth nothing here:
 - Use the `ignore-modules` option with your module sets if you want to build
   every module in the set *except* for a few specific ones.
 
-- Annoyed by the default directory layout? Consider the `ignore-kde-structure`
-  configuration file option to get the every-module-in-a-single-directory
-  behavior many find more appealing.
+- Annoyed by the default directory layout? Consider changing the `directory-layout`
+  configuration file option.
 
 - kdesrc-build supports building from behind a proxy, for all you corporate
   types trying to get the latest-and-greatest desktop. Just make sure your

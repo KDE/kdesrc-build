@@ -65,7 +65,7 @@ syn keyword ksbrcErrorModuleSetOption contained skipwhite nextgroup=ksbrcStringV
             \ use-modules ignore-modules
 
 syn keyword ksbrcBoolOption contained skipwhite nextgroup=ksbrcBoolValue
-            \ build-system-only build-when-unchanged ignore-kde-structure
+            \ build-system-only build-when-unchanged
             \ include-dependencies install-after-build manual-build manual-update
             \ no-src reconfigure recreate-configure refresh-build run-tests
             \ use-clean-install compile-commands-export compile-commands-linking

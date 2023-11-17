@@ -998,29 +998,6 @@ sub destDir ($self)
     my $basePath;
 
     my $layout = $self->getOption('directory-layout');
-    my $oldlayout = $self->getOption('ignore-kde-structure');
-    if ($oldlayout) {
-        # avoid spamming
-        if (!$self->hasOption('#warned-deprecated-ignore-kde-structure')) {
-            if($oldlayout eq 'true' || $oldlayout == 1) {
-                warning("The option b[ignore-kde-structure true] is deprecated. Please replace it with b[directory-layout flat] in your configuration file.");
-            } else {
-                warning("The option b[ignore-kde-structure false] is deprecated. Please replace it with b[directory-layout invent] in your configuration file.");
-            }
-        }
-        # no or equivalent layout configured, assume the user wants to use flat layout
-        if (!$layout || $layout eq 'flat') {
-            $layout = 'flat';
-        } else {
-            # avoid spamming
-            if (!$self->hasOption('#warned-deprecated-ignore-kde-structure')) {
-                warning("Deprecated b[ignore-kde-structure] will be ignored in favour of b[directory-layout] for b[$self]");
-            }
-        }
-
-        $self->setOption('#warned-deprecated-ignore-kde-structure', 1);
-    }
-
     if ($layout eq 'flat') {
         $basePath = $self->name();
     } else {
