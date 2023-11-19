@@ -47,6 +47,7 @@ use Mojo::Util ();
 
 use Scalar::Util qw(blessed);
 use List::Util qw(first min);
+use List::MoreUtils qw(uniq);
 use File::Basename; # basename, dirname
 use File::Copy ();  # copy
 use File::Glob ':glob';
@@ -402,13 +403,24 @@ EOF
     } @modules;
 
     if(exists $cmdlineGlobalOptions->{'list-build'}) {
+        my @moduleSets = ();
         for my $module (@modules) {
             my $branch = ksb::DependencyResolver::_getBranchOf($module);
-            print(' ── ', $module->name());
-            if($branch) {
-                print(' : ', $branch);
+            if(exists $cmdlineGlobalOptions->{'module-sets'}) {
+                @moduleSets = uniq( @moduleSets, ($module->moduleSet()->modulesToFind()) );
+            } else {
+                print(' ── ', $module->name());
+                if($branch) {
+                    print(' : ', $branch);
+                }
+                print("\n");
             }
-            print("\n");
+        }
+        if(exists $cmdlineGlobalOptions->{'module-sets'}) {
+            for my $moduleSet (@moduleSets) {
+                print(' ── ', $moduleSet);
+                print("\n");
+            }
         }
 
         my $result = {

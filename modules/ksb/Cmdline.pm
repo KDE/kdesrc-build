@@ -462,6 +462,7 @@ sub _supportedOptions
         'install',
         'install-only',
         'list-build',
+        'module-sets',
         'metadata-only',
         'niceness|nice:10',
         'no-build',
