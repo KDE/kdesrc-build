@@ -80,8 +80,8 @@ but for now they're at least worth nothing here:
   is particularly useful when a silly local error breaks an important module
   and several dozen dependent modules.
 
-- Alternately, you can use the `--stop-on-failure` command-line option (and
-  there's a corresponding configuration file option) to have kdesrc-build abort
+- Use the `--no-stop-on-failure` command-line option (or
+  the corresponding configuration file option) to make kdesrc-build not abort
   after the first module fails to build.
 
 - Either way if you're running kdesrc-build frequently as part of a

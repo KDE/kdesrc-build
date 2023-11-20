@@ -386,8 +386,6 @@ sub _showHelpAndExit
              -d                    Also builds KDE-based dependencies of given modules.
               (This is enabled by default; use --no-include-dependencies or -D to disable)
 
-            --stop-on-failure      Stops the build as soon as a package fails to build.
-
         More docs at https://docs.kde.org/?application=kdesrc-build
             Supported configuration options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
             Supported cmdline options:       https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdline.html

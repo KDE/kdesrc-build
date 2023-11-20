@@ -123,7 +123,7 @@ built, you can move onto the next step.
 
 ```shell
 $ cd ~/kde/src/kdesrc-build
-$ ./kdesrc-build --stop-on-failure dolphin
+$ ./kdesrc-build dolphin
 ```
 
 This will build [Dolphin](https://www.kde.org/applications/system/dolphin/),
@@ -136,10 +136,6 @@ For each module built, kdesrc-build will complete these steps:
 - Set up the build system and configure source code with your options, if needed
 - Perform the build, if needed
 - Install the module
-
-The `--stop-on-failure` flag causes kdesrc-build to stop the first time a
-module fails to build, in case there are missing dependencies. If not set,
-kdesrc-build would otherwise try to build all the modules even if some fail.
 
 Hopefully everything will go well the first time, and kdesrc-build will be able
 to download and build all of the modules that you ask for. :)
