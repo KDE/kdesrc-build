@@ -42,46 +42,8 @@ use constant {
 ## Add kdesrc-build to PATH
 RC
 
-    # Used for bash/zsh and requires non-POSIX syntax support. Use this in
-    # addition to the base above.
-    EXT_SHELL_RC_SNIPPET => <<'RC',
-## Autocomplete for kdesrc-run
-function _comp_kdesrc_run
-{
-  local cur
-  COMPREPLY=()
-  cur="${COMP_WORDS[COMP_CWORD]}"
-
-  # Complete only the first argument
-  if [[ $COMP_CWORD != 1 ]]; then
-    return 0
-  fi
-
-  # Retrieve build modules through kdesrc-run
-  # If the exit status indicates failure, set the wordlist empty to avoid
-  # unrelated messages.
-  local modules
-  if ! modules=$(kdesrc-run --list-installed);
-  then
-      modules=""
-  fi
-
-  # Return completions that match the current word
-  COMPREPLY=( $(compgen -W "${modules}" -- "$cur") )
-
-  return 0
-}
-
-## Register autocomplete function
-complete -o nospace -F _comp_kdesrc_run kdesrc-run
-
+    SHELL_SEPARATOR_SNIPPET => <<'RC',
 ################################################################################
-RC
-
-  BASE_FISHSHELL_SNIPPET => <<'RC'
-# kdesrc-build #################################################################
-
-## Add kdesrc-build to PATH
 RC
 };
 
@@ -373,6 +335,12 @@ sub _setupShellRcFile
 
     $printableRcFilepath = $rcFilepath;
     $printableRcFilepath =~ s/^$ENV{HOME}/~/;
+
+    open(my $file, '<', "$baseDir/data/kdesrc-run-completions.sh") or _throw("Cannot open file \"$baseDir/data/kdesrc-run-completions.sh\"");
+    my $kdesrc_run_completions = do { local $/; <$file> };
+    close($file);
+    # Used for bash/zsh and requires non-POSIX syntax support.
+    my $EXT_SHELL_RC_SNIPPET = $kdesrc_run_completions . SHELL_SEPARATOR_SNIPPET;
     my $addToShell = yesNoPrompt(colorize(" b[*] Update your b[y[$printableRcFilepath]?"));
 
     if ($addToShell) {
@@ -384,10 +352,10 @@ sub _setupShellRcFile
         if ($shellName ne 'fish') {
           say $rcFh BASE_SHELL_SNIPPET . "export PATH=\"$baseDir:\$PATH\"\n";
 
-          say $rcFh EXT_SHELL_RC_SNIPPET
+          say $rcFh $EXT_SHELL_RC_SNIPPET
               if $extendedShell;
         } else {
-          say $rcFh BASE_FISHSHELL_SNIPPET . "fish_add_path --global $baseDir\n";
+          say $rcFh BASE_SHELL_SNIPPET . "fish_add_path --global $baseDir\n";
         }
 
         close($rcFh)
@@ -405,7 +373,7 @@ DONE
  b[*] You can manually configure your shell rc-file with the snippet below:
 DONE
         say BASE_SHELL_SNIPPET . "export PATH=\"$baseDir:\$PATH\"\n";
-        say EXT_SHELL_RC_SNIPPET
+        say $EXT_SHELL_RC_SNIPPET
             if $extendedShell;
     }
 }
