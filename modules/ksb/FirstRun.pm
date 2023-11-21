@@ -145,7 +145,7 @@ sub _readPackages
     };
 
     while(my $line = <DATA>) {
-        next if $line =~ /^\s*#/ and $cur_file !~ /sample-rc/;
+        next if $line =~ /^\s*#/;
         chomp $line;
 
         my ($fname) = ($line =~ /^@@ *([^ ]+)$/);
@@ -288,7 +288,6 @@ sub _getNumCoresForLowMemory($num_cores)
 sub _setupBaseConfiguration
 {
     my $baseDir = shift;
-    my $packagesRef = _readPackages();
 
     # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
     # default to ~/.config
@@ -311,8 +310,9 @@ DONE
  b[*] Creating b[sample configuration file]: b[y["$xdgConfigHomeShort/kdesrc-buildrc"]...
 DONE
 
-    my $sampleRc = $packagesRef->{'sample-rc'} or
-        _throw("Embedded sample file missing!");
+    open(my $file, '<', "$baseDir/data/kdesrc-buildrc.in") or _throw("Embedded sample file missing!");
+    my $sampleRc = do { local $/; <$file> };
+    close($file);
 
     my $os = ksb::OSSupport->new;
     my $numCores;
@@ -1322,90 +1322,3 @@ apk add --virtual .makedeps-kdesrc-build
 
 @@ cmd/install/gentoo/unknown
 emerge -v --noreplace
-
-@@ sample-rc
-# This file controls options to apply when configuring/building modules, and
-# controls which modules are built in the first place.
-# List of all options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
-
-global
-    branch-group kf6-qt6
-
-    # Finds and includes *KDE*-based dependencies into the build.  This makes
-    # it easier to ensure that you have all the modules needed, but the
-    # dependencies are not very fine-grained so this can result in quite a few
-    # modules being installed that you didn't need.
-    include-dependencies true
-
-    # Install directory for KDE software
-    kdedir ~/kde/usr
-
-    # Directory for downloaded source code
-    source-dir ~/kde/src
-
-    # Directory to build KDE into before installing
-    # relative to source-dir by default
-    build-dir ~/kde/build
-
-#   qtdir  ~/kde/qt # Where to install Qt6 if kdesrc-build supplies it
-
-    cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
-
-    # kdesrc-build sets 2 options which is used in options like make-options or set-env
-    # to help manage the number of compile jobs that happen during a build:
-    #
-    # 1. num-cores, which is just the number of detected CPU cores, and can be passed
-    #    to tools like make (needed for parallel build) or ninja (completely optional).
-    #
-    # 2. num-cores-low-mem, which is set to largest value that appears safe for
-    #    particularly heavyweight modules based on total memory, intended for
-    #    modules like qtwebengine
-    num-cores %{num_cores}
-    num-cores-low-mem %{num_cores_low}
-
-    # kdesrc-build can install a sample .xsession file for "Custom"
-    # (or "XSession") logins,
-    install-session-driver false
-
-    # or add a environment variable-setting script to
-    # ~/.config/kde-env-master.sh
-    install-environment-driver true
-
-    # Stop the build process on the first failure
-    stop-on-failure true
-
-    # Use a flat folder layout under ~/kde/src and ~/kde/build
-    # rather than nested directories
-    directory-layout flat
-
-    # Use Ninja as cmake generator instead of gmake
-    cmake-generator Kate - Ninja
-
-    # Build with LSP support for everything that supports it
-    compile-commands-linking true
-    compile-commands-export true
-end global
-
-# With base options set, the remainder of the file is used to define modules to build, in the
-# desired order, and set any module-specific options.
-#
-# Modules may be grouped into sets, and this is the normal practice.
-#
-# You can include other files inline using the "include" command. We do this here
-# to include files which are updated with kdesrc-build.
-
-# Common options that should be set for some KDE modules no matter how
-# kdesrc-build finds them. Do not comment these out unless you know
-# what you are doing.
-include %{base_dir}/kf6-common-options-build-include
-
-# Qt and some Qt-using middleware libraries. Uncomment if your distribution's Qt
-# tools are too old but be warned that Qt take a long time to build!
-#include %{base_dir}/qt6-build-include
-#include %{base_dir}/custom-qt6-libs-build-include
-
-# KF6 and Plasma :)
-include %{base_dir}/kf6-qt6-build-include
-
-# To change options for modules that have already been defined, use an
-# 'options' block. See kf6-common-options-build-include for an example
