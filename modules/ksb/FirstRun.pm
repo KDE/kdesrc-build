@@ -409,12 +409,20 @@ DONE
 sub _findBestInstallCmd
 {
     my $os = shift;
-    my $pkgsRef = _readPackages();
+    my %cmdsRef =  (
+        "cmd/install/alpine/unknown"   => "apk add --virtual .makedeps-kdesrc-build",
+        "cmd/install/arch/unknown"     => "pacman -S --noconfirm",
+        "cmd/install/debian/unknown"   => "apt-get -q -y --no-install-recommends install",
+        "cmd/install/fedora/unknown"   => "dnf -y install",
+        "cmd/install/freebsd/unknown"  => "pkg install -y",
+        "cmd/install/gentoo/unknown"   => "emerge -v --noreplace",
+        "cmd/install/opensuse/unknown" => "zypper install -y --no-recommends",
+    );
 
     my @supportedDistros =
         map  { s{^cmd/install/([^/]+)/.*$}{$1}; $_ }
         grep { /^cmd\/install\// }
-            keys %{$pkgsRef};
+            keys %cmdsRef;
 
     my $bestVendor = $os->bestDistroMatch(@supportedDistros);
     say colorize ("    Using installer for b[$bestVendor]");
@@ -424,8 +432,8 @@ sub _findBestInstallCmd
 
     for my $opt ("$bestVendor/$version", "$bestVendor/unknown") {
         my $key = "cmd/install/$opt";
-        next unless exists $pkgsRef->{$key};
-        @cmd = split(' ', $pkgsRef->{$key});
+        next unless exists $cmdsRef{$key};
+        @cmd = split(' ', $cmdsRef{$key});
         last;
     }
 
@@ -1301,24 +1309,3 @@ qt5
 qt5-wayland
 wayland-protocols
 xorg
-
-@@ cmd/install/freebsd/unknown
-pkg install -y
-
-@@ cmd/install/debian/unknown
-apt-get -q -y --no-install-recommends install
-
-@@ cmd/install/opensuse/unknown
-zypper install -y --no-recommends
-
-@@ cmd/install/arch/unknown
-pacman -S --noconfirm
-
-@@ cmd/install/fedora/unknown
-dnf -y install
-
-@@ cmd/install/alpine/unknown
-apk add --virtual .makedeps-kdesrc-build
-
-@@ cmd/install/gentoo/unknown
-emerge -v --noreplace
