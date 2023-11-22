@@ -828,16 +828,12 @@ end module-set
 > <userinput
 ><command
 >kdesrc-build</command
-> <option
->--stop-on-failure</option
 ></userinput
 >
 </screen>
 
 <para
->Kommandot laddar ner lämplig källkod, bygger och installerar varje modul i tur och ordning, men stoppar om byggprocessen för en modul misslyckas (på grund av väljaren <option
->--stop-on-failure</option
->). Efteråt ska du se utmatning som liknar den i <xref linkend="example-build-sequence"/>.</para>
+>Kommandot laddar ner lämplig källkod, bygger och installerar varje modul i tur och ordning. Efteråt ska du se utmatning som liknar den i <xref linkend="example-build-sequence"/>.</para>
 
 <example id="example-build-sequence">
 <title
@@ -3901,8 +3897,10 @@ end options
 >Modulinställning överskrider allmän</entry>
 <entry
 >Ställ in det här alternativvärdet till <userinput
->true</userinput
-> för att göra att skriptet slutar köra efter ett fel uppstår i bygg- eller installationsprocessen. Alternativet är normalt true. </entry>
+>false</userinput
+> för att låta skriptet fortsätta köra efter ett fel uppstår i bygg- eller installationsprocessen. Normalvärdet är <literal
+>true</literal
+>. </entry>
 </row>
 
 <row id="conf-tag">
@@ -4825,12 +4823,6 @@ kdepim: master
 ></option
 >. </para
 ><para
->Detta är ännu mer behändigt med kommandoradsväljaren <option
-><link linkend="cmdline-stop-on-failure"
->--stop-on-failure</link
-></option
->, särskilt om du ställer in utvecklingsmiljön från början. </para
-><para
 >Väljaren lades till i &kdesrc-build; 1.16. </para
 ></listitem>
 </varlistentry>
@@ -4908,11 +4900,15 @@ kdepim: master
 ><parameter
 >--stop-on-failure</parameter
 ></term>
+<term
+><parameter
+>--no-stop-on-failure</parameter
+></term>
 <listitem
 ><para
->Väljaren gör att bygget avbryts så fort ett fel uppstår. Den är användbar när du ställer in utvecklingsmiljön från början. Utan flaggan försöker &kdesrc-build; fortsätta med återstående moduler i bygget för att undvika att slösa tid ifall problemet gäller en enskild modul. </para
+>Väljaren gör att bygget avbryts så fort ett fel uppstår. Det normala beteendet är --stop-on-failure. Det går att överskrida om du vill fortsätta med återstående moduler i bygget, för att undvika att slösa tid ifall problemet gäller en enskild modul. </para
 ><para
->Alternativet lades till i &kdesrc-build; 1.16. Se också alternativet <link linkend="conf-stop-on-failure"
+>Alternativet lades till i &kdesrc-build; 1.16. Se också inställningsfilens alternativ <link linkend="conf-stop-on-failure"
 >stop-on-failure</link
 >. </para
 ></listitem>
@@ -5707,11 +5703,11 @@ end module
 
 <sect3 id="stop-on-failure-stops-early">
 <title
->Stoppar i förtid med --stop-on-failure</title>
+>Stoppar inte i förtid med --no-stop-on-failure</title>
 
 <para
 >Den primära metoden för att göra det är att använda kommandoradsväljaren <link linkend="cmdline-stop-on-failure"
->--stop-on-failure</link
+>--no-stop-on-failure</link
 > när &kdesrc-build; körs. </para>
 
 <para
@@ -5742,7 +5738,7 @@ end module
 
 <sect3 id="stopping-early-without-stop-on-failure">
 <title
->Stoppar &kdesrc-build; i förtid utan --stop-on-failure</title>
+>Stoppar &kdesrc-build; snyggt när stop-on-failure är false</title>
 
 <para
 >Som nämnts ovan är det möjligt att få &kdesrc-build; att snyggt avsluta tidigt när det väl har slutfört modulen det arbetar med. För att göra det måste du skicka signalen POSIX <literal
