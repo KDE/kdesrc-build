@@ -4,11 +4,18 @@ use ksb;
 use Test::More;
 
 use File::Temp qw(tempdir);
+use POSIX;
+use File::Basename;
 
 use ksb::Module;
 use ksb::BuildContext;
 use ksb::BuildSystem;
 use ksb::Util::LoggedSubprocess;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 my $ctx = ksb::BuildContext->new;
 my $m   = ksb::Module->new($ctx, 'test');
@@ -70,4 +77,8 @@ ok(-l "$tmp/kdesrc-build-test/latest-by-phase/test/test-suite-1.log", "Test suit
 ok(-l "$tmp/kdesrc-build-test/latest-by-phase/test/test-suite-2.log", "Test suite 2 phase log created");
 
 chdir('/'); # ensure we're out of the test directory
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
+
 done_testing();

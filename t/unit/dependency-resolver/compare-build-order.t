@@ -2,8 +2,15 @@
 
 use ksb;
 use Test::More;
+use POSIX;
+use File::Basename;
 
 use ksb::DependencyResolver;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 my $graph1 = {
     'a' => {
@@ -94,5 +101,8 @@ is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'd', 'e'),  1, "'d' shou
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'd', 'f'),  1, "'d' should be sorted after 'f' by dependency ordering");
 
 is(ksb::DependencyResolver::_compareBuildOrder($graph1, 'e', 'f'),  1, "'e' should be sorted after 'f' by rc-file ordering");
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();

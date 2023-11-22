@@ -1,6 +1,13 @@
 # Loads every single ksb module to make sure they all compile.
 use ksb;
 use Test::More import => ['!note'];
+use POSIX;
+use File::Basename;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 use ksb;
 use ksb::Application;
@@ -48,5 +55,8 @@ use ksb::Util::LoggedSubprocess;
 use ksb::Version;
 
 ok(1 == 1, "Able to compile and load all kdesrc-build modules.");
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();

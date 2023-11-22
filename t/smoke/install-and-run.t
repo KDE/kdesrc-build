@@ -2,9 +2,16 @@
 
 use ksb;
 use Test::More;
+use POSIX;
+use File::Basename;
 
 use Cwd;
 use IPC::Cmd;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 # Assume we're running directly for git source root, as required for rest of
 # test suite.
@@ -81,5 +88,8 @@ symlink("$curdir/kdesrc-build", "$tempInstallDir/bin/kdesrc-build");
 
     chdir($curdir);
 }
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();

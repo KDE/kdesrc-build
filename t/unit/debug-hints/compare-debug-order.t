@@ -2,8 +2,15 @@
 
 use ksb;
 use Test::More;
+use POSIX;
+use File::Basename;
 
 use ksb::DebugOrderHints;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 # Redefine ksb::Module to stub getPersistentOption() results
 package ksb::Module {
@@ -212,5 +219,8 @@ is(ksb::DebugOrderHints::_compareDebugOrder($graph2, $extraDebugInfo2, $p_x,  $p
 is(ksb::DebugOrderHints::_compareDebugOrder($graph2, $extraDebugInfo2, $p_x,  $p_t ),  1, "Phase ordering: unknown phases should be sorted after 'test'");
 is(ksb::DebugOrderHints::_compareDebugOrder($graph2, $extraDebugInfo2, $p_x,  $p_u ),  1, "Phase ordering: unknown phases should be sorted after 'update'");
 is(ksb::DebugOrderHints::_compareDebugOrder($graph2, $extraDebugInfo2, $p_x,  $p_x ),  0, "Comparing the same modules should always yield the same relative position");
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();

@@ -2,8 +2,15 @@
 
 use ksb;
 use Test::More;
+use POSIX;
+use File::Basename;
 
 use ksb::DependencyResolver;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 # Redefine ksb::Module to stub fullProjectPath() results
 package ksb::Module {
@@ -45,6 +52,9 @@ is(ksb::DependencyResolver::_getDependencyPathOf($module2, 'foo', 'bar'), 'bar',
 
 my $module3 = ksb::Module->new('test/path', 0);
 is(ksb::DependencyResolver::_getDependencyPathOf($module3, 'foo', 'bar'), 'third-party/test/path', "should return 'third-party/' prefixed project path if a non-KDE module object is passed");
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();
 

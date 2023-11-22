@@ -2,8 +2,15 @@
 
 use ksb;
 use Test::More;
+use POSIX;
+use File::Basename;
 
 use ksb::DependencyResolver;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 my $graph1 = {
     'a' => {
@@ -89,5 +96,8 @@ my @expected3 = map { $graph3->{$_}->{module} } ('c', 'd', 'e');
 my @actual3   = ksb::DependencyResolver::sortModulesIntoBuildOrder($graph3);
 
 is_deeply(\@actual3, \@expected3, "modules that are not to be built should be omitted");
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();

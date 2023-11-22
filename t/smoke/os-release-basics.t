@@ -2,8 +2,15 @@
 
 use ksb;
 use Test::More;
+use POSIX;
+use File::Basename;
 
 use ksb::OSSupport;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 # Unit test of _readOSRelease
 my @kvPairs = ksb::OSSupport->_readOSRelease('t/data/os-release');
@@ -23,5 +30,8 @@ is($os->bestDistroMatch(qw/arch kdesrc-build sabayon/), 'kdesrc-build', 'ID pref
 is($os->bestDistroMatch(qw/ubuntu fedora gentoo/), 'gentoo', 'ID_LIKE respected');
 is($os->bestDistroMatch(qw/fedora gentoo gentoo-hardened sabayon/), 'sabayon', 'ID_LIKE preference order proper');
 is($os->vendorID, 'kdesrc-build', 'Right ID');
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();

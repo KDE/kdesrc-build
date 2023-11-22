@@ -6,6 +6,13 @@ use Mojo::File qw(path);
 
 use Test::More;
 use File::Temp;
+use POSIX;
+use File::Basename;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 my $dir = path(File::Temp->newdir('kdesrc-build-testXXXXXX'));
 ok($dir, 'tempdir created');
@@ -33,5 +40,8 @@ ok(-e "$to/a", 'file under directory exists');
 ok(! -e "$to/b/d/file3", 'nonexistent file does not exist');
 ok(-l "$to/b/c/file2", 'file2 under directory is a symlink');
 ok(-e "$to/b/c/file2", 'file2 under directory exists');
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();

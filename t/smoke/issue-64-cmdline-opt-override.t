@@ -9,9 +9,16 @@
 
 use ksb;
 use Test::More;
+use POSIX;
+use File::Basename;
 
 use ksb::Application;
 use ksb::Module;
+
+my $timestamp1 = POSIX::strftime("%s", localtime);
+my $filename = basename(__FILE__);
+my $section_header = "File: $filename (click to toggle collapse)";
+print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 
 # The issue used num-cores as an example, but should work just as well
 # with make-options
@@ -70,5 +77,8 @@ push @args, '--num-cores=5'; # 4 is default, 8 is in rc-file, use something diff
     is ($moduleList[3]->name(), 'module2', 'mod list[3] == module2');
     is ($moduleList[3]->getOption('make-options'), '-j 5', 'module-override make-options proper post-override (indirect value)');
 }
+
+my $timestamp2 = POSIX::strftime("%s", localtime);
+print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
 
 done_testing();
