@@ -1,78 +1,103 @@
-#!/bin/sh
+#!/bin/bash
 
 # Builds a local copy of KDE Docbook-based documentation for testing
 # during development.
-#
-# By Michael Pyne <mpyne@kde.org>
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-# 1. Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-# 2. Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-# OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-# IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Turn on sanity checking
 set -e
 set -u
 # set -o pipefail is a bashism unfortunately
 
-PATH_TO_DOCS="./index.docbook"
-LANG_ISO3166_2="en"
+# Change if you want to render to several separate files (a crutch to workaround non-working kde-nochunk.xsl)
+SINGLE_FILE_OUTPUT=1
 
-# The kdoctools install process installs support files for DocBook handling to
-# the application data dir. We need some of these xsl files for meinproc to
-# use.
-DATA_DIR=$(kf5-config --install data)
-DATA_DIR=${DATA_DIR%/} # Remove trailing /
+function render_docbook() {
+    local PATH_TO_DOCBOOK="${PWD}/$1"
+    local DEST_DIR="$2"
+    local XSLT="$3"
 
-COMMON_DIR="kdoctools5-common"
-# The single quotes are exceedingly important for later. The dir path inside
-# the single quotes should be relative to make browser maximally happy; we use
-# a symlink later to make that possible but there's probably better ways to get
-# after this same goal
-BROWSER_COMMON=$(printf "'%s/'" "$COMMON_DIR")
+    local LANG_ISO3166_2="en"
 
-DOC_SRCDIR="$DATA_DIR/kf5/kdoctools"
-XSLT="$DOC_SRCDIR/customization/kde-chunk-online.xsl"
+    # The kdoctools install process installs support files for DocBook handling to
+    # the application data dir. We need some of these xsl files for meinproc to
+    # use.
+    local DATA_DIR
+    DATA_DIR=$(kf5-config --install data)
+    DATA_DIR=${DATA_DIR%/} # Remove trailing /
 
-# Check for obvious errors
-if [ ! -e "${PATH_TO_DOCS}" ]; then
-    echo "Unable to find Docbook file. Try running from the documentation directory!" >&2
-    exit 1
-fi
+    local COMMON_DIR="kdoctools5-common"
+    # The single quotes are exceedingly important for later. The dir path inside
+    # the single quotes should be relative to make browser maximally happy; we use
+    # a symlink later to make that possible but there's probably better ways to get
+    # after this same goal
+    local BROWSER_COMMON
+    BROWSER_COMMON=$(printf "'%s/'" "$COMMON_DIR")
 
-if [ ! -e "${XSLT}" ]; then
-    echo "Unable to find documentation style template. Is kdoctools installed?" >&2
-    exit 1
-fi
+    local DOC_SRCDIR="$DATA_DIR/kf5/kdoctools"
+    XSLT="$DOC_SRCDIR/customization/${XSLT}"
 
-# We need to run this from right directory, i.e. the directory we want
-# generated output to go to. Ensure meinproc will find common files in this
-# directory.
+    mkdir -p "${DEST_DIR}"
 
-if [ ! -e "$COMMON_DIR" ]; then
-    ln -s "$DATA_DIR/doc/HTML/$LANG_ISO3166_2/$COMMON_DIR" .
-fi
+    # Check for obvious errors
+    if [ ! -e "${PATH_TO_DOCBOOK}" ]; then
+        echo "Unable to find Docbook file. Try running from the documentation directory!" >&2
+        exit 1
+    fi
 
-# Run meinproc to generate our output
-meinproc5 --srcdir "$DOC_SRCDIR"                  \
-          --param kde.common="$BROWSER_COMMON"    \
-          --param chunker.output.encoding="UTF-8" \
-          --param chunker.output.indent="yes"     \
-          --stylesheet "$XSLT"                    \
-          "$PATH_TO_DOCS"
+    if [ ! -e "${XSLT}" ]; then
+        echo "Unable to find documentation style template. Is kdoctools installed?" >&2
+        exit 1
+    fi
+
+    # We need to run this from right directory, i.e. the directory we want
+    # generated output to go to. Ensure meinproc will find common files in this
+    # directory.
+
+    if [ ! -e "${DEST_DIR}/$COMMON_DIR" ]; then
+        ln -s "$DATA_DIR/doc/HTML/$LANG_ISO3166_2/$COMMON_DIR" "${DEST_DIR}"
+    fi
+
+    local CUR_DIR
+    CUR_DIR="${PWD}"
+    cd "${DEST_DIR}"
+
+    rm -rf ./*.html ./*.1  # cleaning up, because different stylesheets could render to files with different names. ".1" - extension for man.
+
+    if [ "${SINGLE_FILE_OUTPUT}" == 1 ]; then
+        PAR_OUTPUT="--output"
+        PAR_OUTPUT_VAL="preview.html"
+    else
+        PAR_OUTPUT=""
+        PAR_OUTPUT_VAL=""
+    fi
+
+    # Run meinproc to generate our output
+    meinproc5 --srcdir "$DOC_SRCDIR" \
+        --param kde.common="$BROWSER_COMMON" \
+        --param chunker.output.encoding="UTF-8" \
+        --param chunker.output.indent="yes" \
+        --stylesheet "$XSLT" \
+        "$PATH_TO_DOCBOOK" ${PAR_OUTPUT} ${PAR_OUTPUT_VAL}
+
+    cd "$CUR_DIR"  # to set the correct starting folder when invoking this function for next docbooks
+    echo "Rendered $1 to $2 using $3"
+}
+
+#STYLE=kde-chunk-common.xsl
+STYLE=kde-chunk-online.xsl  # the official one, used in docs.kde.org website.
+#STYLE=kde-chunk.xsl
+#STYLE=kde-include-common.xsl  # renders with broken characters?
+#STYLE=kde-include-man.xsl  # renders to man format, not html.
+#STYLE=kde-navig-online.xsl
+#STYLE=kde-navig.xsl
+#STYLE=kde-nochunk.xsl  # still renders to several files?
+#STYLE=kde-style.xsl
+#STYLE=kde-ttlpg-online.xsl
+#STYLE=kde-ttlpg.xsl
+#STYLE=kde-web-navig.xsl
+#STYLE=kde-web.xsl  # looks pretty similar to kde-chunk-online.xsl
+
+# render_docbook usage: $1 = docbook_file, $2 = folder for rendered html files, $3 - stylesheet_file
+render_docbook "index.docbook" "preview_doc_html" "$STYLE"
+render_docbook "man-kdesrc-build.1.docbook" "preview_man_html" "$STYLE"
+#render_docbook "man-kdesrc-build-setup.1.docbook" "preview_man_setup_html" "$STYLE"
