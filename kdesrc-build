@@ -88,11 +88,29 @@ use ksb; # Enable boilerplate
 # our modules although we can find them. In this case we should help user
 # by setting up system dependencies.
 eval {
-    if (grep { $_ eq '--initial-setup' } @ARGV) {
+    my @setup_steps;
+
+    if (grep { $_ eq "--initial-setup" } @ARGV) {
+        push @setup_steps, "install-distro-packages";
+        push @setup_steps, "generate-config";
+        push @setup_steps, "update-shellrc";
+    } else {
+        if (grep {$_ eq "--install-distro-packages"} @ARGV) {
+            push @setup_steps, "install-distro-packages";
+        }
+        if (grep {$_ eq "--generate-config"} @ARGV) {
+            push @setup_steps, "generate-config";
+        }
+        if (grep {$_ eq "--update-shellrc"} @ARGV) {
+            push @setup_steps, "update-shellrc";
+        }
+    }
+
+    if (@setup_steps) {
         require ksb::FirstRun;
         require ksb::Debug;
         ksb::Debug::setColorfulOutput(1);
-        exit ksb::FirstRun::setupUserSystem(File::Spec->rel2abs($RealBin));
+        exit ksb::FirstRun::setupUserSystem(File::Spec->rel2abs($RealBin), @setup_steps);
     }
 };
 

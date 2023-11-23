@@ -101,14 +101,21 @@ sub yesNoPrompt {
 sub setupUserSystem
 {
     my $baseDir = shift;
+    my @setup_steps = @_;
     my $os = ksb::OSSupport->new;
     my $envShell = $ENV{'SHELL'} // 'undefined';
     my $shellName = (split '/', $envShell)[-1];
 
     eval {
-        _installSystemPackages($os);
-        _setupBaseConfiguration($baseDir);
-        _setupShellRcFile($shellName, $baseDir);
+        if (grep { $_ eq "install-distro-packages" } @setup_steps) {
+            _installSystemPackages($os);
+        }
+        if (grep { $_ eq "generate-config" } @setup_steps) {
+            _setupBaseConfiguration($baseDir);
+        }
+        if (grep { $_ eq "update-shellrc" } @setup_steps) {
+            _setupShellRcFile($shellName, $baseDir);
+        }
     };
 
     if (had_an_exception($@)) {
