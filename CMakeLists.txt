@@ -32,9 +32,6 @@ else()
     set(KDE_INSTALL_DATADIR  "${CMAKE_INSTALL_PREFIX}/share" CACHE PATH "The parent directory where applications can install their data")
     set(KDE_INSTALL_BINDIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
     set(KDE_INSTALL_METAINFODIR "${KDE_INSTALL_DATADIR}/metainfo" CACHE PATH "AppStream metadata directory")
-endif()
-# Added in ECM 5.101.0
-if (NOT DEFINED KDE_INSTALL_ZSHAUTOCOMPLETEDIR)
     set(KDE_INSTALL_ZSHAUTOCOMPLETEDIR "${KDE_INSTALL_DATADIR}/zsh/site-functions" CACHE PATH "Zsh functions and autocompletion definitions")
 endif()
 
