@@ -38,9 +38,9 @@ setlocal iskeyword+=-
 syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
             \ binpath branch build-dir cmake-options configure-flags
             \ custom-build-command cxxflags dest-dir do-not-compile kdedir libname
-            \ libpath log-dir make-install-prefix make-options module-base-path
+            \ libpath log-dir make-install-prefix make-options
             \ cmake-generator cmake-toolchain ninja-options
-            \ override-build-system override-url prefix qtdir repository
+            \ override-build-system prefix qtdir repository
             \ revision source-dir tag remove-after-install
             \ qmake-options git-user directory-layout
 
@@ -71,14 +71,14 @@ syn keyword ksbrcBoolOption contained skipwhite nextgroup=ksbrcBoolValue
             \ use-clean-install compile-commands-export compile-commands-linking
 
 syn keyword ksbrcGlobalBoolOption contained skipwhite nextgroup=ksbrcBoolValue
-            \ async colorful-output disable-agent-check disable-snapshots pretend
+            \ async colorful-output disable-agent-check pretend
             \ purge-old-logs stop-on-failure use-idle-io-priority install-session-driver
             \ install-environment-driver
 
 " MUST BE CONSISTENT WITH ABOVE. Used when a global option is used in the
 " wrong spot to highlight the error.
 syn keyword ksbrcErrorBoolOption contained skipwhite nextgroup=ksbrcBoolValue
-            \ async colorful-output disable-agent-check disable-snapshots pretend
+            \ async colorful-output disable-agent-check pretend
             \ purge-old-logs stop-on-failure use-idle-io-priority install-session-driver
             \ install-environment-driver
 

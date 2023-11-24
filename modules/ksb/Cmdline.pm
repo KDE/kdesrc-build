@@ -155,10 +155,6 @@ sub readCommandLineOptionsAndSelectors (@options)
             $auxOptions{'include-dependencies'} = 0;
         },
 
-        install => sub {
-            $opts->{run_mode} = 'install';
-            $phases->phases('install');
-        },
         uninstall => sub {
             $opts->{run_mode} = 'uninstall';
             $phases->phases('uninstall');
@@ -168,10 +164,6 @@ sub readCommandLineOptionsAndSelectors (@options)
         },
         'no-install' => sub {
             $phases->filterOutPhase('install');
-        },
-        'no-snapshots' => sub {
-            # The documented form of disable-snapshots
-            $auxOptions{'disable-snapshots'} = 1;
         },
         'no-tests' => sub {
             # The "right thing" to do
@@ -186,11 +178,6 @@ sub readCommandLineOptionsAndSelectors (@options)
         # Mostly equivalent to the above
         'src-only' => sub {
             $phases->phases('update');
-
-            # We have an auto-switching function that we only want to run
-            # if --src-only was passed to the command line, so we still
-            # need to set a flag for it.
-            $foundOptions{'allow-auto-repo-move'} = 1;
         },
         'build-only' => sub {
             $phases->phases('build');
@@ -457,7 +444,6 @@ sub _supportedOptions
         'help|h',
         'ignore-modules|!=s{,}',
         'd', # --include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
-        'install',
         'install-only',
         'list-build',
         'metadata-only',

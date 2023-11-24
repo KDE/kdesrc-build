@@ -41,8 +41,6 @@
   <!ENTITY kdedir '<link linkend="conf-kdedir">kdedir</link>'>
   <!ENTITY qtdir '<link linkend="conf-qtdir">qtdir</link>'>
   <!ENTITY build-dir '<link linkend="conf-build-dir">build-dir</link>'>
-  <!ENTITY module-base-path '<link linkend="conf-module-base-path">module-base-path</link>'>
-  <!ENTITY override-url '<link linkend="conf-override-url">override-url</link>'>
   <!ENTITY source-dir '<link linkend="conf-source-dir">source-dir</link>'>
   <!ENTITY colorful-output '<link linkend="conf-colorful-output">colorful-output</link>'>
   <!ENTITY tag '<link linkend="conf-tag">tag</link>'>
@@ -1580,8 +1578,7 @@ for Git-based modules</emphasis>.</para></important>
 <para>
 For Git modules, <replaceable>module-name</replaceable> must be a module
 from the &kde; &git; repository (for example, kdeartwork or
-kde-wallpapers), although it is possible to get around this if you
-<link linkend="conf-override-url">manually specify the &git; URL</link>.
+kde-wallpapers).
 </para>
 
 <para>
@@ -1807,11 +1804,6 @@ occurs.</para>
 <para>
 For instance, to checkout &kde; 4.6 branch, you would set this option to
 <replaceable>4.6</replaceable>.</para>
-
-<para>If &kdesrc-build; fails to properly download a branch with this option, you
-may have to manually specify the &url; to download from using the <link
-linkend="conf-module-base-path">module-base-path</link> or <link
-linkend="conf-override-url">override-url</link> options.</para>
 
 <note><para>For most &kde; modules you probably wish to use the <link
 linkend="conf-branch-group">branch-group</link> option instead and use this
@@ -2239,8 +2231,7 @@ email address <quote>foo@abc.xyz</quote> would use:</para>
 <entry>Module setting overrides global</entry>
 
 <entry><para>This option, if set, uses the specified URL as a proxy server to use for
-any HTTP network communications (for example, when downloading snapshots for
-new modules, or the <link linkend="kde-projects-module-sets">KDE project
+any HTTP network communications (for example, when downloading the <link linkend="kde-projects-module-sets">KDE project
 database</link>).</para>
 
 <para>In addition, &kdesrc-build; will try to ensure that the tools it depends
@@ -2485,30 +2476,6 @@ commented it out.
 </entry>
 </row>
 
-<row id="conf-module-base-path">
-<entry>module-base-path</entry>
-<entry>Module setting overrides global</entry>
-<entry><para>Set this option to override &kdesrc-build;'s default directory path to the
-module in question. This can be used, for example, to pull specific branches
-or tagged versions of libraries. <ulink url="https://invent.kde.org/">The &kde;
-Source Viewer</ulink> is invaluable in helping to pick the right path.</para>
-
-<para>Note that &kdesrc-build; constructs the final path according to the
-following template:
-<filename class="directory"><varname>$repository</varname>/home/kde/<varname>$module-base-path</varname></filename>.
-</para>
-
-<para>The default value is either <filename
-class="directory"><varname>$module</varname></filename> or <filename
-class="directory">KDE/<varname>$module</varname></filename>, depending on
-the module name.</para>
-
-<tip><para>Use the <link linkend="conf-branch">branch</link> or <link
-linkend="conf-tag">tag</link> options instead whenever they are applicable.
-</para></tip>
-</entry>
-</row>
-
 <row id="conf-niceness">
 <entry>niceness</entry>
 <entry>Cannot be overridden</entry>
@@ -2644,16 +2611,6 @@ the auto-detection. In this case you can manually specify the correct build type
     </varlistentry>
 </variablelist>
 
-</entry>
-</row>
-
-<row id="conf-override-url">
-<entry>override-url</entry>
-<entry>Module setting overrides global</entry>
-<entry>If you set this option, &kdesrc-build; will use its value as the &url;
-to pass to &git; <emphasis>completely unchanged</emphasis>. You should
-generally use this if you want to download a specific release but &kdesrc-build;
-cannot figure out what you mean using <link linkend="conf-branch">branch</link>.
 </entry>
 </row>
 
@@ -3227,7 +3184,11 @@ Only perform the build process.
 <varlistentry id="cmdline-install-only">
 <term><parameter>--install-only</parameter></term>
 <listitem><para>
-Only perform the install process.
+If this is the only command-line option, it tries to install all of the modules
+contained in <filename>log/latest/build-status</filename>. If command-line
+options are specified after <parameter>--install-only</parameter>, they are all
+assumed to be modules to install (even if they did not successfully build on
+the last run).
 </para></listitem>
 </varlistentry>
 
@@ -3670,33 +3631,6 @@ the current &kde; build system.
 </para></listitem>
 </varlistentry>
 
-<varlistentry id="cmdline-install"><term><parameter>--install</parameter></term>
-<listitem><para>
-If this is the only command-line option, it tries to install all of the modules
-contained in <filename>log/latest/build-status</filename>. If command-line
-options are specified after <parameter>--install</parameter>, they are all
-assumed to be modules to install (even if they did not successfully build on
-the last run).
-</para></listitem>
-</varlistentry>
-
-<varlistentry id="cmdline-no-snapshots"><term><parameter>--no-snapshots</parameter></term>
-<listitem><para>
-Supplying this option causes &kdesrc-build; to always perform a normal initial
-checkout of a module instead of using a quick-start snapshot (only available
-for Git modules from the <literal>kde-projects</literal> repository).
-
-Note that this option should only be used if there is a failure using
-snapshots, as the quick-start snapshot reduces load on the KDE source
-repositories.
-</para>
-
-<note><para>Module snapshots <emphasis>are</emphasis> real checkouts. You
-should not need to specify this option, it is only a troubleshooting
-aid.</para></note>
-</listitem>
-</varlistentry>
-
 <varlistentry id="cmdline-delete-my-patches">
 <term><parameter>--delete-my-patches</parameter></term>
 <listitem><para>
@@ -4063,7 +3997,7 @@ developers. This branch has development ongoing inside it, even while the
 main branch (called master) may have development going on inside of it.
 </para>
 
-<para>A tag, on the other hand, is a snapshot of the source code repository
+<para>A tag, on the other hand, is a specified point in the source code repository
 at a position in time. This is used by the &kde; administration team to mark
 off a version of code suitable for release and still allow the developers to
 work on the code.
@@ -4110,60 +4044,6 @@ end module
 <tip><para>You can specify a global branch value. But if you do so, do not forget
 to specify a different branch for modules that should not use the global branch!
 </para></tip>
-</sect3>
-
-<sect3 id="advanced-branches">
-<title>Advanced branch support options</title>
-
-<para>&kdesrc-build; supports two options for situations where &branch; and &tag;
-guess the correct path improperly: &module-base-path; and &override-url;.
-</para>
-
-<itemizedlist>
-<listitem><para>
-&module-base-path; is used to help &kdesrc-build; fill in the missing part of
-a module's path. In the &kde; repository, all of the paths are of the form
-<filename class="directory">gitRoot/module-base-path/<replaceable>module-name</replaceable></filename>. Normally &kdesrc-build;
-can figure out the appropriate middle part by itself. When it cannot, you can use
-&module-base-path;, like this:
-</para>
-
-<informalexample>
-<screen>
-module kdesupport
-    # kdesupport supports various tags to easily organize the required
-    # software for a given KDE Platform release.
-    module-base-path tags/kdesupport-for-4.5
-end module
-</screen>
-
-<para>This would cause &kdesrc-build; to download kdesupport from (in this example),
-<filename>git://invent.kde.org/home/kde/<replaceable>tags/kdesupport-for-4.5</replaceable></filename>.
-</para>
-</informalexample>
-<tip><para>In previous versions of &kdesrc-build;, the &module-base-path; was
-handled differently. If you encounter trouble using an old module-base-path
-definition perhaps you should verify that the actual path is as &kdesrc-build;
-expects by using the <link linkend="cmdline-pretend">--pretend</link> option.
-</para></tip>
-</listitem>
-
-<listitem><para>The &override-url; option, on the other hand, requires you to
-specify the exact path to download from. However, this allows you to pull from
-paths that previous versions of &kdesrc-build; would have no hope of downloading from.
-Currently, the &module-base-path; option should be sufficient for any Git
-source URL.
-</para>
-
-<important><para>
-&kdesrc-build; will not touch or correct the value you specify for &override-url;
-at all, so if you change your &repository; setting, you may need to update this
-as well.
-</para></important>
-
-</listitem>
-</itemizedlist>
-
 </sect3>
 
 </sect2>

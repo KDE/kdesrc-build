@@ -209,7 +209,7 @@ sub generateModuleList
     my $ctx = $self->context();
     my $deferredOptions = [ ]; # 'options' blocks
 
-    # Process --help, --install, etc. first.
+    # Process --help, etc. first.
     my $opts = ksb::Cmdline::readCommandLineOptionsAndSelectors(@argv);
     my @selectors = @{$opts->{selectors}};
     my $cmdlineOptions = $opts->{opts};

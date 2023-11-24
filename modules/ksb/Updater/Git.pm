@@ -731,7 +731,7 @@ sub stashAndUpdate ($self, $updateSub)
     my $date = strftime ("%F-%R", gmtime()); # ISO Date, hh:mm time
     my $stashName = "kdesrc-build auto-stash at $date";
 
-    # first, log a snapshot of the git status prior to kdesrc-build taking over the reins in the repo
+    # first, log the git status prior to kdesrc-build taking over the reins in the repo
     my $promise = run_logged_p($module, 'git-status-before-update', undef, [qw(git status)]);
 
     my ($oldStashCount, $newStashCount); # Used in promises below

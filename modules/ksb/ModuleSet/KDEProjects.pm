@@ -46,7 +46,6 @@ sub _createMetadataModule
     $metadataModule->setOption('repository', "kde:$moduleName");
     $metadataModule->setOption('#kde-project-path', $moduleName);
     $metadataModule->setScmType('metadata');
-    $metadataModule->setOption('disable-snapshots', 1);
     $metadataModule->setOption('branch', 'master');
 
     my $moduleSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-projects dependencies>');
