@@ -70,12 +70,6 @@
   <!ENTITY build-dir '<link linkend="conf-build-dir"
 >build-dir</link
 >'>
-  <!ENTITY module-base-path '<link linkend="conf-module-base-path"
->module-base-path</link
->'>
-  <!ENTITY override-url '<link linkend="conf-override-url"
->override-url</link
->'>
   <!ENTITY source-dir '<link linkend="conf-source-dir"
 >source-dir</link
 >'>
@@ -2118,9 +2112,7 @@ end module-set
 <para
 >Bij Git-modules, moet <replaceable
 >module-name</replaceable
-> een module zijn uit de &kde; &git; repository (bijvoorbeeld, kdeartwork of kde-wallpapers), ofschoon het mogelijk is om dit te omzeilen als u <link linkend="conf-override-url"
->handmatig de &git; URL specificeert</link
->. </para>
+> een module zijn uit de &kde; &git; repository (bijvoorbeeld, kdeartwork of kde-wallpapers). </para>
 
 <para
 >Bij Git modules, kunt u de module naam naar wens kiezen, zolang het geen duplicaat is van een andere module naam in de configuratie. Vergeet niet dat de layout van de broncode-map en de bouwmap gebaseerd zijn op de modulenaam als u de optie <link linkend="conf-dest-dir"
@@ -2455,13 +2447,6 @@ end global
 <para
 >Bijvoorbeeld, om de &kde; 4.6 branch uit te checken, zou u deze optie in willen stellen op <replaceable
 >4.6</replaceable
->.</para>
-
-<para
->Als het &kdesrc-build; niet lukt om met deze optie een branch goed te downloaden, dan moet u wellicht handmatig de &url; opgegeven waarvan te downloaden met behulp van de opties <link linkend="conf-module-base-path"
->module-base-path</link
-> of <link linkend="conf-override-url"
->override-url</link
 >.</para>
 
 <note
@@ -3006,7 +2991,7 @@ end module
 
 <entry
 ><para
->Deze optie, indien ingesteld, gebruikt de gespecificeerde URL als een proxy server voor elk HTTP netwerk-communicatie (bijvoorbeeld, voor het downloaden van snapshots voor nieuwe modules, of de <link linkend="kde-projects-module-sets"
+>Deze optie, indien ingesteld, gebruikt de gespecificeerde URL als een proxy server voor elk HTTP netwerk-communicatie (bijvoorbeeld, bij downloaden van de <link linkend="kde-projects-module-sets"
 >KDE project database</link
 >).</para>
 
@@ -3403,48 +3388,6 @@ end module
 > om te voorkomen dat het bouwproces gaat proberen om deze module up te daten (en daarop volgend, bouwen of installeren). Als u dit voor een module instelt, dan heeft u het in essentie uitgecomment. </entry>
 </row>
 
-<row id="conf-module-base-path">
-<entry
->module-base-path</entry>
-<entry
->Instelling bij Module overschrijft de instelling bij global</entry>
-<entry
-><para
->Stel deze optie in om het standaard pad van &kdesrc-build; naar de betreffende module te overschrijven. Dit kunt u bijvoorbeeld gebruiken, om specifieke branches of getagde versies van libraries te downloaden. <ulink url="https://invent.kde.org/"
->De &kde; Source Viewer</ulink
-> is onmisbaar bij het zoeken naar het juiste pad.</para>
-
-<para
->Vergeet niet dat &kdesrc-build; het uiteindelijke pad samenstelt uit de volgende onderdelen: <filename class="directory"
-><varname
->$repository</varname
->/home/kde/<varname
->$module-base-path</varname
-></filename
->. </para>
-
-<para
->De standaardwaarde is naar keuze <filename class="directory"
-><varname
->$module</varname
-></filename
-> of <filename class="directory"
->KDE/<varname
->$module</varname
-></filename
->, afhankelijk van de module naam.</para>
-
-<tip
-><para
->Gebruik in plaats daarvan waar mogelijk de opties <link linkend="conf-branch"
->branch</link
-> of <link linkend="conf-tag"
->tag</link
->. </para
-></tip>
-</entry>
-</row>
-
 <row id="conf-niceness">
 <entry
 >niceness</entry>
@@ -3644,19 +3587,6 @@ einde opties
 </variablelist>
 
 </entry>
-</row>
-
-<row id="conf-override-url">
-<entry
->override-url</entry>
-<entry
->Instelling bij Module overschrijft de instelling bij global</entry>
-<entry
->Als u deze optie instelt, dan zal &kdesrc-build; de waarde daarvan gebruiken als de &url; die doorgegeven wordt aan &git; <emphasis
->compleet ongewijzigd</emphasis
->. In het algemeen zal u dit willen gebruiken als u een specifieke release wilt downloaden en &kdesrc-build; niet kan vaststellen wat u bedoelt als u <link linkend="conf-branch"
->branch</link
-> gebruikt. </entry>
 </row>
 
 <row id="conf-persistent-data-file">
@@ -4260,9 +4190,71 @@ einde opties
 > instellen.</para
 ></listitem>
 </itemizedlist>
-
 <para
->Beschikbare sinds versie 18.11.</para>
+>Deze optie is exact gelijk aan het gebruiken van <option
+><link linkend="cmdline-install-distro-packages"
+>--install-distro-packages</link
+></option
+> <option
+><link linkend="cmdline-generate-config"
+>--generate-config</link
+></option
+> <option
+><link linkend="cmdline-update-shellrc"
+>--update-shellrc</link
+></option
+> op hetzelfde moment. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-distro-packages">
+<term
+><parameter
+>--install-distro-packages</parameter
+></term>
+<listitem
+><para
+>Installeert pakketten uit de distribution (op ondersteunde &Linux; distributies) nodig om het systeem voor te bereiden op gebruik van &kdesrc-build; en om de nieuw geïnstalleerde &kde; software te draaien. </para>
+<para
+>Zie ook <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-config">
+<term
+><parameter
+>--generate-config</parameter
+></term>
+<listitem
+><para
+>Genereert het configuratiebestand van &kdesrc-build;. </para>
+<para
+>Zie ook <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-update-shellrc">
+<term
+><parameter
+>--update-shellrc</parameter
+></term>
+<listitem
+><para
+>Bewerk de "~/.bashrc" (of een ander shell-rc bestand) om &kdesrc-build; toe te voegen aan uw variabele $PATH en automatisch aanvullen in te schakelen. </para>
+<para
+>Zie ook <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
 </listitem>
 </varlistentry>
 
@@ -4422,7 +4414,11 @@ einde opties
 ></term>
 <listitem
 ><para
->Voert alleen het installatieproces uit. </para
+>Als dit de enige commandoregelparameter is, dan probeert het alle modules te installeren die voorkomen in <filename
+>log/latest/build-status</filename
+>. Als u commandoregelparameters specificeert na <parameter
+>--install-only</parameter
+>, dan wordt aangenomen dat dit allemaal te installeren modules zijn (zelfs als ze bij de laatste run niet succesvol gebouwd zijn). </para
 ></listitem>
 </varlistentry>
 
@@ -5089,41 +5085,6 @@ QMAIL_CONTROLDIR=/var/qmail/control
 ></listitem>
 </varlistentry>
 
-<varlistentry id="cmdline-install"
-><term
-><parameter
->--install</parameter
-></term>
-<listitem
-><para
->Als dit de enige commandoregelparameter is, dan probeert het alle modules te installeren die voorkomen in <filename
->log/latest/build-status</filename
->. Als u commandoregelparameters specificeert na <parameter
->--install</parameter
->, dan wordt aangenomen dat dit allemaal te installeren modules zijn (zelfs als ze bij de laatste run niet succesvol gebouwd zijn). </para
-></listitem>
-</varlistentry>
-
-<varlistentry id="cmdline-no-snapshots"
-><term
-><parameter
->--no-snapshots</parameter
-></term>
-<listitem
-><para
->Deze optie zorgt er voor dat &kdesrc-build; altijd een normale initiële checkout van een module doet in plaats van een quick-start snapshot (alleen beschikbaar voor Git modules uit de <literal
->kde-projects</literal
-> repository). Merk op dat u deze optie alleen moet gebruiken als het gebruiken van snapshots mislukt, omdat de quick-start snapshot minder belastend zijn voor de KDE broncoderepositories. </para>
-
-<note
-><para
->Module snapshots <emphasis
->zijn</emphasis
-> echte checkouts. Normaal gesproken heeft u deze optie niet nodig, het is alleen een hulpmiddel voor troubleshooting.</para
-></note>
-</listitem>
-</varlistentry>
-
 <varlistentry id="cmdline-delete-my-patches">
 <term
 ><parameter
@@ -5567,7 +5528,7 @@ end module
 >Bijvoorbeeld, de &kmail;-ontwikkelaars kunnen aan het werk zijn voor een nieuwe functie in een andere branch om te vermijden dat ze de versie breken die bij de meeste ontwikkelaars in gebruik is. In deze branch kunnen ontwikkelingen aan de gang zijn, terwijl in de hoofd-branch (genaamd master) ook ontwikkelingen aan de gang kunnen zijn. </para>
 
 <para
->Een tag, aan de andere kant, is een snapshot van de broncoderepository op een tijdstip. Dit wordt door het administratieteam van &kde; gebruikt om een versie van de code te markeren als geschikt voor release en de ontwikkelaars toch te laten werken aan de code. </para>
+>Een tag, aan de andere kant, is een gespecificeerd punt van de broncode-opslagruimte op een tijdstip. Dit wordt door het administratieteam van &kde; gebruikt om een versie van de code te markeren als geschikt voor uitgave en de ontwikkelaars toch te laten werken aan de code. </para>
 
 </sect3>
 
@@ -5610,60 +5571,6 @@ end module
 ><para
 >U kunt een algemene (global) branch waarde instellen. Maar als u dat doet, vergeet dan niet om een andere branch voor de modules die niet de global branch gebruiken te specificeren! </para
 ></tip>
-</sect3>
-
-<sect3 id="advanced-branches">
-<title
->Geavanceerde opties wat betref branches</title>
-
-<para
->&kdesrc-build; heeft twee opties voor situaties waar &branch; en &tag; het juiste pad incorrect bepaalt: &module-base-path; en &override-url;. </para>
-
-<itemizedlist>
-<listitem
-><para
->&module-base-path; gebruikt u om &kdesrc-build; te helpen met het invullen van het ontbrekende gedeelte van een module's pad. In de repository van &kde;, zijn alle paden in de vorm <filename class="directory"
->gitRoot/module-base-path/<replaceable
->module-name</replaceable
-></filename
->. Normaal gesproken kan &kdesrc-build; zelf het van toepassing zijnde middelste gedeelte bepalen. Als dat niet lukt, dan kunt i &module-base-path;, op de volgende manier gebruiken: </para>
-
-<informalexample>
-<screen
->module kdesupport
-    # kdesupport ondersteunt verschillende tags om makkelijk het vereiste 
-    # software voor een bepaalde KDE Platform release te organiseren.
-    module-base-path tags/kdesupport-for-4.5
-end module
-</screen>
-
-<para
->Dit zorgt ervoor dat &kdesrc-build; gaat downloaden kdesupport van (in dit voorbeeld), <filename
->git://invent.kde.org/home/kde/<replaceable
->tags/kdesupport-for-4.5</replaceable
-></filename
->. </para>
-</informalexample>
-<tip
-><para
->In vorige versies van &kdesrc-build; werd de &module-base-path; anders behandelt. Als u problemen tegenkomt bij het gebruik van een oude module-base-path definitie dan zou misschien moeten controleren of het daadwerkelijke pad hetzelfde is als wat &kdesrc-build; verwacht bij het gebruik van de optie <link linkend="cmdline-pretend"
->--pretend</link
->. </para
-></tip>
-</listitem>
-
-<listitem
-><para
->Bij de optie &override-url;is het vereist dat u het exacte pad specificeert waarvan u download. Maar, hiermee kunt u wel van paden downloaden waarmee u bij voorgaande versies van &kdesrc-build; geen hoop had om van te kunnen downloaden. Op dit moment zou de optie &module-base-path; genoeg moeten zijn om van elke Git bron URL te kunnen downloaden. </para>
-
-<important
-><para
->&kdesrc-build; zal de waarde die u specificeerde voor &override-url; absoluut niet wijzigen of corrigeren, dus als u uw &repository;-instelling wijzigt, dan zal u dit ook moeten bijwerken. </para
-></important>
-
-</listitem>
-</itemizedlist>
-
 </sect3>
 
 </sect2>

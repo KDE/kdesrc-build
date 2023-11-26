@@ -70,12 +70,6 @@
   <!ENTITY build-dir '<link linkend="conf-build-dir"
 >build-dir</link
 >'>
-  <!ENTITY module-base-path '<link linkend="conf-module-base-path"
->module-base-path</link
->'>
-  <!ENTITY override-url '<link linkend="conf-override-url"
->override-url</link
->'>
   <!ENTITY source-dir '<link linkend="conf-source-dir"
 >source-dir</link
 >'>
@@ -2121,9 +2115,7 @@ end module-set
 <para
 >Per als mòduls Git, el <replaceable
 >nom_mòdul</replaceable
-> haurà de ser un mòdul del repositori &git; del &kde; (per exemple, kdeartwork o kde-wallpapers), encara que és possible evitar-ho si <link linkend="conf-override-url"
->especifiqueu manualment l'URL del &git;</link
->. </para>
+> haurà de ser un mòdul del repositori &git; del &kde; (per exemple, kdeartwork o kde-wallpapers). </para>
 
 <para
 >Per als mòduls basats en Git, el <replaceable
@@ -2462,13 +2454,6 @@ end global
 <para
 >Per exemple, per a extreure la branca 4.6 del &kde;, establireu aquesta opció a <replaceable
 >4.6</replaceable
->.</para>
-
-<para
->Si el &kdesrc-build; falla en descarregar correctament una branca amb aquesta opció, és possible que hàgiu d'especificar manualment l'&url; per a descarregar utilitzant les opcions <link linkend="conf-module-base-path"
->module-base-path</link
-> o <link linkend="conf-override-url"
->override-url</link
 >.</para>
 
 <note
@@ -3020,7 +3005,7 @@ end module
 
 <entry
 ><para
->Aquesta opció, si està establerta, utilitzarà l'URL especificat com un servidor intermediari per a utilitzar-lo en qualsevol comunicació de xarxa HTTP (per exemple, en descarregar instantànies per a mòduls nous o la <link linkend="kde-projects-module-sets"
+>Aquesta opció, si està establerta, utilitzarà l'URL especificat com un servidor intermediari per a utilitzar-lo en qualsevol comunicació de xarxa HTTP (per exemple, en descarregar la <link linkend="kde-projects-module-sets"
 >base de dades del projecte &kde;</link
 >).</para>
 
@@ -3415,48 +3400,6 @@ end module
 > (cert) per evitar que el procés de construcció intenti actualitzar (i, per extensió, construir o instal·lar) aquest mòdul. Si establiu aquesta opció per a un mòdul, essencialment l'haureu de descomentar. </entry>
 </row>
 
-<row id="conf-module-base-path">
-<entry
->module-base-path</entry>
-<entry
->La configuració del mòdul superposa la global</entry>
-<entry
-><para
->Establiu aquesta opció per a superposar el camí del directori predeterminat de &kdesrc-build; al mòdul en qüestió. Això es pot utilitzar, per exemple, per obtenir branques específiques o versions etiquetades de les biblioteques. El <ulink url="https://invent.kde.org/"
->Visualitzador de codi font del &kde;</ulink
-> és molt valuós per ajudar a triar el camí correcte.</para>
-
-<para
->Recordeu que el &kdesrc-build; construeix el camí final d'acord amb la següent plantilla: <filename class="directory"
-><varname
->$repository</varname
->/home/kde/<varname
->$module-base-path</varname
-></filename
->. </para>
-
-<para
->El valor predeterminat és <filename class="directory"
-><varname
->$module</varname
-></filename
-> o <filename class="directory"
->KDE/<varname
->$module</varname
-></filename
->, segons el nom del mòdul.</para>
-
-<tip
-><para
->Utilitzeu les opcions <link linkend="conf-branch"
->branch</link
-> (branca) o <link linkend="conf-tag"
->tag</link
-> (indicador) sempre que siguin aplicables. </para
-></tip>
-</entry>
-</row>
-
 <row id="conf-niceness">
 <entry
 >niceness</entry>
@@ -3659,19 +3602,6 @@ end options
 </variablelist>
 
 </entry>
-</row>
-
-<row id="conf-override-url">
-<entry
->override-url</entry>
-<entry
->La configuració del mòdul superposa la global</entry>
-<entry
->Si establiu aquesta opció, el &kdesrc-build; utilitzarà el seu valor com l'&url; per passar a &git; <emphasis
->completament sense canvis</emphasis
->. En general, haureu d'utilitzar aquesta opció si voleu descarregar una versió específica, però el &kdesrc-build; no pot entendre el que voleu dir utilitzant <link linkend="conf-branch"
->branch</link
-> (branca). </entry>
 </row>
 
 <row id="conf-persistent-data-file">
@@ -4497,7 +4427,11 @@ end options
 ></term>
 <listitem
 ><para
->Només realitza el procés d'instal·lació. </para
+>Si aquesta és l'única opció de la línia d'ordres, intentarà instal·lar tots els mòduls continguts a <filename
+>log/latest/build-status</filename
+>. Si les opcions de la línia d'ordres s'especifiquen després de <parameter
+>--install-only</parameter
+>, se suposa que són mòduls per instal·lar (encara que no s'hagin construït correctament en la darrera execució). </para
 ></listitem>
 </varlistentry>
 
@@ -5170,41 +5104,6 @@ QMAIL_CONTROLDIR=/var/qmail/control
 ></listitem>
 </varlistentry>
 
-<varlistentry id="cmdline-install"
-><term
-><parameter
->--install</parameter
-></term>
-<listitem
-><para
->Si aquesta és l'única opció de la línia d'ordres, intentarà instal·lar tots els mòduls continguts a <filename
->log/latest/build-status</filename
->. Si les opcions de la línia d'ordres s'especifiquen després de <parameter
->--install</parameter
->, se suposa que són mòduls per instal·lar (encara que no s'hagin construït correctament en la darrera execució). </para
-></listitem>
-</varlistentry>
-
-<varlistentry id="cmdline-no-snapshots"
-><term
-><parameter
->--no-snapshots</parameter
-></term>
-<listitem
-><para
->En proporcionar aquesta opció, farà que el &kdesrc-build; realitzi sempre una extracció inicial normal d'un mòdul en lloc d'utilitzar una instantània d'inici ràpid (només disponible per als mòduls Git des del repositori <literal
->kde-projects</literal
->). Recordeu que aquesta opció només s'haurà d'utilitzar si hi ha un error en utilitzar les instantànies, ja que la instantània d'inici ràpid redueix la càrrega en els repositoris de codi font del &kde;. </para>
-
-<note
-><para
->Les instantànies del mòdul <emphasis
->són</emphasis
-> extraccions reals. No hauríeu de necessitar especificar aquesta opció, només és una ajuda per a la resolució de problemes.</para
-></note>
-</listitem>
-</varlistentry>
-
 <varlistentry id="cmdline-delete-my-patches">
 <term
 ><parameter
@@ -5646,7 +5545,7 @@ end module
 >Per exemple, els desenvolupadors del &kmail; poden estar treballant en una nova característica en una branca diferent per evitar trencar la versió utilitzada per la majoria dels desenvolupadors. Aquesta branca té un desenvolupament continu en el seu interior, fins i tot mentre la branca principal (anomenada master) pot seguir amb el seu desenvolupament. </para>
 
 <para
->Una etiqueta, d'altra banda, és una instantània del repositori de codi font en una posició en el temps. L'equip d'administració del &kde;, l'utilitza per a marcar una versió de codi adequada per al seu llançament i permetre que els desenvolupadors encara treballin en el codi. </para>
+>Una etiqueta, d'altra banda, és punt específic del repositori de codi font en una posició en el temps. L'equip d'administració del &kde;, l'utilitza per a marcar una versió de codi adequada per al seu llançament i permetre que els desenvolupadors encara treballin en el codi. </para>
 
 </sect3>
 
@@ -5689,60 +5588,6 @@ end module
 ><para
 >Podeu especificar un valor global de branca. Però si ho feu, no oblideu especificar una branca diferent per als mòduls que no han d'utilitzar la branca global! </para
 ></tip>
-</sect3>
-
-<sect3 id="advanced-branches">
-<title
->Opcions avançades de suport a les branques</title>
-
-<para
->El &kdesrc-build; admet dues opcions per a situacions en què «&branch;» i «&tag;» suposen el camí correcte de forma inadequada: «&module-base-path;» i «&override-url;». </para>
-
-<itemizedlist>
-<listitem
-><para
->«&module-base-path;» s'utilitza per ajudar al &kdesrc-build; a completar la part que falta del camí d'un mòdul. Al repositori del &kde;, tots els camins tenen la forma <filename class="directory"
->gitRoot/module-base-path/<replaceable
->nom_mòdul</replaceable
-></filename
->. Normalment, el &kdesrc-build; pot descobrir la part mitjana apropiada per si mateix. Quan no pot, podreu utilitzar «&module-base-path;», així: </para>
-
-<informalexample>
-<screen
->module kdesupport
-    # kdesupport admet diverses etiquetes per a organitzar amb facilitat
-    # el programari requerit per a una versió indicada de la plataforma KDE.
-    module-base-path tags/kdesupport-for-4.5
-end module
-</screen>
-
-<para
->Això farà que el &kdesrc-build; descarregui el kdesupport des de (en aquest exemple), <filename
->git://invent.kde.org/home/kde/<replaceable
->tags/kdesupport-for-4.5</replaceable
-></filename
->. </para>
-</informalexample>
-<tip
-><para
->En versions anteriors de &kdesrc-build;, el «&module-base-path;» es gestionava de manera diferent. Si trobeu problemes en utilitzar una antiga definició de «&module-base-path;», potser haureu de verificar que el camí real és el que espera el &kdesrc-build; utilitzant l'opció <link linkend="cmdline-pretend"
->--pretend</link
->. </para
-></tip>
-</listitem>
-
-<listitem
-><para
->L'opció «&override-url;», d'altra banda, requereix que especifiqueu el camí exacte per descarregar. No obstant això, permet extreure camins que les versions anteriors de &kdesrc-build; no tindrien l'esperança de descarregar. Actualment, l'opció «&module-base-path;» hauria de ser suficient per a qualsevol &url;: de codi font del Git. </para>
-
-<important
-><para
->El &kdesrc-build; no tocarà ni corregirà el valor que especifiqueu per a «&override-url;», de manera que si canvieu l'opció del &repository;, és possible que també hàgiu d'actualitzar això. </para
-></important>
-
-</listitem>
-</itemizedlist>
-
 </sect3>
 
 </sect2>

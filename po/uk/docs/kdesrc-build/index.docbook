@@ -70,12 +70,6 @@
   <!ENTITY build-dir '<link linkend="conf-build-dir"
 >build-dir</link
 >'>
-  <!ENTITY module-base-path '<link linkend="conf-module-base-path"
->module-base-path</link
->'>
-  <!ENTITY override-url '<link linkend="conf-override-url"
->override-url</link
->'>
   <!ENTITY source-dir '<link linkend="conf-source-dir"
 >source-dir</link
 >'>
@@ -2097,9 +2091,7 @@ end module-set
 <para
 >Для модулів Git параметр <replaceable
 >назва_модуля</replaceable
-> має бути назвою модуля зі сховища &git; &kde; (наприклад kdeartwork або kde-wallpapers). Крім того, можна змінити значення вручну <link linkend="conf-override-url"
->визначенням адреси &git;</link
->. </para>
+> має бути назвою модуля зі сховища &git; &kde; (наприклад kdeartwork або kde-wallpapers). </para>
 
 <para
 >Для модулів Git назвою може бути будь-який рядок, якщо цей рядок не дублює інших назв модулів у налаштуваннях. Пам’ятайте, що розташування каталогів коду і збирання буде визначено на основі назви модуля, якщо ви не використаєте параметра <link linkend="conf-dest-dir"
@@ -2430,13 +2422,6 @@ end global
 >4.6</replaceable
 >.аметра <replaceable
 >3.4</replaceable
->.</para>
-
-<para
->Якщо &kdesrc-build; не вдається належним чином отримати версію з цим параметром, ймовірно, вам доведеться вручну вказати адресу &url;, з якої слід виконати отримання за допомогою параметра <link linkend="conf-module-base-path"
->module-base-path</link
-> або <link linkend="conf-override-url"
->override-url</link
 >.</para>
 
 <note
@@ -2977,7 +2962,7 @@ end module
 
 <entry
 ><para
->Цей параметр, якщо його встановлено, використовується для визначення адреси проксі-сервера, яким слід користуватися для обміну даними у мережі за допомогою HTTP (наприклад під час отримання знімків нових модулів або <link linkend="kde-projects-module-sets"
+>Цей параметр, якщо його встановлено, використовується для визначення адреси проксі-сервера, яким слід користуватися для обміну даними у мережі за допомогою HTTP (наприклад під час отримання <link linkend="kde-projects-module-sets"
 >бази даних проєктів KDE</link
 >).</para>
 
@@ -3372,48 +3357,6 @@ end module
 >, щоб процес збирання не намагався оновити (і отже зібрати і встановити) цей модуль. Якщо ви встановите цей параметр для певного модуля, вам варто закоментувати його. </entry>
 </row>
 
-<row id="conf-module-base-path">
-<entry
->module-base-path</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
->Встановіть цей параметр, щоб перевизначити шлях до типової теки &kdesrc-build; для потрібного модуля. Цим параметром можна, наприклад, скористатися, якщо потрібно використати певні гілки або стабільні версії бібліотек. У визначення правильного шляху неоціненну поміч вам може надати <ulink url="https://invent.kde.org/"
->Переглядач коду &kde;</ulink
->.</para>
-
-<para
->Зауважте, що &kdesrc-build; конструює остаточний шлях відповідно до такого шаблону: <filename class="directory"
-><varname
->$repository</varname
->/home/kde/<varname
->$module-base-path</varname
-></filename
->. </para>
-
-<para
->Типовим значенням є або <filename class="directory"
-><varname
->$module</varname
-></filename
->, або <filename class="directory"
->trunk/KDE/<varname
->$module</varname
-></filename
->, залежно від назви модуля.</para>
-
-<tip
-><para
->Ви можете скористатися варіантами <link linkend="conf-branch"
->branch</link
-> або <link linkend="conf-tag"
->tag</link
->, якщо їх можна застосовувати. </para
-></tip>
-</entry>
-</row>
-
 <row id="conf-niceness">
 <entry
 >niceness</entry>
@@ -3611,19 +3554,6 @@ end options
 </variablelist>
 
 </entry>
-</row>
-
-<row id="conf-override-url">
-<entry
->override-url</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
->Якщо вистановите цей параметр, &kdesrc-build; використовуватиме його значення як адресу &url;, яку слід передати &git; <emphasis
->повністю незмінною</emphasis
->. Загалом, вам слід використовувати цей параметр, якщо ви бажаєте отримати певний випуск, але &kdesrc-build; не може визначити, який випуск ви мали на увазі у параметрі <link linkend="conf-branch"
->branch</link
->. </entry>
 </row>
 
 <row id="conf-persistent-data-file">
@@ -4449,7 +4379,11 @@ end options
 ></term>
 <listitem
 ><para
->Виконати лише процес встановлення. </para
+>Якщо цей параметр буде єдиним, скрипт намагатиметься встановити всі модулі, вказані у <filename
+>log/latest/build-status</filename
+>. Якщо після <option
+>--install-only</option
+> буде вказано інші параметри командного рядка, всі ці параметри вважатимуться назвами модулів, які слід встановити (навіть якщо їх не вдалося зібрати під час попереднього запуску). </para
 ></listitem>
 </varlistentry>
 
@@ -5112,41 +5046,6 @@ QMAIL_CONTROLDIR=/var/qmail/control
 ></listitem>
 </varlistentry>
 
-<varlistentry id="cmdline-install"
-><term
-><parameter
->--install</parameter
-></term>
-<listitem
-><para
->Якщо цей параметр буде єдиним, скрипт намагатиметься встановити всі модулі, вказані у <filename
->log/latest/build-status</filename
->. Якщо після <option
->--install</option
-> буде вказано інші параметри командного рядка, всі ці параметри вважатимуться назвами модулів, які слід встановити (навіть якщо їх не вдалося зібрати під час попереднього запуску). </para
-></listitem>
-</varlistentry>
-
-<varlistentry id="cmdline-no-snapshots"
-><term
-><parameter
->--no-snapshots</parameter
-></term>
-<listitem
-><para
->Використання цього параметра призведе до того, що &kdesrc-build; завжди виконуватиме звичайне початкове отримання коду модуля замість використання початкового архіву зі знімком (можна використовувати лише для модулів Git зі сховища <literal
->kde-projects</literal
->). Зауважте, що цим параметром варто користуватися, лише якщо вам не вдається скористатися знімком з кодом, оскільки такі знімки зменшуються навантаження на сховища з кодом KDE. </para>
-
-<note
-><para
->Знімки модулів <emphasis
->є</emphasis
-> самі версіями каталогів. Вам не варто використовувати цей параметр, його використання виправдане лише з метою усування вад.</para
-></note>
-</listitem>
-</varlistentry>
-
 <varlistentry id="cmdline-delete-my-patches">
 <term
 ><parameter
@@ -5590,7 +5489,7 @@ end module
 >Наприклад, розробники &kmail; можуть працювати над новою можливістю у іншій версії, щоб уникнути можливої непрацездатності версії, над якою працює більшість інших розробників. У цій версії відбувається розробка, хоча розробка також відбувається і у основному сховищі версій (яке називається master). </para>
 
 <para
->З іншого боку, випуск є моментальним знімком сховища коду у певний момент часу. Таке сховище використовується командою адміністрування &kde; для позначення версії коду, придатної для випуску, а також надає розробниками можливість доопрацьовувати їх код. </para>
+>З іншого боку, випуск є певною точкою у сховищі коду у певний момент часу. Таке сховище використовується командою адміністрування &kde; для позначення версії коду, придатної для випуску, а також надає розробниками можливість доопрацьовувати їх код. </para>
 
 </sect3>
 
@@ -5633,60 +5532,6 @@ end module
 ><para
 >Ви можете вказати загальне значення версії (branch). Але, якщо ви це зробите, не забудьте вказати іншу версію для модулів, які не використовують загальної нумерації версій! </para
 ></tip>
-</sect3>
-
-<sect3 id="advanced-branches">
-<title
->Додаткові параметри підтримки версій</title>
-
-<para
->&kdesrc-build; підтримує два параметри, призначені для обробки ситуацій, коли параметри &branch; і &tag; неправильно визначають шлях до сховища: &module-base-path; і &override-url;. </para>
-
-<itemizedlist>
-<listitem
-><para
->Параметр &module-base-path; використовується для того, щоб допомогти &kdesrc-build; заповнити відсутню частину шляху до модуля. У сховищі &kde; всіх шляхи виглядають так: <filename class="directory"
->Корінь_git/базовий_шлях_до_модуля/<replaceable
->назва модуля</replaceable
-></filename
->. Зазвичай, &kdesrc-build; може визначити відповідну середню частину самостійно. Якщо програма не може цього зробити, ви можете скористатися &module-base-path;, ось так: </para>
-
-<informalexample>
-<screen
->module kdesupport
-    # kdesupport підтримує різноманітні мітки, які спрощують
-    # впорядкування програмного забезпечення для певного випуску Платформи KDE.
-    module-base-path tags/kdesupport-for-4.5
-end module
-</screen>
-
-<para
->Таким чином ви накажете &kdesrc-build; отримати kdesupport з (у нашому прикладі), <filename
->git://invent.kde.org/home/kde/<replaceable
->tags/kdesupport-for-4.5</replaceable
-></filename
->. </para>
-</informalexample>
-<tip
-><para
->У попередніх випусках &kdesrc-build; обробка &module-base-path; виконувалася у дещо інший спосіб. Якщо у вас виникають труднощі з використанням застарілого визначення module-base-path, ймовірно, вам слід перевірити, чи є адреса саме тією, яка насправді потрібна &kdesrc-build;, за допомогою параметра <link linkend="cmdline-pretend"
->--pretend</link
->. </para
-></tip>
-</listitem>
-
-<listitem
-><para
->З іншого боку, параметр &override-url; вимагає від вас вказати точний шлях для отримання. Але він надає вам змогу взяти шляхи з попередніх версій &kdesrc-build;, звідки вже не можна отримати дані. У поточній версії параметра &module-base-path; має бути достатньо для будь-якої адреси Git кодів &kde;. </para>
-
-<important
-><para
->&kdesrc-build; не змінюватиме і не виправлятиме значення, яке ви вкажете для &override-url;, отже, якщо ви зміните ваш параметр &repository;, може виникнути потреба і у зміні цього параметра. </para
-></important>
-
-</listitem>
-</itemizedlist>
-
 </sect3>
 
 </sect2>
