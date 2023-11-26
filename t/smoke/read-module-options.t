@@ -87,7 +87,7 @@ is($CMD[ 7], '-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON', 'Per default we generate
 is($CMD[ 8], '-DCMAKE_BUILD_TYPE=a b', 'CMake options can be quoted');
 is($CMD[ 9], 'bar=c', 'CMake option quoting does not eat all options');
 is($CMD[10], 'baz', 'Plain CMake options are preserved correctly');
-is($CMD[11], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde", 'Prefix is passed to cmake');
+is($CMD[11], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde/usr", 'Prefix is passed to cmake');
 
 # See https://phabricator.kde.org/D18165
 is($moduleList[0]->getOption('cxxflags'), '', 'empty cxxflags renders with no whitespace in module');

@@ -15,6 +15,7 @@ use ksb::BuildException;
 use ksb::Debug qw(colorize);
 use ksb::OSSupport;
 use ksb::Util qw(locate_exe);
+use ksb::BuildContext;
 
 =head1 NAME
 
@@ -293,6 +294,19 @@ DONE
     $sampleRc =~ s/%\{num_cores}/$numCores/g;
     $sampleRc =~ s/%\{num_cores_low}/$numCoresLow/g;
     $sampleRc =~ s/%\{base_dir}/$baseDir/g;
+
+    my $gl = ksb::BuildContext->new()->{"build_options"}->{"global"};  # real global defaults
+    $gl->{$_} =~ s|^$ENV{HOME}|~| foreach qw(kdedir source-dir build-dir);
+
+    $sampleRc =~ s/%\{include-dependencies}/$gl->{"include-dependencies"}/g;
+    $sampleRc =~ s/%\{kdedir}/$gl->{"kdedir"}/g;
+    $sampleRc =~ s/%\{source-dir}/$gl->{"source-dir"}/g;
+    $sampleRc =~ s/%\{build-dir}/$gl->{"build-dir"}/g;
+    $sampleRc =~ s/%\{install-session-driver}/$gl->{"install-session-driver"}/g;
+    $sampleRc =~ s/%\{install-environment-driver}/$gl->{"install-environment-driver"}/g;
+    $sampleRc =~ s/%\{stop-on-failure}/$gl->{"stop-on-failure"}/g;
+    $sampleRc =~ s/%\{compile-commands-linking}/$gl->{"compile-commands-linking"}/g;
+    $sampleRc =~ s/%\{compile-commands-export}/$gl->{"compile-commands-export"}/g;
 
     make_path($xdgConfigHome);
 

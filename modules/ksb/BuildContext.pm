@@ -146,7 +146,7 @@ our %defaultGlobalOptions = (
     "binpath"              => '',
     "branch"               => "",
     "branch-group"         => "", # Overrides branch, uses JSON data.
-    "build-dir"            => "build",
+    "build-dir"            => "$ENV{HOME}/kde/build",
     "cmake-generator"      => "",
     "cmake-options"        => "",
     "cmake-toolchain"      => "",
@@ -156,7 +156,7 @@ our %defaultGlobalOptions = (
     "dest-dir"             => '${MODULE}', # single quotes used on purpose!
     "do-not-compile"       => "",
     "http-proxy"           => '', # Proxy server to use for HTTP.
-    "kdedir"               => "$ENV{HOME}/kde",
+    "kdedir"               => "$ENV{HOME}/kde/usr",
     "libname"              => $libname,
     "libpath"              => "",
     "log-dir"              => "log",
@@ -169,7 +169,7 @@ our %defaultGlobalOptions = (
     "persistent-data-file" => "",
     "qtdir"                => "",
     "remove-after-install" => "none", # { none, builddir, all }
-    "source-dir"           => "$ENV{HOME}/kdesrc",
+    "source-dir"           => "$ENV{HOME}/kde/src",
     "tag"                  => "",
 );
 
