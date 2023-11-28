@@ -244,6 +244,7 @@ EOF
 
     # rc-file needs special handling.
     my $rcFile = $cmdlineGlobalOptions->{'rc-file'} // '';
+    $rcFile =~ s/^~/$ENV{HOME}/;
     $ctx->setRcFile($rcFile) if ($rcFile);
 
     # disable async if only running a single phase.
