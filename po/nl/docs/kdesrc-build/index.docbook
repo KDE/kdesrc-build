@@ -637,9 +637,9 @@
 ><para
 ><link linkend="conf-kdedir"
 >kdedir</link
->, wat de doelmap wijzigt waarin de&kde;-software wordt geïnstalleerd. Standaard is dit <filename class="directory"
+>, which changes the destination directory that your &kde; software is installed to. This defaults to <filename class="directory"
 >~/kde</filename
->, wat voor een single-user installatie is.</para
+>, which is a single-user installation.</para
 ></listitem>
 
 <listitem
@@ -658,10 +658,10 @@
 
 <listitem
 ><para
-><link linkend="conf-kdedir"
+><link linkend="conf-source-dir"
 >source-dir</link
->, wat de map wijzigt wat &kdesrc-build; gebruikt om de broncode naar toe te downloaden, het bouwproces uit te voeren en de logbestanden op te slaan. Standaard is dit <filename class="directory"
->~/~/kdesrc</filename
+>, to control the directory &kdesrc-build; uses for downloading the source code, running the build process, and saving logs. This defaults to <filename class="directory"
+>~/kdesrc</filename
 >.</para
 ></listitem>
 
@@ -2381,7 +2381,7 @@ end global
 
 <table id="option-table">
 <title
->Tabel met opties</title>
+>Table of Options</title>
 <tgroup cols="3">
 
 <thead>
@@ -2507,33 +2507,33 @@ end global
 <entry
 >Instelling bij Module overschrijft de instelling bij global</entry>
 <entry
->Gebruik deze optie om de map te wijzigen waarin het compilatieresultaat geplaatst wordt. Er zijn drie verschillende manieren om het te gebruiken: <orderedlist
+>Use this option to change the directory to contain the built sources. There are three different ways to use it: <orderedlist
 > <listitem
 ><para
->Relatief ten opzichte van de &kde; &git; map met broncode (zie <link linkend="conf-source-dir"
->de optie source-dir</link
->). Deze is de standaard, en wordt geselecteerd als u een naam van een map invoert die niet een tilde (~) of een slash (/) begint.</para
+>Relative to the &kde; &git; source directory (see <link linkend="conf-source-dir"
+>the source-dir option</link
+>). This is the default, and is selected if you type a directory name that does not start with a tilde (~) or a slash (/).</para
 > <para
->De standaard waarde is <filename class="directory"
+>The default value is <filename class="directory"
 >build</filename
 >.</para
 ></listitem
 > <listitem
 ><para
->Absoluut pad. Als u een pad specificeert dat begint met een /, dan wordt dat pad in deze vorm gebruikt. Bijvoorbeeld, <filename class="directory"
+>Absolute path. If you specify a path that begins with a /, then that path is used directly. For example, <filename class="directory"
 >/tmp/kde-obj-dir/</filename
 >.</para
 ></listitem
 > <listitem
 ><para
->Relatief ten opzichte van uw thuismap. Als u een pad specificeert dat begint met een ~, dan is het opgegeven pad relatief ten opzichte van uw thuismap, overeenkomend met de tilde-expansie in het terminalvenster. Bijvoorbeeld, <filename class="directory"
+>Relative to your home directory. If you specify a path that begins with a ~, then the path is used relative to your home directory, analogous to the shell's tilde-expansion. For example, <filename class="directory"
 >~/builddir</filename
-> zal de bouwmap instellen naar <filename class="directory"
+> would set the build directory to <filename class="directory"
 >/home/user-name/builddir</filename
 >.</para
 ></listitem
 > </orderedlist
-> Verrassend misschien, maar deze optie is per module instelbaar. </entry>
+> Perhaps surprisingly, this option can be changed per module. </entry>
 </row>
 
 <row id="conf-build-when-unchanged">
@@ -2874,21 +2874,21 @@ end global
 <informalexample>
 <programlisting
 >global
-   # andere opties
+   # other options
 
-   # Dit is het algemene pad naar alle anonieme Git server modules.
+   # This is the common path to all anonymous Git server modules.
    git-repository-base <replaceable
 >kde-git</replaceable
 > <replaceable
 >kde:</replaceable>
 end global
 
-# Module declaraties
+# Module declarations
 
 module-set
-   # Nu kunt u de alias gebruiken die u eerder definieerde, maar <emphasis
->alleen</emphasis>
-   # in een module-set.
+   # Now you can use the alias you defined earlier, but <emphasis
+>only</emphasis>
+   # in a module-set.
    repository <replaceable
 >kde-git</replaceable>
 
@@ -3266,11 +3266,11 @@ end module
 <entry
 >Instelling bij Module overschrijft de instelling bij global</entry>
 <entry
->Met deze optie stelt u de map in waar &kde; zal worden geïnstalleerd na het bouwproces. De standaardinstelling is <filename class="directory"
+>This option sets the directory that &kde; will be installed to after it is built. It defaults to <filename class="directory"
 >~/kde</filename
->. Als u dit wijzigt naar een map die root-rechten nodig heeft, dan wilt u wellicht meer lezen over de optie <link linkend="conf-make-install-prefix"
+>. If you change this to a directory needing root access, you may want to read about the <link linkend="conf-make-install-prefix"
 >make-install-prefix</link
->.</entry>
+> option as well.</entry>
 </row>
 
 <row id="conf-libname">
@@ -5730,11 +5730,11 @@ end module
 
 <tip>
 <para
->Standaard is de bouwmap <filename class="directory"
+>By default, the build directory is <filename class="directory"
 >~/kdesrc/build/<replaceable
 >module</replaceable
 >/</filename
->. Als u de waarde van de optie &build-dir; wijzigt, dan wordt dat gebruikt in plaats van <filename class="directory"
+>. If you change the setting of the &build-dir; option, then use that instead of <filename class="directory"
 >~/kdesrc/build</filename
 >.</para>
 </tip>
@@ -6437,16 +6437,16 @@ end module-set
 ></important>
 
 <para
->Open of creëer met uw favoriete editor in uw thuismap het bestand <filename
+>Open or create the <filename
 >.bash_profile</filename
->, en voeg aan het eind van het bestand toe: als u de qt module bouwt (standaard doet u dat), voeg in plaats daarvan dan toe: <programlisting>
-QTDIR=(pad naar qtdir)   # zoals standaard ~/kdesrc/build/qt .
-KDEDIR=(pad naar kdedir) # zoals standaard ~/kde .
+> file in the home directory with your favorite editor, and add to the end of the file: If you are building the qt module (you are by default), add instead: <programlisting>
+QTDIR=(path to qtdir)   # Such as ~/kdesrc/build/qt by default.
+KDEDIR=(path to kdedir) # Such as ~/kde by default.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
 
-# Reageer op de juiste manier als LD_LIBRARY_PATH nog niet is ingesteld.
+# Act appropriately if LD_LIBRARY_PATH is not already set.
 if [ -z $LD_LIBRARY_PATH ]; then
   LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib
 else
@@ -6455,12 +6455,12 @@ fi
 
 export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
 </programlisting
->, en als u niet qt bouwt (en in plaats daarvan uw systeem &Qt; gebruikt), voeg dan dit toe: <programlisting
->KDEDIR=(pad naar kdedir)  # Zoals standaard ~/kde.
+> or, if you are not building qt (and are using your system &Qt; instead), add this instead: <programlisting
+>KDEDIR=(path to kdedir)  # Such as ~/kde by default.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 
-# Reageer op de juiste manier als LD_LIBRARY_PATH nog niet is ingesteld.
+# Act appropriately if LD_LIBRARY_PATH is not already set.
 if [ -z $LD_LIBRARY_PATH ]; then
   LD_LIBRARY_PATH=$KDEDIR/lib
 else

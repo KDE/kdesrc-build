@@ -648,7 +648,7 @@
 ><link linkend="conf-kdedir"
 >kdedir</link
 >, який змінює каталог призначення, куди буде встановлено програмне забезпечення &kde;. Типовим є каталог <filename class="directory"
->~/kde</filename
+>~/kde/src</filename
 >, тобто середовище буде встановлено для одного (вашого) користувача.</para
 ></listitem>
 
@@ -671,7 +671,7 @@
 ><link linkend="conf-source-dir"
 >source-dir</link
 > — керування каталогом, який &kdesrc-build; використовує для отримання початкового коду, запуску процедури збирання та збереження журналу. Типовим каталогом є <filename class="directory"
->~/kdesrc</filename
+>~/kde/src</filename
 >.</para
 ></listitem>
 
@@ -2352,9 +2352,9 @@ end global
 
 </itemizedlist>
 
-<table id="option-table">
+<table id="options-global-table">
 <title
->Таблиця параметрів</title>
+>Параметри загальної області</title>
 <tgroup cols="3">
 
 <thead>
@@ -2367,7 +2367,6 @@ end global
 >Нотатки</entry>
 </row>
 </thead>
-
 <tbody>
 
 <row id="conf-async">
@@ -2384,6 +2383,445 @@ end global
 >Цей параметр додано починаючи з версії 1.6 програми.</para
 ></entry>
 </row>
+
+<row id="conf-colorful-output">
+<entry
+>colorful-output</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+>Встановіть для цього параметра значення <userinput
+>false</userinput
+>, щоб вимкнути розфарбування даних, які виводитиме &kdesrc-build;. Типовим значенням цього параметра є <replaceable
+>true</replaceable
+>. Зауважте, що &kdesrc-build; не виводитиме розфарбовані дані до інших, відмінних від термінала (на зразок xterm, &konsole; або звичайної консолі &Linux;), виводів. </entry>
+</row>
+
+<row id="conf-disable-agent-check">
+<entry
+>disable-agent-check</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+>Зазвичай, якщо ви використовуєте &ssh; для отримання вихідних кодів &git; (наприклад, якщо ви використовуєте протокол git+ssh), &kdesrc-build; намагатиметься перевірити і зробити так, щоб, якщо ви використовуєте агент ssh, цей агент справді керував певними профілями &ssh;. Так зроблено, щоб &ssh; не надсилав, за можливості, запитів на пароль для кожного з ваших модулів. Ви можете вимкнути таку перевірку встановленням параметра <option
+>disable-agent-check</option
+> у значення <userinput
+>true</userinput
+>. </entry>
+</row>
+
+<row id="conf-git-desired-protocol">
+<entry
+>git-desired-protocol</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+><para
+>Цей параметр стосується модулів зі сховища <link linkend="kde-projects-module-sets"
+>проєкту &kde;</link
+>.</para>
+
+<para
+>Насправді, за допомогою цього параметрам можна вказати, якому з протоколів роботи у мережі слід надавати перевагу під час оновлення початкових кодів відповідних модулів. Зазвичай, використовується дуже ефективний протокол <literal
+>git</literal
+>, але його може бути заблоковано у деяких мережах (наприклад у корпоративних мережах, відкритих мережах Wi-Fi). Альтернативним протоколом з ширшою підтримкою є <literal
+>https</literal
+>, який використовується для доступу до сайтів інтернету.</para>
+
+<para
+>Якщо ви користуєтеся якоюсь з мереж з обмеженнями, ви можете встановити для цього параметра значення <userinput
+>http</userinput
+>, щоб наказати програмі надавати перевагу передаванню даних за допомогою <literal
+>https</literal
+>.</para>
+
+<tip
+><para
+>Крім того, у вас може виникнути потреба у встановленні значення для параметра <link linkend="conf-http-proxy"
+>http-proxy</link
+>, якщо для роботи з даним використовується проксі-сервер HTTP.</para
+></tip>
+
+<para
+>У всіх інших випадках не варто встановлювати цей параметр, оскільки типовий протокол є найефективнішим.</para>
+
+<para
+>Цей параметр було додано у &kdesrc-build; 1.16. До версії 20.06 цей параметр використовувався для налаштовування адреси отримання даних, а не адреси надсилання даних. З версії 20.06 для оновлення проєктів KDE завжди використовується <literal
+>https</literal
+>.</para>
+</entry>
+</row>
+
+<row id="conf-git-repository-base">
+<entry
+>git-repository-base</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+><para
+>Цей параметр, доданий у версії 1.12.1, використовується для скорочення посилань на базову адресу певного сховища Git у наступних оголошеннях <link linkend="module-sets"
+>наборів модулів</link
+>. Параметр корисний для оголошення збирання декількох модулів Git.</para>
+
+<para
+>Вам слід вказати два значення (відокремлених пробілами): назву, яку буде пов’язано з базовою адресою, та саму базову адресу. Приклад:</para>
+
+<para>
+<informalexample>
+<programlisting
+>global
+# інші параметри
+
+# Загальна адреса всіх модулів сервера Git з анонімним доступом.
+git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Оголошення модулів
+
+module-set
+# Тепер можна скористатися раніше визначеним псевдонімом, але <emphasis
+>лише</emphasis>
+# у межах module-set.
+repository <replaceable
+>kde-git</replaceable>
+
+<link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>модуль1.git</replaceable
+> <replaceable
+>модуль2.git</replaceable>
+end module-set
+</programlisting>
+</informalexample>
+</para>
+
+<para
+>Параметр <literal
+>use-modules</literal
+> набору модулів створив два записи модулів. &kdesrc-build; поводитиметься так, наче було вказано:</para>
+
+<programlisting
+>module модуль1
+repository kde:<replaceable
+>модуль1.git</replaceable>
+end module
+
+module модуль2
+repository kde:<replaceable
+>модуль2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>Префікс сховища &git; <literal
+>kde:</literal
+>, використаний вище, є скороченням, яке буде автоматично встановлено &kdesrc-build;. Щоб дізнатися більше, ознайомтеся зі статтею TechBase щодо <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>перейменування адрес</ulink
+>. Зауважте, що на відміну від більшості інших параметрів, цей параметр може бути вказано декілька разів з метою визначення потрібних вам замінників адрес.</para>
+
+<tip
+><para
+>Для того, щоб скористатися перевагами наборів модулів, не обов’язково використовувати цей параметр. Цей параметр призначено лише для спрощення використання одного сховища у декількох наборах модулів.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-ignore-modules">
+<entry
+>ignore-modules</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+><para
+>Модулі, названі у цьому параметрі, які мало б бути вибрано &kdesrc-build; через визначення параметра <link linkend="conf-use-modules"
+>use-modules</link
+>, буде повністю пропущено. Цим параметром можна скористатися, якщо ви хочете зібрати всі групи у проєкті <link linkend="kde-projects-module-sets"
+>kde-projects</link
+>, <emphasis
+>окрім</emphasis
+> певних модулів.</para>
+
+<para
+>Значення параметра не повинне обов’язково вказувати безпосередньо на назву модуля. Будь-який з модулів, повна частина <link linkend="kde-projects-module-sets"
+>шляху до модуля у проєктах &kde;</link
+> якого збігається з одним зі значень параметра, буде проігноровано. Отже, таким чином можна ігнорувати одразу декілька модулів.</para>
+
+<para
+>Наприклад, значення параметра <replaceable
+>libs</replaceable
+> призведе до того, що буде виключено <symbol
+>kde/kdegraphics/libs</symbol
+> і <symbol
+>playground/libs</symbol
+> (але не <symbol
+>kde/kdelibs</symbol
+>, оскільки «kdelibs» не збігається повністю зі значенням параметра).</para>
+
+<tip
+><para
+>Див. також розділ <xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+
+<para
+>Цей параметр було додано у &kdesrc-build; 1.16.</para>
+</entry>
+</row>
+
+<row id="conf-install-environment-driver">
+<entry
+>install-environment-driver</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+><para
+>Типово, &kdesrc-build; встановити скрипт оболонки, яким можна скористатися у скриптах налаштовування профілю користувача для спрощення визначення бажаних змінних середовища для запуску стільниці Плазми, зібраної за допомогою &kdesrc-build;.</para>
+
+<para
+>Цим драйвером буде внесено зміни до таких файлів:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (зазвичай зберігається за адресою <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (зазвичай зберігається за адресою <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>Скрипт <filename
+>kde-env-user.sh</filename
+> є необов'язковим. Його призначено для налаштовування користувачем (див. розділ <ulink url="https://userbase.kde.org/KDE_System_Administration/Environment_Variables#Troubleshooting_and_Debugging"
+>Troubleshooting and Debugging</ulink
+> сторінки UserBase &kde;, де наведено приклади параметрів налаштовування), але ці параметри можна встановити у інший спосіб користувачем у скриптах налаштовування наявного профілю.</para>
+
+<para
+>Ви можете вимкнути драйвер встановленням для цього параметра значення <replaceable
+>false</replaceable
+> і та вимиканням параметра <link linkend="conf-install-session-driver"
+>install-session-driver</link
+>.</para>
+
+<para
+>Цей параметр було додано у &kdesrc-build; 17.08.</para>
+
+<tip
+><para
+>&kdesrc-build; не перезаписуватиме вже створених файлів (якщо такі існують), якщо ви не передасте програмі параметр командного рядка <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+>.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-install-session-driver">
+<entry
+>install-session-driver</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+><para
+>Якщо увімкнено, &kdesrc-build; намагається встановити драйвер до графічної програми для керування сеансами для того, щоб уможливити ваш вхід до зібраного за допомогою &kdesrc-build; стільничного середовища &kde;.</para>
+
+<para
+>Цим драйвером буде внесено зміни до таких файлів:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>~/.xsession</filename
+></para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (зазвичай зберігається за адресою <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (зазвичай зберігається за адресою <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>Якщо ви користуєтеся власним драйвером для входу до середовища, ви можете вимкнути драйвер встановленням для цього параметра значення <replaceable
+>false</replaceable
+>. Якщо її увімкнено, ця можливість також вмикає можливість <link linkend="conf-install-environment-driver"
+>install-environment-driver</link
+>.</para>
+
+<para
+>Цей параметр було додано у &kdesrc-build; 1.16.</para>
+
+<tip
+><para
+>&kdesrc-build; не перезаписуватиме вже створених файлів (якщо такі існують), якщо ви не передасте програмі параметр командного рядка <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+>.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-num-cores">
+<entry
+>num-cores</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry>
+<para
+>Цей параметр визначається &kdesrc-build; (при використанні kdesrc-build-setup або <command
+>kdesrc-build --initial-setup</command
+>). Його значенням є кількість доступних процесорів (яку буде встановлено за допомогою зовнішньої програми <application
+>nproc</application
+>). Якщо &kdesrc-build; не вдасться визначити кількість процесорів, для цього параметра буде встановлено значення 4.</para>
+
+<para
+>Див. <xref linkend="make-options-example"/>, де наведено приклад використання цього параметра. Цей параметр було додано у версії 20.07.</para>
+</entry>
+</row>
+
+<row id="conf-num-cores-low-mem">
+<entry
+>num-cores-low-mem</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry>
+<para
+>Цей параметр визначається &kdesrc-build; (при використанні kdesrc-build-setup або <command
+>kdesrc-build --initial-setup</command
+>). Його значенням кількість процесорів, яку безпечно використовувати для великих або інтенсивних з точки зору обробки модулів, зокрема <literal
+>qtwebengine</literal
+>, щоб уникнути надмірного споживання пам'яті під час збирання.</para>
+
+<para
+>Типовою формулою є одне ядро процесора на кожні 2 гігабайти (ГіБ) загальної пам'яті. Буде визначено принаймні 1 ядро і не більше, ніж <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> ядер.</para>
+
+<para
+>Хоча цей параметр було реалізовано для підтримки модулів &Qt;, ви можете скористатися ним для будь-якого модуля у той самий спосіб, у який використовується <option
+>num-cores</option
+>.</para>
+
+<para
+>Якщо &kdesrc-build; не може визначити доступний обсяг пам'яті, для цього параметра буде встановлено значення 2.</para>
+
+<para
+>Цей параметр було додано у версії 20.07.</para>
+</entry>
+</row>
+
+<row id="conf-persistent-data-file">
+<entry
+>persistent-data-file</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+><para
+>За допомогою цього параметра можна змінити місце, у якому зберігатимуться постійні дані &kdesrc-build;. Типово, ці дані зберігатимуться у файлі з назвою <filename
+>.kdesrc-build-data</filename
+>, який зберігатимуться у тому самому каталозі, що і файл налаштувань, який використовує програма. Якщо використано загальний файл налаштувань, його буде збережено до <filename
+>~/.local/state/kdesrc-build-data</filename
+> (<filename
+>$XDG_STATE_HOME/kdesrc-build-data</filename
+>, якщо встановлено значення <envar
+>$XDG_STATE_HOME</envar
+>). Якщо ви користуєтеся декількома наборами налаштувань, вам варто встановити значення цього параметра вручну, щоб різні набори налаштувань не призводили до конфлікту між наборами постійних даних. </para>
+
+<para
+>Цей параметр було додано у &kdesrc-build; 1.15.</para>
+</entry>
+</row>
+
+<row id="conf-ssh-identity-file">
+<entry
+>ssh-identity-file</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry>
+<para
+>Встановіть значення цього параметра, якщо потрібно вказати, який саме файл ключа SSH слід передати програмі <command
+>ssh-add</command
+> під час отримання за допомогою &kdesrc-build; коду зі сховищ, для доступу до яких потрібно пройти розпізнавання. Також варто ознайомитися з розділом <xref linkend="ssh-agent-reminder"/>.</para>
+
+<para
+>Цей параметр було додано у версії 1.14.2.</para>
+</entry>
+</row>
+
+<row id="conf-use-idle-io-priority">
+<entry
+>use-idle-io-priority</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+>За допомогою цього параметра, доданого у &kdesrc-build; 1.12, може зменшити пріоритет використання скриптом диска та інших інструментів вводу-виводу, це може значно покращити швидкодію решти системи під час роботи скрипту за рахунок збільшення часу роботи &kdesrc-build;. Типово таку поведінку вимкнено, щоб зменшити пріоритет використання диска, встановіть значення <userinput
+>true</userinput
+>. </entry>
+</row>
+
+<row id="conf-use-inactive-modules">
+<entry
+>use-inactive-modules</entry>
+<entry
+>Неможливо перевизначити</entry>
+<entry
+>Якщо увімкнено, цей параметр дозволяє kdesrc-build клонувати сховища, які позначено як неактивні, і отримувати з них дані. Типово, вимкнено, щоб уможливити встановлення для цього параметра значення <userinput
+>true</userinput
+> у неактивних модулях. </entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<!-- Between tables -->
+
+<table id="option-table">
+<title
+>Параметри усіх областей (модуля, набору модулів та загальні)</title>
+<tgroup cols="3">
+
+<thead>
+<row>
+<entry
+>Назва параметра</entry>
+<entry
+>Модуль -&gt; Загальна поведінка</entry>
+<entry
+>Нотатки</entry>
+</row>
+</thead>
+
+<tbody>
 
 <row id="conf-binpath">
 <entry
@@ -2508,6 +2946,10 @@ end global
 >.</para
 ></listitem
 > </orderedlist
+><para
+>Типовим значенням є <filename class="directory"
+>~/kde/build</filename
+>.</para
 > Як це не дивно, ви можете змінити значення цього параметра для кожного з модулів окремо. </entry>
 </row>
 
@@ -2628,19 +3070,6 @@ end global
 ></entry>
 </row>
 
-<row id="conf-colorful-output">
-<entry
->colorful-output</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
->Встановіть для цього параметра значення <userinput
->false</userinput
->, щоб вимкнути розфарбування даних, які виводитиме &kdesrc-build;. Типовим значенням цього параметра є <replaceable
->true</replaceable
->. Зауважте, що &kdesrc-build; не виводитиме розфарбовані дані до інших, відмінних від термінала (на зразок xterm, &konsole; або звичайної консолі &Linux;), виводів. </entry>
-</row>
-
 <row id="conf-compile-commands-export">
 <entry
 >compile-commands-export</entry>
@@ -2748,19 +3177,6 @@ end global
 >. </entry>
 </row>
 
-<row id="conf-disable-agent-check">
-<entry
->disable-agent-check</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
->Зазвичай, якщо ви використовуєте &ssh; для отримання вихідних кодів &git; (наприклад, якщо ви використовуєте протокол git+ssh), &kdesrc-build; намагатиметься перевірити і зробити так, щоб, якщо ви використовуєте агент ssh, цей агент справді керував певними профілями &ssh;. Так зроблено, щоб &ssh; не надсилав, за можливості, запитів на пароль для кожного з ваших модулів. Ви можете вимкнути таку перевірку встановленням параметра <option
->disable-agent-check</option
-> у значення <userinput
->true</userinput
->. </entry>
-</row>
-
 <row id="conf-do-not-compile">
 <entry
 >do-not-compile</entry>
@@ -2786,126 +3202,6 @@ end global
 
 <para
 >Приклад можна знайти у розділі <xref linkend="not-compiling"/>.</para>
-</entry>
-</row>
-
-<row id="conf-git-desired-protocol">
-<entry
->git-desired-protocol</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->Цей параметр стосується модулів зі сховища <link linkend="kde-projects-module-sets"
->проєкту &kde;</link
->.</para>
-
-<para
->Насправді, за допомогою цього параметрам можна вказати, якому з протоколів роботи у мережі слід надавати перевагу під час оновлення початкових кодів відповідних модулів. Зазвичай, використовується дуже ефективний протокол <literal
->git</literal
->, але його може бути заблоковано у деяких мережах (наприклад у корпоративних мережах, відкритих мережах Wi-Fi). Альтернативним протоколом з ширшою підтримкою є <literal
->https</literal
->, який використовується для доступу до сайтів інтернету.</para>
-
-<para
->Якщо ви користуєтеся якоюсь з мереж з обмеженнями, ви можете встановити для цього параметра значення <userinput
->http</userinput
->, щоб наказати програмі надавати перевагу передаванню даних за допомогою <literal
->https</literal
->.</para>
-
-<tip
-><para
->Крім того, у вас може виникнути потреба у встановленні значення для параметра <link linkend="conf-http-proxy"
->http-proxy</link
->, якщо для роботи з даним використовується проксі-сервер HTTP.</para
-></tip>
-
-<para
->У всіх інших випадках не варто встановлювати цей параметр, оскільки типовий протокол є найефективнішим.</para>
-
-<para
->Цей параметр було додано у &kdesrc-build; 1.16. До версії 20.06 цей параметр використовувався для налаштовування адреси отримання даних, а не адреси надсилання даних. З версії 20.06 для оновлення проєктів KDE завжди використовується <literal
->https</literal
->.</para>
-</entry>
-</row>
-
-<row id="conf-git-repository-base">
-<entry
->git-repository-base</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->Цей параметр, доданий у версії 1.12.1, використовується для скорочення посилань на базову адресу певного сховища Git у наступних оголошеннях <link linkend="module-sets"
->наборів модулів</link
->. Параметр корисний для оголошення збирання декількох модулів Git.</para>
-
-<para
->Вам слід вказати два значення (відокремлених пробілами): назву, яку буде пов’язано з базовою адресою, та саму базову адресу. Приклад:</para>
-
-<para>
-<informalexample>
-<programlisting
->global
-   # інші параметри
-
-   # Загальна адреса всіх модулів сервера Git з анонімним доступом.
-   git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Оголошення модулів
-
-module-set
-   # Тепер можна скористатися раніше визначеним псевдонімом, але <emphasis
->лише</emphasis>
-   # у межах module-set.
-   repository <replaceable
->kde-git</replaceable>
-
-   <link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->модуль1.git</replaceable
-> <replaceable
->модуль2.git</replaceable>
-end module-set
-</programlisting>
-</informalexample>
-</para>
-
-<para
->Параметр <literal
->use-modules</literal
-> набору модулів створив два записи модулів. &kdesrc-build; поводитиметься так, наче було вказано:</para>
-
-<programlisting
->module модуль1
-    repository kde:<replaceable
->модуль1.git</replaceable>
-end module
-
-module модуль2
-    repository kde:<replaceable
->модуль2.git</replaceable>
-end module
-</programlisting>
-
-<para
->Префікс сховища &git; <literal
->kde:</literal
->, використаний вище, є скороченням, яке буде автоматично встановлено &kdesrc-build;. Щоб дізнатися більше, ознайомтеся зі статтею TechBase щодо <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->перейменування адрес</ulink
->. Зауважте, що на відміну від більшості інших параметрів, цей параметр може бути вказано декілька разів з метою визначення потрібних вам замінників адрес.</para>
-
-<tip
-><para
->Для того, щоб скористатися перевагами наборів модулів, не обов’язково використовувати цей параметр. Цей параметр призначено лише для спрощення використання одного сховища у декількох наборах модулів.</para
-></tip>
 </entry>
 </row>
 
@@ -3027,47 +3323,6 @@ end module
 </entry>
 </row>
 
-<row id="conf-ignore-modules">
-<entry
->ignore-modules</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->Модулі, названі у цьому параметрі, які мало б бути вибрано &kdesrc-build; через визначення параметра <link linkend="conf-use-modules"
->use-modules</link
->, буде повністю пропущено. Цим параметром можна скористатися, якщо ви хочете зібрати всі групи у проєкті <link linkend="kde-projects-module-sets"
->kde-projects</link
->, <emphasis
->окрім</emphasis
-> певних модулів.</para>
-
-<para
->Значення параметра не повинне обов’язково вказувати безпосередньо на назву модуля. Будь-який з модулів, повна частина <link linkend="kde-projects-module-sets"
->шляху до модуля у проєктах &kde;</link
-> якого збігається з одним зі значень параметра, буде проігноровано. Отже, таким чином можна ігнорувати одразу декілька модулів.</para>
-
-<para
->Наприклад, значення параметра <replaceable
->libs</replaceable
-> призведе до того, що буде виключено <symbol
->kde/kdegraphics/libs</symbol
-> і <symbol
->playground/libs</symbol
-> (але не <symbol
->kde/kdelibs</symbol
->, оскільки «kdelibs» не збігається повністю зі значенням параметра).</para>
-
-<tip
-><para
->Див. також розділ <xref linkend="example-ignoring-a-module"/>.</para
-></tip>
-
-<para
->Цей параметр було додано у &kdesrc-build; 1.16.</para>
-</entry>
-</row>
-
 <row id="conf-include-dependencies">
 <entry
 >include-dependencies</entry>
@@ -3112,123 +3367,6 @@ end module
 >. </entry>
 </row>
 
-<row id="conf-install-environment-driver">
-<entry
->install-environment-driver</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->Типово, &kdesrc-build; встановити скрипт оболонки, яким можна скористатися у скриптах налаштовування профілю користувача для спрощення визначення бажаних змінних середовища для запуску стільниці Плазми, зібраної за допомогою &kdesrc-build;.</para>
-
-<para
->Цим драйвером буде внесено зміни до таких файлів:</para>
-
-<itemizedlist>
-<listitem
-><para
-><filename
->$XDG_CONFIG_HOME/kde-env-master.sh</filename
-> (зазвичай зберігається за адресою <filename
->~/.config/kde-env-master.sh</filename
->).</para
-></listitem>
-<listitem
-><para
-><filename
->$XDG_CONFIG_HOME/kde-env-user.sh</filename
-> (зазвичай зберігається за адресою <filename
->~/.config/kde-env-user.sh</filename
->).</para
-></listitem>
-</itemizedlist>
-
-<para
->Скрипт <filename
->kde-env-user.sh</filename
-> є необов'язковим. Його призначено для налаштовування користувачем (див. розділ <ulink url="https://userbase.kde.org/KDE_System_Administration/Environment_Variables#Troubleshooting_and_Debugging"
->Troubleshooting and Debugging</ulink
-> сторінки UserBase &kde;, де наведено приклади параметрів налаштовування), але ці параметри можна встановити у інший спосіб користувачем у скриптах налаштовування наявного профілю.</para>
-
-<para
->Ви можете вимкнути драйвер встановленням для цього параметра значення <replaceable
->false</replaceable
-> і та вимиканням параметра <link linkend="conf-install-session-driver"
->install-session-driver</link
->.</para>
-
-<para
->Цей параметр було додано у &kdesrc-build; 17.08.</para>
-
-<tip
-><para
->&kdesrc-build; не перезаписуватиме вже створених файлів (якщо такі існують), якщо ви не передасте програмі параметр командного рядка <option
-><link linkend="cmdline-delete-my-settings"
->--delete-my-settings</link
-></option
->.</para
-></tip>
-</entry>
-</row>
-
-<row id="conf-install-session-driver">
-<entry
->install-session-driver</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->Якщо увімкнено, &kdesrc-build; намагається встановити драйвер до графічної програми для керування сеансами для того, щоб уможливити ваш вхід до зібраного за допомогою &kdesrc-build; стільничного середовища &kde;.</para>
-
-<para
->Цим драйвером буде внесено зміни до таких файлів:</para>
-
-<itemizedlist>
-<listitem
-><para
-><filename
->~/.xsession</filename
-></para
-></listitem>
-<listitem
-><para
-><filename
->$XDG_CONFIG_HOME/kde-env-master.sh</filename
-> (зазвичай зберігається за адресою <filename
->~/.config/kde-env-master.sh</filename
->).</para
-></listitem>
-<listitem
-><para
-><filename
->$XDG_CONFIG_HOME/kde-env-user.sh</filename
-> (зазвичай зберігається за адресою <filename
->~/.config/kde-env-user.sh</filename
->).</para
-></listitem>
-</itemizedlist>
-
-<para
->Якщо ви користуєтеся власним драйвером для входу до середовища, ви можете вимкнути драйвер встановленням для цього параметра значення <replaceable
->false</replaceable
->. Якщо її увімкнено, ця можливість також вмикає можливість <link linkend="conf-install-environment-driver"
->install-environment-driver</link
->.</para>
-
-<para
->Цей параметр було додано у &kdesrc-build; 1.16.</para>
-
-<tip
-><para
->&kdesrc-build; не перезаписуватиме вже створених файлів (якщо такі існують), якщо ви не передасте програмі параметр командного рядка <option
-><link linkend="cmdline-delete-my-settings"
->--delete-my-settings</link
-></option
->.</para
-></tip>
-</entry>
-</row>
-
 <row id="conf-kdedir">
 <entry
 >kdedir</entry>
@@ -3236,7 +3374,7 @@ end module
 >Параметр модуля перевизначає загальний параметр</entry>
 <entry
 >За допомогою цього параметра можна вказати каталог, до якого буде встановлено &kde; після збирання. Типовим значення параметра є <filename class="directory"
->~/kde</filename
+>~/kde/src</filename
 >. Якщо ви зміните значення так, що воно вказуватиме на каталог, для доступу до якого потрібні права користувача root, ймовірно, вам слід прочитати і про параметр <link linkend="conf-make-install-prefix"
 >make-install-prefix</link
 >.</entry>
@@ -3427,57 +3565,6 @@ end options
 >Якщо для цього параметра встановлення значення «true», &kdesrc-build; не оновлюватиме код модуля автоматично. Скрипт все ж намагатиметься зібрати цей модуль, якщо згідно налаштувань його слід спробувати зібрати.</entry>
 </row>
 
-<row id="conf-num-cores">
-<entry
->num-cores</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry>
-<para
->Цей параметр визначається &kdesrc-build; (при використанні kdesrc-build-setup або <command
->kdesrc-build --initial-setup</command
->). Його значенням є кількість доступних процесорів (яку буде встановлено за допомогою зовнішньої програми <application
->nproc</application
->). Якщо &kdesrc-build; не вдасться визначити кількість процесорів, для цього параметра буде встановлено значення 4.</para>
-
-<para
->Див. <xref linkend="make-options-example"/>, де наведено приклад використання цього параметра. Цей параметр було додано у версії 20.07.</para>
-</entry>
-</row>
-
-<row id="conf-num-cores-low-mem">
-<entry
->num-cores-low-mem</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry>
-<para
->Цей параметр визначається &kdesrc-build; (при використанні kdesrc-build-setup або <command
->kdesrc-build --initial-setup</command
->). Його значенням кількість процесорів, яку безпечно використовувати для великих або інтенсивних з точки зору обробки модулів, зокрема <literal
->qtwebengine</literal
->, щоб уникнути надмірного споживання пам'яті під час збирання.</para>
-
-<para
->Типовою формулою є одне ядро процесора на кожні 2 гігабайти (ГіБ) загальної пам'яті. Буде визначено принаймні 1 ядро і не більше, ніж <option
-><link linkend="conf-num-cores"
->num-cores</link
-></option
-> ядер.</para>
-
-<para
->Хоча цей параметр було реалізовано для підтримки модулів &Qt;, ви можете скористатися ним для будь-якого модуля у той самий спосіб, у який використовується <option
->num-cores</option
->.</para>
-
-<para
->Якщо &kdesrc-build; не може визначити доступний обсяг пам'яті, для цього параметра буде встановлено значення 2.</para>
-
-<para
->Цей параметр було додано у версії 20.07.</para>
-</entry>
-</row>
-
 <row id="conf-override-build-system">
 <entry
 >override-build-system</entry>
@@ -3553,28 +3640,6 @@ end options
     </varlistentry>
 </variablelist>
 
-</entry>
-</row>
-
-<row id="conf-persistent-data-file">
-<entry
->persistent-data-file</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->За допомогою цього параметра можна змінити місце, у якому зберігатимуться постійні дані &kdesrc-build;. Типово, ці дані зберігатимуться у файлі з назвою <filename
->.kdesrc-build-data</filename
->, який зберігатимуться у тому самому каталозі, що і файл налаштувань, який використовує програма. Якщо використано загальний файл налаштувань, його буде збережено до <filename
->~/.local/state/kdesrc-build-data</filename
-> (<filename
->$XDG_STATE_HOME/kdesrc-build-data</filename
->, якщо встановлено значення <envar
->$XDG_STATE_HOME</envar
->). Якщо ви користуєтеся декількома наборами налаштувань, вам варто встановити значення цього параметра вручну, щоб різні набори налаштувань не призводили до конфлікту між наборами постійних даних. </para>
-
-<para
->Цей параметр було додано у &kdesrc-build; 1.15.</para>
 </entry>
 </row>
 
@@ -3754,22 +3819,6 @@ end options
 >. Ви можете скористатися тильдою (~) для позначення домашнього каталогу. </entry>
 </row>
 
-<row id="conf-ssh-identity-file">
-<entry
->ssh-identity-file</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry>
-<para
->Встановіть значення цього параметра, якщо потрібно вказати, який саме файл ключа SSH слід передати програмі <command
->ssh-add</command
-> під час отримання за допомогою &kdesrc-build; коду зі сховищ, для доступу до яких потрібно пройти розпізнавання. Також варто ознайомитися з розділом <xref linkend="ssh-agent-reminder"/>.</para>
-
-<para
->Цей параметр було додано у версії 1.14.2.</para>
-</entry>
-</row>
-
 <row id="conf-stop-on-failure">
 <entry
 >stop-on-failure</entry>
@@ -3832,27 +3881,28 @@ end options
 </entry>
 </row>
 
-<row id="conf-use-idle-io-priority">
-<entry
->use-idle-io-priority</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
->За допомогою цього параметра, доданого у &kdesrc-build; 1.12, може зменшити пріоритет використання скриптом диска та інших інструментів вводу-виводу, це може значно покращити швидкодію решти системи під час роботи скрипту за рахунок збільшення часу роботи &kdesrc-build;. Типово таку поведінку вимкнено, щоб зменшити пріоритет використання диска, встановіть значення <userinput
->true</userinput
->. </entry>
-</row>
+</tbody>
 
-<row id="conf-use-inactive-modules">
+</tgroup>
+</table>
+
+
+<table id="options-module-set-table">
+<title
+>Параметри області наборів модулів</title>
+<tgroup cols="3">
+
+<thead>
+<row>
 <entry
->use-inactive-modules</entry>
+>Назва параметра</entry>
 <entry
->Неможливо перевизначити</entry>
+>Модуль -&gt; Загальна поведінка</entry>
 <entry
->Якщо увімкнено, цей параметр дозволяє kdesrc-build клонувати сховища, які позначено як неактивні, і отримувати з них дані. Типово, вимкнено, щоб уможливити встановлення для цього параметра значення <userinput
->true</userinput
-> у неактивних модулях. </entry>
+>Нотатки</entry>
 </row>
+</thead>
+<tbody>
 
 <row id="conf-use-modules">
 <entry
@@ -3901,7 +3951,6 @@ end options
 </row>
 
 </tbody>
-
 </tgroup>
 </table>
 
@@ -5692,11 +5741,11 @@ end module
 <tip>
 <para
 >Типово, каталогом збирання буде <filename class="directory"
->~/kdesrc/build/<replaceable
+>~/kde/build/<replaceable
 >назва модуля</replaceable
 >/</filename
 >. Якщо ви зміните значення параметра &build-dir;, буде замість <filename class="directory"
->~/kdesrc/build</filename
+>~/kde/build</filename
 > буде використано значення цього параметра.</para>
 </tip>
 
@@ -6396,7 +6445,7 @@ end module-set
 >.bash_profile</filename
 > у домашньому каталозі за допомогою вашого улюбленого редактора, і додайте в кінець файла наступні рядки. Якщо ви збираєте модуль qt (це типова поведінка), додайте: <programlisting>
 QTDIR=(шлях до qtdir)   # Типовим є ~/kdesrc/build/qt.
-KDEDIR=(шлях до kdedir) # Типовим є ~/kde.
+KDEDIR=(шлях до kdedir) # Типовим є ~/kde/src.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
@@ -6411,7 +6460,7 @@ fi
 export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
 </programlisting
 > або, якщо ви не збираєте qt (а замість неї використовуєте системну бібліотеку &Qt;), додайте такі рядки: <programlisting
->KDEDIR=(шлях до каталогу kde)  # Наприклад, типово ~/kde.
+>KDEDIR=(шлях до каталогу kde)  # Наприклад, типово ~/kde/src.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 

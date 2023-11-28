@@ -636,7 +636,7 @@
 ><link linkend="conf-kdedir"
 >kdedir</link
 >, la qual canvia el directori de destinació en què es troba instal·lat el vostre programari &kde;. De manera predeterminada és <filename class="directory"
->~/kde</filename
+>~/kde/src</filename
 >, el qual és per a una instal·lació d'un únic usuari.</para
 ></listitem>
 
@@ -659,7 +659,7 @@
 ><link linkend="conf-source-dir"
 >source-dir</link
 >, per a controlar el directori que utilitza el &kdesrc-build; per a descarregar el codi font, executar el procés de construcció i desar els registres. De manera predeterminada és <filename class="directory"
->~/kdesrc</filename
+>~/kde/src</filename
 >.</para
 ></listitem>
 
@@ -2384,9 +2384,9 @@ end global
 
 </itemizedlist>
 
-<table id="option-table">
+<table id="options-global-table">
 <title
->Taula d'opcions</title>
+>Opcions només d'àmbit global</title>
 <tgroup cols="3">
 
 <thead>
@@ -2399,7 +2399,6 @@ end global
 >Notes</entry>
 </row>
 </thead>
-
 <tbody>
 
 <row id="conf-async">
@@ -2416,6 +2415,446 @@ end global
 >Aquesta opció està disponible des de la versió 1.6.</para
 ></entry>
 </row>
+
+<row id="conf-colorful-output">
+<entry
+>colorful-output</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+>Establiu aquesta opció a <userinput
+>false</userinput
+> (fals) per a inhabilitar la sortida amb color de &kdesrc-build;. Aquesta opció està de manera predeterminada a <replaceable
+>true</replaceable
+> (cert). Recordeu que el &kdesrc-build; no generarà els codis de color enlloc més que no sigui un terminal (com xterm, &konsole; o la consola normal de &Linux;). </entry>
+</row>
+
+<row id="conf-disable-agent-check">
+<entry
+>disable-agent-check</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+>Normalment, si esteu utilitzant &ssh; per a descarregar el codi font de &git; (com quan s'utilitza el protocol git+ssh), el &kdesrc-build; intentarà assegurar-se que si utilitzeu el ssh-agent, en realitat s'estaran gestionant algunes identitats &ssh;. Això és per evitar que &ssh; sol·liciti una contrasenya per a cada mòdul. És possible inhabilitar aquesta verificació establint <option
+>disable-agent-check</option
+> a <userinput
+>true</userinput
+> (cert). </entry>
+</row>
+
+<row id="conf-git-desired-protocol">
+<entry
+>git-desired-protocol</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+><para
+>Aquesta opció només s'aplicarà als mòduls des d'un repositori de <link linkend="kde-projects-module-sets"
+>projecte del &kde;</link
+>.</para>
+
+<para
+>El que realment fa aquesta opció és configurar quin protocol de xarxa preferiu per a obtenir el codi font per a aquests mòduls. Normalment s'utilitza el protocol <literal
+>git</literal
+>, el qual és molt eficient, però pot estar bloquejat en algunes xarxes (&pex;, intranets corporatives, Wi-Fi públic). Un protocol alternatiu que és molt millor admès és el protocol <literal
+>https</literal
+> utilitzat per als llocs web d'Internet.</para>
+
+<para
+>Si utilitzeu una d'aquestes xarxes restringides, podreu establir aquesta opció a <userinput
+>http</userinput
+> per a preferir-lo en comptes de les comunicacions <literal
+>https</literal
+>.</para>
+
+<tip
+><para
+>També podríeu necessitar l'opció <link linkend="conf-http-proxy"
+>http-proxy</link
+> si també es necessita un intermediari HTTP per al trànsit de xarxa.</para
+></tip>
+
+<para
+>En qualsevol altra situació, no haureu d'establir aquesta opció, ja que el protocol predeterminat és més eficient.</para>
+
+<para
+>Aquesta opció es va afegir en el &kdesrc-build; 1.16. Abans de la 20.06, aquesta opció s'utilitzava per a configurar l'URL de cerca en lloc de l'URL d'obtenció. A partir de la 20.06, s'utilitzarà sempre <literal
+>https</literal
+> en actualitzar els projectes del &kde;.</para>
+</entry>
+</row>
+
+<row id="conf-git-repository-base">
+<entry
+>git-repository-base</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+><para
+>Aquesta opció, afegida a la versió 1.12.1, s'utilitza per a crear un nom curt per a fer referència a un URL base del repositori Git específic, en les declaracions de <link linkend="module-sets"
+>conjunts de mòduls</link
+> posteriors, la qual cosa és útil per a declarar amb rapidesa la creació de molts mòduls de Git.</para>
+
+<para
+>Haureu d'especificar dues coses (separades per un espai): el nom que s'assignarà a l'URL base i l'URL base real en si. Per exemple:</para>
+
+<para>
+<informalexample>
+<programlisting
+>global
+# Altres opcions
+
+# Aquest és el camí habitual per a tots els mòduls de servidor Git anònim.
+git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Declaracions del mòdul
+
+module-set
+# Ara podreu fer servir àlies que heu definit amb anterioritat,
+# però <emphasis
+>només</emphasis
+> sobre un conjunt de mòduls.
+repository <replaceable
+>kde-git</replaceable>
+
+<link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>module1.git</replaceable
+> <replaceable
+>module2.git</replaceable>
+end module-set
+</programlisting>
+</informalexample>
+</para>
+
+<para
+>L'opció <literal
+>use-modules</literal
+> del conjunt de mòduls ha creat dos mòduls internament, amb el &kdesrc-build; comportant-se com si hagués llegit:</para>
+
+<programlisting
+>module module1
+repository kde:<replaceable
+>module1.git</replaceable>
+end module
+
+module module2
+repository kde:<replaceable
+>module2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>El prefix de repositori &git; és <literal
+>kde:</literal
+>, utilitzat abans és una drecera que el &kdesrc-build; configurarà automàticament. Consulteu l'article <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>URL Renaming</ulink
+> de TechBase per obtenir més informació. Recordeu que, a diferència de la majoria de les altres opcions, aquesta opció es pot especificar múltiples vegades per a crear tants àlies com sigui necessari.</para>
+
+<tip
+><para
+>No es requereix utilitzar aquesta opció per aprofitar el conjunt de mòduls, aquesta opció existeix per a facilitar l'ús del mateix repositori en molts conjunts de mòduls diferents.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-ignore-modules">
+<entry
+>ignore-modules</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+><para
+>Els mòduls nomenats per aquesta opció, els quals serien triats pel &kdesrc-build; a causa d'una opció <link linkend="conf-use-modules"
+>use-modules</link
+>, s'ometran completament. Utilitzeu aquesta opció quan vulgueu construir una tota agrupació de projectes <link linkend="kde-projects-module-sets"
+>kde-projects</link
+>, excepte alguns mòduls específics.</para>
+
+<para
+>El valor de l'opció no necessàriament haurà de nomenar el mòdul directament. S'ignorarà qualsevol mòdul que tingui parts consecutives completes del seu <link linkend="kde-projects-module-sets"
+>camí de mòduls de projectes del &kde;</link
+> que coincideixi amb un dels valors de l'opció, d'aquesta manera es podran ignorar múltiples mòduls.</para>
+
+<para
+>Per exemple, un valor d'opció <replaceable
+>libs</replaceable
+> donaria lloc a l'exclusió de <symbol
+>kde/kdegraphics/libs</symbol
+> i de <symbol
+>playground/libs</symbol
+> (encara que no <symbol
+>kde/kdelibs</symbol
+>, ja que es compara la part completa <quote
+>kdelibs</quote
+>).</para>
+
+<tip
+><para
+>Vegeu també l'<xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+
+<para
+>Aquesta opció es va introduir en el &kdesrc-build; 1.16.</para>
+</entry>
+</row>
+
+<row id="conf-install-environment-driver">
+<entry
+>install-environment-driver</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+><para
+>De manera predeterminada, el &kdesrc-build; instal·larà un script d'intèrpret d'ordres que pot obtenir-se en els scripts de configuració del perfil d'un usuari per establir amb facilitat les variables d'entorn necessàries per executar l'escriptori Plasma creat pel &kdesrc-build;.</para>
+
+<para
+>Aquest controlador modificarà els següents fitxers:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (normalment es troba a <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (normalment es troba a <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>El <filename
+>kde-env-user.sh</filename
+> és opcional. Està destinat a les personalitzacions de l'usuari (vegeu la secció <ulink url="https://userbase.kde.org/KDE_System_Administration/Environment_Variables#Troubleshooting_and_Debugging"
+>Troubleshooting and Debugging</ulink
+> (Solució de problemes i depuració) de la &kde; UserBase per a veure exemples d'opcions personalitzades), però l'usuari podrà establir aquestes opcions en altres llocs en els seus scripts existents per a la configuració del perfil.</para>
+
+<para
+>És possible inhabilitar aquesta característica establint aquesta opció a <replaceable
+>false</replaceable
+> (fals) i assegurant-vos que l'opció <link linkend="conf-install-session-driver"
+>install-session-driver</link
+> també està inhabilitada.</para>
+
+<para
+>Aquesta opció es va introduir en el &kdesrc-build; 17.08.</para>
+
+<tip
+><para
+>El &kdesrc-build; no sobreescriurà els vostres fitxers existents (si n'hi ha) a menys que també passeu l'opció <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+> de la línia d'ordres.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-install-session-driver">
+<entry
+>install-session-driver</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+><para
+>Si està habilitada, el &kdesrc-build; intentarà instal·lar un controlador per al gestor d'inici de sessió gràfic, el qual us permetrà iniciar la sessió a l'escriptori &kde; construït amb el &kdesrc-build;.</para>
+
+<para
+>Aquest controlador modificarà els següents fitxers:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>~/.xsession</filename
+></para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (normalment es troba a <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (normalment es troba a <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>Si manteniu el vostre propi controlador d'inici de sessió, podreu inhabilitar aquesta característica establint aquesta opció a <replaceable
+>false</replaceable
+> (fals). Si està habilitada, aquesta característica també habilitarà la característica <link linkend="conf-install-environment-driver"
+>install-environment-driver</link
+>.</para>
+
+<para
+>Aquesta opció es va introduir en el &kdesrc-build; 1.16.</para>
+
+<tip
+><para
+>El &kdesrc-build; no sobreescriurà els vostres fitxers existents (si n'hi ha) a menys que també passeu l'opció <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+> de la línia d'ordres.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-num-cores">
+<entry
+>num-cores</entry>
+<entry
+>No es pot superposar</entry>
+<entry>
+<para
+>Aquesta opció està definida pel &kdesrc-build; (quan s'utilitza l'eina kdesrc-build-setup o <command
+>kdesrc-build --initial-setup</command
+>), establerta al nombre de CPU disponibles (com ho indica l'aplicació externa <application
+>nproc</application
+>). Si el &kdesrc-build; no pot detectar el nombre de CPU, aquest valor s'establirà a 4.</para>
+
+<para
+>Vegeu <xref linkend="make-options-example"/> per a un exemple de l'ús d'aquesta opció. Aquesta opció es va introduir en el &kdesrc-build; 20.07.</para>
+</entry>
+</row>
+
+<row id="conf-num-cores-low-mem">
+<entry
+>num-cores-low-mem</entry>
+<entry
+>No es pot superposar</entry>
+<entry>
+<para
+>Aquesta opció està definida pel &kdesrc-build; (quan s'utilitza l'eina kdesrc-build-setup o <command
+>kdesrc-build --initial-setup</command
+>), establerta al nombre de CPU, això es considera segur per mòduls pesats o altres mòduls altament intensius, com el <literal
+>qtwebengine</literal
+>, per a evitar quedar-se sense memòria durant la compilació.</para>
+
+<para
+>El càlcul típic és un nucli de CPU per cada 2 gigabytes (GiB) de memòria total. Almenys s'especificarà 1 nucli, i no s'especificaran més que a <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+>.</para>
+
+<para
+>Tot i que aquesta opció està pensada per a admetre els mòduls de les &Qt;, podeu utilitzar-la per a qualsevol mòdul de la mateixa manera que s'utilitza <option
+>num-cores</option
+>.</para>
+
+<para
+>Si el &kdesrc-build; no pot detectar la memòria disponible, aquest valor s'establirà a 2.</para>
+
+<para
+>Aquesta opció es va introduir en el &kdesrc-build; 20.07.</para>
+</entry>
+</row>
+
+<row id="conf-persistent-data-file">
+<entry
+>persistent-data-file</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+><para
+>Aquesta opció permet canviar on emmagatzema el &kdesrc-build; les seves dades persistents. De manera predeterminada s'emmagatzemen en un fitxer anomenat <filename
+>.kdesrc-build-data</filename
+>, ubicat al mateix directori que el fitxer de configuració en ús. Si s'utilitza el fitxer de configuració global, es desarà a <filename
+>~/.local/state/kdesrc-build-data</filename
+> (<filename
+>$XDG_STATE_HOME/kdesrc-build-data</filename
+>, si està establerta <envar
+>$XDG_STATE_HOME</envar
+>). Si teniu múltiples configuracions disponibles al mateix directori, és possible que vulgueu establir aquesta opció manualment perquè les diferents configuracions no acabin amb dades persistents en conflicte. </para>
+
+<para
+>Aquesta opció es va introduir en el &kdesrc-build; 1.15.</para>
+</entry>
+</row>
+
+<row id="conf-ssh-identity-file">
+<entry
+>ssh-identity-file</entry>
+<entry
+>No es pot superposar</entry>
+<entry>
+<para
+>Establiu aquesta opció per a controlar quin fitxer de clau SSH privat es passarà a l'ordre <command
+>ssh-add</command
+> quan el &kdesrc-build; està descarregant el codi font des dels repositoris que requereixen autenticació. Vegeu també: les <xref linkend="ssh-agent-reminder"/>.</para>
+
+<para
+>Aquesta opció es va introduir en el &kdesrc-build; 1.14.2.</para>
+</entry>
+</row>
+
+<row id="conf-use-idle-io-priority">
+<entry
+>use-idle-io-priority</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+>Aquesta opció, afegida al &kdesrc-build; 1.12, farà que s'utilitzi una prioritat més baixa per al disc i altres usos de l'E/S, el qual pot millorar significativament la capacitat de resposta de la resta de sistema amb un cost en el temps d'execució una mica més llarg per al &kdesrc-build;. El valor predeterminat és inhabilitada, per habilitar una prioritat inferior per al disc, establiu això a <userinput
+>true</userinput
+> (cert). </entry>
+</row>
+
+<row id="conf-use-inactive-modules">
+<entry
+>use-inactive-modules</entry>
+<entry
+>No es pot superposar</entry>
+<entry
+>Quan està habilitada, permetrà que el kdesrc-build també faci «clone» i «pull» des dels repositoris marcats com inactius. El valor predeterminat és inhabilitat, per a permetre que els mòduls inactius estableixin això a <userinput
+>true</userinput
+> (cert). </entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<!-- Between tables -->
+
+<table id="option-table">
+<title
+>Opcions de tots els àmbits (mòdul, conjunt de mòduls i global)</title>
+<tgroup cols="3">
+
+<thead>
+<row>
+<entry
+>Nom de l'opció</entry>
+<entry
+>Mòdul -&gt; Comportament global</entry>
+<entry
+>Notes</entry>
+</row>
+</thead>
+
+<tbody>
 
 <row id="conf-binpath">
 <entry
@@ -2520,14 +2959,10 @@ end global
 >Relativa al directori de codi font de &git; del &kde; (vegeu l'opció <link linkend="conf-source-dir"
 >source-dir</link
 >). Aquest és el valor predeterminat i se selecciona si escriviu un nom de directori que no comenci amb una titlla (~) o una barra diagonal (/).</para
-> <para
->El valor predeterminat és <filename class="directory"
->build</filename
->.</para
 ></listitem
 > <listitem
 ><para
->Camí absolut. Si especifiqueu un camí que comença amb una /, s'utilitzarà directament aquest camí. Per exemple, <filename class="directory"
+>Camí absolut. Si especifiqueu un camí que comença per una /, s'utilitzarà directament aquest camí. Per exemple, <filename class="directory"
 >/tmp/kde-obj-dir/</filename
 >.</para
 ></listitem
@@ -2540,7 +2975,11 @@ end global
 >.</para
 ></listitem
 > </orderedlist
-> Potser resultarà sorprenent, aquesta opció es pot canviar per mòdul. </entry>
+> <para
+>El valor predeterminat és <filename class="directory"
+>~/kde/build</filename
+>.</para
+>Potser resultarà sorprenent, aquesta opció es pot canviar per mòdul. </entry>
 </row>
 
 <row id="conf-build-when-unchanged">
@@ -2664,19 +3103,6 @@ end global
 ></entry>
 </row>
 
-<row id="conf-colorful-output">
-<entry
->colorful-output</entry>
-<entry
->No es pot superposar</entry>
-<entry
->Establiu aquesta opció a <userinput
->false</userinput
-> (fals) per a inhabilitar la sortida amb color de &kdesrc-build;. Aquesta opció està de manera predeterminada a <replaceable
->true</replaceable
-> (cert). Recordeu que el &kdesrc-build; no generarà els codis de color enlloc més que no sigui un terminal (com xterm, &konsole; o la consola normal de &Linux;). </entry>
-</row>
-
 <row id="conf-compile-commands-export">
 <entry
 >compile-commands-export</entry>
@@ -2784,19 +3210,6 @@ end global
 >. </entry>
 </row>
 
-<row id="conf-disable-agent-check">
-<entry
->disable-agent-check</entry>
-<entry
->No es pot superposar</entry>
-<entry
->Normalment, si esteu utilitzant &ssh; per a descarregar el codi font de &git; (com quan s'utilitza el protocol git+ssh), el &kdesrc-build; intentarà assegurar-se que si utilitzeu el ssh-agent, en realitat s'estaran gestionant algunes identitats &ssh;. Això és per evitar que &ssh; sol·liciti una contrasenya per a cada mòdul. És possible inhabilitar aquesta verificació establint <option
->disable-agent-check</option
-> a <userinput
->true</userinput
-> (cert). </entry>
-</row>
-
 <row id="conf-do-not-compile">
 <entry
 >do-not-compile</entry>
@@ -2824,127 +3237,6 @@ end global
 
 <para
 >Per a un exemple, vegeu <xref linkend="not-compiling"/>.</para>
-</entry>
-</row>
-
-<row id="conf-git-desired-protocol">
-<entry
->git-desired-protocol</entry>
-<entry
->No es pot superposar</entry>
-<entry
-><para
->Aquesta opció només s'aplicarà als mòduls des d'un repositori de <link linkend="kde-projects-module-sets"
->projecte del &kde;</link
->.</para>
-
-<para
->El que realment fa aquesta opció és configurar quin protocol de xarxa preferiu per a obtenir el codi font per a aquests mòduls. Normalment s'utilitza el protocol <literal
->git</literal
->, el qual és molt eficient, però pot estar bloquejat en algunes xarxes (&pex;, intranets corporatives, Wi-Fi públic). Un protocol alternatiu que és molt millor admès és el protocol <literal
->https</literal
-> utilitzat per als llocs web d'Internet.</para>
-
-<para
->Si utilitzeu una d'aquestes xarxes restringides, podreu establir aquesta opció a <userinput
->http</userinput
-> per a preferir-lo en comptes de les comunicacions <literal
->https</literal
->.</para>
-
-<tip
-><para
->També podríeu necessitar l'opció <link linkend="conf-http-proxy"
->http-proxy</link
-> si també es necessita un intermediari HTTP per al trànsit de xarxa.</para
-></tip>
-
-<para
->En qualsevol altra situació, no haureu d'establir aquesta opció, ja que el protocol predeterminat és més eficient.</para>
-
-<para
->Aquesta opció es va afegir en el &kdesrc-build; 1.16. Abans de la 20.06, aquesta opció s'utilitzava per a configurar l'URL de cerca en lloc de l'URL d'obtenció. A partir de la 20.06, s'utilitzarà sempre <literal
->https</literal
-> en actualitzar els projectes del &kde;.</para>
-</entry>
-</row>
-
-<row id="conf-git-repository-base">
-<entry
->git-repository-base</entry>
-<entry
->No es pot superposar</entry>
-<entry
-><para
->Aquesta opció, afegida a la versió 1.12.1, s'utilitza per a crear un nom curt per a fer referència a un URL base del repositori Git específic, en les declaracions de <link linkend="module-sets"
->conjunts de mòduls</link
-> posteriors, la qual cosa és útil per a declarar amb rapidesa la creació de molts mòduls de Git.</para>
-
-<para
->Haureu d'especificar dues coses (separades per un espai): el nom que s'assignarà a l'URL base i l'URL base real en si. Per exemple:</para>
-
-<para>
-<informalexample>
-<programlisting
->global
-   # Altres opcions
-
-   # Aquest és el camí habitual per a tots els mòduls de servidor Git anònim.
-   git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Declaracions del mòdul
-
-module-set
-   # Ara podreu fer servir àlies que heu definit amb anterioritat,
-   # però <emphasis
->només</emphasis
-> sobre un conjunt de mòduls.
-   repository <replaceable
->kde-git</replaceable>
-
-   <link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->mòdul_1.git</replaceable
-> <replaceable
->mòdul_2.git</replaceable>
-end module-set
-</programlisting>
-</informalexample>
-</para>
-
-<para
->L'opció <literal
->use-modules</literal
-> del conjunt de mòduls ha creat dos mòduls internament, amb el &kdesrc-build; comportant-se com si hagués llegit:</para>
-
-<programlisting
->module module1
-    repository kde:<replaceable
->mòdul_1.git</replaceable>
-end module
-
-module module2
-    repository kde:<replaceable
->mòdul_2.git</replaceable>
-end module
-</programlisting>
-
-<para
->El prefix de repositori &git; és <literal
->kde:</literal
->, utilitzat abans és una drecera que el &kdesrc-build; configurarà automàticament. Consulteu l'article <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->URL Renaming</ulink
-> de TechBase per obtenir més informació. Recordeu que, a diferència de la majoria de les altres opcions, aquesta opció es pot especificar múltiples vegades per a crear tants àlies com sigui necessari.</para>
-
-<tip
-><para
->No es requereix utilitzar aquesta opció per aprofitar el conjunt de mòduls, aquesta opció existeix per a facilitar l'ús del mateix repositori en molts conjunts de mòduls diferents.</para
-></tip>
 </entry>
 </row>
 
@@ -3070,47 +3362,6 @@ end module
 </entry>
 </row>
 
-<row id="conf-ignore-modules">
-<entry
->ignore-modules</entry>
-<entry
->No es pot superposar</entry>
-<entry
-><para
->Els mòduls nomenats per aquesta opció, els quals serien triats pel &kdesrc-build; a causa d'una opció <link linkend="conf-use-modules"
->use-modules</link
->, s'ometran completament. Utilitzeu aquesta opció quan vulgueu construir una tota agrupació de projectes <link linkend="kde-projects-module-sets"
->kde-projects</link
->, excepte alguns mòduls específics.</para>
-
-<para
->El valor de l'opció no necessàriament haurà de nomenar el mòdul directament. S'ignorarà qualsevol mòdul que tingui parts consecutives completes del seu <link linkend="kde-projects-module-sets"
->camí de mòduls de projectes del &kde;</link
-> que coincideixi amb un dels valors de l'opció, d'aquesta manera es podran ignorar múltiples mòduls.</para>
-
-<para
->Per exemple, un valor d'opció <replaceable
->libs</replaceable
-> donaria lloc a l'exclusió de <symbol
->kde/kdegraphics/libs</symbol
-> i de <symbol
->playground/libs</symbol
-> (encara que no <symbol
->kde/kdelibs</symbol
->, ja que es compara la part completa <quote
->kdelibs</quote
->).</para>
-
-<tip
-><para
->Vegeu també l'<xref linkend="example-ignoring-a-module"/>.</para
-></tip>
-
-<para
->Aquesta opció es va introduir en el &kdesrc-build; 1.16.</para>
-</entry>
-</row>
-
 <row id="conf-include-dependencies">
 <entry
 >include-dependencies</entry>
@@ -3155,123 +3406,6 @@ end module
 > de la línia d'ordres. </entry>
 </row>
 
-<row id="conf-install-environment-driver">
-<entry
->install-environment-driver</entry>
-<entry
->No es pot superposar</entry>
-<entry
-><para
->De manera predeterminada, el &kdesrc-build; instal·larà un script d'intèrpret d'ordres que pot obtenir-se en els scripts de configuració del perfil d'un usuari per establir amb facilitat les variables d'entorn necessàries per executar l'escriptori Plasma creat pel &kdesrc-build;.</para>
-
-<para
->Aquest controlador modificarà els següents fitxers:</para>
-
-<itemizedlist>
-<listitem
-><para
-><filename
->$XDG_CONFIG_HOME/kde-env-master.sh</filename
-> (normalment es troba a <filename
->~/.config/kde-env-master.sh</filename
->).</para
-></listitem>
-<listitem
-><para
-><filename
->$XDG_CONFIG_HOME/kde-env-user.sh</filename
-> (normalment es troba a <filename
->~/.config/kde-env-user.sh</filename
->).</para
-></listitem>
-</itemizedlist>
-
-<para
->El <filename
->kde-env-user.sh</filename
-> és opcional. Està destinat a les personalitzacions de l'usuari (vegeu la secció <ulink url="https://userbase.kde.org/KDE_System_Administration/Environment_Variables#Troubleshooting_and_Debugging"
->Troubleshooting and Debugging</ulink
-> (Solució de problemes i depuració) de la &kde; UserBase per a veure exemples d'opcions personalitzades), però l'usuari podrà establir aquestes opcions en altres llocs en els seus scripts existents per a la configuració del perfil.</para>
-
-<para
->És possible inhabilitar aquesta característica establint aquesta opció a <replaceable
->false</replaceable
-> (fals) i assegurant-vos que l'opció <link linkend="conf-install-session-driver"
->install-session-driver</link
-> també està inhabilitada.</para>
-
-<para
->Aquesta opció es va introduir en el &kdesrc-build; 17.08.</para>
-
-<tip
-><para
->El &kdesrc-build; no sobreescriurà els vostres fitxers existents (si n'hi ha) a menys que també passeu l'opció <option
-><link linkend="cmdline-delete-my-settings"
->--delete-my-settings</link
-></option
-> de la línia d'ordres.</para
-></tip>
-</entry>
-</row>
-
-<row id="conf-install-session-driver">
-<entry
->install-session-driver</entry>
-<entry
->No es pot superposar</entry>
-<entry
-><para
->Si està habilitada, el &kdesrc-build; intentarà instal·lar un controlador per al gestor d'inici de sessió gràfic, el qual us permetrà iniciar la sessió a l'escriptori &kde; construït amb el &kdesrc-build;.</para>
-
-<para
->Aquest controlador modificarà els següents fitxers:</para>
-
-<itemizedlist>
-<listitem
-><para
-><filename
->~/.xsession</filename
-></para
-></listitem>
-<listitem
-><para
-><filename
->$XDG_CONFIG_HOME/kde-env-master.sh</filename
-> (normalment es troba a <filename
->~/.config/kde-env-master.sh</filename
->).</para
-></listitem>
-<listitem
-><para
-><filename
->$XDG_CONFIG_HOME/kde-env-user.sh</filename
-> (normalment es troba a <filename
->~/.config/kde-env-user.sh</filename
->).</para
-></listitem>
-</itemizedlist>
-
-<para
->Si manteniu el vostre propi controlador d'inici de sessió, podreu inhabilitar aquesta característica establint aquesta opció a <replaceable
->false</replaceable
-> (fals). Si està habilitada, aquesta característica també habilitarà la característica <link linkend="conf-install-environment-driver"
->install-environment-driver</link
->.</para>
-
-<para
->Aquesta opció es va introduir en el &kdesrc-build; 1.16.</para>
-
-<tip
-><para
->El &kdesrc-build; no sobreescriurà els vostres fitxers existents (si n'hi ha) a menys que també passeu l'opció <option
-><link linkend="cmdline-delete-my-settings"
->--delete-my-settings</link
-></option
-> de la línia d'ordres.</para
-></tip>
-</entry>
-</row>
-
 <row id="conf-kdedir">
 <entry
 >kdedir</entry>
@@ -3279,7 +3413,7 @@ end module
 >La configuració del mòdul superposa la global</entry>
 <entry
 >Aquesta opció estableix el directori en el qual s'instal·larà el &kde; després de la seva construcció. De manera predeterminada és <filename class="directory"
->~/kde</filename
+>~/kde/src</filename
 >. Si ho canvieu a un directori al qual es necessita accedir com a superusuari (root), és possible que també vulgueu llegir sobre l'opció <link linkend="conf-make-install-prefix"
 >make-install-prefix</link
 >.</entry>
@@ -3473,57 +3607,6 @@ end options
 > (cert), el &kdesrc-build; no actualitzarà automàticament el codi font del mòdul. Encara intentarà construir el mòdul si normalment ho hagués intentat de totes maneres.</entry>
 </row>
 
-<row id="conf-num-cores">
-<entry
->num-cores</entry>
-<entry
->No es pot superposar</entry>
-<entry>
-<para
->Aquesta opció està definida pel &kdesrc-build; (quan s'utilitza l'eina kdesrc-build-setup o <command
->kdesrc-build --initial-setup</command
->), establerta al nombre de CPU disponibles (com ho indica l'aplicació externa <application
->nproc</application
->). Si el &kdesrc-build; no pot detectar el nombre de CPU, aquest valor s'establirà a 4.</para>
-
-<para
->Vegeu <xref linkend="make-options-example"/> per a un exemple de l'ús d'aquesta opció. Aquesta opció es va introduir en el &kdesrc-build; 20.07.</para>
-</entry>
-</row>
-
-<row id="conf-num-cores-low-mem">
-<entry
->num-cores-low-mem</entry>
-<entry
->No es pot superposar</entry>
-<entry>
-<para
->Aquesta opció està definida pel &kdesrc-build; (quan s'utilitza l'eina kdesrc-build-setup o <command
->kdesrc-build --initial-setup</command
->), establerta al nombre de CPU, això es considera segur per mòduls pesats o altres mòduls altament intensius, com el <literal
->qtwebengine</literal
->, per a evitar quedar-se sense memòria durant la compilació.</para>
-
-<para
->El càlcul típic és un nucli de CPU per cada 2 gigabytes (GiB) de memòria total. Almenys s'especificarà 1 nucli, i no s'especificaran més que a <option
-><link linkend="conf-num-cores"
->num-cores</link
-></option
->.</para>
-
-<para
->Tot i que aquesta opció està pensada per a admetre els mòduls de les &Qt;, podeu utilitzar-la per a qualsevol mòdul de la mateixa manera que s'utilitza <option
->num-cores</option
->.</para>
-
-<para
->Si el &kdesrc-build; no pot detectar la memòria disponible, aquest valor s'establirà a 2.</para>
-
-<para
->Aquesta opció es va introduir en el &kdesrc-build; 20.07.</para>
-</entry>
-</row>
-
 <row id="conf-override-build-system">
 <entry
 >override-build-system</entry>
@@ -3601,28 +3684,6 @@ end options
     </varlistentry>
 </variablelist>
 
-</entry>
-</row>
-
-<row id="conf-persistent-data-file">
-<entry
->persistent-data-file</entry>
-<entry
->No es pot superposar</entry>
-<entry
-><para
->Aquesta opció permet canviar on emmagatzema el &kdesrc-build; les seves dades persistents. De manera predeterminada s'emmagatzemen en un fitxer anomenat <filename
->.kdesrc-build-data</filename
->, ubicat al mateix directori que el fitxer de configuració en ús. Si s'utilitza el fitxer de configuració global, es desarà a <filename
->~/.local/state/kdesrc-build-data</filename
-> (<filename
->$XDG_STATE_HOME/kdesrc-build-data</filename
->, si està establerta <envar
->$XDG_STATE_HOME</envar
->). Si teniu múltiples configuracions disponibles al mateix directori, és possible que vulgueu establir aquesta opció manualment perquè les diferents configuracions no acabin amb dades persistents en conflicte. </para>
-
-<para
->Aquesta opció es va introduir en el &kdesrc-build; 1.15.</para>
 </entry>
 </row>
 
@@ -3802,22 +3863,6 @@ end options
 >. Si utilitzeu aquesta opció, utilitzeu la titlla (~) per a representar el directori d'inici. </entry>
 </row>
 
-<row id="conf-ssh-identity-file">
-<entry
->ssh-identity-file</entry>
-<entry
->No es pot superposar</entry>
-<entry>
-<para
->Establiu aquesta opció per a controlar quin fitxer de clau SSH privat es passarà a l'ordre <command
->ssh-add</command
-> quan el &kdesrc-build; està descarregant el codi font des dels repositoris que requereixen autenticació. Vegeu també: les <xref linkend="ssh-agent-reminder"/>.</para>
-
-<para
->Aquesta opció es va introduir en el &kdesrc-build; 1.14.2.</para>
-</entry>
-</row>
-
 <row id="conf-stop-on-failure">
 <entry
 >stop-on-failure</entry>
@@ -3878,27 +3923,28 @@ end options
 </entry>
 </row>
 
-<row id="conf-use-idle-io-priority">
-<entry
->use-idle-io-priority</entry>
-<entry
->No es pot superposar</entry>
-<entry
->Aquesta opció, afegida al &kdesrc-build; 1.12, farà que s'utilitzi una prioritat més baixa per al disc i altres usos de l'E/S, el qual pot millorar significativament la capacitat de resposta de la resta de sistema amb un cost en el temps d'execució una mica més llarg per al &kdesrc-build;. El valor predeterminat és inhabilitada, per habilitar una prioritat inferior per al disc, establiu això a <userinput
->true</userinput
-> (cert). </entry>
-</row>
+</tbody>
 
-<row id="conf-use-inactive-modules">
+</tgroup>
+</table>
+
+
+<table id="options-module-set-table">
+<title
+>Opcions només d'àmbit de conjunt de mòduls</title>
+<tgroup cols="3">
+
+<thead>
+<row>
 <entry
->use-inactive-modules</entry>
+>Nom de l'opció</entry>
 <entry
->No es pot superposar</entry>
+>Mòdul -&gt; Comportament global</entry>
 <entry
->Quan està habilitada, permetrà que el kdesrc-build també faci «clone» i «pull» des dels repositoris marcats com inactius. El valor predeterminat és inhabilitat, per a permetre que els mòduls inactius estableixin això a <userinput
->true</userinput
-> (cert). </entry>
+>Notes</entry>
 </row>
+</thead>
+<tbody>
 
 <row id="conf-use-modules">
 <entry
@@ -3947,7 +3993,6 @@ end options
 </row>
 
 </tbody>
-
 </tgroup>
 </table>
 
@@ -5752,11 +5797,11 @@ end module
 <tip>
 <para
 >De manera predeterminada, el directori de construcció és <filename class="directory"
->~/kdesrc/build/<replaceable
+>~/kde/build/<replaceable
 >mòdul</replaceable
 >/</filename
 >. Si canvieu la configuració de l'opció &build-dir;, utilitzeu-la en lloc de <filename class="directory"
->~/kdesrc/build</filename
+>~/kde/build</filename
 >.</para>
 </tip>
 
@@ -6464,7 +6509,7 @@ end module-set
 >.bash_profile</filename
 > en el directori d'inici amb el vostre editor favorit i afegiu-lo al final del fitxer: Si esteu creant el mòdul qt (en el mode predeterminat), en el seu lloc afegiu: <programlisting>
 QTDIR=(camí al «qtdir»)   # De manera predeterminada ~/kdesrc/build/qt.
-KDEDIR=(camí al «kdedir») # De manera predeterminada ~/kde.
+KDEDIR=(camí al «kdedir») # De manera predeterminada ~/kde/src.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
@@ -6479,7 +6524,7 @@ fi
 export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
 </programlisting
 > o, si no esteu construint qt (i, en el seu lloc, esteu utilitzant les &Qt; del vostre sistema), afegiu això en el seu lloc: <programlisting
->KDEDIR=(camí al «kdedir»)  # De manera predeterminada ~/kde.
+>KDEDIR=(camí al «kdedir»)  # De manera predeterminada ~/kde/src.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 
