@@ -10,7 +10,7 @@
 # See also the sample xsession setup script, which requires this file.
 #
 # Use by copying this script to $XDG_CONFIG_HOME/kde-env-master.sh (this will
-# be done for you by kdesrc-build and/or kdesrc-build-setup, later). 99% of the
+# be done for you by kdesrc-build later). 99% of the
 # time this means ~/.config/kde-env-master.sh
 #
 # NOTHING IN THIS FILE IS MODIFIABLE, OTHERWISE WARNINGS WILL BE GENERATED

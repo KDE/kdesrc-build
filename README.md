@@ -63,30 +63,15 @@ Later we will set up kdesrc-build to keep itself updated automatically.
 2. Set up kdesrc-build:
 
 - Now that kdesrc-build is installed and works, you need to set up kdesrc-build
-  to work appropriately on your particular system. Do this by running the
-  provided set up script to generate the **configuration file**
-  (~/.config/kdesrc-buildrc):
+  to work appropriately on your particular system.
 
 ```shell
 $ cd ~/kde/src/kdesrc-build
-$ ./kdesrc-build-setup
-```
-
-- Answer the questions given, but do not fret if you don't know what exactly
-  you want to build, it is easy to edit the configuration later or just to
-  re-run `kdesrc-build-setup` again.
-
-- This script will reference a standard configuration provided as part of the
-  kdesrc-build repository that you downloaded earlier. As kdesrc-build
-  self-updates, these changes will reflect for your configuration as well.
-
-- After a configuration has been generated, kdesrc-build is able to bootstrap
-  its environment on most distributions by running:
-```shell
 $ ./kdesrc-build --initial-setup
 ```
-  This will install the dependencies required by kdesrc-build as well as add
-  itself to your path for convenience.
+
+-  This will install the distribution packages dependencies required by kdesrc-build,
+   generate a configuration file, and add itself to your path for convenience.
 
 3. Download the KDE project and dependency data:
 
@@ -171,7 +156,7 @@ successfully upgraded kdesrc-build.
 
 A sample configuration file is included for demonstration purposes. You could
 copy it to `~/.config/kdesrc-buildrc` and edit manually. However,
-it is advised to use provided `kdesrc-build-setup` script instead.
+it is advised to use provided `kdesrc-build --generate-config` script instead.
 
 ## HELP!!!
 

@@ -29,7 +29,7 @@ directory and generate multiple HTML files from the index.docbook.
 ### Man page
 
 There is also a man page, also authored in Docbook, at
-`man-kdesrc-build-setup.1.docbook` and `man-kdesrc-build.1.docbook`. These will
+`man-kdesrc-build.1.docbook`. It will
 be built and installed to the KDE-specific `MANPATH` if you build kdesrc-build
 with CMake.  The content is mostly the same as in the normal DocBook docs but
 can be more convenient at the command line, especially if Internet access is

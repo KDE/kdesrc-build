@@ -3,7 +3,7 @@
 # Written by Michael Jansen and Michael Pyne
 #
 # Use by copying this script to ~/.xsession (this will be done for you by
-# kdesrc-build and/or kdesrc-build-setup, later).
+# kdesrc-build later).
 #
 # From there, select "custom" session when logging in, in order to login using
 # this script.
