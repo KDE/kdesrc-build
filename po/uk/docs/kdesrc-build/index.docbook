@@ -576,16 +576,11 @@
 >).</para>
 
 <para
->Ви можете скористатися програмою, включеною до складу &kdesrc-build; з назвою <application
->kdesrc-build-setup</application
+>Ви можете скористатися командою <application
+>kdesrc-build --generate-config</application
 > з метою приготування простих налаштувань kdesrc-build. Після цього ви можете внести зміни до <filename
 >~/.config/kdesrc-buildrc</filename
 > відповідно до ваших уподобань.</para>
-
-<para
->Програма <application
->kdesrc-build-setup</application
-> запускається з термінала (замість використання графічного інтерфейсу), подібно до &kdesrc-build;, отже ви можете скористатися нею, навіть якщо графічний інтерфейс недоступний.</para>
 
 <sect4 id="setup-rcfile-manually">
 <title
@@ -601,9 +596,7 @@
 >. </para>
 
 <para
->До складу &kdesrc-build; включено багато рекомендованих файлів налаштувань, у яких реалізовано підтримку &kde; Frameworks 5, Плазми 5 та інших програм &kde;. Скрипт <application
->kdesrc-build-setup</application
-> посилається на ці файли у створеному ним файл налаштувань, але ви можете також зробити це власноруч. Див. розділ <xref linkend="kdesrc-buildrc-including"/>, щоб дізнатися більше про те, як використати інші файли налаштувань у вашому власному <filename
+>До складу &kdesrc-build; включено багато рекомендованих файлів налаштувань, у яких реалізовано підтримку &kde; Frameworks 5, Плазми 5 та інших програм &kde;. Див. розділ <xref linkend="kdesrc-buildrc-including"/>, щоб дізнатися більше про те, як використати інші файли налаштувань у вашому власному <filename
 >kdesrc-buildrc</filename
 >. </para>
 
@@ -2355,16 +2348,14 @@ end global
 <table id="options-global-table">
 <title
 >Параметри загальної області</title>
-<tgroup cols="3">
+<tgroup cols="2">
 
 <thead>
 <row>
 <entry
 >Назва параметра</entry>
 <entry
->Модуль -&gt; Загальна поведінка</entry>
-<entry
->Нотатки</entry>
+>Опис</entry>
 </row>
 </thead>
 <tbody>
@@ -2372,15 +2363,23 @@ end global
 <row id="conf-async">
 <entry
 >async</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->За допомогою цього параметра можна увімкнути асинхронний режим роботи, за якого оновлення кодів програм і процес збирання виконуватимуться паралельно, — програма не чекатиме на завершення оновлення всіх кодів програм перед запуском процесу збирання. Типовим значенням цього параметра є значення, що вмикає асинхронний режим. Щоб вимкнути асинхронний режим, встановіть значення параметра <userinput
->false</userinput
->.</para>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+<member
+>Доступний з версії</member
+><member
+>1.6</member>
+</simplelist>
 <para
->Цей параметр додано починаючи з версії 1.6 програми.</para
+>За допомогою цього параметра можна увімкнути асинхронний режим роботи, за якого оновлення кодів програм і процес збирання виконуватимуться паралельно, — програма не чекатиме на завершення оновлення всіх кодів програм перед запуском процесу збирання.</para
 ></entry>
 </row>
 
@@ -2388,35 +2387,63 @@ end global
 <entry
 >colorful-output</entry>
 <entry
->Неможливо перевизначити</entry>
-<entry
+><simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+</simplelist
+><para
 >Встановіть для цього параметра значення <userinput
 >false</userinput
->, щоб вимкнути розфарбування даних, які виводитиме &kdesrc-build;. Типовим значенням цього параметра є <replaceable
->true</replaceable
->. Зауважте, що &kdesrc-build; не виводитиме розфарбовані дані до інших, відмінних від термінала (на зразок xterm, &konsole; або звичайної консолі &Linux;), виводів. </entry>
+>, щоб вимкнути розфарбування даних, які виводитиме &kdesrc-build;. Зауважте, що &kdesrc-build; не виводитиме розфарбовані дані до інших, відмінних від термінала (на зразок xterm, &konsole; або звичайної консолі &Linux;), виводів.</para>
+</entry>
 </row>
 
 <row id="conf-disable-agent-check">
 <entry
 >disable-agent-check</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
->Зазвичай, якщо ви використовуєте &ssh; для отримання вихідних кодів &git; (наприклад, якщо ви використовуєте протокол git+ssh), &kdesrc-build; намагатиметься перевірити і зробити так, щоб, якщо ви використовуєте агент ssh, цей агент справді керував певними профілями &ssh;. Так зроблено, щоб &ssh; не надсилав, за можливості, запитів на пароль для кожного з ваших модулів. Ви можете вимкнути таку перевірку встановленням параметра <option
->disable-agent-check</option
-> у значення <userinput
->true</userinput
->. </entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+</simplelist>
+<para
+>Якщо ви використовуєте &ssh; для отримання вихідних кодів &git; (наприклад, якщо ви використовуєте протокол git+ssh), цей параметр керує тим, чи намагатиметься &kdesrc-build; перевірити і зробити так, щоб, якщо ви використовуєте агент ssh, цей агент справді керував певними профілями &ssh;. Так зроблено, щоб &ssh; не надсилав, за можливості, запитів на пароль для кожного з ваших модулів.</para>
+</entry>
 </row>
 
 <row id="conf-git-desired-protocol">
 <entry
 >git-desired-protocol</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+>git</member>
+<member
+>Журнал</member
+><member
+>Цей параметр було додано у &kdesrc-build; 1.16. До версії 20.06 цей параметр використовувався для налаштовування адреси отримання даних, а не адреси надсилання даних. З версії 20.06 для оновлення проєктів KDE завжди використовується <literal
+>https</literal
+>.</member>
+</simplelist>
+<para
 >Цей параметр стосується модулів зі сховища <link linkend="kde-projects-module-sets"
 >проєкту &kde;</link
 >.</para>
@@ -2445,21 +2472,25 @@ end global
 <para
 >У всіх інших випадках не варто встановлювати цей параметр, оскільки типовий протокол є найефективнішим.</para>
 
-<para
->Цей параметр було додано у &kdesrc-build; 1.16. До версії 20.06 цей параметр використовувався для налаштовування адреси отримання даних, а не адреси надсилання даних. З версії 20.06 для оновлення проєктів KDE завжди використовується <literal
->https</literal
->.</para>
 </entry>
 </row>
 
 <row id="conf-git-repository-base">
 <entry
 >git-repository-base</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->Цей параметр, доданий у версії 1.12.1, використовується для скорочення посилань на базову адресу певного сховища Git у наступних оголошеннях <link linkend="module-sets"
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Цей параметр використовується для скорочення посилань на базову адресу певного сховища Git у наступних оголошеннях <link linkend="module-sets"
 >наборів модулів</link
 >. Параметр корисний для оголошення збирання декількох модулів Git.</para>
 
@@ -2467,11 +2498,9 @@ end global
 >Вам слід вказати два значення (відокремлених пробілами): назву, яку буде пов’язано з базовою адресою, та саму базову адресу. Приклад:</para>
 
 <para>
-<informalexample>
 <programlisting
 >global
 # інші параметри
-
 # Загальна адреса всіх модулів сервера Git з анонімним доступом.
 git-repository-base <replaceable
 >kde-git</replaceable
@@ -2487,7 +2516,6 @@ module-set
 # у межах module-set.
 repository <replaceable
 >kde-git</replaceable>
-
 <link linkend="conf-use-modules"
 >use-modules</link
 > <replaceable
@@ -2496,7 +2524,6 @@ repository <replaceable
 >модуль2.git</replaceable>
 end module-set
 </programlisting>
-</informalexample>
 </para>
 
 <para
@@ -2506,12 +2533,12 @@ end module-set
 
 <programlisting
 >module модуль1
-repository kde:<replaceable
+    repository kde:<replaceable
 >модуль1.git</replaceable>
 end module
 
 module модуль2
-repository kde:<replaceable
+    repository kde:<replaceable
 >модуль2.git</replaceable>
 end module
 </programlisting>
@@ -2533,10 +2560,18 @@ end module
 <row id="conf-ignore-modules">
 <entry
 >ignore-modules</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Модулі, названі у цьому параметрі, які мало б бути вибрано &kdesrc-build; через визначення параметра <link linkend="conf-use-modules"
 >use-modules</link
 >, буде повністю пропущено. Цим параметром можна скористатися, якщо ви хочете зібрати всі групи у проєкті <link linkend="kde-projects-module-sets"
@@ -2565,20 +2600,29 @@ end module
 ><para
 >Див. також розділ <xref linkend="example-ignoring-a-module"/>.</para
 ></tip>
-
-<para
->Цей параметр було додано у &kdesrc-build; 1.16.</para>
 </entry>
 </row>
 
 <row id="conf-install-environment-driver">
 <entry
 >install-environment-driver</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
->Типово, &kdesrc-build; встановити скрипт оболонки, яким можна скористатися у скриптах налаштовування профілю користувача для спрощення визначення бажаних змінних середовища для запуску стільниці Плазми, зібраної за допомогою &kdesrc-build;.</para>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+<member
+>Доступний з версії</member
+><member
+>17.08</member>
+</simplelist>
+<para
+>Встановити скрипт оболонки, яким можна скористатися у скриптах налаштовування профілю користувача для спрощення визначення бажаних змінних середовища для запуску стільниці Плазми, зібраної за допомогою &kdesrc-build;.</para>
 
 <para
 >Цим драйвером буде внесено зміни до таких файлів:</para>
@@ -2616,9 +2660,6 @@ end module
 >install-session-driver</link
 >.</para>
 
-<para
->Цей параметр було додано у &kdesrc-build; 17.08.</para>
-
 <tip
 ><para
 >&kdesrc-build; не перезаписуватиме вже створених файлів (якщо такі існують), якщо ви не передасте програмі параметр командного рядка <option
@@ -2633,10 +2674,22 @@ end module
 <row id="conf-install-session-driver">
 <entry
 >install-session-driver</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+<member
+>Доступний з версії</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Якщо увімкнено, &kdesrc-build; намагається встановити драйвер до графічної програми для керування сеансами для того, щоб уможливити ваш вхід до зібраного за допомогою &kdesrc-build; стільничного середовища &kde;.</para>
 
 <para
@@ -2674,9 +2727,6 @@ end module
 >install-environment-driver</link
 >.</para>
 
-<para
->Цей параметр було додано у &kdesrc-build; 1.16.</para>
-
 <tip
 ><para
 >&kdesrc-build; не перезаписуватиме вже створених файлів (якщо такі існують), якщо ви не передасте програмі параметр командного рядка <option
@@ -2688,33 +2738,76 @@ end module
 </entry>
 </row>
 
+<row id="conf-niceness">
+<entry
+>niceness</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Ціле</member>
+<member
+>Типове значення</member
+><member
+>10</member>
+</simplelist>
+<para
+>Значенням цього параметра є ціле число у діапазоні від 20 до 0. Чим вищим буде це число, тим нижчим встановлюватиметься пріоритет процесу &kdesrc-build;, тобто, чим вищим є число, тим вищим є «пріоритет» програми.</para>
+</entry>
+</row>
+
 <row id="conf-num-cores">
 <entry
 >num-cores</entry>
-<entry
->Неможливо перевизначити</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Ціле</member>
+<member
+>Типове значення</member
+><member
+>Залежить від системи</member>
+<member
+>Доступний з версії</member
+><member
+>20.07</member>
+</simplelist>
 <para
->Цей параметр визначається &kdesrc-build; (при використанні kdesrc-build-setup або <command
->kdesrc-build --initial-setup</command
+>Цей параметр визначається &kdesrc-build; (при використанні <command
+>kdesrc-build --generate-config</command
 >). Його значенням є кількість доступних процесорів (яку буде встановлено за допомогою зовнішньої програми <application
 >nproc</application
 >). Якщо &kdesrc-build; не вдасться визначити кількість процесорів, для цього параметра буде встановлено значення 4.</para>
 
 <para
->Див. <xref linkend="make-options-example"/>, де наведено приклад використання цього параметра. Цей параметр було додано у версії 20.07.</para>
+>Див. <xref linkend="make-options-example"/>, де наведено приклад використання цього параметра.</para>
 </entry>
 </row>
 
 <row id="conf-num-cores-low-mem">
 <entry
 >num-cores-low-mem</entry>
-<entry
->Неможливо перевизначити</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Ціле</member>
+<member
+>Типове значення</member
+><member
+>Залежить від системи</member>
+<member
+>Доступний з версії</member
+><member
+>20.07</member>
+</simplelist>
 <para
->Цей параметр визначається &kdesrc-build; (при використанні kdesrc-build-setup або <command
->kdesrc-build --initial-setup</command
+>Цей параметр визначається &kdesrc-build; (при використанні <command
+>kdesrc-build --generate-config</command
 >). Його значенням кількість процесорів, яку безпечно використовувати для великих або інтенсивних з точки зору обробки модулів, зокрема <literal
 >qtwebengine</literal
 >, щоб уникнути надмірного споживання пам'яті під час збирання.</para>
@@ -2734,18 +2827,24 @@ end module
 <para
 >Якщо &kdesrc-build; не може визначити доступний обсяг пам'яті, для цього параметра буде встановлено значення 2.</para>
 
-<para
->Цей параметр було додано у версії 20.07.</para>
 </entry>
 </row>
 
 <row id="conf-persistent-data-file">
 <entry
 >persistent-data-file</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.15</member>
+</simplelist>
+<para
 >За допомогою цього параметра можна змінити місце, у якому зберігатимуться постійні дані &kdesrc-build;. Типово, ці дані зберігатимуться у файлі з назвою <filename
 >.kdesrc-build-data</filename
 >, який зберігатимуться у тому самому каталозі, що і файл налаштувань, який використовує програма. Якщо використано загальний файл налаштувань, його буде збережено до <filename
@@ -2755,48 +2854,70 @@ end module
 >, якщо встановлено значення <envar
 >$XDG_STATE_HOME</envar
 >). Якщо ви користуєтеся декількома наборами налаштувань, вам варто встановити значення цього параметра вручну, щоб різні набори налаштувань не призводили до конфлікту між наборами постійних даних. </para>
-
-<para
->Цей параметр було додано у &kdesrc-build; 1.15.</para>
 </entry>
 </row>
 
 <row id="conf-ssh-identity-file">
 <entry
 >ssh-identity-file</entry>
-<entry
->Неможливо перевизначити</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.14.2</member>
+</simplelist>
 <para
 >Встановіть значення цього параметра, якщо потрібно вказати, який саме файл ключа SSH слід передати програмі <command
 >ssh-add</command
 > під час отримання за допомогою &kdesrc-build; коду зі сховищ, для доступу до яких потрібно пройти розпізнавання. Також варто ознайомитися з розділом <xref linkend="ssh-agent-reminder"/>.</para>
-
-<para
->Цей параметр було додано у версії 1.14.2.</para>
 </entry>
 </row>
 
 <row id="conf-use-idle-io-priority">
 <entry
 >use-idle-io-priority</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
->За допомогою цього параметра, доданого у &kdesrc-build; 1.12, може зменшити пріоритет використання скриптом диска та інших інструментів вводу-виводу, це може значно покращити швидкодію решти системи під час роботи скрипту за рахунок збільшення часу роботи &kdesrc-build;. Типово таку поведінку вимкнено, щоб зменшити пріоритет використання диска, встановіть значення <userinput
->true</userinput
->. </entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+<member
+>Доступний з версії</member
+><member
+>1.12</member>
+</simplelist>
+<para
+>Вжити зменшення пріоритетності використання скриптом диска та інших інструментів вводу-виводу, це може значно покращити швидкодію решти системи під час роботи скрипту за рахунок збільшення часу роботи &kdesrc-build;.</para>
+</entry>
 </row>
 
 <row id="conf-use-inactive-modules">
 <entry
 >use-inactive-modules</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
->Якщо увімкнено, цей параметр дозволяє kdesrc-build клонувати сховища, які позначено як неактивні, і отримувати з них дані. Типово, вимкнено, щоб уможливити встановлення для цього параметра значення <userinput
->true</userinput
-> у неактивних модулях. </entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+</simplelist>
+<para
+>Дозволити kdesrc-build також клонувати і отримувати дані зі сховищ, які позначено як неактивні.</para>
+</entry>
 </row>
 
 </tbody>
@@ -2808,16 +2929,14 @@ end module
 <table id="option-table">
 <title
 >Параметри усіх областей (модуля, набору модулів та загальні)</title>
-<tgroup cols="3">
+<tgroup cols="2">
 
 <thead>
 <row>
 <entry
 >Назва параметра</entry>
 <entry
->Модуль -&gt; Загальна поведінка</entry>
-<entry
->Нотатки</entry>
+>Опис</entry>
 </row>
 </thead>
 
@@ -2826,10 +2945,14 @@ end module
 <row id="conf-binpath">
 <entry
 >binpath</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Встановіть для цього параметра значення, щоб визначити значення змінної середовища PATH на час збирання. Ви не зможете перевизначити значення цього параметра для окремого модуля. Типовим значенням параметра є $<envar
 >PATH</envar
 >, змінна, значення якої встановлюється під час запуску. Значенням цієї змінної середовища має бути відокремлений двокрапками список шляхів до ваших каталогів для збирання. Шляхи <filename class="directory"
@@ -2847,38 +2970,42 @@ end module
 <row id="conf-branch">
 <entry
 >branch</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
->Встановіть значення для цього параметра, щоб програма отримала певну версію &kde;, а не типову гілку <replaceable
->master</replaceable
->, у якій розробляється &kde;.</para>
-
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+>master</member>
+</simplelist>
 <para
->Наприклад, щоб отримати версію &kde; 4.6, вам слід встановити значення цього параметра <replaceable
->4.6</replaceable
->.аметра <replaceable
->3.4</replaceable
->.</para>
-
+>Отримати дані з вказаної гілки, а не типової гілки.</para>
 <note
 ><para
 >Для більшості модулів &kde;, ймовірно, варто користуватися замість цього параметра параметром <link linkend="conf-branch-group"
 >branch-group</link
 >, а цей параметр використовувати лише для створення виключень з правил.</para
 ></note>
-
 </entry>
 </row>
 
 <row id="conf-branch-group">
 <entry
 >branch-group</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
 <entry>
-
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.16-pre2</member>
+</simplelist>
 <para
 >Для цього параметра слід встановити значення загальної групи, з якої слід вибирати модулі.</para>
 
@@ -2901,9 +3028,6 @@ end module
 >tag</link
 >.</para>
 
-<para
->Цей параметр було додано у &kdesrc-build; 1.16-pre2.</para>
-
 <note
 ><para
 >Цим параметром можна скористатися (у типовому випадку) лише для модулів &git; <literal
@@ -2917,57 +3041,77 @@ end module
 <row id="conf-build-dir">
 <entry
 >build-dir</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
->Скористайтеся цим параметром, щоб змінити каталог, у якому міститимуться вихідні коди для збирання. Існує три різних способи скористатися ним: <orderedlist
-> <listitem
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+><filename class="directory"
+>~/kde/build</filename
+></member>
+</simplelist>
+<para
+>Скористайтеся цим параметром, щоб змінити каталог, у якому зберігатиметься програмний код для збирання. Передбачено три різних способи його використання:</para>
+
+<orderedlist>
+
+<listitem
 ><para
->Шлях відносно каталогу вихідних кодів з &git; &kde; (див. <link linkend="conf-source-dir"
+>Відносний щодо каталогу початкових кодів &kde; &git; (див. <link linkend="conf-source-dir"
 >параметр source-dir</link
->). Це типовий спосіб. Цей режим буде вибрано, якщо ви введете назву каталогу, яка не починається з тильди (~) або похилої риски (/).</para
-> <para
->Типовим значенням є <filename class="directory"
->build</filename
->.</para
-></listitem
-> <listitem
+>). Це типове значення, його буде вибрано, якщо ви вкажете назву каталогу, яка не починається з тильди (~) або символу похилої риски (/).</para
+></listitem>
+
+<listitem
 ><para
->Абсолютний шлях. Якщо ви вкажете шлях, назва якого починається з /, цей шлях буде використано безпосередньо. Наприклад, <filename class="directory"
+>Абсолютний шлях. Якщо ви вкажете шлях, який починається з /, цей шлях буде використано безпосередньо. Приклад: <filename class="directory"
 >/tmp/kde-obj-dir/</filename
 >.</para
-></listitem
-> <listitem
+></listitem>
+
+<listitem
 ><para
->Шлях відносно вашого домашнього каталогу. Якщо ви вкажете шлях, назва якого починатиметься з ~, буде використано шлях відносно вашого домашнього каталогу, подібно до використання тильди у командній оболонці. Наприклад, <filename class="directory"
+>Відносний щодо вашого домашнього каталогу. Якщо ви вкажете шлях, який починається з a ~, шлях вважатиметься відносним щодо вашого домашнього каталогу, подібно до розгортання тильди у командній оболонці. Наприклад, <filename class="directory"
 >~/builddir</filename
-> визначить каталог збирання <filename class="directory"
->/home/user-name/builddir</filename
+> вказуватиме каталог збирання <filename class="directory"
+>/home/ім'я_користувача/builddir</filename
 >.</para
-></listitem
-> </orderedlist
-><para
->Типовим значенням є <filename class="directory"
->~/kde/build</filename
->.</para
-> Як це не дивно, ви можете змінити значення цього параметра для кожного з модулів окремо. </entry>
+></listitem>
+
+</orderedlist>
+
+<para
+>Можливо, несподівано, але цей параметр можна змінювати для окремих модулів.</para>
+</entry>
 </row>
 
 <row id="conf-build-when-unchanged">
 <entry
 >build-when-unchanged</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
->За допомогою цього параметра можна керувати тим, чи буде &kdesrc-build; завжди намагатися зібрати модуль, у якому не було оновлення початкових кодів.</para>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+</simplelist>
+<para
+>Керувати тим, чи буде &kdesrc-build; завжди намагатися зібрати модуль, у якому не було оновлення початкових кодів.</para>
 
 <para
 >Якщо для <option
 >build-when-unchanged</option
 > буде встановлено значення <userinput
 >true</userinput
->, &kdesrc-build; завжди виконуватиме збирання модуля, навіть якщо ніякого оновлення коду модуля не відбулося. Така поведінка є типовою, оскільки у разі її використання збільшується ймовірність належного збирання.</para>
+>, &kdesrc-build; завжди виконуватиме збирання модуля, навіть якщо ніякого оновлення коду модуля не відбулося. Із цим значенням ймовірність належних результатів збирання буде вищою.</para>
 
 <para
 >Якщо ви встановите для <option
@@ -2986,19 +3130,25 @@ end module
 <row id="conf-cmake-generator">
 <entry
 >cmake-generator</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+>Makefile Unix</member>
+</simplelist>
+<para
 >За допомогою цього параметра можна визначити, який засіб створення даних буде використано у поєднанні із &cmake;. У поточній версії передбачено підтримку як <literal
 >Ninja</literal
 >, так і <literal
 >файлів Make Unix</literal
 >, а також додаткових генераторів на їхній основі, зокрема <literal
 >Eclipse CDT4 - Ninja</literal
->. Некоректні (непідтримувані) значення буде проігноровано — значення вважатиметься невстановленим. Якщо не встановлено, типово буде використано  <literal
->файли Make Unix</literal
->. </para>
+>. Некоректні (непідтримувані) значення буде проігноровано — значення вважатиметься невстановленим. </para>
 
 <para
 >Зауважте, що якщо коректний засіб обробки також вказано за допомогою <link linkend="conf-cmake-options"
@@ -3012,11 +3162,15 @@ end module
 <row id="conf-cmake-toolchain">
 <entry
 >cmake-toolchain</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
->Скористайтеся цим параметром, щоб вказати файл набору інструментів, яким слід скористатися у &cmake;. </para>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
+>Вказати файл набору інструментів, яким слід скористатися у &cmake;. </para>
 <para
 >Якщо налаштовано коректний набір інструментів, &kdesrc-build; <emphasis
 >не встановлюватиме змінні середовища автоматично</emphasis
@@ -3035,10 +3189,16 @@ end module
 <row id="conf-cmake-options">
 <entry
 >cmake-options</entry>
-<entry
->Дописує дані до загальних параметрів для типової системи збирання і перевизначає загальні параметри для інших систем збирання.</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
+>Дописує дані до загальних параметрів для типової системи збирання і перевизначає загальні параметри для інших систем збирання.</para>
+<para
 >Скористайтеся цим параметром для того, щоб визначити, які параметри слід передати &cmake; під час створення системи збирання модуля. Якщо цей параметр використано як загальний, його буде застосовано до всіх модулів, які збирає цей скрипт. Якщо параметр визначено на рівні модуля, його буде додано в кінець загальний параметрів. За допомогою цього параметра можна вказати загальні параметри &cmake; у загальному розділі (global).</para>
 
 <para
@@ -3059,9 +3219,9 @@ end module
 <para
 >Оскільки ці параметри передаються безпосередньо до командного рядка &cmake;, їх слід вказувати у тому самому вигляді, у якому їх буде передано &cmake;. Приклад:</para>
 
-<screen
+<programlisting
 >cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
-</screen>
+</programlisting>
 
 <para
 >Оскільки встановлення цього параметра потребує певних знань, якщо всі інші параметри &kdesrc-build; вказано правильно, ви можете просто залишити значення цього параметра порожнім. (Іншими словами, <emphasis
@@ -3073,44 +3233,58 @@ end module
 <row id="conf-compile-commands-export">
 <entry
 >compile-commands-export</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+</simplelist>
 <para
 >Вмикає створення <literal
 >compile_commands.json</literal
-> у каталозі збирання за допомогою CMake. Типовим значенням цього параметра є <replaceable
->true</replaceable
->. Встановіть значення <userinput
->false</userinput
->, щоб вимкнути створення цього файла. </para>
+> у каталозі збирання за допомогою CMake. </para>
 </entry>
 </row>
 
 <row id="conf-compile-commands-linking">
 <entry
 >compile-commands-linking</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+</simplelist>
 <para
 >Вмикає створення символічних посилань з <literal
 >compile_commands.json</literal
->, створеного у каталозі збирання за допомогою, на відповідний каталог початкового коду. Типовим значенням цього параметра є <replaceable
->false</replaceable
->. Встановіть значення <userinput
->true</userinput
->, щоб увімкнути автоматичне створення символічних посилань. </para>
+>, створеного у каталозі збирання за допомогою, на відповідний каталог початкового коду. </para>
 </entry>
 </row>
 
 <row id="conf-configure-flags">
 <entry
 >configure-flags</entry>
-<entry
->Дописує дані до загальних параметрів для типової системи збирання і перевизначає загальні параметри для інших систем збирання.</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
+>Дописує дані до загальних параметрів для типової системи збирання і перевизначає загальні параметри для інших систем збирання.</para>
+<para
 >Скористайтеся цим параметром, щоб вказати параметри, які слід передати ./configure під час створення системи збирання модуля. Якщо цей параметр використовується на загальному рівні, його буде застосовано до всіх модулів, які збиратимуться цим скриптом. <emphasis
 >Цей параметри потрібен лише для qt-copy.</emphasis
 >.</para>
@@ -3125,9 +3299,13 @@ end module
 <row id="conf-custom-build-command">
 <entry
 >custom-build-command</entry>
-<entry
->Параметр модуля перевизначає загальний параметр (параметри системи збирання)</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
     <para
 >За допомогою цієї команди можна наказати системі виконати іншу команду (відмінну від, наприклад, <command
 >make</command
@@ -3143,10 +3321,16 @@ end module
 <row id="conf-cxxflags">
 <entry
 >cxxflags</entry>
-<entry
->Дописує дані до загальних параметрів для типової системи збирання і перевизначає загальні параметри для інших систем збирання.</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
+>Дописує дані до загальних параметрів для типової системи збирання і перевизначає загальні параметри для інших систем збирання.</para>
+<para
 >Скористайтеся цим параметром, щоб вказати, які параметри слід використовувати для збирання модуля. Цей параметр визначається саме тут, а не у параметрах <link linkend="conf-configure-flags"
 >configure-flags</link
 > і <link linkend="conf-cmake-options"
@@ -3167,23 +3351,33 @@ end module
 <row id="conf-dest-dir">
 <entry
 >dest-dir</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Скористайтеся цим параметром, щоб змінити назву, яку буде дано модулю на диску. Наприклад, якщо вам потрібен модуль extragear/network, за допомогою цього параметра ви можете перейменувати його на extragear-network. Зауважте, що не варто включати до назви модуля каталоги роздільники каталогів, оскільки такі назви можуть призвести до конфлікту з одним з параметрів <link linkend="conf-build-dir"
 >build-dir</link
 > або <link linkend="conf-source-dir"
 >source-dir</link
->. </entry>
+>.</para>
+</entry>
 </row>
 
 <row id="conf-do-not-compile">
 <entry
 >do-not-compile</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Скористайтеся цим параметром, щоб вибрати певний набір каталогів, які не буде зібрано у модулі (замість збирання всіх каталогів). Відокремлювати каталоги у списку слід за допомогою пробілів.</para>
 
 <para
@@ -3208,9 +3402,17 @@ end module
 <row id="conf-git-user">
 <entry
 >git-user</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>15.09</member>
+</simplelist>
 <para
 >Цей параметр призначено для розробників &kde;. Якщо його встановлено, значення буде використано для автоматичного налаштовування даних профілю системи керування версіями &git; для <emphasis
 >нових отриманих</emphasis
@@ -3228,12 +3430,10 @@ end module
 >&gt;</option
 >.</para>
 
-<para>
-<informalexample>
 <para
 >Наприклад, якщо розробника звати «Bozna Khto», а адресою є «bozna@abc.xyz», слід вказати таке:</para>
-
-<screen
+<para>
+<programlisting
 ><symbol
 >git-user</symbol
 > <replaceable
@@ -3241,23 +3441,27 @@ end module
 > &lt;<replaceable
 >bozna@abc.xyz</replaceable
 >&gt;
-</screen>
-</informalexample>
+</programlisting>
 </para>
 
-<para
->Цей параметр було додано у &kdesrc-build; 15.09. </para>
 </entry>
 </row>
 
 <row id="conf-http-proxy">
 <entry
 >http-proxy</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Цей параметр, якщо його встановлено, використовується для визначення адреси проксі-сервера, яким слід користуватися для обміну даними у мережі за допомогою HTTP (наприклад під час отримання <link linkend="kde-projects-module-sets"
 >бази даних проєктів KDE</link
 >).</para>
@@ -3268,28 +3472,31 @@ end module
 > буде встановлене значення позначеного сервера, <emphasis
 >якщо для цієї змінної ще не встановлено жодного значення</emphasis
 >.</para>
-
-<para
->Цей параметр було додано у &kdesrc-build; 1.16.</para>
 </entry>
 </row>
 
 <row id="conf-directory-layout">
 <entry
 >directory-layout</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
->За допомогою цього параметра можна налаштувати компонування, яким &kdesrc-build; користуватиметься при створенні каталогів із початковим кодом та каталогів для збирання.</para>
-<para
->У поточній версії передбачено три можливих значення: <userinput
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Коректні значення</member
+><member
+><userinput
 >flat</userinput
 >, <userinput
 >invent</userinput
-> та <userinput
+>, <userinput
 >metadata</userinput
->.</para>
+></member>
+</simplelist>
+<para
+>За допомогою цього параметра можна налаштувати компонування, яким &kdesrc-build; користуватиметься при створенні каталогів із початковим кодом та каталогів для збирання.</para>
 <para
 >Якщо буде використано компонування <userinput
 >flat</userinput
@@ -3326,13 +3533,19 @@ end module
 <row id="conf-include-dependencies">
 <entry
 >include-dependencies</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+</simplelist>
 <para
->За допомогою цього параметра, якщо встановлено значення <userinput
->true</userinput
->, можна наказати &kdesrc-build; включити відомі залежності модуля до його налаштувань збирання, без потреби у явному визначенні цих залежностей (навіть опосередковано).</para>
+>Керує тим, чи слід &kdesrc-build; включити відомі залежності модуля до його налаштувань збирання, без потреби у явному визначенні цих залежностей (навіть опосередковано).</para>
 
 <note
 ><para
@@ -3346,59 +3559,90 @@ end module
 ></note>
 
 <para
->Типово, цей параметр увімкнено для забезпечення підтримки збирання програм, які потребують версій &Qt; або Плазми, які є новішими за ті, підтримку яких передбачено у типових операційних системах.</para>
+>Для забезпечення підтримки збирання програм, які потребують версій &Qt; або Плазми, які є новішими за ті, підтримку яких передбачено у типових операційних системах.</para>
 </entry>
 </row>
 
 <row id="conf-install-after-build">
 <entry
 >install-after-build</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
->Цей параметр використовується для встановлення пакунка після його успішного збирання. Типово, цей параметр увімкнено. Якщо ви бажаєте вимкнути його, вам слід встановити для нього значення <userinput
->false</userinput
-> у <link linkend="configure-data"
->файлі налаштувань</link
->. Крім того, ви можете скористатися параметром командного рядка <link linkend="cmdline-no-install"
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+</simplelist>
+<para
+>Цей параметр використовується для встановлення пакунка після його успішного збирання. Крім того, ви можете скористатися параметром командного рядка <link linkend="cmdline-no-install"
 ><option
 >--no-install</option
 ></link
->. </entry>
+>.</para>
+</entry>
 </row>
 
 <row id="conf-kdedir">
 <entry
 >kdedir</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
->За допомогою цього параметра можна вказати каталог, до якого буде встановлено &kde; після збирання. Типовим значення параметра є <filename class="directory"
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+><filename class="directory"
 >~/kde/usr</filename
->. Якщо ви зміните значення так, що воно вказуватиме на каталог, для доступу до якого потрібні права користувача root, ймовірно, вам слід прочитати і про параметр <link linkend="conf-make-install-prefix"
+></member>
+</simplelist>
+<para
+>За допомогою цього параметра можна вказати каталог, до якого буде встановлено &kde; після збирання. Якщо ви зміните значення так, що воно вказуватиме на каталог, для доступу до якого потрібні права користувача root, ймовірно, вам слід прочитати і про параметр <link linkend="conf-make-install-prefix"
 >make-install-prefix</link
->.</entry>
+>.</para>
+</entry>
 </row>
 
 <row id="conf-libname">
 <entry
 >libname</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+>Автовиявлення</member>
+</simplelist>
+<para
 >Встановіть значення цього параметра, щоб змінити типову назву каталогу встановлених бібліотек у $<envar
 >KDEDIR</envar
 > і $<envar
 >QTDIR</envar
->. У багатьох системах це або «lib», або «lib64». Типово, буде виконано спробу автоматичного визначення належної назви, але якщо програма визначає помилкову назву, її можна змінити за допомогою цього параметра. </entry>
+>. У багатьох системах це або «lib», або «lib64». Типово, буде виконано спробу автоматичного визначення належної назви, але якщо програма визначає помилкову назву, її можна змінити за допомогою цього параметра.</para>
+</entry>
 </row>
 
 <row id="conf-libpath">
 <entry
 >libpath</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Встановіть значення для цього параметра значення, щоб змінити значення змінної середовища <envar
 >LD_LIBRARY_PATH</envar
 > на час збирання. Ви не зможете перевизначити цей параметр на рівні модулів. Типовим є порожнє значення, але шляхи <filename class="directory"
@@ -3413,40 +3657,57 @@ end module
 >/$<envar
 >LIBNAME</envar
 ></filename
-> буде додано автоматично. Ви можете скористатися тильдою (~) у будь-якому зі шляхів, які ви додасте за допомогою цього параметра. </entry>
+> буде додано автоматично. Ви можете скористатися тильдою (~) у будь-якому зі шляхів, які ви додасте за допомогою цього параметра.</para>
+</entry>
 </row>
 
 <row id="conf-log-dir">
 <entry
 >log-dir</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
->Скористайтеся цим параметром, щоб змінити каталог, у якому зберігатимуться файли журналу, створені скриптом. </entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
+>Скористайтеся цим параметром, щоб змінити каталог, у якому зберігатимуться файли журналу, створені скриптом.</para>
+</entry>
 </row>
 
 <row id="conf-make-install-prefix">
 <entry
 >make-install-prefix</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Встановіть для цієї змінної значення відокремленого пробілами списку, який скрипт вважатиме командою і її параметрами, які передують команді <userinput
 ><command
 >make</command
 > <option
 >install</option
 ></userinput
->, призначеній для встановлення модулів. Наприклад, цей параметр буде корисним для встановлення пакунків за допомогою &sudo;, але, будь ласка, будьте обережними з використанням прав доступу адміністративного користувача.</entry>
+>, призначеній для встановлення модулів. Наприклад, цей параметр буде корисним для встановлення пакунків за допомогою &sudo;, але, будь ласка, будьте обережними з використанням прав доступу адміністративного користувача.</para
+></entry>
 </row>
 
 <row id="conf-make-options">
 <entry
 >make-options</entry>
-<entry
->Параметр модуля перевизначає загальний параметр (параметри системи збирання)</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Встановіть значення для цієї змінної, щоб передати параметри командного рядка команді <command
 >make</command
 >. Подібні параметри будуть корисним для програм на зразок <ulink url="https://github.com/distcc/distcc"
@@ -3472,45 +3733,60 @@ end module
 <row id="conf-manual-build">
 <entry
 >manual-build</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+</simplelist>
+<para
 >Встановіть для цього параметра значення <userinput
 >true</userinput
 >, щоб під час процесу збирання скрипт не намагався зібрати цей модуль. Модуль все ж буде оновлено під час оновлення зі сховища &git;. Цей параметр у точності збігається з параметром командного рядка <link linkend="cmdline-no-build"
 ><option
 >--no-build</option
 ></link
->. </entry>
+>. </para>
+</entry>
 </row>
 
 <row id="conf-manual-update">
 <entry
 >manual-update</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+</simplelist>
+<para
 >Встановіть для цього параметра значення <userinput
 >true</userinput
->, щоб процес збирання не намагався оновити (і отже зібрати і встановити) цей модуль. Якщо ви встановите цей параметр для певного модуля, вам варто закоментувати його. </entry>
-</row>
-
-<row id="conf-niceness">
-<entry
->niceness</entry>
-<entry
->Неможливо перевизначити</entry>
-<entry
->Значенням цього параметра є ціле число у діапазоні від 20 до 0. Чим вищим буде це число, тим нижчим встановлюватиметься пріоритет процесу &kdesrc-build;, тобто, чим вищим є число, тим вищим є «пріоритет» програми. Типовим значенням є 10. </entry>
+>, щоб процес збирання не намагався оновити (і отже зібрати і встановити) цей модуль. Якщо ви встановите цей параметр для певного модуля, вам варто закоментувати його.</para>
+</entry>
 </row>
 
 <row id="conf-ninja-options">
 <entry
 >ninja-options</entry>
-<entry
->Параметр модуля перевизначає загальний параметр (параметри системи збирання)</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Встановіть значення для цієї змінної, щоб передати параметри командного рядка для команди збирання <command
 >ninja</command
 >. За допомогою цього значення можна увімкнути «докладний» режим виведення даних або вручну зменшити кількість паралельних завдань зі збирання для <command
@@ -3535,7 +3811,6 @@ end module
 >ninja</command
 >.</para>
 
-<informalexample>
 <programlisting
 >options <replaceable
 >qtwebengine</replaceable>
@@ -3551,7 +3826,6 @@ end module
 >6</replaceable>
 end options
 </programlisting>
-</informalexample>
 </note>
 </entry>
 </row>
@@ -3559,21 +3833,44 @@ end options
 <row id="conf-no-src">
 <entry
 >no-src</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
->Якщо для цього параметра встановлення значення «true», &kdesrc-build; не оновлюватиме код модуля автоматично. Скрипт все ж намагатиметься зібрати цей модуль, якщо згідно налаштувань його слід спробувати зібрати.</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+</simplelist>
+<para
+>Якщо для цього параметра встановлення значення «true», &kdesrc-build; не оновлюватиме код модуля автоматично. Скрипт все ж намагатиметься зібрати цей модуль, якщо згідно налаштувань його слід спробувати зібрати.</para>
+</entry>
 </row>
 
 <row id="conf-override-build-system">
 <entry
 >override-build-system</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
->Цей параметр для досвідчених користувачів було додано у &kdesrc-build; 1.16.</para>
-
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+>Автовиявлення</member>
+<member
+>Коректні значення</member
+><member
+>KDE, Qt, qmake, generic, autotools, meson</member>
+<member
+>Доступний з версії</member
+><member
+>1.16</member>
+</simplelist>
 <para
 >Зазвичай, &kdesrc-build; автоматично визначає систему збирання, яку слід використати для модуля, після отримання його коду. Визначення виконується за допомогою пошуку специфічних файлів у каталозі з кодами модуля.</para>
 
@@ -3646,10 +3943,14 @@ end options
 <row id="conf-prefix">
 <entry
 >prefix</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >За допомогою цього параметра можна вказати місце, куди слід встановити модуль (зазвичай, буде використано значення параметра <option
 ><link linkend="conf-kdedir"
 >kdedir</link
@@ -3667,24 +3968,37 @@ end options
 <row id="conf-purge-old-logs">
 <entry
 >purge-old-logs</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
->За допомогою цього параметра можна наказати скрипту автоматично вилучати старі каталоги журналів або не робити цього. Типовим значенням є <replaceable
->true</replaceable
-> (вилучати).</para>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+</simplelist>
+<para
+>За допомогою цього параметра можна наказати скрипту автоматично вилучати старі каталоги журналів або не робити цього.</para>
 </entry>
 </row>
 
 <row id="conf-qmake-options">
 <entry
 >qmake-options</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Усі вказані тут параметри буде передано програмі <command
 >qmake</command
 > для модулів, у яких використовується система збирання <symbol
@@ -3692,35 +4006,51 @@ end options
 >. Наприклад, ви можете скористатися параметром qmake <userinput
 >PREFIX=/шлях/до/qt</userinput
 >, для перевизначення місця, куди буде встановлено модуль. </para>
-<para
->Цей параметр було додано у версії &kdesrc-build; 1.16.</para>
 </entry>
 </row>
 
 <row id="conf-qtdir">
 <entry
 >qtdir</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Вкажіть значення для цього параметра, щоб визначити змінну середовища <envar
 >QTDIR</envar
-> на час збирання. Якщо ви не вкажете значення для параметра, &kdesrc-build; вважатиме, що слід використовувати бібліотеки &Qt; з операційної системи. </entry>
+> на час збирання. Якщо ви не вкажете значення для параметра, &kdesrc-build; вважатиме, що слід використовувати бібліотеки &Qt; з операційної системи. </para>
+</entry>
 </row>
 
 <row id="conf-remove-after-install">
 <entry
 >remove-after-install</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Коректні значення</member
+><member
+>none, builddir, all</member>
+<member
+>Типове значення</member
+><member
+>none</member>
+</simplelist>
+<para
 >Якщо на жорсткому диску вашого комп’ютера мало місця, ймовірно, вам слід скористатися цим параметром для того, щоб автоматично вилучити каталог збирання (або одночасно каталоги кодів зі збирання для одноразового встановлення) після того, як модуль буде успішно встановлено. </para>
 <para
 >Можливими значення цього параметра є: <itemizedlist>
 <listitem
 ><para
->none — Нічого не вилучати (Типове значення).</para
+>none — Нічого не вилучати.</para
 ></listitem>
 <listitem
 ><para
@@ -3743,64 +4073,87 @@ end options
 <row id="conf-repository">
 <entry
 >repository</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
->Цей параметр було додано у версії 1.10. За його допомогою можна вказати сховище &git;, звідки слід отримувати коди модуля. Цей параметр потрібен для &Qt; (і отже qt), а також різноманітних модулів &kde;, які перебувають у стані переходу на використання &git;.</para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.10</member>
+</simplelist>
+<para
+>За допомогою цього параметра можна вказати сховище &git;, звідки слід отримувати коди модуля. Цей параметр потрібен для &Qt; (і отже qt), а також різноманітних модулів &kde;, які перебувають у стані переходу на використання &git;.</para
 ></entry>
 </row>
 
 <row id="conf-revision">
 <entry
 >revision</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Якщо встановити для цього параметра значення, відмінне від 0 (нуля), &kdesrc-build; примусово виконає оновлення початкового коду до точно вказаної версії модуля, навіть якщо діють параметри на зразок <link linkend="conf-branch"
 >branch</link
 >. Якщо ви вже маєте модуль вказаної версії, його не буде оновлено до того часу, доки цей параметр налаштування не буде змінено або вилучено.</para>
-
-<note
-><para
->Цей параметр не працював для модулів з кодом у git (зокрема модулів <link linkend="kde-projects-module-sets"
->kde-projects</link
->) до версії &kdesrc-build; 1.16.</para
-></note>
-
 </entry>
 </row>
 
 <row id="conf-run-tests">
 <entry
 >run-tests</entry>
-<entry
->Параметр модуля перевизначає загальний параметр (параметри системи збирання)</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+</simplelist>
+<para
 >Якщо значенням цього параметра буде <userinput
 >true</userinput
->, модуль буде зібрано з підтримкою запуску комплексу тестів, комплекс тестів буде виконано у процесі збирання. &kdesrc-build; покаже вам спрощений звіт щодо результатів тестування. Цей параметр буде корисним для розробників або тих, хто бажає переконатися, що систему налаштовано належним чином.</entry>
+>, модуль буде зібрано з підтримкою запуску комплексу тестів, комплекс тестів буде виконано у процесі збирання. &kdesrc-build; покаже вам спрощений звіт щодо результатів тестування. Цей параметр буде корисним для розробників або тих, хто бажає переконатися, що систему налаштовано належним чином.</para
+></entry>
 </row>
 
 <row id="conf-set-env">
 <entry
 >set-env</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+</simplelist>
+<para
 >Цей параметр приймає розділений пробілами набір значень, де перше значення є змінною середовища, яку слід встановити, а решта значень вважатиметься значенням змінної. Наприклад, щоб встановити для змінної <envar
 >RONALD</envar
 > значення McDonald, вам слід вказати у відповідному розділі таку команду:</para>
-<screen
+<programlisting
 ><command
 >set-env</command
 > <envar
 >RONALD</envar
 > <userinput
 >McDonald</userinput
-></screen>
+>
+</programlisting>
 <para
 >Цей параметр має особливість: його можна повторювати без перевизначення раніше встановлених параметрів set-env у одному і тому ж розділі <link linkend="configure-data"
 >файла налаштувань</link
@@ -3811,34 +4164,60 @@ end options
 <row id="conf-source-dir">
 <entry
 >source-dir</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
->Цей параметр використовується для встановлення каталогу, у якому &git; слід зберігати коди &kde;. Якщо ви не вкажете це значення, його типовим значенням буде <filename class="directory"
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Типове значення</member
+><member
+><filename class="directory"
 >~/kde/src</filename
->. Ви можете скористатися тильдою (~) для позначення домашнього каталогу. </entry>
+></member>
+</simplelist>
+<para
+>Цей параметр використовується для встановлення каталогу, у якому &git; слід зберігати коди &kde;. Ви можете скористатися тильдою (~) для позначення домашнього каталогу.</para>
+</entry>
 </row>
 
 <row id="conf-stop-on-failure">
 <entry
 >stop-on-failure</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>True</member>
+</simplelist>
+<para
 >Встановлення для цього параметра значення <userinput
 >false</userinput
-> надає змогу продовжити виконання скрипту, якщо під час збирання або встановлення трапляться помилки. Типово, цей параметр має значення <literal
->true</literal
->. </entry>
+> надає змогу продовжити виконання скрипту, якщо під час збирання або встановлення трапляться помилки.</para>
+</entry>
 </row>
 
 <row id="conf-tag">
 <entry
 >tag</entry>
-<entry
->Параметр модуля перевизначає загальний параметр</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Використовуйте цей параметр для отримання певної версії модуля.</para>
 <para
 ><emphasis
@@ -3848,21 +4227,28 @@ end options
 > цей параметр. Випуски &kde; можна отримати у форматі архівів з <ulink url="https://download.kde.org/"
 >сайта отримання пакунків &kde;</ulink
 >.</para>
-
-<note
-><para
->Підтримку цього параметра передбачено лише для модулів з кодом у git з версії &kdesrc-build; 1.16.</para
-></note>
 </entry>
 </row>
 
 <row id="conf-use-clean-install">
 <entry
 >use-clean-install</entry>
-<entry
->Параметр модуля перевизначає загальний параметр (параметри системи збирання)</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Булеве</member>
+<member
+>Типове значення</member
+><member
+>False</member>
+<member
+>Доступний з версії</member
+><member
+>1.12</member>
+</simplelist>
+<para
 >Встановіть для цього параметра значення <userinput
 >true</userinput
 >, якщо &kdesrc-build; слід виконати <command
@@ -3875,9 +4261,6 @@ end options
 >Цей параметр може бути корисним для забезпечення вилучення застарілих файлів бібліотек, метаданих &cmake; тощо, які можуть призвести до проблем у екземплярах &kde;, які мають довгу історію. Втім, цей параметр допоможе позбутися зайвих даних лише у системах збирання, у яких передбачено підтримку виконання команди <command
 >make uninstall</command
 >.</para>
-
-<para
->Цей параметр було додано у &kdesrc-build; 1.12, але не було задокументовано до версії &kdesrc-build; 1.16.</para>
 </entry>
 </row>
 
@@ -3890,16 +4273,14 @@ end options
 <table id="options-module-set-table">
 <title
 >Параметри області наборів модулів</title>
-<tgroup cols="3">
+<tgroup cols="2">
 
 <thead>
 <row>
 <entry
 >Назва параметра</entry>
 <entry
->Модуль -&gt; Загальна поведінка</entry>
-<entry
->Нотатки</entry>
+>Опис</entry>
 </row>
 </thead>
 <tbody>
@@ -3907,22 +4288,24 @@ end options
 <row id="conf-use-modules">
 <entry
 >use-modules</entry>
-<entry
->Можна використовувати лише у <link linkend="module-sets"
->module-set</link
-></entry>
-<entry
-><para
->За допомогою цього параметра, доданого у &kdesrc-build; 1.12.1, вам буде простіше вказати набір модулів, які збиратимуться на певному етапі, у <link linkend="kdesrc-buildrc"
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>За допомогою цього параметра вам буде простіше вказати набір модулів, які збиратимуться на певному етапі, у <link linkend="kdesrc-buildrc"
 >файлі налаштування</link
 >.</para>
 
 <para
->Використовувати цей параметр можна <emphasis
->лише</emphasis
-> у межах визначення <literal
->module-set</literal
->. Всі ідентифікатори, передані цьому параметру, перетворюються у розгорнуту форму у модулі &kdesrc-build;. Значення параметра <link linkend="conf-repository"
+>Всі ідентифікатори, передані цьому параметру, перетворюються у розгорнуту форму у модулі &kdesrc-build;. Значення параметра <link linkend="conf-repository"
 ><option
 >repository</option
 ></link
