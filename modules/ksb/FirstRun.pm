@@ -307,6 +307,7 @@ DONE
     $sampleRc =~ s/%\{stop-on-failure}/$gl->{"stop-on-failure"}/g;
     $sampleRc =~ s/%\{compile-commands-linking}/$gl->{"compile-commands-linking"}/g;
     $sampleRc =~ s/%\{compile-commands-export}/$gl->{"compile-commands-export"}/g;
+    $sampleRc =~ s/%\{generate-vscode-project-config}/$gl->{"generate-vscode-project-config"}/g;
 
     make_path($xdgConfigHome);
 

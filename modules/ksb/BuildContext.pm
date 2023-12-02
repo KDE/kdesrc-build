@@ -124,21 +124,22 @@ my %internalGlobalOptions = (
 # ksb::Cmdline to GetOptionsFromArray! This is now checked at runtime so
 # if you forget the test suite should catch you.
 our %defaultGlobalFlags = (
-    "delete-my-patches"          => 0, # Should only be set from cmdline
-    "delete-my-settings"         => 0, # Should only be set from cmdline
-    "disable-agent-check"        => 0, # If true we don't check on ssh-agent
-    "compile-commands-export"    => 1, # 2021-02-06 allow to generate compile_commands.json via cmake, for clangd tooling
-    "compile-commands-linking"   => 0, # 2021-02-06 link generated compile_commands.json back to the source directory
-    "include-dependencies"       => 1,
-    "install-after-build"        => 1,
-    "install-environment-driver" => 1, # Setup ~/.config/kde-env-*.sh for login scripts
-    "install-session-driver"     => 0, # Above, + ~/.xsession
-    "purge-old-logs"             => 1,
-    "run-tests"                  => 0,  # 1 = make test, upload = make Experimental
-    "stop-on-failure"            => 1,
-    "use-clean-install"          => 0,
-    "use-idle-io-priority"       => 0,
-    "use-inactive-modules"       => 0,
+    "delete-my-patches"              => 0, # Should only be set from cmdline
+    "delete-my-settings"             => 0, # Should only be set from cmdline
+    "disable-agent-check"            => 0, # If true we don't check on ssh-agent
+    "compile-commands-export"        => 1, # 2021-02-06 allow to generate compile_commands.json via cmake, for clangd tooling
+    "compile-commands-linking"       => 0, # 2021-02-06 link generated compile_commands.json back to the source directory
+    "generate-vscode-project-config" => 0,
+    "include-dependencies"           => 1,
+    "install-after-build"            => 1,
+    "install-environment-driver"     => 1, # Setup ~/.config/kde-env-*.sh for login scripts
+    "install-session-driver"         => 0, # Above, + ~/.xsession
+    "purge-old-logs"                 => 1,
+    "run-tests"                      => 0,  # 1 = make test, upload = make Experimental
+    "stop-on-failure"                => 1,
+    "use-clean-install"              => 0,
+    "use-idle-io-priority"           => 0,
+    "use-inactive-modules"           => 0,
 );
 
 # Holds other cmdline-accessible options that aren't simply binary flags.

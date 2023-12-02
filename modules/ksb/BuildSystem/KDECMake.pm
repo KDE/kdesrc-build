@@ -372,6 +372,12 @@ sub configureInternal
     my $self = assert_isa(shift, 'ksb::BuildSystem::KDECMake');
     my $module = $self->module();
 
+    if ($module->getOption('generate-vscode-project-config')) {
+        generateVSCodeConfig($module);
+    } else {
+        debug ("\tGenerating .vscode directory - disabled for this module");
+    }
+
     # Use cmake to create the build directory (sh script return value
     # semantics).
     if ($self->_safe_run_cmake())
@@ -389,6 +395,98 @@ sub configureInternal
     }
 
     return 1;
+}
+
+# Generate default config files for VSCode.
+#
+# This populates the settings VSCode needs to work with most KDE projects,
+# such as C++ support, correct build directory, and LSP / IntelliSense.
+sub generateVSCodeConfig
+{
+    if (pretending()) {
+        pretend ("\tWould have generated .vscode directory");
+        return;
+    }
+    
+    my $module = shift;
+    my $projectName = $module->name();
+    my $buildDir = $module->fullpath('build');
+    my $srcDir = $module->fullpath('source');
+    my $installDir = $module->installationPath();
+    my $libDir = $module->getOption('libname');
+    my $configDir = "$srcDir/.vscode";
+
+    if (-e $configDir) {
+        if (-d $configDir) {
+            debug ("\tGenerating .vscode directory - skipping as it already exists");
+        } elsif (-f $configDir) {
+            error ("\tGenerating .vscode directory - cannot proceed, file .vscode exists");
+        }  
+        return;
+    } else {
+        debug ("\tGenerating .vscode directory for $projectName: $configDir");
+    }
+
+    mkdir($configDir);
+
+    use FindBin;
+    my $baseDir = $FindBin::RealBin;
+    my $dataDir = "$baseDir/data/vscode";
+
+    # c_cpp_properties.json configures C++, CMake & IntelliSense.
+    my $cCppPropertiesJson = _readFile("$dataDir/c_cpp_properties.json.in");
+
+    # settings.json configures the paths for CMake, QML, Qt, etc.
+    my $settingsJson = _readFile("$dataDir/settings.json.in");
+    $settingsJson =~ s/\$buildDir/$buildDir/g;
+    $settingsJson =~ s/\$installDir/$installDir/g;
+    $settingsJson =~ s/\$libDir/$libDir/g;
+
+    # extensions.json recommends extensions to install/enable.
+    my $extensionsJson = _readFile("$dataDir/extensions.json.in");
+
+    # launch.json configures the run with debugger functionality.
+    my $launchJson = _readFile("$dataDir/launch.json.in");
+
+    _writeToFile("$configDir/c_cpp_properties.json", $cCppPropertiesJson);
+    _writeToFile("$configDir/settings.json", $settingsJson);
+    _writeToFile("$configDir/extensions.json", $extensionsJson);
+    _writeToFile("$configDir/launch.json", $launchJson);
+
+    return 1;
+}
+
+# Reads the contents of a file.
+# 
+# Arguments:
+#  $file_path: The path to the file to read.
+# 
+# Returns: The contents of the file as a string.
+sub _readFile
+{
+    my ($file_path) = @_;
+
+    open my $file, '<', $file_path or warning("\tCouldn't open $file_path: $!");
+    my $content = do { local $/; <$file> };
+    close $file;
+
+    return $content;
+}
+
+# Writes content to a file.
+# 
+# Arguments:
+#  $file_path: The path to the file to write to.
+#  $content: The content to write to the file.
+#
+# Returns: Nothing.
+sub _writeToFile
+{
+    my ($file_path, $content) = @_;
+
+    open my $file, '>', $file_path or warning("\tCouldn't open $file_path: $!");
+    print $file $content or warning("\tCouldn't write to $file_path: $!");
+    close $file or warning("\tError closing $file_path: $!");
 }
 
 # Return value style: hashref to build results object (see ksb::BuildSystem::safe_make)
