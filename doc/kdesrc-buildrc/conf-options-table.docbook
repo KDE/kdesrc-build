@@ -104,95 +104,6 @@ protocol is most efficient.</para>
 </entry>
 </row>
 
-<row id="conf-git-repository-base">
-<entry>git-repository-base</entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member>Type</member><member>String</member>
-<member>Available since</member><member>1.12.1</member>
-</simplelist>
-<para>This option is used to create a short
-name to reference a specific Git repository base URL in later <link
-linkend="module-sets">module set</link> declarations, which is useful for
-quickly declaring many Git modules to build.</para>
-
-<para>You must specify two things (separated by a space): The name to assign
-to the base URL, and the actual base URL itself. For example:</para>
-
-<para>
-<programlisting>
-global
-    # other options
-    # This is the common path to all anonymous Git server modules.
-    git-repository-base <replaceable>kde-git</replaceable> <replaceable>kde:</replaceable>
-end global
-
-# Module declarations
-
-module-set
-    # Now you can use the alias you defined earlier, but <emphasis>only</emphasis> in a module-set.
-    repository <replaceable>kde-git</replaceable>
-    <link linkend="conf-use-modules">use-modules</link> <replaceable>module1.git</replaceable> <replaceable>module2.git</replaceable>
-end module-set
-</programlisting>
-</para>
-
-<para>The module-set's <literal>use-modules</literal> option created two modules
-internally, with &kdesrc-build; behaving as if it had read:</para>
-
-<programlisting>
-module module1
-    repository kde:<replaceable>module1.git</replaceable>
-end module
-
-module module2
-    repository kde:<replaceable>module2.git</replaceable>
-end module
-</programlisting>
-
-<para>The <literal>kde:</literal> &git; repository prefix used above is a
-shortcut which will be setup by &kdesrc-build; automatically. See the TechBase
-<ulink
-url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming">URL
-Renaming</ulink> article for more information. Note that unlike most other
-options, this option can be specified multiple times in order to create as
-many aliases as necessary.</para>
-
-<tip><para>It is not required to use this option to take advantage of module-set,
-this option exists to make it easy to use the same repository across many
-different module sets.</para></tip>
-</entry>
-</row>
-
-<row id="conf-ignore-modules">
-<entry>ignore-modules</entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member>Type</member><member>String</member>
-<member>Available since</member><member>1.16</member>
-</simplelist>
-<para>Modules named by this option, which would be chosen by &kdesrc-build;
-due to a <link linkend="conf-use-modules">use-modules</link> option, are
-instead skipped entirely. Use this option when you want to build an entire
-<link linkend="kde-projects-module-sets">kde-projects</link> project grouping
-<emphasis>except for</emphasis> some specific modules.</para>
-
-<para>The option value does not necessarily have to name the module directly.
-Any module that has full consecutive parts of its <link
-linkend="kde-projects-module-sets">&kde; projects module path</link> match one
-of the option values will be ignored, so you can ignore multiple modules this
-way.</para>
-
-<para>For example, an option value of <replaceable>libs</replaceable> would
-result in both <symbol>kde/kdegraphics/libs</symbol> and
-<symbol>playground/libs</symbol> being excluded (though not
-<symbol>kde/kdelibs</symbol> since the full part <quote>kdelibs</quote> is what
-is compared).</para>
-
-<tip><para>See also <xref linkend="example-ignoring-a-module"/>.</para></tip>
-</entry>
-</row>
-
 <row id="conf-install-environment-driver">
 <entry>install-environment-driver</entry>
 <entry>
@@ -1302,7 +1213,7 @@ installations. However this only works on build systems that support
 
 
 <table id="options-module-set-table">
-<title>Module-set scope only options</title>
+<title>Module-set and global scope options</title>
 <tgroup cols="2">
 
 <thead>
@@ -1313,6 +1224,97 @@ installations. However this only works on build systems that support
 </thead>
 <tbody>
 
+<row id="conf-git-repository-base">
+<entry>git-repository-base</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member>Type</member><member>String</member>
+<member>Available since</member><member>1.12.1</member>
+</simplelist>
+<para>This option is used to create a short
+name to reference a specific Git repository base URL in later <link
+linkend="module-sets">module set</link> declarations, which is useful for
+quickly declaring many Git modules to build.</para>
+
+<para>You must specify two things (separated by a space): The name to assign
+to the base URL, and the actual base URL itself. For example:</para>
+
+<para>
+<programlisting>
+global
+    # other options
+    # This is the common path to all anonymous Git server modules.
+    git-repository-base <replaceable>kde-git</replaceable> <replaceable>kde:</replaceable>
+end global
+
+# Module declarations
+
+module-set
+    # Now you can use the alias you defined earlier, but <emphasis>only</emphasis> in a module-set.
+    repository <replaceable>kde-git</replaceable>
+    <link linkend="conf-use-modules">use-modules</link> <replaceable>module1.git</replaceable> <replaceable>module2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para>The module-set's <literal>use-modules</literal> option created two modules
+internally, with &kdesrc-build; behaving as if it had read:</para>
+
+<programlisting>
+module module1
+    repository kde:<replaceable>module1.git</replaceable>
+end module
+
+module module2
+    repository kde:<replaceable>module2.git</replaceable>
+end module
+</programlisting>
+
+<para>The <literal>kde:</literal> &git; repository prefix used above is a
+shortcut which will be setup by &kdesrc-build; automatically. See the TechBase
+<ulink
+url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming">URL
+Renaming</ulink> article for more information. Note that unlike most other
+options, this option can be specified multiple times in order to create as
+many aliases as necessary.</para>
+
+<tip><para>It is not required to use this option to take advantage of module-set,
+this option exists to make it easy to use the same repository across many
+different module sets.</para></tip>
+</entry>
+</row>
+
+<row id="conf-ignore-modules">
+<entry>ignore-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member>Type</member><member>String</member>
+<member>Available since</member><member>1.16</member>
+</simplelist>
+<para>Currently can only be used in module-set, see <ulink
+url="https://bugs.kde.org/show_bug.cgi?id=472917">Bug 472917</ulink>.</para>
+<para>Modules named by this option, which would be chosen by &kdesrc-build;
+due to a <link linkend="conf-use-modules">use-modules</link> option, are
+instead skipped entirely. Use this option when you want to build an entire
+<link linkend="kde-projects-module-sets">kde-projects</link> project grouping
+<emphasis>except for</emphasis> some specific modules.</para>
+
+<para>The option value does not necessarily have to name the module directly.
+Any module that has full consecutive parts of its <link
+linkend="kde-projects-module-sets">&kde; projects module path</link> match one
+of the option values will be ignored, so you can ignore multiple modules this
+way.</para>
+
+<para>For example, an option value of <replaceable>libs</replaceable> would
+result in both <symbol>kde/kdegraphics/libs</symbol> and
+<symbol>playground/libs</symbol> being excluded (though not
+<symbol>kde/kdelibs</symbol> since the full part <quote>kdelibs</quote> is what
+is compared).</para>
+
+<tip><para>See also <xref linkend="example-ignoring-a-module"/>.</para></tip>
+</entry>
+</row>
+
 <row id="conf-use-modules">
 <entry>use-modules</entry>
 <entry>
@@ -1320,6 +1322,7 @@ installations. However this only works on build systems that support
 <member>Type</member><member>String</member>
 <member>Available since</member><member>1.12.1</member>
 </simplelist>
+<para>Can only be used in <link linkend="module-sets">module-set</link>.</para>
 <para>This option allows you to easily
 specify many different modules to build at the same point in <link
 linkend="kdesrc-buildrc">the configuration file</link>.</para>
