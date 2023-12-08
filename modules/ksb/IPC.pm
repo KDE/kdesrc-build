@@ -202,8 +202,7 @@ sub waitForEnd
 
     $self->waitForStreamStart();
     while(!$self->{no_update} && !$self->{updates_done}) {
-        my $buffer;
-        my $ipcType = $self->receiveIPCMessage(\$buffer);
+        my ($ipcType, $buffer) = $self->receiveIPCMessage();
 
         # We ignore the return value in favor of ->{updates_done}
         $self->_updateSeenModulesFromMessage($ipcType, $buffer);
@@ -234,8 +233,7 @@ sub waitForModule
 
     my $message;
     while(! defined $updated->{$moduleName} && !$self->{updates_done}) {
-        my $buffer;
-        my $ipcType = $self->receiveIPCMessage(\$buffer);
+        my ($ipcType, $buffer) = $self->receiveIPCMessage();
 
         $message = $self->_updateSeenModulesFromMessage($ipcType, $buffer);
 
@@ -319,7 +317,7 @@ sub waitForStreamStart
     $waited = 1;
 
     while ($ipcType != ksb::IPC::ALL_UPDATING) {
-        $ipcType = $self->receiveIPCMessage(\$buffer);
+        ($ipcType, $buffer) = $self->receiveIPCMessage();
 
         if (!$ipcType) {
             croak_internal("IPC Failure waiting for stream start :( $!");
@@ -362,36 +360,28 @@ sub sendIPCMessage
 # Static class function to unpack a message.
 #
 # First parameter is the message.
-# Second parameter is a reference to a scalar to store the result in.
 #
-# Returns the IPC message type.
+# Returns the IPC message type and message content.
 sub unpackMsg
 {
-    my ($msg, $outBuffer) = @_;
-    my $returnType;
+    my $msg = shift;
 
-    ($returnType, $$outBuffer) = unpack("l! a*", $msg);
+    my ($returnType, $outBuffer) = unpack("l! a*", $msg);
 
-    return $returnType;
+    return ($returnType, $outBuffer);
 }
 
 # Receives an IPC message and decodes it into the message and its
 # associated type information.
 #
-# First parameter is a *reference* to a scalar to hold the message contents.
-# All remaining parameters are passed to the underlying receiveMessage()
-#  procedure.
-#
-# Returns the IPC type, or undef on failure.
+# Returns the list with IPC type and message content, or list with two undef on failure.
 sub receiveIPCMessage
 {
     my $self = shift;
-    my $outBuffer = shift;
 
     croak_internal("Trying to pull message from closed IPC channel!") if $self->{updates_done};
     my $msg = $self->receiveMessage();
-
-    return ($msg ? unpackMsg($msg, $outBuffer) : undef);
+    return ($msg ? unpackMsg($msg) : (undef, undef));
 }
 
 # These must be reimplemented.  They must be able to handle scalars without
