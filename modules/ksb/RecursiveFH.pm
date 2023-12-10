@@ -1,6 +1,7 @@
 package ksb::RecursiveFH;
 
 use ksb;
+use ksb::Debug;
 
 our $VERSION = '0.10';
 
@@ -142,6 +143,20 @@ sub readLine
 
             $filename =~ s/^~\//$ENV{HOME}\//; # Tilde-expand
             $filename = "$prefix/$filename" unless $filename =~ m(^/);
+
+            # Existing configurations (before 2023 December) may have pointed to the build-include files located in root of project
+            # Warn those users to update the path, and automatically map to new location
+            # TODO remove this check later
+            if ($filename =~ /-build-include$/) {
+                $filename =~ s/-build-include$/.ksb/;
+                $filename =~ s/\/([^\/]+)$/\/data\/build-include\/$1/;  # insert "/data/build-include" before last "/" in string
+                warning (<<~EOM);
+                y[Warning:] The include line defined in $self->{current_fn}:$. uses an old path to build-include file. The build-include files are located in "data/build-include".
+                Please manually edit the line as follows:
+                    include $filename
+                Alternatively, you can regenerate the config with --generate-config option.
+                EOM
+            }
 
             open ($newFh, '<', $filename) or
                 die make_exception('Config', "Unable to open file '$filename' which was included from $self->{current_fn}:$.");
