@@ -290,10 +290,11 @@ DONE
     }
     $numCores ||= 4;
     my $numCoresLow = _getNumCoresForLowMemory($numCores);
+    my $build_include_dir = $baseDir =~ s/^$ENV{HOME}/~/r . "/data/build-include";
 
     $sampleRc =~ s/%\{num_cores}/$numCores/g;
     $sampleRc =~ s/%\{num_cores_low}/$numCoresLow/g;
-    $sampleRc =~ s/%\{base_dir}/$baseDir/g;
+    $sampleRc =~ s/%\{build_include_dir}/$build_include_dir/g;
 
     my $gl = ksb::BuildContext->new()->{"build_options"}->{"global"};  # real global defaults
     $gl->{$_} =~ s|^$ENV{HOME}|~| foreach qw(kdedir source-dir build-dir);
