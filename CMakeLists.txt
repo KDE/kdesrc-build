@@ -50,24 +50,24 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-run DESTINATION ${KDE_INSTAL
 install(PROGRAMS
             ${CMAKE_SOURCE_DIR}/sample-kde-env-master.sh
             ${CMAKE_SOURCE_DIR}/sample-xsession.sh
-            ${CMAKE_SOURCE_DIR}/data/build-include/custom-qt5-libs.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/qt5.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf5-applications.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf5-common-options.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf5-extragear.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf5-frameworks.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf5-kdepim.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf5-qt5.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf5-workspace.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/custom-qt6-libs.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/qt6.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf6-applications.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf6-common-options.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf6-extragear.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf6-frameworks.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf6-kdepim.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf6-qt6.ksb
-            ${CMAKE_SOURCE_DIR}/data/build-include/kf6-workspace.ksb
+            ${CMAKE_SOURCE_DIR}/custom-qt5-libs-build-include
+            ${CMAKE_SOURCE_DIR}/qt5-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-applications-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-common-options-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-extragear-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-frameworks-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-kdepim-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-qt5-build-include
+            ${CMAKE_SOURCE_DIR}/kf5-workspace-build-include
+            ${CMAKE_SOURCE_DIR}/custom-qt6-libs-build-include
+            ${CMAKE_SOURCE_DIR}/qt6-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-applications-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-common-options-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-extragear-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-frameworks-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-kdepim-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-qt6-build-include
+            ${CMAKE_SOURCE_DIR}/kf6-workspace-build-include
     DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
 install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})

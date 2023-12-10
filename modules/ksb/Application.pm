@@ -1126,7 +1126,7 @@ sub _readConfigurationOptions ($ctx, $fh, $cmdlineGlobalOptions, $deferredOption
 
             # NOTE: There is no duplicate options block checking here, and we
             # now currently rely on there being no duplicate checks to allow
-            # for things like kf5-common-options.ksb to be included
+            # for things like kf5-common-options-build-include to be included
             # multiple times.
 
             next; # Don't add to module list
