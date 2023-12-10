@@ -1771,10 +1771,10 @@ sub _installCustomSessionDriver
     s{//+}{/}g foreach @searchPaths; # Remove duplicate slashes
 
     my $envScript = first { -f $_ } (
-        map { "$_/sample-kde-env-master.sh" } @searchPaths
+        map { "$_/data/kde-env-master.sh.in" } @searchPaths
     );
     my $sessionScript = first { -f $_ } (
-        map { "$_/sample-xsession.sh" } @searchPaths
+        map { "$_/data/xsession.sh.in" } @searchPaths
     );
 
     if (!$envScript || !$sessionScript) {

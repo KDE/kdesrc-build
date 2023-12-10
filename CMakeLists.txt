@@ -48,8 +48,8 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${KDE_INST
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-run DESTINATION ${KDE_INSTALL_BINDIR})
 
 install(PROGRAMS
-            ${CMAKE_SOURCE_DIR}/sample-kde-env-master.sh
-            ${CMAKE_SOURCE_DIR}/sample-xsession.sh
+            ${CMAKE_SOURCE_DIR}/data/kde-env-master.sh.in
+            ${CMAKE_SOURCE_DIR}/data/xsession.sh.in
             ${CMAKE_SOURCE_DIR}/data/build-include/custom-qt5-libs.ksb
             ${CMAKE_SOURCE_DIR}/data/build-include/qt5.ksb
             ${CMAKE_SOURCE_DIR}/data/build-include/kf5-applications.ksb
