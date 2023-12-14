@@ -1095,7 +1095,7 @@ sub _readConfigurationOptions ($ctx, $fh, $cmdlineGlobalOptions, $deferredOption
 
             # A moduleset can give us more than one module to add.
             $newModule = _parseModuleSetOptions($ctx, $fileReader,
-                ksb::ModuleSet->new($ctx, $modulename || "<module-set at line $.>"));
+                ksb::ModuleSet->new($ctx, $modulename || "Unnamed module-set at $rcfile:$."));
             $newModule->{'#create-id'} = ++$creation_order;
 
             # Save 'use-modules' entries so we can see if later module decls
