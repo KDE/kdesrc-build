@@ -41,6 +41,7 @@ our @EXPORT = qw(assert_isa assert_in
                  file_digest_md5 safe_unlink safe_system p_chdir
                  pretend_open safe_rmtree is_dir_empty
                  super_mkdir
+                 remake_symlink
                  );
 
 # may be exported but only by request
@@ -1008,6 +1009,39 @@ sub prune_under_directory_p ($module, $dir)
     }
 
     return $promise;
+}
+
+# Make a symlink from dst to src. If symlink exists, ensures that it points to the requested src.
+# Parameters:
+#   src - path to point to (symlink target)
+#   dst - path to point from (symlink name)
+#
+# Return: 1 on success, 0 on failure.
+sub remake_symlink ($src, $dst)
+{
+    if (-f $dst && !-l $dst)  # if dst is not a symlink to file, but a regular file
+    {
+        croak_runtime("Could not create '$dst' symlink, because file with this name exists. Please remove it manually.")
+    };
+
+    if (-d $dst && !-l $dst)  # if dst is not a symlink to directory, but a regular directory
+    {
+        croak_runtime("Could not create '$dst' symlink, because directory with this name exists. Please remove it manually.")
+    };
+
+    if (-l $dst and readlink($dst) ne "$src")  # if dst points to wrong src
+    {
+        if (!unlink ($dst))  # delete wrong symlink
+        {
+            croak_runtime("Could not delete '$dst' symlink (needed to update target location). Please remove it manually.")
+        }
+    }
+
+    if (!-e $dst) {
+        return symlink($src, $dst);
+    }
+
+    return 1;  # success (pointed to correct location already)
 }
 
 1;

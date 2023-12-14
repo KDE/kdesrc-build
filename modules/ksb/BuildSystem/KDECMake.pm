@@ -391,7 +391,9 @@ sub configureInternal
         # symlink itself will keep existing files untouched!
         my $builddir = $module->fullpath('build');
         my $srcdir = $module->fullpath('source');
-        symlink("$builddir/compile_commands.json", "$srcdir/compile_commands.json") if -e "$builddir/compile_commands.json";
+        if (-e "$builddir/compile_commands.json") {
+            remake_symlink("$builddir/compile_commands.json", "$srcdir/compile_commands.json");
+        }
     }
 
     return 1;

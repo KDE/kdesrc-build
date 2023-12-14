@@ -560,23 +560,10 @@ sub getLogPathFor
     super_mkdir($latestPath);
 
     my $symlink = "$latestPath/$moduleName";
+    remake_symlink($logDir, $symlink);
 
-    if (-l $symlink and readlink($symlink) ne $logDir)
-    {
-        unlink($symlink);
-        symlink($logDir, $symlink);
-    }
-    elsif(not -e $symlink)
-    {
-        # Create symlink initially if we've never done it before.
-        symlink($logDir, $symlink);
-    }
-
-    if (-e "$baseLogPath/latest-by-phase/$module/$path") {
-        unlink ("$baseLogPath/latest-by-phase/$module/$path");
-    }
-
-    symlink("$logDir/$path", "$baseLogPath/latest-by-phase/$module/$path");
+    my $symlink2 = "$baseLogPath/latest-by-phase/$module/$path";
+    remake_symlink("$logDir/$path", $symlink2);
 
     return "$logDir/$path";
 }
