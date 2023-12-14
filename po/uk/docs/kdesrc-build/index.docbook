@@ -1151,7 +1151,7 @@ Name=KDE Plasma Desktop (unstable; kdesrc-build)
 
 <para
 >Якщо ви маєте намір власноруч налаштувати підтримку входу до системи, ви можете звернутися до відповідного додатка або переглянути файл <filename
->sample-kde-env-master.sh</filename
+>kde-env-master.sh.in</filename
 >, який є частиною початкових кодів &kdesrc-build;.</para>
 
 </sect2>
@@ -2472,134 +2472,6 @@ end global
 <para
 >У всіх інших випадках не варто встановлювати цей параметр, оскільки типовий протокол є найефективнішим.</para>
 
-</entry>
-</row>
-
-<row id="conf-git-repository-base">
-<entry
->git-repository-base</entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Тип</member
-><member
->Рядок</member>
-<member
->Доступний з версії</member
-><member
->1.12.1</member>
-</simplelist>
-<para
->Цей параметр використовується для скорочення посилань на базову адресу певного сховища Git у наступних оголошеннях <link linkend="module-sets"
->наборів модулів</link
->. Параметр корисний для оголошення збирання декількох модулів Git.</para>
-
-<para
->Вам слід вказати два значення (відокремлених пробілами): назву, яку буде пов’язано з базовою адресою, та саму базову адресу. Приклад:</para>
-
-<para>
-<programlisting
->global
-# інші параметри
-# Загальна адреса всіх модулів сервера Git з анонімним доступом.
-git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Оголошення модулів
-
-module-set
-# Тепер можна скористатися раніше визначеним псевдонімом, але <emphasis
->лише</emphasis>
-# у межах module-set.
-repository <replaceable
->kde-git</replaceable>
-<link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->модуль1.git</replaceable
-> <replaceable
->модуль2.git</replaceable>
-end module-set
-</programlisting>
-</para>
-
-<para
->Параметр <literal
->use-modules</literal
-> набору модулів створив два записи модулів. &kdesrc-build; поводитиметься так, наче було вказано:</para>
-
-<programlisting
->module модуль1
-    repository kde:<replaceable
->модуль1.git</replaceable>
-end module
-
-module модуль2
-    repository kde:<replaceable
->модуль2.git</replaceable>
-end module
-</programlisting>
-
-<para
->Префікс сховища &git; <literal
->kde:</literal
->, використаний вище, є скороченням, яке буде автоматично встановлено &kdesrc-build;. Щоб дізнатися більше, ознайомтеся зі статтею TechBase щодо <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->перейменування адрес</ulink
->. Зауважте, що на відміну від більшості інших параметрів, цей параметр може бути вказано декілька разів з метою визначення потрібних вам замінників адрес.</para>
-
-<tip
-><para
->Для того, щоб скористатися перевагами наборів модулів, не обов’язково використовувати цей параметр. Цей параметр призначено лише для спрощення використання одного сховища у декількох наборах модулів.</para
-></tip>
-</entry>
-</row>
-
-<row id="conf-ignore-modules">
-<entry
->ignore-modules</entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Тип</member
-><member
->Рядок</member>
-<member
->Доступний з версії</member
-><member
->1.16</member>
-</simplelist>
-<para
->Модулі, названі у цьому параметрі, які мало б бути вибрано &kdesrc-build; через визначення параметра <link linkend="conf-use-modules"
->use-modules</link
->, буде повністю пропущено. Цим параметром можна скористатися, якщо ви хочете зібрати всі групи у проєкті <link linkend="kde-projects-module-sets"
->kde-projects</link
->, <emphasis
->окрім</emphasis
-> певних модулів.</para>
-
-<para
->Значення параметра не повинне обов’язково вказувати безпосередньо на назву модуля. Будь-який з модулів, повна частина <link linkend="kde-projects-module-sets"
->шляху до модуля у проєктах &kde;</link
-> якого збігається з одним зі значень параметра, буде проігноровано. Отже, таким чином можна ігнорувати одразу декілька модулів.</para>
-
-<para
->Наприклад, значення параметра <replaceable
->libs</replaceable
-> призведе до того, що буде виключено <symbol
->kde/kdegraphics/libs</symbol
-> і <symbol
->playground/libs</symbol
-> (але не <symbol
->kde/kdelibs</symbol
->, оскільки «kdelibs» не збігається повністю зі значенням параметра).</para>
-
-<tip
-><para
->Див. також розділ <xref linkend="example-ignoring-a-module"/>.</para
-></tip>
 </entry>
 </row>
 
@@ -4312,7 +4184,7 @@ end options
 
 <table id="options-module-set-table">
 <title
->Параметри області наборів модулів</title>
+>Параметри області наборів модулів та загальної області</title>
 <tgroup cols="2">
 
 <thead>
@@ -4324,6 +4196,138 @@ end options
 </row>
 </thead>
 <tbody>
+
+<row id="conf-git-repository-base">
+<entry
+>git-repository-base</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Цей параметр використовується для скорочення посилань на базову адресу певного сховища Git у наступних оголошеннях <link linkend="module-sets"
+>наборів модулів</link
+>. Параметр корисний для оголошення збирання декількох модулів Git.</para>
+
+<para
+>Вам слід вказати два значення (відокремлених пробілами): назву, яку буде пов’язано з базовою адресою, та саму базову адресу. Приклад:</para>
+
+<para>
+<programlisting
+>global
+# інші параметри
+# Загальна адреса всіх модулів сервера Git з анонімним доступом.
+git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Оголошення модулів
+
+module-set
+# Тепер можна скористатися раніше визначеним псевдонімом, але <emphasis
+>лише</emphasis>
+# у межах module-set.
+repository <replaceable
+>kde-git</replaceable>
+<link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>модуль1.git</replaceable
+> <replaceable
+>модуль2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>Параметр <literal
+>use-modules</literal
+> набору модулів створив два записи модулів. &kdesrc-build; поводитиметься так, наче було вказано:</para>
+
+<programlisting
+>module модуль1
+    repository kde:<replaceable
+>модуль1.git</replaceable>
+end module
+
+module модуль2
+    repository kde:<replaceable
+>модуль2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>Префікс сховища &git; <literal
+>kde:</literal
+>, використаний вище, є скороченням, яке буде автоматично встановлено &kdesrc-build;. Щоб дізнатися більше, ознайомтеся зі статтею TechBase щодо <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>перейменування адрес</ulink
+>. Зауважте, що на відміну від більшості інших параметрів, цей параметр може бути вказано декілька разів з метою визначення потрібних вам замінників адрес.</para>
+
+<tip
+><para
+>Для того, щоб скористатися перевагами наборів модулів, не обов’язково використовувати цей параметр. Цей параметр призначено лише для спрощення використання одного сховища у декількох наборах модулів.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-ignore-modules">
+<entry
+>ignore-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>У поточній версії можна використовувати лише для наборів модулів, див. <ulink url="https://bugs.kde.org/show_bug.cgi?id=472917"
+>ваду 472917</ulink
+>.</para>
+<para
+>Модулі, названі у цьому параметрі, які мало б бути вибрано &kdesrc-build; через визначення параметра <link linkend="conf-use-modules"
+>use-modules</link
+>, буде повністю пропущено. Цим параметром можна скористатися, якщо ви хочете зібрати всі групи у проєкті <link linkend="kde-projects-module-sets"
+>kde-projects</link
+>, <emphasis
+>окрім</emphasis
+> певних модулів.</para>
+
+<para
+>Значення параметра не повинне обов’язково вказувати безпосередньо на назву модуля. Будь-який з модулів, повна частина <link linkend="kde-projects-module-sets"
+>шляху до модуля у проєктах &kde;</link
+> якого збігається з одним зі значень параметра, буде проігноровано. Отже, таким чином можна ігнорувати одразу декілька модулів.</para>
+
+<para
+>Наприклад, значення параметра <replaceable
+>libs</replaceable
+> призведе до того, що буде виключено <symbol
+>kde/kdegraphics/libs</symbol
+> і <symbol
+>playground/libs</symbol
+> (але не <symbol
+>kde/kdelibs</symbol
+>, оскільки «kdelibs» не збігається повністю зі значенням параметра).</para>
+
+<tip
+><para
+>Див. також розділ <xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+</entry>
+</row>
 
 <row id="conf-use-modules">
 <entry
@@ -4339,6 +4343,10 @@ end options
 ><member
 >1.12.1</member>
 </simplelist>
+<para
+>Можна використовувати лише у <link linkend="module-sets"
+>module-set</link
+></para>
 <para
 >За допомогою цього параметра вам буде простіше вказати набір модулів, які збиратимуться на певному етапі, у <link linkend="kdesrc-buildrc"
 >файлі налаштування</link
@@ -6858,7 +6866,7 @@ end module-set
 
 <para
 >Нижче наведено настанови щодо налаштовування профілю, потрібного для забезпечення можливості входу до зібраної вами стільниці Плазми &kde;. Зазвичай, &kdesrc-build; намагається зробити це у автоматичному режимі (див. <xref linkend="session-driver"/>). Дані у цьому додатку можуть бути корисним для тих, хто не може скористатися підтримкою налаштовування входу до системи &kdesrc-build;. Втім, можливо, ці настанови застаріли, тому вам також варто ознайомитися з вмістом файла <filename
->kde-env-master.sh</filename
+>kde-env-master.sh.in</filename
 >, який є частиною початкових кодів &kdesrc-build;.</para>
 
 <sect2 id="changing-profile">

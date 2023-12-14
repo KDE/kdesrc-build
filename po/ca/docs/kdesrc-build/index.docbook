@@ -1128,7 +1128,7 @@ Name=KDE Plasma Desktop (unstable; kdesrc-build)
 
 <para
 >Si teniu la intenció de configurar el vostre propi suport d'inici de sessió, podeu consultar aquest apèndix o veure el fitxer <filename
->sample-kde-env-master.sh</filename
+>kde-env-master.sh.in</filename
 > inclòs amb el codi font de &kdesrc-build;.</para>
 
 </sect2>
@@ -2456,131 +2456,6 @@ end global
 <para
 >En qualsevol altra situació, no haureu d'establir aquesta opció, ja que el protocol predeterminat és més eficient.</para>
 
-</entry>
-</row>
-
-<row id="conf-git-repository-base">
-<entry
->git-repository-base</entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Tipus</member
-><member
->Cadena</member>
-<member
->Disponible des de</member
-><member
->1.12.1</member>
-</simplelist>
-<para
->Aquesta opció s'utilitza per a crear un nom curt per a fer referència a un URL base del repositori Git específic, en les declaracions de <link linkend="module-sets"
->conjunts de mòduls</link
-> posteriors, la qual cosa és útil per a declarar amb rapidesa la creació de molts mòduls de Git.</para>
-
-<para
->Haureu d'especificar dues coses (separades per un espai): el nom que s'assignarà a l'URL base i l'URL base real en si. Per exemple:</para>
-
-<para>
-<programlisting
->global
-    # Altres opcions
-    # Aquest és el camí habitual per a tots els mòduls de servidor Git anònim.
-    git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Declaracions del mòdul
-
-module-set
-    # Ara podreu fer servir àlies que heu definit amb anterioritat, però <emphasis
->només</emphasis
-> sobre un conjunt de mòduls.    repository <replaceable
->kde-git</replaceable>
-    <link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->module1.git</replaceable
-> <replaceable
->module2.git</replaceable>
-end module-set
-</programlisting>
-</para>
-
-<para
->L'opció <literal
->use-modules</literal
-> del conjunt de mòduls ha creat dos mòduls internament, amb el &kdesrc-build; comportant-se com si hagués llegit:</para>
-
-<programlisting
->module module1
-    repository kde:<replaceable
->module1.git</replaceable>
-end module
-
-module module2
-    repository kde:<replaceable
->module2.git</replaceable>
-end module
-</programlisting>
-
-<para
->El prefix de repositori &git; és <literal
->kde:</literal
->, utilitzat abans és una drecera que el &kdesrc-build; configurarà automàticament. Consulteu l'article <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->URL Renaming</ulink
-> de TechBase per obtenir més informació. Recordeu que, a diferència de la majoria de les altres opcions, aquesta opció es pot especificar múltiples vegades per a crear tants àlies com sigui necessari.</para>
-
-<tip
-><para
->No es requereix utilitzar aquesta opció per aprofitar el conjunt de mòduls, aquesta opció existeix per a facilitar l'ús del mateix repositori en molts conjunts de mòduls diferents.</para
-></tip>
-</entry>
-</row>
-
-<row id="conf-ignore-modules">
-<entry
->ignore-modules</entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Tipus</member
-><member
->Cadena</member>
-<member
->Disponible des de</member
-><member
->1.16</member>
-</simplelist>
-<para
->Els mòduls nomenats per aquesta opció, els quals serien triats pel &kdesrc-build; a causa d'una opció <link linkend="conf-use-modules"
->use-modules</link
->, s'ometran completament. Utilitzeu aquesta opció quan vulgueu construir una tota agrupació de projectes <link linkend="kde-projects-module-sets"
->kde-projects</link
->, excepte alguns mòduls específics.</para>
-
-<para
->El valor de l'opció no necessàriament haurà de nomenar el mòdul directament. S'ignorarà qualsevol mòdul que tingui parts consecutives completes del seu <link linkend="kde-projects-module-sets"
->camí de mòduls de projectes del &kde;</link
-> que coincideixi amb un dels valors de l'opció, d'aquesta manera es podran ignorar múltiples mòduls.</para>
-
-<para
->Per exemple, un valor d'opció <replaceable
->libs</replaceable
-> donaria lloc a l'exclusió de <symbol
->kde/kdegraphics/libs</symbol
-> i de <symbol
->playground/libs</symbol
-> (encara que no <symbol
->kde/kdelibs</symbol
->, ja que es compara la part completa «kdelibs»).</para>
-
-<tip
-><para
->Vegeu també l'<xref linkend="example-ignoring-a-module"/>.</para
-></tip>
 </entry>
 </row>
 
@@ -4294,7 +4169,7 @@ end options
 
 <table id="options-module-set-table">
 <title
->Opcions només d'àmbit de conjunt de mòduls</title>
+>Opcions només d'àmbit de conjunt de mòduls i global</title>
 <tgroup cols="2">
 
 <thead>
@@ -4306,6 +4181,135 @@ end options
 </row>
 </thead>
 <tbody>
+
+<row id="conf-git-repository-base">
+<entry
+>git-repository-base</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipus</member
+><member
+>Cadena</member>
+<member
+>Disponible des de</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Aquesta opció s'utilitza per a crear un nom curt per a fer referència a un URL base del repositori Git específic, en les declaracions de <link linkend="module-sets"
+>conjunts de mòduls</link
+> posteriors, la qual cosa és útil per a declarar amb rapidesa la creació de molts mòduls de Git.</para>
+
+<para
+>Haureu d'especificar dues coses (separades per un espai): el nom que s'assignarà a l'URL base i l'URL base real en si. Per exemple:</para>
+
+<para>
+<programlisting
+>global
+    # Altres opcions
+    # Aquest és el camí habitual per a tots els mòduls de servidor Git anònim.
+    git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Declaracions del mòdul
+
+module-set
+    # Ara podreu fer servir àlies que heu definit amb anterioritat, però <emphasis
+>només</emphasis
+> sobre un conjunt de mòduls.    repository <replaceable
+>kde-git</replaceable>
+    <link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>module1.git</replaceable
+> <replaceable
+>module2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>L'opció <literal
+>use-modules</literal
+> del conjunt de mòduls ha creat dos mòduls internament, amb el &kdesrc-build; comportant-se com si hagués llegit:</para>
+
+<programlisting
+>module module1
+    repository kde:<replaceable
+>module1.git</replaceable>
+end module
+
+module module2
+    repository kde:<replaceable
+>module2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>El prefix de repositori &git; és <literal
+>kde:</literal
+>, utilitzat abans és una drecera que el &kdesrc-build; configurarà automàticament. Consulteu l'article <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>URL Renaming</ulink
+> de TechBase per obtenir més informació. Recordeu que, a diferència de la majoria de les altres opcions, aquesta opció es pot especificar múltiples vegades per a crear tants àlies com sigui necessari.</para>
+
+<tip
+><para
+>No es requereix utilitzar aquesta opció per aprofitar el conjunt de mòduls, aquesta opció existeix per a facilitar l'ús del mateix repositori en molts conjunts de mòduls diferents.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-ignore-modules">
+<entry
+>ignore-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipus</member
+><member
+>Cadena</member>
+<member
+>Disponible des de</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Actualment només es pot usar en els conjunts de mòduls, vegeu <ulink url="https://bugs.kde.org/show_bug.cgi?id=472917"
+>l'error 472917</ulink
+>.</para>
+<para
+>Els mòduls nomenats per aquesta opció, els quals serien triats pel &kdesrc-build; a causa d'una opció <link linkend="conf-use-modules"
+>use-modules</link
+>, s'ometran completament. Utilitzeu aquesta opció quan vulgueu construir una tota agrupació de projectes <link linkend="kde-projects-module-sets"
+>kde-projects</link
+>, excepte alguns mòduls específics.</para>
+
+<para
+>El valor de l'opció no necessàriament haurà de nomenar el mòdul directament. S'ignorarà qualsevol mòdul que tingui parts consecutives completes del seu <link linkend="kde-projects-module-sets"
+>camí de mòduls de projectes del &kde;</link
+> que coincideixi amb un dels valors de l'opció, d'aquesta manera es podran ignorar múltiples mòduls.</para>
+
+<para
+>Per exemple, un valor d'opció <replaceable
+>libs</replaceable
+> donaria lloc a l'exclusió de <symbol
+>kde/kdegraphics/libs</symbol
+> i de <symbol
+>playground/libs</symbol
+> (encara que no <symbol
+>kde/kdelibs</symbol
+>, ja que es compara la part completa «kdelibs»).</para>
+
+<tip
+><para
+>Vegeu també l'<xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+</entry>
+</row>
 
 <row id="conf-use-modules">
 <entry
@@ -4321,6 +4325,10 @@ end options
 ><member
 >1.12.1</member>
 </simplelist>
+<para
+>Només es pot utilitzar en <link linkend="module-sets"
+>module-set</link
+>.</para>
 <para
 >Aquesta opció permet especificar amb facilitat molts mòduls diferents per a construir en el mateix punt el <link linkend="kdesrc-buildrc"
 >fitxer de configuració</link
@@ -6840,7 +6848,7 @@ end module-set
 
 <para
 >Aquestes instruccions cobreixen com configurar el perfil requerit per a garantir que l'ordinador podrà iniciar la sessió en l'escriptori &plasma; del &kde; acabat de construir. Normalment, el &kdesrc-build; intentarà fer-ho automàticament (vegeu <xref linkend="session-driver"/>). Aquesta secció de l'apèndix pot ser útil per a aquells que no poden utilitzar la implementació de &kdesrc-build; per a la configuració del perfil d'inici de sessió. No obstant això, les instruccions poden no estar sempre actualitzades, també podria ser útil consultar el fitxer <filename
->kde-env-master.sh</filename
+>kde-env-master.sh.in</filename
 > inclòs amb el codi font de &kdesrc-build;.</para>
 
 <sect2 id="changing-profile">
