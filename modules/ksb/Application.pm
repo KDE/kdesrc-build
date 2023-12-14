@@ -1885,39 +1885,40 @@ EOF
 
 # Function: _reachableModuleLogs
 #
-# Returns a list of module directory IDs that must be kept due to being
-# referenced from the "latest" symlink.
+# Returns a list of module directories IDs (based on YYYY-MM-DD-XX format) that must be kept due to being
+# referenced from the "<log-dir>/latest/<module_name>" symlink and from the "<log-dir>/latest-by-phase/<module_name>/*.log" symlinks.
 #
 # This function may call itself recursively if needed.
 #
 # Parameters:
-# 1. The log directory under which to search for symlinks, including the "/latest"
+# 1. The log directory under which to search for symlinks, including the "/latest" or "/latest-by-phase"
 #    part of the path.
 sub _reachableModuleLogs
 {
     my $logdir = shift;
-    my @dirs;
+    my @links;
 
     # A lexicalized var (my $foo) is required in face of recursiveness.
     opendir(my $fh, $logdir) or croak_runtime("Can't opendir $logdir: $!");
-    my $dir = readdir($fh);
+    my $logdir_item = readdir($fh);
 
-    while(defined $dir) {
-        if (-l "$logdir/$dir") {
-            my $link = readlink("$logdir/$dir");
-            push @dirs, $link;
+    while(defined $logdir_item) {
+        if (-l "$logdir/$logdir_item") {  # symlinks to files/folders
+            my $link = readlink("$logdir/$logdir_item");
+            push @links, $link;
         }
-        elsif ($dir !~ /^\.{1,2}$/) {
-            # Skip . and .. directories (this is a great idea, trust me)
-            push @dirs, _reachableModuleLogs("$logdir/$dir");
+        elsif ($logdir_item !~ /^\.{1,2}$/ && !-f "$logdir/$logdir_item") {  # regular (not symlinks) files/folders
+            # Skip . and .. directories
+            # Skip regular files (note that it is not a symlink to file, because of previous -l check). _reachableModuleLogs expects a directory as parameter, but there may be files, for example ".directory".
+            push @links, _reachableModuleLogs("$logdir/$logdir_item");  # for regular directories, get links from it
         }
-        $dir = readdir $fh;
+        $logdir_item = readdir $fh;
     }
 
     closedir $fh;
 
-    # Extract numeric IDs from directory names.
-    @dirs = map { m/(\d{4}-\d\d-\d\d-\d\d)/ } (@dirs);
+    # Extract numeric directories IDs from directories/files paths in links array.
+    my @dirs = map { m/(\d{4}-\d\d-\d\d-\d\d)/ } (@links);
 
     # Convert to unique list by abusing hash keys.
     my %tempHash;
