@@ -353,17 +353,17 @@ sub installInternal
 {
     my $self = shift;
     my $module = $self->module();
+    my @cmdPrefix = @_;
     my $generator = $self->cmakeGenerator();
     my $target = $GENERATOR_MAP->{$generator}->{installTarget};
-    my @cmdPrefix = @_;
 
     $target = 'install' if $module->getOption('custom-build-command');
 
     return $self->safe_make ({
             target => $target,
-            logfile => 'install',
-            message => 'Installing..',
+            message => "Installing g[$module]",
             'prefix-options' => [@cmdPrefix],
+            logfile => 'install',
            })->{was_successful};
 }
 

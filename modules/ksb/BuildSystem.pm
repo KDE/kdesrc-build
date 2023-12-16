@@ -302,7 +302,7 @@ sub installInternal
 
     return $self->safe_make ({
             target => 'install',
-            message => 'Installing..',
+            message => "Installing g[$module]",
             'prefix-options' => [@cmdPrefix],
            })->{was_successful};
 }
