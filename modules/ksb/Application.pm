@@ -1213,20 +1213,20 @@ sub _handle_install
     my @modules = $ctx->modulesInPhase('install');
 
     @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
-    my $result = 0;
+    my $failed = 0;
 
     for my $module (@modules)
     {
         $ctx->resetEnvironment();
-        $result = $module->install() || $result;
+        $failed = !$module->install() || $failed;
 
-        if ($result && $module->getOption('stop-on-failure')) {
+        if ($failed && $module->getOption('stop-on-failure')) {
             note ("y[Stopping here].");
             return 1; # Error
         }
     }
 
-    return $result;
+    return $failed;
 }
 
 # Function: _handle_uninstall
@@ -1251,21 +1251,21 @@ sub _handle_uninstall
     my @modules = $ctx->modulesInPhase('uninstall');
 
     @modules = grep { $_->buildSystem()->needsInstalled() } (@modules);
-    my $result = 0;
+    my $failed = 0;
 
     for my $module (@modules)
     {
         $ctx->resetEnvironment();
-        $result = $module->uninstall() || $result;
+        $failed = !$module->uninstall() || $failed;
 
-        if ($result && $module->getOption('stop-on-failure'))
+        if ($failed && $module->getOption('stop-on-failure'))
         {
             note ("y[Stopping here].");
             return 1; # Error
         }
     }
 
-    return $result;
+    return $failed;
 }
 
 # Function: _applyModuleFilters

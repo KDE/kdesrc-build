@@ -522,8 +522,7 @@ sub setupBuildSystem
 }
 
 # Responsible for installing the module (no update, build, etc.)
-# Return value: Boolean flag indicating whether module installed successfully or
-# not.
+# Returns boolean false on failure, boolean true on success.
 # Exceptions may be thrown for abnormal conditions (e.g. no build dir exists)
 sub install
 {
@@ -600,7 +599,7 @@ sub install
 
 # Handles uninstalling this module
 #
-# Returns boolean false on failure, boolean true otherwise.
+# Returns boolean false on failure, boolean true on success.
 sub uninstall
 {
     my $self = assert_isa(shift, 'ksb::Module');
