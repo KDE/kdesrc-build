@@ -726,10 +726,10 @@ sub finish ($self, $exitcode = 0)
     my $globalLogBase = $ctx->getSubdirPath('log-dir');
     my $globalLogDir  = $ctx->getLogDir();
     # global first
-    note ("Your logs are saved in file://y[$globalLogDir]");
+    note ("Your logs are saved in y[$globalLogDir]");
 
     while((my $base, my $log) = each %{$ctx->{logPaths}}) {
-        note ("  (additional logs are saved in file://y[$log])")
+        note ("  (additional logs are saved in y[$log])")
             if $base ne $globalLogBase;
     }
 
@@ -1552,7 +1552,6 @@ sub _output_failed_module_list
         }
 
         $logfile = "No log file" unless $logfile;
-        $logfile = "file://${logfile}";
 
         warning ("r[$module]") if pretending();
         warning ("r[$module] - g[$logfile]") if not pretending();
