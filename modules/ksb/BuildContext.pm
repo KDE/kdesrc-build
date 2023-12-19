@@ -798,15 +798,14 @@ sub setOption
         my $value = $options{$repoOption};
         my ($repo, $url) = ($value =~ /^([a-zA-Z0-9_-]+)\s+(.+)$/);
 
-        # This will be a hash reference instead of a scalar
-        $value = $self->getOption($repoOption) || { };
-
         if (!$repo || !$url) {
             die ksb::BuildException::Config->new($repoOption,
                 "Invalid git-repository-base setting: $value");
         }
 
-        $value->{$repo} = $url;
+        # This will be a hash reference instead of a scalar
+        my $hashref = $self->getOption($repoOption) || { };
+        $hashref->{$repo} = $url;
         delete $options{$repoOption};
     }
 
