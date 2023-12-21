@@ -70,20 +70,8 @@
   <!ENTITY build-dir '<link linkend="conf-build-dir"
 >build-dir</link
 >'>
-  <!ENTITY module-base-path '<link linkend="conf-module-base-path"
->module-base-path</link
->'>
-  <!ENTITY override-url '<link linkend="conf-override-url"
->override-url</link
->'>
   <!ENTITY source-dir '<link linkend="conf-source-dir"
 >source-dir</link
->'>
-  <!ENTITY email-address '<link linkend="conf-email-address"
->email-address</link
->'>
-  <!ENTITY email-on-compile-error '<link linkend="conf-email-on-compile-error"
->email-on-compile-error</link
 >'>
   <!ENTITY colorful-output '<link linkend="conf-colorful-output"
 >colorful-output</link
@@ -598,16 +586,11 @@
 > è impostato).</para>
 
 <para
->Puoi usare un programma incluso con &kdesrc-build;, chiamato <application
->kdesrc-build-setup</application
->, per preparare una semplice configurazione di &kdesrc-build;. Puoi quindi modificare il file di configurazione <filename
+>Puoi usare <application
+>kdesrc-build --generate-config</application
+> per preparare una semplice configurazione di &kdesrc-build;. Puoi quindi modificare il file di configurazione <filename
 >~/.config/kdesrc-buildrc</filename
 > ottenuto per fare le modifiche che ti servono.</para>
-
-<para
-><application
->kdesrc-build-setup</application
-> viene eseguito da un terminale (invece di usare un'interfaccia grafica), come &kdesrc-build;, quindi lo puoi usare anche se non hai ancora nessuna interfaccia grafica disponibile.</para>
 
 <sect4 id="setup-rcfile-manually">
 <title
@@ -623,9 +606,7 @@
 >. </para>
 
 <para
->&kdesrc-build; contiene molti file di configurazione consigliati per il supporto di &kde; Frameworks 5, &plasma; 5, e altre applicazioni &kde;. <application
->kdesrc-build-setup</application
-> si riferisce a questi file nel file di configurazione che genera, ma puoi anche usarli per tuo conto. Consulta <xref linkend="kdesrc-buildrc-including"/> per informazioni su come usare altri file di configurazione dalla tua copia di <filename
+>&kdesrc-build; contiene molti file di configurazione consigliati per il supporto di &kde; Frameworks 5, &plasma; 5, e altre applicazioni &kde;. Consulta <xref linkend="kdesrc-buildrc-including"/> per informazioni su come usare altri file di configurazione dalla tua copia di <filename
 >kdesrc-buildrc</filename
 >. </para>
 
@@ -672,7 +653,7 @@
 ><link linkend="conf-kdedir"
 >kdedir</link
 >, che cambia la cartella di destinazione in cui il tuo software &kde; sarà installato. Il valore predefinito è <filename class="directory"
->~/kde</filename
+>~/kde/usr</filename
 >, che è un'installazione per un solo utente.</para
 ></listitem>
 
@@ -695,7 +676,7 @@
 ><link linkend="conf-source-dir"
 >source-dir</link
 >, per controllare la cartella di &kdesrc-build; utilizza per scaricare il codice sorgente, avviando il processo di generazione e salvando i registri. Questo è impostato in modo predefinito in <filename class="directory"
->~/kdesrc</filename
+>~/kde/src</filename
 >.</para
 ></listitem>
 
@@ -834,16 +815,12 @@ end module-set
 > <userinput
 ><command
 >kdesrc-build</command
-> <option
->--stop-on-failure</option
 ></userinput
 >
 </screen>
 
 <para
->Questo comando scaricherà il codice sorgente corretto e compilerà e installerà in ordine ciascun modulo, ma si bloccherà se non riesce a generare un modulo (in base all'opzione <option
->--stop-on-failure</option
->). Successivamente dovresti osservare un output simile a quello in <xref linkend="example-build-sequence"/>:</para>
+>Questo comando scaricherà il codice sorgente corretto, compilerà e installerà in ordine ciascun modulo. Successivamente dovresti osservare un output simile a quello in <xref linkend="example-build-sequence"/>:</para>
 
 <example id="example-build-sequence">
 <title
@@ -1196,7 +1173,7 @@ Name=KDE Plasma Desktop (unstable; kdesrc-build)
 
 <para
 >Se vuoi configurare il tuo supporto per l'accesso, puoi consultare questa appendice o il file <filename
->sample-kde-env-master.sh</filename
+>kde-env-master.sh.in</filename
 > incluso nel codice sorgente di &kdesrc-build;.</para>
 
 </sect2>
@@ -2151,9 +2128,7 @@ end module-set
 <para
 >Per i moduli di Git, <replaceable
 >nome-modulo</replaceable
-> deve essere un modulo del deposito &git; di &kde; (per esempio, kdeartwork o kde-wallpapers), anche se è possibile aggirare questa limitazione se <link linkend="conf-override-url"
->specifichi manualmente l'URL di &git;</link
->. </para>
+> deve essere un modulo del deposito &git; di &kde; (per esempio, kdeartwork o kde-wallpapers). </para>
 
 <para
 >Per i moduli di Git, il nome del modulo può essere fondamentalmente qualsiasi cosa vuoi, finché non duplica altri nomi di moduli nella configurazione. Tieni presente che la disposizione delle cartelle del codice sorgente e di generazione sarà basata sul nome del modulo se non usi l'opzione <link linkend="conf-dest-dir"
@@ -2422,346 +2397,41 @@ end global
 
 </itemizedlist>
 
-<table id="option-table">
+<table id="options-global-table">
 <title
->Tabella delle opzioni</title>
-<tgroup cols="3">
+>Opzioni solo per gli ambiti globali</title>
+<tgroup cols="2">
 
 <thead>
 <row>
 <entry
 >Nome dell'opzione</entry>
 <entry
->Sostituibilità</entry>
-<entry
->Note</entry>
+>Descrizione</entry>
 </row>
 </thead>
-
 <tbody>
-
-<row>
-<entry
->apidox</entry>
-<entry
-></entry>
-<entry
-><para
->Questa opzione era usata per permettere di generare la documentazione delle API dei moduli di &kde;. È stata rimossa in &kdesrc-build; 1.6.3 a causa di mancanza di supporto. La documentazione delle API è disponibile in rete su <ulink url="https://api.kde.org/"
->kde.org</ulink
->. Inoltre è possibile generare la documentazione delle API di &kde; usando lo script <command
->kdedoxygen.sh</command
-> incluso nel modulo kde-dev-scripts. Vedi il sito <ulink url="https://techbase.kde.org/Development/Tools/apidox"
->TechBase di &kde;</ulink
-> per maggiori dettagli.</para>
-</entry>
-</row>
-
-<row>
-<entry
->apply-qt-patches</entry>
-<entry
-></entry>
-<entry
->Questa opzione è stata rimossa in &kdesrc-build; 1.10. Per ottenere lo stesso effetto, vedi <xref linkend="using-qt"/> e l'opzione <link linkend="conf-repository"
-><option
->repository</option
-></link
->.</entry>
-</row>
 
 <row id="conf-async">
 <entry
 >async</entry>
-<entry
->Non sostituibile</entry>
-<entry
-><para
->Questa opzione attiva la modalità di operazione asincrona, nella quale l'aggiornamento del codice sorgente e il processo di generazione saranno effettuati in parallelo, invece che attendere la fine di tutti gli aggiornamenti prima di avviare il processo di generazione. Questa opzione, come valore predefinito, abilita la modalità asincrona. Per disattivarla, imposta questa opzione a <userinput
->false</userinput
->.</para>
-<para
->Questa opzione è disponibile dal rilascio 1.6.</para
-></entry>
-</row>
-
-<row id="conf-binpath">
-<entry
->binpath</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Imposta questa opzione per impostare la variabile d'ambiente <envar
->PATH</envar
-> durante la generazione. Non puoi sostituire questa impostazione nelle opzioni di un modulo. Il valore predefinito è quello di $<envar
->PATH</envar
-> così com'è all'avvio dello script. Questa variabile d'ambiente dovrebbe includere i percorsi, separati da due punti, della toolchain di sviluppo. I percorsi <filename class="directory"
->$<envar
->KDEDIR</envar
->/bin</filename
-> e <filename class="directory"
->$<envar
->QTDIR</envar
->/bin</filename
-> sono aggiunti automaticamente. Puoi usare la tilde (~) per qualsiasi percorso che aggiungi con questa opzione.</para>
-</entry>
-</row>
-
-<row id="conf-branch">
-<entry
->branch</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Imposta questa opzione per ritirare i file da un ramo di &kde; invece che dal ramo predefinito <replaceable
->master</replaceable
-> dove si svolge lo sviluppo di &kde;.</para>
-
-<para
->Per esempio, per ritirare il ramo 4.6 di &kde;, devi impostare questa opzione a <replaceable
->4.6</replaceable
->.</para>
-
-<para
->Se &kdesrc-build; non riesce a scaricare correttamente un ramo con questa opzione, potresti dover specificare manualmente l'&url; da cui scaricare usando le opzioni <link linkend="conf-module-base-path"
->module-base-path</link
-> o <link linkend="conf-override-url"
->override-url</link
->.</para>
-
-<note
-><para
->Per la maggior parte dei moduli di &kde;, vorrai probabilmente usare piuttosto l'opzione <link linkend="conf-branch-group"
->branch-group</link
->, e usare questa di volta in volta per le eccezioni.</para
-></note>
-
-</entry>
-</row>
-
-<row id="conf-branch-group">
-<entry
->branch-group</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
 <entry>
-
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+<member
+>Disponibile da</member
+><member
+>1.6</member>
+</simplelist>
 <para
->Imposta questa opzione a un gruppo generale da cui vuoi scegliere i moduli.</para>
-
-<para
->Per i tipi di moduli su &git; supportati, &kdesrc-build; determinerà automaticamente il ramo effettivo da usare in base a delle regole stese dagli sviluppatori di &kde; (queste sono visibili nel deposito del codice sorgente <literal
->kde-build-metadata</literal
-> nella tua cartella del codice). Quando viene determinato un ramo, questo viene usato come se lo avessi specificato tu con l'opzione <link linkend="conf-branch"
->branch</link
->. </para>
-
-<para
->Questo è utile se stai solo cercando di tenerti aggiornato sullo sviluppo senza dover prestare attenzione a tutti i cambi dei nomi dei rami.</para>
-
-<para
->I gruppi di rami attuali (alla data dell'11 agosto 2013) sono:</para>
-
-<itemizedlist>
-
-<listitem
-><para
-><literal
->stable-qt4</literal
->, per tracciare le correzioni alle librerie e alle applicazioni di &kde; basate su &Qt; 4.</para
-></listitem>
-
-<listitem
-><para
-><literal
->latest-qt4</literal
->, per tracciare lo sviluppo e le nuove funzionalità delle librerie e delle applicazioni di &kde; basate su &Qt; 4.</para
-></listitem>
-
-<listitem
-><para
-><literal
->kf5-qt5</literal
->, per tracciare lo sviluppo <quote
->all'ultima frontiera</quote
-> per l'imminente infrastruttura 5 di &kde; basata su &Qt; 5, lo spazio di lavoro di &plasma; di seconda generazione, eccetera.</para
-></listitem>
-
-</itemizedlist>
-
-<para
->Nota che se scegli un ramo <emphasis
->da te</emphasis
-> con <literal
->branch</literal
->, questo si sostituirà alle impostazioni appena presentate. Lo stesso vale per qualsiasi altra opzione di selezione dei rami come <link linkend="conf-tag"
->tag</link
->.</para>
-
-<para
->Questa opzione è stata aggiunta in &kdesrc-build; 1.16-pre2.</para>
-
-<note
-><para
->Questa opzione si applica solo ai moduli &git; <literal
->kde-projects</literal
-> (il caso normale). Vedi anche <xref linkend="kde-projects-module-sets"/>. </para
-></note>
-
-</entry>
-</row>
-
-<row id="conf-build-dir">
-<entry
->build-dir</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Usa questa opzione per cambiare la cartella che conterrà il codice costruito. Ci sono tre diversi modi di usarla: <orderedlist
-><listitem
-><para
->Relativa alla cartella sorgente della cartella del codice sorgente &git; di &kde; (vedi <link linkend="conf-source-dir"
->l'opzione source-dir</link
->). Questa è la modalità predefinita, e viene selezionata se scrivi un nome di cartella che non comincia per tilde (~) o sbarra (/).</para
-><para
->Il valore predefinito è <filename class="directory"
->build</filename
->.</para
-></listitem
-><listitem
-><para
->Percorso assoluto. Se specifichi un percorso che comincia per /, quel percorso sarà usato direttamente. Per esempio, <filename class="directory"
->/tmp/kde-obj-dir/</filename
->.</para
-></listitem
-><listitem
-><para
->Relativo alla tua cartella Home. Se specifichi un percorso che comincia per ~, il percorso è inteso relativo alla tua cartella Home, analogamente all'espansione della tilde in una shell. Per esempio, <filename class="directory"
->~/builddir</filename
-> imposterebbe la cartella di generazione a <filename class="directory"
->/home/nome-utente/builddir</filename
->.</para
-></listitem
-></orderedlist
-> Forse ti sorprenderà, ma questa opzione è effettivamente modificabile a seconda del modulo. </entry>
-</row>
-
-<row id="conf-build-when-unchanged">
-<entry
->build-when-unchanged</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Usa questa opzione per controllare se &kdesrc-build; debba sempre cercare di generare un modulo che non ha avuto alcun aggiornamento al codice sorgente.</para>
-
-<para
->Impostando <option
->build-when-unchanged</option
-> a <userinput
->true</userinput
->, &kdesrc-build; cercherà sempre di generare un modulo, anche se il modulo non ha avuto alcun aggiornamento al codice sorgente. Questa è l'impostazione predefinita perché è quella che porta con più probabilità a una generazione corretta.</para>
-
-<para
->Impostando <option
->build-when-unchanged</option
-> a <userinput
->false</userinput
->, &kdesrc-build; cercherà di generare il modulo solo se ha ricevuto degli aggiornamenti, o in altre situazioni in cui è probabile che una rigenerazione sia effettivamente necessaria. Questo può far risparmiare tempo, specialmente se esegui &kdesrc-build; ogni giorno, o anche più spesso.</para>
-
-<important
-><para
->Questa funzionalità viene fornita solo come ottimizzazione. Come per molte altre ottimizzazioni, ci sono dei compromessi sulla correttezza dell'installazione. Per esempio, le modifiche ai moduli qt o kdelibs potrebbero causare una rigenerazione di tutti gli altri moduli, anche se il codice sorgente non è cambiato affatto.</para
-></important>
-</entry>
-</row>
-
-<row id="conf-cmake-generator">
-<entry
->cmake-generator</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Usa questa opzione per specificare quale generatore deve essere usato con &cmake;. Al momento sono supportati <literal
->Ninja</literal
-> e <literal
->Unix Makefiles</literal
-> e pure i generatori aggiuntivi basati su di essi, come <literal
->Eclipse CDT4 - Ninja </literal
->. I valori non validi (non supportati) vengono ignorati e trattati come non impostati. Se non è impostato nulla, sarà utilizzato <literal
->Unix Makefiles</literal
-> come predefinito. </para>
-
-<para
->È da notare che se viene specificato anche un generatore valido mediante <link linkend="conf-cmake-options"
->cmake-options</link
->, esso ignorerà il valore per <literal
->cmake-generator</literal
->.</para
-></entry>
-</row>
-
-<row id="conf-cmake-toolchain">
-<entry
->cmake-toolchain</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Utilizza questa opzione per specificare un file di toolchain da usare con &cmake;. </para>
-<para
->Quando viene configurato un file di toolchain valido, &kdesrc-build; <emphasis
->non imposterà più le variabili d'ambiente in modo automatico</emphasis
->. Puoi utilizzare i parametri &set-env;, &binpath; e &libpath; per correggere manualmente l'ambiente, se il tuo file di toolchain non funziona subito con &kdesrc-build;. Per maggiori informazioni, consulta <link linkend="kdesrc-build-std-flags"
->la panoramica dei flag standard aggiunti da &kdesrc-build;</link
->. </para>
-<para
->È da notare che se una toolchain valida è specificata anche mediante <link linkend="conf-cmake-options"
->cmake-options</link
->, questo valore verrà usato al posto di quello di <literal
->cmake-toolchain</literal
->.</para
-></entry>
-</row>
-
-<row id="conf-cmake-options">
-<entry
->cmake-options</entry>
-<entry
->Si aggiunge alle opzioni globali per il sistema di generazione predefinito, si sostituisce ad esse per gli altri sistemi di generazione.</entry>
-<entry
-><para
->Usa questa opzione per specificare quali flag passare a &cmake; quando crei il sistema di generazione per il modulo. Quando usata come opzione globale, viene applicata a tutti i moduli generati da questo script. Quando usata come opzione per un modulo, viene aggiunta in fondo alle opzioni globali. Ciò ti permette di specificare opzioni comuni di &cmake; nella sezione globale.</para>
-
-<para
->Questa opzione non si applica a qt (che non usa &cmake;). Usa invece <link linkend="conf-configure-flags"
->configure-flags</link
->.</para>
-
-<para
->Se viene specificato un generatore valido tra le opzioni elencate, esso ignorerà il valore del <link linkend="conf-cmake-generator"
->cmake-generator</link
->. I generatori non validi (non supportati) vengono ignorati e non saranno passati a &cmake;. </para>
-
-<para
->Se viene specificato un file di toolchain valido tra le opzioni elencate, esso ignorerà il valore del <link linkend="conf-cmake-toolchain"
->cmake-toolchain</link
->. Le toolchain non valide saranno ignorate e non saranno passate a &cmake;. </para>
-
-<para
->Siccome queste opzioni sono passate direttamente alla riga di comando di &cmake;, dovrebbero essere date come sarebbero passate a &cmake;. Per esempio:</para>
-
-<screen
->cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
-</screen>
-
-<para
->Siccome è un po' fastidioso, &kdesrc-build; si dà da fare per assicurarsi che, fintanto che le altre opzioni sono correttamente impostate, dovresti poter lasciare questa opzione in bianco. In altre parole, i parametri <emphasis
->necessari</emphasis
-> di &cmake; sono impostati automaticamente.</para
+>Questa opzione attiva la modalità di operazione asincrona, nella quale l'aggiornamento del codice sorgente e il processo di generazione saranno effettuati in parallelo, invece che attendere la fine di tutti gli aggiornamenti prima di avviare il processo di generazione.</para
 ></entry>
 </row>
 
@@ -2769,211 +2439,69 @@ end global
 <entry
 >colorful-output</entry>
 <entry
->Non sostituibile</entry>
-<entry
+><simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+</simplelist
+><para
 >Imposta questa opzione a <userinput
 >false</userinput
-> (falso) per disattivare l'output colorato di &kdesrc-build;. Questa opzione ha valore predefinito <replaceable
->true</replaceable
-> (vero). Nota che &kdesrc-build; non passerà codici di colore a nient'altro che a un terminale (come <application
+> (falso) per disattivare l'output colorato di &kdesrc-build;. Nota che &kdesrc-build; non passerà codici di colore a nient'altro che a un terminale (come <application
 >xterm</application
->, &konsole;, o la normale console di &Linux;). </entry>
-</row>
-
-<row id="conf-compile-commands-export">
-<entry
->compile-commands-export</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry>
-<para
->Abilita la generazione del comando <literal
->compile_commands.json</literal
-> tramite CMake all'interno della cartella di generazione. Questa opzione è predefinita a <replaceable
->true</replaceable
->, impostala a <userinput
->false</userinput
-> per disabilitare questo comportamento. </para>
+>, &konsole;, o la normale console di &Linux;).</para>
 </entry>
-</row>
-
-<row id="conf-compile-commands-linking">
-<entry
->compile-commands-linking</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry>
-<para
->Abilita la creazione di collegamenti simbolici da <literal
->compile_commands.json</literal
-> generato tramite CMake all'interno della cartella di generazione alla corrispondente cartella sorgente. Questa opzione è predefinita a <replaceable
->false</replaceable
->, impostala a <userinput
->true</userinput
-> per abilitare la creazione automatica di collegamenti simbolici. </para>
-</entry>
-</row>
-
-<row id="conf-configure-flags">
-<entry
->configure-flags</entry>
-<entry
->Si aggiunge alle opzioni globali per il sistema di generazione predefinito, si sostituisce ad esse per gli altri sistemi di generazione.</entry>
-<entry
-><para
->Usa questa opzione per specificare quali flag passare a <command
->./configure</command
-> quando crei il sistema di generazione per il modulo. Quando usata come opzione globale, viene applicata a tutti i moduli generati da questo script. <emphasis
->Questa opzione funziona solo per qt</emphasis
->.</para>
-
-<para
->Per cambiare le impostazioni di configurazione dei moduli di &kde;, vedi <link linkend="conf-cmake-options"
->cmake-options</link
->. </para>
-</entry>
-</row>
-
-<row id="conf-custom-build-command">
-<entry
->custom-build-command</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale (opzione del sistema di generazione)</entry>
-<entry>
-    <para
->Questa opzione può essere impostata per eseguire un altro comando (al posto di <command
->make</command
->, per esempio) per effettuare il processo di generazione. &kdesrc-build; di solito dovrebbe fare la cosa giusta, quindi non ci dovrebbe essere bisogno di questa opzione. È comunque utile per usare metodi di generazione alternativi. </para>
-
-    <para
->Il valore di questa opzione si usa come la riga di comando da eseguire, modificata dall'opzione <link linkend="conf-make-options"
->make-options</link
-> come normalmente. </para>
-</entry>
-</row>
-
-<row id="conf-cxxflags">
-<entry
->cxxflags</entry>
-<entry
->Si aggiunge alle opzioni globali per il sistema di generazione predefinito, si sostituisce ad esse per gli altri sistemi di generazione.</entry>
-<entry
-><para
->Usa questa opzione per specificare quali flag usare per generare il modulo. Questa opzione viene specificata qui invece che con <link linkend="conf-configure-flags"
->configure-flags</link
-> o <link linkend="conf-cmake-options"
->cmake-options</link
-> perché questa opzione imposterà anche la variabile d'ambiente <envar
->CXXFLAGS</envar
-> durante il processo di generazione.</para>
-
-<para
->Nota che per &kde; 4 e ogni altro modulo che usi &cmake; è necessario impostare l'opzione <option
->CMAKE_BUILD_TYPE</option
-> a <userinput
->none</userinput
-> quando si configura il modulo. Questo si può fare usando l'opzione <link linkend="conf-cmake-options"
->cmake-options</link
->. </para>
-</entry>
-</row>
-
-<row id="conf-dest-dir">
-<entry
->dest-dir</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Usa questa opzione per cambiare il nome che viene dato a un modulo sul disco. Per esempio, se il modulo era extragear-network, usando questa opzione puoi rinominarlo a extragear-network. Nota che sebbene ciò cambi il nome del modulo sul disco, non è una buona idea includere cartelle o separatori di cartelle nel nome, perché ciò interferirà con le opzioni <link linkend="conf-build-dir"
->build-dir</link
-> o <link linkend="conf-source-dir"
->source-dir</link
->. </entry>
 </row>
 
 <row id="conf-disable-agent-check">
 <entry
 >disable-agent-check</entry>
-<entry
->Non sostituibile</entry>
-<entry
->Normalmente, se stai usando &ssh; per scaricare i sorgenti da &git; (come nel caso in cui stessi usando il protocollo <filename
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+</simplelist>
+<para
+>Se stai usando &ssh; per scaricare i sorgenti da &git; (come nel caso in cui stessi usando il protocollo <filename
 >git+ssh</filename
->), &kdesrc-build; cercherà di assicurarsi che se stai usando <application
+>), questa opzione controlla se &kdesrc-build; cercherà di assicurarsi che se stai usando <application
 >ssh-agent</application
->, questo stia effettivamente gestendo delle identità &ssh;. Questo è per cercare di prevenire che &ssh; chieda la password per ogni modulo. Puoi disabilitare questa opzione impostando <option
->disable-agent-check</option
-> a <userinput
->true</userinput
-> (vero). </entry>
-</row>
-
-<row id="conf-do-not-compile">
-<entry
->do-not-compile</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Usa questa opzione per selezionare un insieme specifico di cartelle da non generare in un modulo (invece che tutte). Le cartelle da non generare dovrebbero essere separate da spazi.</para>
-
-<para
->Nota che il codice sorgente dei programmi sarà comunque scaricato.</para>
-
-<para
->Per esempio, per disabilitare la generazione delle cartelle <literal
->codeeditor</literal
-> e <literal
->minimaltest</literal
-> del framework <literal
->syntaxhighlighting</literal
->, dovresti aggiungere la compilazione <userinput
->do-not-compile codeeditor minimaltest</userinput
->, e aggiungere «do-not-compile juk kscd» alle tue opzioni syntaxhighlighting.</para>
-
-<para
->Vedi <xref linkend="not-compiling"/> per un esempio.</para>
+>, questo stia effettivamente gestendo delle identità &ssh;. Questo è per cercare di prevenire che &ssh; chieda la password per ogni modulo.</para>
 </entry>
-</row>
-
-<row id="conf-email-address">
-<entry
->email-address</entry>
-<entry
->Non sostituibile</entry>
-<entry>
-<para
->Questa opzione è stata rimossa in &kdesrc-build; 1.14. </para>
-</entry>
-</row>
-
-<row id="conf-email-on-compile-error">
-<entry
->email-on-compile-error</entry>
-<entry
->Non sostituibile</entry>
-<entry>
-<para
->Questa opzione è stata rimossa in &kdesrc-build; 1.14. </para>
-</entry>
-</row>
-
-<row>
-<entry
->inst-apps</entry>
-<entry
-></entry>
-<entry
->Questa opzione è stata rimossa nella versione 1.10. </entry>
 </row>
 
 <row id="conf-git-desired-protocol">
 <entry
 >git-desired-protocol</entry>
-<entry
->Non sostituibile</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+>git</member>
+<member
+>Informazioni sulla cronologia</member
+><member
+>Questa opzione è stata aggiunta in &kdesrc-build; 1.16. Prima della 20.06 questa opzione è stata utilizzata per configurare l'URL del recupero anziché l'URL del push. A partire dalla 20.06, per l'aggiornamento dei progetti KDE è sempre utilizzato il protocollo <literal
+>https</literal
+>.</member>
+</simplelist>
+<para
 >Questa opzione si applica solo ai moduli di un deposito del <link linkend="kde-projects-module-sets"
 >progetto &kde;</link
 >.</para>
@@ -3002,326 +2530,29 @@ end global
 <para
 >In qualsiasi altra situazione non dovresti impostare questa opzione, perché il protocollo predefinito è il più efficiente.</para>
 
-<para
->Questa opzione è stata aggiunta in &kdesrc-build; 1.16. Prima della 20.06 questa opzione è stata utilizzata per configurare l'URL del recupero anziché l'URL del push. A partire dalla 20.06, per l'aggiornamento dei progetti KDE è sempre utilizzato il protocollo <literal
->https</literal
->.</para>
 </entry>
-</row>
-
-<row id="conf-git-repository-base">
-<entry
->git-repository-base</entry>
-<entry
->Non sostituibile</entry>
-<entry
-><para
->Questa opzione, aggiunta nella versione 1.12.1, si usa per creare un nome breve per riferirsi a un particolare &URL; di un deposito di &git; nelle dichiarazioni di <link linkend="module-sets"
->insiemi di moduli</link
-> seguenti, il che è utile per dichiarare molti moduli d i&git; da generare.</para>
-
-<para
->Devi specificare due cose (separate da uno spazio): il nome da assegnare all'&URL; di base, e il suo nome esatto. Per esempio:</para>
-
-<para>
-<informalexample>
-<programlisting
->global
-   # altre opzioni
-
-   # Questo è il percorso comune a tutti i moduli su server Git.
-   git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Dichiarazioni di moduli
-
-module-set
-   # Adesso puoi usare l'alias prima definito, ma <emphasis
->solo</emphasis>
-   # in un insieme di moduli.
-   repository <replaceable
->kde-git</replaceable>
-
-   <link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->modulo1.git</replaceable
-> <replaceable
->modulo2.git</replaceable>
-end module-set
-</programlisting>
-</informalexample>
-</para>
-
-<para
->L'opzione <literal
->use-modules</literal
-> dell'insieme di moduli ha creato due moduli interni, e &kdesrc-build; si è comportato come se avesse letto:</para>
-
-<programlisting
->module modulo1
-    repository kde:<replaceable
->modulo1.git</replaceable>
-end module
-
-module modulo2
-    repository kde:<replaceable
->modulo2.git</replaceable>
-end module
-</programlisting>
-
-<para
->Il prefisso del deposito &git; <literal
->kde:</literal
-> usato sopra è una scorciatoia che verrà configurata automaticamente da &kdesrc-build;. Vedi l'articolo di Techbase sulla <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->rinomina degli URL</ulink
-> per maggiori informazioni. Nota che al contrario della maggior parte delle altre opzioni, questa può essere specificata più volte per creare tanti alias quanti sono richiesti.</para>
-
-<tip
-><para
->Non è necessario usare questa opzione per usare gli insiemi di moduli: questa opzione esiste per facilitare l'uso dello stesso deposito in diversi insiemi di moduli.</para
-></tip>
-</entry>
-</row>
-
-<row id="conf-git-user">
-<entry
->git-user</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry>
-<para
->Questa opzione è per gli sviluppatori di &kde;. Se impostata, verrà usata per configurare automaticamente le informazioni do identificazione per il programma di controllo del codice sorgente &git; per i moduli &git; <emphasis
->scaricati da quel momento in avanti</emphasis
->, inclusi la maggior parte dei moduli di &kde;.</para>
-
-<para
->In particolare, il nome e l'indirizzo di posta dell'utente di ogni deposito di &git; vengono configurati con i valori impostati da questa opzione.</para>
-
-<para
->Il valore deve essere specificato nella forma <option
-><replaceable
->Nome</replaceable
-> &lt;<replaceable
->posta@esempio.it</replaceable
->&gt;</option
->.</para>
-
-<para>
-<informalexample>
-<para
->Per esempio, lo sviluppatore <quote
->Pinco Pallino</quote
-> con indirizzo <quote
->pinco@pallino.it</quote
-> scriverebbe:</para>
-
-<screen
-><symbol
->git-user</symbol
-> <replaceable
->Pinco Pallino</replaceable
-> &lt;<replaceable
->pinco@pallino.it</replaceable
->&gt;
-</screen>
-</informalexample>
-</para>
-
-<para
->Questa opzione è stata introdotta in &kdesrc-build; 15.09. </para>
-</entry>
-</row>
-
-<row id="conf-http-proxy">
-<entry
->http-proxy</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-
-<entry
-><para
->Questa opzione, se impostata, usa l'URL specificato come server proxy da usare per tutte le comunicazioni su reti HTTP (per esempio, quando si scaricano le istantanee dei nuovi moduli, o la <link linkend="kde-projects-module-sets"
->banca dati dei progetti di &kde;</link
->).</para>
-
-<para
->Inoltre, &kdesrc-build; cercherà di assicurarsi che gli strumenti da cui dipende usino quel server proxy, se possibile, impostando la variabile d'ambiente <envar
->http_proxy</envar
-> al server indicato, <emphasis
->se quella variabile non è già impostata</emphasis
->.</para>
-
-<para
->Questa opzione è stata introdotta in &kdesrc-build; 1.16.</para>
-</entry>
-</row>
-
-<row id="conf-ignore-kde-structure">
-<entry
->ignore-kde-structure</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry>
-<para
->Questa opzione è deprecata e verrà rimossa (di nuovo) in un rilascio futuro.</para>
-
-<para
->Usa piuttosto l'opzione <option
-><link linkend="conf-directory-layout"
->directory-layout</link
-></option
->, che offre maggiori alternative.</para>
-</entry>
-</row>
-
-<row id="conf-directory-layout">
-<entry
->directory-layout</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Questa opzione è utilizzata per configurare lo schema che &kdesrc-build; deve utilizzare durante la creazione di cartelle sorgente e di generazione.</para>
-<para
->Attualmente sono previsti tre possibili valori: <userinput
->flat</userinput
->, <userinput
->invent</userinput
-> e <userinput
->metadata</userinput
->.</para>
-<para
->Lo schema <userinput
->flat</userinput
-> è il valore predefinito e raggruppa tutti i moduli direttamente al di sotto delle cartelle sorgenti e di generazione di livello superiore. Per esempio, <literal
->source/extragear/network/telepathy/ktp-text-ui</literal
-> nello schema <userinput
->metadata</userinput
-> diventerebbe invece <literal
->source/ktp-text-ui</literal
-> utilizzando lo schema <userinput
->flat</userinput
->. </para>
-<para
->Lo schema <userinput
->invent</userinput
-> crea una gerarchia di cartelle che rispecchia i percorsi relativi dei repository contenuti in <ulink url="https://invent.kde.org/"
->invent.kde.org</ulink
->. Per esempio, <literal
->source/kde/applications/kate</literal
-> nello schema <userinput
->metadata</userinput
-> diventerebbe invece <literal
->source/utilities/kate</literal
-> utilizzando lo schema <userinput
->invent</userinput
->. Questo schema riguarda solo i progetti KDE. È una buona scelta per i programmatori alle prime armi con &kdesrc-build;. </para>
-<para
->Infine, lo schema <userinput
->metadata</userinput
-> è lo stesso schema del precedente comportamento predefinito. Questo schema organizza i progetti KDE in base ai percorsi di progetto specificati nei metadati del progetto per questi moduli. È una buona scelta se vuoi uno schema di cartelle che tenga traccia di determinati processi KDE, ma tieni presente che questo percorso non è sempre stabile. Come risultato, &kdesrc-build; potrebbe lasciare da parte una vecchia copia del repository di un progetto e clonarne una nuova a causa di modifiche ai metadati del progetto.</para>
-</entry>
-</row>
-
-<row id="conf-ignore-modules">
-<entry
->ignore-modules</entry>
-<entry
->Non sostituibile</entry>
-<entry
-><para
->I moduli indicati da questa opzione, che sarebbero altrimenti stati scelti da &kdesrc-build; tramite un'opzione <link linkend="conf-use-modules"
->use-modules</link
->, sono invece completamente saltati. Usa questa opzione se vuoi generare un intero gruppo del progetto <link linkend="kde-projects-module-sets"
->kde-projects</link
-> <emphasis
->tranne</emphasis
-> alcuni moduli specifici.</para>
-
-<para
->Il valore dell'opzione non deve necessariamente fare direttamente il nome del modulo. Qualsiasi modulo che contenga delle parti contigue e complete del suo <link linkend="kde-projects-module-sets"
->percorso nei progetti di &kde;</link
-> corrispondenti a uno dei valori dell'opzione verrà ignorato; in questo modo puoi ignorare più moduli alla volta.</para>
-
-<para
->Per esempio, un valore dell'opzione come <replaceable
->libs</replaceable
-> farebbe escludere sia <symbol
->kde/kdegraphics/libs</symbol
-> che <symbol
->playground/libs</symbol
-> (ma non <symbol
->kde/kdelibs</symbol
-> perché è la parte intera <quote
->kdelibs</quote
-> che viene considerata).</para>
-
-<tip
-><para
->Vedi anche <xref linkend="example-ignoring-a-module"/>.</para
-></tip>
-
-<para
->Questa opzione è stata introdotta in &kdesrc-build; 1.16.</para>
-</entry>
-</row>
-
-<row id="conf-include-dependencies">
-<entry
->include-dependencies</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry>
-<para
->Questa opzione, quando impostata a <userinput
->true</userinput
->, richiede che &kdesrc-build; includa anche le dipendenze note di questo modulo nella sua generazione, senza richiederne menzione (neanche indiretta).</para>
-
-<note
-><para
->Questa opzione funziona solo per <link linkend="kde-projects-module-sets"
->moduli basati su <literal
->kde-project</literal
-></link
->, e presume l'accuratezza dei metadati mantenuti dagli sviluppatori di &kde; per il <link linkend="conf-branch-group"
->gruppo di rami</link
-> selezionato.</para
-></note>
-
-<para
->Questa opzione è abilitata in modo predefinito, in modo da supportare le applicazioni di compilazione che necessitano di versioni di &Qt; o &plasma; più recenti rispetto a quelle supportate dai comuni sistemi operativi.</para>
-</entry>
-</row>
-
-<row id="conf-install-after-build">
-<entry
->install-after-build</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Questa opzione viene usata per installare il pacchetto a seguito di una generazione riuscita. Come impostazione predefinita, questa opzione è attiva. Se vuoi disattivarla, devi impostarla a <userinput
->false</userinput
-> nel <link linkend="configure-data"
->file di configurazione</link
->. Puoi anche usare l'opzione <link linkend="cmdline-no-install"
-><option
->--no-install</option
-></link
-> dalla riga di comando. </entry>
 </row>
 
 <row id="conf-install-environment-driver">
 <entry
 >install-environment-driver</entry>
-<entry
->Non sostituibile</entry>
-<entry
-><para
->Per impostazione predefinita, &kdesrc-build; installerà uno script di shell che può essere originato in script di configurazione del profilo di un utente, in modo da stabilire le variabili d'ambiente necessarie per avviare il desktop Plasma costruito da &kdesrc-build;.</para>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+<member
+>Disponibile da</member
+><member
+>17.08</member>
+</simplelist>
+<para
+>Installa uno script di shell che può essere originato in script di configurazione del profilo di un utente, in modo da stabilire le variabili d'ambiente necessarie per avviare il desktop Plasma costruito da &kdesrc-build;.</para>
 
 <para
 >Questo driver altera le seguenti righe:</para>
@@ -3359,9 +2590,6 @@ end module
 >install-session-driver</link
 >.</para>
 
-<para
->Questa opzione è stata introdotta in &kdesrc-build; 17.08.</para>
-
 <tip
 ><para
 >&kdesrc-build; non sovrascriverà i file preesistenti a meno che si passi l'opzione da riga di comando <option
@@ -3376,10 +2604,22 @@ end module
 <row id="conf-install-session-driver">
 <entry
 >install-session-driver</entry>
-<entry
->Non sostituibile</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+<member
+>Disponibile da</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Se abilitata, &kdesrc-build; prova ad installare un driver per il gestore degli accessi grafico che permetta di accedere al desktop &kde; generato con &kdesrc-build;.</para>
 
 <para
@@ -3417,9 +2657,6 @@ end module
 >install-environment-driver</link
 >.</para>
 
-<para
->Questa opzione è stata introdotta in &kdesrc-build; 1.16.</para>
-
 <tip
 ><para
 >&kdesrc-build; non sovrascriverà i file preesistenti a meno che si passi l'opzione da riga di comando <option
@@ -3431,68 +2668,957 @@ end module
 </entry>
 </row>
 
-<row id="conf-kdedir">
+<row id="conf-niceness">
 <entry
->kdedir</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Questa opzione imposta la cartella in cui &kde; sarà installato dopo essere stato generato. Il suo valore predefinito è <filename class="directory"
->~/kde</filename
->. Se la cambi a una cartella che richiede accesso come amministratore di sistema, potresti essere interessato anche all'opzione <link linkend="conf-make-install-prefix"
->make-install-prefix</link
->.</entry>
+>niceness</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Intero</member>
+<member
+>Valore predefinito</member
+><member
+>10</member>
+</simplelist>
+<para
+>Imposta questa opzione a un numero tra 20 e 0. Maggiore è il numero, minore la priorità che &kdesrc-build; si assegnerà, ossia più alto è il numero, più «cortese» è il programma.</para>
+</entry>
 </row>
 
-<row id="conf-kde-languages">
+<row id="conf-num-cores">
 <entry
->kde-languages</entry>
-<entry
->Non sostituibile</entry>
-<entry
-><para
->Questa opzione ti permette di scegliere di scaricare e installare i pacchetti di localizzazione insieme a &kde;. Potresti farlo se vuoi usare &kde; tradotto nella tua lingua.</para>
+>num-cores</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Intero</member>
+<member
+>Valore predefinito</member
+><member
+>Dipende dal sistema</member>
+<member
+>Disponibile da</member
+><member
+>20.07</member>
+</simplelist>
+<para
+>Questa opzione è definita da &kdesrc-build; (quando utilizzi <command
+>kdesrc-build --generate-config</command
+>), impostata al valore del numero delle CPU disponibili (come indicato dall'applicazione esterna <application
+>nproc</application
+>). Se &kdesrc-build; non è in grado di rilevare il numero di CPU, il valore viene impostato a 4.</para>
 
 <para
->Per usare questa opzione, impostala a un elenco di lingue da installare separate da spazi. Ogni lingua ha un codice associato (<userinput
->it</userinput
-> per l'italiano). Puoi vedere gli altri codici su <ulink url="http://l10n.kde.org/teams-list.php"
->http://l10n.kde.org/teams-list.php</ulink
+>Per un esempio d'uso dell'opzione vedi <xref linkend="make-options-example"/>.</para>
+</entry>
+</row>
+
+<row id="conf-num-cores-low-mem">
+<entry
+>num-cores-low-mem</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Intero</member>
+<member
+>Valore predefinito</member
+><member
+>Dipende dal sistema</member>
+<member
+>Disponibile da</member
+><member
+>20.07</member>
+</simplelist>
+<para
+>Questa opzione è definita da &kdesrc-build; (quando utilizzi <command
+>kdesrc-build --generate-config</command
+>), impostata al valore del numero delle CPU ritenuto adeguato per moduli «pesanti» o comunque con elevata complessità, tipo <literal
+>qtwebengine</literal
+>, al fine di evitare l'esaurimento delle memoria durante la generazione.</para>
+
+<para
+>Il calcolo tipico è un core di CPU per ogni 2 gigabyte (GiB) di memoria totale. Andrà specificato almeno un core e non più di <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> core.</para>
+
+<para
+>Sebbene questa opzione sia pensata per supportare i moduli &Qt;, puoi utilizzarla per qualsiasi altro tuo modulo nello stesso modo in cui viene utilizzato <option
+>num-cores</option
+>.</para>
+
+<para
+>Se &kdesrc-build; non è in grado di rilevare la memoria disponibile, il valore verrà impostato a 2.</para>
+
+</entry>
+</row>
+
+<row id="conf-persistent-data-file">
+<entry
+>persistent-data-file</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.15</member>
+</simplelist>
+<para
+>Usa questa opzione per cambiare dove &kdesrc-build; memorizza i suoi dati permanenti. La posizione predefinita è un file chiamato <filename
+>.kdesrc-build-data</filename
+>, localizzato nella stessa cartella del file di configurazione in uso. Se il file di configurazione globale è in uso, sarà salvato in <filename
+>~/.local/state/kdesrc-build-data</filename
+> (<filename
+>$XDG_STATE_HOME/kdesrc-build-data</filename
+>, se <envar
+>$XDG_STATE_HOME</envar
+> è impostato). Se hai più configurazioni disponibili nella stessa cartella, potresti voler impostare manualmente questa opzione in modo che configurazioni differenti non producano dati permanenti in conflitto tra loro. </para>
+</entry>
+</row>
+
+<row id="conf-ssh-identity-file">
+<entry
+>ssh-identity-file</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.14.2</member>
+</simplelist>
+<para
+>Imposta questa opzione per controllare quale file chiave SSH viene passato al comando <command
+>ssh-add</command
+> quando &kdesrc-build; scarica il codice sorgente dai depositi che richiedono un'autenticazione. Vedi anche <xref linkend="ssh-agent-reminder"/>.</para>
+</entry>
+</row>
+
+<row id="conf-use-idle-io-priority">
+<entry
+>use-idle-io-priority</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+<member
+>Disponibile da</member
+><member
+>1.12</member>
+</simplelist>
+<para
+>Usa la priorità minore per l'accesso al disco e ad altro I/O, che può significativamente migliorare i tempi di reazione del resto del sistema al prezzo di tempi di esecuzione di &kdesrc-build; leggermente più lunghi.</para>
+</entry>
+</row>
+
+<row id="conf-use-inactive-modules">
+<entry
+>use-inactive-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+</simplelist>
+<para
+>Consente a kdesrc-build anche di clonare e estrarre dai depositi contrassegnati come inattivi.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<!-- Between tables -->
+
+<table id="option-table">
+<title
+>Opzioni di tutti gli ambiti (modulo, insieme di moduli e globali)</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Nome dell'opzione</entry>
+<entry
+>Descrizione</entry>
+</row>
+</thead>
+
+<tbody>
+
+<row id="conf-binpath">
+<entry
+>binpath</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
+>Imposta questa opzione per impostare la variabile d'ambiente <envar
+>PATH</envar
+> durante la generazione. Non puoi sostituire questa impostazione nelle opzioni di un modulo. Il valore predefinito è quello di $<envar
+>PATH</envar
+> così com'è all'avvio dello script. Questa variabile d'ambiente dovrebbe includere i percorsi, separati da due punti, della toolchain di sviluppo. I percorsi <filename class="directory"
+>$<envar
+>KDEDIR</envar
+>/bin</filename
+> e <filename class="directory"
+>$<envar
+>QTDIR</envar
+>/bin</filename
+> sono aggiunti automaticamente. Puoi usare la tilde (~) per qualsiasi percorso che aggiungi con questa opzione.</para>
+</entry>
+</row>
+
+<row id="conf-branch">
+<entry
+>branch</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+>master</member>
+</simplelist>
+<para
+>Ritira il ramo specificato anziché quello predefinito.</para>
+<note
+><para
+>Per la maggior parte dei moduli di &kde;, vorrai probabilmente usare piuttosto l'opzione <link linkend="conf-branch-group"
+>branch-group</link
+>, e usare questa di volta in volta per le eccezioni.</para
+></note>
+</entry>
+</row>
+
+<row id="conf-branch-group">
+<entry
+>branch-group</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.16-pre2</member>
+</simplelist>
+<para
+>Imposta questa opzione a un gruppo generale da cui vuoi scegliere i moduli.</para>
+
+<para
+>Per i tipi di moduli su &git; supportati, &kdesrc-build; determinerà automaticamente il ramo effettivo da usare in base a delle regole stese dagli sviluppatori di &kde; (queste sono visibili nel deposito del codice sorgente <literal
+>kde-build-metadata</literal
+> nella tua cartella del codice). Quando viene determinato un ramo, questo viene usato come se lo avessi specificato tu con l'opzione <link linkend="conf-branch"
+>branch</link
 >. </para>
 
 <para
->È anche possibile scegliere solo una lingua. Come impostazione predefinita non ne viene scaricata nessuna, il che vuol dire che &kde; sarà in inglese secondo l'ortografia americana.</para>
+>Questo è utile se stai solo cercando di tenerti aggiornato sullo sviluppo senza dover prestare attenzione a tutti i cambi dei nomi dei rami.</para>
 
 <para
->Per esempio, per installare l'italiano, devi impostare l'opzione a qualcosa come <userinput
-><option
->kde-languages</option
+>Nota che se scegli un ramo <emphasis
+>da te</emphasis
+> con <literal
+>branch</literal
+>, questo si sostituirà alle impostazioni appena presentate. Lo stesso vale per qualsiasi altra opzione di selezione dei rami come <link linkend="conf-tag"
+>tag</link
+>.</para>
+
+<note
+><para
+>Questa opzione si applica solo ai moduli &git; <literal
+>kde-projects</literal
+> (il caso normale). Vedi anche <xref linkend="kde-projects-module-sets"/>. </para
+></note>
+
+</entry>
+</row>
+
+<row id="conf-build-dir">
+<entry
+>build-dir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+><filename class="directory"
+>~/kde/build</filename
+></member>
+</simplelist>
+<para
+>Usa questa opzione per cambiare la cartella usata in cui contenere le sorgenti generate. Si può utilizzare in tre modi differenti:</para>
+
+<orderedlist>
+
+<listitem
+><para
+>Relativa alla cartella dei sorgenti di &kde; &git; (vedi <link linkend="conf-source-dir"
+>l'opzione source-dir</link
+>). È il metodo predefinito, e viene selezionato se digiti il nome di una cartella che non inizia con una tilde (~) o una barra (/).</para
+></listitem>
+
+<listitem
+><para
+>Percorso assoluto. Se specifichi un percorso che inizia per /, allora quel percorso viene utilizzato direttamente. Per esempio, <filename class="directory"
+>/tmp/kde-obj-dir/</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+>Relativa alla tua cartella home. Se specifichi un percorso che inizia per ~, allora è utilizzato relativamente alla tua cartella Home, in modo analogo all'espansione di tilde della shell. Per esempio, <filename class="directory"
+>~/builddir</filename
+> imposterebbe la cartella di generazione a <filename class="directory"
+>/home/user-name/builddir</filename
+>.</para
+></listitem>
+
+</orderedlist>
+
+<para
+>Questa opzione può essere, sorprendentemente, cambiata per modulo.</para>
+</entry>
+</row>
+
+<row id="conf-build-when-unchanged">
+<entry
+>build-when-unchanged</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+</simplelist>
+<para
+>Controlla se &kdesrc-build; debba sempre cercare di generare un modulo che non ha avuto alcun aggiornamento al codice sorgente.</para>
+
+<para
+>Impostando <option
+>build-when-unchanged</option
+> a <userinput
+>true</userinput
+>, &kdesrc-build; cercherà sempre di generare un modulo, anche se il modulo non ha avuto alcun aggiornamento al codice sorgente. Con questo valore sarà portato con più probabilità a una generazione corretta.</para>
+
+<para
+>Impostando <option
+>build-when-unchanged</option
+> a <userinput
+>false</userinput
+>, &kdesrc-build; cercherà di generare il modulo solo se ha ricevuto degli aggiornamenti, o in altre situazioni in cui è probabile che una rigenerazione sia effettivamente necessaria. Questo può far risparmiare tempo, specialmente se esegui &kdesrc-build; ogni giorno, o anche più spesso.</para>
+
+<important
+><para
+>Questa funzionalità viene fornita solo come ottimizzazione. Come per molte altre ottimizzazioni, ci sono dei compromessi sulla correttezza dell'installazione. Per esempio, le modifiche ai moduli qt o kdelibs potrebbero causare una rigenerazione di tutti gli altri moduli, anche se il codice sorgente non è cambiato affatto.</para
+></important>
+</entry>
+</row>
+
+<row id="conf-cmake-generator">
+<entry
+>cmake-generator</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+>Makefile Unix</member>
+</simplelist>
+<para
+>Specifica quale generatore deve essere usato con &cmake;. Al momento sono supportati <literal
+>Ninja</literal
+> e <literal
+>Unix Makefiles</literal
+> e pure i generatori aggiuntivi basati su di essi, come <literal
+>Eclipse CDT4 - Ninja </literal
+>. I valori non validi (non supportati) vengono ignorati e trattati come non impostati. </para>
+
+<para
+>È da notare che se viene specificato anche un generatore valido mediante <link linkend="conf-cmake-options"
+>cmake-options</link
+>, esso ignorerà il valore per <literal
+>cmake-generator</literal
+>.</para
+></entry>
+</row>
+
+<row id="conf-cmake-toolchain">
+<entry
+>cmake-toolchain</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
+>Specifica un file di toolchain da usare con &cmake;. </para>
+<para
+>Quando viene configurato un file di toolchain valido, &kdesrc-build; <emphasis
+>non imposterà più le variabili d'ambiente in modo automatico</emphasis
+>. Puoi utilizzare i parametri &set-env;, &binpath; e &libpath; per correggere manualmente l'ambiente, se il tuo file di toolchain non funziona subito con &kdesrc-build;. Per maggiori informazioni, consulta <link linkend="kdesrc-build-std-flags"
+>la panoramica dei flag standard aggiunti da &kdesrc-build;</link
+>. </para>
+<para
+>È da notare che se una toolchain valida è specificata anche mediante <link linkend="conf-cmake-options"
+>cmake-options</link
+>, questo valore verrà usato al posto di quello di <literal
+>cmake-toolchain</literal
+>.</para
+></entry>
+</row>
+
+<row id="conf-cmake-options">
+<entry
+>cmake-options</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
+>Si aggiunge alle opzioni globali per il sistema di generazione predefinito, si sostituisce ad esse per gli altri sistemi di generazione.</para>
+<para
+>Usa questa opzione per specificare quali flag passare a &cmake; quando crei il sistema di generazione per il modulo. Quando usata come opzione globale, viene applicata a tutti i moduli generati da questo script. Quando usata come opzione per un modulo, viene aggiunta in fondo alle opzioni globali. Ciò ti permette di specificare opzioni comuni di &cmake; nella sezione globale.</para>
+
+<para
+>Questa opzione non si applica a qt (che non usa &cmake;). Usa invece <link linkend="conf-configure-flags"
+>configure-flags</link
+>.</para>
+
+<para
+>Se viene specificato un generatore valido tra le opzioni elencate, esso ignorerà il valore del <link linkend="conf-cmake-generator"
+>cmake-generator</link
+>. I generatori non validi (non supportati) vengono ignorati e non saranno passati a &cmake;. </para>
+
+<para
+>Se viene specificato un file di toolchain valido tra le opzioni elencate, esso ignorerà il valore del <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>. Le toolchain non valide saranno ignorate e non saranno passate a &cmake;. </para>
+
+<para
+>Siccome queste opzioni sono passate direttamente alla riga di comando di &cmake;, dovrebbero essere date come sarebbero passate a &cmake;. Per esempio:</para>
+
+<programlisting
+>cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
+</programlisting>
+
+<para
+>Siccome è un po' fastidioso, &kdesrc-build; si dà da fare per assicurarsi che, fintanto che le altre opzioni sono correttamente impostate, dovresti poter lasciare questa opzione in bianco. In altre parole, i parametri <emphasis
+>necessari</emphasis
+> di &cmake; sono impostati automaticamente.</para
+></entry>
+</row>
+
+<row id="conf-compile-commands-export">
+<entry
+>compile-commands-export</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+</simplelist>
+<para
+>Abilita la generazione del comando <literal
+>compile_commands.json</literal
+> tramite CMake all'interno della cartella di generazione. </para>
+</entry>
+</row>
+
+<row id="conf-compile-commands-linking">
+<entry
+>compile-commands-linking</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+</simplelist>
+<para
+>Abilita la creazione di collegamenti simbolici da <literal
+>compile_commands.json</literal
+> generato tramite CMake all'interno della cartella di generazione alla corrispondente cartella sorgente. </para>
+</entry>
+</row>
+
+<row id="conf-configure-flags">
+<entry
+>configure-flags</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
+>Si aggiunge alle opzioni globali per il sistema di generazione predefinito, si sostituisce ad esse per gli altri sistemi di generazione.</para>
+<para
+>Usa questa opzione per specificare quali flag passare a <command
+>./configure</command
+> quando crei il sistema di generazione per il modulo. Quando usata come opzione globale, viene applicata a tutti i moduli generati da questo script. <emphasis
+>Questa opzione funziona solo per qt</emphasis
+>.</para>
+
+<para
+>Per cambiare le impostazioni di configurazione dei moduli di &kde;, vedi <link linkend="conf-cmake-options"
+>cmake-options</link
+>. </para>
+</entry>
+</row>
+
+<row id="conf-custom-build-command">
+<entry
+>custom-build-command</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+    <para
+>Questa opzione può essere impostata per eseguire un altro comando (al posto di <command
+>make</command
+>, per esempio) per effettuare il processo di generazione. &kdesrc-build; di solito dovrebbe fare la cosa giusta, quindi non ci dovrebbe essere bisogno di questa opzione. È comunque utile per usare metodi di generazione alternativi. </para>
+
+    <para
+>Il valore di questa opzione si usa come la riga di comando da eseguire, modificata dall'opzione <link linkend="conf-make-options"
+>make-options</link
+> come normalmente. </para>
+</entry>
+</row>
+
+<row id="conf-cxxflags">
+<entry
+>cxxflags</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
+>Si aggiunge alle opzioni globali per il sistema di generazione predefinito, si sostituisce ad esse per gli altri sistemi di generazione.</para>
+<para
+>Usa questa opzione per specificare quali flag usare per generare il modulo. Questa opzione viene specificata qui invece che con <link linkend="conf-configure-flags"
+>configure-flags</link
+> o <link linkend="conf-cmake-options"
+>cmake-options</link
+> perché questa opzione imposterà anche la variabile d'ambiente <envar
+>CXXFLAGS</envar
+> durante il processo di generazione.</para>
+
+<para
+>Nota che per &kde; 4 e ogni altro modulo che usi &cmake; è necessario impostare l'opzione <option
+>CMAKE_BUILD_TYPE</option
+> a <userinput
+>none</userinput
+> quando si configura il modulo. Questo si può fare usando l'opzione <link linkend="conf-cmake-options"
+>cmake-options</link
+>. </para>
+</entry>
+</row>
+
+<row id="conf-dest-dir">
+<entry
+>dest-dir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
+>Usa questa opzione per cambiare il nome che viene dato a un modulo sul disco. Per esempio, se il modulo era extragear-network, usando questa opzione puoi rinominarlo a extragear-network. Nota che sebbene ciò cambi il nome del modulo sul disco, non è una buona idea includere cartelle o separatori di cartelle nel nome, perché ciò interferirà con le opzioni <link linkend="conf-build-dir"
+>build-dir</link
+> o <link linkend="conf-source-dir"
+>source-dir</link
+>.</para>
+</entry>
+</row>
+
+<row id="conf-do-not-compile">
+<entry
+>do-not-compile</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
+>Usa questa opzione per selezionare un insieme specifico di cartelle da non generare in un modulo (invece che tutte). Le cartelle da non generare dovrebbero essere separate da spazi.</para>
+
+<para
+>Nota che il codice sorgente dei programmi sarà comunque scaricato.</para>
+
+<para
+>Per esempio, per disabilitare la generazione delle cartelle <literal
+>codeeditor</literal
+> e <literal
+>minimaltest</literal
+> del framework <literal
+>syntaxhighlighting</literal
+>, dovresti aggiungere la compilazione <userinput
+>do-not-compile codeeditor minimaltest</userinput
+>, e aggiungere «do-not-compile juk kscd» alle tue opzioni syntaxhighlighting.</para>
+
+<para
+>Vedi <xref linkend="not-compiling"/> per un esempio.</para>
+</entry>
+</row>
+
+<row id="conf-git-user">
+<entry
+>git-user</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>15.09</member>
+</simplelist>
+<para
+>Questa opzione è per gli sviluppatori di &kde;. Se impostata, verrà usata per configurare automaticamente le informazioni do identificazione per il programma di controllo del codice sorgente &git; per i moduli &git; <emphasis
+>scaricati da quel momento in avanti</emphasis
+>, inclusi la maggior parte dei moduli di &kde;.</para>
+
+<para
+>In particolare, il nome e l'indirizzo di posta dell'utente di ogni deposito di &git; vengono configurati con i valori impostati da questa opzione.</para>
+
+<para
+>Il valore deve essere specificato nella forma <option
+><replaceable
+>Nome</replaceable
+> &lt;<replaceable
+>posta@esempio.it</replaceable
+>&gt;</option
+>.</para>
+
+<para
+>Per esempio, lo sviluppatore <quote
+>Pinco Pallino</quote
+> con indirizzo <quote
+>pinco@pallino.it</quote
+> scriverebbe:</para>
+<para>
+<programlisting
+><symbol
+>git-user</symbol
 > <replaceable
->it</replaceable
-></userinput
->. Devi comunque ancora usare le &systemsettings; per scegliere di attivare la lingua.</para>
+>Pinco Pallino</replaceable
+> &lt;<replaceable
+>pinco@pallino.it</replaceable
+>&gt;
+</programlisting>
+</para>
+
+</entry>
+</row>
+
+<row id="conf-http-proxy">
+<entry
+>http-proxy</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Questa opzione, se impostata, usa l'URL specificato come server proxy da usare per tutte le comunicazioni su reti HTTP (per esempio, quando si scarica la <link linkend="kde-projects-module-sets"
+>banca dati dei progetti di &kde;</link
+>).</para>
+
+<para
+>Inoltre, &kdesrc-build; cercherà di assicurarsi che gli strumenti da cui dipende usino quel server proxy, se possibile, impostando la variabile d'ambiente <envar
+>http_proxy</envar
+> al server indicato, <emphasis
+>se quella variabile non è già impostata</emphasis
+>.</para>
+</entry>
+</row>
+
+<row id="conf-directory-layout">
+<entry
+>directory-layout</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valori validi</member
+><member
+><userinput
+>flat</userinput
+>, <userinput
+>invent</userinput
+>, <userinput
+>metadata</userinput
+></member>
+</simplelist>
+<para
+>Questa opzione è utilizzata per configurare lo schema che &kdesrc-build; deve utilizzare durante la creazione di cartelle sorgente e di generazione.</para>
+<para
+>Lo schema <userinput
+>flat</userinput
+> è il valore predefinito e raggruppa tutti i moduli direttamente al di sotto delle cartelle sorgenti e di generazione di livello superiore. Per esempio, <literal
+>source/extragear/network/telepathy/ktp-text-ui</literal
+> nello schema <userinput
+>metadata</userinput
+> diventerebbe invece <literal
+>source/ktp-text-ui</literal
+> utilizzando lo schema <userinput
+>flat</userinput
+>. </para>
+<para
+>Lo schema <userinput
+>invent</userinput
+> crea una gerarchia di cartelle che rispecchia i percorsi relativi dei repository contenuti in <ulink url="https://invent.kde.org/"
+>invent.kde.org</ulink
+>. Per esempio, <literal
+>source/kde/applications/kate</literal
+> nello schema <userinput
+>metadata</userinput
+> diventerebbe invece <literal
+>source/utilities/kate</literal
+> utilizzando lo schema <userinput
+>invent</userinput
+>. Questo schema riguarda solo i progetti KDE. È una buona scelta per i programmatori alle prime armi con &kdesrc-build;. </para>
+<para
+>Infine, lo schema <userinput
+>metadata</userinput
+> è lo stesso schema del precedente comportamento predefinito. Questo schema organizza i progetti KDE in base ai percorsi di progetto specificati nei metadati del progetto per questi moduli. È una buona scelta se vuoi uno schema di cartelle che tenga traccia di determinati processi KDE, ma tieni presente che questo percorso non è sempre stabile. Come risultato, &kdesrc-build; potrebbe lasciare da parte una vecchia copia del repository di un progetto e clonarne una nuova a causa di modifiche ai metadati del progetto.</para>
+</entry>
+</row>
+
+<row id="conf-generate-vscode-project-config">
+<entry
+>generate-vscode-project-config</entry>
+
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+</simplelist
+>       
+
+<para
+>L'impostazione del modulo ha precedenza su quella globale</para>
+
+<para
+>Imposta questa opzione a <userinput
+>true</userinput
+> per far creare a &kdesrc-build; i file del progetto VS Code (cartella .vscode) all'interno della cartella sorgente del modulo.</para>
+
+<para
+>La cartella .vscode sarà creata all'interno della cartella sorgente del progetto, se non esiste già. Le configurazioni abiliteranno l'uso di LSP, la generazione, il debug e l'esecuzione del progetto dall'interno di VS Code.</para>
+
+<para
+>La configurazione raccomanda anche le estensioni da installare, utili per lavorare sulla maggior parte dei progetti KDE.</para>
+
+<para
+>Puoi anche utilizzare il flag a riga di comando <link linkend="cmdline-generate-vscode-project-config"
+> <option
+>--generate-vscode-project-config</option
+></link
+>.</para>
+</entry>
+</row>
+
+<row id="conf-include-dependencies">
+<entry
+>include-dependencies</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+</simplelist>
+<para
+>Controlla se &kdesrc-build; includerà le dipendenze note di questo modulo nella sua generazione, senza richiederne menzione (neanche indiretta).</para>
+
+<note
+><para
+>Questa opzione funziona solo per <link linkend="kde-projects-module-sets"
+>moduli basati su <literal
+>kde-project</literal
+></link
+>, e presume l'accuratezza dei metadati mantenuti dagli sviluppatori di &kde; per il <link linkend="conf-branch-group"
+>gruppo di rami</link
+> selezionato.</para
+></note>
+
+<para
+>Serve per supportare le applicazioni di compilazione che necessitano di versioni di &Qt; o &plasma; più recenti rispetto a quelle supportate dai comuni sistemi operativi.</para>
+</entry>
+</row>
+
+<row id="conf-install-after-build">
+<entry
+>install-after-build</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+</simplelist>
+<para
+>Questa opzione viene usata per installare il pacchetto a seguito di una generazione riuscita.</para>
+</entry>
+</row>
+
+<row id="conf-kdedir">
+<entry
+>kdedir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+><filename class="directory"
+>~/kde/usr</filename
+></member>
+</simplelist>
+<para
+>Questa opzione imposta la cartella in cui &kde; sarà installato dopo essere stato generato. Se la cambi a una cartella che richiede accesso come amministratore di sistema, potresti essere interessato anche all'opzione <link linkend="conf-make-install-prefix"
+>make-install-prefix</link
+>.</para>
 </entry>
 </row>
 
 <row id="conf-libname">
 <entry
 >libname</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+>Rilevata automaticamente</member>
+</simplelist>
+<para
 >Imposta questa opzione per cambiare il nome predefinito della cartella delle librerie installate all'interno di $<envar
 >KDEDIR</envar
 > e $<envar
 >QTDIR</envar
->. In molti sistemi è «lib» o «lib64». Viene avviato il rilevamento automatico per impostare il nome corretto, ma se il rilevamento fallisce può essere cambiato tramite questa impostazione. </entry>
+>. In molti sistemi è «lib» o «lib64». Viene avviato il rilevamento automatico per impostare il nome corretto, ma se il rilevamento fallisce può essere cambiato tramite questa impostazione.</para>
+</entry>
 </row>
 
 <row id="conf-libpath">
 <entry
 >libpath</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
 >Imposta questa opzione per impostare la variabile d'ambiente <envar
 >LD_LIBRARY_PATH</envar
 >. Non puoi sostituire questa impostazione per un singolo modulo. Il valore predefinito è vuoto, ma i percorsi <filename class="directory"
@@ -3507,40 +3633,57 @@ end module
 >/$<envar
 >LIBNAME</envar
 ></filename
-> vengono aggiunti automaticamente. Puoi usare la tilde (~) per qualsiasi percorso che aggiungi con questa opzione. </entry>
+> vengono aggiunti automaticamente. Puoi usare la tilde (~) per qualsiasi percorso che aggiungi con questa opzione.</para>
+</entry>
 </row>
 
 <row id="conf-log-dir">
 <entry
 >log-dir</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Usa questa opzione per cambiare la cartella usata per contenere i file di registro generati dallo script. </entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
+>Usa questa opzione per cambiare la cartella usata per contenere i file di registro generati dallo script.</para>
+</entry>
 </row>
 
 <row id="conf-make-install-prefix">
 <entry
 >make-install-prefix</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
 >Imposta questa variabile a un elenco separato da spazi, che verrà interpretato come un comando con le sue opzioni con cui far precedere il comando <userinput
 ><command
 >make</command
 > <option
 >install</option
 ></userinput
-> usato per installare i moduli. È comodo per installare i pacchetti con per esempio &sudo;, ma sii cauto quando usi i privilegi di amministratore.</entry>
+> usato per installare i moduli. È comodo per installare i pacchetti con per esempio &sudo;, ma sii cauto quando usi i privilegi di amministratore.</para
+></entry>
 </row>
 
 <row id="conf-make-options">
 <entry
 >make-options</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale (opzione del sistema di generazione)</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
 >Imposta questa variabile per passare le opzioni della riga di comando al comando <command
 >make</command
 >. È utile per programmi come <ulink url="https://github.com/distcc/distcc"
@@ -3566,87 +3709,60 @@ end module
 <row id="conf-manual-build">
 <entry
 >manual-build</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+</simplelist>
+<para
 >Imposta il valore dell'opzione a <userinput
 >true</userinput
 > (vero) per impedire al processo di cercare di generare questo modulo. Sarà comunque aggiornato quando si aggiorna da &git;. Questa opzione è esattamente equivalente all'opzione da riga di comando <link linkend="cmdline-no-build"
-><option
+> <option
 >--no-build</option
-></link
->. </entry>
+> </link
+>. </para>
+</entry>
 </row>
 
 <row id="conf-manual-update">
 <entry
 >manual-update</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+</simplelist>
+<para
 >Imposta il valore dell'opzione a <userinput
 >true</userinput
-> (vero) per impedire che il processo di generazione cerchi di aggiornare (e di conseguenza generare o installare) questo modulo. Se imposti questa opzione per un modulo, lo stai in pratica escludendo. </entry>
-</row>
-
-<row id="conf-module-base-path">
-<entry
->module-base-path</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Imposta questa opzione per sostituire il percorso alla cartella predefinita di &kdesrc-build; per il modulo. Si può usare, per esempio, per ritirare particolari rami o versioni di alcune librerie. <ulink url="https://invent.kde.org/"
->Il visore del sorgente di &kde;</ulink
-> è utilissimo per capire quale percorso scegliere.</para>
-
-<para
->Nota che &kdesrc-build; costruisce il percorso finale secondo il modello seguente: <filename class="directory"
-><varname
->$repository</varname
->/home/kde/<varname
->$module-base-path</varname
-></filename
->. </para>
-
-<para
->Il valore predefinito è <filename class="directory"
-><varname
->$module</varname
-></filename
-> o <filename class="directory"
->KDE/<varname
->$module</varname
-></filename
->, a seconda del nome del modulo.</para>
-
-<tip
-><para
->Usa piuttosto le opzioni <link linkend="conf-branch"
->branch</link
-> e <link linkend="conf-tag"
->tag</link
-> se possibile. </para
-></tip>
+> (vero) per impedire che il processo di generazione cerchi di aggiornare (e di conseguenza generare o installare) questo modulo. Se imposti questa opzione per un modulo, lo stai in pratica escludendo.</para>
 </entry>
-</row>
-
-<row id="conf-niceness">
-<entry
->niceness</entry>
-<entry
->Non sostituibile</entry>
-<entry
->Imposta questa opzione a un numero tra 20 e 0. Maggiore è il numero, minore la priorità che &kdesrc-build; si assegnerà. Il valore predefinito è 10. </entry>
 </row>
 
 <row id="conf-ninja-options">
 <entry
 >ninja-options</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale (opzione del sistema di generazione)</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
 >Imposta questa variabile per passare le opzioni a riga di comando al comando di generazione <command
 >ninja</command
 >. Questo può essere utile per abilitare l'output <quote
@@ -3673,7 +3789,6 @@ end module
 >make-options</link
 >.</para>
 
-<informalexample>
 <programlisting
 >options <replaceable
 >qtwebengine</replaceable>
@@ -3689,7 +3804,6 @@ end module
 >6</replaceable>
 end options
 </programlisting>
-</informalexample>
 </note>
 </entry>
 </row>
@@ -3697,83 +3811,46 @@ end options
 <row id="conf-no-src">
 <entry
 >no-src</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+</simplelist>
+<para
 >Se questa opzione è impostata a <replaceable
 >true</replaceable
->, &kdesrc-build; non aggiornerà automaticamente il codice sorgente del modulo. Cercherà ancora di generare il modulo se ci avrebbe provato comunque in condizioni normali.</entry>
-</row>
-
-<row>
-<entry
->no-rebuild-on-fail</entry>
-<entry
-></entry>
-<entry
->Questa opzione è stata rimossa nella versione 1.10, perché questo comportamento non è più d'aiuto a causa di miglioramenti nel sistema di generazione.</entry>
-</row>
-
-<row id="conf-num-cores">
-<entry
->num-cores</entry>
-<entry
->Non sostituibile</entry>
-<entry>
-<para
->Questa opzione è definita da &kdesrc-build; (quando utilizzi lo strumento kdesrc-build-setup o <command
->kdesrc-build --initial-setup</command
->), impostata al valore del numero delle CPU disponibili (come indicato dall'applicazione esterna <application
->nproc</application
->). Se &kdesrc-build; non è in grado di rilevare il numero di CPU, il valore viene impostato a 4.</para>
-
-<para
->Per un esempio d'uso dell'opzione vedi <xref linkend="make-options-example"/>. Questa opzione è stata aggiunta nella versione 20.07.</para>
-</entry>
-</row>
-
-<row id="conf-num-cores-low-mem">
-<entry
->num-cores-low-mem</entry>
-<entry
->Non sostituibile</entry>
-<entry>
-<para
->Questa opzione è definita da &kdesrc-build; (quando utilizzi lo strumento kdesrc-build-setup o <command
->kdesrc-build --initial-setup</command
->), impostata al valore del numero delle CPU ritenuto adeguato per moduli «pesanti» o comunque con elevata complessità, tipo <literal
->qtwebengine</literal
->, al fine di evitare l'esaurimento delle memoria durante la generazione.</para>
-
-<para
->Il calcolo tipico è un core di CPU per ogni 2 gigabyte (GiB) di memoria totale. Andrà specificato almeno un core e non più di <option
-><link linkend="conf-num-cores"
->num-cores</link
-></option
-> core.</para>
-
-<para
->Sebbene questa opzione sia pensata per supportare i moduli &Qt;, puoi utilizzarla per qualsiasi altro tuo modulo nello stesso modo in cui viene utilizzato <option
->num-cores</option
->.</para>
-
-<para
->Se &kdesrc-build; non è in grado di rilevare la memoria disponibile, il valore verrà impostato a 2.</para>
-
-<para
->Questa opzione è stata aggiunta nella versione 20.07.</para>
+>, &kdesrc-build; non aggiornerà automaticamente il codice sorgente del modulo. Cercherà ancora di generare il modulo se ci avrebbe provato comunque in condizioni normali.</para>
 </entry>
 </row>
 
 <row id="conf-override-build-system">
 <entry
 >override-build-system</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Questa è un'opzione avanzata, aggiunta in &kdesrc-build; 1.16.</para>
-
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+>Rilevata automaticamente</member>
+<member
+>Valori validi</member
+><member
+>KDE, Qt, qmake, generic, autotools, meson</member>
+<member
+>Disponibile da</member
+><member
+>1.16</member>
+</simplelist>
 <para
 >Normalmente &kdesrc-build; rileverà il sistema di generazione giusto da usare per un modulo dopo averlo scaricato. Questo avviene controllando l'esistenza di certi file nella cartella del codice sorgente del modulo.</para>
 
@@ -3843,48 +3920,17 @@ end options
 </entry>
 </row>
 
-<row id="conf-override-url">
-<entry
->override-url</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Se imposti questa opzione, &kdesrc-build; userà il suo valore come l'&url; da passare a &git; <emphasis
->esattamente com'è</emphasis
->. Generalmente dovresti usarla se vuoi scaricare un rilascio particolare ma &kdesrc-build; non riesce a capire quello che vuoi fare usando <link linkend="conf-branch"
->branch</link
->. </entry>
-</row>
-
-<row id="conf-persistent-data-file">
-<entry
->persistent-data-file</entry>
-<entry
->Non sostituibile</entry>
-<entry
-><para
->Usa questa opzione per cambiare dove &kdesrc-build; memorizza i suoi dati permanenti. La posizione predefinita è un file chiamato <filename
->.kdesrc-build-data</filename
->, localizzato nella stessa cartella del file di configurazione in uso. Se il file di configurazione globale è in uso, sarà salvato in <filename
->~/.local/state/kdesrc-build-data</filename
-> (<filename
->$XDG_STATE_HOME/kdesrc-build-data</filename
->, se <envar
->$XDG_STATE_HOME</envar
-> è impostato). Se hai più configurazioni disponibili nella stessa cartella, potresti voler impostare manualmente questa opzione in modo che configurazioni differenti non producano dati permanenti in conflitto tra loro. </para>
-
-<para
->Questa opzione è stata aggiunta in &kdesrc-build; 1.15.</para>
-</entry>
-</row>
-
 <row id="conf-prefix">
 <entry
 >prefix</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
 >Questa opzione controlla dove installare il modulo (normalmente si usa il valore di <option
 ><link linkend="conf-kdedir"
 >kdedir</link
@@ -3902,24 +3948,37 @@ end options
 <row id="conf-purge-old-logs">
 <entry
 >purge-old-logs</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Questa opzione decide se le vecchie cartelle dei registri debbano essere automaticamente eliminate o no. Il valore predefinito è <replaceable
->false</replaceable
->.</para>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+</simplelist>
+<para
+>Questa opzione decide se le vecchie cartelle dei registri debbano essere automaticamente eliminate o no.</para>
 </entry>
 </row>
 
 <row id="conf-qmake-options">
 <entry
 >qmake-options</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Tutte le opzioni qui specificate vengono passate al comando <command
 >qmake</command
 >, per i moduli che usano il sistema di generazione <symbol
@@ -3927,37 +3986,51 @@ end options
 >. Per esempio, puoi usare l'opzione <userinput
 >PREFIX=/percorso/a/qt</userinput
 > per imporre a qmake dove installare il modulo. </para>
-<para
->Questa opzione è stata aggiunta a &kdesrc-build; 1.16.</para>
 </entry>
 </row>
 
 <row id="conf-qtdir">
 <entry
 >qtdir</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
 >Imposta questa opzione per impostare la variabile d'ambiente <envar
 >QTDIR</envar
-> durante la generazione. Se non la specifichi, &kdesrc-build; presumerà che &Qt; sia fornito dal sistema operativo. </entry>
+> durante la generazione. Se non la specifichi, &kdesrc-build; presumerà che &Qt; sia fornito dal sistema operativo. </para>
+</entry>
 </row>
 
 <row id="conf-remove-after-install">
 <entry
 >remove-after-install</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valori validi</member
+><member
+>none, builddir, all</member>
+<member
+>Valore predefinito</member
+><member
+>none</member>
+</simplelist>
+<para
 >Se hai poco spazio su disco, potrebbe interessarti questa opzione per eliminare automaticamente la cartella di generazione (o entrambe le cartelle del codice sorgente e di generazione per le installazioni singole) dopo che sarà riuscita l'installazione del modulo. </para>
 <para
 >I valori possibili di questa opzione sono: <itemizedlist>
 <listitem
 ><para
-><option
->none</option
-> - Non eliminare nulla (predefinito).</para
+>none - Non eliminare nulla.</para
 ></listitem>
 <listitem
 ><para
@@ -3984,66 +4057,89 @@ end options
 <row id="conf-repository">
 <entry
 >repository</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
->Questa opzione è stata introdotta nella versione 1.10, e si usa per specificare il deposito &git; da cui scaricare il codice sorgente del modulo. &Qt; (e quindi qt) avrebbero bisogno di questa opzione, oltre a diversi moduli di &kde; che sono nel processo di conversione a &git;.</para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.10</member>
+</simplelist>
+<para
+>Questa opzione si usa per specificare il deposito &git; da cui scaricare il codice sorgente del modulo. &Qt; (e quindi qt) avrebbero bisogno di questa opzione, oltre a diversi moduli di &kde; che sono nel processo di conversione a &git;.</para
 ></entry>
 </row>
 
 <row id="conf-revision">
 <entry
 >revision</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Se questa opzione è impostata a un valore diverso da zero, &kdesrc-build; costringerà l'aggiornamento del codice sorgente a portare un modulo all'esatta revisione data, anche se ci sono opzioni come <link linkend="conf-branch"
 >branch</link
 >. Se il modulo è già alla revisione data non sarà aggiornato di nuovo, a meno che questa opzione sia cambiata o rimossa dalla configurazione.</para>
-
-<note
-><para
->Questa opzione non funzionava per i moduli basati su Git (inclusi i moduli <link linkend="kde-projects-module-sets"
->kde-projects</link
->) fino alla versione 1.16 di &kdesrc-build;.</para
-></note>
-
 </entry>
 </row>
 
 <row id="conf-run-tests">
 <entry
 >run-tests</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale (opzione del sistema di generazione)</entry>
-<entry
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+</simplelist>
+<para
 >Se impostata a <userinput
 >true</userinput
->, il modulo sarà generato con supporto per eseguire i suoi test, che verranno eseguiti come parte del processo di generazione. &kdesrc-build; visualizzerà un breve rapporto dei risultati dei test. Ciò è utile per gli sviluppatori o coloro che vogliono assicurarsi che il loro sistema sia correttamente configurato.</entry>
+>, il modulo sarà generato con supporto per eseguire i suoi test, che verranno eseguiti come parte del processo di generazione. &kdesrc-build; visualizzerà un breve rapporto dei risultati dei test. Ciò è utile per gli sviluppatori o coloro che vogliono assicurarsi che il loro sistema sia correttamente configurato.</para
+></entry>
 </row>
 
 <row id="conf-set-env">
 <entry
 >set-env</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+</simplelist>
+<para
 >Questa opzione accetta un insieme di valori separati da spazi, dove il primo è la variabile d'ambiente da impostare, e il resto i valori a cui vuoi impostarla. Per esempio, per impostare la variabile <envar
 >PINCO</envar
 > a <replaceable
 >pallino</replaceable
 >, inseriresti questo comando nella sezione opportuna:</para>
-<screen
+<programlisting
 ><command
 >set-env</command
 > <envar
 >PINCO</envar
 > <replaceable
 >pallino</replaceable
-></screen>
+>
+</programlisting>
 <para
 >Questa opzione è speciale perché può essere ripetuta senza sostituire le impostazioni di set-env precedenti nella stessa sezione del <link linkend="configure-data"
 >file di configurazione</link
@@ -4054,50 +4150,62 @@ end options
 <row id="conf-source-dir">
 <entry
 >source-dir</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Questa opzione viene usata per impostare la cartelle in cui tenere il codice sorgente &git; di &kde; sul tuo computer. Se non specifichi questo valore, quello predefinito sarà <filename class="directory"
->~/kde/src</filename
->. Puoi usare la tilde (<userinput
->~</userinput
->) per rappresentare la cartella Home usando questa opzione. </entry>
-</row>
-
-<row id="conf-ssh-identity-file">
-<entry
->ssh-identity-file</entry>
-<entry
->Non sostituibile</entry>
 <entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Valore predefinito</member
+><member
+><filename class="directory"
+>~/kde/src</filename
+></member>
+</simplelist>
 <para
->Imposta questa opzione per controllare quale file chiave SSH viene passato al comando <command
->ssh-add</command
-> quando &kdesrc-build; scarica il codice sorgente dai depositi che richiedono un'autenticazione. Vedi anche <xref linkend="ssh-agent-reminder"/>.</para>
-
-<para
->Questa opzione è stata aggiunta nella versione 1.14.2.</para>
+>Questa opzione si usa per impostare la cartelle in cui tenere il codice sorgente &git; di &kde; sul tuo computer. Puoi usare la tilde (<userinput
+>~</userinput
+>) per rappresentare la cartella Home usando questa opzione.</para>
 </entry>
 </row>
 
 <row id="conf-stop-on-failure">
 <entry
 >stop-on-failure</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Imposta questa opzione a <userinput
->true</userinput
-> (vero) per far fermare l'esecuzione dello script a seguito del verificarsi di un errore durante il processo di generazione o installazione. Il valore predefinito di questa opzione è true (vero). </entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>True</member>
+</simplelist>
+<para
+>L'impostazione di questa opzione a <userinput
+>false</userinput
+> consente di continuare l'esecuzione dello script a seguito del verificarsi di un errore durante il processo di generazione o installazione.</para>
+</entry>
 </row>
 
 <row id="conf-tag">
 <entry
 >tag</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.16</member>
+</simplelist>
+<para
 >Usa questa opzione per scaricare un rilascio specifico di un modulo.</para>
 <para
 ><emphasis
@@ -4107,21 +4215,28 @@ end options
 >. I rilasci di &kde; sono disponibili come tarball dal <ulink url="https://download.kde.org/"
 >sito degli scaricamenti di &kde;</ulink
 >.</para>
-
-<note
-><para
->Questa opzione è stata supportata per i moduli basati su Git solo da &kdesrc-build; 1.16.</para
-></note>
 </entry>
 </row>
 
 <row id="conf-use-clean-install">
 <entry
 >use-clean-install</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale (opzione del sistema di generazione)</entry>
-<entry
-><para
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Logico (booleano)</member>
+<member
+>Valore predefinito</member
+><member
+>False</member>
+<member
+>Disponibile da</member
+><member
+>1.12</member>
+</simplelist>
+<para
 >Imposta questa opzione a <userinput
 >true</userinput
 > per far eseguire <command
@@ -4134,62 +4249,189 @@ end options
 >Questo può essere utile per assicurarsi che non ci siano delle vecchie librerie abbandonate, metadati di &cmake;, eccetera, che possono causare problemi in installazioni di &kde; di lunga data. Questo però funziona solo sui sistemi di generazione che supportano <command
 >make uninstall</command
 >.</para>
-
-<para
->Questa opzione è stata aggiunta in &kdesrc-build; 1.12, ma non è stata documentata fino a &kdesrc-build; 1.16.</para>
 </entry>
 </row>
 
+</tbody>
+
+</tgroup>
+</table>
+
+
+<table id="options-module-set-table">
+<title
+>Opzioni per gli ambiti globali e l'insieme di moduli</title>
+<tgroup cols="2">
+
+<thead>
 <row>
 <entry
->use-cmake</entry>
+>Nome dell'opzione</entry>
 <entry
-></entry>
+>Descrizione</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-git-repository-base">
 <entry
->Questa opzione è stata rimossa a partire da &kdesrc-build; 1.4, perché tutti i moduli di &kde; 4 richiedono &cmake;, e l'uso di &cmake; non è permesso in nessun altro modulo. </entry>
+>git-repository-base</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Questa opzione si usa per creare un nome breve per riferirsi a un particolare &URL; di un deposito di &git; nelle dichiarazioni di <link linkend="module-sets"
+>insiemi di moduli</link
+> seguenti, il che è utile per dichiarare molti moduli d i&git; da generare.</para>
+
+<para
+>Devi specificare due cose (separate da uno spazio): il nome da assegnare all'&URL; di base, e il suo nome esatto. Per esempio:</para>
+
+<para>
+<programlisting
+>global
+    # altre opzioni
+    # Questo è il percorso comune a tutti i moduli su server Git.
+    git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Dichiarazioni di moduli
+
+module-set
+    # Adesso puoi usare l'alias prima definito, ma <emphasis
+>solo</emphasis
+> in un insieme di moduli.
+    repository <replaceable
+>kde-git</replaceable>
+    <link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>modulo1.git</replaceable
+> <replaceable
+>modulo2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>L'opzione <literal
+>use-modules</literal
+> dell'insieme di moduli ha creato due moduli interni, e &kdesrc-build; si è comportato come se avesse letto:</para>
+
+<programlisting
+>module modulo1
+    repository kde:<replaceable
+>modulo1.git</replaceable>
+end module
+
+module modulo2
+    repository kde:<replaceable
+>modulo2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>Il prefisso del deposito &git; <literal
+>kde:</literal
+> usato sopra è una scorciatoia che verrà configurata automaticamente da &kdesrc-build;. Vedi l'articolo di Techbase sulla <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>rinomina degli URL</ulink
+> per maggiori informazioni. Nota che al contrario della maggior parte delle altre opzioni, questa può essere specificata più volte per creare tanti alias quanti sono richiesti.</para>
+
+<tip
+><para
+>Non è necessario usare questa opzione per usare gli insiemi di moduli: questa opzione esiste per facilitare l'uso dello stesso deposito in diversi insiemi di moduli.</para
+></tip>
+</entry>
 </row>
 
-<row id="conf-use-idle-io-priority">
+<row id="conf-ignore-modules">
 <entry
->use-idle-io-priority</entry>
-<entry
->Non sostituibile</entry>
-<entry
->Questa opzione, aggiunta in &kdesrc-build; 1.12, farà usare una priorità minore per l'accesso al disco e ad altro I/O, che può significativamente migliorare i tempi di reazione del resto del sistema al prezzo di tempi di esecuzione di &kdesrc-build; leggermente più lunghi. Come impostazione predefinita è disattivata, per abilitare la priorità a disco ridotta impostala a <userinput
->true</userinput
->. </entry>
-</row>
+>ignore-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Attualmente è utilizzabile solo nell'insieme di moduli, vedi il <ulink url="https://bugs.kde.org/show_bug.cgi?id=472917"
+>Bug 472917</ulink
+>.</para>
+<para
+>I moduli indicati da questa opzione, che sarebbero altrimenti stati scelti da &kdesrc-build; tramite un'opzione <link linkend="conf-use-modules"
+>use-modules</link
+>, sono invece completamente saltati. Usa questa opzione se vuoi generare un intero gruppo del progetto <link linkend="kde-projects-module-sets"
+>kde-projects</link
+> <emphasis
+>tranne</emphasis
+> alcuni moduli specifici.</para>
 
-<row id="conf-use-inactive-modules">
-<entry
->use-inactive-modules</entry>
-<entry
->Non sostituibile</entry>
-<entry
->Questa opzione, quando abilitata, permetterà a kdesrc-build anche di clonare e scaricare (clone and pull) dai repository contrassegnati come inattivi. L'impostazione predefinita è "disabilitata" per consentire ai moduli inattivi di impostare questa opzione a <userinput
->true</userinput
->. </entry>
+<para
+>Il valore dell'opzione non deve necessariamente fare direttamente il nome del modulo. Qualsiasi modulo che contenga delle parti contigue e complete del suo <link linkend="kde-projects-module-sets"
+>percorso nei progetti di &kde;</link
+> corrispondenti a uno dei valori dell'opzione verrà ignorato; in questo modo puoi ignorare più moduli alla volta.</para>
+
+<para
+>Per esempio, un valore dell'opzione come <replaceable
+>libs</replaceable
+> farebbe escludere sia <symbol
+>kde/kdegraphics/libs</symbol
+> che <symbol
+>playground/libs</symbol
+> (ma non <symbol
+>kde/kdelibs</symbol
+> perché è la parte intera <quote
+>kdelibs</quote
+> che viene considerata).</para>
+
+<tip
+><para
+>Vedi anche <xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+</entry>
 </row>
 
 <row id="conf-use-modules">
 <entry
 >use-modules</entry>
-<entry
->Applicabile solo in <link linkend="module-sets"
->module-set</link
-></entry>
-<entry
-><para
->Questa opzione, aggiunta in &kdesrc-build; 1.12.1, permette di specificare facilmente molti moduli da generare in un solo punto del <link linkend="kdesrc-buildrc"
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipo</member
+><member
+>Stringa</member>
+<member
+>Disponibile da</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Applicabile solamente nell'<link linkend="module-sets"
+>insieme di moduli</link
+></para>
+<para
+>Questa opzione permette di specificare facilmente molti moduli da generare in un solo punto del <link linkend="kdesrc-buildrc"
 >file di configurazione</link
 >.</para>
 
 <para
->Questa opzione <emphasis
->deve</emphasis
-> essere usata in un <literal
->module-set</literal
->. Ogni identificativo passato a questa opzione viene convertito internamente in un modulo di &kdesrc-build;, con un'opzione <link linkend="conf-repository"
+>Ogni identificativo passato a questa opzione viene convertito internamente in un modulo di &kdesrc-build;, con un'opzione <link linkend="conf-repository"
 ><option
 >repository</option
 ></link
@@ -4217,35 +4459,7 @@ end options
 </entry>
 </row>
 
-<row id="conf-use-qt-builddir-hack">
-<entry
->use-qt-builddir-hack</entry>
-<entry
->L'impostazione del modulo ha precedenza su quella globale</entry>
-<entry
->Questa opzione è stata rimossa a causa di miglioramenti nel sistema di generazione di &Qt;. </entry>
-</row>
-
-<row id="conf-use-stable-kde">
-<entry
->use-stable-kde</entry>
-<entry
->Non sostituibile</entry>
-<entry>
-<para
->Questa opzione è deprecata e verrà rimossa (di nuovo) in un rilascio futuro.</para>
-
-<para
->Usa piuttosto l'opzione <option
-><link linkend="conf-branch-group"
->branch-group</link
-></option
->, che dà maggiore selettività.</para>
-</entry>
-</row>
-
 </tbody>
-
 </tgroup>
 </table>
 
@@ -4501,9 +4715,71 @@ end options
 ></para
 ></listitem>
 </itemizedlist>
-
 <para
->Disponibile dalla versione 18.11.</para>
+>Questa opzione è esattamente uguale all'uso concomitante di <option
+><link linkend="cmdline-install-distro-packages"
+>--install-distro-packages</link
+></option
+> <option
+><link linkend="cmdline-generate-config"
+>--generate-config</link
+></option
+> <option
+><link linkend="cmdline-update-shellrc"
+>--update-shellrc</link
+></option
+>. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-distro-packages">
+<term
+><parameter
+>--install-distro-packages</parameter
+></term>
+<listitem
+><para
+>Installa i pacchetti della distribuzione (nelle distribuzioni &Linux; supportate) necessari a preparare il sistema al funzionamento di &kdesrc-build; e all'esecuzione del software &kde; installato di recente. </para>
+<para
+>Vedi anche <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-config">
+<term
+><parameter
+>--generate-config</parameter
+></term>
+<listitem
+><para
+>Genera il file di configurazione di &kdesrc-build;. </para>
+<para
+>Vedi anche <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-update-shellrc">
+<term
+><parameter
+>--update-shellrc</parameter
+></term>
+<listitem
+><para
+>Modifica «~/.bashrc» (o un altro file rc di shell) per aggiungere &kdesrc-build; alla tua variabile $PATH e abilitare il completamento automatico. </para>
+<para
+>Vedi anche <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
 </listitem>
 </varlistentry>
 
@@ -4526,6 +4802,17 @@ end options
 <listitem
 ><para
 >Abilita l'output colorato (è predefinito per i terminali interattivi). </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-vscode-project-config">
+<term
+><parameter
+>--generate-vscode-project-config</parameter
+></term>
+<listitem
+><para
+>Genera una cartella .vscode con configurazioni per la generazione e il debug in Visual Studio Code. </para
 ></listitem>
 </varlistentry>
 
@@ -4665,7 +4952,11 @@ end options
 ></term>
 <listitem
 ><para
->Fai solo il processo di installazione. </para
+>Se questa è l'unica opzione dalla riga di comando, cerca di installare tutti i moduli contenuti nella cartella <filename
+>log/latest/build-status</filename
+>. Se sono specificate opzioni da riga di comando dopo <parameter
+>--install-only</parameter
+>, sono tutte considerate essere moduli da installare (anche se non sono stati generati correttamente l'ultima volta). </para
 ></listitem>
 </varlistentry>
 
@@ -4936,17 +5227,6 @@ kdepim: master
 </listitem>
 </varlistentry>
 
-<varlistentry id="cmdline-no-rebuild-on-fail">
-<term
-><parameter
->--no-rebuild-on-fail</parameter
-></term>
-<listitem
-><para
->Non cercare di rigenerare da zero i moduli che non è stato possibile generare. &kdesrc-build; non cercherà mai di farlo con un modulo che si è già cercato di generare da zero. </para
-></listitem>
-</varlistentry>
-
 <varlistentry id="cmdline-refresh-build">
 <term
 ><parameter
@@ -5060,12 +5340,6 @@ kdepim: master
 ></option
 >. </para
 ><para
->È anche più comodo con l'opzione <option
-><link linkend="cmdline-stop-on-failure"
->--stop-on-failure</link
-></option
->, soprattutto se stai facendo la configurazione iniziale dell'ambiente di sviluppo. </para
-><para
 >Questa opzione è stata aggiunta in &kdesrc-build; 1.16. </para
 ></listitem>
 </varlistentry>
@@ -5143,11 +5417,15 @@ kdepim: master
 ><parameter
 >--stop-on-failure</parameter
 ></term>
+<term
+><parameter
+>--no-stop-on-failure</parameter
+></term>
 <listitem
 ><para
->Questa opzione interrompe la generazione non appena si verifica un errore. È utile quando stai configurando l'ambiente di sviluppo iniziale. Senza questa opzione, &kdesrc-build; proverà a procedere con i moduli rimanenti della generazione per evitare di perdere tempo nel caso che il problema fosse in un solo modulo. </para
+>Questa opzione controlla se la generazione sarà interrotta non appena si verifica un errore. Il comportamento predefinito è --stop-on-failure. È possibile ignorarla se vuoi  procedere con i moduli rimanenti della generazione, per evitare di perdere tempo nel caso in cui il problema fosse in un solo modulo. </para
 ><para
->Questa opzione è stata rimossa in &kdesrc-build; 1.16. Vedi anche l'opzione <link linkend="conf-stop-on-failure"
+>Questa opzione è stata rimossa in &kdesrc-build; 1.16. Vedi anche l'opzione del file di configurazione <link linkend="conf-stop-on-failure"
 >stop-on-failure</link
 >. </para
 ></listitem>
@@ -5343,41 +5621,6 @@ QMAIL_CONTROLDIR=/var/qmail/control
 >make</command
 >. Ciò viene supportato solo per retrocompatibilità con vecchie versioni; questo effetto non è utile per l'attuale sistema di generazione di &kde;. </para
 ></listitem>
-</varlistentry>
-
-<varlistentry id="cmdline-install"
-><term
-><parameter
->--install</parameter
-></term>
-<listitem
-><para
->Se questa è l'unica opzione dalla riga di comando, cerca di installare tutti i moduli contenuti nella cartella <filename
->log/latest/build-status</filename
->. Se sono specificate opzioni da riga di comando dopo <parameter
->--install</parameter
->, sono tutte considerate essere moduli da installare (anche se non sono stati generati correttamente l'ultima volta). </para
-></listitem>
-</varlistentry>
-
-<varlistentry id="cmdline-no-snapshots"
-><term
-><parameter
->--no-snapshots</parameter
-></term>
-<listitem
-><para
->Passare questa opzione fa in modo che &kdesrc-build; effettui sempre un normale ritiro iniziale di un modulo invece di usare un'istantanea di avvio rapido (disponibile solo per i moduli Git del deposito <literal
->kde-projects</literal
->). Nota che questa opzione dovrebbe essere usata solo se c'è un problema a usare le istantanee, perché le istantanee di avvio rapido riducono il carico sui depositi del sorgente di &kde;. </para>
-
-<note
-><para
->Le istantanee dei moduli <emphasis
->sono</emphasis
-> dei veri ritiri. Non dovresti specificare questa opzione, è solo un aiuto per tracciare gli errori.</para
-></note>
-</listitem>
 </varlistentry>
 
 <varlistentry id="cmdline-delete-my-patches">
@@ -5829,7 +6072,7 @@ end module
 >Per esempio, gli sviluppatori di &kmail; potrebbero lavorare a una nuova funzionalità in un ramo diverso per non interferire con la versione usata dagli altri sviluppatori. Questo ramo contiene dei lavori in corso, mentre il ramo principale (detto master) potrebbe averne altri. </para>
 
 <para
->Un tag, invece, è un'istantanea del deposito del codice sorgente in un certo momento. Ciò viene usato dalla squadra di amministrazione di &kde; per segnare una versione del codice sorgente adatta al rilascio, lasciando allo stesso tempo che gli sviluppatori possano lavorare sul codice. </para>
+>Un tag, invece, è un punto specificato nel codice sorgente in un certo momento. Ciò viene usato dalla squadra di amministrazione di &kde; per segnare una versione del codice sorgente adatta al rilascio, lasciando allo stesso tempo che gli sviluppatori possano lavorare sul codice. </para>
 
 </sect3>
 
@@ -5874,60 +6117,6 @@ end module
 ></tip>
 </sect3>
 
-<sect3 id="advanced-branches">
-<title
->Opzioni avanzate di supporto dei rami</title>
-
-<para
->&kdesrc-build; supporta due opzioni per le situazioni dove &branch; e &tag; non indovinano il percorso giusto: &module-base-path; e &override-url;. </para>
-
-<itemizedlist>
-<listitem
-><para
->&module-base-path; si usa per aiutare &kdesrc-build; a scrivere la parte mancante del percorso di un modulo. Nel deposito di &kde;, tutti i percorsi sono nella forma <filename class="directory"
->radiceGit/percorso-base-modulo/<replaceable
->nome-modulo</replaceable
-></filename
->. Normalmente &kdesrc-build; riesce a capire da sé la parte in mezzo. Quando non ci riesce, puoi usare &module-base-path;, così: </para>
-
-<informalexample>
-<screen
->module kdesupport
-    # kdesupport supporta vari tag per ordinare facilmente i programmi
-    # necessari per un certo rilascio della piattaforma di KDE.
-    module-base-path tags/kdesupport-for-4.5
-end module
-</screen>
-
-<para
->Ciò farà scaricare a &kdesrc-build; kdesupport da (in questo esempio) <filename
->git://invent.kde.org/home/kde/<replaceable
->tags/kdesupport-for-4.5</replaceable
-></filename
->. </para>
-</informalexample>
-<tip
-><para
->Nelle versioni precedenti di &kdesrc-build;, il &module-base-path; era gestito diversamente. Se ravvisi dei problemi con una vecchia definizione di &module-base-path;, forse dovresti verificare che il percorso effettivo sia come se lo aspetta &kdesrc-build; usando l'opzione <link linkend="cmdline-pretend"
->--pretend</link
->. </para
-></tip>
-</listitem>
-
-<listitem
-><para
->L'opzione &override-url;, invece, ti richiede di specificare il percorso esatto da cui scaricare. Però, ti permette di scaricare da percorsi che le versioni precedenti di &kdesrc-build; non riuscirebbero mai a raggiungere. Attualmente, l'opzione &module-base-path; dovrebbe bastare per qualsiasi &URL; sorgente di &git;. </para>
-
-<important
-><para
->&kdesrc-build; non toccherà né modificherà il valore che specifichi per &override-url;, quindi se cambi le tue impostazioni del &repository; dovresti cambiare anche questa. </para
-></important>
-
-</listitem>
-</itemizedlist>
-
-</sect3>
-
 </sect2>
 
 <sect2 id="stopping-the-build-early">
@@ -5948,11 +6137,11 @@ end module
 
 <sect3 id="stop-on-failure-stops-early">
 <title
->Fermare prima con --stop-on-failure</title>
+>Non fermare prima con --no-stop-on-failure</title>
 
 <para
 >Il metodo principale per eseguire questa operazione è usare l'opzione a riga di comando <link linkend="cmdline-stop-on-failure"
->--stop-on-failure</link
+>--no-stop-on-failure</link
 > quando esegui &kdesrc-build;. </para>
 
 <para
@@ -5983,7 +6172,7 @@ end module
 
 <sect3 id="stopping-early-without-stop-on-failure">
 <title
->Fermare &kdesrc-build; prima senza --stop-on-failure</title>
+>Fermare &kdesrc-build; con eleganza quando stop-on-failure è «false»</title>
 
 <para
 >Come detto sopra, è possibile spegnere prima &kdesrc-build; in modo elegante una volta che ha completato il modulo su cui sta lavorando. Per farlo, devi inviare il segnale <literal
@@ -6090,11 +6279,11 @@ end module
 <tip>
 <para
 >Come impostazione predefinita, la cartella di generazione è <filename class="directory"
->~/kdesrc/build/<replaceable
+>~/kde/build/<replaceable
 >modulo</replaceable
 >/</filename
 >. Se cambi l'impostazione dell'opzione &build-dir;, usa quella invece di <filename class="directory"
->~/kdesrc/build</filename
+>~/kde/build</filename
 >.</para>
 </tip>
 
@@ -6785,7 +6974,7 @@ end module-set
 
 <para
 >Queste istruzioni indicano come configurare il profilo necessario per assicurare che il computer possa accedere al desktop &plasma; di &kde; appena generato. &kdesrc-build; cercherà normalmente di farlo da sé (vedi <xref linkend="session-driver"/>). Questa sezione dell'appendice può essere utile per chi non può usare il supporto di &kdesrc-build; per la configurazione del profilo di accesso. Tuttavia le istruzioni potrebbero non sempre essere aggiornate, e può essere utile consultare il file <filename
->kde-env-master.sh</filename
+>kde-env-master.sh.in</filename
 > incluso nel codice sorgente di &kdesrc-build;.</para>
 
 <sect2 id="changing-profile">
@@ -6810,7 +6999,7 @@ QTDIR=<replaceable
 >   # Come ~/kdesrc/build/qt, predefinito
 KDEDIR=<replaceable
 >(percorso a cartella kde)</replaceable
-> # Come ~/kde, predefinito
+> # Come ~/kde/usr, predefinito
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
@@ -6827,7 +7016,7 @@ export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
 > Oppure, se non stai generando qt (e stai usando le librerie &Qt; del sistema), aggiungi: <programlisting
 >KDEDIR=<replaceable
 >(percorso a kdedir)</replaceable
->  # Come ~/kde, predefinito.
+>  # Come ~/kde/usr, predefinito.
 KDEDIRS=$KDEDIR
 PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 
