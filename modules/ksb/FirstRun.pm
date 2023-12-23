@@ -205,7 +205,7 @@ DONE
         }
     }
 
-    say colorize (" b[*] Running 'b[@installCmd @packages]'");
+    say colorize (" b[*] Running `b[${\(_espaceArgs(@installCmd))} @packages]`");
     my $result = system (@installCmd, @packages);
     my $exitStatus = $result >> 8;
 
@@ -453,10 +453,45 @@ sub _findBestInstallCmd
     _throw("No installer for $bestVendor!")
         unless @cmd;
 
-    # If not running as root already, add sudo
-    unshift @cmd, 'sudo' if $> != 0;
+    @cmd = _elevatePriviledgesIfNeeded(@cmd);
 
     return @cmd;
+}
+
+sub _elevatePriviledgesIfNeeded
+{
+    # If not running as root already, prepend sudo (if exists) or wrap with `su root -c '... $@' sh`
+    # Note that the first argument ("sh") is merely the argv[0].
+
+    my @cmd = @_;
+
+    if ($> != 0) {
+        my $hasSudo = defined locate_exe('sudo');
+        if ($hasSudo) {
+            unshift @cmd, 'sudo';
+        } else {
+            @cmd = ('su', 'root', '-c', _espaceArgs(@cmd) . ' $@', 'sh');
+        }
+    }
+
+    return @cmd;
+}
+
+sub _espaceArgs
+{
+    my @args = map { _escapeArg($_) } @_;
+    return join(' ', @args);
+}
+
+sub _escapeArg
+{
+    # Only simple whitespace "escaping" by wrapping in quotes.
+    # Feel free to improve if more elaborate use-cases with untrusted input come up in future.
+    my $arg = shift;
+    if (index($arg, ' ') != -1) {
+        $arg = "'$arg'";
+    }
+    return $arg;
 }
 
 sub _findBestVendorPackageList
