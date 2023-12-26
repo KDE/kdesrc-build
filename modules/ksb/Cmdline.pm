@@ -441,6 +441,7 @@ sub _supportedOptions
         'colorful-output|color!',
         'debug',
         'dependency-tree',
+        'dependency-tree-fullpath',
         'help|h',
         'ignore-modules|!=s{,}',
         'd', # --include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags

@@ -185,6 +185,33 @@ sub _yieldModuleDependencyTreeEntry
     $context->{report}($connector . $currentItem . ' ' . $statusInfo);
 }
 
+sub _yieldModuleDependencyTreeEntry_FullPath
+{
+    my ($nodeInfo, $module, $context) = @_;
+
+    my $depth = $nodeInfo->{depth};
+    my $currentItem = $nodeInfo->{currentItem};
+
+    my $connectorStack = $context->{stack};
+
+    my $prefix = pop(@$connectorStack);
+
+    while($context->{depth} > $depth) {
+        $prefix = pop(@$connectorStack);
+        --($context->{depth});
+    }
+
+    push(@$connectorStack, $prefix);
+
+    my $connector;
+
+    $connector = $prefix;
+    push(@$connectorStack, $prefix . $currentItem . "/");
+
+    $context->{depth} = $depth + 1;
+    $context->{report}($connector . $currentItem);
+}
+
 # Generates the build context and module list based on the command line options
 # and module selectors provided, resolves dependencies on those modules if needed,
 # filters out ignored or skipped modules, and sets up the module factory.
@@ -364,7 +391,7 @@ EOF
         croak_runtime("Failed to resolve dependency graph");
     }
 
-    if (exists $cmdlineGlobalOptions->{'dependency-tree'}) {
+    if (exists $cmdlineGlobalOptions->{'dependency-tree'} || exists $cmdlineGlobalOptions->{'dependency-tree-fullpath'}) {
         my $depTreeCtx = {
             stack => [''],
             depth => 0,
@@ -372,9 +399,17 @@ EOF
                 print(@_, "\n");
             }
         };
+
+        my $callback;
+        if (exists $cmdlineGlobalOptions->{'dependency-tree'}) {
+            $callback = \&_yieldModuleDependencyTreeEntry;
+        } else {
+            $callback = \&_yieldModuleDependencyTreeEntry_FullPath;
+        }
+
         ksb::DependencyResolver::walkModuleDependencyTrees(
             $moduleGraph->{graph},
-            \&_yieldModuleDependencyTreeEntry,
+            $callback,
             $depTreeCtx,
             @modules
         );
