@@ -1149,7 +1149,7 @@ Name=KDE Plasma Desktop (unstable; kdesrc-build)
 
 <para
 >Als u de intentie heeft om uw eigen login support in te stellen dan kunt die appendix consulteren of het bestand <filename
->sample-kde-env-master.sh</filename
+>kde-env-master.sh.in</filename
 > bekijken dat met de &kdesrc-build;-broncode is meegeleverd.</para>
 
 </sect2>
@@ -2499,136 +2499,6 @@ end global
 <para
 >In alle andere situaties zou u deze optie niet moeten instellen omdat het standaardprotocol het meeste efficient is.</para>
 
-</entry>
-</row>
-
-<row id="conf-git-repository-base">
-<entry
->git-repository-base</entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Type</member
-><member
->Tekenreeks</member>
-<member
->Beschikbare sinds</member
-><member
->1.12.1</member>
-</simplelist>
-<para
->Deze optie gebruikt u voor het creëren van een verkorte naam om naar een specifieke Git-repository gebaseerde URL te refereren in latere <link linkend="module-sets"
->module set</link
-> declaraties, wat handig is bij het snel declareren van veel te bouwen Git modules.</para>
-
-<para
->U moet twee dingen (gescheiden door een spatie) specificeren: De naam waaraan de basis URL wordt toegekend en de actuele basis URL zelf. Bijvoorbeeld:</para>
-
-<para>
-<programlisting
->global
-    # andere opties
-    # Dit is het algemene pad naar alle anonieme Git server modules.
-    git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Module declaraties
-
-module-set
-    # Nu kunt u de alias gebruiken die u eerder definieerde, maar <emphasis
->alleen</emphasis
-> in een module-set.
-    repository <replaceable
->kde-git</replaceable>
-    <link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->module1.git</replaceable
-> <replaceable
->module2.git</replaceable>
-end module-set
-</programlisting>
-</para>
-
-<para
->De module-instelling <literal
->use-modules</literal
-> optie creëerde twee modules intern, waardoor &kdesrc-build; zich gedraagt alsof het heeft ingelezen:</para>
-
-<programlisting
->module module1
-    repository kde:<replaceable
->module1.git</replaceable>
-end module
-
-module module2
-    repository kde:<replaceable
->module2.git</replaceable>
-end module
-</programlisting>
-
-<para
->Het hierboven gebruikte &git; repository voorvoegsel <literal
->kde:</literal
-> is een afkorting die automatisch door &kdesrc-build; wordt opgezet. Zie het artikel <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->URL Renaming</ulink
-> in de TechBase voor meer informatie. Merk op dat in tegenstelling tot andere opties, u deze optie meerdere keren kan specificeren om net zoveel aliassen als nodig te creëren.</para>
-
-<tip
-><para
->Het is geen vereiste om deze optie te gebruiken om de module-set handig te gebruiken, deze optie bestaat om makkelijk dezelfde repository in veel verschillende module sets te gebruiken.</para
-></tip>
-</entry>
-</row>
-
-<row id="conf-ignore-modules">
-<entry
->ignore-modules</entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Type</member
-><member
->Tekenreeks</member>
-<member
->Beschikbare sinds</member
-><member
->1.16</member>
-</simplelist>
-<para
->De in deze optie genoemde modules, welke door &kdesrc-build; worden geselecteerd wegens de optie <link linkend="conf-use-modules"
->use-modules</link
->, worden echter compleet overgeslagen. Gebruik deze optie als u een complete <link linkend="kde-projects-module-sets"
->kde-projects</link
-> project wilt bouwen <emphasis
->behalve</emphasis
-> enkel specifieke modules.</para>
-
-<para
->De instellingswaarde hoeft niet noodzakelijkerwijs direct de modulenaam te hebben. Alle modules waarvan het <link linkend="kde-projects-module-sets"
->&kde; projects module pad</link
-> overeenkomt met een onderdeel van de optiewaarden zal overgesloten worden, zodat u op die manier meerdere modules kan overslaan.</para>
-
-<para
->Bijvoorbeeld, een instellingswaarde met <replaceable
->libs</replaceable
-> zal als resultaat hebben dat zowel<symbol
->kde/kdegraphics/libs</symbol
-> en <symbol
->playground/libs</symbol
-> worden overgeslagen worden (maar niet <symbol
->kde/kdelibs</symbol
-> omdat het complete <quote
->kdelibs</quote
-> wordt vergeleken).</para>
-
-<tip
-><para
->Zie ook <xref linkend="example-ignoring-a-module"/>.</para
-></tip>
 </entry>
 </row>
 
@@ -4347,7 +4217,7 @@ einde opties
 
 <table id="options-module-set-table">
 <title
->Opties alleen voor scope van module-set</title>
+>Opties voor globale scope en module-set</title>
 <tgroup cols="2">
 
 <thead>
@@ -4359,6 +4229,140 @@ einde opties
 </row>
 </thead>
 <tbody>
+
+<row id="conf-git-repository-base">
+<entry
+>git-repository-base</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Deze optie gebruikt u voor het creëren van een verkorte naam om naar een specifieke Git-repository gebaseerde URL te refereren in latere <link linkend="module-sets"
+>module set</link
+> declaraties, wat handig is bij het snel declareren van veel te bouwen Git modules.</para>
+
+<para
+>U moet twee dingen (gescheiden door een spatie) specificeren: De naam waaraan de basis URL wordt toegekend en de actuele basis URL zelf. Bijvoorbeeld:</para>
+
+<para>
+<programlisting
+>global
+    # andere opties
+    # Dit is het algemene pad naar alle anonieme Git server modules.
+    git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Module declaraties
+
+module-set
+    # Nu kunt u de alias gebruiken die u eerder definieerde, maar <emphasis
+>alleen</emphasis
+> in een module-set.
+    repository <replaceable
+>kde-git</replaceable>
+    <link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>module1.git</replaceable
+> <replaceable
+>module2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>De module-instelling <literal
+>use-modules</literal
+> optie creëerde twee modules intern, waardoor &kdesrc-build; zich gedraagt alsof het heeft ingelezen:</para>
+
+<programlisting
+>module module1
+    repository kde:<replaceable
+>module1.git</replaceable>
+end module
+
+module module2
+    repository kde:<replaceable
+>module2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>Het hierboven gebruikte &git; repository voorvoegsel <literal
+>kde:</literal
+> is een afkorting die automatisch door &kdesrc-build; wordt opgezet. Zie het artikel <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>URL Renaming</ulink
+> in de TechBase voor meer informatie. Merk op dat in tegenstelling tot andere opties, u deze optie meerdere keren kan specificeren om net zoveel aliassen als nodig te creëren.</para>
+
+<tip
+><para
+>Het is geen vereiste om deze optie te gebruiken om de module-set handig te gebruiken, deze optie bestaat om makkelijk dezelfde repository in veel verschillende module sets te gebruiken.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-ignore-modules">
+<entry
+>ignore-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Kan nu alleen gebruikt worden in module-set, zie <ulink url="https://bugs.kde.org/show_bug.cgi?id=472917"
+>Bug 472917</ulink
+>.</para>
+<para
+>De in deze optie genoemde modules, welke door &kdesrc-build; worden geselecteerd wegens de optie <link linkend="conf-use-modules"
+>use-modules</link
+>, worden echter compleet overgeslagen. Gebruik deze optie als u een complete <link linkend="kde-projects-module-sets"
+>kde-projects</link
+> project wilt bouwen <emphasis
+>behalve</emphasis
+> enkel specifieke modules.</para>
+
+<para
+>De instellingswaarde hoeft niet noodzakelijkerwijs direct de modulenaam te hebben. Alle modules waarvan het <link linkend="kde-projects-module-sets"
+>&kde; projects module pad</link
+> overeenkomt met een onderdeel van de optiewaarden zal overgesloten worden, zodat u op die manier meerdere modules kan overslaan.</para>
+
+<para
+>Bijvoorbeeld, een instellingswaarde met <replaceable
+>libs</replaceable
+> zal als resultaat hebben dat zowel<symbol
+>kde/kdegraphics/libs</symbol
+> en <symbol
+>playground/libs</symbol
+> worden overgeslagen worden (maar niet <symbol
+>kde/kdelibs</symbol
+> omdat het complete <quote
+>kdelibs</quote
+> wordt vergeleken).</para>
+
+<tip
+><para
+>Zie ook <xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+</entry>
+</row>
 
 <row id="conf-use-modules">
 <entry
@@ -4374,6 +4378,10 @@ einde opties
 ><member
 >1.12.1</member>
 </simplelist>
+<para
+>Kan alleen gebruikt worden in <link linkend="module-sets"
+>module-set</link
+></para>
 <para
 >Met deze optie kunt u makkelijk meerdere te bouwen modules op een punt in <link linkend="kdesrc-buildrc"
 >het configuratiebestand</link
@@ -6905,7 +6913,7 @@ end module-set
 
 <para
 >Deze instructies beschrijven hoe u een profiel kan opstellen waarmee u zich kan aanmelden bij uw nieuw gebouwde &kde; &plasma; desktop. &kdesrc-build; zal normaal gesproken dit automatisch proberen te doen (zie <xref linkend="session-driver"/>). Deze appendix- sectie kan handig zijn voor personen die  de functionaliteit van &kdesrc-build; voor het instellen van een inlog-profiel niet kunnen gebruiken. Maar deze instructies hoeven niet altijd up-to-date te zijn, het kan ook handig zijn om het bestand <filename
->kde-env-master.sh</filename
+>kde-env-master.sh.in</filename
 > te bestuderen wat met de &kdesrc-build;-broncode is meegeleverd.</para>
 
 <sect2 id="changing-profile">
