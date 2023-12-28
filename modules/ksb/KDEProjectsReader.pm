@@ -8,6 +8,7 @@ package ksb::KDEProjectsReader 0.50;
 use ksb;
 
 use File::Find;
+use List::Util qw(uniq);
 
 use ksb::BuildException;
 use ksb::Debug;
@@ -188,6 +189,9 @@ sub getModulesForProject
     else {
         $findResults->();
     }
+
+    # As we run $findResults twice (for example, when proj is "workspace"), remove duplicates
+    @results = uniq(@results);
 
     return @{$repositoryRef}{@results};
 }
