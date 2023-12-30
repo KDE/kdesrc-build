@@ -19,7 +19,7 @@ sub _verifyYAMLModuleLoaded
 # isn't.  Note that YAML::Tiny and YAML do not work since some metadata files
 # use features it doesn't support
     my @YAML_Opts = qw(Dump Load LoadFile);
-    my @YAML_Mods = qw(YAML::XS YAML::Syck YAML::PP);
+    my @YAML_Mods = qw(YAML::XS YAML::PP);  # Do not use YAML::Syck here, because it incorrectly interprets false as true. See https://invent.kde.org/sdk/kdesrc-build/-/issues/133
     my $success = 0;
 
     foreach my $mod (@YAML_Mods) {
