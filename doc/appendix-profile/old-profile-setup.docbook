@@ -26,37 +26,33 @@ If you are building the qt module (you are by default), add instead:
 
 <programlisting>
 QTDIR=(path to qtdir)   # Such as ~/kdesrc/build/qt by default.
-KDEDIR=(path to kdedir) # Such as ~/kde/usr by default.
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+PATH=${install-dir}/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
 
 # Act appropriately if LD_LIBRARY_PATH is not already set.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib
 else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib:$LD_LIBRARY_PATH
 fi
 
-export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
+export QTDIR PATH MANPATH LD_LIBRARY_PATH
 </programlisting>
 
 or, if you are not building qt (and are using your system &Qt; instead), add
 this instead:
 
 <programlisting>
-KDEDIR=(path to kdedir)  # Such as ~/kde/usr by default.
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+PATH=${install-dir}/bin:$QTDIR/bin:$PATH
 
 # Act appropriately if LD_LIBRARY_PATH is not already set.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib
+  LD_LIBRARY_PATH=${install-dir}/lib
 else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
 fi
 
-export KDEDIRS PATH LD_LIBRARY_PATH
+export PATH LD_LIBRARY_PATH
 </programlisting>
 </para>
 
@@ -80,7 +76,7 @@ variables in your <filename>.bash_profile</filename>:
 
 <programlisting>
 XDG_CONFIG_DIRS="/etc/xdg"
-XDG_DATA_DIRS="${KDEDIR}/share:/usr/share"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
 export XDG_CONFIG_DIRS XDG_DATA_DIRS
 </programlisting>
 
@@ -102,7 +98,7 @@ Open the <filename>.xinitrc</filename> text file from the home directory, or
 create it if necessary. Add the line:
 
 <programlisting>
-<command>exec</command> <option>${KDEDIR}/bin/startkde</option>
+<command>exec</command> <option>${install-dir}/bin/startkde</option>
 </programlisting>
 </para>
 
