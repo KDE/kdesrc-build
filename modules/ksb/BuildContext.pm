@@ -86,7 +86,7 @@ my $SCRIPT_VERSION = scriptVersion();
 
 # There doesn't seem to be a great way to get this from CMake easily but we can
 # reason that if there's a /usr/lib64 (and it's not just a compat symlink),
-# there will likely end up being a ${kdedir}/lib64 once kdesrc-build gets
+# there will likely end up being a ${install-dir}/lib64 once kdesrc-build gets
 # done installing it
 my $libname = "lib";
 $libname = "lib64" if (-d "/usr/lib64" and not -l "/usr/lib64");
@@ -157,7 +157,7 @@ our %defaultGlobalOptions = (
     "dest-dir"             => '${MODULE}', # single quotes used on purpose!
     "do-not-compile"       => "",
     "http-proxy"           => '', # Proxy server to use for HTTP.
-    "kdedir"               => "$ENV{HOME}/kde/usr",
+    "install-dir"          => "$ENV{HOME}/kde/usr",
     "libname"              => $libname,
     "libpath"              => "",
     "log-dir"              => "log",

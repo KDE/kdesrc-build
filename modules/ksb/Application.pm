@@ -1848,9 +1848,9 @@ sub _installCustomSessionDriver
 sub _checkForEssentialBuildPrograms
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
-    my $kdedir = $ctx->getOption('kdedir');
+    my $installdir = $ctx->getOption('install-dir');
     my $qtdir = $ctx->getOption('qtdir');
-    my @preferred_paths = ("$kdedir/bin", "$qtdir/bin");
+    my @preferred_paths = ("$installdir/bin", "$qtdir/bin");
 
     return 1 if pretending();
 

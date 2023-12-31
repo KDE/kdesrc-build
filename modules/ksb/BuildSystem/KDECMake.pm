@@ -252,7 +252,7 @@ sub prepareModuleBuildEnvironment
     my ($self, $ctx, $module, $prefix) = @_;
 
     #
-    # Suppress injecting qtdir/kdedir related environment variables if a toolchain is also set
+    # Suppress injecting qtdir/install-dir related environment variables if a toolchain is also set
     # Let the toolchain files/definitions take care of themselves.
     #
     return if $self->hasToolchain();

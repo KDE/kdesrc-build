@@ -189,7 +189,7 @@ sub readCommandLineOptionsAndSelectors (@options)
         prefix => sub {
             my ($optName, $arg) = @_;
             $auxOptions{prefix} = $arg;
-            $foundOptions{kdedir} = $arg; #TODO: Still needed for compat?
+            $foundOptions{'install-dir'} = $arg; #TODO: Still needed for compat?
             $foundOptions{reconfigure} = 1;
         },
         query => sub {

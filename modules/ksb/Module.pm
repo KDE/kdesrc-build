@@ -670,18 +670,18 @@ sub setupEnvironment ($self)
     # Build system's environment injection
     my $buildSystem = $self->buildSystem();
 
-    # Suppress injecting qtdir/kdedir related environment variables if a toolchain is also set
+    # Suppress injecting qtdir/install-dir related environment variables if a toolchain is also set
     # Let the toolchain files/definitions take care of themselves.
     if ($buildSystem->hasToolchain()) {
         whisper ("\tNot setting environment variables for b[$self]: a custom toolchain is used");
     } else {
-        my $kdedir   = $self->getOption('kdedir');
+        my $installdir   = $self->getOption('install-dir');
         my $qtdir    = $self->getOption('qtdir');
         my $libname  = $self->getOption('libname'); # e.g. "lib" or "lib64"
 
         # Ensure the platform libraries we're building can be found, as long as they
         # are not the system's own libraries.
-        for my $platformDir ($qtdir, $kdedir) {
+        for my $platformDir ($qtdir, $installdir) {
             next unless $platformDir;       # OK, assume system platform is usable
             next if $platformDir eq '/usr'; # Don't 'fix' things if system platform
                                             # manually set
@@ -1024,7 +1024,7 @@ sub destDir ($self)
 
 # Subroutine to return the installation path of a given module (the value
 # that is passed to the CMAKE_INSTALL_PREFIX CMake option).
-# It is based on the "prefix" and, if it is not set, the "kdedir" option.
+# It is based on the "prefix" and, if it is not set, the "install-dir" option.
 # The user may use '$MODULE' or '${MODULE}' in the "prefix" option to have
 # them replaced by the name of the module in question.
 sub installationPath
@@ -1034,7 +1034,7 @@ sub installationPath
 
     if (!$path)
     {
-        return $self->getOption('kdedir');
+        return $self->getOption('install-dir');
     }
 
     my $moduleName = $self->name();

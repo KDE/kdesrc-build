@@ -297,10 +297,10 @@ DONE
     $sampleRc =~ s/%\{build_include_dir}/$build_include_dir/g;
 
     my $gl = ksb::BuildContext->new()->{"build_options"}->{"global"};  # real global defaults
-    $gl->{$_} =~ s|^$ENV{HOME}|~| foreach qw(kdedir source-dir build-dir);
+    $gl->{$_} =~ s|^$ENV{HOME}|~| foreach qw(install-dir source-dir build-dir);
 
     $sampleRc =~ s/%\{include-dependencies}/$gl->{"include-dependencies"}/g;
-    $sampleRc =~ s/%\{kdedir}/$gl->{"kdedir"}/g;
+    $sampleRc =~ s/%\{install-dir}/$gl->{"install-dir"}/g;
     $sampleRc =~ s/%\{source-dir}/$gl->{"source-dir"}/g;
     $sampleRc =~ s/%\{build-dir}/$gl->{"build-dir"}/g;
     $sampleRc =~ s/%\{install-session-driver}/$gl->{"install-session-driver"}/g;
