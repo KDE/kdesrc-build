@@ -44,6 +44,7 @@ use File::Basename; # dirname
 use IO::File;
 use POSIX qw(strftime);
 use Errno qw(:POSIX);
+use JSON::XS;
 
 # We derive from ksb::Module so that BuildContext acts like the 'global'
 # ksb::Module, with some extra functionality.
@@ -65,7 +66,6 @@ use File::Temp qw(tempfile);
 use File::Spec; # rel2abs
 
 use Mojo::File;
-use Mojo::JSON qw(encode_json decode_json);
 
 # According to XDG spec, if $XDG_STATE_HOME is not set, then we should
 # default to ~/.local/state
@@ -932,7 +932,7 @@ sub storePersistentOptions ($self)
     super_mkdir($dir) unless -d $dir;
 
     eval {
-        my $encodedJSON = encode_json($self->{persistent_options});
+        my $encodedJSON = JSON::XS->new->pretty(1)->canonical(1)->encode($self->{persistent_options});
         Mojo::File->new($fileName)->spew($encodedJSON);
     };
 
