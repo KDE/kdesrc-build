@@ -308,18 +308,32 @@ DONE
     $sampleRc =~ s/%\{build_include_dir}/$build_include_dir/g;
 
     my $gl = ksb::BuildContext->new()->{"build_options"}->{"global"};  # real global defaults
-    $gl->{$_} =~ s|^$ENV{HOME}|~| foreach qw(install-dir source-dir build-dir);
 
-    $sampleRc =~ s/%\{include-dependencies}/$gl->{"include-dependencies"}/g;
-    $sampleRc =~ s/%\{install-dir}/$gl->{"install-dir"}/g;
-    $sampleRc =~ s/%\{source-dir}/$gl->{"source-dir"}/g;
-    $sampleRc =~ s/%\{build-dir}/$gl->{"build-dir"}/g;
-    $sampleRc =~ s/%\{install-session-driver}/$gl->{"install-session-driver"}/g;
-    $sampleRc =~ s/%\{install-environment-driver}/$gl->{"install-environment-driver"}/g;
-    $sampleRc =~ s/%\{stop-on-failure}/$gl->{"stop-on-failure"}/g;
-    $sampleRc =~ s/%\{compile-commands-linking}/$gl->{"compile-commands-linking"}/g;
-    $sampleRc =~ s/%\{compile-commands-export}/$gl->{"compile-commands-export"}/g;
-    $sampleRc =~ s/%\{generate-vscode-project-config}/$gl->{"generate-vscode-project-config"}/g;
+    my $fill_placeholder = sub {
+        my $option_name = shift;
+        my $mode = shift;
+
+        my $value = $gl->{$option_name};
+        if ($mode eq "bool_to_str") {
+            # Perl doesn't have native boolean types, so config internally operates on 0 and 1.
+            # But it will be convenient to users to use "true"/"false" strings in their config files.
+            $value = ($value ? "true" : "false");
+        } elsif ($mode eq "home_to_tilde") {
+            $value =~ s|^$ENV{HOME}|~|;
+        }
+        $sampleRc =~ s/%\{$option_name}/$value/g;
+    };
+
+    $fill_placeholder->("include-dependencies", "bool_to_str");
+    $fill_placeholder->("install-dir", "home_to_tilde");
+    $fill_placeholder->("source-dir", "home_to_tilde");
+    $fill_placeholder->("build-dir", "home_to_tilde");
+    $fill_placeholder->("install-session-driver", "bool_to_str");
+    $fill_placeholder->("install-environment-driver", "bool_to_str");
+    $fill_placeholder->("stop-on-failure", "bool_to_str");
+    $fill_placeholder->("compile-commands-linking", "bool_to_str");
+    $fill_placeholder->("compile-commands-export", "bool_to_str");
+    $fill_placeholder->("generate-vscode-project-config", "bool_to_str");
 
     make_path($xdgConfigHome);
 
