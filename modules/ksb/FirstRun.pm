@@ -15,7 +15,6 @@ use ksb::BuildException;
 use ksb::Debug qw(colorize);
 use ksb::OSSupport;
 use ksb::Util qw(locate_exe);
-use ksb::BuildContext;
 
 =head1 NAME
 
@@ -73,12 +72,24 @@ sub setupUserSystem
 
     eval {
         if (grep { $_ eq "install-distro-packages" } @setup_steps) {
+            say colorize("=== install-distro-packages ===");
             _installSystemPackages($os);
         }
         if (grep { $_ eq "generate-config" } @setup_steps) {
+            say colorize("=== generate-config ===");
+            eval {
+                # We do not require BuildContext in the beginning of FirstRun, because it itself requires some perl dependencies to be installed (for example JSON::XS).
+                # We only do this after the install-distro-packages step
+                require ksb::BuildContext;
+            };
+            if ($@) {
+                say colorize(" r[b[*] r[Could not load BuildContext. Ensure you have run b[--install-distro-packages]r[ first.");
+                die;
+            }
             _setupBaseConfiguration();
         }
         if (grep { $_ eq "update-shellrc" } @setup_steps) {
+            say colorize("=== update-shellrc ===");
             _setupShellRcFile($shellName);
         }
     };

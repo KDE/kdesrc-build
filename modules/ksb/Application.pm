@@ -1973,16 +1973,6 @@ sub _installSignalHandlers
     @SIG{@signals} = ($handlerRef) x scalar @signals;
 }
 
-# Ensures that basic one-time setup to actually *use* installed software is
-# performed, including .kdesrc-buildrc setup if necessary.
-#
-# Returns the appropriate exitcode to pass to the exit function
-sub performInitialUserSetup
-{
-    my $self = shift;
-    return ksb::FirstRun::setupUserSystem();
-}
-
 sub _holdPerformancePowerProfileIfPossible ($self)
 {
     my $ctx = $self->context();
