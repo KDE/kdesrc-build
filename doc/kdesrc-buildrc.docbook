@@ -1,0 +1,231 @@
+<chapter id="kdesrc-buildrc">
+<title>Configuring &kdesrc-build;</title>
+
+<sect1 id="kdesrc-buildrc-overview">
+<title>Overview of &kdesrc-build; configuration</title>
+
+<para>
+To use the script, you must have a file in your home directory called
+<filename>.kdesrc-buildrc</filename>, which describes the modules you would
+like to download and build, and any options or configuration parameters to
+use for these modules.
+</para>
+
+<sect2 id="kdesrc-buildrc-layout">
+<title>Layout of the configuration file</title>
+
+<sect3 id="kdesrc-buildrc-layout-global">
+<title>Global configuration</title>
+
+<para>
+The configuration file starts with the global options, specified like the
+following:
+</para>
+
+<programlisting>
+global
+<replaceable>option-name option-value</replaceable>
+<replaceable>[...]</replaceable>
+end global
+</programlisting>
+
+</sect3>
+<sect3 id="kdesrc-buildrc-layout-modules">
+<title>Module configuration</title>
+
+<para>
+It is then followed by one or more module sections, specified in one of the
+following two forms:
+</para>
+
+<itemizedlist>
+<listitem>
+<programlisting>
+module <replaceable>module-name</replaceable>
+<replaceable>option-name option-value</replaceable>
+<replaceable>[...]</replaceable>
+end module
+</programlisting>
+</listitem>
+
+<listitem>
+<programlisting>
+module-set <replaceable>module-set-name</replaceable>
+  repository <userinput>kde-projects</userinput> or <userinput><replaceable>git://host.org/path/to/repo.git</replaceable></userinput>
+  use-modules <replaceable>module-names</replaceable>
+
+# Other options may also be set
+<replaceable>option-name option-value</replaceable>
+<replaceable>[...]</replaceable>
+end module-set
+</programlisting>
+</listitem>
+</itemizedlist>
+
+<important><para>Note that the second form, module sets, <emphasis>only works
+for Git-based modules</emphasis>.</para></important>
+
+<para>
+For Git modules, <replaceable>module-name</replaceable> must be a module
+from the &kde; &git; repository (for example, kdeartwork or
+kde-wallpapers).
+</para>
+
+<para>
+For Git modules, the module name can be essentially whatever you'd like, as
+long as it does not duplicate any other module name in the configuration. Keep
+in mind the source and build directory layout will be based on the module name
+if you do not use the <link linkend="conf-dest-dir">dest-dir</link> option.
+</para>
+
+<para>However, for Git <emphasis>module sets</emphasis> the
+<replaceable>module-names</replaceable> must correspond with actual git modules
+in the chosen <option>repository</option>. See <link
+linkend="conf-git-repository-base">git-repository-base</link> or <link
+linkend="conf-use-modules">use-modules</link> for more information.
+</para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-option-values">
+<title>Processing of option values</title>
+
+<para>In general, the entire line contents after the
+<replaceable>option-name</replaceable> is used as the
+<replaceable>option-value</replaceable>.</para>
+
+<para>One modification that &kdesrc-build; performs is that a sequence
+<userinput>${<replaceable>name-of-option</replaceable>}</userinput> is replaced
+with the value of that option from the global configuration. This allows you
+to reference the value of existing options, including options already set by
+&kdesrc-build;.</para>
+
+<para>
+To see an example of this in use, see
+<xref linkend="make-options-example"/>.</para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-options-groups">
+<title><quote>options</quote> modules</title>
+
+<para>There is a final type of configuration file entry,
+<literal>options</literal> groups, which may be given wherever a
+<literal>module</literal> or <literal>module-set</literal> may be used.</para>
+
+<programlisting>
+options <replaceable>module-name</replaceable>
+<replaceable>option-name option-value</replaceable>
+<replaceable>[...]</replaceable>
+end options
+</programlisting>
+
+<para>An <literal>options</literal> group may have options set for it just like
+a module declaration, and is associated with an existing module. Any options
+set these way will be used to <emphasis>override</emphasis> options set for the
+associated module.</para>
+
+<important><para>The associated module name <emphasis>must</emphasis> match the
+name given in the <literal>options</literal> declaration. Be careful of
+mis-typing the name.</para></important>
+
+<para>This is useful to allow for declaring an entire
+<literal>module-set</literal> worth of modules, all using the same options, and
+then using <literal>options</literal> groups to make individual changes.</para>
+
+<para><literal>options</literal> groups can also apply to named module sets.
+This allows expert users to use a common configuration file (which includes
+<literal>module-set</literal> declarations) as a baseline, and then make changes
+to the options used by those module-sets in configuration files that
+use the <literal><link
+linkend="kdesrc-buildrc-including">include</link></literal> command to reference
+the base configuration.</para>
+
+<example id="ex-options-group">
+<title>Example of using options</title>
+
+<para>In this example we choose to build all modules from the &kde; multimedia
+software grouping. However we want to use a different version of the &kmix;
+application (perhaps for testing a bug fix). It works as follows:</para>
+
+<programlisting>
+module-set <replaceable>kde-multimedia-set</replaceable>
+  repository <userinput>kde-projects</userinput>
+  use-modules <replaceable>kde/kdemultimedia</replaceable>
+  branch <replaceable>master</replaceable>
+end module-set
+
+# kmix is a part of kde/kdemultimedia group, even though we never named
+# kmix earlier in this file, &kdesrc-build; will figure out the change.
+options <replaceable>kmix</replaceable>
+  branch <replaceable>KDE/4.12</replaceable>
+end options
+</programlisting>
+
+<para>Now when you run &kdesrc-build;, all of the &kde; multimedia programs will
+be built from the <quote>master</quote> branch of the source repository, but
+&kmix; will be built from the older <quote>KDE/4.12</quote> branch. By using
+<literal>options</literal> you didn't have to individually list all the
+<emphasis>other</emphasis> &kde; multimedia programs to give them the right
+branch option.</para>
+
+</example>
+
+<note>
+<para>Note that this feature is only available in &kdesrc-build; from version
+1.16, or using the development version of &kdesrc-build; after
+2014-01-12.</para></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-including">
+<title>Including other configuration files</title>
+
+<para>
+Within the configuration file, you may reference other files by using the
+<literal>include</literal> keyword with a file, which will act as if the file
+referenced had been inserted into the configuration file at that point.
+</para>
+
+<informalexample><para>For example, you could have something like this:</para>
+<programlisting>
+global
+    include <replaceable>~/common-kdesrc-build-options</replaceable>
+
+    # Insert specific options here.
+
+end global
+</programlisting>
+</informalexample>
+
+<note><para>If you don't specify the full path to the file to include, then
+the file will be searched for starting from the directory containing the source
+file. This works recursively as well.</para></note>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-common">
+<title>Commonly used configuration options</title>
+
+<para>
+The following is a list of commonly-used options. Click on the
+option to find out more about it. To see the full list of options, see
+<xref linkend="conf-options-table"/>.
+</para>
+
+<itemizedlist>
+<listitem><para><link linkend="conf-cmake-options">cmake-options</link> to define what flags to configure a module with using &cmake;.</para></listitem>
+<listitem><para><link linkend="conf-branch">branch</link>, to checkout from a branch instead of <literal>master</literal>.</para></listitem>
+<listitem><para><link linkend="conf-configure-flags">configure-flags</link> to define what flags to configure &Qt; with.</para></listitem>
+<listitem><para><link linkend="conf-install-dir">install-dir</link>, to set the directory to install &kde; to.</para></listitem>
+<listitem><para><link linkend="conf-make-options">make-options</link>, to pass options to the &make; program (such as number of CPUs to use).</para></listitem>
+<listitem><para><link linkend="conf-qtdir">qtdir</link>, to set the path to &Qt;.</para></listitem>
+<listitem><para><link linkend="conf-source-dir">source-dir</link>, to change where to download the source code to.</para></listitem>
+</itemizedlist>
+
+</sect2>
+</sect1>
+&conf-options-table;
+</chapter>
