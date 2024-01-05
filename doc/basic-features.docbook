@@ -1,0 +1,209 @@
+<sect1 id="basic-features">
+<title>Basic &kdesrc-build; features</title>
+
+<sect2 id="using-qt">
+<title>qt support</title>
+<para>&kdesrc-build; supports building the &Qt; toolkit used by &kde; software
+as a convenience to users. This support is handled by a special module named
+qt.</para>
+
+<note><para>&Qt; is developed under a separate repository from &kde; software
+located at <ulink
+url="http://code.qt.io/cgit/qt/">http://code.qt.io/cgit/qt/</ulink>.</para></note>
+
+<para>In order to build &Qt;, you should make sure that the
+<link linkend="conf-qtdir">qtdir</link> setting is set to the directory you'd
+like to install &Qt; to, as described in <xref linkend="configure-data"/>.</para>
+
+<para>You should then ensure that the qt module is added to
+your <filename>.kdesrc-buildrc</filename>, before any other modules in the
+file. If you are using the sample configuration file, you can simply
+uncomment the existing qt module entry.</para>
+
+<para>Now you should verify the <link
+linkend="conf-repository">repository</link> option and <link
+linkend="conf-branch">branch</link> options are set appropriately:</para>
+
+<orderedlist>
+<listitem><para>The first option is to build &Qt; using a mirror maintained
+on the &kde; source repositories (no other changes are applied, it is simply
+a clone of the official source). This is highly recommended due to occasional
+issues with cloning the full &Qt; module from its official repository.</para>
+
+<para>You can set the <option>repository</option> option for the qt
+module to <userinput>kde:qt</userinput> to use this option.</para>
+</listitem>
+
+<listitem><para>Otherwise, to build the standard &Qt;, set your
+<option>repository</option> option to
+<userinput>git://gitorious.org/qt/qt.git</userinput>. Note that you may
+experience problems performing the initial clone of &Qt; from this
+repository.</para></listitem>
+</orderedlist>
+
+<para>In both cases, the branch option should be set to <userinput>master</userinput> (unless you'd
+like to build a different branch).</para>
+
+</sect2>
+
+<sect2 id="kdesrc-build-std-flags">
+<title>Standard flags added by &kdesrc-build;</title>
+<para>Nota Bene: this section does not apply to modules for which you have
+configured a custom toolchain, using e.g.
+<link linkend="conf-cmake-toolchain">cmake-toolchain</link>.</para>
+
+<para>To save you time, &kdesrc-build; adds some standard paths to your
+environment for you:
+</para>
+
+<itemizedlist>
+<listitem><para>
+The path to the &kde; and &Qt; libraries is added to the
+<envar>LD_LIBRARY_PATH</envar> variable automatically. This means that you
+do not need to edit &libpath; to include them.
+</para></listitem>
+
+<listitem><para>
+The path to the &kde; and &Qt; development support programs are added to the
+<envar>PATH</envar> variable automatically. This means that you do not need to
+edit &binpath; to include them.
+</para></listitem>
+
+<listitem><para>
+The path to the &kde;-provided <application>pkg-config</application> is added
+automatically to <envar>PKG_CONFIG_PATH</envar>. This means that you do not
+need to use &set-env; to add these.
+</para></listitem>
+
+<listitem><para>
+The setting for &qtdir; is automatically propagated to the <envar>QTDIR</envar>
+environment variable while building.
+</para></listitem>
+
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="build-priority">
+<title>Changing &kdesrc-build;'s build priority</title>
+<para>Programs can run with different priority levels on Operating Systems,
+including &Linux; and &BSD;. This allows the system to allocate time for the
+different programs in accordance with how important they are.
+</para>
+
+<para>&kdesrc-build; will normally allocate itself a low priority so that the
+rest of the programs on your system are unaffected and can run normally.
+Using this technique, &kdesrc-build; will use extra CPU when it is available.
+</para>
+
+<para>&kdesrc-build; will still maintain a high enough priority level so that
+it runs before routine batch processes and before CPU donation programs
+such as <ulink url="http://setiathome.ssl.berkeley.edu/">Seti@Home</ulink>.
+</para>
+
+<para>To alter &kdesrc-build; so that it uses a higher (or lower) priority
+level permanently, then you need to adjust the &niceness; setting in the <link
+linkend="configure-data">configuration file</link>. The &niceness; setting
+controls how <quote>nice</quote> &kdesrc-build; is to other programs. In other
+words, having a higher &niceness; gives &kdesrc-build; a lower priority. So to
+give &kdesrc-build; a higher priority, reduce the &niceness; (and vice versa).
+The &niceness; can go from 0 (not nice at all, highest priority) to 20 (super
+nice, lowest priority).</para>
+
+<para>You can also temporarily change the priority for &kdesrc-build; by using
+the &cmd-nice; <link linkend="cmdline">command line option</link>. The value to
+the option is used exactly the same as for &niceness;.</para>
+
+<note><para>It is possible for some programs run by the super user to have a
+negative nice value, with a correspondingly even higher priority for such
+programs. Setting a negative (or even 0) &niceness; for &kdesrc-build; is not
+a great idea, as it will not help run time significantly, but will make your
+computer seem very sluggish should you still need to use it.
+</para></note>
+
+<informalexample>
+<para>To run &kdesrc-build; with a niceness of 15 (a lower priority than
+normal):</para>
+
+<screen>
+<prompt>&percnt;</prompt> <userinput><command>kdesrc-build</command> <option>--nice=<replaceable>15</replaceable></option></userinput>
+</screen>
+
+<para>Or, you can edit the <link linkend="configure-data">configuration file</link> to make the change permanent:</para>
+
+<screen>
+    &niceness; <replaceable>15</replaceable>
+</screen>
+</informalexample>
+
+<tip>
+<para>The <link linkend="conf-niceness">niceness</link> option only affects the
+usage of the computer's processor(s). One other major affect on computer
+performance relates to how much data input or output (<acronym>I/O</acronym>) a
+program uses. In order to control how much <acronym>I/O</acronym> a program can
+use, modern &Linux; operating systems support a similar tool called
+<application>ionice</application>. &kdesrc-build; supports
+<application>ionice</application>, (but only to enable or disable it
+completely) using the <link
+linkend="conf-use-idle-io-priority">use-idle-io-priority</link> option,
+since &kdesrc-build; version 1.12.
+</para>
+</tip>
+
+</sect2>
+
+<sect2 id="root-installation">
+<title>Installation as the superuser</title>
+<para>You may wish to have &kdesrc-build; run the installation with super user
+privileges. This may be for the unrecommended system-wide installation.
+This is also useful when using a recommended single user &kde; build, however.
+This is because some modules (especially kdebase) install programs that will
+briefly need elevated permissions when run. They are not able to achieve these
+permission levels unless they are installed with the elevated permissions.
+</para>
+
+<para>You could simply run &kdesrc-build; as the super user directly, but this
+is not recommended, since the program has not been audited for that kind of use.
+Although it should be safe to run the program in this fashion, it is better to
+avoid running as the super user when possible.</para>
+
+<para>To take care of this, &kdesrc-build; provides the &make-install-prefix;
+option. You can use this option to specify a command to use to perform the
+installation as another user. The recommended way to use this command is with
+the &sudo; program, which will run the install command as the super user.
+</para>
+
+<informalexample>
+<para>For example, to install all modules using &sudo;,
+you could do something like this:</para>
+
+<screen>
+global
+  &make-install-prefix; <replaceable>sudo</replaceable>
+  # Other options
+end global
+</screen>
+
+<para>To use &make-install-prefix; for only a single module, this would work:
+</para>
+
+<screen>
+module <replaceable>some-module-name</replaceable>
+  &make-install-prefix; <replaceable>sudo</replaceable>
+end module
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="build-progress">
+<title>Showing the progress of a module build</title>
+<para>This feature is always available, and is automatically enabled when
+possible. What this does is display an estimated build progress while
+building a module; that way you know about how much longer it will take to
+build a module.
+</para>
+
+</sect2>
+
+</sect1>
