@@ -1,0 +1,724 @@
+<sect1 id="supported-cmdline-params">
+<title>Supported command-line parameters</title>
+
+<para>
+The script accepts the following command-line options:
+</para>
+
+<variablelist>
+
+<varlistentry id="cmdline-async">
+<term><parameter>--async</parameter></term>
+<listitem><para>
+Enables the <link linkend="conf-async">asynchronous mode</link>, which can
+perform the source code updates and module builds at the same time.  This is
+the default, this option only needs specified if you have disabled it in the
+configuration.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-help">
+<term><parameter>--help</parameter> (or <parameter>-h</parameter>)</term>
+<listitem><para>
+Only display simple help on this script.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-version">
+<term><parameter>--version</parameter> (or <parameter>-v</parameter>)</term>
+<listitem><para>
+Display the program version.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-show-info">
+<term><parameter>--show-info</parameter></term>
+<listitem><para>
+Displays information about &kdesrc-build; and the operating system, that may
+prove useful in bug reports or when asking for help in forums or mailing lists.
+</para>
+<para>Available since version 18.11.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-initial-setup">
+<term><parameter>--initial-setup</parameter></term>
+<listitem><para>
+Has &kdesrc-build; perform the one-time initial setup necessary to prepare
+the system for &kdesrc-build; to operate, and for the newly-installed &kde;
+software to run.
+</para>
+<para>This includes:</para>
+<itemizedlist>
+<listitem><para>Installing known dependencies (on supported &Linux; distributions)</para></listitem>
+<listitem><para>Adding required environment variables to <literal>~/.bashrc</literal></para></listitem>
+<listitem><para>Setting up a <link linkend="setup-rcfile">configuration file</link></para></listitem>
+</itemizedlist>
+<para>This option is exactly equivalent to using
+    <option><link linkend="cmdline-install-distro-packages">--install-distro-packages</link></option>
+    <option><link linkend="cmdline-generate-config">--generate-config</link></option>
+    <option><link linkend="cmdline-update-shellrc">--update-shellrc</link></option> at the same time.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-distro-packages">
+<term><parameter>--install-distro-packages</parameter></term>
+<listitem><para>
+Installs distro packages (on supported &Linux; distributions) necessary to prepare the system for &kdesrc-build; to operate, and for the newly-installed &kde;
+software to run.
+</para>
+<para>See also <option><link linkend="cmdline-initial-setup">--initial-setup</link></option></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-config">
+<term><parameter>--generate-config</parameter></term>
+<listitem><para>
+Generate the &kdesrc-build; configuration file.
+</para>
+<para>See also <option><link linkend="cmdline-initial-setup">--initial-setup</link></option></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-update-shellrc">
+<term><parameter>--update-shellrc</parameter></term>
+<listitem><para>
+Edit the "~/.bashrc" (or other shell rc file) to add &kdesrc-build; to your $PATH variable and enable autocompletion.
+</para>
+<para>See also <option><link linkend="cmdline-initial-setup">--initial-setup</link></option></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-author">
+<term><parameter>--author</parameter></term>
+<listitem><para>
+Display contact information for the
+author.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-color">
+<term><parameter>--color</parameter></term>
+<listitem><para>
+Enable colorful output. (This is the default for interactive terminals).
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-vscode-project-config">
+<term><parameter>--generate-vscode-project-config</parameter></term>
+<listitem><para>
+Generate a .vscode directory with configurations for building and debugging
+in Visual Studio Code.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-nice">
+<term><parameter>--nice=<replaceable>value</replaceable></parameter></term>
+<listitem><para>
+This value adjusts the computer CPU priority requested by &kdesrc-build;, and
+should be in the range of 0-20. 0 is highest priority (because it is the
+least <quote>nice</quote>), 20 is lowest priority. &kdesrc-build; defaults
+to 10.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-async">
+<term><parameter>--no-async</parameter></term>
+<listitem><para>
+Disables the <link linkend="conf-async">asynchronous mode</link> of updating.
+Instead the update will be performed in its entirety before the build starts.
+This option will slow down the overall process, but if you encounter IPC errors
+while running &kdesrc-build; try using this option, and submitting a
+<ulink url="https://bugs.kde.org/">bug report</ulink>.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-color">
+<term><parameter>--no-color</parameter></term>
+<listitem><para>
+Disable colorful output.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-pretend">
+<term><parameter>--pretend</parameter> (or <parameter>-p</parameter>)</term>
+<listitem><para>
+&kdesrc-build; will run through the update and build process, but instead of
+performing any actions to update or build, will instead output what the
+script would have done (e.g. what commands to run, general steps being taken,
+etc.).</para>
+
+<note><para>Simple read-only commands (such as reading file information) may
+still be run to make the output more relevant (such as correctly simulating
+whether source code would be checked out or updated).
+</para></note>
+
+<important><para>This option requires that some needed metadata is available,
+which is normally automatically downloaded, but downloads are disabled in
+pretend mode. If you've never run &kdesrc-build; (and therefore, don't have
+this metadata), you should run <command>kdesrc-build
+<option>--metadata-only</option></command> to download the required metadata
+first.
+</para></important>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-quiet">
+<term><parameter>--quiet</parameter> (or <parameter>-q</parameter>)</term>
+<listitem><para>
+Do not be as noisy with the output. With this switch only the basics are
+output.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-really-quiet">
+<term><parameter>--really-quiet</parameter></term>
+<listitem><para>
+Only output warnings and errors.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-verbose">
+<term><parameter>--verbose</parameter></term>
+<listitem><para>
+Be very descriptive about what is going on, and what &kdesrc-build; is doing.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-src-only">
+<term><parameter>--src-only</parameter> (or <parameter>-s</parameter>)</term>
+<listitem><para>
+Only perform the source update.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-build-only">
+<term><parameter>--build-only</parameter></term>
+<listitem><para>
+Only perform the build process.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-only">
+<term><parameter>--install-only</parameter></term>
+<listitem><para>
+If this is the only command-line option, it tries to install all of the modules
+contained in <filename>log/latest/build-status</filename>. If command-line
+options are specified after <parameter>--install-only</parameter>, they are all
+assumed to be modules to install (even if they did not successfully build on
+the last run).
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-metadata-only">
+<term><parameter>--metadata-only</parameter></term>
+<listitem><para>
+Only perform the metadata download process. &kdesrc-build; normally handles this
+automatically, but you might manually use this to allow the <option><link
+linkend="cmdline-pretend">--pretend</link></option> command line option to work.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-rebuild-failures">
+<term><parameter>--rebuild-failures</parameter></term>
+<listitem><para>
+Use this option to build only those modules which failed to build on a previous
+&kdesrc-build; run. This is useful if a significant number of failures occurred mixed with
+successful builds. After fixing the issue causing the build failures you can then easily
+build only the modules that failed previously.</para>
+
+<note><para>Note that the list of <quote>previously-failed modules</quote> is
+reset every time a &kdesrc-build; run finishes with some module failures.
+However it is not reset by a completely successful build, so you can
+successfully rebuild a module or two and this flag will still
+work.</para></note>
+
+<para>This option was added for &kdesrc-build; 15.09.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-include-dependencies">
+<term><parameter>--include-dependencies</parameter> (or <parameter>-d</parameter>)</term>
+<term><parameter>--no-include-dependencies</parameter> (or <parameter>-D</parameter>)</term>
+<listitem><para>
+This option causes &kdesrc-build; to automatically include other &kde; and &Qt;
+modules in the build, if required for the modules you have requested to build
+on the command line or in your
+<link linkend="configure-data">configuration file</link>.</para>
+
+<para>The modules that are added are as recorded within the &kde; source code
+management system. See <xref linkend="kde-projects-module-sets"/>.</para>
+
+<para>The corresponding configure file option is
+<link linkend="conf-include-dependencies">include-dependencies</link>.</para>
+
+<para>You can also use <parameter>--no-include-dependencies</parameter>, which turns off
+automatic inclusion of additional dependency modules.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-ignore-modules">
+<term><parameter>--ignore-modules</parameter> (or <parameter>-!</parameter>)</term>
+<listitem><para>
+Do not include the modules passed on the rest of the command line in the
+update/build process (this is useful if you want to build most of the modules
+in your <link linkend="configure-data">configuration file</link> and just skip
+a few).
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-src">
+<term><parameter>--no-src</parameter> (or <parameter>-S</parameter>)</term>
+<listitem><para>
+Skip contacting the &git; server.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-build">
+<term><parameter>--no-build</parameter></term>
+<listitem><para>
+Skip the build process.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-metadata">
+<term><parameter>--no-metadata</parameter></term>
+<listitem><para>
+Do not automatically download the extra metadata needed for &kde; git modules.
+The source updates for the modules themselves will still occur unless you pass
+<link linkend="cmdline-no-src">--no-src</link> as well.
+</para><para>
+This can be useful if you are frequently re-running &kdesrc-build; since the
+metadata does not change very often. But note that many other features require
+the metadata to be available. You might want to consider running &kdesrc-build;
+with the <link linkend="cmdline-metadata-only">--metadata-only</link> option
+one time and then using this option for subsequent runs.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-install">
+<term><parameter>--no-install</parameter></term>
+<listitem><para>
+Do not automatically install packages after they are built.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-build-when-unchanged">
+<term><parameter>--no-build-when-unchanged</parameter></term>
+<term><parameter>--force-build</parameter></term>
+<listitem><para>
+This option explicitly disables skipping the build process (an optimization
+controlled by the <link
+linkend="conf-build-when-unchanged">build-when-unchanged</link> option). This is
+useful for making &kdesrc-build; run the build when you have changed something
+that &kdesrc-build; cannot check.</para>
+
+<para><parameter>--force-build</parameter> performs the exact same function, and
+is perhaps easier to remember.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-debug">
+<term><parameter>--debug</parameter></term>
+<listitem><para>
+Enables debug mode for the script. Currently this means that all output will be
+dumped to the standard output in addition to being logged in the log directory
+like normal. Also, many functions are much more verbose about what they are
+doing in debugging mode.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-query">
+<term><parameter>--query</parameter>=<userinput><replaceable>mode</replaceable></userinput></term>
+<listitem><para>
+This command causes &kdesrc-build; to query a parameter of the modules in the
+build list (either passed on the command line or read in from the configuration
+file), outputting the result to screen (one module per line).</para>
+
+<para>This option must be provided with a <quote>query mode</quote>, which should be
+one of the following:</para>
+    <itemizedlist>
+    <listitem><para><option>source-dir</option>, which causes &kdesrc-build; to
+        output the full path to where the module's source code is stored.
+        </para></listitem>
+    <listitem><para><option>build-dir</option>, which causes &kdesrc-build; to
+        output the full path to where the module build process occurs.
+        </para></listitem>
+    <listitem><para><option>install-dir</option>, which causes &kdesrc-build; to
+        output the full path to where the module will be installed.
+        </para></listitem>
+    <listitem><para><option>project-path</option>, which causes &kdesrc-build; to
+        output the location of the module within the hierarchy of KDE source
+        code repositories. See <xref linkend="kde-projects-module-sets"/> for
+        more information on this hierarchy.
+        </para></listitem>
+    <listitem><para><option>branch</option>, which causes &kdesrc-build; to
+        output the resolved git branch that will be used for each module, based
+        on the <link linkend="conf-tag">tag</link>, <link
+        linkend="conf-branch">branch</link> and <link
+        linkend="conf-branch-group">branch-group</link> settings in effect.
+        </para></listitem>
+    <listitem><para>Otherwise, option names that are valid for modules in the
+        <link linkend="conf-options-table">configuration file</link> can be
+        used, the resolved value of which will be listed for each module.
+        </para></listitem>
+    </itemizedlist>
+
+<para>
+If a single module is passed on the command line, then the output is simply the
+value of the parameter being queried. If multiple (or no) modules are passed on
+the command line, then each line is prefixed by the name of the module. Either way,
+&kdesrc-build; stops running once each value is output.
+</para>
+
+<para>This option was added with &kdesrc-build; 16.05.</para>
+
+<informalexample>
+<para>For example, the command <quote><command>kdesrc-build</command>
+    <parameter>--query</parameter>
+    <parameter><replaceable>branch</replaceable></parameter>
+    <parameter><replaceable>kactivities</replaceable></parameter>
+    <parameter><replaceable>kdepim</replaceable></parameter></quote>
+might end up with output like:</para>
+<screen>
+kactivities: master
+kdepim: master
+</screen>
+</informalexample>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-refresh-build">
+<term><parameter>--refresh-build</parameter> (or <parameter>-r</parameter>)</term>
+<listitem><para>
+Recreate the build system and make from scratch.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-reconfigure">
+<term><parameter>--reconfigure</parameter></term>
+<listitem><para>
+Run <command>cmake</command> (for &kde; modules) or
+<command>configure</command> (for &Qt;) again, without cleaning the build
+directory. You should not normally have to specify this, as &kdesrc-build; will
+detect when you change the relevant options and automatically re-run the build
+setup. This option is implied if <parameter><link
+linkend="cmdline-refresh-build">--refresh-build</link></parameter> is used.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-resume-from">
+<term><parameter>--resume-from</parameter> (or <parameter>--from</parameter> or <parameter>-f</parameter>)</term>
+<listitem><para>
+This option is used to resume the build starting from the given module, which
+should be the next option on the command line. You should not
+specify other module names on the command line.
+</para>
+
+<note><para>This option formerly added <link
+    linkend="cmdline-no-src"><parameter>--no-src</parameter></link>, but does
+not any longer (since &kdesrc-build; 1.13). If you want to avoid source updates
+when resuming, simply pass <option><userinput>--no-src</userinput></option>
+in addition to the other options.
+</para></note>
+
+<para>See also: <xref linkend="cmdline-resume-after"/> and <xref
+linkend="resuming-failed"/>. You would prefer to use this command line option
+if you have fixed the build error and want &kdesrc-build; to complete the
+build.</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-resume-after">
+<term><parameter>--resume-after</parameter> (or <parameter>--after</parameter> or <parameter>-a</parameter>)</term>
+<listitem><para>
+This option is used to resume the build starting after the given module, which
+should be the next option on the command line. You should not
+specify other module names on the command line.
+</para>
+
+<note><para>This option formerly added <link
+    linkend="cmdline-no-src"><parameter>--no-src</parameter></link>, but does
+not any longer (since &kdesrc-build; 1.13). If you want to avoid source updates
+when resuming, simply pass <option><userinput>--no-src</userinput></option>
+in addition to the other options.
+</para></note>
+
+<para>See also: <xref linkend="cmdline-resume-from"/> and <xref
+linkend="resuming-failed"/>. You would prefer to use this command line option
+if you have fixed the build error and have also built and installed the module
+yourself, and want &kdesrc-build; to start again with the next
+module.</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-resume">
+<term><parameter>--resume</parameter></term>
+<listitem><para>
+
+This option can be used to run &kdesrc-build; after it has had a build failure.
+</para><para>
+
+It resumes the build from the module that failed, using the list of modules
+that were waiting to be built before, and disables source and metadata updates
+as well. The use case is when a simple mistake or missing dependency causes the
+build failure. Once you correct the error you can quickly get back into
+building the modules you were building before, without fiddling with
+<option><link linkend="cmdline-resume-from">--resume-from</link></option> and
+<option><link linkend="cmdline-stop-before">--stop-before</link></option>.
+
+</para><para>
+This option was added with &kdesrc-build; 1.16.
+
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-before">
+<term><parameter>--stop-before</parameter> (or <parameter>--until</parameter>)</term>
+<listitem><para>
+This command line option is used to stop the normal build process just
+<emphasis>before</emphasis> a module would ordinarily be built.
+</para><para>
+For example, if the normal build list was <simplelist type="inline">
+<member>moduleA</member><member>moduleB</member><member>moduleC</member></simplelist>,
+then <option>--stop-before=<replaceable>moduleB</replaceable></option> would cause
+&kdesrc-build; to only build <literal>moduleA</literal>.
+</para><para>
+This command line option was added with &kdesrc-build; 1.16.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-after">
+<term><parameter>--stop-after</parameter> (or <parameter>--to</parameter>)</term>
+<listitem><para>
+This command line option is used to stop the normal build process just
+<emphasis>after</emphasis> a module would ordinarily be built.
+</para><para>
+For example, if the normal build list was <simplelist type="inline">
+<member>moduleA</member><member>moduleB</member><member>moduleC</member></simplelist>,
+then <option>--stop-after=<replaceable>moduleB</replaceable></option> would cause
+&kdesrc-build; to build <literal>moduleA</literal> and <literal>moduleB</literal>.
+</para><para>
+This command line option was added with &kdesrc-build; 1.16.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-on-failure">
+<term><parameter>--stop-on-failure</parameter></term>
+<term><parameter>--no-stop-on-failure</parameter></term>
+<listitem><para>
+This option controls if the build will be aborted as soon as a failure occurs.
+Default behavior is --stop-on-failure. You may override it if you wish to press on with the rest of the modules in the build,
+to avoid wasting time in case the problem is with a single module.
+</para><para>
+This option was added with &kdesrc-build; 1.16. See also the
+<link linkend="conf-stop-on-failure">stop-on-failure</link> configuration file option.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-rc-file">
+<term><parameter>--rc-file</parameter></term>
+<listitem><para>
+This interprets the next command line parameter as the file to read the
+configuration options from. The default value for this parameter is
+<filename>kdesrc-buildrc</filename> (checked in the current working directory).
+If this file doesn't exist, <filename>~/.config/kdesrc-buildrc</filename>
+(<filename>$XDG_CONFIG_HOME/kdesrc-buildrc</filename>, if
+<envar>$XDG_CONFIG_HOME</envar> is set) will be used instead. See also
+<xref linkend="kdesrc-buildrc"/>.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-print-modules">
+<term><parameter>--print-modules</parameter></term>
+<listitem>
+<para>
+    Takes all actions up to and including dependency reordering of the modules
+    specified on the command line (or configuration file), prints the modules
+    that would be processed one per line, and then exits without further action.
+</para>
+<para>
+    The <literal>kde-project</literal> metadata is downloaded first (though, see
+    <link linkend="cmdline-pretend"><option>--pretend</option></link> or <link
+    linkend="cmdline-no-src"><option>--no-src</option></link>).
+</para>
+<para>
+    The output is not fully compatible with usage by scripts as other output messages
+    may be generated until the module list is shown.
+</para>
+<para>
+    This is mostly just useful for quickly determining what &kdesrc-build;
+    understands a module's dependencies to be, which means it's only useful for
+    <link
+    linkend="kde-projects-module-sets"><literal>kde-projects</literal></link>
+    modules.  This option is also compatible with <link
+    linkend="cmdline-resume-from"><option>--resume-from</option></link>, <link
+    linkend="cmdline-resume-after"><option>--resume-after</option></link>,
+    <link linkend="cmdline-stop-before"><option>--stop-before</option></link>,
+    <link linkend="cmdline-stop-after"><option>--stop-after</option></link>.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-list-build">
+<term><parameter>--list-build</parameter></term>
+<listitem>
+<para>
+    Lists the modules that would be built, in the order in which they would be built.
+    If applicable, the output listing also mentions which commit/branch/tag would be
+    selected for checkout.
+</para>
+<para>
+    This option is similar to
+    <link linkend="cmdline-print-modules"><option>--print-modules</option></link>.
+    For more detailed information on how modules relate to each other, see also:
+    <link linkend="cmdline-dependency-tree"><option>--dependency-tree</option></link>.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-dependency-tree">
+<term><parameter>--dependency-tree</parameter></term>
+<listitem>
+<para>
+    Prints out dependency information on the modules that would be built using a tree
+    format (recursive). Listed information also includes which specific commit/branch/tag
+    is depended on and whether or not the dependency would be built. Note: the generated
+    output may become quite large for applications with many dependencies.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-dependency-tree-fullpath">
+<term><parameter>--dependency-tree-fullpath</parameter></term>
+<listitem>
+<para>
+    Prints out dependency information on the modules that would be built using a tree
+    format (recursive). In fullpath format. Note: the generated
+    output may become quite large for applications with many dependencies.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-run">
+<term><parameter>--run</parameter></term>
+<listitem><para>
+This option interprets the next item on the command line as a program to run,
+and &kdesrc-build; will then finish reading the configuration file, update the
+environment as normal, and then execute the given program.</para>
+
+<para>This will not work to start a shell with the &kdesrc-build; environment
+in most cases however, since interactive shells typically reset at least part
+of the environment variables (such as <envar>PATH</envar> and
+${install-dir}) in the startup sequence.
+</para>
+
+<tip><para>If you want to see the environment used by &kdesrc-build;, you
+can run the <command>printenv</command> command:</para>
+<informalexample>
+<screen>$ <command>kdesrc-build</command> <parameter>--run</parameter> <parameter>printenv</parameter>
+KDE_SESSION_VERSION=4
+SDL_AUDIODRIVER=alsa
+LANGUAGE=
+XCURSOR_THEME=Oxygen_Blue
+LESS=-R -M --shift 5
+QMAIL_CONTROLDIR=/var/qmail/control
+... etc.
+</screen>
+</informalexample></tip>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-prefix">
+<term><parameter>--prefix=&lt;/path/to/kde&gt;</parameter></term>
+<listitem><para>
+This allows you to change the directory that &kde; will be installed to from
+the command line.  This option implies <link
+linkend="cmdline-reconfigure"><parameter>--reconfigure</parameter></link>,
+but using <link linkend="cmdline-refresh-build"><parameter>--refresh-build</parameter></link>
+may still be required.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-revision">
+<term><parameter>--revision</parameter></term>
+<listitem><para>
+This option causes &kdesrc-build; to checkout a specific numbered revision
+for each &git; module, overriding any <link linkend="conf-branch">branch</link>,
+<link linkend="conf-tag">tag</link>, or <link linkend="conf-revision">revision</link>
+options already set for these modules.</para>
+
+<para>This option is likely not a good idea, and is only supported for
+compatibility with older scripts.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-build-system-only">
+<term><parameter>--build-system-only</parameter></term>
+<listitem><para>
+This option causes &kdesrc-build; to abort building a module just before
+the <command>make</command> command would have been run. This is supported
+for compatibility with older versions only, this effect is not helpful for
+the current &kde; build system.
+</para></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-delete-my-patches">
+<term><parameter>--delete-my-patches</parameter></term>
+<listitem><para>
+This option is used to let &kdesrc-build; delete source directories that may
+contain user data, so that the module can be re-downloaded. This would normally
+only be useful for &kde; developers (who might have local changes that would be
+deleted).</para>
+
+<para>You should not use this option normally,
+&kdesrc-build; will prompt to be re-run with it if it is needed.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-delete-my-settings">
+<term><parameter>--delete-my-settings</parameter></term>
+<listitem><para>
+This option is used to let &kdesrc-build; overwrite existing files which may contain
+user data.</para>
+
+<para>This is currently only used for xsession setup for the login manager. You
+should not use this option normally, &kdesrc-build; will prompt to be re-run
+with it if it is needed.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-global-option">
+<term><parameter>--<replaceable>&lt;option-name&gt;</replaceable>=</parameter></term>
+<listitem><para>
+You can use this option to override an option in your <link linkend="configure-data">configuration file</link> for
+every module. For instance, to override the <link
+linkend="conf-log-dir">log-dir</link> option, you would do:
+<userinput><parameter>--log-dir=<filename class="directory"><replaceable>/path/to/dir</replaceable></filename></parameter></userinput>.
+</para>
+
+<note><para>This feature can only be used for option names already recognized
+by &kdesrc-build;, that are not already supported by relevant command line
+options.  For example the <link linkend="conf-async">async</link> configuration
+file option has specific <link linkend="cmdline-async">--async</link> and <link
+linkend="cmdline-no-async">--no-async</link> command line options that are
+preferred by &kdesrc-build;.
+</para></note>
+
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-module-option">
+<term><parameter>--set-module-option-value=<replaceable>&lt;module-name&gt;</replaceable>,<replaceable>&lt;option-name&gt;</replaceable>,<replaceable>&lt;option-value&gt;</replaceable></parameter></term>
+<listitem><para>
+You can use this option to override an option in your <link linkend="configure-data">configuration file</link> for
+a specific module.
+</para></listitem>
+</varlistentry>
+
+</variablelist>
+
+<para>
+Any other command-line options are assumed to be modules to update and build.
+Please, do not mix building with installing.
+</para>
+
+</sect1>
