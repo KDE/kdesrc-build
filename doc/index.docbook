@@ -78,6 +78,7 @@
   <!ENTITY configure-data SYSTEM "configure-data.docbook">
   <!ENTITY credits-and-license SYSTEM "credits-and-license.docbook">
   <!ENTITY developer-features SYSTEM "developer-features.docbook">
+  <!ENTITY environment SYSTEM "environment.docbook">
 ]>
 
 <book id="kdesrc-build" lang="&language;">
@@ -443,133 +444,7 @@ linkend="configure-data" /> and in <xref linkend="kdesrc-buildrc" />.
 
 &building-specific-modules;
 
-<sect1 id="environment">
-<title>Setting the Environment to Run Your &kde; &plasma; Desktop</title>
-
-<para>
-Assuming you are using a dedicated user to build &kde; &plasma;, and you already have an
-installed &plasma; version, running your new &plasma; may be a bit tricky, as the new
-&plasma; has to take precedence over the old. You must change the environment
-variables of your login scripts to make sure the newly-built desktop is used.
-</para>
-
-<sect2 id="session-driver">
-<title>Automatically installing a login driver</title>
-
-<para>Starting from version 1.16, &kdesrc-build; will try to install an
-appropriate login driver, that will allow you to login to your
-&kdesrc-build;-built &kde; desktop from your login manager. This can be
-disabled by using the <option><link
-linkend="conf-install-session-driver">install-session-driver</link></option>
-configuration file option.</para>
-
-<note><para>Session setup does not occur while &kdesrc-build; is running
-in pretend mode.</para></note>
-
-<para>This driver works by setting up a custom <quote><literal>xsession</literal></quote>
-session type. This type of session should work by default with the sddm login
-manager (where it appears as a <quote>Custom</quote> session), but other login
-managers (such as <application>LightDM</application> and
-<application>gdm</application>) may require additional files installed to
-enable <literal>xsession</literal> support.</para>
-
-<sect3 id="xsession-distribution-setup">
-<title>Adding xsession support for distributions</title>
-
-<para>The default login managers for some distributions may require additional
-packages to be installed in order to support <literal>xsession</literal> logins.</para>
-
-<itemizedlist>
-<listitem><para>The <ulink url="https://getfedora.org/">Fedora</ulink>
-&Linux; distribution requires the <literal>xorg-x11-xinit-session</literal>
-package to be installed for custom <literal>xsession</literal> login
-support.</para></listitem>
-
-<listitem><para><ulink url="https://www.debian.org/">Debian</ulink> and
-Debian-derived &Linux; distributions should support custom
-<literal>xsession</literal> logins, but require the
-<option><userinput>allow-user-xsession</userinput></option> option to be set in
-<filename>/etc/X11/Xsession.options</filename>. See also the Debian <ulink
-url="https://www.debian.org/doc/manuals/debian-reference/ch07.en.html#_customizing_the_x_session_classic_method">documentation
-on customizing the X session.</ulink></para></listitem>
-
-<listitem><para>For other distributions, go to <xref
-linkend="xsession-manual-setup"/>.</para></listitem>
-</itemizedlist>
-
-</sect3>
-
-<sect3 id="xsession-manual-setup">
-<title>Manually adding support for xsession</title>
-
-<para>If there were no distribution-specific directions for your distribution
-in <xref linkend="xsession-distribution-setup"/>, you can manually add a
-<quote>Custom xsession login</quote> entry to your distribution's list of
-session types as follows:</para>
-
-<procedure id="proc-adding-xsession-type">
-<title>Adding an .xsession login session type.</title>
-
-<note><para>This procedure will likely require administrative privileges to
-complete.
-</para></note>
-
-<step performance="required">
-<para>Create the file
-<filename>/usr/share/xsessions/kdesrc-build.desktop</filename>.</para>
-</step>
-
-<step performance="required">
-<para>Ensure the file just created has the following text:</para>
-<literallayout><userinput>
-Type=XSession
-Exec=<co id="session-homedir"/><replaceable>$HOME</replaceable>/.xsession
-Name=KDE Plasma Desktop (unstable; kdesrc-build)
-</userinput></literallayout>
-
-<calloutlist>
-<callout arearefs="session-homedir"><para>
-The <replaceable>$HOME</replaceable> entry must be replaced by the full path to
-your home directory (example, <filename
-class="directory">/home/<replaceable>user</replaceable></filename>).  The
-desktop entry specification does not allow for user-generic files.
-</para></callout>
-
-</calloutlist>
-</step>
-
-<step performance="optional"><para>When the login manager is restarted, it
-should show a new session type, <quote>KDE Plasma Desktop (unstable;
-kdesrc-build)</quote> in its list of sessions, which should try to run the
-<filename>.xsession</filename> file installed by &kdesrc-build; if it is
-selected when you login.</para>
-
-<note><para>It may be easiest to restart the computer to restart the login
-manager, if the login manager does not track updates to the <filename
-class="directory">/usr/share/xsessions</filename> directory.</para></note>
-
-</step>
-
-</procedure>
-
-</sect3>
-
-</sect2>
-
-<sect2 id="old-profile-instructions">
-<title>Setting up the environment manually</title>
-<para>This documentation used to include instruction on which environment
-variables to set in order to load up the newly-built desktop. These
-instructions have been moved to an appendix (<xref
-linkend="old-profile-setup"/>).</para>
-
-<para>If you intend to setup your own login support you can consult that
-appendix or view the <filename>kde-env-master.sh.in</filename> file
-included with the &kdesrc-build; source.</para>
-
-</sect2>
-
-</sect1>
+&environment;
 
 <sect1 id="kde-modules-and-selection">
 <title>Module Organization and selection</title>
