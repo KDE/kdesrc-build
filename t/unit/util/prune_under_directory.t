@@ -11,10 +11,12 @@ use File::Temp;
 use POSIX;
 use File::Basename;
 
+# <editor-fold desc="Begin collapsible section">
 my $timestamp1 = POSIX::strftime("%s", localtime);
 my $filename = basename(__FILE__);
 my $section_header = "File: $filename (click to toggle collapse)";
 print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
+# </editor-fold>
 
 my $dir = path(File::Temp->newdir('kdesrc-build-testXXXXXX'));
 ok($dir, 'tempdir created');
@@ -40,7 +42,9 @@ my @files = $dir->list_tree->each;
 ok(@files == 0, "entire directory $dir removed")
     or diag ("Files in temp dir: ", join(', ', @files));
 
+# <editor-fold desc="End collapsible section">
 my $timestamp2 = POSIX::strftime("%s", localtime);
 print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
+# </editor-fold>
 
 done_testing();

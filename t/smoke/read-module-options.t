@@ -11,10 +11,12 @@ use Carp qw(confess);
 use POSIX;
 use File::Basename;
 
+# <editor-fold desc="Begin collapsible section">
 my $timestamp1 = POSIX::strftime("%s", localtime);
 my $filename = basename(__FILE__);
 my $section_header = "File: $filename (click to toggle collapse)";
 print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
+# </editor-fold>
 
 # Override ksb::Util::log_command for final test to see if it is called with
 # 'cmake'
@@ -92,7 +94,9 @@ is($CMD[11], "-DCMAKE_INSTALL_PREFIX=$ENV{HOME}/kde/usr", 'Prefix is passed to c
 # See https://phabricator.kde.org/D18165
 is($moduleList[0]->getOption('cxxflags'), '', 'empty cxxflags renders with no whitespace in module');
 
+# <editor-fold desc="End collapsible section">
 my $timestamp2 = POSIX::strftime("%s", localtime);
 print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
+# </editor-fold>
 
 done_testing();

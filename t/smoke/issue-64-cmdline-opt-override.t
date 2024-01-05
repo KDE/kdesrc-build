@@ -15,10 +15,12 @@ use File::Basename;
 use ksb::Application;
 use ksb::Module;
 
+# <editor-fold desc="Begin collapsible section">
 my $timestamp1 = POSIX::strftime("%s", localtime);
 my $filename = basename(__FILE__);
 my $section_header = "File: $filename (click to toggle collapse)";
 print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
+# </editor-fold>
 
 # The issue used num-cores as an example, but should work just as well
 # with make-options
@@ -78,7 +80,9 @@ push @args, '--num-cores=5'; # 4 is default, 8 is in rc-file, use something diff
     is ($moduleList[3]->getOption('make-options'), '-j 5', 'module-override make-options proper post-override (indirect value)');
 }
 
+# <editor-fold desc="End collapsible section">
 my $timestamp2 = POSIX::strftime("%s", localtime);
 print "\e[0Ksection_end:${timestamp2}:$filename\r\e[0K\n";  # close collapsible section
+# </editor-fold>
 
 done_testing();
