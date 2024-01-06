@@ -61,8 +61,8 @@
   <!ENTITY configure-flags '<link linkend="conf-configure-flags"
 >configure-flags</link
 >'>
-  <!ENTITY kdedir '<link linkend="conf-kdedir"
->kdedir</link
+  <!ENTITY install-dir '<link linkend="conf-install-dir"
+>install-dir</link
 >'>
   <!ENTITY qtdir '<link linkend="conf-qtdir"
 >qtdir</link
@@ -638,8 +638,8 @@
 <itemizedlist>
 <listitem
 ><para
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 >, який змінює каталог призначення, куди буде встановлено програмне забезпечення &kde;. Типовим є каталог <filename class="directory"
 >~/kde/usr</filename
 >, тобто середовище буде встановлено для одного (вашого) користувача.</para
@@ -1873,8 +1873,6 @@ end module-set
 <listitem
 ><para
 >Ви можете вказати значення різноманітних змінних середовища, які буде використано під час збирання, зокрема <envar
->KDEDIR</envar
->, <envar
 >QTDIR</envar
 >, <envar
 >DO_NOT_COMPILE</envar
@@ -2291,8 +2289,8 @@ end global
 ></listitem>
 <listitem
 ><para
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 >, щоб вказати каталог, куди буде встановлено &kde;.</para
 ></listitem>
 <listitem
@@ -2828,9 +2826,7 @@ end global
 >Встановіть для цього параметра значення, щоб визначити значення змінної середовища PATH на час збирання. Ви не зможете перевизначити значення цього параметра для окремого модуля. Типовим значенням параметра є $<envar
 >PATH</envar
 >, змінна, значення якої встановлюється під час запуску. Значенням цієї змінної середовища має бути відокремлений двокрапками список шляхів до ваших каталогів для збирання. Шляхи <filename class="directory"
->$<envar
->KDEDIR</envar
->/bin</filename
+>install-dir/bin</filename
 > і <filename class="directory"
 >$<envar
 >QTDIR</envar
@@ -3498,9 +3494,9 @@ end global
 </entry>
 </row>
 
-<row id="conf-kdedir">
+<row id="conf-install-dir">
 <entry
->kdedir</entry>
+>install-dir</entry>
 <entry>
 <simplelist type='horiz' columns='2'>
 <member
@@ -3536,9 +3532,7 @@ end global
 >Автовиявлення</member>
 </simplelist>
 <para
->Встановіть значення цього параметра, щоб змінити типову назву каталогу встановлених бібліотек у $<envar
->KDEDIR</envar
-> і $<envar
+>Встановіть значення цього параметра, щоб змінити типову назву каталогу встановлених бібліотек у ${install-dir} і $<envar
 >QTDIR</envar
 >. У багатьох системах це або «lib», або «lib64». Типово, буде виконано спробу автоматичного визначення належної назви, але якщо програма визначає помилкову назву, її можна змінити за допомогою цього параметра.</para>
 </entry>
@@ -3558,9 +3552,7 @@ end global
 >Встановіть значення для цього параметра значення, щоб змінити значення змінної середовища <envar
 >LD_LIBRARY_PATH</envar
 > на час збирання. Ви не зможете перевизначити цей параметр на рівні модулів. Типовим є порожнє значення, але шляхи <filename class="directory"
->$<envar
->KDEDIR</envar
->/$<envar
+>${install-dir}/$<envar
 >LIBNAME</envar
 ></filename
 > і <filename class="directory"
@@ -3864,8 +3856,8 @@ end options
 </simplelist>
 <para
 >За допомогою цього параметра можна вказати місце, куди слід встановити модуль (зазвичай, буде використано значення параметра <option
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 ></option
 >). Цей параметр надає вам змогу встановити модуль у каталог, що не збігається з каталогом бібліотек Платформи KDE, якщо ви, наприклад, використовуєте &kdesrc-build; лише для збирання певних програм.</para>
 <para
@@ -5466,9 +5458,7 @@ kdepim: master
 <para
 >Але цим параметром здебільшого не можна користуватися для запуску оболонки за допомогою середовища &kdesrc-build;, оскільки інтерактивні оболонки типово змінюють принаймні частину змінних середовища (зокрема <envar
 >PATH</envar
-> і <envar
->KDEDIRS</envar
->) під час процедури свого запуску. </para>
+> і ${install-dir}) під час процедури свого запуску. </para>
 
 <tip
 ><para
@@ -5767,15 +5757,6 @@ QMAIL_CONTROLDIR=/var/qmail/control
 > &kde; буде автоматично додано до <envar
 >PKG_CONFIG_PATH</envar
 >. Отже, вам не потрібно використовувати &set-env; для додавання відповідних каталогів. </para
-></listitem>
-
-<listitem
-><para
->Це значення &kdedir; буде автоматично передано змінній середовища <envar
->KDEDIR</envar
-> на час збирання. (Змінна <envar
->KDEDIRS</envar
-> залишатиметься незмінною.) </para
 ></listitem>
 
 <listitem
@@ -6898,33 +6879,29 @@ end module-set
 >.bash_profile</filename
 > у домашньому каталозі за допомогою вашого улюбленого редактора, і додайте в кінець файла наступні рядки. Якщо ви збираєте модуль qt (це типова поведінка), додайте: <programlisting>
 QTDIR=(шлях до qtdir)   # Типовим є ~/kdesrc/build/qt.
-KDEDIR=(шлях до kdedir) # Типовим є ~/kde/usr.
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+PATH=${install-dir}/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
 
 # Дійте у відповідності до того, чи встановлено змінну LD_LIBRARY_PATH.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib
+  LD_LIBRARY_PATH=${install-dir}/lib:$QTDIR/lib
 else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}/lib:$QTDIR/lib:$LD_LIBRARY_PATH
 fi
 
-export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
+export QTDIR PATH MANPATH LD_LIBRARY_PATH
 </programlisting
 > або, якщо ви не збираєте qt (а замість неї використовуєте системну бібліотеку &Qt;), додайте такі рядки: <programlisting
->KDEDIR=(шлях до каталогу kde)  # Наприклад, типово ~/kde/usr.
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+>PATH=${install-dir}/bin:$QTDIR/bin:$PATH
 
 # Діяти відповідно, якщо ще не встановлено LD_LIBRARY_PATH.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib
+  LD_LIBRARY_PATH=${install-dir}/lib
 else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
 fi
 
-export KDEDIRS PATH LD_LIBRARY_PATH
+export PATH LD_LIBRARY_PATH
 </programlisting>
 </para>
 
@@ -6949,7 +6926,7 @@ export KDEDIRS PATH LD_LIBRARY_PATH
 >.bash_profile</filename
 >: <programlisting
 >XDG_CONFIG_DIRS="/etc/xdg"
-XDG_DATA_DIRS="${KDEDIR}/share:/usr/share"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
 export XDG_CONFIG_DIRS XDG_DATA_DIRS
 </programlisting>
 
@@ -6973,7 +6950,7 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 ><command
 >exec</command
 > <option
->${KDEDIR}/bin/startkde</option
+>${install-dir}/bin/startkde</option
 >
 </programlisting>
 </para>

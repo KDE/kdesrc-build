@@ -61,8 +61,8 @@
   <!ENTITY configure-flags '<link linkend="conf-configure-flags"
 >configure-flags</link
 >'>
-  <!ENTITY kdedir '<link linkend="conf-kdedir"
->kdedir</link
+  <!ENTITY install-dir '<link linkend="conf-install-dir"
+>install-dir</link
 >'>
   <!ENTITY qtdir '<link linkend="conf-qtdir"
 >qtdir</link
@@ -622,8 +622,8 @@
 <itemizedlist>
 <listitem
 ><para
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 >, la qual canvia el directori de destinació en què es troba instal·lat el vostre programari &kde;. De manera predeterminada és <filename class="directory"
 >~/kde/usr</filename
 >, el qual és per a una instal·lació d'un únic usuari.</para
@@ -1854,9 +1854,7 @@ end module-set
 
 <listitem
 ><para
->Podeu especificar diversos valors d'entorn per utilitzar durant la construcció, inclosos <envar
->KDEDIR</envar
->, <envar
+>Podeu especificar diversos valors d'entorn per utilitzar durant la construcció, <envar
 >QTDIR</envar
 >, <envar
 >DO_NOT_COMPILE</envar
@@ -2275,8 +2273,8 @@ end global
 ></listitem>
 <listitem
 ><para
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 >, per a establir el directori en el qual instal·lar el &kde;.</para
 ></listitem>
 <listitem
@@ -2814,9 +2812,7 @@ end global
 > mentre es construeix. No podreu superposar aquesta opció en una opció de mòdul. De manera predeterminada és la $<envar
 >PATH</envar
 > que s'estableix quan s'inicia l'script. Aquesta variable d'entorn haurà d'incloure els camins separats per dos punts de la vostra cadena d'eines de desenvolupament. Els camins <filename class="directory"
->$<envar
->KDEDIR</envar
->/bin</filename
+>install-dir/bin</filename
 > i <filename class="directory"
 >$<envar
 >QTDIR</envar
@@ -3484,9 +3480,9 @@ end global
 </entry>
 </row>
 
-<row id="conf-kdedir">
+<row id="conf-install-dir">
 <entry
->kdedir</entry>
+>install-dir</entry>
 <entry>
 <simplelist type='horiz' columns='2'>
 <member
@@ -3522,9 +3518,7 @@ end global
 >Detectat automàticament</member>
 </simplelist>
 <para
->Establiu aquesta opció per a canviar el nom predeterminat del directori de la biblioteca instal·lada dins de $<envar
->KDEDIR</envar
-> i $<envar
+>Establiu aquesta opció per a canviar el nom predeterminat del directori de la biblioteca instal·lada dins de ${install-dir} i $<envar
 >QTDIR</envar
 >. En molts sistemes això és «lib» o «lib64». La detecció automàtica s'intenta establir el nom correcte per defecte, però si la suposició és incorrecta, es pot canviar amb aquesta opció.</para>
 </entry>
@@ -3544,9 +3538,7 @@ end global
 >Establiu aquesta opció per a establir la variable d'entorn <envar
 >LD_LIBRARY_PATH</envar
 > mentre es construeix. No podreu superposar aquesta opció en una opció de mòdul. El valor predeterminat és en blanc, però els camins <filename class="directory"
->$<envar
->KDEDIR</envar
->/$<envar
+>${install-dir}/$<envar
 >LIBNAME</envar
 ></filename
 > i <filename class="directory"
@@ -3851,8 +3843,8 @@ end options
 </simplelist>
 <para
 >Aquesta opció controla a on instal·lar el mòdul (normalment s'utilitza l'opció <option
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 ></option
 >). L'ús d'aquesta opció permet instal·lar un mòdul en un directori diferent d'on estan instal·lades les biblioteques de la plataforma &kde;, com si estiguéssiu utilitzant el &kdesrc-build; només per a compilar aplicacions.</para>
 <para
@@ -5452,9 +5444,7 @@ kdepim: master
 <para
 >No obstant això, en la majoria dels casos això no funcionarà per iniciar un intèrpret d'ordres amb l'entorn del &kdesrc-build;, ja que els intèrprets d'ordres interactius generalment restableixen almenys part de les variables d'entorn (com <envar
 >PATH</envar
-> i <envar
->KDEDIRS</envar
->) en la seqüència d'inici. </para>
+> i ${install-dir}) en la seqüència d'inici. </para>
 
 <tip
 ><para
@@ -5753,15 +5743,6 @@ QMAIL_CONTROLDIR=/var/qmail/control
 > proporcionat pel &kde; s'afegeix automàticament a la variable <envar
 >PKG_CONFIG_PATH</envar
 >. Això vol dir que no necessitareu utilitzar la «&set-env;» per a incloure'l. </para
-></listitem>
-
-<listitem
-><para
->L'opció per a «&kdedir;» es propagarà automàticament a la variable d'entorn <envar
->KDEDIR</envar
-> durant la construcció. (<envar
->KDEDIRS</envar
-> no es veurà afectada). </para
 ></listitem>
 
 <listitem
@@ -6880,33 +6861,28 @@ end module-set
 >.bash_profile</filename
 > en el directori d'inici amb el vostre editor favorit i afegiu-lo al final del fitxer: Si esteu creant el mòdul qt (en el mode predeterminat), en el seu lloc afegiu: <programlisting>
 QTDIR=(camí al «qtdir»)   # De manera predeterminada ~/kdesrc/build/qt.
-KDEDIR=(camí al «kdedir») # De manera predeterminada ~/kde/usr.
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+PATH=${install-dir}/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
 
 # Actua adequadament si encara no s'ha establert la LD_LIBRARY_PATH.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib
 else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib:$LD_LIBRARY_PATH
 fi
-
-export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
+export QTDIR PATH MANPATH LD_LIBRARY_PATH
 </programlisting
 > o, si no esteu construint qt (i, en el seu lloc, esteu utilitzant les &Qt; del vostre sistema), afegiu això en el seu lloc: <programlisting
->KDEDIR=(camí al «kdedir»)  # De manera predeterminada ~/kde/usr.
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+>PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
 
 # Actua de manera adequada si encara no s'ha establert LD_LIBRARY_PATH.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib
+  LD_LIBRARY_PATH=${install-dir}/lib
 else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
 fi
 
-export KDEDIRS PATH LD_LIBRARY_PATH
+export PATH LD_LIBRARY_PATH
 </programlisting>
 </para>
 
@@ -6931,7 +6907,7 @@ export KDEDIRS PATH LD_LIBRARY_PATH
 >.bash_profile</filename
 >: <programlisting
 >XDG_CONFIG_DIRS="/etc/xdg"
-XDG_DATA_DIRS="${KDEDIR}/share:/usr/share"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
 export XDG_CONFIG_DIRS XDG_DATA_DIRS
 </programlisting>
 
@@ -6953,7 +6929,7 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 ><command
 >exec</command
 > <option
->${KDEDIR}/bin/startkde</option
+>${install-dir}/bin/startkde</option
 >
 </programlisting>
 </para>

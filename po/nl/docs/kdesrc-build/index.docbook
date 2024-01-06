@@ -61,8 +61,8 @@
   <!ENTITY configure-flags '<link linkend="conf-configure-flags"
 >configure-flags</link
 >'>
-  <!ENTITY kdedir '<link linkend="conf-kdedir"
->kdedir</link
+  <!ENTITY install-dir '<link linkend="conf-install-dir"
+>install-dir</link
 >'>
   <!ENTITY qtdir '<link linkend="conf-qtdir"
 >qtdir</link
@@ -628,8 +628,8 @@
 <itemizedlist>
 <listitem
 ><para
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 >, wat de doelmap wijzigt waarin de &kde;-software wordt geïnstalleerd. Standaard is dit <filename class="directory"
 >~/kde/usr</filename
 >, wat voor een single-user installatie is.</para
@@ -651,7 +651,7 @@
 
 <listitem
 ><para
-><link linkend="conf-kdedir"
+><link linkend="conf-source-dir"
 >source-dir</link
 >, wat de map wijzigt wat &kdesrc-build; gebruikt om de broncode naar toe te downloaden, het bouwproces uit te voeren en de logbestanden op te slaan. Standaard is dit <filename class="directory"
 >~/kde/src</filename
@@ -1894,8 +1894,6 @@ end module-set
 <listitem
 ><para
 >U kunt verschillende omgevingsvariabelen voor de bouw opgeven, waaronder <envar
->KDEDIR</envar
->, <envar
 >QTDIR</envar
 >, <envar
 >DO_NOT_COMPILE</envar
@@ -2318,8 +2316,8 @@ end global
 ></listitem>
 <listitem
 ><para
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 >, voor het instellen naar welke map &kde; wordt geïnstalleerd.</para
 ></listitem>
 <listitem
@@ -2855,9 +2853,7 @@ end global
 >Gebruik deze optie om de omgevingsvariabele PATH in te stellen voor tijdens het bouwen. U kunt deze instelling niet met een module-optie overschrijven. De standaardinstelling is de $<envar
 >PATH</envar
 > dat is ingesteld als het script start. Deze omgevingsvariabele zou ook de door dubbele punt (:) gescheiden paden van uw development toolchain moeten hebben. De paden <filename class="directory"
->$<envar
->KDEDIR</envar
->/bin</filename
+>install-dir/bin</filename
 > en <filename class="directory"
 >$<envar
 >QTDIR</envar
@@ -3529,9 +3525,9 @@ end global
 </entry>
 </row>
 
-<row id="conf-kdedir">
+<row id="conf-install-dir">
 <entry
->kdedir</entry>
+>install-dir</entry>
 <entry>
 <simplelist type='horiz' columns='2'>
 <member
@@ -3567,9 +3563,7 @@ end global
 >Automatisch gedetecteerd</member>
 </simplelist>
 <para
->Stel deze optie in om de standaardnaam van de geïnstalleerde bibliotheekmap te wijzigen in $<envar
->KDEDIR</envar
-> en $<envar
+>Stel deze optie in om de standaardnaam van de geïnstalleerde bibliotheekmap te wijzigen in ${install-dir} en $<envar
 >QTDIR</envar
 >. Op veel systemen is dit ofwel "lib" of "lib64". Automatische detectie wordt gepoogd om de juiste naam standaard in te stellen, maar als de keuze verkeerd is dan kan dit gewijzigd worden met deze instelling.</para>
 </entry>
@@ -3589,9 +3583,7 @@ end global
 >Gebruik deze optie om de omgevingsvariabele <envar
 >LD_LIBRARY_PATH</envar
 > voor gebruik tijdens het bouwen in te stellen. U kunt in een module option deze instelling niet overschrijven. De standaardinstelling is blank, maar de paden <filename class="directory"
->$<envar
->KDEDIR</envar
->/$<envar
+>${install-dir}/$<envar
 >LIBNAME</envar
 ></filename
 > en <filename class="directory"
@@ -3897,8 +3889,8 @@ einde opties
 </simplelist>
 <para
 >Met deze optie stelt u in waar de module wordt geïnstalleerd (normaal wordt de instelling <option
-><link linkend="conf-kdedir"
->kdedir</link
+><link linkend="conf-install-dir"
+>install-dir</link
 ></option
 > gebruikt). Door deze optie te gebruiken kunt u een module in een andere map installeren dan waar de KDE Platform libraries zijn geïnstalleerd, in het geval dat u &kdesrc-build; gebruikt om alleen programma's te bouwen.</para>
 <para
@@ -5507,9 +5499,7 @@ kdepim: master
 <para
 >Dit zal in de meeste gevallen echter geen shell met de omgevingsvariabelen van &kdesrc-build; opstarten, omdat interactieve shells tijdens de start standaard tenminste een gedeelte van de omgevingsvariabelen (zoals <envar
 >PATH</envar
-> en <envar
->KDEDIRS</envar
->) resetten. </para>
+> en ${install-dir}) resetten. </para>
 
 <tip
 ><para
@@ -5808,15 +5798,6 @@ QMAIL_CONTROLDIR=/var/qmail/control
 > worden automatisch aan de variabele <envar
 >PKG_CONFIG_PATH</envar
 > toegevoegd. Dit betekent dat u &set-env; niet hoeft te gebruiken om ze toe te voegen. </para
-></listitem>
-
-<listitem
-><para
->De instellingen voor &kdedir; wordt automatisch doorgegeven aan de omgevingsvariabele <envar
->KDEDIR</envar
-> tijdens het bouwen. (<envar
->KDEDIRS</envar
-> wordt niet permanent gewijzigd). </para
 ></listitem>
 
 <listitem
@@ -6945,33 +6926,29 @@ end module-set
 >.bash_profile</filename
 >, en voeg aan het eind van het bestand toe: als u de qt module bouwt (standaard doet u dat), voeg in plaats daarvan dan toe: <programlisting>
 QTDIR=(pad naar qtdir)   # zoals standaard ~/kdesrc/build/qt .
-KDEDIR=(pad naar kdedir) # zoals standaard ~/kde/usr .
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+PATH=${install-dir}/bin:$QTDIR/bin:$PATH
 MANPATH=$QTDIR/doc/man:$MANPATH
 
 # Reageer op de juiste manier als LD_LIBRARY_PATH nog niet is ingesteld.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib
 else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib:$LD_LIBRARY_PATH
 fi
 
-export QTDIR KDEDIRS PATH MANPATH LD_LIBRARY_PATH
+export QTDIR PATH MANPATH LD_LIBRARY_PATH
 </programlisting
 >, en als u niet qt bouwt (en in plaats daarvan uw systeem &Qt; gebruikt), voeg dan dit toe: <programlisting
->KDEDIR=(pad naar kdedir)  # Zoals standaard ~/kde/usr .
-KDEDIRS=$KDEDIR
-PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+>PATH=${install-dir}/bin:$QTDIR/bin:$PATH
 
 # Reageer op de juiste manier als LD_LIBRARY_PATH nog niet is ingesteld.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=$KDEDIR/lib
+  LD_LIBRARY_PATH=${install-dir}/lib
 else
-  LD_LIBRARY_PATH=$KDEDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
 fi
 
-export KDEDIRS PATH LD_LIBRARY_PATH
+export PATH LD_LIBRARY_PATH
 </programlisting>
 </para>
 
@@ -6996,7 +6973,7 @@ export KDEDIRS PATH LD_LIBRARY_PATH
 >XDG</acronym
 > instellen : <programlisting
 >XDG_CONFIG_DIRS="/etc/xdg"
-XDG_DATA_DIRS="${KDEDIR}/share:/usr/share"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
 export XDG_CONFIG_DIRS XDG_DATA_DIRS
 </programlisting>
 
@@ -7020,7 +6997,7 @@ export XDG_CONFIG_DIRS XDG_DATA_DIRS
 ><command
 >exec</command
 > <option
->${KDEDIR}/bin/startkde</option
+>${install-dir}/bin/startkde</option
 >
 </programlisting>
 </para>
