@@ -1,0 +1,149 @@
+<chapter id="cmdline">
+<title
+>Opdrachtregel-opties en omgevingsvariabelen (Environment Variables)</title>
+
+<sect1 id="cmdline-usage">
+<title
+>Gebruik van de commandoregel</title>
+
+<para
+>&kdesrc-build; is ontworpen om als volgt te worden gebruikt:</para>
+
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>--opties</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>te bouwen modules</replaceable
+></arg
+> </cmdsynopsis>
+
+<para
+>Als u op de commandoregel geen modules specificeert, dan zal kdesrc-build alle in de het configuratiebestand gedefinieerde modules bouwen, in de in dat bestand opgegeven volgorde (maar dit kan via verschillende bestand-opties gewijzigd worden).</para>
+
+<sect2 id="cmdline-usage-options">
+<title
+>Veel gebruikte opdrachtregel-opties</title>
+
+<para
+>De complete lijst met opties voor op de commandoregel vindt u in <xref linkend="supported-cmdline-params"/>. De meest gebruikte opties zijn:</para>
+
+<variablelist>
+  <varlistentry>
+    <term
+><option
+>--pretend</option
+> (of <option
+>-p</option
+>)</term>
+    <listitem
+><para
+>Deze optie zorgt er voor dat &kdesrc-build; aangeeft welke acties het zou uitvoeren, zonder dat het ze daadwerkelijk uitvoert. Dit kan handig zijn om vast te stellen dat de modules die u denkt te gaan bouwen, ook daadwerkelijk zullen worden gebouwd.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--refresh-build</option
+></term>
+    <listitem
+><para
+>Deze optie forceert dat &kdesrc-build; de opgegeven modules van een absoluut vers startpunt bouwt. Elke bestaande bouwmap voor die module wordt verwijderd en opnieuw gebouwt. Deze optie is handig als er fouten optreden bij het bouwen van een module, en is soms nodig als &Qt; of &kde; libraries wijzigen.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-src</option
+></term>
+    <listitem
+><para
+>Deze optie slaat het bijwerk-proces over. U kan dit gebruiken als u zeer recent de broncode heeft bijgewerkt (misschien deed u dit handmatig of gebruikte u recent &kdesrc-build;) maar u wilt toch sommige modules herbouwen.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-build</option
+></term>
+    <listitem
+><para
+>Deze optie is vergelijkbaar met <option
+>--no-src</option
+> hierboven, maar deze keer wordt het bouwproces overgeslagen.</para
+></listitem>
+  </varlistentry>
+</variablelist>
+
+</sect2>
+
+<sect2 id="cmdline-usage-modules">
+<title
+>Specificatie van te bouwen modules</title>
+
+<para
+>In het algemeen is het specificeren van de te bouwen modules eenvoudig het opgeven van hun modulenaam zoals u het heeft gedefinieerd in het configuratiebestand. U kunt ook modules opgegeven die onderdeel zijn van een module set, zowel benoemd in <link linkend="conf-use-modules"
+>use-modules</link
+>, als de naam van de hele module set zelf, als u deze een naam heeft gegeven.</para>
+
+<para
+>In het specifieke geval van module sets gebaseerd op de <link linkend="kde-projects-module-sets"
+>KDE project database</link
+>, zal &kdesrc-build; de module-naam van van componenten uitbreiden om te bepalen welke module u precies wilt hebben. Bijvoorbeeld, &kdesrc-build;'s KDE project entry bepaalt de locatie van het onderdeel in <literal
+>extragear/utils/kdesrc-build</literal
+>. U kunt elk van de volgende manieren van specificeren gebruiken om &kdesrc-build; te laten bouwen:</para>
+
+<informalexample>
+<screen
+><prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+extragear/utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+kdesrc-build</replaceable
+></option
+>
+</screen>
+</informalexample>
+
+<note
+><para
+>De in het voorgaande voorbeeld gebruikte commando's gaan de module-naam vooraf, gescheiden door een <symbol
+>+</symbol
+>. Dit forceert dat de module-naam wordt geïnterpreteerd als een module uitde KDE project database, zelfs als die module niet in uw configuratiebestand is gedefinieerd. </para
+></note>
+
+<para
+>Wees voorzichtig met het specificeren van zeer algemene onderdelen (bijv. <literal
+>extragear/utils</literal
+> zelf), omdat dit er toe kan leiden dat een groot aantal modules wordt gebouwd. U zou de optie <option
+>--pretend</option
+> kunnen gebruiken voordat u een nieuwe module set gaat bouwen om er zeker van te zijn dat het alleen de gewenste modules gaat bouwen.</para>
+
+</sect2>
+</sect1
+>&supported-envvars; &supported-cmdline-params; </chapter>

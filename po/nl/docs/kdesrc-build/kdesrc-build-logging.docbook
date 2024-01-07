@@ -1,0 +1,102 @@
+<sect1 id="kdesrc-build-logging">
+<title
+>Log van het bouwproces van &kdesrc-build;</title>
+
+<sect2 id="logging-overview">
+<title
+>Overzicht logging</title>
+
+<para
+>Logging is een functionaliteit van &kdesrc-build; waarbij de uitvoer van elke commando die &kdesrc-build; uitvoert wordt opgeslagen voor later onderzoek, indien noodzakelijk. Dit is gedaan omdat vaak nodig is om de uitvoer van deze programma's te hebben als het bouwen is mislukt, op de eerste plaats omdat er zo veel verschillende redenen kunnen zijn waarom een bouwproces kan mislukken.</para>
+
+<sect3 id="log-directory-layout">
+<title
+>Indeling logging-map</title>
+
+<para
+>De logs worden altijd opgeslagen in de log-map. De locatie van de log-map stelt u in met de optie <link linkend="conf-log-dir"
+>log-dir</link
+>, die standaard wijst naar <filename class="directory"
+><symbol
+>${source-dir}</symbol
+>/log</filename
+> (waar <symbol
+>${source-dir}</symbol
+> de waarde is van de optie <link linkend="conf-source-dir"
+>source-dir</link
+>. Hierna in deze sectie, wordt naar deze waarde gerefereerd als <symbol
+>${log-dir}</symbol
+>).</para>
+
+<para
+>In <symbol
+>${log-dir}</symbol
+>, is een set van mappen, een voor elke keer dat &kdesrc-build; is opgestart. Elke map heeft als naam de datum, en een startnummer. Als voorbeeld, de tweede keer dat &kdesrc-build; is opgestart op 26 mei, 2004, creëert het een map genaamd <filename
+>2004-05-26-02</filename
+>, waar de 2004-05-26 voor de datum staat, en de -02 is het startnummer.</para>
+
+<para
+>Om het u gemakkelijk te maken, zal &kdesrc-build; ook een link naar de logs van uw laatste run creëren, genaamd <filename class="directory"
+>latest</filename
+>. Zodat de logs van de meest recente &kdesrc-build; run altijd te vinden zijn onder <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest</filename
+>. </para>
+
+<para
+>Nu zal elke map voor een uitvoering van &kdesrc-build; zelf een set mappen bevatten, een voor elk &kde; module die &kdesrc-build; probeert te bouwen. Ook zal een bestand genaamd <filename
+>build-status</filename
+> in die map zitten, die u het bepalen biedt welke modulen zijn gebouwd en welke zijn mislukt.</para>
+
+<note
+><para
+>Als een module zelf weer een submodule (zoals extragear/multimedia, playground/utils, of KDE/kdelibs) heeft, dan zal er een vergelijkbare layout in de log map aanwezig zijn. Bijvoorbeeld, de logs voor KDE/kdelibs zullen na de laatste&kdesrc-build; run te vinden zijn in <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/KDE/kdelibs</filename
+>, en niet in <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/kdelibs</filename
+>. </para
+></note>
+
+<para
+>In elke module log-map ,vindt u een set bestanden voor elke operatie die &kdesrc-build; uitvoert. Als &kdesrc-build; een module update, dan zult u bestanden zien zoals <filename
+>git-checkout-update.log</filename
+> (voor een module checkout of bij het updaten van een module dat al uitgecheckt is). Als het commando <command
+>configure</command
+> is opgeroepen, dan kunt u een <filename
+>configure.log</filename
+> in die map verwachten.</para>
+
+<para
+>Als er een fout is opgetreden, dan zou u in een van de bestanden moeten kunnen zien waardoor de fout is opgetreden. Om u te helpen bij het bepalen in welk bestand de foutmelding is te vinden, zal &kdesrc-build; een link creëren naar het bestand met de foutmelding (zoals <filename
+>build-1.log</filename
+> genaamd <filename
+>error.log</filename
+>).</para>
+
+<para
+>Het uiteindelijke doel van dit alles is om te zien waarom een module na uw laatste &kdesrc-build; heeft gefaald om te bouwen, het bestand waar u als eerste naar moet kijken is <filename
+><symbol
+>${log-dir}</symbol
+>/latest/<replaceable
+>module-name</replaceable
+>/error.log</filename
+>. </para>
+
+<tip
+><para
+>Als het bestand <filename
+>error.log</filename
+> leeg is (met name na een installatie), dan was er misschien geen fout. Sommige van de hulpprogramma's die het &kde; bouwsysteem gebruikt, kan soms bij vergissing een fout rapporteren terwijl er geen een was.</para>
+
+<para
+>Het kan ook gebeuren dat sommige commando's de &kdesrc-build;'s uitvoer redirection ontwijken en het logbestand in bepaalde omstandigheden bypassen (meestal bij het uitvoeren van de eerste &git; checkout), en is in dat geval de foutmelding niet in het logbestand maar in plaats daarvan in de &konsole; of de terminal waarin u &kdesrc-build; opstartte.</para>
+</tip>
+
+</sect3>
+</sect2>
+</sect1>

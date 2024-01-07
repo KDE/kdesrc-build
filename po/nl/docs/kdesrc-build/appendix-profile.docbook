@@ -1,0 +1,201 @@
+<appendix id="appendix-profile">
+<title
+>Achterhaalde procedures voor het instellen van profielen</title>
+
+<sect1 id="old-profile-setup">
+<title
+>Een &kde; aanmeldprofiel instellen</title>
+
+<para
+>Deze instructies beschrijven hoe u een profiel kan opstellen waarmee u zich kan aanmelden bij uw nieuw gebouwde &kde; &plasma; desktop. &kdesrc-build; zal normaal gesproken dit automatisch proberen te doen (zie <xref linkend="session-driver"/>). Deze appendix- sectie kan handig zijn voor personen die  de functionaliteit van &kdesrc-build; voor het instellen van een inlog-profiel niet kunnen gebruiken. Maar deze instructies hoeven niet altijd up-to-date te zijn, het kan ook handig zijn om het bestand <filename
+>kde-env-master.sh.in</filename
+> te bestuderen wat met de &kdesrc-build;-broncode is meegeleverd.</para>
+
+<sect2 id="changing-profile">
+<title
+>Uw instellingen voor het opstartprofiel wijzigen</title>
+
+<important
+><para
+>Het <filename
+>.bash_profile</filename
+> is een bestand met de inloginstellingen voor de populaire <application
+>bash</application
+> shell in gebruik bij veel &Linux;-distributies. Als u een andere shell gebruikt, dan moet u waarschijnlijk de in deze sectie gegeven voorbeelden aanpassen voor de door u gebruikte shell.</para
+></important>
+
+<para
+>Open of maak het bestand <filename
+>.bash_profile</filename
+> in de thuismap met uw bewerker met voorkeur en voeg aan het einde van het bestand toe: Als u de qt module aan het bouwen bent (dat doet u standaard), voeg in plaats daarvan: <programlisting>
+QTDIR=(path to qtdir)   # Zoiets als ~/kdesrc/build/qt standaard.
+PATH=${install-dir}/bin:$QTDIR/bin:$PATH
+MANPATH=$QTDIR/doc/man:$MANPATH
+
+# Doe zoals het moet als LD_LIBRARY_PATH nog niet al is gezet.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib
+else
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+fi
+
+export QTDIR PATH MANPATH LD_LIBRARY_PATH
+</programlisting
+> of, als u qt niet bouwt (en u uw systeem &Qt; in plaats daarvan gebruikt), voeg dit dan toe: <programlisting
+>PATH=${install-dir}/bin:$QTDIR/bin:$PATH
+
+# Reageer op de juiste manier als LD_LIBRARY_PATH nog niet is ingesteld.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH LD_LIBRARY_PATH
+</programlisting>
+</para>
+
+<para
+>Als u geen speciale gebruiker gebruikt, stel dan een andere $<envar
+>KDEHOME</envar
+> in uw <filename
+>.bash_profile</filename
+> voor uw nieuwe omgeving in: <programlisting
+>export KDEHOME="${HOME}/.kde-git"
+
+# Maak het indien nodig
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
+</programlisting>
+</para>
+
+<note>
+<para
+>Als later uw K Menu leeg is of juist te vol is met toepassingen van uw distributie, dan moet u wellicht in uw <filename
+>.bash_profile</filename
+> de omgevingsvariabele <acronym
+>XDG</acronym
+> instellen : <programlisting
+>XDG_CONFIG_DIRS="/etc/xdg"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
+export XDG_CONFIG_DIRS XDG_DATA_DIRS
+</programlisting>
+
+</para>
+</note>
+
+</sect2>
+<sect2 id="starting-kde">
+<title
+>&kde; wordt opgestart</title>
+
+<para
+>Nu u de omgevingsvariabelen zodanig heeft ingesteld dat u de juiste &kde; gebruikt, is het belangrijk dat u ook het juiste <command
+>startkde</command
+> script gebruikt. </para>
+
+<para
+>Open in de thuismap het tekstbestand <filename
+>.xinitrc</filename
+> of maak indien noodzakelijk deze aan. Voeg de regel toe: <programlisting
+><command
+>exec</command
+> <option
+>${install-dir}/bin/startkde</option
+>
+</programlisting>
+</para>
+
+<important
+><para
+>Bij sommige distributies, kan het nodig zijn om dezelfde stappen ook bij het bestand <filename
+>.xsession</filename
+>, ook in uw thuismap, uit te voeren. Dit geldt met name als u grafische login managers zoals <application
+>sddm</application
+>, <application
+>gdm</application
+> of <application
+>xdm</application
+> gebruikt.</para>
+</important>
+
+<para
+>Start nu uw gloednieuwe &kde; op: in &BSD; en &Linux; systemen met virtuele terminal support, u gebruikt sneltoetsen zoals <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F1</keycap
+></keycombo
+> ... <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F12</keycap
+></keycombo
+> om naar de Virtuele Console 1 tot en met 12 om te schakelen. Hierdoor kunt u op hetzelfde moment meer dan een desktop-omgeving gebruiken. De eerste zes zijn tekst-terminals en de volgende zes zijn grafische vensters. </para>
+
+<para
+>Als u uw computer wilt starten, dan krijgt u in plaats daarvan een grafische display manager te zien, u kunt de nieuwe &kde;-omgeving gebruiken, zelfs als het niet als optie erbij staat. De meeste displaymanagers, ook sddm, hebben bij het inloggen als optie om een <quote
+>Aangepaste sessie</quote
+> te gebruiken. Bij deze optie, worden van het <filename
+>.xsession</filename
+>-bestand in uw thuismap uw sessie-instellingen geladen. Als u al zoals hierboven beschreven dit bestand heeft aangepast, dan zou deze optie u naar uw nieuwe &kde;-installatie moeten leiden. </para>
+
+<para
+>Als dat niet werkt, dan is er een andere manier die u kunt proberen die normaal gesproken zou moeten werken: Druk op <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+>, en u zal een tekst-terminalvenster te zien krijgen. Log in als de speciale gebruiker en type: </para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<tip>
+<para
+>U kunt tegelijk de nieuwe &kde; en de oude &kde; gebruiken! Log in als normale gebruiker, start de stabiele &kde; desktop. Druk op <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+> (of <keycap
+>F1</keycap
+>, <keycap
+>F3</keycap
+>, enz..), en u krijgt een tekst-terminalvenster te zien. Log in als de speciale &kde; &git;-gebruiker en type:</para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<para
+>U kunt terug gaan naar de &kde;-desktop van uw normale gebruiker door de sneltoets van een al opgestarte desktop in te drukken. Normaal gesproken is dit <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+>, maar misschien moet u in plaats daarvan <keycap
+>F6</keycap
+> of <keycap
+>F8</keycap
+> gebruiken. Om terug te gaan naar uw door &kdesrc-build;-gecompileerde &kde;, moet u dezelfde stappen uitvoeren, maar dan met de volgende functietoets. Als u bijvoorbeeld <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+> moet invoeren om naar uw normale &kde; om te schakelen, dan moet u <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F8</keycap
+></keycombo
+> invoeren om naar uw door &kdesrc-build; gebouwde &kde; om te schakelen.</para>
+</tip>
+
+</sect2>
+</sect1>
+
+</appendix>

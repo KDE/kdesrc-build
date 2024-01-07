@@ -1,0 +1,237 @@
+<sect1 id="basic-features">
+<title
+>Standaard functionaliteiten van &kdesrc-build;</title>
+
+<sect2 id="using-qt">
+<title
+>qt-ondersteuning</title>
+<para
+>&kdesrc-build; ondersteunt het bouwen van de &Qt; toolkit die door &kde; software wordt gebruikt als handreiking aan de gebruikers. Deze ondersteuning wordt afgehandeld door een speciale module genaamd qt.</para>
+
+<note
+><para
+>&Qt; wordt ontwikkeld in een separate repository van &kde; de software is te vinden op <ulink url="http://code.qt.io/cgit/qt/"
+>http://code.qt.io/cgit/qt/</ulink
+>.</para
+></note>
+
+<para
+>Om &Qt; te kunnen bouwen, moet u er op letten dat <link linkend="conf-qtdir"
+>qtdir</link
+> verwijst naar de map waar u &Qt; wilt installeren zoals is beschreven in <xref linkend="configure-data"/>.</para>
+
+<para
+>Let er op dat de qt module aanwezig is in uw <filename
+>.kdesrc-buildrc</filename
+>, voor enig andere module in het bestand. Als u het voorbeeld configuratiebestand gebruikt, dan hoeft u enkel de al aanwezige qt module entry te uncommenten.</para>
+
+<para
+>Nu moet u controleren dat de opties <link linkend="conf-repository"
+>repository</link
+> en <link linkend="conf-branch"
+>branch</link
+> juist zijn ingesteld:</para>
+
+<orderedlist>
+<listitem
+><para
+>De eerste optie is om &Qt; te bouwen met behulp van een mirror in de &kde; broncoderepositories (zonder verdere wijzigingen, het is gewoon een cloon van de officiële broncode). Dit wordt sterk aanbevolen vanwege problemen die u kunt ondervinden met het clonen van de complete &Qt; module uit de officiële repository.</para>
+
+<para
+>U kunt de optie <option
+>repository</option
+> voor de qt module instellen op <userinput
+>kde:qt</userinput
+> om deze mogelijkheid te gebruiken.</para>
+</listitem>
+
+<listitem
+><para
+>In het andere geval, kunt u om de standaard &Qt; te bouwen, uw optie <option
+>repository</option
+> instellen op <userinput
+>git://gitorious.org/qt/qt.git</userinput
+>. Merk op dat u problemen kunt ondervinden met de initiële cloon van &Qt; uit dezerepository.</para
+></listitem>
+</orderedlist>
+
+<para
+>In beide gevallen, moet u de branch-optie instellen op <userinput
+>master</userinput
+> (tenzij u een andere branch wilt gebruiken).</para>
+
+</sect2>
+
+<sect2 id="kdesrc-build-std-flags">
+<title
+>Standaard flags toegevoegd door &kdesrc-build;</title>
+<para
+>Opmerking: deze sectie is niet van toepassing op modules waarvoor u een aangepaste toolchain hebt geconfigureerd, met bijv. <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>.</para>
+
+<para
+>Om het u makkelijker te maken en tijd te besparen, voegt &kdesrc-build; enkele standaard paden toe aan uw omgeving: </para>
+
+<itemizedlist>
+<listitem
+><para
+>De paden naar de &kde; en de &Qt; libraries worden automatisch aan de variabele <envar
+>LD_LIBRARY_PATH</envar
+> toegevoegd. Dit betekent dat u  &libpath; niet hoeft te bewerken om ze toe te voegen. </para
+></listitem>
+
+<listitem
+><para
+>De paden naar de ontwikkel-hulpprogramma's van &kde; en de &Qt; worden automatisch aan de variabele <envar
+>PATH</envar
+> toegevoegd. Dit betekent dat u  &binpath; niet hoeft te bewerken om ze toe te voegen. </para
+></listitem>
+
+<listitem
+><para
+>Het pad naar de door &kde; geleverde <application
+>pkg-config</application
+> worden automatisch aan de variabele <envar
+>PKG_CONFIG_PATH</envar
+> toegevoegd. Dit betekent dat u &set-env; niet hoeft te gebruiken om ze toe te voegen. </para
+></listitem>
+
+<listitem
+><para
+>De instellingen voor &qtdir; wordt automatisch doorgegeven aan de omgevingsvariabele <envar
+>QTDIR</envar
+> tijdens het bouwen. </para
+></listitem>
+
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="build-priority">
+<title
+>Het wijzigen van de bouwprioriteit van &kdesrc-build;</title>
+<para
+>Programma's kunnen verschillende prioriteiten hebben in besturingssystemen zoals &Linux; en &BSD;. Hierdoor kan het systeem computertijd toewijzen aan de verschillende programma's overeenkomstig met hoe belangrijk ze zijn. </para>
+
+<para
+>&kdesrc-build; zal zichzelf normaal gesproken een lage prioriteit geven zodat de rest van de programma's op uw systeem onaangetast zijn en normaal zullen werken. Door deze techniek te gebruiken, zal &kdesrc-build; alleen extra CPU-capaciteit gebruiken als dat beschikbaar is. </para>
+
+<para
+>&kdesrc-build; houdt een hogere prioriteit dan batch-processen en CPU-donatie programma's zoals <ulink url="http://setiathome.ssl.berkeley.edu/"
+>Seti@Home</ulink
+>. </para>
+
+<para
+>Om &kdesrc-build; zodanig te wijzigen dat het permanent een hogere (of lagere) prioriteit heeft, moet u de &niceness;-instelling in het <link linkend="configure-data"
+>configuratiebestand</link
+> wijzigen. De instelling &niceness; regelt hoe <quote
+>nice</quote
+> &kdesrc-build; is naar andere programma's. Met andere woorden, door het hebben van een hogere &niceness;, geeft &kdesrc-build; een lagere prioriteit. Dus door &kdesrc-build; een hogere prioriteit te geven, reduceert u de &niceness; (en vice versa). De &niceness; kan gaan van 0 (helemaal niet nice, hoogste prioriteit) tot 20 (super nice, laagste prioriteit).</para>
+
+<para
+>U kunt ook de prioriteit van &kdesrc-build; tijdelijk wijzigen me de hulp van &cmd-nice; <link linkend="cmdline"
+>commandoregeloptie</link
+>. De gebruikte optiewaarde moet precies hetzelfde zijn als voor &niceness;.</para>
+
+<note
+><para
+>Root kan sommige programma's gebruiken met een negatieve waarde voor nice, met voor dergelijke programma's de bijbehorende nog hogere prioriteit. Een negatieve (of zelfs 0) &niceness; voor &kdesrc-build; instellen is geen goed idee, omdat het niet helpt om de CPU-tijden significant korter te maken, maar het zorgt er wel voor dat uw computer erg traag lijkt in het geval dat u uw computer wilt gebruiken. </para
+></note>
+
+<informalexample>
+<para
+>Om &kdesrc-build; met een prioriteit van 15 (een lagere prioriteit dan normaal) te laten werken:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--nice=<replaceable
+>15</replaceable
+></option
+></userinput
+>
+</screen>
+
+<para
+>Maar u kunt ook het <link linkend="configure-data"
+>configuratiebestand</link
+> bewerken om de wijziging permanent te maken:</para>
+
+<screen
+>&niceness; <replaceable
+>15</replaceable
+>
+</screen>
+</informalexample>
+
+<tip>
+<para
+>De <link linkend="conf-niceness"
+>niceness</link
+>-optie heeft alleen effect op het gebruik van de processor(s) van de computer. Een ander belangrijke factor die invloed heeft op de performance van de computer is hoeveel data input of output (<acronym
+>I/O</acronym
+>) een programma gebruikt. Om te regelen hoeveel <acronym
+>I/O</acronym
+> een programma kan gebruiken, hebben moderne &Linux; besturingssystemen een vergelijkbaar hulpmiddel genaamd <application
+>ionice</application
+>. &kdesrc-build; ondersteunt <application
+>ionice</application
+>, (maar alleen om het compleet IN- of UIT- te schakelen) door de optie <link linkend="conf-use-idle-io-priority"
+>use-idle-io-priority</link
+> te gebruiken, vanaf &kdesrc-build; versie 1.12. </para>
+</tip>
+
+</sect2>
+
+<sect2 id="root-installation">
+<title
+>Installatie als de Root</title>
+<para
+>U wilt wellicht &kdesrc-build; gebruiken voor de installatie met root-privileges. Maar dit is wellicht voor de niet aanbevolen systeembrede installatie. Maar dit is ook handig voor gebruik bij een aanbevolen single user &kde; bouw. Dat is omdat sommige modules (met name kdebase) programma's installeert die tijdens gebruik kort hogere permissies nodig hebben. Zij kunnen niet op deze permissie-niveau's werken tenzij ze met de verhoogde permissies zijn geïnstalleerd. </para>
+
+<para
+>U zou &kdesrc-build; gewoon direct als root kunnen opstarten, maar dit wordt niet aanbevolen, omdat het programma niet voor dat gebruik is uitgetest. Al hoe wel het zou veilig moeten zijn om het programma op die manier te gebruiken, is het beter om het gebruik als root zoveel mogelijk te vermijden.</para>
+
+<para
+>Om dit probleem op te lossen, heeft &kdesrc-build; de optie &make-install-prefix;. U kunt deze optie gebruiken om een te gebruiken commando te specificeren dat de installatie als een andere gebruiker uitvoert. De aanbevolen manier om dit commando te gebruiken is met de hulp van het programma &sudo;, wat het installatieproces zal starten als root. </para>
+
+<informalexample>
+<para
+>Bijvoorbeeld, om met gebruik van &sudo; alle modules te installeren, kan u het volgende doen:</para>
+
+<screen
+>global
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+  # Other options
+end global
+</screen>
+
+<para
+>Om &make-install-prefix; te gebruiken voor een enkele module, moet u het volgende doen: </para>
+
+<screen
+>module <replaceable
+>een-module-naam</replaceable>
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+end module
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="build-progress">
+<title
+>De voortgang van het bouwen van een module tonen</title>
+<para
+>Deze functionaliteit is altijd beschikbaar, en is indien mogelijk automatisch ingeschakeld. Wat dit doet is het tonen van de geschatte voortgang van het bouwproces tijdens het bouwen van een module; op die manier kunt u weten hoelang het nog duurt om een module te bouwen. </para>
+
+</sect2>
+
+</sect1>

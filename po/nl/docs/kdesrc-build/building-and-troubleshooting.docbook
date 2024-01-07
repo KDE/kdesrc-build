@@ -1,0 +1,164 @@
+<sect1 id="building-and-troubleshooting">
+<title
+>Het &kdesrc-build;-script gebruiken</title>
+<para
+>Nu de configuratie-data is ingesteld, bent u klaar om het script op te starten. Zelfs als u nog iets wilt instellen, of u wilt nog iets wilt bestuderen, is het een goed idee om tenminste de &kde; project metadata te downloaden.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title
+>Laden van metagegevens van het project</title>
+
+<para
+>Vanuit een terminalvenster, logt u in als de gebruiker waarmee u &kde; software wilt compileren en start u het script op: </para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--metadata-only</option
+></userinput
+>
+</screen>
+
+<para
+>Dit commando zal de map voor de broncode instellen en verbinding zoeken met de KDE &git; repositories om de database van de &kde; git repositories, en de database van de dependency metadata te downloaden, zonder verdere wijzigingen uit te voeren. Het is verstandig om dit separaat uit te voeren omdat deze metadata ook handig is voor andere commando's van &kdesrc-build;. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title
+>Bekijken wat er gaat gebeuren als u kdesrc-build opstart</title>
+
+<para
+>Met de metadata van het project geïnstalleerd, is het mogelijk om te bekijken van wat &kdesrc-build; zal gaan doen als het wordt opgestart. Dit kunt u doen met de commandoregelparameter <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+>.</para>
+
+<screen
+><prompt
+>&percnt; </prompt
+><command
+>./kdesrc-build</command
+> <option
+>--pretend</option
+>
+</screen>
+
+<para
+>U zou een melding moeten zien dat sommige pakketten succesvol zijn gebouwd (ofschoon er niets daadwerkelijk is gebouwd). Als er geen belangrijke problemen zijn te zien, dan kunt u verder gaan door het script daadwerkelijk te starten.</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+
+<para
+>Dit commando zal de juiste broncode downloaden en elke module in de opgedragen volgorde bouwen en installeren. Daarna zou u een uitvoer moeten zien vergelijkbaar met dat in <xref linkend="example-build-sequence"/>:</para>
+
+<example id="example-build-sequence">
+<title
+>Voorbeeld uitvoer van een uitgevoerde kdesrc-build</title>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 200 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+</sect2>
+
+<sect2 id="fixing-build-failures">
+<title
+>Het oplossen van een mislukte bouw</title>
+
+<para
+>Afhankelijk van hoeveel modules u download, is het mogelijk dat &kdesrc-build; het de eerste keer dat u &kde; software compileert niet lukt. Wanhoop niet! </para>
+
+<para
+>&kdesrc-build; logt de uitvoer van elk uitgevoerd commando. Standaard worden de logbestanden bewaard in <filename class="directory"
+>~/kdesrc/log</filename
+>. Om uit te vinden wat de oorzaak van een fout bij een module in de laatste &kdesrc-build; commando is, is het meestal voldoende om <filename class="directory"
+>~/kdesrc/log/latest/<replaceable
+>module-name</replaceable
+>/error.log</filename
+> te bestuderen.</para>
+
+<tip
+><para
+>Misschien is de eenvoudigste manier om uit te vinden welke fout de oorzaak was dat een module niet lukte om te bouwen, het naar achteren hoofdletter-ongevoelig zoeken, aan het eind van het bestand startend naar het woord <literal
+>error</literal
+>. Als u die heeft gevonden, scrolt u omhoog om er zeker van te zijn dat er geen andere foutmeldingen in de buurt zijn. De eerste foutmelding in een groep is meestal het onderliggende probleem.</para
+></tip>
+
+<para
+>In dat bestand kunt u de fout vinden waardoor het bouwen van die module mislukte. Als het bestand (onderaan) zegt dat er bij u enkele pakketten ontbreken, probeer dan het pakket (inclusief toepasselijke -dev pakketten) voordat u opnieuw probeert dat pakket te bouwen. Zorg ervoor dat wanneer u &kdesrc-build; opnieuw opstart, de optie <link linkend="cmdline-reconfigure"
+>--reconfigure</link
+> toevoegt om daarmee &kdesrc-build; te forceren om bij de module opnieuw te controleren voor de ontbrekende pakketten.</para>
+
+<para
+>Of, als de fout een fout in het bouwproces lijkt te zijn (zoals een syntax error, <quote
+>incorrect prototype</quote
+>, <quote
+>unknown type</quote
+>, of iets dergelijks) dan is het waarschijnlijk een fout in de &kde;-broncode, wat hopelijk in een paar dagen opgelost zal zijn. Als het niet in die tijd opgelost is, aarzel dan niet om een email te sturen naar de <email
+>kde-devel@kde.org</email
+> mailing list (het kan nodig zijn om eerst in te schrijven) om melding te maken van de build failure.</para>
+
+<para
+>U kunt meer vaak voorkomende voorbeelden van dingen die fout kunnen gaan en de oplossingen daarvoor, met daarnaast algemene tips en strategieën voor het bouwen van &kde; software vinden in de <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+> Bouwen vanuit de broncode</ulink
+>. </para>
+
+<para
+>Aan de andere kant, aangenomen dat alles goed is gegaan, dan zou een nieuwe &kde; op uw computer geïnstalleerd moeten zijn, en is het nu een kwestie van eenvoudig opstarten, zoals hierna beschreven in <xref linkend="environment"/>.</para>
+
+<note
+><para
+>Meer informatie over de mogelijkheden van &kdesrc-build; voor het loggen, leest u in <xref linkend="kdesrc-build-logging"/>.</para
+></note>
+</sect2>
+
+</sect1>

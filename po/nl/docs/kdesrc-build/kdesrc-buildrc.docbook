@@ -1,0 +1,327 @@
+<chapter id="kdesrc-buildrc">
+<title
+>&kdesrc-build; configureren</title>
+
+<sect1 id="kdesrc-buildrc-overview">
+<title
+>Overzicht van de &kdesrc-build; configuratie</title>
+
+<para
+>Om het script te gebruiken, moet u een bestand in uw thuismap hebben genaamd <filename
+>.kdesrc-buildrc</filename
+>, welke beschrijft welke modules u wilt downloaden en bouwen, en welke opties of configuratiegegevens u voor deze modules wilt gebruiken. </para>
+
+<sect2 id="kdesrc-buildrc-layout">
+<title
+>Indeling van het configuratiebestand</title>
+
+<sect3 id="kdesrc-buildrc-layout-global">
+<title
+>Globale configuratie</title>
+
+<para
+>Het configuratiebestand start met de globale optie, die als volgt is gespecificeerd: </para>
+
+<programlisting
+>global
+<replaceable
+>option-name option-value</replaceable>
+<replaceable
+>[...]</replaceable>
+end global
+</programlisting>
+
+</sect3>
+<sect3 id="kdesrc-buildrc-layout-modules">
+<title
+>Module configuratie</title>
+
+<para
+>Het wordt dan gevolgd door een of meer module secties, gespecificeerd in een van de volgende twee vormen: </para>
+
+<itemizedlist>
+<listitem>
+<programlisting
+>module <replaceable
+>module-name</replaceable>
+<replaceable
+>option-name option-value</replaceable>
+<replaceable
+>[...]</replaceable>
+end module
+</programlisting>
+</listitem>
+
+<listitem>
+<programlisting
+>module-set <replaceable
+>module-set-name</replaceable>
+  repository <userinput
+>kde-projects</userinput
+> or <userinput
+><replaceable
+>git://host.org/path/to/repo.git</replaceable
+></userinput>
+  use-modules <replaceable
+>module-names</replaceable>
+
+# Andere opties zijn ook instelbaar als
+<replaceable
+>option-name option-value</replaceable>
+<replaceable
+>[...]</replaceable>
+end module-set
+</programlisting>
+</listitem>
+</itemizedlist>
+
+<important
+><para
+>Merk op dat de tweede vorm, module sets, <emphasis
+>alleen werkt bij Git-gebaseerde modules</emphasis
+>.</para
+></important>
+
+<para
+>Bij Git-modules, moet <replaceable
+>module-name</replaceable
+> een module zijn uit de &kde; &git; repository (bijvoorbeeld, kdeartwork of kde-wallpapers). </para>
+
+<para
+>Bij Git modules, kunt u de module naam naar wens kiezen, zolang het geen duplicaat is van een andere module naam in de configuratie. Vergeet niet dat de layout van de broncode-map en de bouwmap gebaseerd zijn op de modulenaam als u de optie <link linkend="conf-dest-dir"
+>dest-dir</link
+> niet gebruikt. </para>
+
+<para
+>Echter, bij Git <emphasis
+>module sets</emphasis
+> moeten de <replaceable
+>module-names</replaceable
+> overeenkomen met de daadwerkelijke git modules in de gekozen <option
+>repository</option
+>. Zie <link linkend="conf-git-repository-base"
+>git-repository-base</link
+> of <link linkend="conf-use-modules"
+>use-modules</link
+> voor meer informatie. </para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-option-values">
+<title
+>Verwerken van optiewaarden</title>
+
+<para
+>In het algemeen wordt de gehele inhoud van de regel na de <replaceable
+>optienaam</replaceable
+> gebruikt als de <replaceable
+>optiewaarde</replaceable
+>.</para>
+
+<para
+>Eén wijziging die &kdesrc-build; uitvoert is dat een reeks <userinput
+>${<replaceable
+>naam-van-optie</replaceable
+>}</userinput
+> vervangen wordt door de waarde van die optie uit de globale configuratie. Dit biedt u om naar de waarde van bestaande opties te refereren, inclusief opties die al ingesteld zijn door &kdesrc-build;.</para>
+
+<para
+>Om een hiervan een voorbeeld in gebruik te zien, zie <xref linkend="make-options-example"/>.</para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-options-groups">
+<title
+><quote
+>options</quote
+> modules</title>
+
+<para
+>Er is tenslotte een laatste type entry in een configuratiebestand, <literal
+>options</literal
+> groups, welke u kunt gebruiken waar een <literal
+>module</literal
+> of <literal
+>module-set</literal
+> kan worden gebruikt.</para>
+
+<programlisting
+>options <replaceable
+>module-name</replaceable>
+<replaceable
+>option-name option-value</replaceable>
+<replaceable
+>[...]</replaceable>
+end options
+</programlisting>
+
+<para
+>In een <literal
+>options</literal
+> group kunt u opties ingesteld hebben net zoals bij een module declaratie, en hoort bij een bestaande module. De hierin ingestelde opties <emphasis
+>overschrijven</emphasis
+> de in de bijbehorende module ingestelde opties.</para>
+
+<important
+><para
+>De bijbehorende module naam <emphasis
+>moet</emphasis
+> overeenkomen met de opgegeven naam in de <literal
+>options</literal
+> declaratie. Let op het mistypen van de naam.</para
+></important>
+
+<para
+>Dit is handig bij het declareren van een complete <literal
+>module-set</literal
+> van modules, die allemaal dezelfde opties gebruiken, om daarna <literal
+>options</literal
+> groups te gebruiken voor individuele wijzigingen.</para>
+
+<para
+><literal
+>options</literal
+> groups kunt u ook toepassen op benoemde module sets. Hierdoor kunnen expert gebruikers een algemene configuratiebestand (waarin <literal
+>module-set</literal
+> declaraties voorkomen) als startpunt gebruiken, en vervolgens wijzigingen op de opties toepassen die door die module-sets in configuratiebestanden worden gebruikt die het commando <literal
+><link linkend="kdesrc-buildrc-including"
+>include</link
+></literal
+> gebruiken om naar het basisconfiguratie te refereren.</para>
+
+<example id="ex-options-group">
+<title
+>Voorbeeld van het gebruik van options</title>
+
+<para
+>In dit voorbeeld kiezen we ervoor om alle modules uit de &kde; multimedia software groepen te bouwen. Maar we willen verschillende versies van het programma &kmix; (misschien voor het testen van een bug fix) gebruiken. Dat gaat dan als volgt:</para>
+
+<programlisting
+>module-set <replaceable
+>kde-multimedia-set</replaceable>
+  repository <userinput
+>kde-projects</userinput>
+  use-modules <replaceable
+>kde/kdemultimedia</replaceable>
+  branch <replaceable
+>master</replaceable>
+end module-set
+
+# kmix is een onderdeel van kde/kdemultimedia groep, ook als we 
+# kmix nooit eerder in dit bestand hebben genoemd, zal &kdesrc-build; de wijziging ontdekken.
+options <replaceable
+>kmix</replaceable>
+  branch <replaceable
+>KDE/4.12</replaceable>
+end options
+</programlisting>
+
+<para
+>Wanneer u nu &kdesrc-build; wilt uitvoeren, dan zullen alle &kde; multimedia programma's worden gebouwd vanuit de <quote
+>master</quote
+> branch van de broncoderepository, maar &kmix; zal worden gebouwd van de oudere <quote
+>KDE/4.12</quote
+> branch. Door <literal
+>options</literal
+> te gebruiken, hoeft u niet individueel alle <emphasis
+>andere</emphasis
+> &kde; multimedia programma's op te noemen om ze de juiste branch optie te geven.</para>
+
+</example>
+
+<note>
+<para
+>Merk op dat deze mogelijkheid pas beschikbaar is in &kdesrc-build; vanaf versie 1.16, of als u de development versie van &kdesrc-build; gebruikt van na 2014-01-12.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-including">
+<title
+>Naar andere configuratiebestanden verwijzen</title>
+
+<para
+>In een configuratiebestand, mag u verwijzen naar andere bestanden door het keyword <literal
+>include</literal
+> met een bestand te gebruiken, zodat het zal reageren alsof het bestand waarnaar is verwezen, vanaf dat punt in het configuratiebestand is geplakt. </para>
+
+<informalexample
+><para
+>Bijvoorbeeld, u kunt zoiets als het volgende hebben gedaan:</para>
+<programlisting
+>global
+    include <replaceable
+>~/common-kdesrc-build-options</replaceable>
+
+    # Voeg specifieke opties hier toe.
+
+end global
+</programlisting>
+</informalexample>
+
+<note
+><para
+>Als u niet het volledige pad opgeeft naar het bestand waarvan u een verwijzing wilt opnemen, dan zal naar het bestand worden gezocht vanuit de map waarin het bestand met de broncode staat. Dit werkt ook recursief.</para
+></note>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-common">
+<title
+>De belangrijkste configuratieopties </title>
+
+<para
+>Hier volgt een lijst met de belangrijkste opties. klik op de optie om meer erover te lezen. Voor de volledige lijst met opties, zie <xref linkend="conf-options-table"/>. </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+> voor het definiëren welke flags te gebruiken bij het configureren van een module bij het gebruik van &cmake;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-branch"
+>branch</link
+>, voor het uitchecken van een branch in plaats van <literal
+>master</literal
+>.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-configure-flags"
+>configure-flags</link
+> voor het definiëren welke flags te gebruiken bij het configureren van &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, voor het instellen naar welke map &kde; wordt geïnstalleerd.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>, voor het instellen welke opties naar het &make; programma (zoals hoeveel te gebruiken CPU's) worden doorgegeven.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-qtdir"
+>qtdir</link
+>, voor het instellen van het pad naar &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, voor het wijzigen van waar de broncode naar toe moet worden gedownload.</para
+></listitem>
+</itemizedlist>
+
+</sect2>
+</sect1
+>&conf-options-table; </chapter>

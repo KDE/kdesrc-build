@@ -1,0 +1,166 @@
+<sect1 id="environment">
+<title
+>Налаштовування середовища на запуск зібраного стільничного середовища Плазми &kde;</title>
+
+<para
+>Припустімо, що ви увійшли до системи від імені призначеного для збирання Плазми &kde; користувача, і що у системі вже встановлено якусь версію &kde;. В такому випадку запуск вашої копії Плазми може бути дещо ускладненим, оскільки зібрана Плазма має отримати пріоритет над старою версією. Вам слід змінити змінні середовища у ваших скриптах входу до середовища, щоб забезпечити запуск щойно зібраної версії середовища. </para>
+
+<sect2 id="session-driver">
+<title
+>Автоматичне встановлення драйвера входу до системи</title>
+
+<para
+>Починаючи з версії 1.16, &kdesrc-build; намагається встановити відповідний драйвер входу до системи, за допомогою якого ви зможете входити до вашого зібраного за допомогою &kdesrc-build; стільничного середовища &kde; з загальної програми для керування сеансами. Вимкнути цей драйвер можна за допомогою параметра <option
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></option
+> у файлі налаштувань.</para>
+
+<note
+><para
+>У режимі імітації &kdesrc-build; налаштовування сеансу не відбувається.</para
+></note>
+
+<para
+>Робота драйвера забезпечується встановлення нетипового типу сеансу «<literal
+>xsession</literal
+>». Цей тип сеансу типово має працювати з програмою для керування сеансами sddm (де йому відповідатиме сеанс «Custom»), інші ж програми для керування сеансами (зокрема <application
+>LightDM</application
+> і <application
+>gdm</application
+>) можуть потребувати встановлення додаткових файлів для вмикання підтримки <literal
+>xsession</literal
+>.</para>
+
+<sect3 id="xsession-distribution-setup">
+<title
+>Додавання підтримки xsession у дистрибутив</title>
+
+<para
+>Для роботи з типовими програмами для керування сеансами деяких дистрибутивів може знадобитися встановлення додаткових пакунків з метою забезпечення підтримки входів у систему  <literal
+>xsession</literal
+>.</para>
+
+<itemizedlist>
+<listitem
+><para
+>Для забезпечення підтримки нетипових входів <literal
+>xsession</literal
+> у дистрибутиві <ulink url="https://getfedora.org/"
+>Fedora</ulink
+> &Linux; слід встановити пакунок <literal
+>xorg-x11-xinit-session</literal
+>.</para
+></listitem>
+
+<listitem
+><para
+>У <ulink url="https://www.debian.org/"
+>Debian</ulink
+> та заснованих на Debian дистрибутивах &Linux; типово має бути передбачено підтримку нетипових входів <literal
+>xsession</literal
+>, але для того, щоб з такими входами можна було працювати, слід вказати параметр <option
+><userinput
+>allow-user-xsession</userinput
+></option
+> у <filename
+>/etc/X11/Xsession.options</filename
+>. Також варто ознайомитися з <ulink url="https://www.debian.org/doc/manuals/debian-reference/ch07.en.html#_customizing_the_x_session_classic_method"
+>документацією щодо налаштовування сеансів графічного середовища Debian</ulink
+>.</para
+></listitem>
+
+<listitem
+><para
+>Настанови щодо налаштовування інших дистрибутивів можна знайти у розділі <xref linkend="xsession-manual-setup"/>.</para
+></listitem>
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="xsession-manual-setup">
+<title
+>Додавання підтримки xsession вручну</title>
+
+<para
+>Якщо у розділі <xref linkend="xsession-distribution-setup"/> немає специфічних для вашого дистрибутива настанов, ви можете додати до списку сеансів вашого дистрибутива пункт «Custom xsession login» у такий спосіб:</para>
+
+<procedure id="proc-adding-xsession-type">
+<title
+>Додавання типу входу до сеансу до .xsession.</title>
+
+<note
+><para
+>Для виконання цих настанов вам, ймовірно, знадобляться права доступу адміністратора. </para
+></note>
+
+<step performance="required">
+<para
+>Створіть файл <filename
+>/usr/share/xsessions/kdesrc-build.desktop</filename
+>.</para>
+</step>
+
+<step performance="required">
+<para
+>Додайте до створеного файла такий текстовий фрагмент:</para>
+<literallayout
+><userinput>
+Type=XSession
+Exec=<co id="session-homedir"/><replaceable
+>$HOME</replaceable
+>/.xsession
+Name=KDE Plasma Desktop (unstable; kdesrc-build)
+</userinput
+></literallayout>
+
+<calloutlist>
+<callout arearefs="session-homedir"
+><para
+>Запис <replaceable
+>$HOME</replaceable
+> слід замінити на повний шлях до вашого домашнього каталогу (наприклад <filename class="directory"
+>/home/<replaceable
+>користувач</replaceable
+></filename
+>). У специфікації запису стільниці не передбачено використання універсальних для всіх користувачів файлів. </para
+></callout>
+
+</calloutlist>
+</step>
+
+<step performance="optional"
+><para
+>Після перезапуску програми для керування сеансами у її меню має бути показано новий тип сеансу — «KDE Plasma Desktop (unstable; kdesrc-build)». У разі вибору цього пункту буде виконано спробу запустити файл <filename
+>.xsession</filename
+>, встановленого &kdesrc-build;.</para>
+
+<note
+><para
+>Якщо програма для керування сеансами не стежить за оновленням у каталозі <filename class="directory"
+>/usr/share/xsessions</filename
+>, найпростішим способом її перезапуску є перезапуск комп’ютера.</para
+></note>
+
+</step>
+
+</procedure>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="old-profile-instructions">
+<title
+>Налаштовування середовища вручну</title>
+<para
+>У цьому документів наведено настанови щодо тих змінних середовища, які слід встановити для завантаження щойно зібраного стільничного середовища. Ці настанови можна знайти у додатку (<xref linkend="old-profile-setup"/>).</para>
+
+<para
+>Якщо ви маєте намір власноруч налаштувати підтримку входу до системи, ви можете звернутися до відповідного додатка або переглянути файл <filename
+>kde-env-master.sh.in</filename
+>, який є частиною початкових кодів &kdesrc-build;.</para>
+
+</sect2>
+
+</sect1>

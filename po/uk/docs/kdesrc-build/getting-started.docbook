@@ -1,0 +1,267 @@
+<chapter id="getting-started">
+<title
+>Початок роботи</title>
+
+<para
+>У цій главі ми продемонструємо, як скористатися &kdesrc-build; для отримання модулів зі сховища &kde; і їх збирання. Тут ми наведемо базові пояснення щодо структури системи керування версіями &kde; і кроків, які вам слід виконати до запуску скрипту. </para>
+
+<para
+>Всі питання, обговорені у цій главі, докладніше викладено у <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+>статті щодо збирання з початкових кодів</ulink
+>, розміщеній на <ulink url="https://community.kde.org/"
+>вебсайті вікі спільноти &kde;</ulink
+>. Якщо ви компілюєте &kde; вперше, вам варто прочитати цей підручник або проконсультуватися з цим довідником. Там ви знайдете докладні відомості щодо інструментів пакування та потрібних пакунків, типових проблем з компіляцією, стратегій і запуску нововстановленого &kde;. </para>
+
+<sect1 id="before-building">
+<title
+>Підготовка системи до збирання &kde;</title>
+
+<sect2 id="before-building-users">
+<title
+>Створення нового облікового запису користувача</title>
+
+<para
+>Рекомендуємо вам скористатися окремим обліковим записом користувача для збирання, встановлення і запуску програмного забезпечення &kde;, оскільки таким чином ви зменшите об’єм роботи зі зміни прав доступу та уникнете перешкод, пов’язаних з псуванням налаштувань пакунків з вашого дистрибутива. Якщо у системі вже встановлено пакунки &kde;, найкращим вибором буде створення окремого облікового запису для збирання і запуску нового &kde;. </para>
+
+<tip
+><para
+>Якщо ви не чіпатимете загальносистемного &kde;, у вас завжди буде запасний варіант на випадок, якщо помилка у програмному коді зробить зібрані вами програми непридатними до користування. </para
+></tip>
+
+<para
+>Якщо хочете, можете усе так налаштувати, щоб встановлення відбувалося до загальносистемного каталогу (наприклад <filename class="directory"
+>/usr/src/local</filename
+>). Тут ми не обговорюватимемо цей тип встановлення, оскільки ми припускаємо, що ви ознайомлені зі наслідками своїх дій. </para>
+
+</sect2>
+<sect2 id="before-building-preparation">
+<title
+>Перевірка готовності вашої системи до збирання програмного забезпечення &kde; з початкових кодів</title>
+
+<para
+>Перш ніж почати користування скриптом &kdesrc-build; (або будь-яким іншим інструментом для збирання), вам слід встановити інструменти для розробки і бібліотеки, потрібні для &kde;. Майже повний список потрібних інструментів можна знайти на сторінці <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>вікі спільноти KDE</ulink
+>. </para>
+
+<para
+>Ось список деяких з потрібних для збирання програм:</para>
+<itemizedlist>
+
+<listitem
+><para
+>Вам знадобиться &cmake;. Цю програму &kde; використовує для обробки налаштувань початкового коду під час збирання та створення специфічних команд збирання для вашої системи. Номер потрібної вам версії залежить від версій програмного забезпечення &kde;, які ви збираєте (подробиці див. на TechBase). Якщо ваш дистрибутив достатньо сучасний, включеного до нього пакунка &cmake; має бути достатньо. </para
+></listitem>
+
+<listitem
+><para
+>Крім того, вам слід встановити клієнтське програмне забезпечення для отримання початкових кодів &kde;. Це означає, що вам слід встановити такі пакунки:</para>
+
+<itemizedlist>
+<listitem
+><para
+>Вам слід встановити <ulink url="https://git-scm.com/"
+>систему керування кодом Git</ulink
+>, яка використовується для <ulink url=" https://commits.kde.org/"
+>початкового коду</ulink
+> усіх проєктів &kde;.</para
+></listitem>
+
+<listitem
+><para
+>Хоча збирання відповідного модуля (libdbusmenu-qt) і не є обов’язковим, вам може знадобитися система керування версіями <ulink url="http://bazaar.canonical.com/"
+>Bazaar</ulink
+> (цей модуль потрібен для збирання бібліотек &kde;). Для більшості користувачів цю бібліотеку можна встановити за допомогою системи керування пакунками дистрибутива, але у &kdesrc-build; передбачено і можливість її збирання. Для збирання libdbusmenu-qt вам слід встановити Bazaar.</para
+></listitem>
+</itemizedlist
+></listitem>
+
+<listitem
+><para
+>Скриптова мова Perl потрібна для роботи &kdesrc-build;, взаємодії із деякими сховищами &kde; та &Qt; (якщо ви збираєте цю бібліотеку з початкових кодів).</para>
+
+<para
+>Пакунки Perl, які є частиною вашого дистрибутива, мають підійти (потрібна Perl версії не нижчої за 5.14), але вам також знадобляться декілька додаткових модулів (&kdesrc-build; попередить вас, якщо у системі їх не буде виявлено):</para>
+
+<itemizedlist>
+    <listitem
+><para
+>IO::Socket::SSL</para
+></listitem>
+    <listitem
+><para
+>JSON::PP або JSON::XS</para
+></listitem>
+    <listitem
+><para
+>YAML::PP, YAML::XS або YAML::Syck</para
+></listitem>
+</itemizedlist>
+</listitem>
+
+<listitem
+><para
+>Вам знадобиться усе середовище розробки мовою C++ (компілятор, стандартна бібліотека, середовище виконання та усі пов'язані пакунки для розробки). Мінімальна потрібна версія може бути різною — усе залежить від модуля &kde;: збірка &kde; Frameworks 5 може бути зібрана найдавнішими компіляторами, а Плазма 5 &kde; та програми &kde; можуть вимагати для збирання найновіших версій компілятора.</para>
+<para
+>Мінімальними рекомендованими версіями є GCC 4.8 або Clang 4. У багатьох дистрибутивах передбачено просте встановлення цих інструментів за допомогою метапакунка <quote
+>build-essentials</quote
+>. Крім того, можна встановити «залежності для збирання» &Qt; або подібні набори пакунків. На вікі спільноти KDE є <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/Install_the_dependencies"
+>сторінка зі списком рекомендованих пакунків для основних дистрибутивів</ulink
+>. </para>
+</listitem>
+
+<listitem
+><para
+>Вам знадобиться засіб збирання, який, власне, виконуватиме кроки компіляції (які було визначено &cmake;). Рекомендуємо скористатися GNU Make, який має бути доступним до встановлення за допомогою програми для керування пакунками вашого дистрибутива. У &cmake; передбачено підтримку інших засобів збирання, зокрема &ninja;. Цими засобами збирання можна скористатися з &kdesrc-build; за допомогою параметра файла налаштувань <link linkend="conf-custom-build-command"
+>custom-build-command</link
+>. </para
+></listitem>
+
+<listitem
+><para
+>Нарешті, вам знадобляться відповідні бібліотеки &Qt; (разом із пакунками для розробки) для версії програмного забезпечення &kde;, яку ви збираєте. Офіційно, у &kdesrc-build; не передбачено підтримки збирання &Qt; 5 (поточної основної версії бібліотеки), отже, рекомендуємо вам скористатися пакунками для розробки з вашого дистрибутива або ознайомитися із настановами з вікі спільноти KDE щодо <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/OwnQt5"
+>збирання Qt 5 власноруч</ulink
+>. </para
+></listitem>
+</itemizedlist>
+
+<note
+><para
+>У більшості операційних систем передбачено спосіб простого встановлення потрібних інструментів для розробки. Зверніться до <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>сторінки вікі спільноти щодо потрібних для розробки пакунків</ulink
+>, щоб ознайомитися з готовими настановами.</para
+></note>
+
+<important
+><para
+>Деякі з цих пакунків поділено на бібліотеки (або програми) і пакунки для розробки Вам знадобляться принаймні програма або бібліотека <emphasis
+>і</emphasis
+> її пакунок для розробки. </para
+></important>
+
+</sect2>
+
+<sect2 id="before-building-prepare-script">
+<title
+>Налаштування &kdesrc-build;</title>
+
+<sect3 id="get-kdesrc-build">
+<title
+>Встановлення &kdesrc-build;</title>
+<para
+>Розробники &kde; постійно вдосконалюють &kdesrc-build;, підтримуючи його синхронізацію із поступом у розробці &kde;, зокрема, поліпшуючи рекомендовані налаштування &kdesrc-build;, додаючи модулі, удосконалюючи прапорці &cmake; тощо.</para>
+
+<para
+>Через це, ми рекомендуємо отримати код &kdesrc-build; безпосередньо з початкового сховища коду, а потім періодично оновлювати програму.</para>
+
+<para
+>Ви можете отримати &kdesrc-build; зі сховища його коду за допомогою такої команди:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>clone</option
+> <option
+>https://invent.kde.org/sdk/kdesrc-build.git</option
+> <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput
+>
+</programlisting>
+
+<para
+>Замініть <option
+><replaceable
+>~/kdesrc-build</replaceable
+></option
+> на адресу каталогу, до якого слід встановити програму. </para>
+
+<para
+>Згодом, ви можете оновити код &kdesrc-build; за допомогою такої команди:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>cd <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput>
+<prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>pull</option
+></command
+></userinput
+>
+</programlisting>
+
+<tip
+><para
+>Ми рекомендуємо додати каталог встановлення &kdesrc-build; до вашої змінної середовища <envar
+>PATH</envar
+>, щоб ви могли запускати &kdesrc-build;, не вказуючи шлях до цього каталогу під час кожного запуску скрипту.</para
+></tip>
+</sect3>
+
+<sect3 id="setup-rcfile">
+<title
+>Підготовка файла налаштувань</title>
+
+<para
+>&kdesrc-build; використовує для керування збиранням <link linkend="configure-data"
+>файл налаштувань</link
+>. У файлі зберігаються дані щодо модулів, які слід зібрати, дані щодо місця, де має бути встановлено модулі, тощо. Цей файл буде збережено як <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, якщо встановлено значення <envar
+>$XDG_CONFIG_HOME</envar
+>).</para>
+
+<para
+>Ви можете скористатися командою <application
+>kdesrc-build --generate-config</application
+> з метою приготування простих налаштувань kdesrc-build. Після цього ви можете внести зміни до <filename
+>~/.config/kdesrc-buildrc</filename
+> відповідно до ваших уподобань.</para>
+
+<sect4 id="setup-rcfile-manually">
+<title
+>Ручне визначення параметрів у файлі налаштувань</title>
+
+<para
+>Крім того, ви можете створити власний файл налаштувань вручну. Для цього скопіюйте включений зразок файла налаштувань <filename
+>kdesrc-buildrc-kf5-sample</filename
+> до <filename
+>~/.config/kdesrc-buildrc</filename
+>, а потім внесіть до нього зміни. Корисні настанови щодо цього викладено у розділі <xref linkend="kdesrc-buildrc"/>. Особливо корисною може бути <link linkend="conf-options-table"
+>таблиця параметрів налаштування</link
+>. </para>
+
+<para
+>До складу &kdesrc-build; включено багато рекомендованих файлів налаштувань, у яких реалізовано підтримку &kde; Frameworks 5, Плазми 5 та інших програм &kde;. Див. розділ <xref linkend="kdesrc-buildrc-including"/>, щоб дізнатися більше про те, як використати інші файли налаштувань у вашому власному <filename
+>kdesrc-buildrc</filename
+>. </para>
+
+<para
+>Докладніші відомості щодо синтаксису <link linkend="configure-data"
+>файла налаштувань</link
+> можна знайти у розділах <xref linkend="configure-data"/> і <xref linkend="kdesrc-buildrc"/>. </para>
+</sect4>
+</sect3>
+</sect2>
+</sect1
+>&configure-data; &building-and-troubleshooting; &building-specific-modules; &environment; &kde-modules-and-selection; &quick-start-conclusion; </chapter>

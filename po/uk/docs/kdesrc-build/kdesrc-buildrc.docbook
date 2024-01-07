@@ -1,0 +1,321 @@
+<chapter id="kdesrc-buildrc">
+<title
+>Налаштування &kdesrc-build;</title>
+
+<sect1 id="kdesrc-buildrc-overview">
+<title
+>Огляд налаштування &kdesrc-build;</title>
+
+<para
+>Щоб скористатися цим скриптом, вам потрібен файл з назвою <filename
+>.kdesrc-buildrc</filename
+>, розташований у вашому домашньому каталозі, у цьому файлі описано модулі, які ви бажаєте отримати і зібрати, та усі параметри використання цих модулів. </para>
+
+<sect2 id="kdesrc-buildrc-layout">
+<title
+>Компонування файла налаштувань</title>
+
+<sect3 id="kdesrc-buildrc-layout-global">
+<title
+>Загальні налаштування</title>
+
+<para
+>Файл налаштувань буде запущено з загальними параметрами, вказаними у такий спосіб: </para>
+
+<programlisting
+>global
+<replaceable
+>назва_параметра значення_параметра</replaceable>
+<replaceable
+>[...]</replaceable>
+end global
+</programlisting>
+
+</sect3>
+<sect3 id="kdesrc-buildrc-layout-modules">
+<title
+>Налаштування модулів</title>
+
+<para
+>Після цього повинні йти один або декілька розділів модулів, вказаних у одному з двох форматів: </para>
+
+<itemizedlist>
+<listitem>
+<programlisting
+>module <replaceable
+>назва_модуля</replaceable>
+<replaceable
+>назва_параметра значення_параметра</replaceable>
+<replaceable
+>[...]</replaceable>
+end module
+</programlisting>
+</listitem>
+
+<listitem>
+<programlisting
+>module-set <replaceable
+>назва-набору-модулів</replaceable>
+  repository <userinput
+>kde-projects</userinput
+> або <userinput
+><replaceable
+>git://host.org/path/to/repo.git</replaceable
+></userinput>
+  use-modules <replaceable
+>назви-модулів</replaceable>
+
+# Можна встановити також інші параметри
+<replaceable
+>назва-параметра значення-параметра</replaceable>
+<replaceable
+>[...]</replaceable>
+end module-set
+</programlisting>
+</listitem>
+</itemizedlist>
+
+<important
+><para
+>Зауважте, що другий формат, набори модулів, <emphasis
+>працює лише для модулів, код яких зберігається у Git</emphasis
+>.</para
+></important>
+
+<para
+>Для модулів Git параметр <replaceable
+>назва_модуля</replaceable
+> має бути назвою модуля зі сховища &git; &kde; (наприклад kdeartwork або kde-wallpapers). </para>
+
+<para
+>Для модулів Git назвою може бути будь-який рядок, якщо цей рядок не дублює інших назв модулів у налаштуваннях. Пам’ятайте, що розташування каталогів коду і збирання буде визначено на основі назви модуля, якщо ви не використаєте параметра <link linkend="conf-dest-dir"
+>dest-dir</link
+>. </para>
+
+<para
+>Але для <emphasis
+>наборів модулів</emphasis
+> Git <replaceable
+>назви-модулів</replaceable
+> мають відповідати справжнім модулям git modules у вибраному сховищі (параметр <option
+>repository</option
+>). Щоб дізнатися більше, ознайомтеся з довідкою щодо <link linkend="conf-git-repository-base"
+>git-repository-base</link
+> і <link linkend="conf-use-modules"
+>use-modules</link
+>. </para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-option-values">
+<title
+>Обробка значень параметрів</title>
+
+<para
+>Загалом, увесь вміст рядка після запису <replaceable
+>назва-параметра</replaceable
+> буде використано як <replaceable
+>значення-параметра</replaceable
+>.</para>
+
+<para
+>Однією зі змін, які виконує &kdesrc-build;, є те, що послідовність <userinput
+>${<replaceable
+>назва-параметра</replaceable
+>}</userinput
+> замінюється на значення цього параметра із загальних налаштувань. Це надає вам змогу посилатися на значення наявних параметрів, зокрема параметрів, значення яких вже встановлено &kdesrc-build;.</para>
+
+<para
+>Із прикладом використання цього параметра можна ознайомитися у розділі <xref linkend="make-options-example"/>.</para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-options-groups">
+<title
+>Модулі «options»</title>
+
+<para
+>Цей останній тип записів файла налаштувань, групи <literal
+>options</literal
+>, яким можна скористатися для записів <literal
+>module</literal
+> або <literal
+>module-set</literal
+>.</para>
+
+<programlisting
+>options <replaceable
+>назва_модуля</replaceable>
+<replaceable
+>назва_параметра значення_параметра</replaceable>
+<replaceable
+>[...]</replaceable>
+end options
+</programlisting>
+
+<para
+>У групі <literal
+>options</literal
+> можна встановлювати значення параметрів так само, як у оголошенні модуля. Цю групу має бути пов’язано з наявним модулем. Усі параметри, встановлені за допомогою цієї групи, буде використано для <emphasis
+>перевизначення</emphasis
+> набору параметрів пов’язаного модуля.</para>
+
+<important
+><para
+>Пов’язана назва модуля <emphasis
+>має</emphasis
+> збігатися з назвою, даною у оголошенні <literal
+>options</literal
+>. Тому слід не уважно стежити за тим, щоб у назві не було друкарських помилок.</para
+></important>
+
+<para
+>Це корисно, якщо треба оголосити повний набір <literal
+>module-set</literal
+> для модулів з використанням однакових параметрів, а потім скористатися групами <literal
+>options</literal
+> для внесення окремих змін.</para>
+
+<para
+>Групи <literal
+>options</literal
+> можна також застосовувати до іменованих наборів модулів. Ця можливість надає змогу досвідченим користувачам використовувати загальний файл налаштувань (який включено до оголошення <literal
+>module-set</literal
+>) як основу і вносити зміни до параметрів, використовуваних наборами модулів, у файлах налаштувань, використовуючи команду <literal
+><link linkend="kdesrc-buildrc-including"
+>include</link
+></literal
+> для посилання на основні налаштування.</para>
+
+<example id="ex-options-group">
+<title
+>Приклад використання options</title>
+
+<para
+>У нашому прикладі визначено збирання усіх модулів з групи мультимедійного програмного забезпечення &kde;. Крім того, визначено використання іншої версії для програми &kmix; (наприклад, щоб перевірити, чи виправлено певну ваду). Це працює так:</para>
+
+<programlisting
+>module-set <replaceable
+>kde-multimedia-set</replaceable>
+  repository <userinput
+>kde-projects</userinput>
+  use-modules <replaceable
+>kde/kdemultimedia</replaceable>
+  branch <replaceable
+>master</replaceable>
+end module-set
+
+# kmix є частиною групи kde/kdemultimedia, навіть якщо kmix раніше у файлі
+# не згадувався, &kdesrc-build; врахує зміну.
+options <replaceable
+>kmix</replaceable>
+  branch <replaceable
+>KDE/4.12</replaceable>
+end options
+</programlisting>
+
+<para
+>Тепер, якщо ви запустите &kdesrc-build;, усі мультимедійні програми &kde; буде зібрано на основі коду з гілки «master» сховища з кодом, &kmix; буде зібрано зі старішої гілки «KDE/4.12». Оскільки використано <literal
+>options</literal
+>, нам не довелося створювати окремий список усіх <emphasis
+>інших</emphasis
+> мультимедійних програм &kde;, щоб визначити для них правильне значення параметра гілки коду.</para>
+
+</example>
+
+<note>
+<para
+>Зауважте, що цю можливість реалізовано лише з версії &kdesrc-build; 1.16, а також у тестовій версії &kdesrc-build; для розробників з 12 січня 2014 року.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-including">
+<title
+>Включенні інших файлів налаштувань</title>
+
+<para
+>У межах файла налаштувань ви можете посилатися на інші файли за допомогою ключового слова <literal
+>include</literal
+> з файлом. Все працюватиме так, наче вміст відповідного файла вставлено у місці включення. </para>
+
+<informalexample
+><para
+>Наприклад, ви можете вказати щось таке:</para>
+<programlisting
+>global
+    include <replaceable
+>~/common-kdesrc-build-options</replaceable>
+
+    # Тут вкажіть специфічні параметри.
+
+end global
+</programlisting>
+</informalexample>
+
+<note
+><para
+>Якщо вами не буде вказано шлях до файла, який слід включити, повністю, програма шукатиме цей файл, починаючи з каталогу, щоб містить початковий файл. Пошук буде виконано рекурсивно.</para
+></note>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-common">
+<title
+>Типові параметри налаштування</title>
+
+<para
+>Далі наведено список параметрів, якими ви можете скористатися. Натисніть позначку параметра, щоб дізнатися про нього більше. Повний список параметрів наведено у розділі <xref linkend="conf-options-table"/>. </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+>, щоб визначити параметри налаштування модуля за допомогою &cmake;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-branch"
+>branch</link
+>, щоб отримати код для стабільної версії, а не версії <literal
+>master</literal
+>.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-configure-flags"
+>configure-flags</link
+>, щоб визначити параметри, згідно яких буде налаштовано модуль &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, щоб вказати каталог, куди буде встановлено &kde;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>, щоб передати параметри програмі &make; (зокрема кількість процесорів, які слід використовувати).</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-qtdir"
+>qtdir</link
+>, щоб вказати шлях до бібліотек &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, щоб змінити каталог призначення для отримання початкових кодів.</para
+></listitem>
+</itemizedlist>
+
+</sect2>
+</sect1
+>&conf-options-table; </chapter>

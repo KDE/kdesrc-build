@@ -1,0 +1,545 @@
+<sect1 id="advanced-features">
+<title
+>Додаткові можливості</title>
+
+<sect2 id="partial-builds">
+<title
+>Часткове збирання модуля</title>
+<para
+>Існує також можливість збирання окремих фрагментів окремого модуля &kde;. Наприклад, ви можете зібрати лише одну з програм модуля. У &kdesrc-build; передбачено засоби для полегшення такого збирання. Існує декілька шляхів виконати подібне збирання. </para>
+
+<sect3 id="not-compiling">
+<title
+>Вилучення каталогів з процесу збирання</title>
+<para
+>Ви можете наказати скрипту отримати усе сховище, але наказати системі збирання не виконувати збирання у деяких каталогах. Щоб цим можна було скористатися, у модулі має бути використано &cmake;, система збирання модуля має уможливлювати виключення певного каталогу. </para>
+
+<para
+>Кероване параметром &do-not-compile;.</para>
+
+<important
+><para
+>Для того, щоб зміни, внесені цим параметром, набули чинності, вам слід запустити скрипт налаштування системи збирання відповідного модуля ще раз. Це можна зробити за допомогою команди <userinput
+><command
+>kdesrc-build</command
+> <option
+>&cmd-reconfigure;</option
+> <option
+><replaceable
+>назва_модуля</replaceable
+></option
+></userinput
+>. </para
+></important>
+
+<informalexample>
+<para
+>Щоб вилучити каталог <filename class="directory"
+>python</filename
+> з процесу збирання kdebindings, додайте такі рядки:</para>
+
+<screen
+>module <replaceable
+>kdebindings</replaceable>
+  &do-not-compile; <replaceable
+>python</replaceable>
+end module
+</screen>
+
+</informalexample>
+
+<note
+><para
+>Працездатність цієї функції залежить від виконання деяких стандартів, які використовуються у більшості модулів &kde;. Саме тому вона може не працювати для деяких програм.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="using-branches">
+<title
+>Підтримка версій і випусків у &kdesrc-build;</title>
+
+<sect3 id="branches-and-tags">
+<title
+>Що таке версія (branch) і випуск (tag)?</title>
+
+<para
+>&git; підтримує керування журналом змін коду &kde;. &kde; використовує цю підтримку для створення версій, які розробляються, і створення сховищ випусків для зберігання коду випущених версій середовища. </para>
+
+<para
+>Наприклад, розробники &kmail; можуть працювати над новою можливістю у іншій версії, щоб уникнути можливої непрацездатності версії, над якою працює більшість інших розробників. У цій версії відбувається розробка, хоча розробка також відбувається і у основному сховищі версій (яке називається master). </para>
+
+<para
+>З іншого боку, випуск є певною точкою у сховищі коду у певний момент часу. Таке сховище використовується командою адміністрування &kde; для позначення версії коду, придатної для випуску, а також надає розробниками можливість доопрацьовувати їх код. </para>
+
+</sect3>
+
+<sect3 id="branch-support">
+<title
+>Як користуватися версіями і випусками?</title>
+
+<para
+>Підтримка версій і випусків забезпечується набором параметрів, які призначено для виконання дій у діапазоні від загального запису на певну версію, до визначення адреси &url; для отримання досвідченими користувачами. </para>
+
+<para
+>Найпростішим способом є використання параметрів &branch; і &tag;. Ви можете просто скористатися параметром з аргументом-назвою бажаної версії або випуску модуля, — &kdesrc-build; спробує визначити належну адресу у сховищі &kde; для отримання коду. Для більшості модулів &kde; таких спосіб працює дуже добре.</para>
+
+<informalexample>
+<para
+>Щоб отримати kdelibs зі складу &kde; 4.6 (відповідне сховище відоме як версія 4.6): </para>
+
+<screen
+>module kdelibs
+  branch <replaceable
+>4.6</replaceable>
+  # інші параметри...
+end module
+</screen>
+
+<para
+>Або, щоб отримати kdemultimedia у вигляді, у якому цей модуль було випущено у &kde; 4.6.1:</para>
+
+<screen
+>module kdemultimedia
+  tag <replaceable
+>4.6.1</replaceable>
+  # інші параметри...
+end module
+</screen>
+
+</informalexample>
+
+<tip
+><para
+>Ви можете вказати загальне значення версії (branch). Але, якщо ви це зробите, не забудьте вказати іншу версію для модулів, які не використовують загальної нумерації версій! </para
+></tip>
+</sect3>
+
+</sect2>
+
+<sect2 id="stopping-the-build-early">
+<title
+>Передчасне зупинення збирання</title>
+
+<sect3 id="the-build-continues">
+<title
+>Якщо станеться помилка, збирання, зазвичай, продовжується</title>
+
+<para
+>Зазвичай, &kdesrc-build; оновлюватиме, збиратиме і встановлюватиме усі модулі у вказаному списку модулів для збирання, навіть якщо якийсь модуль не вдасться зібрати. Так зроблено для зручності: це уможливлює оновлення пакунків програмного забезпечення, навіть якщо у якомусь зі сховищ є помилка, якої припустилися при розробці і яка призводить до помилок під час збирання. </para>
+
+<para
+>Втім, може виникнути потреба у зупинці дій, які виконує &kdesrc-build;, щойно не вдасться зібрати і встановити якийсь модуль. Це може заощадити час, який могло б бути витрачено на спроби зібрати решту модулів у списку збирання, які також не можна буде успішно зібрати, особливо, якщо ви ще не збирали успішно модулі у списку. </para>
+
+</sect3>
+
+<sect3 id="stop-on-failure-stops-early">
+<title
+>Вимикання передчасної зупинки за допомогою --no-stop-on-failure</title>
+
+<para
+>Основним способом досягнення мети є використання параметра командного рядка <link linkend="cmdline-stop-on-failure"
+>--no-stop-on-failure</link
+> при запуску &kdesrc-build;. </para>
+
+<para
+>Цей параметр також можна встановити у <link linkend="conf-stop-on-failure"
+>файлі налаштувань</link
+>, щоб зробити його звичайним режимом роботи. </para>
+
+<para
+>Також можна повідомити запущеному екземпляру &kdesrc-build; про те, що слід зупинити збирання <emphasis
+>після</emphasis
+> завершення збирання поточного модуля, над яким працює програма. Це не те саме, що перервати роботу &kdesrc-build; за допомогою команди, подібної до <keycombo action="simul"
+>&Ctrl;<keycap
+>C</keycap
+></keycombo
+>, яка перериває роботу &kdesrc-build; негайно із втратою поступу збирання поточного модуля. </para>
+
+<important
+><para
+>Переривання роботи &kdesrc-build; під час встановлення, якщо увімкнено параметр <link linkend="conf-use-clean-install"
+>use-clean-install</link
+>, означатиме, що модуль, збирання якого було перервано, буде недоступним, аж доки &kdesrc-build; не зможе його успішно зібрати!</para>
+
+<para
+>Якщо вам потрібно перервати роботу &kdesrc-build; без уможливлення штатного завершення роботи у цій ситуації, принаймні намагайтеся уникнути цього під час встановлення модуля за допомогою &kdesrc-build;.</para>
+</important>
+
+</sect3>
+
+<sect3 id="stopping-early-without-stop-on-failure">
+<title
+>Штатне зупинення роботи &kdesrc-build;, якщо stop-on-failure має значення false</title>
+
+<para
+>Якщо ми вже згадували вище, можна наказати &kdesrc-build; передчасно і штатно завершити роботу після завершення збирання якогось модуля, над яким працюватиме програма. Щоб зробити це, вам слід надіслати &kdesrc-build; сигнал POSIX <literal
+>HUP</literal
+>. </para>
+
+<para
+>Зробити це можна за допомогою команди, подібної до <command
+>pkill</command
+> (у системах &Linux;), ось так:</para>
+
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>pkill <option
+>-HUP</option
+> kdesrc-build</command
+></userinput
+>
+</programlisting>
+
+<para
+>Якщо завдання виконано успішно, ви побачите у виведених &kdesrc-build; даних повідомлення, подібне до такого:</para>
+
+<programlisting
+>[ build ] recv SIGHUP, will end after this module
+</programlisting>
+
+<note>
+<para
+>&kdesrc-build; може виводити це повідомлення декілька разів, залежно від кількості окремих активних процесів &kdesrc-build;. Така поведінка є звичною і не вказує на помилку.</para>
+</note>
+
+<para
+>Щойно &kdesrc-build; отримає сигнал, програма припинить обробку завдання після збирання і встановлення поточного модуля. Якщо під час отримання сигналу &kdesrc-build; перебуватиме на етапі оновлення початкового коду, при отримання сигналу &kdesrc-build; зупинить обробку, щойно буде завершено отримання початкового коду. Щойно процеси оновлення та збирання передчасно завершать роботу, &kdesrc-build; виведе дані щодо часткових результатів і завершить роботу. </para>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="building-successfully">
+<title
+>Способи, у які &kdesrc-build; намагається забезпечити успішне збирання</title>
+
+<sect3 id="automatic-rebuilds">
+<title
+>Автоматичне перезбирання</title>
+
+<para
+>У попередніх версіях &kdesrc-build; було передбачено можливості для автоматичного повторення спроби збирання модуля після невдалої спроби (оскільки іноді така повторна спроба буває успішною, причиною можуть бути вади у системі збирання). Завдяки переходу на &cmake;, система збирання вже не страждає на подібні вади, отже &kdesrc-build; не намагатимуться зібрати модуль повторно. Але можливі випадки, коли &kdesrc-build; виконає повторне збирання автоматично:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Якщо ви зміните <link linkend="conf-configure-flags"
+>configure-flags</link
+> або <link linkend="conf-cmake-options"
+>cmake-options</link
+> для певного модуля, &kdesrc-build; виявить ці зміни і повторно запустить скрипт configure або cmake для відповідного модуля.</para
+></listitem>
+
+<listitem
+><para
+>Якщо системи збирання не існує (навіть якщо &kdesrc-build; не вилучав її), &kdesrc-build; автоматично створить її повторно. Це буде корисним, якщо ви виконуєте повне повторне збирання (<link linkend="cmdline-refresh-build"
+>--refresh-build</link
+>) для певного модуля без виконання повторного збирання для інших модулів.</para
+></listitem>
+
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="manual-rebuilds">
+<title
+>Перезбирання модуля вручну</title>
+<para
+>Якщо ви змінили параметри певного модуля або код модуля змінився таким чином, що &kdesrc-build; не може його розпізнати, у вас може виникнути потреба у повторному збиранні цього модуля вручну.</para>
+
+<para
+>Ви можете зробити це простою командою <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+><replaceable
+>назва_модуля</replaceable
+></option
+></userinput
+>. </para>
+
+<para
+>Якщо замість цього ви бажаєте, щоб скрипт &kdesrc-build; автоматично перезібрав модуль під час наступного звичайного оновлення збирання, ви можете створити спеціальний файл. Кожен з модулів має власний каталог для збирання. Якщо ви створите у цьому каталозі для збирання файл з назвою <filename
+>.refresh-me</filename
+>, &kdesrc-build; повторно збере модуль під час наступного сеансу збирання, навіть якщо скрипт виконує швидке нарощувальне збирання.</para>
+
+<tip>
+<para
+>Типово, каталогом збирання буде <filename class="directory"
+>~/kde/build/<replaceable
+>назва модуля</replaceable
+>/</filename
+>. Якщо ви зміните значення параметра &build-dir;, буде замість <filename class="directory"
+>~/kde/build</filename
+> буде використано значення цього параметра.</para>
+</tip>
+
+<informalexample>
+<para
+>Повторне збирання за допомогою <filename
+>.refresh-me</filename
+> модуля <replaceable
+>kdelibs</replaceable
+>:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>touch</command
+> <filename
+>~/kdesrc/build/<replaceable
+>kdelibs</replaceable
+>.refresh-me</filename
+></userinput>
+<prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+</informalexample>
+</sect3>
+
+</sect2>
+
+<sect2 id="changing-environment">
+<title
+>Зміна параметрів змінних середовища</title>
+<para
+>Зазвичай &kdesrc-build; використовує поточні параметри середовища для запуску програм, призначених для виконання оновлень та збирання. Це корисно, якщо ви запускаєте &kdesrc-build; з командного рядка.</para>
+
+<para
+>Крім того, у вас може виникнути потреба у зміні тих змінних середовища, для яких у &kdesrc-build; не передбачено параметрів. (Наприклад, щоб визначити будь-які змінні середовища під час запуску &kdesrc-build; за таймером, наприклад &cron;.) Це можна зробити за допомогою параметра &set-env;.</para>
+
+<para
+>На відміну від інших параметрів, цей параметр можна визначати декілька разів, він приймає два записи, відокремлені пробілом. Першим з записів є назва змінної середовища, яку слід встановити, решта рядка вважається значенням цієї змінної.</para>
+
+<informalexample>
+<para
+>Встановити значення змінної <userinput
+><envar
+>DISTRO</envar
+>=<replaceable
+>BSD</replaceable
+></userinput
+> для всіх модулів:</para>
+<screen
+>global
+  set-env <replaceable
+>DISTRO</replaceable
+> <replaceable
+>BSD</replaceable>
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="resuming">
+<title
+>Поновлення збирання</title>
+
+<sect3 id="resuming-failed">
+<title
+>Поновлення збирання, яке завершилося помилкою або було скасоване</title>
+
+<para
+>Ви можете наказати &kdesrc-build; почати збирання з модуля, відмінного від того, з якого скрипт зазвичай розпочинає збирання. Такі налаштування можуть стати у пригоді, якщо спроба збирання певного набору модулів завершилася невдало або якщо ви перервали попередню спробу збирання. Вказати модуль можна за допомогою параметрів &cmd-resume-from; та &cmd-resume-after;.</para>
+
+<note
+><para
+>У старіших версіях &kdesrc-build; під час поновлення збирання оновлення кодів програм не відбувалося. Тепер програма типово цього не робить, але ви можете передати їй параметр командного рядка <option
+>--no-src</option
+>, щоб уникнути оновлення кодів програм.</para
+></note>
+
+<informalexample>
+<para
+>Відновлення збирання з модуля kdebase:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-from=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<informalexample>
+<para
+>Відновлення збирання, починаючи з місця після kdebase (якщо ви вручну виправили ваду і встановили модуль власноруч):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-after=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<para
+>Якщо остання спроба збирання за допомогою &kdesrc-build; завершилася критичною помилкою, ви також можете скористатися параметром <link linkend="cmdline-resume"
+>--resume</link
+>. Використання цього параметра надасть змогу відновити останній сеанс збирання з модуля, під час збирання якого сталася критична помилка. Крім того, буде пропущено кроки оновлення коду та метаданих модулів (якщо ви хочете, щоб програма виконала ці кроки, краще скористатися параметром <link linkend="cmdline-resume-from"
+>--resume-from</link
+>).</para>
+
+
+</sect3>
+
+<sect3 id="ignoring-modules">
+<title
+>Ігнорування модулів під час збирання</title>
+
+<para
+>Подібно до способу, у який ви можете <link linkend="resuming-failed"
+>поновити збирання, починаючи з певного модуля</link
+>, ви можете і оновити зібрати компоненти у звичайному режимі, але без певного набору модулів.</para>
+
+<para
+>Виконати це завдання можна за допомогою параметра &cmd-ignore-modules;. За допомогою цього параметра ви можете повідомити скрипту &kdesrc-build; про те, що слід ігнорувати всі передані як аргументи у командному рядку модулі під час виконання оновлення і збирання.</para>
+
+<informalexample>
+<para
+>Ігнорування extragear/multimedia і kdereview під час повноцінного запуску:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--ignore-modules</option
+> <replaceable
+>extragear/multimedia kdereview</replaceable
+></userinput
+>
+</screen>
+</informalexample>
+
+</sect3>
+</sect2>
+
+<sect2 id="changing-env-from-cmd-line">
+<title
+>Зміна параметрів за допомогою командного рядка</title>
+
+<sect3 id="changing-global-opts">
+<title
+>Зміна загальних параметрів</title>
+<para
+>Ви можете змінити набір параметрів з <link linkend="configure-data"
+>файла налаштувань</link
+> безпосередньо з командного рядка. Ця зміна перевизначить параметри файла налаштувань, але лише тимчасово. Ці параметри працюватимуть лише протягом виконання вказаної у командному рядку команди.</para>
+
+<para
+>&kdesrc-build; надає вам змогу змінити параметри з назвою <replaceable
+>назва-параметра</replaceable
+> передаванням аргументу у командний рядок у формі <userinput
+><option
+>--<replaceable
+>назва-параметра</replaceable
+>=значення</option
+></userinput
+>. &kdesrc-build; визначає чи відомий скрипту параметр і намагається знайти назву у власному списку назв параметр. Якщо програмі не вдається знайти назву, вона попередить вас про це, у іншому випадку скрипт запам’ятає встановлене вами значення і перевизначає значення, встановлення у файлі налаштувань.</para>
+
+<informalexample>
+<para
+>Встановлення параметра &source-dir; у значення <filename
+>/dev/null</filename
+> для перевірки:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+> <option
+>--<replaceable
+>source-dir</replaceable
+>=<replaceable
+>/dev/null</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+<sect3 id="changing-module-opts">
+<title
+>Зміна параметрів для модулів</title>
+<para
+>Крім того, можна змінити параметри, вказані для окремого модуля. Синтаксис команди, подібний до синтаксису попередньої команди: --<replaceable
+>назва_модуля</replaceable
+>,<replaceable
+>назва-параметра</replaceable
+>=<replaceable
+>значення</replaceable
+>. </para>
+
+<para
+>Ця зміна перевизначає параметр відповідного модуля у <link linkend="configure-data"
+>файлі налаштувань</link
+> і діє лише протягом виконання рядка команди.</para>
+
+<informalexample>
+<para
+>Використання іншого каталогу збирання для модуля kdeedu:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--<replaceable
+>kdeedu</replaceable
+>,<replaceable
+>build-dir</replaceable
+>=<replaceable
+>temp-build</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+</sect2>
+
+</sect1>

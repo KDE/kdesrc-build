@@ -1,0 +1,136 @@
+<sect1 id="configure-data">
+<title
+>Instellen van de configuratiegegevens</title>
+
+<para
+>Om &kdesrc-build; te kunnen gebruiken, moet u in uw map <filename
+>~/.config</filename
+> (of in <envar
+>$XDG_CONFIG_HOME</envar
+>, indien ingesteld) een bestand hebben genaamd <filename
+>.kdesrc-buildrc</filename
+> hebben, waar in u de algemene instellingen vastlegt en specificeert welke modules u wilt downloaden en bouwen. </para>
+
+<note
+><para
+>Het is mogelijk om bij &kdesrc-build; verschillende configuratiebestanden te gebruiken, dit wordt beschreven in <xref linkend="kdesrc-buildrc"/>. als u verschillende configuraties nodig heeft, lees dan die sectie. Hier nemen we aan dat de configuratie is te vinden in <filename
+>~/.config/kdesrc-buildrc</filename
+>. </para
+></note>
+
+<para
+>De makkelijkste manier om verder te gaan is door het bestand <filename
+>kdesrc-buildrc-kf5-sample</filename
+> als voorbeeld te gebruiken, de algemene instellingen naar wens te wijzigen, en ook de lijst met modules die u wilt bouwen aan te passen. </para>
+
+<para
+>De standaardinstellingen zouden geschikt moeten zijn om een &kde;-bouw uit te voeren. Enkele instellingen die u wellicht wilt wijzigen zijn: </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, wat de doelmap wijzigt waarin de &kde;-software wordt geïnstalleerd. Standaard is dit <filename class="directory"
+>~/kde/usr</filename
+>, wat voor een single-user installatie is.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-branch-group"
+>branch-group</link
+>, wat u kunt gebruiken om de toepasselijke ontwikkel-branch van de &kde; modules als geheel te selecteren. U kunt uit veel bouw-configuraties kiezen maar u zal waarschijnlijk <option
+>kf5-qt5</option
+> willen kiezen zodat &kdesrc-build; de laatste code gebaseerd op &Qt; 5 en &kde; Frameworks 5 zal downloaden.</para>
+
+<tip
+><para
+>Als u er geen kiest dan zal &kdesrc-build; de standaard branch groep gebruiken, maar welke de standaard is verandert in de loop van de tijd, het is daarom beter om een te kiezen zodat de branch-groep niet onverwacht wijzigt.</para
+></tip>
+</listitem>
+
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, wat de map wijzigt die &kdesrc-build; gebruikt om de broncode naar te downloaden, het bouwproces uit te voeren en de logbestanden op te slaan. Standaard is dit <filename class="directory"
+>~/kde/src</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+>, waar u de opties instelt die voor het bouwen van elke module aan het commando &cmake; worden doorgegeven. Normaal gebruikt u dit om te schakelen tussen <quote
+>debug</quote
+> en <quote
+>release</quote
+> bouw, om optionele functionaliteiten IN of UIT te schakelen, of om informatie over de locatie van de vereiste libraries aan het bouwproces door te geven. </para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>, waar u de opties instelt die voor het bouwen van elke module (nadat &cmake; het bouwsysteem heeft ingesteld) bij het gebruik van het commando <application
+>make</application
+> wordt gebruikt. </para>
+
+<para
+>De meest ingestelde optie is <option
+>-j<replaceable
+>N</replaceable
+></option
+>, waar u <replaceable
+>N</replaceable
+> vervangt door het maximum aantal jobs dat u wilt toestaan. Een groter getal (tot aan het aantal logische CPUs dat uw systeem beschikbaar heeft) geeft sneller bouwen, maar vereist wel meer systeem-resources. </para>
+
+<tip
+><para
+>&kdesrc-build; stelt de optie <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> in op het gedetecteerde aantal beschikbare verwerkingskernen. U kunt deze waarde in uw eigen configuratiebestand gebruiken om te vermijden het handmatig te moeten instellen. </para
+></tip>
+
+<example id="make-options-example">
+<title
+>Make configureren om alle beschikbare CPU's te gebruiken, met uitzonderingen</title>
+<screen
+>global
+    # Deze omgevingsvariabele wordt automatisch door make gebruikt, inclusief
+    # make-commando's die niet direct worden uitgevoerd door kdesrc-build, zoals  configuratie van Qt
+    set-env MAKEFLAGS -j<literal
+>${num-cores}</literal>
+    &hellip;
+end global
+
+&hellip;
+
+module-set <replaceable
+>big-module-set</replaceable>
+    repository kde-projects
+    use-modules <replaceable
+>calligra</replaceable>
+    make-options -j2 # Reduced number of build jobs for just these modules
+end module-set
+</screen>
+</example>
+
+<note
+><para
+>Sommige zeer grote Git repositories kunnen uw systeem verdrinken als u probeert om teveel bouwprocessen tegelijk uit te voeren, met name repositories zoals van &Qt; WebKit en de &Qt; WebEngine. Om het systeem interactief te houden, kan het nodig zijn dat u voor bepaalde modules het aantal bouwprocessen beperkt.</para>
+<para
+><xref linkend="make-options-example"/> Geeft een voorbeeld hoe u dit kunt doen.</para>
+</note>
+
+</listitem>
+</itemizedlist>
+
+<para
+>U wilt waarschijnlijk andere modules selecteren om te gaan bouwen, dit is beschreven in <xref linkend="selecting-modules"/>.</para>
+
+</sect1>

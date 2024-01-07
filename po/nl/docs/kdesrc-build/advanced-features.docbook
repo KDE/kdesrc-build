@@ -1,0 +1,545 @@
+<sect1 id="advanced-features">
+<title
+>Geavanceerde functies</title>
+
+<sect2 id="partial-builds">
+<title
+>Een module gedeeltelijk bouwen</title>
+<para
+>Het is mogelijk om alleen gedeeltes van een enkele &kde; module te bouwen. Bijvoorbeeld, u wilt alleen een programma uit een module compileren. &kdesrc-build; heeft mogelijkheden om het u makkelijk te maken. Er zijn meerdere manieren om dit te doen. </para>
+
+<sect3 id="not-compiling">
+<title
+>Mappen uit een bouw verwijderen</title>
+<para
+>Het is mogelijk om een gehele opslagruimte te downloaden maar het bouwsysteem er een paar mappen uit te laten wanneer er wordt gebouwd. Dit vereist dat de module &cmake; gebruikt en dat het bouwsysteem van de module om de map te verwijderen toestaat dit optioneel te laten zijn. </para>
+
+<para
+>Dit wordt bestuurd met de optie &do-not-compile;.</para>
+
+<important
+><para
+>Deze optie vereist dat u in ieder geval na een wijziging het bouwsysteem herconfigureert. Dit doet u door het commando <userinput
+><command
+>kdesrc-build</command
+> <option
+>&cmd-reconfigure;</option
+> <option
+><replaceable
+>module</replaceable
+></option
+></userinput
+> te gebruiken. </para
+></important>
+
+<informalexample>
+<para
+>Om de map <filename class="directory"
+>python</filename
+> uit het kdebindings bouwproces te verwijderen:</para>
+
+<screen
+>module <replaceable
+>kdebindings</replaceable>
+  &do-not-compile; <replaceable
+>python</replaceable>
+end module
+</screen>
+
+</informalexample>
+
+<note
+><para
+>Deze functie is afhankelijk van enkele afspraken gebruikt in de meeste &kde; modules. Het hoeft daarom niet bij alle programma's te werken.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="using-branches">
+<title
+>Ondersteuning voor branching en tagging bij for &kdesrc-build;</title>
+
+<sect3 id="branches-and-tags">
+<title
+>Wat zijn branches en tags?</title>
+
+<para
+>&git; ondersteunt het beheer van de geschiedenis van de &kde;-broncode. &kde; gebruikt deze ondersteuning om voor ontwikkeling branches (afsplitsingen) te creëren, en de repository zo nu en dan te taggen (markeren) met een nieuwe versie release. </para>
+
+<para
+>Bijvoorbeeld, de &kmail;-ontwikkelaars kunnen aan het werk zijn voor een nieuwe functie in een andere branch om te vermijden dat ze de versie breken die bij de meeste ontwikkelaars in gebruik is. In deze branch kunnen ontwikkelingen aan de gang zijn, terwijl in de hoofd-branch (genaamd master) ook ontwikkelingen aan de gang kunnen zijn. </para>
+
+<para
+>Een tag, aan de andere kant, is een gespecificeerd punt van de broncode-opslagruimte op een tijdstip. Dit wordt door het administratieteam van &kde; gebruikt om een versie van de code te markeren als geschikt voor uitgave en de ontwikkelaars toch te laten werken aan de code. </para>
+
+</sect3>
+
+<sect3 id="branch-support">
+<title
+>Het gebruik van branches en tags</title>
+
+<para
+>Het gebruik van branches en tags regelt u met een set van opties, die variëren van een gewoon verzoek voor een versie, tot een specifieke &url; om van te downloaden voor gevorderde gebruikers. </para>
+
+<para
+>De makkelijkste methode is om de &branch; en &tag;-opties te gebruiken. U gebruikt gewoon de optie samen met de naam van de gewenste branch of tag van een module, en &kdesrc-build; zal proberen om de juiste locatie in de &kde; repository te bepalen waarvan het moet downloaden. Bij de meeste &kde; modules werkt dit vrij goed.</para>
+
+<informalexample>
+<para
+>Om kdelibs van &kde; 4.6 (die gewoon bekend staat als de 4.6 branch) te downloaden: </para>
+
+<screen
+>module kdelibs
+  branch <replaceable
+>4.6</replaceable>
+  # other options...
+end module
+</screen>
+
+<para
+>Of, om kdemultimedia te downloaden zoals het was released met &kde; 4.6.1:</para>
+
+<screen
+>module kdemultimedia
+  tag <replaceable
+>4.6.1</replaceable>
+  # other options...
+end module
+</screen>
+
+</informalexample>
+
+<tip
+><para
+>U kunt een algemene (global) branch waarde instellen. Maar als u dat doet, vergeet dan niet om een andere branch voor de modules die niet de global branch gebruiken te specificeren! </para
+></tip>
+</sect3>
+
+</sect2>
+
+<sect2 id="stopping-the-build-early">
+<title
+>Het bouwen vroeg stoppen</title>
+
+<sect3 id="the-build-continues">
+<title
+>Normaal gaat het bouwen door zelfs als er zaken mislukken</title>
+
+<para
+>&kdesrc-build; zal normaal een update doen, alle modules in de gespecificeerde lijst van te bouwen modules bouwen en installeren, zelfs als het bouwen van een module mislukt. Dit is gewoonlijk een gemak om u het bijwerken van software pakketten te bieden zelfs als er een eenvoudig foutje is gemaakt in een van de bronopslagruimten tijdens de ontwikkeling die de oorzaak is dat het bouwen breekt. </para>
+
+<para
+>U zou echter willen dat &kdesrc-build; stopt met wat het aan het doen is wanneer het bouwen en installeren van een module mislukt. Dit kan u tijd besparen die verkwist kan zijn om voortgang te maken terwijl overblijvende modulen in de te bouwen lijst niet instaat zullen zijn ook met succes te bouwen, speciaal als u nooit eerder met succes de modules in the lijst hebt gebouwd. </para>
+
+</sect3>
+
+<sect3 id="stop-on-failure-stops-early">
+<title
+>Niet vroeg stoppen met --no-stop-on-failure</title>
+
+<para
+>De primaire methode om dat te doen is om de optie <link linkend="cmdline-stop-on-failure"
+>--no-stop-on-failure</link
+> op de opdrachtregel te gebruiken wanneer u &kdesrc-build; uitvoert. </para>
+
+<para
+>Deze optie kan ook ingesteld worden in het <link linkend="conf-stop-on-failure"
+>configuratiebestand</link
+> om het de normale modus van werken te maken. </para>
+
+<para
+>Het is ook mogelijk om &kdesrc-build; bij uitvoeren te vertellen om te stoppen met bouwen <emphasis
+>na</emphasis
+> voltooiing van de huidige module waaraan gewerkt wordt. Dit in tegenstelling tot &kdesrc-build; interrumperen met een commando zoals <keycombo action="simul"
+>&Ctrl;<keycap
+>C</keycap
+></keycombo
+>, die &kdesrc-build; onmiddellijk laat stoppen, met verlies van voortgang van de huidige module. </para>
+
+<important
+><para
+>&kdesrc-build; interrumperen tijdens het installeren van een module wanneer de optie <link linkend="conf-use-clean-install"
+>use-clean-install</link
+> is ingeschakeld zal betekenen dat de geïnterrumpeerde module niet beschikbaar zal zijn totdat &kdesrc-build; in staat is met succes de module te bouwen!</para>
+
+<para
+>Als u het nodig hebt om &kdesrc-build; te interrumperen zonder een nette afsluiting in deze situatie, probeer dan tenminste dit te doen terwijl &kdesrc-build; een module installeert.</para>
+</important>
+
+</sect3>
+
+<sect3 id="stopping-early-without-stop-on-failure">
+<title
+>&kdesrc-build; netjes stoppen wanneer stop-on-failure is false</title>
+
+<para
+>Zoals hierboven genoemd is het mogelijk &kdesrc-build; netjes vroeg te laten stoppen nadat deze de module waar nu aan wordt gewerkt heeft voltooid. Om dit te doen, moet u het POSIX-signaal <literal
+>HUP</literal
+> naar &kdesrc-build; zenden. </para>
+
+<para
+>U kunt dit doen met een commando zoals <command
+>pkill</command
+> (op &Linux; systemen) als volgt:</para>
+
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>pkill <option
+>-HUP</option
+> kdesrc-build</command
+></userinput
+>
+</programlisting>
+
+<para
+>Als dat met succes is gedaan zult u een bericht in de uitvoer van &kdesrc-build; zien zoals:</para>
+
+<programlisting
+>[ build ] recv SIGHUP, zal eindigen na deze module
+</programlisting>
+
+<note>
+<para
+>&kdesrc-build; kan dit bericht meerdere keren laten zien afhankelijk van het aantal individuele &kdesrc-build; processen die actief zijn. Dit is normaal en geen indicatie van een fout.</para>
+</note>
+
+<para
+>Nadat &kdesrc-build; het signaal heeft bevestigd, zal het stoppen met verwerken nadat de huidige module is gebouwd en geïnstalleerd. Als &kdesrc-build; nog steeds broncode aan het bijwerken is toen het verzoek werd ontvangen, zal &kdesrc-build; stoppen nadat de broncode van de module is bijgewerkt. Nadat zowel het bijwerken als de bouwprocessen vroeg zijn gestopt, zal &kdesrc-build; zijn partiële resultaten afdrukken en dan eindigen. </para>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="building-successfully">
+<title
+>Hoe &kdesrc-build; probeert zich te verzekeren van een succesvolle bouw</title>
+
+<sect3 id="automatic-rebuilds">
+<title
+>Automatisch herbouwen</title>
+
+<para
+>&kdesrc-build; had vroeger de gewoonte om onderdelen toe te voegen bij automatische pogingen om een module te herbouwen na een mislukking (omdat soms dan deze poging tot herbouwen wel werkte, vanwege bugs in het bouwsysteem op dat moment). Dankzij de omschakeling naar &cmake; heeft het bouwsysteem geen last meer van deze bugs, zodat &kdesrc-build; niet langer meer dan een keer zal proberen een module te herbouwen. Er zijn echter situaties waar &kdesrc-build; toch zal proberen actie te ondernemen:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Als u <link linkend="conf-configure-flags"
+>configure-flags</link
+> of <link linkend="conf-cmake-options"
+>cmake-options</link
+> voor een module wijzigt, dan zal &kdesrc-build; dit detecteren en automatisch configure of cmake voor dat module herstarten.</para
+></listitem>
+
+<listitem
+><para
+>Als het bouwsysteem niet bestaat (ook als &kdesrc-build; het niet heeft verwijderd) dan zal &kdesrc-build; het automatisch recreëren. Dit is handig om een volledige <link linkend="cmdline-refresh-build"
+>--refresh-build</link
+> uit te kunnen voeren voor een specifiek module zonder dat het ook voor andere modules uitgevoerd te hoeven worden.</para
+></listitem>
+
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="manual-rebuilds">
+<title
+>Handmatig een module herbouwen</title>
+<para
+>Als u een wijziging aan de optiewaarden van een module aanbrengt, of de broncode van de module wijzigt zodanig dat &kdesrc-build; het niet herkent, dan kan het nodig zijn dat u handmatig de module moet herbouwen.</para>
+
+<para
+>U kunt dit gewoon doen door <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+><replaceable
+>module</replaceable
+></option
+></userinput
+> op te starten. </para>
+
+<para
+>Als u graag heeft dat &kdesrc-build; automatisch de module tijdens de volgende normale bouw update automatisch wordt herbouwd, dan kunt een speciaal bestand creëren. Elke module heeft een bouwmap. Als u u een bestand genaamd <filename
+>.refresh-me</filename
+> in de bouwmap van een module creëert, dan zal &kdesrc-build; de volgende keer dat het bouwproces gebeurt de module herbouwen, zelfs als het normaal gesproken de snellere incrementele bouw zou uitvoeren.</para>
+
+<tip>
+<para
+>Standaard is de bouwmap <filename class="directory"
+>~/kde/build/<replaceable
+>module</replaceable
+>/</filename
+>. Als u de waarde van de optie &build-dir; wijzigt, dan wordt dat gebruikt in plaats van <filename class="directory"
+>~/kde/build</filename
+>.</para>
+</tip>
+
+<informalexample>
+<para
+>Herbouwen door <filename
+>.refresh-me</filename
+> voor de module <replaceable
+>kdelibs</replaceable
+> te gebruiken:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>touch</command
+> <filename
+>~/kdesrc/build/<replaceable
+>kdelibs</replaceable
+>/.refresh-me</filename
+></userinput>
+<prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+</informalexample>
+</sect3>
+
+</sect2>
+
+<sect2 id="changing-environment">
+<title
+>De instellingen van de omgevingsvariabelen wijzigen</title>
+<para
+>Normaal gesproken gebruikt &kdesrc-build; om updates en het bouwproces uit te voeren de bij de start aanwezige omgeving voor het gebruik van programma's. Dit is handig voor het gebruik van &kdesrc-build; vanaf de commandoregel.</para>
+
+<para
+>Maar als u de instellingen voor de omgevingsvariabelen wilt wijzigen waarvoor &kdesrc-build; niet direct een optie voor heeft. (Bijvoorbeeld, om de vereiste omgevingsvariabelen op te zetten om &kdesrc-build; door een timer zoals &cron; te laten starten) Dan kunt u dit doen met de optie &set-env;.</para>
+
+<para
+>Afwijkend van de meeste andere opties, kunt u deze meer dan een keer instellen, en het accepteert twee waarden, gescheiden door een spatie. De eerste is de naam van de in te stellen omgevingsvariabele, en de rest van de regel is de waarde.</para>
+
+<informalexample>
+<para
+>Set <userinput
+><envar
+>DISTRO</envar
+>=<replaceable
+>BSD</replaceable
+></userinput
+> for all modules:</para>
+<screen
+>global
+  set-env <replaceable
+>DISTRO</replaceable
+> <replaceable
+>BSD</replaceable>
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="resuming">
+<title
+>Hervatten van bouwprocessen</title>
+
+<sect3 id="resuming-failed">
+<title
+>Hervatten na een mislukte of afgebroken bouwproces</title>
+
+<para
+>U kunt &kdesrc-build; vertellen om te beginnen met bouwen vanaf een andere module dan dat het normaal zou doen. Dit kan nuttig zijn wanneer een set modulen mislukt of als als u een uitvoering van het bouwen middenin hebt geannuleerd. U kunt dit besturen met de optie &cmd-resume-from; en de optie &cmd-resume-after;.</para>
+
+<note
+><para
+>Oudere versies van &kdesrc-build; zouden de update van de broncode overslaan bij het hervatten van een bouw. Standaard gebeurt dit niet langer, maar u kunt altijd de commandoregelparameter <option
+>--no-src</option
+> gebruiken om de update van de broncode over te slaan.</para
+></note>
+
+<informalexample>
+<para
+>De start van de bouw hervatten vanaf kdebase:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-from=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<informalexample>
+<para
+>De start van de bouw hervatten na kdebase (in het geval dat u handmatig het probleem herstelde en de module zelf installeerde):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-after=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<para
+>Als de laatste &kdesrc-build;-bouw eindigde met een bouw-mislukking, dan kunt u ook de commandoregelparameter <link linkend="cmdline-resume"
+>--resume</link
+> gebruiken, wat hervat met de laatste bouw , startend met de module die mislukte. De update van de broncode en metadata worden ook overgeslagen (maar als u dit nodig heeft, dan is het in het algemeen beter om <link linkend="cmdline-resume-from"
+>--resume-from</link
+> te gebruiken).</para>
+
+
+</sect3>
+
+<sect3 id="ignoring-modules">
+<title
+>Modules tijdens de bouw negeren</title>
+
+<para
+>Vergelijkbaar met de manier waarop u <link linkend="resuming-failed"
+>de bouw hervat vanaf een module</link
+>, in plaats daarvan kunt u ervoor kiezen om alles zoals normaal te updaten en te bouwen, en een groep modules te negeren.</para>
+
+<para
+>Dit kunt u doen door de optie &cmd-ignore-modules; te gebruiken. Met deze optie kunt u opdracht geven aan &kdesrc-build; om bij de update en de bouw op de commandoregel opgegeven modules te negeren.</para>
+
+<informalexample>
+<para
+>Tijdens een complete run extragear/multimedia en kdereview negeren:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--ignore-modules</option
+> <replaceable
+>extragear/multimedia kdereview</replaceable
+></userinput
+>
+</screen>
+</informalexample>
+
+</sect3>
+</sect2>
+
+<sect2 id="changing-env-from-cmd-line">
+<title
+>Vanaf de commandoregel opties wijzigen</title>
+
+<sect3 id="changing-global-opts">
+<title
+>Algemene (global) opties wijzigen</title>
+<para
+>U kunt direct vanaf de commandoregel de optiewaarden ingelezen van het <link linkend="configure-data"
+>configuratiebestand</link
+> wijzigen. Dit overschrijft de instellingen uit het configuratiebestand, maar dat is alleen maar tijdelijk. Het het heeft alleen maar effect zolang het opdrachtregel aanwezig blijft.</para>
+
+<para
+>Bij &kdesrc-build; kunt u opties zoals <replaceable
+>option-name</replaceable
+> wijzigen door op de commandoregel een argument op te geven in de vorm<userinput
+><option
+>--<replaceable
+>optie-naam</replaceable
+>=waarde</option
+></userinput
+>. &kdesrc-build; zal herkennen dat het niet weet wat de optie inhoud, en de naam opzoeken in de lijst met optienamen. Als de naam onbekend is, dan geeft het een waarschuwing, anders zal het tijdelijk de instellingen in het configuratiebestand overschrijven met de door u gegeven waarde.</para>
+
+<informalexample>
+<para
+>De optie &source-dir; instellen op <filename
+>/dev/null</filename
+> voor een test:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+> <option
+>--<replaceable
+>source-dir</replaceable
+>=<replaceable
+>/dev/null</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+<sect3 id="changing-module-opts">
+<title
+>Module opties wijzigen</title>
+<para
+>Het is ook mogelijk om opties alleen voor een specifieke module te wijzigen. De syntax is vergelijkbaar: --<replaceable
+>module</replaceable
+>,<replaceable
+>optienaam</replaceable
+>=<replaceable
+>waarde</replaceable
+>. </para>
+
+<para
+>Deze wijziging overschrijft alle overeenkomstige instellingen in het <link linkend="configure-data"
+>configuratiebestand</link
+> voor de gevonden module, en past alleen die waarden toe die met de optie op de commandoregel zijn opgegeven.</para>
+
+<informalexample>
+<para
+>Een ander bouwmap gebruiken voor de kdeedu module:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--<replaceable
+>kdeedu</replaceable
+>,<replaceable
+>build-dir</replaceable
+>=<replaceable
+>temp-build</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+</sect2>
+
+</sect1>

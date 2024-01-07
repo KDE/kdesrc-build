@@ -1,0 +1,146 @@
+<sect1 id="other-features">
+<title
+>Andere functionaliteiten van &kdesrc-build;</title>
+
+<sect2 id="changing-verbosity">
+<title
+>Het aantal meldingen van &kdesrc-build; wijzigen</title>
+<para
+>&kdesrc-build; heeft verschillende opties om de hoeveelheid meldingen die het script genereert te regelen. Fouten geven in elk geval altijd een melding.</para>
+
+<itemizedlist>
+<listitem
+><para
+>De optie <option
+>--quiet</option
+> (de afkorting is <option
+>-q</option
+>) zorgt ervoor dat &kdesrc-build; veelal stil is. Alleen belangrijke meldingen, waarschuwingen, of fouten krijgt u te zien. Indien beschikbaar, is informatie over de voortgang van de bouw nog steeds zichtbaar.</para
+></listitem>
+
+<listitem
+><para
+>De optie <option
+>--really-quiet</option
+> (geen afkorting) zorgt ervoor dat &kdesrc-build; u alleen belangrijke waarschuwingen en fouten tijdens de uitvoering te zien geeft.</para
+></listitem>
+
+<listitem
+><para
+>De optie <option
+>--verbose</option
+> (de afkorting is <option
+>-v</option
+>) zorgt ervoor dat &kdesrc-build; zeer gedetailleerde meldingen geeft.</para
+></listitem>
+
+<listitem
+><para
+>De optie <option
+>--debug</option
+> is alleen voor debuggen, zorgt ervoor dat &kdesrc-build; hetzelfde reageert alsof <option
+>--verbose</option
+> is ingeschakeld, zodat commando's ook uitvoer naar het terminalvenster geven, en geeft voor veel functies debug-informatie.</para
+></listitem>
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="kdesrc-build-color">
+<title
+>Gekleurde meldingen</title>
+<para
+>Indien opgestart vanuit een &konsole; of en andere terminal, zal &kdesrc-build; normaal gesproken gekleurde tekst tonen.</para>
+
+<para
+>U kunt dit uitschakelen door op de commandoregel <option
+>--no-color</option
+> te gebruiken, of door in het <link linkend="configure-data"
+>configuratiebestand</link
+> de optie &colorful-output; op <userinput
+>false</userinput
+> te zetten. </para>
+
+<informalexample>
+<para
+>Gekleurde meldingen uitschakelen in het configuratiebestand:</para>
+<screen
+>global
+  colorful-output false
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="deleting-build-dir">
+<title
+>Na een bouw de onnodige mappen verwijderen</title>
+<para
+>Heeft u weinig ruimte op de hardeschijf maar u wilt wel een bleeding-edge &kde; checkout hebben? &kdesrc-build; kan helpen bij het reduceren van hardeschijfruimte bij het bouwen van &kde; vanuit &git;.</para>
+
+<note
+><para
+>Wees u ervan bewust dat het bouwen van &kde; veel ruimte nodig heeft. Er zijn verschillende veel ruimtevragende onderdelen bij het gebruik van &kdesrc-build;:</para
+></note>
+
+<orderedlist>
+<listitem
+><para
+>Het actuele ophalen (checkout) van de broncode kan een behoorlijke hoeveelheid ruimte innemen. De standaard modulen nemen ongeveer 1,6 gigabytes schijfruimte in. U kunt deze hoeveelheid verminderen door na te gaan dat u alleen zoveel modulen bouwt als u echt wilt. &kdesrc-build; zal geen broncode van schijf verwijderen, zelfs niet als u het item uit het <link linkend="configure-data"
+>configuratiebestand</link
+> verwijdert, dus ga na dat u ongebruikte broncode ophalen (checkouts) uit de broncodemap verwijdert. Merk op dat de broncodebestanden gedownload worden vanuit het internet, u zou ze <emphasis
+>niet</emphasis
+> moeten verwijderen als u ze echt gebruikt, tenminste totdat u klaar bent met &kdesrc-build;.</para>
+
+<para
+>Daarnaast, als u een &Qt; van uw distributie heeft geïnstalleerd (en de kans is groot dat u dat heeft gedaan), dan hoeft u waarschijnlijk de qt module niet te installeren. Dat bespaart ongeveer 200 megabytes hardeschijfruimte.</para>
+</listitem>
+
+<listitem>
+<para
+>&kdesrc-build; zal voor het bouwen een separate bouwmap creëren waarin de broncode wordt gebouwd. Soms zal &kdesrc-build; een map met broncode kopiëren om een fake bouwmap te creëren. Als dit voorkomt, worden ruimtebesparende symlinks gebruikt, zodat dit wat hardeschijfruimte betreft geen probleem vormt. Standaard is voor een module de bouwmap veel groter dan de map met broncode. Bijvoorbeeld, de bouwmap voor kdebase is ongeveer 1050 megabytes, terwijl de broncode van kdebase's alleen maar ongeveer 550 megabytes is.</para>
+
+<para
+>Gelukkig is de bouwmap niet meer nodig nadat een module succesvol is gebouwd en geïnstalleerd. &kdesrc-build; kan automatisch de bouwmap na de installatie van een module verwijderen, zie de voorbereiden hieronder voor meer informatie. Merk op dat deze stap het onmogelijk maakt voor &kdesrc-build; om de tijdbesparende incrementele bouw uit te voeren.</para>
+</listitem>
+
+<listitem
+><para
+>En tenslotte is er voor de eigenlijke installatie van &kde; hardeschijfruimte nodig, wat niet in de bouwmap wordt geïnstalleerd. Standaard neemt dit minder ruimte in beslag dan de bouwmap. Maar het is moeilijker om hierover cijfers te geven. </para
+></listitem>
+</orderedlist>
+
+<para
+>Hoe vermindert u de nodige ruimte voor &kde;? Een manier is om de juiste compiler flags te gebruiken, voor een optimalisatie voor opslagruimte in plaats van voor snelheid. Een andere manier, wat een groot effect kan hebben, is het verwijderen van debug-informatie van uw &kde;-bouw. </para>
+
+<warning
+><para
+>U moet zeker weten wat u doet voor dat u besluit om de debug-informatie te verwijderen. Het gebruiken van bleeding-edge software houd in dat u software gebruikt die een grotere kans heeft om te crashen dan software uit een stabiele release. Als u software gebruikt zonder debug-informatie, dan kan het erg moeilijk zijn om een goed bug rapport te creëren zodat uw bug wordt opgelost, en zal u waarschijnlijk de debug-informatie opnieuw moeten inschakelen voor het betreffende programma en opnieuw moeten bouwen om de ontwikkelaar te helpen met het fixxen van de crash. Verwijder daarom de debug-informatie op uw eigen risico! </para
+></warning>
+
+<informalexample>
+<para
+>De bouwmap verwijderen na de installatie van een module. De map met broncode wordt echter bewaard, en debugging is mogelijk:</para>
+
+<screen
+>global
+  configure-flags      --enable-debug
+  remove-after-install builddir        # Remove build directory after install
+end global
+</screen>
+
+<para
+>De bouwmap verwijderen na de installatie van een module. zonder debug-informatie, met ruimte-optimalisatie.</para>
+
+<screen
+>global
+  cxxflags             -Os             # Optimize for size
+  configure-flags      --disable-debug
+  remove-after-install builddir        # Remove build directory after install
+end global
+</screen>
+</informalexample>
+</sect2>
+
+</sect1>

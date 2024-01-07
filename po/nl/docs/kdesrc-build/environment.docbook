@@ -1,0 +1,174 @@
+<sect1 id="environment">
+<title
+>De omgeving instellen om uw &kde; &plasma; Desktop te starten</title>
+
+<para
+>Aangenomen dat u een speciale gebruiker heeft gebruikt om &kde; &plasma; te bouwen, en u al een geïnstalleerde &plasma; versie heeft, dan kan het starten van uw nieuwe &plasma; een beetje tricky zijn, omdat de nieuwe &plasma; voorrang moet krijgen over de oude. U moet de omgevingsvariabele van uw login scripts wijzigen om er voor te zorgen dat de nieuw gebouwde desktop wordt gebruikt. </para>
+
+<sect2 id="session-driver">
+<title
+>Automatisch een login driver installeren</title>
+
+<para
+>Vanaf versie 1.16, zal &kdesrc-build; proberen om een geschikte login driver te installeren, waarmee u kunt inloggen naar uw &kdesrc-build;-gebouwde &kde; desktop vanaf uw inlog manager. Dit kunt u uitschakelen door de optie <option
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></option
+> in het configuratiebestand te gebruiken.</para>
+
+<note
+><para
+>Als &kdesrc-build; in de pretend mode zal de sessie niet ingesteld worden.</para
+></note>
+
+<para
+>Deze driver werkt door een aangepaste <quote
+><literal
+>xsession</literal
+></quote
+> sessie-type op te zetten. Dit sessie-type zou standaard moeten werken met de sddm aanmeldbeheerder (waar het verschijnt als een <quote
+>Aangepaste</quote
+> sessie), maar voor andere aanmeldbeheerders (zoals <application
+>LightDM</application
+> en <application
+>gdm</application
+>) kan het nodig zijn dat u extra bestanden moet installeren om <literal
+>xsession</literal
+> mogelijk te maken.</para>
+
+<sect3 id="xsession-distribution-setup">
+<title
+>Xsession ondersteuning voor distributies toevoegen</title>
+
+<para
+>De standaard login managers van sommige distributies kunnen extra pakketten nodig hebben om <literal
+>xsession</literal
+> logins te kunnen ondersteunen.</para>
+
+<itemizedlist>
+<listitem
+><para
+>De <ulink url="https://getfedora.org/"
+>Fedora</ulink
+> &Linux; distributie verlangt dat het <literal
+>xorg-x11-xinit-session</literal
+> pakket geïnstalleerd is voor aangepaste <literal
+>xsession</literal
+> login support.</para
+></listitem>
+
+<listitem
+><para
+><ulink url="https://www.debian.org/"
+>Debian</ulink
+> en van Debian-afgeleide &Linux; distributies zouden aangepaste <literal
+>xsession</literal
+> logins moeten ondersteunen, maar vereisen wel dat de <option
+><userinput
+>allow-user-xsession</userinput
+></option
+> optie is ingesteld in <filename
+>/etc/X11/Xsession.options</filename
+>. Zie ook de Debian <ulink url="https://www.debian.org/doc/manuals/debian-reference/ch07.en.html#_customizing_the_x_session_classic_method"
+>documentatie over het aanpassen van de X sessie.</ulink
+></para
+></listitem>
+
+<listitem
+><para
+>Ga voor andere distributies naar <xref linkend="xsession-manual-setup"/>.</para
+></listitem>
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="xsession-manual-setup">
+<title
+>Handmatig ondersteuning voor xsession toevoegen</title>
+
+<para
+>Als er voor uw distributie geen distributie-specifieke aanwijzingen aanwezig zijn in <xref linkend="xsession-distribution-setup"/>, dan kunt u als volgt handmatig een <quote
+>Custom xsession login</quote
+> entry aan de lijst van sessie-types voor uw distributie toevoegen:</para>
+
+<procedure id="proc-adding-xsession-type">
+<title
+>Een .xsession login sessie type toevoegen.</title>
+
+<note
+><para
+>Deze procedure heeft waarschijnlijk administratieve privileges nodig om uitgevoerd te kunnen worden. </para
+></note>
+
+<step performance="required">
+<para
+>Creëer het bestand <filename
+>/usr/share/xsessions/kdesrc-build.desktop</filename
+>.</para>
+</step>
+
+<step performance="required">
+<para
+>Zorg ervoor dat in het zojuist aangemaakte bestand de volgende tekst voorkomt:</para>
+<literallayout
+><userinput>
+Type=XSession
+Exec=<co id="session-homedir"/><replaceable
+>$HOME</replaceable
+>/.xsession
+Name=KDE Plasma Desktop (unstable; kdesrc-build)
+</userinput
+></literallayout>
+
+<calloutlist>
+<callout arearefs="session-homedir"
+><para
+>De entry <replaceable
+>$HOME</replaceable
+> moet u vervangen door het volledige pad naar uw persoonlijke map (voorbeeld, <filename class="directory"
+>/home/<replaceable
+>user</replaceable
+></filename
+>). De desktop entry specificatie is niet toegestaan in algemene (user-generic) bestanden. </para
+></callout>
+
+</calloutlist>
+</step>
+
+<step performance="optional"
+><para
+>Als de login manager opnieuw is gestart, dan zou het een nieuw sessie type moeten tonen, <quote
+>KDE Plasma Desktop (unstable; kdesrc-build)</quote
+> in zijn lijst met sessies, die zou moeten proberen om de <filename
+>.xsession</filename
+>-bestand geïnstalleerd door &kdesrc-build; op te starten als u die selecteert bij het inloggen.</para>
+
+<note
+><para
+>Het is wellicht het makkelijkste de computer te herstarten om de login manager te herstarten, als de login manager de updates van de <filename class="directory"
+>/usr/share/xsessions</filename
+> map niet opmerkt.</para
+></note>
+
+</step>
+
+</procedure>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="old-profile-instructions">
+<title
+>De omgeving handmatig instellen</title>
+<para
+>Deze documentatie had instructies over welke omgevingsvariabele u moest instellen om de nieuw gebouwde desktop te laden. Deze instructies zijn verplaatst naar een appendix (<xref linkend="old-profile-setup"/>).</para>
+
+<para
+>Als u de intentie heeft om uw eigen login support in te stellen dan kunt die appendix consulteren of het bestand <filename
+>kde-env-master.sh.in</filename
+> bekijken dat met de &kdesrc-build;-broncode is meegeleverd.</para>
+
+</sect2>
+
+</sect1>

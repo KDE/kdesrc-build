@@ -1,0 +1,164 @@
+<sect1 id="building-and-troubleshooting">
+<title
+>Використання скрипту &kdesrc-build;</title>
+<para
+>Після визначення даних налаштувань ви будете готові до запуску самого скрипту. Навіть якщо ви все ще хочете дещо налаштувати додатково або ознайомитися із додатковою довідковою інформацією, все ж варто одразу принаймні завантажити метадані проєктів &kde;.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title
+>Завантаження метаданих проєкту</title>
+
+<para
+>У вікні термінала увійдіть до системи від імені користувача, якого ви використаєте для компіляції програмного забезпечення &kde;, і виконайте команду: </para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--metadata-only</option
+></userinput
+>
+</screen>
+
+<para
+>Ця команда налаштує каталог з початковими кодами і з'єднає його зі сховищами &git; KDE для отримання бази даних сховищ git та бази метаданих залежностей без компіляції чи внесення змін до коду. Корисно віддати цю команду окремо, оскільки ці метадані корисні для виконання інших команд &kdesrc-build;. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title
+>Попередній перегляд того, що трапиться, якщо запустити kdesrc-build</title>
+
+<para
+>Якщо встановлено метадані проєкту, ви можете попередньо переглянути дії, які буде виконано &kdesrc-build; після запуску програми. Зробити це можна за допомогою параметра рядка команди <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+>.</para>
+
+<screen
+><prompt
+>&percnt; </prompt
+><command
+>./kdesrc-build</command
+> <option
+>--pretend</option
+>
+</screen>
+
+<para
+>Ви маєте побачити повідомлення щодо того, що певні пакунки успішно зібрано (хоча насправді нічого не було зібрано). Якщо не буде показано повідомлення про якісь значні проблеми, ви зможете перейти до безпосереднього запуску скрипту для збирання.</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+
+<para
+>Ця команда призведе до отримання відповідного початкового коду та збирання, встановлення кожного модуля за порядком. Зрештою, ви маєте побачити виведені дані, подібні до даних у розділі <xref linkend="example-build-sequence"/>:</para>
+
+<example id="example-build-sequence">
+<title
+>Приклад даних, виведених під час запуску kdesrc-build</title>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 200 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+</sect2>
+
+<sect2 id="fixing-build-failures">
+<title
+>Усування проблем під час збирання</title>
+
+<para
+>Залежно від кількості модулів, які ви вибрали для отримання, може так статися, що &kdesrc-build; не зможе з першого разу зібрати програмне забезпечення &kde;. Але вам не слід впадати у відчай! </para>
+
+<para
+>&kdesrc-build; записує до журналу дані, виведені всіма виконаними скриптом командами. Типово, файли журналу зберігаються у теці <filename class="directory"
+>~/kdesrc/log</filename
+>. Щоб дізнатися про причину помилки для модуля у останній команді &kdesrc-build;, зазвичай, досить зазирнути до файла <filename class="directory"
+>~/kdesrc/log/latest/<replaceable
+>назва модуля</replaceable
+>/error.log</filename
+>.</para>
+
+<tip
+><para
+>Ймовірно, найшвидшим способом виявлення повідомлення про помилку, що призвела до неможливості збирання модуля, є пошук від кінця файла без врахування регістру слова <literal
+>error</literal
+>. Після виявлення такого рядка пошукайте інші повідомлення щодо помилок поряд з ним. На джерело проблем має вказати перше повідомлення про помилку у виявленій групі.</para
+></tip>
+
+<para
+>У цьому файлі ви знайдете повідомлення про помилку, яка призвела до невдалої спроби збирання модуля. Якщо у нижній частині цього файла ви бачите повідомлення про те, що не вдалося знайти певні пакунки, спробуйте встановити пакунки (зокрема відповідні пакунки -dev) перед повторним запуском &kdesrc-build;, і передайте &kdesrc-build; параметр <link linkend="cmdline-reconfigure"
+>--reconfigure</link
+> після встановлення пакунків, яких не вистачає.</para>
+
+<para
+>Або, якщо помилка є помилкою збирання (повідомлення про синтаксичні помилки, помилки щодо некоректного прототипу (<quote
+>incorrect prototype</quote
+>), повідомлення про невідомий тип (<quote
+>unknown type</quote
+>) тощо), ймовірно, що помилку пов’язано з вадою вихідних кодів &kde;, яку, як ми сподіваємося, буде усунуто протягом декількох днів. Якщо цю помилку не буде усунуто протягом цього часу, не вагайтеся і напишіть листа до списку листування <email
+>kde-devel@kde.org</email
+> (можливо, вам доведеться оформити підписку на цей список листування), щоб повідомити розробникам про невдалу спробу збирання.</para>
+
+<para
+>Ви можете знайти приклади помилок і знайти способи їх усування, а також загальні підказки та стратегії збирання програмного забезпечення &kde; на сторінці <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+>покрокових настанов зі збирання &kde; 4</ulink
+>. </para>
+
+<para
+>З іншого боку, якщо все гаразд, у вашій системі встановлено нове &kde;. Тепер його слід запустити. Опис потрібних для цього дій наведено далі, у розділі <xref linkend="environment"/>.</para>
+
+<note
+><para
+>Для отримання докладніших відомостей щодо можливостей журналювання &kdesrc-build;, будь ласка, зверніться до розділу <xref linkend="kdesrc-build-logging"/>.</para
+></note>
+</sect2>
+
+</sect1>

@@ -1,0 +1,2070 @@
+<sect1 id="conf-options-table">
+<title
+>Tabel met beschikbare configuratieopties</title>
+
+<para
+>Hieronder is een tabel met de verschillende opties, met de volgende informatie:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Naam van optie</para
+></listitem>
+
+<listitem
+><para
+>Een beschrijving van hoe &kdesrc-build; reageert als de optie is ingesteld in zowel de global section, en de module section van het <link linkend="configure-data"
+>configuratiebestand</link
+> bij het bouwen van een module.</para
+></listitem>
+
+<listitem
+><para
+>Speciale opmerkingen over het doel en het gebruik van de optie.</para
+></listitem>
+
+</itemizedlist>
+
+<table id="options-global-table">
+<title
+>Opties alleen voor globale scope</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Naam van optie</entry>
+<entry
+>Beschrijving</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-async">
+<entry
+>async</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.6</member>
+</simplelist>
+<para
+>Deze optie maakt een asynchrone operatiemodus mogelijk, waar het parallel uitvoeren van de update van de broncode en het bouwproces mogelijk is, in plaats dat er gewacht op dat alle broncode bijgewerkt is voordat het bouwproces start.</para
+></entry>
+</row>
+
+<row id="conf-colorful-output">
+<entry
+>colorful-output</entry>
+<entry
+><simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+</simplelist
+><para
+>Stel deze optie in op <userinput
+>false</userinput
+> om de gekleurde uitvoer van &kdesrc-build; uit te schakelen. Merk op dat &kdesrc-build; de kleurcodes alleen naar het terminalvenster (zoals xterm, &konsole;, of de normale &Linux; console) uitvoert.</para>
+</entry>
+</row>
+
+<row id="conf-disable-agent-check">
+<entry
+>disable-agent-check</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+</simplelist>
+<para
+>Als u &ssh; gebruikt om de broncode uit &git; te downloaden (alsof u het git+ssh protocol gebruikt), deze optie bestuurt of &kdesrc-build; zal proberen en er voor zorgen dat als u ssh-agent gebruikt, het daadwerkelijk enkele &ssh;-identiteiten gebruikt. Dit is om te voorkomen dat &ssh; voor elke module weer om uw wachtwoord vraagt.</para>
+</entry>
+</row>
+
+<row id="conf-git-desired-protocol">
+<entry
+>git-desired-protocol</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+>git</member>
+<member
+>Informatie over geschiedenis</member
+><member
+>Deze optie is toegevoegd in &kdesrc-build; 1.16. Vóór 20.06 werd deze optie gebruikt om ophaal-URL te configuren in plaats van de opstuur-URL. Vanaf 20.06 wordt <literal
+>https</literal
+> altijd gebruikt bij het bijwerken van KDE-projecten.</member>
+</simplelist>
+<para
+>Deze optie is alleen van toepassing op modules van een <link linkend="kde-projects-module-sets"
+>&kde; project</link
+> repository.</para>
+
+<para
+>Wat deze optie eigenlijk doet is het instellen van welk netwerk-protocol de voorkeur heeft bij het opsturen van de broncode voor deze modules. Normaal gesproken wordt het zeer efficiënte <literal
+>git</literal
+> protocol gebruikt, maar bij sommige netwerken (b.v. intranetten van bedrijven, publieke Wi-Fi) kan deze geblokkeerd worden. Een alternatief protocol welke veel beter wordt ondersteund is het <literal
+>https</literal
+> protocol gebruikt voor Internet web sites.</para>
+
+<para
+>Als u een van deze beperkende netwerken moet gebruiken dan kunt u deze optie op <userinput
+>http</userinput
+> instellen om aan <literal
+>https</literal
+> communicatie de voorkeur te geven.</para>
+
+<tip
+><para
+>U heeft wellicht ook de optie <link linkend="conf-http-proxy"
+>http-proxy</link
+> nodig omdat ook een HTTP proxy nodig is voor netwerkverkeer.</para
+></tip>
+
+<para
+>In alle andere situaties zou u deze optie niet moeten instellen omdat het standaardprotocol het meeste efficient is.</para>
+
+</entry>
+</row>
+
+<row id="conf-install-environment-driver">
+<entry
+>install-environment-driver</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+<member
+>Beschikbare sinds</member
+><member
+>17.08</member>
+</simplelist>
+<para
+>Installeer een shell script dat u kunt gebruiken in setup scripts voor een gebruikers-profiel om makkelijk de nodige omgevingsvariabelen in te stellen om de door &kdesrc-build; gebouwde Plasma desktop te gebruiken.</para>
+
+<para
+>Dit stuurprogramma zal de volgende bestanden veranderen:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (normaal gesproken gevonden als <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (normaal gesproken gevonden als <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>Het bestand <filename
+>kde-env-user.sh</filename
+> is optioneel. Het is bedoeld voor aanpassingen door de gebruiker (zie de sectie <ulink url="https://userbase.kde.org/KDE_System_Administration/Environment_Variables#Troubleshooting_and_Debugging"
+>Troubleshooting and Debugging</ulink
+> van de &kde; UserBase voor voorbeelden van aanpasbare instellingen), maar deze instellingen zijn ook door de gebruiker elders in te stellen in zijn bestaande profiel setup scripts.</para>
+
+<para
+>U kunt deze mogelijkheid uitschakelen door deze optie in te stellen op <replaceable
+>false</replaceable
+>, en er voor zorg te dragen dat de optie <link linkend="conf-install-session-driver"
+>install-session-driver</link
+> ook is uitgeschakeld.</para>
+
+<tip
+><para
+>&kdesrc-build; zal niet uw bestaande bestanden (indien aanwezig) overschrijven tenzij u ook de parameter <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+> op de commandoregel meegeeft.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-install-session-driver">
+<entry
+>install-session-driver</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Indien ingeschakeld, zal &kdesrc-build; proberen om een driver voor de grafische login manager te installeren zodat u kunt inloggen naar de door uw &kdesrc-build;-gebouwde &kde;-desktop.</para>
+
+<para
+>Dit stuurprogramma zal de volgende bestanden veranderen:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>~/.xsession</filename
+></para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (normaal gesproken gevonden als <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (normaal gesproken gevonden als <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>Als u uw eigen login driver wilt blijven gebruiken, dan kunt u deze instelling uitschakelen door deze optie in te stellen op <replaceable
+>false</replaceable
+>. Indien ingeschakeld, zal deze mogelijkheid ook het onderdeel <link linkend="conf-install-environment-driver"
+>install-environment-driver</link
+> inschakelen.</para>
+
+<tip
+><para
+>&kdesrc-build; zal niet uw bestaande bestanden (indien aanwezig) overschrijven tenzij u ook de parameter <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+> op de commandoregel meegeeft.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-niceness">
+<entry
+>niceness</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Geheel getal</member>
+<member
+>Standaardwaarde</member
+><member
+>10</member>
+</simplelist>
+<para
+>Stel deze optie in op een getal tussen de 20 en de 0. Hoe hoger het getal is, hoe lager de prioriteit is die &kdesrc-build; voor zich zelf zal instellen, d.w.z. hoe hoger het getal, hoe "aardiger" het programma is.</para>
+</entry>
+</row>
+
+<row id="conf-num-cores">
+<entry
+>aantal-kernen</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Geheel getal</member>
+<member
+>Standaardwaarde</member
+><member
+>Is afhankelijk van het systeem</member>
+<member
+>Beschikbare sinds</member
+><member
+>20.07</member>
+</simplelist>
+<para
+>Deze optie wordt gedefinieerd door &kdesrc-build; (bij gebruik van <command
+>kdesrc-build --generate-config</command
+>, ingesteld om het aantal beschikbare CPU's te zijn (zoals aangegeven door de externe toepassing <application
+>nproc</application
+>). Als &kdesrc-build; het aantal CPU's niet kan detecteren, wordt deze waarde ingesteld op 4.</para>
+
+<para
+>Zie <xref linkend="make-options-example"/> voor een voorbeeld van het gebruik van deze optie.</para>
+</entry>
+</row>
+
+<row id="conf-num-cores-low-mem">
+<entry
+>aantal-kernen-laag-geheugen</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Geheel getal</member>
+<member
+>Standaardwaarde</member
+><member
+>Is afhankelijk van het systeem</member>
+<member
+>Beschikbare sinds</member
+><member
+>20.07</member>
+</simplelist>
+<para
+>Deze optie is gedefinieerd door &kdesrc-build; (bij gebruik van <command
+>kdesrc-build --generate-config</command
+>), ingesteld om het aantal CPU's te zijn dat wordt geacht veilig te zijn voor zwaargewicht of andere zeer intensieve modulen, zoals <literal
+>qtwebengine</literal
+>, om te vermijden uit geheugen te lopen tijdens het bouwen.</para>
+
+<para
+>De typische berekening is één CPU kern voor elke 2 gigabytes (GiB) totaal geheugen. Minstens 1 kern zal gespecificeerd worden en niet meer dan <option
+><link linkend="conf-num-cores"
+>aantal-kernen</link
+></option
+> kernen zal gespecificeerd worden.</para>
+
+<para
+>Hoewel deze optie bedoeld is om &Qt;-modules te ondersteunen kunt u het gebruiken voor elke module op dezelfde manier waarop <option
+>aantal-kernen</option
+> wordt gebruikt.</para>
+
+<para
+>Als &kdesrc-build; het beschikbare geheugen niet kan detecteren dan zal deze waarde ingesteld worden op 2.</para>
+
+</entry>
+</row>
+
+<row id="conf-persistent-data-file">
+<entry
+>persistent-data-file</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.15</member>
+</simplelist>
+<para
+>Gebruik deze optie om de locatie te wijzigen waar &kdesrc-build; zijn persistente data opslaat. De standaard is dat deze data wordt opgeslagen in een bestand genaamd <filename
+>.kdesrc-build-data</filename
+> geplaatst in de dezelfde map als waar het gebruikte configuratiebestand is. Als het globale configuratiebestand wordt gebruikt, zal het opgeslagen worden in <filename
+>~/.local/state/kdesrc-build-data</filename
+> (<filename
+>$XDG_STATE_HOME/kdesrc-build-data</filename
+>, als <envar
+>$XDG_STATE_HOME</envar
+> is ingesteld). Als u in dezelfde map meerdere configuraties beschikbaar heeft, dan wilt u deze optie handmatig instellen zodat de verschillende configuraties niet eindigen met conflicterende persistente data. </para>
+</entry>
+</row>
+
+<row id="conf-ssh-identity-file">
+<entry
+>ssh-identity-file</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.14.2</member>
+</simplelist>
+<para
+>Stel bij deze optie in welke private SSH key bestand wordt doorgegeven aan het commando <command
+>ssh-add</command
+> als &kdesrc-build; broncode gaat downloaden van repositories die authentificatie vereisen. zie ook: <xref linkend="ssh-agent-reminder"/>.</para>
+</entry>
+</row>
+
+<row id="conf-use-idle-io-priority">
+<entry
+>use-idle-io-priority</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.12</member>
+</simplelist>
+<para
+>Gebruik een lagere prioriteit voor schijf en andere I/O, wat de responsiviteit van de rest van het systeem significant kan verbeteren ten koste van een beetje tragere uitvoering van &kdesrc-build;.</para>
+</entry>
+</row>
+
+<row id="conf-use-inactive-modules">
+<entry
+>use-inactive-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+</simplelist>
+<para
+>Sta kdesrc-build toe om ook te klonen en op te halen uit repositories gemarkeerd als inactief.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<!-- Between tables -->
+
+<table id="option-table">
+<title
+>Alle scopes (module, module-set en globale) opties</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Naam van optie</entry>
+<entry
+>Beschrijving</entry>
+</row>
+</thead>
+
+<tbody>
+
+<row id="conf-binpath">
+<entry
+>binpath</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Gebruik deze optie om de omgevingsvariabele PATH in te stellen voor tijdens het bouwen. U kunt deze instelling niet met een module-optie overschrijven. De standaardinstelling is de $<envar
+>PATH</envar
+> dat is ingesteld als het script start. Deze omgevingsvariabele zou ook de door dubbele punt (:) gescheiden paden van uw development toolchain moeten hebben. De paden <filename class="directory"
+>install-dir/bin</filename
+> en <filename class="directory"
+>$<envar
+>QTDIR</envar
+>/bin</filename
+> worden automatisch toegevoegd. U mag in elk pad dat u toevoegt de tilde (~) gebruiken.</para>
+</entry>
+</row>
+
+<row id="conf-branch">
+<entry
+>branch</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+>master</member>
+</simplelist>
+<para
+>Doe een checkout van de gespecificeerde branch in plaats van de standaard branch.</para>
+<note
+><para
+>Bij de meeste &kde; modules wilt u waarschijnlijk in plaats daarvan de optie <link linkend="conf-branch-group"
+>branch-group</link
+> gebruiken en deze optie gebruiken voor de uitzonderingen.</para
+></note>
+</entry>
+</row>
+
+<row id="conf-branch-group">
+<entry
+>branch-group</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16-pre2</member>
+</simplelist>
+<para
+>Gebruik deze optie om een algemene groep in te stellen waarvan u de modules wilt selecteren.</para>
+
+<para
+>Voor de ondersteunde &git; module types, zal &kdesrc-build; bepalen welke branch automatisch daadwerkelijk gebruikt zal worden, gebaseerd op door de &kde; ontwikkelaars bepaalde regels (deze regels zijn te bekijken in de <literal
+>kde-build-metadata</literal
+> broncoderepository in uw broncode-map). Nadat een branch is gekozen, zal die branch worden gebruikt alsof u het zelf had opgegeven met de optie <link linkend="conf-branch"
+>branch</link
+>. </para>
+
+<para
+>Dit is handig als u alleen maar probeert om bij te blijven met sommige gewone ontwikkelingen zonder dat u aandacht hoeft te geven aan alle naamswijzigingen van branches.</para>
+
+<para
+>Merk op dat als u <emphasis
+>daadwerkelijk zelf </emphasis
+> een <literal
+>branch</literal
+> kiest, dat het deze instelling overschrijft. Datzelfde geldt ook voor andere branch-selectie opties zoals <link linkend="conf-tag"
+>tag</link
+>.</para>
+
+<note
+><para
+>deze optie is alleen geldig voor <literal
+>kde-projects</literal
+> &git; modules (de algemene geval). Zie ook <xref linkend="kde-projects-module-sets"/>. </para
+></note>
+
+</entry>
+</row>
+
+<row id="conf-build-dir">
+<entry
+>build-dir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+><filename class="directory"
+>~/kde/build</filename
+></member>
+</simplelist>
+<para
+>Gebruik deze optie om de map te wijzigen die de bouwbronnen bevatten. Er zijn drie verschillende manieren on het te gebruiken:</para>
+
+<orderedlist>
+
+<listitem
+><para
+>Relatief tot de &kde; &git; broncodemap (zie <link linkend="conf-source-dir"
+>de optie source-dir</link
+>). Dit is de standaard en wordt geselecteerd als u een mapnaam intikt die niet begint met een tilde (~) of een slash (/).</para
+></listitem>
+
+<listitem
+><para
+>Absoluut pad. Als u een pad specificeert dat begint met een /, dan wordt dat pad direct gebruikt. Bijvoorbeeld, <filename class="directory"
+>/tmp/kde-obj-dir/</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+>Relatief tot uw homemap. Als u een pad specificeert dat begint met een ~, dan wordt het pad gebruikt relatief tot uw homemap, analoog aan de tilde-expansie van de shell. Bijvoorbeeld, <filename class="directory"
+>~/builddir</filename
+> zou de bouwmap instellen op <filename class="directory"
+>/home/user-name/builddir</filename
+>.</para
+></listitem>
+
+</orderedlist>
+
+<para
+>Misschien verrassend, deze optie kan per module gewijzigd worden.</para>
+</entry>
+</row>
+
+<row id="conf-build-when-unchanged">
+<entry
+>build-when-unchanged</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+</simplelist>
+<para
+>Bestuur of &kdesrc-build; altijd probeert om een module te bouwen die geen broncode update heeft gehad.</para>
+
+<para
+>Door <option
+>build-when-unchanged</option
+> naar <userinput
+>true</userinput
+> in te stellen, zal &kdesrc-build; altijd het bouwproces voor een module proberen, zelfs als er voor de module geen updates van de broncode zijn. Met deze waarde is er een grotere kans op een correcte bouw.</para>
+
+<para
+>Door <option
+>build-when-unchanged</option
+> naar <userinput
+>false</userinput
+> in te stellen, zal &kdesrc-build; alleen het bouwproces voor een module proberen als er voor de module updates van de broncode zijn, of in andere situaties waar het waarschijnlijk is dat opnieuw bouwen daadwerkelijk nodig is. Dit kan tijd besparen, met name als u &kdesrc-build; dagelijks, of nog vaker uitvoert.</para>
+
+<important
+><para
+>Deze mogelijkheid is er alleen als optimalisatie. Zoals zoveel andere optimalisaties, is er een afweging wat betreft de correctheid van uw installatie. Bijvoorbeeld, bij wijzigingen van de qt of kdelibs modules kan een herbouw van andere modules nodig zijn, zelfs als de broncode daarvan helemaal niet is verandert.</para
+></important>
+</entry>
+</row>
+
+<row id="conf-cmake-generator">
+<entry
+>cmake-generator</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+>Unix Makefiles</member>
+</simplelist>
+<para
+>Specificeer welke generator samen met &cmake; te gebruiken. Op dit moment worden beiden <literal
+>Ninja</literal
+> en <literal
+>Unix Makefiles</literal
+> evenals extra generators op hen gebaseerd zoals <literal
+>Eclipse CDT4 - Ninja </literal
+> ondersteund. Ongeldige (niet-ondersteunde) waarden worden genegeerd en behandeld alsof ze niet zijn ingesteld. </para>
+
+<para
+>Merk op dat als een geldige generator ook is gespecificeerd via <link linkend="conf-cmake-options"
+>cmake-options</link
+> het de waarde voor <literal
+>cmake-generator</literal
+> zal overschrijven.</para
+></entry>
+</row>
+
+<row id="conf-cmake-toolchain">
+<entry
+>cmake-toolchain</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Een toolchain-bestand specificeren om te gebruiken met &cmake;. </para>
+<para
+>Wanneer een geldig toolchain-bestand is geconfigureerd zal &kdesrc-build; <emphasis
+>niet langer automatisch omgevingsvariabelen instellen</emphasis
+>. U kunt &set-env;, &binpath; en &libpath; gebruiken om de omgeving handmatig bij te werken als uw toolchain-bestand niet zomaar werkt met &kdesrc-build;. Kijk in <link linkend="kdesrc-build-std-flags"
+>het overzicht van standaard vlaggen toegevoegd door &kdesrc-build;</link
+> voor meer informatie. </para>
+<para
+>Merk op dat als een geldige toolchain ook is gespecificeerd via <link linkend="conf-cmake-options"
+>cmake-options</link
+> het de waarde voor <literal
+>cmake-toolchain</literal
+> zal overschrijven.</para
+></entry>
+</row>
+
+<row id="conf-cmake-options">
+<entry
+>cmake-options</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Voegt toe aan de global options voor het standaard bouwproces, overschrijft global voor andere bouwprocessen.</para>
+<para
+>Gebruik deze optie om op te geven welke flags aan &cmake; worden doorgegeven bij het creëren van het bouwsysteem voor de module. Als u dit gebruikt als een global optie, dan wordt het toegepast bij alle modules dat dit script bouwt. Als u dit als een module optie gebruikt, dan wordt het aan het eind van de global opties toegevoegd. Hierdoor kunt u algemene &cmake; opties in het global sectie specificeren.</para>
+
+<para
+>Deze optie is niet van toepassing op qt (wat &cmake; niet gebruikt). Gebruik in plaats daarvan <link linkend="conf-configure-flags"
+>configure-flags</link
+>.</para>
+
+<para
+>Als een geldige generator is gespecificeerd onder de gegeven opties het de waarde van <link linkend="conf-cmake-generator"
+>cmake-generator</link
+> zal overschrijven. Ongeldige (niet-ondersteunde) generators worden genegeerd en zullen niet worden doorgegeven aan &cmake;. </para>
+
+<para
+>Als een geldige toolchain-bestand is gespecificeerd onder de gegeven opties het de waarde van <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+> zal overschrijven. Ongeldige (niet-ondersteunde) toolchains worden genegeerd en zullen niet worden doorgegeven aan &cmake;. </para>
+
+<para
+>Omdat deze opties direct worden doorgegeven naar &cmake; commandoregel, moet u ze opgegeven alsof u intikt bij &cmake;. bijvoorbeeld:</para>
+
+<programlisting
+>cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
+</programlisting>
+
+<para
+>Omdat dit altijd een probleem is, neemt &kdesrc-build; de zorg op zich om er voor te zorgen dat zolang de rest van de opties correct zijn ingesteld, u deze optie leeg zou moeten kunnen laten. (Met andere woorden, <emphasis
+>vereiste</emphasis
+> &cmake; parameters worden voor u automatisch ingesteld)</para
+></entry>
+</row>
+
+<row id="conf-compile-commands-export">
+<entry
+>compile-commands-export</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+</simplelist>
+<para
+>Schakelt de generatie van een <literal
+>compile_commands.json</literal
+> in via CMake in de bouwmap. </para>
+</entry>
+</row>
+
+<row id="conf-compile-commands-linking">
+<entry
+>compile-commands-linking</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+</simplelist>
+<para
+>Schakelt het aanmaken van een symbolische koppeling in van <literal
+>compile_commands.json</literal
+> in gegenereerd via CMake in de bouwmap naar de broncodemap. </para>
+</entry>
+</row>
+
+<row id="conf-configure-flags">
+<entry
+>configure-flags</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Voegt toe aan de global options voor het standaard bouwproces, overschrijft global voor andere bouwprocessen.</para>
+<para
+>Gebruik deze optie om op te geven welke flags naar ./configure moeten worden doorgegeven bij het creëren van het bouwsysteem van de module. Als u dit gebruikt als een global-optie, dan is het van toepassing op alle modules dat dit script bouwt. <emphasis
+>Deze optie is alleen van toepassing op qt.</emphasis
+></para>
+
+<para
+>Voor het wijzigen van configuratiegegevens voor KDE modules, zie <link linkend="conf-cmake-options"
+>cmake-options</link
+>. </para>
+</entry>
+</row>
+
+<row id="conf-custom-build-command">
+<entry
+>custom-build-command</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+    <para
+>U kunt deze optie zo instellen dat het een ander commando uitvoert (ander dan <command
+>make</command
+>, bijvoorbeeld) in om het bouwproces uit te voeren. &kdesrc-build; zou in het algemeen de juiste actie uit moeten voeren, daarom zou het niet nodig moeten zijn om deze optie in te stellen. Maar het kan handig zijn om alternatieve bouwsystemen te gebruiken. </para>
+
+    <para
+>De inhoud van deze optie wordt als commando op de commandoregel gebruikt, normaal gesproken gemodificeerd door de optie <link linkend="conf-make-options"
+>make-options</link
+>. </para>
+</entry>
+</row>
+
+<row id="conf-cxxflags">
+<entry
+>cxxflags</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Voegt toe aan de global options voor het standaard bouwproces, overschrijft global voor andere bouwprocessen.</para>
+<para
+>Gebruik deze optie om te specificeren welke flags gebruikt worden voor het bouwen van de module. Deze optie wordt hier gespecificeerd en niet bij <link linkend="conf-configure-flags"
+>configure-flags</link
+> of <link linkend="conf-cmake-options"
+>cmake-options</link
+> omdat deze optie de omgevingsvariabele <envar
+>CXXFLAGS</envar
+> instelt tijdens het bouwproces.</para>
+
+<para
+>Noot: merk op dat voor &kde; 4 en elke andere modules die gebruik maken van &cmake;, het nodig is om de optie CMAKE_BUILD_TYPE in te stellen op <userinput
+>none</userinput
+> bij het configureren van de module. Dit kunt u doen door de optie <link linkend="conf-cmake-options"
+>cmake-options</link
+> te gebruiken. </para>
+</entry>
+</row>
+
+<row id="conf-dest-dir">
+<entry
+>dest-dir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Gebruik deze optie om de naam van een module gebruikt op de harde schijf te wijzigen. Bijvoorbeeld, als uw module was extragear/network, dan zou u het met deze optie kunnen hernoemen naar extragear-network. Merk wel op dat ofschoon dit wel de naam op de harde schijf wijzigt, het geen goed idee is om mappen of map-scheidingen in de naam op te nemen omdat dit interfereert met de <link linkend="conf-build-dir"
+>build-dir</link
+> of <link linkend="conf-source-dir"
+>source-dir</link
+> opties.</para>
+</entry>
+</row>
+
+<row id="conf-do-not-compile">
+<entry
+>do-not-compile</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Gebruik deze optie om een specifieke set van mappen op te geven die niet in een module gebouwd moeten worden (in plaats van allemaal). De niet te bouwen modules moeten door spaties gescheiden zijn.</para>
+
+<para
+>Merk op dat de broncode voor de programma's toch gewoon worden gedownload.</para>
+
+<para
+>Bijvoorbeeld, om het bouwen van de <literal
+>codeeditor</literal
+> en mappen <literal
+>minimaltest</literal
+> van het framework <literal
+>syntaxhighlighting</literal
+> uit te schakelen, zou u <userinput
+>do-not-compile codeeditor minimaltest</userinput
+> compileren toevoegen, u zou "do-not-compile juk kscd" aan uw syntaxhighlighting opties moeten toevoegen.</para>
+
+<para
+>Zie <xref linkend="not-compiling"/> voor een voorbeeld.</para>
+</entry>
+</row>
+
+<row id="conf-git-user">
+<entry
+>git-user</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>15.09</member>
+</simplelist>
+<para
+>Deze optie is bedoeld voor &kde;-ontwikkelaars. Indien ingesteld, zal het gebruikt worden om automatisch identiteitsinformatie voor de besturingssoftware voor broncode &git; in te stellen voor <emphasis
+>nieuw gedownloade</emphasis
+> &git;-modules (inclusief de grote meerderheid van &kde;-modules).</para>
+
+<para
+>Specifiek, de velden voor de naam en email van de gebruiker voor elk nieuw &git; repository moet u invullen bij deze optie.</para>
+
+<para
+>De waarde moet gespecificeerd worden in de vorm <option
+><replaceable
+>Naam gebruiker</replaceable
+> &lt;<replaceable
+>email@voorbeeld.com</replaceable
+>&gt;</option
+>.</para>
+
+<para
+>Een ontwikkelaar genaamd <quote
+>Foo Barbaz</quote
+> met het e-mailadres <quote
+>foo@abc.xyz</quote
+> zou bijvoorbeeld gebruiken:</para>
+<para>
+<programlisting
+><symbol
+>git-user</symbol
+> <replaceable
+>Foo Barbaz</replaceable
+> &lt;<replaceable
+>foo@abc.xyz</replaceable
+>&gt;
+</programlisting>
+</para>
+
+</entry>
+</row>
+
+<row id="conf-http-proxy">
+<entry
+>http-proxy</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Deze optie, indien ingesteld, gebruikt de gespecificeerde URL als een proxy server voor elk HTTP netwerk-communicatie (bijvoorbeeld, bij downloaden van de <link linkend="kde-projects-module-sets"
+>KDE project database</link
+>).</para>
+
+<para
+>Daarnaast zal &kdesrc-build; proberen om de hulpprogramma's waarvan het afhankelijk is, ook die proxy server te laten gebruiken, indien mogelijk, door de omgevingsvariabele <envar
+>http_proxy</envar
+> naar de aangegeven server te laten wijzen, <emphasis
+>als die omgevingsvariabele niet al is ingesteld</emphasis
+>.</para>
+</entry>
+</row>
+
+<row id="conf-directory-layout">
+<entry
+>indeling-mappen</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Geldige waarden</member
+><member
+><userinput
+>flat</userinput
+>, <userinput
+>invent</userinput
+>, <userinput
+>metadata</userinput
+></member>
+</simplelist>
+<para
+>Deze optie wordt gebruikt om de indeling die &kdesrc-build; zou moeten gebruiken bij het aanmaken van de broncode- en bouwmappen.</para>
+<para
+>De indeling <userinput
+>flat</userinput
+> is de standaard waarde en zal alle modulen direct onder het topniveau broncode en bouwmappen groeperen. Bijvoorbeeld <literal
+>source/extragear/network/telepathy/ktp-text-ui</literal
+> zou in de indeling <userinput
+>metadata</userinput
+> zijn en <literal
+>source/ktp-text-ui</literal
+> in plaats daarvan in de indeling <userinput
+>flat</userinput
+>. </para>
+<para
+>De indeling <userinput
+>invent</userinput
+> maakt een hiërarchie in mappen aan de de de relatieve paden van opslagruimten spiegelt op <ulink url="https://invent.kde.org/"
+>invent.kde.org</ulink
+>. Bijvoorbeeld <literal
+>source/kde/applications/kate</literal
+> in de indeling <userinput
+>metadata</userinput
+> zou zijn <literal
+>source/utilities/kate</literal
+> in plaats daarvan in de indeling <userinput
+>invent</userinput
+>. Deze indeling heeft alleen effect op KDE projecten. Het is een goede keuze voor mensen die beginnen met &kdesrc-build;. </para>
+<para
+>Tenslotte, de indeling <userinput
+>metadata</userinput
+> is hetzelfde als het oude standaard gedrag. Deze indeling organiseert KDE projecten volgens de projectpaden gespecificeerd in de projectmetadata voor deze modules. Dit is een goede keuze als u een indeling van mappen wilt die bepaalde KDE-processen volgt, maar merk op dat dit pad daarom niet altijd stabiel is. Als resultaat kan &kdesrc-build; een oude kopie van de opslagruimte verlaten en een nieuwe klonen voor een project vanwege wijzigingen in de projectmetadata.</para>
+</entry>
+</row>
+
+<row id="conf-generate-vscode-project-config">
+<entry
+>generate-vscode-project-config</entry>
+
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+</simplelist>
+
+<para
+>Instelling bij Module overschrijft de instelling bij global</para>
+
+<para
+>Stel deze optie in op <userinput
+>true</userinput
+> om te zorgen dat &kdesrc-build; VS-code-projectbestanden (map .vscode) aanmaakt in de map voor broncode van module.</para>
+
+<para
+>De map .vscode zal alleen aangemaakt worden, wanneer deze nog niet bestaat, in de map voor broncode van het project. De configuraties zullen het gebruik van LSP, bouwen, debuggen en uitvoeren van het project inschakelen vanuit de VS-code.</para>
+
+<para
+>De configuratie beveelt ook extensies aan om te installeren die nuttig zijn voor het werken op de meeste KDE-projecten.</para>
+
+<para
+>U kunt ook de opdrachtregelvlag <link linkend="cmdline-generate-vscode-project-config"
+> <option
+>--generate-vscode-project-config</option
+></link
+> gebruiken.</para>
+</entry>
+</row>
+
+<row id="conf-include-dependencies">
+<entry
+>include-dependencies</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+</simplelist>
+<para
+>Bestuurt of &kdesrc-build; bekende afhankelijkheden van deze module tijdens het bouwen mee zal nemen, zonder dat er van u verlangt word om deze afhankelijkheden te noemen (zelfs indirect).</para>
+
+<note
+><para
+>Deze optie werkt alleen voor op <link linkend="kde-projects-module-sets"
+><literal
+>kde-project</literal
+>-gebaseerde modules</link
+>, en vereist dat de metadata die door &kde; ontwikkelaars is ingevuld accuraat is voor de door u geselecteerde <link linkend="conf-branch-group"
+>branch-group</link
+>.</para
+></note>
+
+<para
+>Dit is om het bouwen van toepassingen te ondersteunen die recentere versies van &Qt; of &plasma; nodig hebben dan ondersteund op gebruikelijke besturingssystemen.</para>
+</entry>
+</row>
+
+<row id="conf-install-after-build">
+<entry
+>install-after-build</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+</simplelist>
+<para
+>Met deze optie stelt u in of het pakket geïnstalleerd moet worden als de bouw succesvol is. U kunt ook op de commandoregel de parameter <link linkend="cmdline-no-install"
+><option
+>--no-install</option
+></link
+> gebruiken.</para>
+</entry>
+</row>
+
+<row id="conf-install-dir">
+<entry
+>install-dir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+><filename class="directory"
+>~/kde/usr</filename
+></member>
+</simplelist>
+<para
+>Met deze optie stelt u de map in waar &kde; zal worden geïnstalleerd na het bouwproces. Als u dit wijzigt naar een map die root-rechten nodig heeft, dan wilt u wellicht meer lezen over de optie <link linkend="conf-make-install-prefix"
+>make-install-prefix</link
+>.</para>
+</entry>
+</row>
+
+<row id="conf-libname">
+<entry
+>libname</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+>Automatisch gedetecteerd</member>
+</simplelist>
+<para
+>Stel deze optie in om de standaardnaam van de geïnstalleerde bibliotheekmap te wijzigen in ${install-dir} en $<envar
+>QTDIR</envar
+>. Op veel systemen is dit ofwel "lib" of "lib64". Automatische detectie wordt gepoogd om de juiste naam standaard in te stellen, maar als de keuze verkeerd is dan kan dit gewijzigd worden met deze instelling.</para>
+</entry>
+</row>
+
+<row id="conf-libpath">
+<entry
+>libpath</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Gebruik deze optie om de omgevingsvariabele <envar
+>LD_LIBRARY_PATH</envar
+> voor gebruik tijdens het bouwen in te stellen. U kunt in een module option deze instelling niet overschrijven. De standaardinstelling is blank, maar de paden <filename class="directory"
+>${install-dir}/$<envar
+>LIBNAME</envar
+></filename
+> en <filename class="directory"
+>$<envar
+>QTDIR</envar
+>/$<envar
+>LIBNAME</envar
+></filename
+> worden automatisch toegevoegd. U mag in deze optie bij elk pad dat u toevoegt de tilde (~) gebruiken.</para>
+</entry>
+</row>
+
+<row id="conf-log-dir">
+<entry
+>log-dir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Gebruik deze optie om de map te wijzigen waarin de door het script gegenereerde logbestanden worden opgeslagen.</para>
+</entry>
+</row>
+
+<row id="conf-make-install-prefix">
+<entry
+>make-install-prefix</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Vul deze variabele met een door spaties gescheiden lijst, wat zal worden geïnterpreteerd als een commando en de daarbij horende opties die de voor het installeren van modules gebruikte commando <userinput
+><command
+>make</command
+> <option
+>install</option
+></userinput
+> voorafgaan. Dit is handig bijvoorbeeld bij het met &sudo; installeren van pakketten, maar wees wel voorzichtig bij het gebruik van root privileges.</para
+></entry>
+</row>
+
+<row id="conf-make-options">
+<entry
+>make-options</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Vul deze variabele met commandoregelparameters die u wilt doorgeven aan het commando <command
+>make</command
+>. Dit is handig bij programma's zoals <ulink url="https://github.com/distcc/distcc"
+><application
+>distcc</application
+></ulink
+> of bij systemen met meer dan een processor core.</para>
+<para
+>Merk op dat niet alle ondersteunde bouwsystemen <command
+>make</command
+> gebruiken. Voor bouwsystemen die <command
+>ninja</command
+> voor bouwen gebruiken (zoals het <link linkend="conf-override-build-system"
+><application
+>Meson</application
+> bouwsysteem</link
+>), zie de instelling <link linkend="conf-ninja-options"
+>ninja-opties</link
+>.</para>
+</entry>
+</row>
+
+<row id="conf-manual-build">
+<entry
+>manual-build</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+</simplelist>
+<para
+>Zet de instellingswaarde op <userinput
+>true</userinput
+> om te voorkomen dat het bouwproces gaat proberen om deze module te bouwen. Het blijft echter wel up-to-date bij het updating met &git;. Deze optie is het exacte equivalent van de opdrachtregelparameter <link linkend="cmdline-no-build"
+> <option
+>--no-build</option
+></link
+>. </para>
+</entry>
+</row>
+
+<row id="conf-manual-update">
+<entry
+>manual-update</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+</simplelist>
+<para
+>Zet de instellingswaarde op <userinput
+>true</userinput
+> om te voorkomen dat het bouwproces gaat proberen om deze module up te daten (en daarop volgend, bouwen of installeren). Als u dit voor een module instelt, dan heeft u het in essentie uitgecomment.</para>
+</entry>
+</row>
+
+<row id="conf-ninja-options">
+<entry
+>ninja-options</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Stel deze variabele in om opdrachtregelopties door te geven aan het bouwcommando <command
+>ninja</command
+>. Dit kan nuttig zijn om <quote
+>verbose</quote
+> uitvoer in te schakelen of om handmatig het aantal parallelle bouwjobs te verminderen die <command
+>ninja</command
+> zou gebruiken.</para>
+
+<note
+><para
+>Merk op dat deze instelling alleen ninja bestuurt bij gebruik door &kdesrc-build;. De module &Qt;-<quote
+>webengine</quote
+> gebruikt <command
+>ninja</command
+> indirect, maar ondersteunt alleen officieel het bouwen door <command
+>make</command
+>. In deze situatie kunt u <literal
+>NINJAFLAGS</literal
+> instellen als een manier om <command
+>make</command
+> de toepasselijke vlaggen door te egeven wanneer het later <command
+>ninja</command
+> aanroept, door <link linkend="conf-make-options"
+>make-options</link
+> te gebruiken.</para>
+
+<programlisting
+>opties <replaceable
+>qtwebengine</replaceable>
+    # Beperkt make en ninja om niet meer dan 6 separate taken te gebruiken zelfs
+    # wanneer meer CPU beschikbaar is, om uit geheugen lopen te vermijden
+    <option
+><link linkend="conf-make-options"
+>make-options</link
+></option
+> -j<replaceable
+>6</replaceable
+> NINJAFLAGS=-j<replaceable
+>6</replaceable>
+einde opties
+</programlisting>
+</note>
+</entry>
+</row>
+
+<row id="conf-no-src">
+<entry
+>no-src</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+</simplelist>
+<para
+>Als u deze optie op true heeft gezet dan zal &kdesrc-build; de broncode voor de module niet automatisch updaten. Maar het zal wel proberen om de module zoals altijd te bouwen.</para>
+</entry>
+</row>
+
+<row id="conf-override-build-system">
+<entry
+>override-build-system</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+>Automatisch gedetecteerd</member>
+<member
+>Geldige waarden</member
+><member
+>KDE, Qt, qmake, generiek, autotools, meson</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Normaal gesproken zal &kdesrc-build; na een download detecteren welk bouwsysteem het moet gebruiken voor een module. Dit wordt gedaan door te controleren op de aanwezigheid van bepaalde bestanden in de map met de broncode van de module.</para>
+
+<para
+>Sommige modules kunnen meerdere vereiste sets bestanden hebben, wat de auto-detectie in verwarring kan brengen. In een dergelijk geval kan u handmatig de correcte bouw type specificeren.</para>
+
+<para
+>De op dit moment ondersteunde bouwtypes die u kunt instellen zijn:</para>
+
+<variablelist>
+    <varlistentry>
+        <term
+>KDE</term>
+        <listitem
+><para
+>Gebruikt om &kde; modules te bouwen. In werkelijkheid kunt u het gebruiken om bijna elke module te bouwen dat gebruik maakt van &cmake; maar het is het verstandigst om niet ervan afhankelijk te zijn.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>Qt</term>
+        <listitem
+><para
+>Gebruikt om de &Qt; bibliotheek zelf te bouwen.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>qmake</term>
+        <listitem
+><para
+>Gebruikt om &Qt; modules te bouwen die gebruik maken van <application
+>qmake</application
+>-style <literal
+>.pro</literal
+>-bestanden.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>generic</term>
+        <listitem
+><para
+>Gebruikt om modules te bouwen die gebruik maken van gewone Makefiles en die geen speciale configuratie nodig hebben.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>autotools</term>
+        <listitem
+><para
+>Dit is de standaard configuratie hulpprogramma dat door de meeste vrije en open-source programma's die niet in een van de andere categorieën vallen gebruikt wordt.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>meson</term>
+        <listitem
+><para
+>Dit is een <ulink url="https://mesonbuild.com"
+>relatief nieuw hulpmiddel</ulink
+> die populariteit wint als een vervanging voor de autotools en kan vereist worden voor sommige niet-&kde; modules.</para
+></listitem>
+    </varlistentry>
+</variablelist>
+
+</entry>
+</row>
+
+<row id="conf-prefix">
+<entry
+>prefix</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Deze optie bestuurt waar de module te installeren (normaal wordt de instelling <option
+><link linkend="conf-install-dir"
+>install-dir</link
+></option
+> gebruikt). Deze optie gebruiken biedt u het installeren van een module naar een andere map dan waar de KDE Platform bibliotheken worden geïnstalleerd, zoals alsof u &kdesrc-build; gebruikt om alleen toepassingen te bouwen.</para>
+<para
+>U kunt <varname
+>${MODULE}</varname
+> of <varname
+>$MODULE</varname
+> in het pad gebruiken om ze te expanderen tot de naam van de module.</para>
+</entry>
+</row>
+
+<row id="conf-purge-old-logs">
+<entry
+>purge-old-logs</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+</simplelist>
+<para
+>Hiermee stelt u in of oude log mappen automatisch worden verwijderd.</para>
+</entry>
+</row>
+
+<row id="conf-qmake-options">
+<entry
+>qmake-options</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Alle hier gespecificeerde opties worden doorgegeven aan het commando <command
+>qmake</command
+>, bij modules die het <symbol
+>qmake</symbol
+> bouwsysteem gebruiken. Bijvoorbeeld, u kunt de optie <userinput
+>PREFIX=/path/to/qt</userinput
+> gebruiken om bij qmake te overschrijven waar het de module installeert. </para>
+</entry>
+</row>
+
+<row id="conf-qtdir">
+<entry
+>qtdir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Gebruik deze optie om de omgevingsvariabele <envar
+>QTDIR</envar
+> in te stellen voor bij het bouwen. Als u deze optie niet instelt, dan zal &kdesrc-build; aannemen dat &Qt; wordt geleverd door het besturingssysteem. </para>
+</entry>
+</row>
+
+<row id="conf-remove-after-install">
+<entry
+>remove-after-install</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Geldige waarden</member
+><member
+>geen, bouwmap, alles</member>
+<member
+>Standaardwaarde</member
+><member
+>geen</member>
+</simplelist>
+<para
+>Als u weinig harde schijfruimte heeft, dan wilt u wellicht deze optie gebruiken om automatisch de bouwmap te verwijderen (of zowel de broncode-map als de bouwmap bij eenmalige installaties) nadat de module succesvol is geïnstalleerd. </para>
+<para
+>Mogelijke waarden voor deze optie zijn: <itemizedlist>
+<listitem
+><para
+>geen - verwijder niets.</para
+></listitem>
+<listitem
+><para
+>builddir - verwijder de bouwmap, maar niet de broncode.</para
+></listitem>
+<listitem
+><para
+>all - verwijder zowel de broncode en de bouwmap.</para
+></listitem>
+</itemizedlist>
+</para>
+
+<para
+>Merk op dat het gebruik van deze optie een ongunstige impact kan hebben op zowel het gebruik van uw bandbreedte (als u <replaceable
+>all</replaceable
+> gebruikt) en op de tijd die nodig is voor het compileren van &kde; software, omdat &kdesrc-build; geen incrementele bouw kan uitvoeren.</para>
+</entry>
+</row>
+
+<row id="conf-repository">
+<entry
+>opslagruimte</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.10</member>
+</simplelist>
+<para
+>Deze optie kunt u gebruiken om de &git; repository te specificeren waar u de broncode voor de module kunt downloaden. &Qt; (en dus ook qt) heeft de informatie uit deze optie nodig, net zoals verschillende &kde; modules die in het proces van conversie naar het gebruik van &git; zitten.</para
+></entry>
+</row>
+
+<row id="conf-revision">
+<entry
+>revision</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Als deze optie een andere waarde heeft dan 0 (nul),dan zal &kdesrc-build; de update van de broncode forceren met exact de opgegeven revisie, zelfs als opties zoals <link linkend="conf-branch"
+>branch</link
+> zijn ingesteld. als de module al de opgegeven revisie heeft dan zal het verder niet worden geupdate tenzij deze optie is gewijzigd of verwijderd uit de configuratie.</para>
+</entry>
+</row>
+
+<row id="conf-run-tests">
+<entry
+>run-tests</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+</simplelist>
+<para
+>indien ingesteld op <userinput
+>true</userinput
+>, dan zal de module worden gebouwd met ondersteuning voor gebruik van zijn test suite, en zal de test suite worden uitgevoerd als onderdeel van het bouwproces. &kdesrc-build; zal een eenvoudig rapport met de testresultaten tonen. Dit is handig voor ontwikkelaars en diegene die zeker willen zijn dat hun systeem correct is opgezet.</para
+></entry>
+</row>
+
+<row id="conf-set-env">
+<entry
+>set-env</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+</simplelist>
+<para
+>Deze optie accepteert een door spaties gescheiden lijst met waarden, waar de eerste waarde de in te stellen omgevingsvariabele is, en de overige waarden is waarnaar toe u de variabele in wilt stellen. Bijvoorbeeld, om de variabele <envar
+>RONALD</envar
+> naar McDonald in te stellen, moet u in het betreffende sectie het volgende commando zetten:</para>
+<programlisting
+><command
+>set-env</command
+> <envar
+>RONALD</envar
+> <userinput
+>McDonald</userinput
+>
+</programlisting>
+<para
+>Deze optie is speciaal omdat u het kan herhalen zonder dat u eerder in dezelfde sectie van het <link linkend="configure-data"
+>configuratiebestand</link
+> ingestelde set-env instellingen overschrijft. Op deze manier kunt u meerdere omgevingsvariabelen per module (of globaal) instellen.</para>
+</entry>
+</row>
+
+<row id="conf-source-dir">
+<entry
+>source-dir</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Standaardwaarde</member
+><member
+><filename class="directory"
+>~/kde/src</filename
+></member>
+</simplelist>
+<para
+>Deze gebruikt u om de map op uw computer in te stellen waar de &kde;-broncode uit &git; wordt opgeslagen. U mag bij deze optie de tilde (~) die de persoonlijke map voorstelt gebruiken.</para>
+</entry>
+</row>
+
+<row id="conf-stop-on-failure">
+<entry
+>stop-on-failure</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Waar</member>
+</simplelist>
+<para
+>Deze optie op <userinput
+>false</userinput
+> instellen biedt het script om door te gaan met de uitvoering als er een fout optreed tijdens het bouwproces of het installatieproces.</para>
+</entry>
+</row>
+
+<row id="conf-tag">
+<entry
+>tag</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Gebruik deze optie om een specifieke release van een module te downloaden.</para>
+<para
+><emphasis
+>Opmerking:</emphasis
+> De kans is groot dat u deze optie <emphasis
+>niet wilt </emphasis
+> gebruiken. &kde; releases zijn in tarball vorm vanaf de <ulink url="https://download.kde.org/"
+>&kde; download site</ulink
+> beschikbaar.</para>
+</entry>
+</row>
+
+<row id="conf-use-clean-install">
+<entry
+>use-clean-install</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Booleaanse waarde</member>
+<member
+>Standaardwaarde</member
+><member
+>Onwaar</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.12</member>
+</simplelist>
+<para
+>Stel de waarde van deze optie in op <userinput
+>true</userinput
+> om te zorgen dat &kdesrc-build; het commando <command
+>make uninstall</command
+> uitvoert direct voordat het <command
+>make install</command
+> uitvoert.</para>
+
+<para
+>Dit kan handig zijn om te zorgen dat er geen vergeten oude library-bestanden, &cmake; metadata, enz. meer zijn die problemen kunnen veroorzaken in lang-levende &kde; installaties. Maar dit werkt alleen bij bouwsystemen waar ook <command
+>make uninstall</command
+> is.</para>
+</entry>
+</row>
+
+</tbody>
+
+</tgroup>
+</table>
+
+
+<table id="options-module-set-table">
+<title
+>Opties voor globale scope en module-set</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Naam van optie</entry>
+<entry
+>Beschrijving</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-git-repository-base">
+<entry
+>git-repository-base</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Deze optie gebruikt u voor het creëren van een verkorte naam om naar een specifieke Git-repository gebaseerde URL te refereren in latere <link linkend="module-sets"
+>module set</link
+> declaraties, wat handig is bij het snel declareren van veel te bouwen Git modules.</para>
+
+<para
+>U moet twee dingen (gescheiden door een spatie) specificeren: De naam waaraan de basis URL wordt toegekend en de actuele basis URL zelf. Bijvoorbeeld:</para>
+
+<para>
+<programlisting
+>global
+   # andere opties
+   # Dit is het algemene pad naar alle anonieme Git server modules.
+   git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Module declaraties
+
+module-set
+   # Nu kunt u de alias gebruiken die u eerder definieerde, maar <emphasis
+>alleen</emphasis>
+   # in een module-set.
+   repository <replaceable
+>kde-git</replaceable>
+   <link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>module1.git</replaceable
+> <replaceable
+>module2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>De module-instelling <literal
+>use-modules</literal
+> optie creëerde twee modules intern, waardoor &kdesrc-build; zich gedraagt alsof het heeft ingelezen:</para>
+
+<programlisting
+>module module1
+    repository kde:<replaceable
+>module1.git</replaceable>
+end module
+
+module module2
+    repository kde:<replaceable
+>module2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>Het hierboven gebruikte &git; repository voorvoegsel <literal
+>kde:</literal
+> is een afkorting die automatisch door &kdesrc-build; wordt opgezet. Zie het artikel <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>URL Renaming</ulink
+> in de TechBase voor meer informatie. Merk op dat in tegenstelling tot andere opties, u deze optie meerdere keren kan specificeren om net zoveel aliassen als nodig te creëren.</para>
+
+<tip
+><para
+>Het is geen vereiste om deze optie te gebruiken om de module-set handig te gebruiken, deze optie bestaat om makkelijk dezelfde repository in veel verschillende module sets te gebruiken.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-ignore-modules">
+<entry
+>ignore-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Kan nu alleen gebruikt worden in module-set, zie <ulink url="https://bugs.kde.org/show_bug.cgi?id=472917"
+>Bug 472917</ulink
+>.</para>
+<para
+>De in deze optie genoemde modules, welke door &kdesrc-build; worden geselecteerd wegens de optie <link linkend="conf-use-modules"
+>use-modules</link
+>, worden echter compleet overgeslagen. Gebruik deze optie als u een complete <link linkend="kde-projects-module-sets"
+>kde-projects</link
+> project wilt bouwen <emphasis
+>behalve</emphasis
+> enkel specifieke modules.</para>
+
+<para
+>De instellingswaarde hoeft niet noodzakelijkerwijs direct de modulenaam te hebben. Alle modules waarvan het <link linkend="kde-projects-module-sets"
+>&kde; projects module pad</link
+> overeenkomt met een onderdeel van de optiewaarden zal overgesloten worden, zodat u op die manier meerdere modules kan overslaan.</para>
+
+<para
+>Bijvoorbeeld, een instellingswaarde met <replaceable
+>libs</replaceable
+> zal als resultaat hebben dat zowel<symbol
+>kde/kdegraphics/libs</symbol
+> en <symbol
+>playground/libs</symbol
+> worden overgeslagen worden (maar niet <symbol
+>kde/kdelibs</symbol
+> omdat het complete <quote
+>kdelibs</quote
+> wordt vergeleken).</para>
+
+<tip
+><para
+>Zie ook <xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-use-modules">
+<entry
+>use-modules</entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Kan alleen gebruikt worden in <link linkend="module-sets"
+>module-set</link
+></para>
+<para
+>Met deze optie kunt u makkelijk meerdere te bouwen modules op een punt in <link linkend="kdesrc-buildrc"
+>het configuratiebestand</link
+> specificeren.</para>
+
+<para
+>Elke via deze optie opgegeven identifier, is intern geconverteerd naar een &kdesrc-build; module, wordt met de <link linkend="conf-repository"
+><option
+>repository</option
+></link
+> optie van de module-set's repository gecombineerd met de identifier-naam om de uiteindelijke repository te krijgen waarvan gedownload wordt. Alle andere opties opgegeven in de module-set worden ongewijzigd naar de gegenereerde modules doorgegeven.</para>
+
+<para
+>De volgorde waarin modulen worden gedefinieerd in deze optie is belangrijk, omdat dat ook de volgorde is waarin &kdesrc-build; de gegenereerde modulen zal verwerken bij bijwerken, bouwen en installeren. Alle modulen gedefinieerd in de gegeven module-set zal behandeld worden voordat &kdesrc-build; de volgende module verplaatst na de module-set.</para>
+
+<para
+>Als u de opties voor een gegenereerde module moet wijzigen, declareer dan de module gewoon opnieuw nadat het is gedefinieerd in de module-set, en stel uw opties in zoals gewenst. Al hoe wel u op deze manier de opties voor de module wijzigt, zal de module gewoon in de module-set in de ingestelde volgorde worden geupdate en gebouwd (d.w.z. u kunt de bouwvolgorde niet op deze manier wijzigen).</para>
+
+<important
+><para
+>De te gebruiken naam voor de module als u dit deze methode gebruikt is eenvoudig de naam die u bij <option
+>use-modules</option
+> heeft opgegeven, met die verstande dat elke <literal
+>.git</literal
+> wordt verwijderd.</para
+></important>
+
+<para
+>Zie <xref linkend="module-sets"/> en <link linkend="conf-git-repository-base"
+>git-repository-base</link
+> voor een beschrijving van het gebruik daarvan en een voorbeeld.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+</sect1>

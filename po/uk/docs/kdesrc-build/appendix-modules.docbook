@@ -1,0 +1,168 @@
+<appendix id="appendix-modules">
+<title
+>Модулі &kde; та структура початкових кодів</title>
+<sect1 id="module-concept">
+<title
+>«Модуль»</title>
+
+<para
+>У &kde; програмне забезпечення згруповано за «модулями» різних розмірів. Спочатку таке групування передбачало декілька сховищ великих модулів, але із впровадженням заснованих на <ulink url="https://git-scm.com/"
+>Git</ulink
+> <ulink url=" https://commits.kde.org/"
+>сховищ початкових кодів</ulink
+> ці великі модулі було поділено на багато дрібніших модулів. </para>
+
+<para
+>У &kdesrc-build; також використовується ця концепція модулів. Загалом кажучи, «модуль» — збірка коду, яку можна отримати, зібрати, перевірити та встановити. </para>
+
+<sect2 id="single-modules">
+<title
+>Окремі модулі</title>
+
+<para
+>Наказати &kdesrc-build; зібрати окремий модуль доволі просто. Нижче наведено код прикладу оголошення модуля, код якого зберігається у Git, у <link linkend="kdesrc-buildrc"
+>файлі налаштувань</link
+>.</para>
+
+<programlisting
+>module <replaceable
+>kdefoo</replaceable>
+    <option
+><replaceable
+>cmake-options -DCMAKE_BUILD_TYPE=Debug</replaceable
+></option>
+end module
+</programlisting>
+
+<tip
+><para
+>Цей модуль засновано на Git, оскільки тут не використовується параметр <link linkend="conf-repository"
+>repository</link
+>. Крім того, для прикладу використано параметр <option
+>cmake-options</option
+>, насправді він не потрібен.</para
+></tip>
+
+</sect2>
+<sect2 id="module-groups">
+<title
+>Групи пов’язаних модулів</title>
+
+<para
+>Зараз, більшість модулів коду &kde; зберігається у Git проєкту &kde;, і зазвичай поєднуються у групи модулів.</para>
+
+<para
+>Через це у &kdesrc-build; передбачено підтримку груп модулів, за допомогою визначень <link linkend="module-sets"
+>наборів модулів</link
+>. Приклад:</para>
+
+<programlisting
+>module-set <replaceable
+>base-modules</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde-runtime kde-workspace kde-baseapps</replaceable>
+end module-set
+</programlisting>
+
+<tip
+><para
+>Ви можете, якщо хочете, вказати порожню назву набору модулів (<replaceable
+>base-modules</replaceable
+> у нашому прикладі). У такому разі параметр <option
+>repository</option
+> повідомить &kdesrc-build; про те, звідки слід отримати код, але ви також можете скористатися адресою <symbol
+>git://</symbol
+>.</para
+></tip>
+
+<para
+>Однією особливою можливістю використання <quote
+><option
+>repository</option
+> <literal
+>kde-projects</literal
+></quote
+> є те, що &kdesrc-build; автоматично включатиме всі модулі Git, які згруповано у вказаних вами модулях (у базі даних проєктів &kde;).</para>
+</sect2>
+
+<sect2 id="module-branch-groups">
+<title
+>Модуль «групи гілок»</title>
+
+<para
+>Працюючи з концепцією <link linkend="module-groups"
+>групи модулів</link
+>, розробники &kde; зрештою виявили, що синхронізація у &git; великої кількості гілок в усіх сховищах є доволі марудною справою, особливо у процесі розробки нових бібліотек &kde; Frameworks для &Qt; 5. </para>
+
+<para
+>Щоб уникнути зайвої роботи, було створено концепцію «груп гілок». Користувачі і розробники можуть вибрати одну певну групу, а скрипт автоматично вибере відповідні гілки у кожному зі сховищ &git;. </para>
+
+<para
+>У &kdesrc-build; передбачено підтримку цієї можливості з версії 1.16-pre2. Підтримку реалізовано за допомогою параметра <link linkend="conf-branch-group"
+>branch-group</link
+>. </para>
+
+<example id="ex-branch-group">
+<title
+>Приклад використання branch-group</title>
+
+<para
+>branch-group можна скористатися у файлі налаштувань так: </para>
+
+<programlisting
+>global
+    # Вибрати KDE Frameworks 5 та інші програми, засновані на Qt5
+    <option
+>branch-group</option
+> <replaceable
+>kf5-qt5</replaceable>
+
+    # Інші загальні параметри ...
+end global
+
+module-set
+    # branch-group працює лише для kde-projects
+    <option
+>repository</option
+> kde-projects
+
+    # branch-group успадковується з одного набору повсюдно, але
+    # його можна вказати і тут.
+
+    <option
+>use-modules</option
+> <replaceable
+>kdelibs kde-workspace</replaceable>
+end module-set
+
+# гілкою kdelibs буде "frameworks"
+# гілкою kde-workspace буде "master" (станом на серпень 2013 року)
+</programlisting>
+
+<para
+>У цьому випадку одне значення <literal
+>branch-group</literal
+> дасть різні назви гілок для кожного з модулів &git;. </para>
+</example>
+
+<para
+>Для роботи з цією можливістю потрібні певні дані, супровід яких здійснюють розробники &kde; у сховищі &git; з назвою <literal
+>kde-build-metadata</literal
+>. Втім, цей модуль буде автоматично включено &kdesrc-build; (хоча його і буде показано у даних, виведених скриптом). </para>
+
+<tip
+><para
+>Для модулів &kde;, для яких не встановлено назви гілки для вибраної вами групи гілок, типово буде вибрано відповідну назву гілки, ту, яку було б вибрано, якщо б ви не вказували параметра <literal
+>branch-group</literal
+>. </para
+></tip>
+
+</sect2>
+
+</sect1>
+</appendix>

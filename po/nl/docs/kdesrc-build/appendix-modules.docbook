@@ -1,0 +1,178 @@
+<appendix id="appendix-modules">
+<title
+>De organisatie van de modules en broncode van &kde;</title>
+<sect1 id="module-concept">
+<title
+>De <quote
+>Module</quote
+></title>
+
+<para
+>&kde; groepeert de software in <quote
+>modules</quote
+> van verschillende grootte. Oorspronkelijk was dit losjes gegroepeerd in een paar grote modules, maar met de introductie van de op <ulink url="https://git-scm.com/"
+>Git</ulink
+>-gebaseerde <ulink url="https://commits.kde.org/"
+>broncoderepositories</ulink
+>, zijn deze grote modules verder opgesplitst in vele kleinere modules. </para>
+
+<para
+>Ook &kdesrc-build; gebruikt dit concept van modules. In essentie, is een <quote
+>module</quote
+> een groepering van code die kan worden gedownload, gebouwd, getest, en geïnstalleerd. </para>
+
+<sect2 id="single-modules">
+<title
+>Individuele modules</title>
+
+<para
+>Het is makkelijk om het zo in te stellen dat &kdesrc-build; een enkele module bouwt. De volgende lijst is een voorbeeld van hoe een declaratie voor een op Git-gebaseerde module er uit zou zien in het <link linkend="kdesrc-buildrc"
+>configuratiebestand</link
+>.</para>
+
+<programlisting
+>module <replaceable
+>kdefoo</replaceable>
+    <option
+><replaceable
+>cmake-options -DCMAKE_BUILD_TYPE=Debug</replaceable
+></option>
+end module
+</programlisting>
+
+<tip
+><para
+>Dit is een op Git-gebaseerde module omdat het geen <link linkend="conf-repository"
+>repository</link
+>-optie gebruikt. Ook is de <option
+>cmake-options</option
+>-optie alleen als voorbeeld gegeven, het is niet vereist.</para
+></tip>
+
+</sect2>
+<sect2 id="module-groups">
+<title
+>Groepen van gerelateerde modulen</title>
+
+<para
+>Op dit moment zijn de meeste &kde; broncodemodules gebaseerd op Git en worden gewoonlijk gecombineerd in groepen van modules.</para>
+
+<para
+>&kdesrc-build; ondersteunt daarom ook groepen modules, met <link linkend="module-sets"
+>module sets</link
+>. Een voorbeeld:</para>
+
+<programlisting
+>module-set <replaceable
+>basis-modules</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde-runtime kde-workspace kde-baseapps</replaceable>
+end module-set
+</programlisting>
+
+<tip
+><para
+>U kunt de module set naam (<replaceable
+>base-modules</replaceable
+> in dit geval) leeg laten als u dat wilt. Deze instelling <option
+>repository</option
+> geeft aan waar &kdesrc-build; de broncode kan downloaden, maar u kunt ook een <symbol
+>git://</symbol
+> URL gebruiken.</para
+></tip>
+
+<para
+>Een speciale functionaliteit van de <quote
+><option
+>repository</option
+> <literal
+>kde-projects</literal
+></quote
+> is dat &kdesrc-build; automatisch alle Git modules die in de door u opgegeven modules (in the KDE Project database) zijn gegroepeerd, zal downloaden.</para>
+</sect2>
+
+<sect2 id="module-branch-groups">
+<title
+>Module <quote
+>branch groups</quote
+></title>
+
+<para
+>Het concept van een <link linkend="module-groups"
+>groep van modules</link
+> verder uitbouwent, merkten de &kde;-ontwikkelaars uiteindelijk dat het synchroniseren van namen van de Git branches over een groot aantal repositories steeds moeilijker werd, met name tijdens de ontwikkeling van de nieuwe &kde; Frameworks voor &Qt; 5. </para>
+
+<para
+>Daarom is het concept <quote
+>branch groups</quote
+> ontwikkeld, om gebruikers en ontwikkelaars in staat te stellen een of alleen een paar groepen te selecteren en het script toestaan om automatisch de juiste Git-branch te selecteren. </para>
+
+<para
+>&kdesrc-build; ondersteunt deze functie vanaf versie 1.16-pre2, via de optie <link linkend="conf-branch-group"
+>branch-group</link
+>. </para>
+
+<example id="ex-branch-group">
+<title
+>Voorbeeld van gebruikt van een branch-group</title>
+
+<para
+>branch-group kunt u in het configuratiebestand als volgt gebruiken: </para>
+
+<programlisting
+>global
+    # Selecteert KDE Frameworks 5 aen andere Qt5-gebaseerde apps
+    <option
+>branch-group</option
+> <replaceable
+>kf5-qt5</replaceable>
+
+    # Andere global opties hier ...
+end global
+
+module-set
+    # branch-groep werkt alleen voor kde-projects
+    <option
+>repository</option
+> kde-projects
+
+    # branch-groep is doorgegeven van de set globally, maar kan ook
+    # hier gespecificeerd.
+
+    <option
+>use-modules</option
+> <replaceable
+>kdelibs kde-workspace</replaceable>
+end module-set
+
+# kdelibs's branch zal zijn "frameworks"
+# kde-workspace's branch zal zijn "master" (vanaf Augustus 2013)
+</programlisting>
+
+<para
+>In dit geval geeft dezelfde <literal
+>branch-group</literal
+> voor elke Git-module verschillende branch-namen. </para>
+</example>
+
+<para
+>Voor deze functionaliteit moeten de &kde;-ontwikkelaars in een Git repository genaamd <literal
+>kde-build-metadata</literal
+> wat data bijhouden, maar deze module zal automatisch door &kdesrc-build; (u kunt het zien verschijnen in de uitvoer van het script) worden meegeleverd. </para>
+
+<tip
+><para
+>&kde; modules die nog geen naam hebben voor de branch group die u heeft gekozen, zullen standaard een toepasselijke naam voor de branch krijgen, als u nog geen <literal
+>branch-group</literal
+> heeft opgegeven. </para
+></tip>
+
+</sect2>
+
+</sect1>
+</appendix>

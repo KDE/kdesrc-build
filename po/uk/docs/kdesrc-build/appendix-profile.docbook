@@ -1,0 +1,199 @@
+<appendix id="appendix-profile">
+<title
+>Процедури налаштовування профілю, які заміщуються програмою</title>
+
+<sect1 id="old-profile-setup">
+<title
+>Налаштовування профілю входу до системи &kde;</title>
+
+<para
+>Нижче наведено настанови щодо налаштовування профілю, потрібного для забезпечення можливості входу до зібраної вами стільниці Плазми &kde;. Зазвичай, &kdesrc-build; намагається зробити це у автоматичному режимі (див. <xref linkend="session-driver"/>). Дані у цьому додатку можуть бути корисним для тих, хто не може скористатися підтримкою налаштовування входу до системи &kdesrc-build;. Втім, можливо, ці настанови застаріли, тому вам також варто ознайомитися з вмістом файла <filename
+>kde-env-master.sh.in</filename
+>, який є частиною початкових кодів &kdesrc-build;.</para>
+
+<sect2 id="changing-profile">
+<title
+>Зміна ваших параметрів профілю запуску</title>
+
+<important
+><para
+>Файл <filename
+>.bash_profile</filename
+> є файлом параметрів входу до системи популярної оболонки <application
+>bash</application
+>, яка використовується у багатьох дистрибутивах &Linux;. Якщо ви використовуєте іншу оболонку, можливо, вам доведеться скоригувати приклади, наведені у цьому розділі, так, щоб вони відповідали оболонці, яку ви використовуєте.</para
+></important>
+
+<para
+>Відкрийте або створіть файл <filename
+>.bash_profile</filename
+> у домашньому каталозі за допомогою вашого улюбленого редактора, і додайте в кінець файла наступні рядки. Якщо ви збираєте модуль qt (це типова поведінка), додайте: <programlisting>
+QTDIR=(шлях до qtdir)   # Типовим є ~/kdesrc/build/qt.
+PATH=${install-dir}/bin:$QTDIR/bin:$PATH
+MANPATH=$QTDIR/doc/man:$MANPATH
+
+# Дійте у відповідності до того, чи встановлено змінну LD_LIBRARY_PATH.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}/lib:$QTDIR/lib
+else
+  LD_LIBRARY_PATH=${install-dir}/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+fi
+
+export QTDIR PATH MANPATH LD_LIBRARY_PATH
+</programlisting
+> або, якщо ви не збираєте qt (а замість неї використовуєте системну бібліотеку &Qt;), додайте такі рядки: <programlisting
+>PATH=${install-dir}/bin:$QTDIR/bin:$PATH
+
+# Діяти відповідно, якщо ще не встановлено LD_LIBRARY_PATH.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH LD_LIBRARY_PATH
+</programlisting>
+</para>
+
+<para
+>Якщо ви не використовуєте призначеного користувача, встановіть іншу змінну середовища $<envar
+>KDEHOME</envar
+> для вашого нового середовища у вашому <filename
+>.bash_profile</filename
+>: <programlisting
+>export KDEHOME="${HOME}/.kde-git"
+
+# Створити каталог, якщо це потрібно
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
+</programlisting>
+</para>
+
+<note>
+<para
+>Якщо пізніше ваше меню KDE буде порожнім, або переповненим записами програм з вашого дистрибутива, можливо, вам доведеться встановити змінну середовища <acronym
+>XDG</acronym
+> у вашому файлі <filename
+>.bash_profile</filename
+>: <programlisting
+>XDG_CONFIG_DIRS="/etc/xdg"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
+export XDG_CONFIG_DIRS XDG_DATA_DIRS
+</programlisting>
+
+</para>
+</note>
+
+</sect2>
+<sect2 id="starting-kde">
+<title
+>Запуск &kde;</title>
+
+<para
+>Тепер, коли ви налаштували параметри вашого середовища на використання належної версії &kde;, вам також слід переконатися, що ви використовуєте правильний скрипт <command
+>startkde</command
+>. </para>
+
+<para
+>Відкрийте текстовий файл <filename
+>.xinitrc</filename
+> з вашого домашнього каталогу або за потреби створіть його. Додайте до файла такий рядок: <programlisting
+><command
+>exec</command
+> <option
+>${install-dir}/bin/startkde</option
+>
+</programlisting>
+</para>
+
+<important
+><para
+>У деяких дистрибутивах, ймовірно, вам доведеться виконати певні дії з файлом <filename
+>.xsession</filename
+>, який також знаходиться у вашому домашньому каталозі. Такі дії знадобляться, якщо ви використовуєте графічні інструменти керування входом до системи, такими як sddm;, <application
+>gdm</application
+> або <application
+>xdm</application
+>.</para>
+</important>
+
+<para
+>Тепер запустіть вашу свіжу версію &kde;: у системах &BSD; і &Linux; з підтримкою віртуальних терміналів натискання комбінацій клавіш <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F1</keycap
+></keycombo
+> ... <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F12</keycap
+></keycombo
+> використовується для перемикання до віртуальних консолей з номерами від 1 до 12. Таким чином, ви можете запускати декілька стільничних середовищ одночасно. Перші шість терміналів є текстовими, а наступні шість — графічними. </para>
+
+<para
+>Якщо після запуску вашого комп’ютера ви бачите інструмент графічного входу до системи, ви можете скористатися новим середовищем &kde;, навіть якщо його пункту немає у списку. У більшості інструментів входу до системи, зокрема у sddm, є пункт, призначений для <quote
+>Нетипового сеансу</quote
+>. За використання цього пункту параметри вашого сеансу буде завантажено з файла <filename
+>.xsession</filename
+> у вашому домашньому каталозі. Якщо ви вже змінили цей файл у спосіб, описаний вище, використання цього пункту завантажить ваш новий встановлений &kde;. </para>
+
+<para
+>Якщо це не так, ви можете спробувати інший спосіб, який, зазвичай, працює: натисніть комбінацію клавіш <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+> і ви побачите текстовий термінал. Введіть ваші реєстраційні дані вашого призначеного користувача і введіть команду: </para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<tip>
+<para
+>Ви можете запускати &kde;, зібраний з вихідних кодів, і ваш старий &kde; одночасно! Увійдіть до системи за допомогою реєстраційних даних вашого звичайного користувача, запустіть стабільну версію стільниці &kde;. Натисніть комбінацію клавіш <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+> (або <keycap
+>F1</keycap
+>, <keycap
+>F3</keycap
+> тощо), — ви побачите текстовий термінал. Увійдіть до системи від імені вашого призначеного користувача &git; &kde; і введіть команду:</para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<para
+>Ви можете повернутися до стільниці &kde; вашого звичайного користувача натисканням клавіатурного скорочення у вже запущеній стільниці. Цією комбінацією, зазвичай, є <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+>, можливо, у вашому випадку останньою клавішею буде <keycap
+>F6</keycap
+> або <keycap
+>F8</keycap
+>. Щоб повернутися до вашої зібраної &kdesrc-build; версії &kde;, ви можете скористатися подібною є комбінацією клавіш, але у ній останньою буде інша функціональна клавіша. Наприклад, якщо вам потрібно було ввести <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+>, щоб перемкнути на вашу звичайну версію &kde;, вам доведеться ввести <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F8</keycap
+></keycombo
+>, щоб повернутися до вашого зібраного &kdesrc-build; &kde;.</para>
+</tip>
+
+</sect2>
+</sect1>
+
+</appendix>

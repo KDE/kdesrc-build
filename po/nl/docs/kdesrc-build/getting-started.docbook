@@ -1,0 +1,267 @@
+<chapter id="getting-started">
+<title
+>Hoe te beginnen</title>
+
+<para
+>In dit hoofdstuk beschrijven we hoe u &kdesrc-build; kan gebruiken om modules uit de repositories van &kde; uitgecheckt kunnen worden en ze te bouwen. Ook bieden we een basis uitleg van de structuur van de broncode van &kde; en de stappen die u moet nemen voordat u het script gebruikt. </para>
+
+<para
+>Alle in dit hoofdstuk gepresenteerde onderwerpen worden nog meer in detail behandeld in het artikel <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+> Bouwen vanuit de broncode</ulink
+> op de <ulink url="http://community.kde.org/"
+>wiki van de &kde; gemeenschap</ulink
+>. Als u &kde; voor de eerste keer compileert, is het een goed idee om het te lezen of het te raadplegen als bron voor referenties. U zult er gedetailleerde informatie vinden over hulpmiddelen voor het maken van pakketten en de vereisten, veel voorkomende valkuilen bij compilatie en strategieën en informatie over het gebruik van uw nieuwe &kde; installatie vinden. </para>
+
+<sect1 id="before-building">
+<title
+>Het systeem voorbereiden voor het bouwen van &kde;</title>
+
+<sect2 id="before-building-users">
+<title
+>Een nieuw gebruikersaccount instellen</title>
+
+<para
+>Het is aanbevolen dat u een aparte gebruikersaccount gebruikt om uw &kde; software in te bouwen, te installeren en uit te voeren, omdat er minder toegangsrechten zijn vereist en om conflicten met de pakketten in uw distributie te vermijden. Als u al &kde;-pakketten heeft geïnstalleerd, dan is de beste keuze om een aparte (alleen voor dat doel) gebruiker aan te maken om de nieuwe &kde; te bouwen en te gebruiken. </para>
+
+<tip
+><para
+>Door de &kde; van het systeem onaangeraakt laten, heeft u de mogelijkheid om in nood op terug te vallen in het geval een gecompileerd &kde; onbruikbaar is. </para
+></tip>
+
+<para
+>Maar als u het wenst dan kunt u ook het zo instellen dat u in een systeembrede map installeert (&eg; <filename class="directory"
+>/usr/src/local</filename
+>). Dit document beschrijft dit type installatie niet, omdat we aannemen dat u in dat geval weet wat u doet. </para>
+
+</sect2>
+<sect2 id="before-building-preparation">
+<title
+>Ga na of uw systeem klaar is om vanuit de &kde; software te bouwen</title>
+
+<para
+>Alvorens het script &kdesrc-build; gebruikt kan worden (of elke andere bouwstrategie) is het nodig dat u de ontwikkelomgeving en de bibliotheken nodig voor &kde; installeert. De bijna complete lijst met vereiste hulpmiddelen is te vinden op de pagina <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>&kde; wiki van de gemeenschap Vereisten voor bouwen</ulink
+>. </para>
+
+<para
+>Hier volgt een lijst met enkele dingen die u nodig hebt:</para>
+<itemizedlist>
+
+<listitem
+><para
+>U heeft &cmake; nodig, deze software is wat &kde; gebruikt voor de bouwconfiguratie van de broncode en de generatie van specifieke bouwcommando's voor uw systeem. De vereiste versie is afhankelijk van welke versies van &kde; software u wilt bouwen (zie TechBase voor de specificaties), maar de met moderne distributies meegeleverde &cmake; zal goed genoeg zijn. </para
+></listitem>
+
+<listitem
+><para
+>U moet ook de client-software installeren die nodig is om de &kde; broncode uit te checken. Dit betekent dat u minstens het volgende nodig hebt:</para>
+
+<itemizedlist>
+<listitem
+><para
+>De <ulink url="https://git-scm.com/"
+>Git source control manager</ulink
+> die nodig is voor alle <ulink url="http://commits.kde.org/"
+>broncode</ulink
+> van &kde;.</para
+></listitem>
+
+<listitem
+><para
+>Hoewel het niet is vereist, wordt de beheerder van broncode <ulink url="http://bazaar.canonical.com/"
+>Bazaar</ulink
+> gebruikt voor een enkele module (libdbusmenu-qt) die nodig is voor de &kde; bibliotheken. de meeste gebruikers kunnen deze bibliotheek installeren via hun pakketten uit de distributie maar &kdesrc-build; ondersteunt ook het bouwen als u dat wilt. Maar om libdbusmenu-qt te kunnen bouwen moet Bazaar zijn geïnstalleerd.</para
+></listitem>
+</itemizedlist
+></listitem>
+
+<listitem
+><para
+>De Perl script-taal is vereist voor &kdesrc-build;, sommige &kde; repositories, en &Qt; (als u dat vanuit broncode wilt bouwen).</para>
+
+<para
+>De Perl die met uw distributie meekomt zou geschikt moeten zijn (het moet tenminste Perl 5.14 moeten zijn), maar u heeft ook enkele extra modules nodig(&kdesrc-build; geeft een waarschuwing als ze er niet zijn):</para>
+
+<itemizedlist>
+    <listitem
+><para
+>IO::Socket::SSL</para
+></listitem>
+    <listitem
+><para
+>JSON::PP of JSON::XS</para
+></listitem>
+    <listitem
+><para
+>YAML::PP, YAML::XS, of YAML::Syck</para
+></listitem>
+</itemizedlist>
+</listitem>
+
+<listitem
+><para
+>U heeft een volledige C++ ontwikkelomgeving (compiler, standaard library, runtime, en de nodige ontwikkelpakketten). De vereiste minimum versies variëren en hangen af van de &kde; module: de &kde; Frameworks 5 collectie ondersteunt de oudste compilers, terwijl &kde; Plasma 5 en &kde;-programma's waarschijnlijk meer recente compilers nodig hebben.</para>
+<para
+>We bevelen tenminste de compilers GCC 4.8 of Clang 4 aan. Bij veel distributies kunt u deze hulpmiddelen makkelijk installeren via een <quote
+>build-essentials</quote
+> pakket, een hulpprogramma om "build dependencies" voor &Qt; te installeren, of vergelijkbare hulpprogramma's. De KDE Community Wiki heeft een pagina <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/Install_the_dependencies"
+>met daarop voor de grote distributies de aanbevolen pakketten</ulink
+>. </para>
+</listitem>
+
+<listitem
+><para
+>U heeft een bouwprogramma nodig dat daadwerkelijk de compilatie-stappen uitvoert (gegenereerd door &cmake;). Wij bevelen GNU Make aan dat via uw pakketbeheerder beschikbaar zou moeten zijn. &cmake; ondersteunt andere mogelijkheden, zoals het bouwprogramma &ninja;, wat u door &kdesrc-build; kan laten gebruiken via het de optie <link linkend="conf-custom-build-command"
+>custom-build-command</link
+> in het configuratiebestand. </para
+></listitem>
+
+<listitem
+><para
+>Tenslotte heeft u de juiste &Qt; libraries (inclusief de development pakketten) voor de versie van de &kde; software nodig die u gaat bouwen. &kdesrc-build; ondersteunt niet officieel het bouwen met &Qt; 5 (de huidige major versie), het wordt daarom aangeraden om de development pakketten van uw distributie te gebruiken of om de KDE Community wiki page over <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/OwnQt5"
+>self-building Qt 5</ulink
+> te bestuderen. </para
+></listitem>
+</itemizedlist>
+
+<note
+><para
+>De meeste distributies van besturingssystemen hebben een methode om makkelijk de vereiste ontwikkel-programma's te installeren. Lees de Community Wiki pagina <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>Required devel packages</ulink
+> om uit te vinden of deze instructies al beschikbaar zijn.</para
+></note>
+
+<important
+><para
+>Sommige van deze pakketten zijn verdeelt in libraries (of programma's of hulpprogramma's), en ontwikkeling-pakketten U heeft in ieder geval het programma of library <emphasis
+>en</emphasis
+> het ontwikkeling-pakket daarvan nodig. </para
+></important>
+
+</sect2>
+
+<sect2 id="before-building-prepare-script">
+<title
+>&kdesrc-build; opzetten</title>
+
+<sect3 id="get-kdesrc-build">
+<title
+>&kdesrc-build; installeren</title>
+<para
+>De &kde;-ontwikkelaars wijzigingen regelmatig &kdesrc-build; om het in de pas te laten lopen met de vorderingen van de ontwikkelingen in &kde;, voegen verbeteringen toe aan de aanbevolen &kdesrc-build;-configuratie, voegen modules toe, verbeteren &cmake; flags, &etc;</para>
+
+<para
+>Daarom bevelen we aan om de &kdesrc-build; direct op te halen uit zijn broncoderepository en het daarna regelmatig bij te werken.</para>
+
+<para
+>U kunt &kdesrc-build; ophalen uit zijn broncoderepository, door de volgende commando's uit te voeren:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>clone</option
+> <option
+>https://invent.kde.org/sdk/kdesrc-build.git</option
+> <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput
+>
+</programlisting>
+
+<para
+>Vervang <option
+><replaceable
+>~/kdesrc-build</replaceable
+></option
+> door de map waarin u het wilt installeren. </para>
+
+<para
+>U kunt later &kdesrc-build; bijwerken door uit te voeren:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>cd <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput>
+<prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>pull</option
+></command
+></userinput
+>
+</programlisting>
+
+<tip
+><para
+>Wij raden aan om de &kdesrc-build; installatie-map aan uw <envar
+>PATH</envar
+> omgevingsvariabele toe te voegen, zodat u &kdesrc-build; kunt opstarten zonder dat u iedere keer het volledige pad daarvan hoeft op te geven.</para
+></tip>
+</sect3>
+
+<sect3 id="setup-rcfile">
+<title
+>Het configuratiebestand voorbereiden</title>
+
+<para
+>&kdesrc-build; gebruikt een <link linkend="configure-data"
+>configuratiebestand</link
+> om te besturen welke modulen gebouwd zijn, waarin ze geïnstalleerd zijn, enz. Dit bestand zit in <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, als <envar
+>$XDG_CONFIG_HOME</envar
+> is ingesteld).</para>
+
+<para
+>U kunt <application
+>kdesrc-build --generate-config</application
+> gebruiken om een eenvoudige configuratie voor kdesrc-build te maken. U kunt dan vervolgens het configuratiebestand <filename
+>~/.config/kdesrc-buildrc</filename
+> bewerken om de gewenste wijzigingen aan te brengen.</para>
+
+<sect4 id="setup-rcfile-manually">
+<title
+>Handmatig instellen van het configuratiebestand</title>
+
+<para
+>U kunt ook uw configuratiebestand handmatig instellen, door het meegeleverde voorbeeld configuratiebestand <filename
+>kdesrc-buildrc-kf5-sample</filename
+> naar <filename
+>~/.config/kdesrc-buildrc</filename
+> te kopiëren en vervolgens dat bestand te bewerken. <xref linkend="kdesrc-buildrc"/> heeft een handige uitleg hierover, met name de <link linkend="conf-options-table"
+>tabel met configuratieopties</link
+>. </para>
+
+<para
+>&kdesrc-build; heeft vele voorbeeld configuratiebestanden voor &kde; Frameworks 5, &plasma; 5, en andere &kde;-programma's. Lees <xref linkend="kdesrc-buildrc-including"/> voor informatie over hoe u andere configuratiebestanden van uw eigen <filename
+>kdesrc-buildrc</filename
+> kunt gebruiken. </para>
+
+<para
+>U kunt meer informatie over de syntaxis van het <link linkend="configure-data"
+>configuratiebestand</link
+> vinden in <xref linkend="configure-data"/> en in <xref linkend="kdesrc-buildrc"/>. </para>
+</sect4>
+</sect3>
+</sect2>
+</sect1
+>&configure-data; &building-and-troubleshooting; &building-specific-modules; &environment; &kde-modules-and-selection; &quick-start-conclusion; </chapter>
