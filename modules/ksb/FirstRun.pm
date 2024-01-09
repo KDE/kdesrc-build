@@ -312,6 +312,7 @@ DONE
     my $fill_placeholder = sub {
         my $option_name = shift;
         my $mode = shift;
+        $mode //= "";
 
         my $value = $gl->{$option_name};
         if ($mode eq "bool_to_str") {
@@ -331,6 +332,7 @@ DONE
     $fill_placeholder->("install-session-driver", "bool_to_str");
     $fill_placeholder->("install-environment-driver", "bool_to_str");
     $fill_placeholder->("stop-on-failure", "bool_to_str");
+    $fill_placeholder->("directory-layout");
     $fill_placeholder->("compile-commands-linking", "bool_to_str");
     $fill_placeholder->("compile-commands-export", "bool_to_str");
     $fill_placeholder->("generate-vscode-project-config", "bool_to_str");

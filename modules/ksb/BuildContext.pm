@@ -154,6 +154,7 @@ our %defaultGlobalOptions = (
     "configure-flags"      => "",
     "custom-build-command" => '',
     "cxxflags"             => "-pipe",
+    "directory-layout"     => "flat",
     "dest-dir"             => '${MODULE}', # single quotes used on purpose!
     "do-not-compile"       => "",
     "http-proxy"           => '', # Proxy server to use for HTTP.

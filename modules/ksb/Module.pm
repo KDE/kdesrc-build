@@ -999,21 +999,19 @@ sub destDir ($self)
     my $layout = $self->getOption('directory-layout');
     if ($layout eq 'flat') {
         $basePath = $self->name();
-    } else {
-        # invent layout is the modern layout for proper KDE projects
-        if ($layout eq 'invent') {
-            $basePath = $self->getOption('#kde-repo-path', 'module');
-        } else {
-            if ($layout && $layout ne 'invent' && $layout ne 'metadata' &&
-                !$self->hasOption('#warned-invalid-directory-layout')) # avoid spamming
-            {
-                warning("Invalid b[directory-layout] value: $layout. Will use b[metadata] instead for b[$self]");
-                $self->setOption('#warned-invalid-directory-layout', 1);
-            }
-            $basePath = $self->getOption('#kde-project-path', 'module');
-        }
-
+    } elsif ($layout eq 'invent') { # invent layout is the modern layout for proper KDE projects
+        $basePath = $self->getOption('#kde-repo-path', 'module');
         $basePath ||= $self->name(); # Default if not provided in repo-metadata
+    } elsif ($layout eq 'metadata') {
+        $basePath = $self->getOption('#kde-project-path', 'module');
+        $basePath ||= $self->name(); # Default if not provided in repo-metadata
+    } else {
+        if (!$self->hasOption('#warned-invalid-directory-layout')) # avoid spamming
+        {
+            warning ("y[ * Invalid b[directory-layout]y[ value: \"$layout\". Will use b[flat]y[ instead for b[$self]");
+            $self->setOption('#warned-invalid-directory-layout', 1);
+        }
+        $basePath = $self->name();
     }
 
     # Note the default dest-dir option is '${MODULE}' so this normally is used
