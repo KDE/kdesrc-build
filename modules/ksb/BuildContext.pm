@@ -169,6 +169,7 @@ our %defaultGlobalOptions = (
     "num-cores-low-mem"    => 2,   # Used only in rc-file but documented
     "override-build-system"=> "",
     "persistent-data-file" => "",
+    "qmake-options"        => "",
     "qtdir"                => "",
     "remove-after-install" => "none", # { none, builddir, all }
     "source-dir"           => "$ENV{HOME}/kde/src",
