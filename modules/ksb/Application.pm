@@ -805,18 +805,18 @@ sub _readNextLogicalLine
 
 # Takes an input line, and extracts it into an option name, and simplified
 # value. The value has "false" converted to 0, white space simplified (like in
-# Qt), and tildes (~) in what appear to be path-like entries are converted to
-# the home directory path.
+# Qt), tildes (~) in what appear to be path-like entries are converted to
+# the home directory path, and reference to global option is substituted with its value.
 #
 # First parameter is the build context (used for translating option values).
 # Second parameter is the line to split.
 # Return value is (option-name, option-value)
-sub _splitOptionAndValue
+sub _splitOptionAndValue_and_substitute_value
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $input = shift;
     my $fileName = shift->currentFilename();
-    my $optionRE = qr/\$\{([a-zA-Z0-9-]+)\}/;
+    my $optionRE = qr/\$\{([a-zA-Z0-9-_]+)\}/;  # Example of matched string is "${option-name}" or "${_option-name}".
 
     # The option is the first word, followed by the
     # flags on the rest of the line.  The interpretation
@@ -836,7 +836,6 @@ sub _splitOptionAndValue
     $value = 0 if lc($value) eq 'false';
 
     # Replace reference to global option with their value.
-    # The regex basically just matches ${option-name}.
     my ($sub_var_name) = ($value =~ $optionRE);
     while ($sub_var_name)
     {
@@ -936,6 +935,8 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
     _markModuleSource($module, $fileReader->currentFilename() . ":$.");
     $module->setOption('#entry_num', $moduleID++);
 
+    my @all_possible_options = sort keys %{$ctx->{build_options}->{global}};
+
     # Read in each option
     while (($_ = _readNextLogicalLine($fileReader)) && ($_ !~ $endRE))
     {
@@ -949,7 +950,18 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
             die make_exception('Config', "Invalid file $current_file");
         }
 
-        my ($option, $value) = _splitOptionAndValue($ctx, $_, $fileReader);
+        my ($option, $value) = _splitOptionAndValue_and_substitute_value($ctx, $_, $fileReader);
+
+
+        if (substr($option, 0, 1) eq "_") {  # option names starting with underscore are treated as user custom variables
+            $ctx->setOption($option, $value);  # merge the option to the build context right now, so we could already (while parsing global section) use this variable in other global options values.
+        }
+        elsif (!grep {$_ eq $option} @all_possible_options) {
+            if ($option eq "kdedir") {  # todo This message is temporary. Remove it after 09.04.2024.
+                error "r[Please edit your config. Replace \"b[kdedir]r[\" with \"b[install-dir]r[\".";
+            }
+            die ksb::BuildException::Config->new($option, "Unrecognized option \"$option\" found at $current_file:$.");
+        }
 
         eval { $module->setOption($option, $value); };
         if (my $err = $@) {
