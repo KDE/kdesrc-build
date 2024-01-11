@@ -1,0 +1,549 @@
+<sect1 id="advanced-features">
+<title
+>Característiques avançades</title>
+
+<sect2 id="partial-builds">
+<title
+>Construir parcialment un mòdul</title>
+<para
+>És possible construir només peces des d'un sol mòdul del &kde;. Per exemple, possiblement voldreu compilar només un programa d'un mòdul. El &kdesrc-build; té característiques per a facilitar-ho. Hi ha diverses maneres complementàries per a fer-ho. </para>
+
+<sect3 id="not-compiling">
+<title
+>Eliminar directoris d'una construcció</title>
+<para
+>És possible descarregar tot un repositori però fent que el sistema de construcció ometi alguns directoris quan realitza la construcció. Això requereix que el mòdul empri el &cmake; i que el sistema de compilació del mòdul permeti que l'eliminació del directori sigui opcional. </para>
+
+<para
+>Això es controla amb l'opció &do-not-compile;.</para>
+
+<important
+><para
+>Aquesta opció almenys requereix que el sistema de construcció del mòdul es reconfiguri després de canviar-la. Això es fa utilitzant l'ordre <userinput
+><command
+>kdesrc-build</command
+> <option
+>&cmd-reconfigure;</option
+> <option
+><replaceable
+>mòdul</replaceable
+></option
+></userinput
+>. </para
+></important>
+
+<informalexample>
+<para
+>Per eliminar el directori <filename class="directory"
+>python</filename
+> del procés de construcció del kdebindings:</para>
+
+<screen
+>module <replaceable
+>kdebindings</replaceable>
+  &do-not-compile; <replaceable
+>python</replaceable>
+end module
+</screen>
+
+</informalexample>
+
+<note
+><para
+>Aquesta funció depèn d'algunes convencions estàndard utilitzades en la majoria dels mòduls del &kde;. Per tant, podria no funcionar per a tots els programes.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="using-branches">
+<title
+>Admetre branques i etiquetatge al &kdesrc-build;</title>
+
+<sect3 id="branches-and-tags">
+<title
+>Què són les branques i les etiquetes?</title>
+
+<para
+>El &git; admet la gestió de l'historial del codi font del &kde;. El &kde; utilitza aquest suport per a crear branques per al desenvolupament i per etiquetar el repositori de tant en tant amb una nova versió. </para>
+
+<para
+>Per exemple, els desenvolupadors del &kmail; poden estar treballant en una nova característica en una branca diferent per evitar trencar la versió utilitzada per la majoria dels desenvolupadors. Aquesta branca té un desenvolupament continu en el seu interior, fins i tot mentre la branca principal (anomenada master) pot seguir amb el seu desenvolupament. </para>
+
+<para
+>Una etiqueta, d'altra banda, és punt específic del repositori de codi font en una posició en el temps. L'equip d'administració del &kde;, l'utilitza per a marcar una versió de codi adequada per al seu llançament i permetre que els desenvolupadors encara treballin en el codi. </para>
+
+</sect3>
+
+<sect3 id="branch-support">
+<title
+>Com utilitzar les branques i les etiquetes</title>
+
+<para
+>El suport per a les branques i etiquetes es gestiona mitjançant un conjunt d'opcions, les quals van des d'una sol·licitud genèrica per a una versió, fins a un &url; específic per descarregar per a usuaris avançats. </para>
+
+<para
+>El mètode més fàcil és utilitzar les opcions «&branch;» i «&tag;». Simplement utilitzeu l'opció juntament amb el nom de la branca o etiqueta desitjada per a un mòdul, i el &kdesrc-build; intentarà determinar la ubicació apropiada dins del repositori del &kde; per descarregar. Això funciona molt bé per a la majoria dels mòduls del &kde;.</para>
+
+<informalexample>
+<para
+>Per a descarregar el kdelibs del &kde; 4.6 (el qual simplement es coneix com la branca 4.6): </para>
+
+<screen
+>module kdelibs
+  branch <replaceable
+>4.6</replaceable>
+  # Altres opcions...
+end module
+</screen>
+
+<para
+>O, per a descarregar el kdemultimedia tal com es va llançar amb el &kde; 4.6.1:</para>
+
+<screen
+>module kdemultimedia
+  tag <replaceable
+>4.6.1</replaceable>
+  # Altres opcions...
+end module
+</screen>
+
+</informalexample>
+
+<tip
+><para
+>Podeu especificar un valor global de branca. Però si ho feu, no oblideu especificar una branca diferent per als mòduls que no han d'utilitzar la branca global! </para
+></tip>
+</sect3>
+
+</sect2>
+
+<sect2 id="stopping-the-build-early">
+<title
+>Aturar aviat la construcció</title>
+
+<sect3 id="the-build-continues">
+<title
+>La construcció continua normalment fins i tot si es produeixen fallades</title>
+
+<para
+>El &kdesrc-build; normalment actualitzarà, construirà i instal·larà tots els mòduls a la llista especificada de mòduls a construir, fins i tot si un mòdul falla en la seva construcció. Habitualment, això és una comoditat per permetre actualitzar els paquets de programari fins i tot si es comet un error simple en un dels repositoris d'origen durant el desenvolupament que fa que la construcció es trenqui. </para>
+
+<para
+>No obstant això, és possible que vulgueu que el &kdesrc-build; aturi el que està fent una vegada que un mòdul falli en construir i instal·lar. Això pot ajudar a estalviar temps que es malgastarà intentant avançar quan els mòduls que queden a la llista de construcció tampoc no es podran construir amb èxit, especialment si mai heu construït correctament els mòduls a la llista. </para>
+
+</sect3>
+
+<sect3 id="stop-on-failure-stops-early">
+<title
+>No s'atura aviat amb --no-stop-on-failure</title>
+
+<para
+>El mètode primari per fer-ho és usar l'opció de la línia d'ordres <link linkend="cmdline-stop-on-failure"
+>--no-stop-on-failure</link
+> quan executeu &kdesrc-build;. </para>
+
+<para
+>Aquesta opció també es pot definir al <link linkend="conf-stop-on-failure"
+>fitxer de configuració</link
+> per a que sigui el mode normal d'operació. </para>
+
+<para
+>També és possible dir-li al &kdesrc-build; en temps d'execució que deixi de construir <emphasis
+>després de</emphasis
+> completar el mòdul actual en el qual està treballant. Això és en contraposició a interrompre el &kdesrc-build; utilitzant una ordre com <keycombo action="simul"
+>&Ctrl;<keycap
+>C</keycap
+></keycombo
+>, que interromp immediatament el &kdesrc-build;, perdent el progrés del mòdul actual. </para>
+
+<important
+><para
+>La interrupció del &kdesrc-build; durant la instal·lació d'un mòdul quan l'opció <link linkend="conf-use-clean-install"
+>use-clean-install</link
+> està activada vol dir que el mòdul interromput no estarà disponible fins que el &kdesrc-build; sigui capaç de construir el mòdul amb èxit!</para>
+
+<para
+>Si cal interrompre el &kdesrc-build; sense permetre una aturada ordenada en aquesta situació, almenys intenteu evitar fer-ho mentre el &kdesrc-build; estigui instal·lant un mòdul.</para>
+</important>
+
+</sect3>
+
+<sect3 id="stopping-early-without-stop-on-failure">
+<title
+>Atureu aviat el &kdesrc-build; quan «stop-on-failure» és «false»</title>
+
+<para
+>Com s'ha esmentat anteriorment, és possible fer que el &kdesrc-build; s'aturi ordenadament aviat una vegada hagi completat el mòdul en el qual està treballant actualment. Per fer-ho, cal enviar el senyal POSIX <literal
+>HUP</literal
+> al &kdesrc-build; </para>
+
+<para
+>Això podeu fer-ho amb una ordre com <command
+>pkill</command
+> (en els sistemes &Linux;) així:</para>
+
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>pkill <option
+>-HUP</option
+> kdesrc-build</command
+></userinput
+>
+</programlisting>
+
+<para
+>Si es fa correctament, veureu un missatge a la sortida del &kdesrc-build; semblant a:</para>
+
+<programlisting
+>[ build ] recv SIGHUP, acabarà després d'aquest mòdul
+</programlisting>
+
+<note>
+<para
+>El &kdesrc-build; pot mostrar aquest missatge diverses vegades depenent del nombre de processos individuals del &kdesrc-build; que estiguin actius. Això és normal i no una indicació d'un error.</para>
+</note>
+
+<para
+>Una vegada que el &kdesrc-build; hagi reconegut el senyal, deixarà de processar després de construir i instal·lar el mòdul actual. Si el &kdesrc-build; encara està actualitzant el codi font quan es rebi la petició, el &kdesrc-build; s'aturarà després que s'hagi completat l'actualització del codi font del mòdul. Una vegada que els processos d'actualització i construcció s'hagin aturat aviat, el &kdesrc-build; imprimirà els seus resultats parcials i sortirà. </para>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="building-successfully">
+<title
+>Com el &kdesrc-build; mira d'assegurar una correcta construcció</title>
+
+<sect3 id="automatic-rebuilds">
+<title
+>Reconstruccions automàtiques</title>
+
+<para
+>El &kdesrc-build; solia incloure característiques per intentar reconstruir automàticament el mòdul després d'una fallada (ja que de vegades aquest reintent funcionava, en aquests moments a causa d'errors en el sistema de construcció). Gràcies al canvi a &cmake;, el sistema de construcció ja no pateix aquests errors, de manera que el &kdesrc-build; no intentarà compilar un mòdul més d'una vegada. No obstant això, hi ha situacions en què el &kdesrc-build; prendrà mesures de manera automàtica:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Si canvieu <link linkend="conf-configure-flags"
+>configure-flags</link
+> o <link linkend="conf-cmake-options"
+>cmake-options</link
+> per a un mòdul, llavors el &kdesrc-build; ho detectarà i tornarà a executar automàticament el <command
+>configure</command
+> o <command
+>cmake</command
+> per a aquest mòdul.</para
+></listitem>
+
+<listitem
+><para
+>Si el sistema de construcció no existeix (fins i tot si el &kdesrc-build; no l'ha suprimit), el &kdesrc-build; el tornarà a crear automàticament. Això és útil per a permetre realitzar una <link linkend="cmdline-refresh-build"
+>--refresh-build</link
+> completa per a un mòdul específic sense que es realitzi en els altres mòduls.</para
+></listitem>
+
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="manual-rebuilds">
+<title
+>Reconstrucció manual d'un mòdul</title>
+<para
+>Si realitzeu un canvi la configuració de les opcions d'un mòdul, o el codi font del mòdul canvia d'una manera que el &kdesrc-build; no reconeix, és possible que hàgiu de reconstruir el mòdul manualment.</para>
+
+<para
+>Podreu fer això, executant <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+><replaceable
+>mòdul</replaceable
+></option
+></userinput
+>. </para>
+
+<para
+>Si us agradaria que el &kdesrc-build; reconstrueixi automàticament el mòdul durant la propera actualització normal de la construcció, podreu crear un fitxer especial. Cada mòdul té un directori de construcció. Si creeu un fitxer anomenat <filename
+>.refresh-me</filename
+> en el directori de construcció d'un mòdul, el &kdesrc-build; reconstruirà el mòdul la pròxima vegada que succeeixi el procés de construcció, encara que normalment realitzaria la construcció incremental, la qual és més ràpida.</para>
+
+<tip>
+<para
+>De manera predeterminada, el directori de construcció és <filename class="directory"
+>~/kde/build/<replaceable
+>mòdul</replaceable
+>/</filename
+>. Si canvieu la configuració de l'opció &build-dir;, utilitzeu-la en lloc de <filename class="directory"
+>~/kde/build</filename
+>.</para>
+</tip>
+
+<informalexample>
+<para
+>Reconstruïu utilitzant <filename
+>.refresh-me</filename
+> per al mòdul <replaceable
+>kdelibs</replaceable
+>:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>touch</command
+> <filename
+>~/kdesrc/build/<replaceable
+>kdelibs</replaceable
+>/.refresh-me</filename
+></userinput>
+<prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+</informalexample>
+</sect3>
+
+</sect2>
+
+<sect2 id="changing-environment">
+<title
+>Canviar la configuració de les variables d'entorn</title>
+<para
+>Normalment, el &kdesrc-build; utilitza l'entorn que es troba present quan s'inicia en executar els programes per a realitzar les actualitzacions i construccions. Això és útil quan executeu el &kdesrc-build; des de la línia d'ordres.</para>
+
+<para
+>No obstant això, possiblement voldreu canviar la configuració de les variables d'entorn per a les quals el &kdesrc-build; no proporciona directament una opció. (Per exemple, per establir qualsevol variable d'entorn requerida quan s'executa el &kdesrc-build; en un temporitzador com el &cron;). Això és possible amb l'opció «&set-env;».</para>
+
+<para
+>A diferència de la majoria de les opcions, es pot establir més d'una vegada i accepta dues entrades, separades per un espai. El primer és el nom de la variable d'entorn a establir, i la resta de la línia serà el valor.</para>
+
+<informalexample>
+<para
+>Establir <userinput
+><envar
+>DISTRO</envar
+>=<replaceable
+>BSD</replaceable
+></userinput
+> per a tots els mòduls:</para>
+<screen
+>global
+  set-env <replaceable
+>DISTRO</replaceable
+> <replaceable
+>BSD</replaceable>
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="resuming">
+<title
+>Reprendre les construccions</title>
+
+<sect3 id="resuming-failed">
+<title
+>Reprendre una construcció fallida o interrompuda</title>
+
+<para
+>Podreu dir-li al &kdesrc-build; que comenci a construir des d'un mòdul diferent del què normalment faria. Això pot ser útil quan falla un conjunt de mòduls, o si cancel·leu al mig d'una execució de construcció. Podeu controlar això utilitzant les opcions &cmd-resume-from; i l'opció &cmd-resume-after;.</para>
+
+<note
+><para
+>Les versions antigues de &kdesrc-build; ometien l'actualització del codi font en reprendre una construcció. Això ja no es fa de manera predeterminada, però sempre podreu utilitzar l'opció <option
+>--no-src</option
+> de la línia d'ordres per ometre l'actualització del codi font.</para
+></note>
+
+<informalexample>
+<para
+>Reprendre la construcció a partir del kdebase:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-from=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<informalexample>
+<para
+>Reprendre la construcció a partir del kdebase (en el cas que s'hagi solucionat el problema manualment i instal·lat el mòdul vosaltres mateixos):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-after=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<para
+>Si l'última construcció de &kdesrc-build; va acabar amb una fallada de construcció, també podreu utilitzar l'opció <link linkend="cmdline-resume"
+>--resume</link
+> de la línia d'ordres, la qual reprendrà la darrera construcció que comenci en el mòdul que va fallar. Les actualitzacions del codi font i de les metadades també s'ometran (però si les necessiteu, en general serà millor utilitzar <link linkend="cmdline-resume-from"
+>--resume-from</link
+> en el seu lloc).</para>
+
+
+</sect3>
+
+<sect3 id="ignoring-modules">
+<title
+>Ignorar mòduls en una construcció</title>
+
+<para
+>De manera similar a la forma en què podeu <link linkend="resuming-failed"
+>reprendre la construcció a partir d'un mòdul</link
+>, podreu optar per actualitzar i construir-ho tot normalment, però ignorant un conjunt de mòduls.</para>
+
+<para
+>Podreu fer això utilitzant l'opció &cmd-ignore-modules;. Aquesta opció li diu al &kdesrc-build; que ignori tots els mòduls a la línia d'ordres en realitzar l'actualització i la construcció.</para>
+
+<informalexample>
+<para
+>Ignorar extragear/multimedia i kdereview durant una execució completa:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--ignore-modules</option
+> <replaceable
+>extragear/multimedia kdereview</replaceable
+></userinput
+>
+</screen>
+</informalexample>
+
+</sect3>
+</sect2>
+
+<sect2 id="changing-env-from-cmd-line">
+<title
+>Canviar les opcions des de la línia d'ordres</title>
+
+<sect3 id="changing-global-opts">
+<title
+>Canviar les opcions globals</title>
+<para
+>Podeu canviar la configuració de les opcions llegides directament des del <link linkend="configure-data"
+>fitxer de configuració</link
+> amb la línia d'ordres. Aquest canvi superposarà l'opció del fitxer de configuració, però només és temporal. Només té efecte mentre segueixi present a la línia d'ordres.</para>
+
+<para
+>El &kdesrc-build; permet canviar les opcions nomenades com <replaceable
+>nom_opció</replaceable
+> passant un argument a la línia d'ordres en la forma <userinput
+><option
+>--<replaceable
+>nom_opció</replaceable
+>=valor</option
+></userinput
+>. El &kdesrc-build; reconeixerà quan no sàpiga quina és l'opció i cercarà el nom a la seva llista de noms d'opció. Si no reconeix el nom, us avisarà, en cas contrari, recordarà el valor en el qual la vàreu establir i superposarà qualsevol opció des del fitxer de configuració.</para>
+
+<informalexample>
+<para
+>Establiu l'opció &source-dir; a <filename
+>/dev/null</filename
+> per a proves:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+> <option
+>--<replaceable
+>source-dir</replaceable
+>=<replaceable
+>/dev/null</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+<sect3 id="changing-module-opts">
+<title
+>Canviar les opcions dels mòduls</title>
+<para
+>També és possible canviar les opcions només per a un mòdul específic. La sintaxi és similar a: --<replaceable
+>mòdul</replaceable
+>,<replaceable
+>nom_opció</replaceable
+>=<replaceable
+>valor</replaceable
+>. </para>
+
+<para
+>Aquest canvi superposarà qualsevol opció duplicada per al mòdul que es troba al <link linkend="configure-data"
+>fitxer de configuració</link
+>, i només s'aplicarà mentre es passa l'opció sobre la línia d'ordres.</para>
+
+<informalexample>
+<para
+>Utilitzant un directori de construcció diferent per al mòdul kdeedu:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--<replaceable
+>kdeedu</replaceable
+>,<replaceable
+>build-dir</replaceable
+>=<replaceable
+>temp-build</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+</sect2>
+
+</sect1>

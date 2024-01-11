@@ -1,0 +1,505 @@
+<sect1 id="kde-modules-and-selection">
+<title
+>Organitzar i seleccionar els mòduls</title>
+
+<sect2 id="kde-layers">
+<title
+>Organització del programari KDE</title>
+
+<para
+>El programari &kde; es divideix en diferents components, molts dels quals poden ser construïts pel &kdesrc-build;. Comprendre aquesta organització us ajudarà a seleccionar adequadament els mòduls de programari que voleu construir. </para>
+
+<orderedlist>
+<listitem
+><para
+>En el nivell més baix es troba la biblioteca de les &Qt;, la qual és una biblioteca de «joc d'eines» multiplataforma molt potent. El &kde; es basa en les &Qt;, i algunes de les biblioteques que no són &kde; requerides pel &kde; també es basen en les &Qt;. El &kdesrc-build; pot construir les &Qt;, o fer servir el que ja es troba en el vostre sistema si és una versió prou recent.</para
+></listitem>
+
+<listitem
+><para
+>Per sobre de les &Qt;, es requereixen les biblioteques necessàries perquè el programari &kde; funcioni. Algunes d'aquestes biblioteques no es consideren part del &kde; a causa de la seva naturalesa genèrica, però segueixen sent essencials per a la Plataforma &kde;. Aquestes biblioteques es recopilen sota una agrupació de mòduls <literal
+>kdesupport</literal
+>, però no es consideren part de les biblioteques «Frameworks».</para>
+</listitem>
+
+<listitem
+><para
+>A més d'aquestes biblioteques essencials, venen els <ulink url="https://community.kde.org/Frameworks"
+>Frameworks del &kde;</ulink
+>, de vegades abreujats com a KF5, els quals són les biblioteques essencials per a l'escriptori de Plasma del &kde;, les aplicacions &kde; i un altre programari de tercers. </para
+> </listitem>
+
+<listitem
+><para
+>A més dels Frameworks, venen diverses coses diferents:</para>
+    <itemizedlist>
+        <listitem
+><para
+>Aplicacions «de tercers». Aquestes són les aplicacions que fan servir els Frameworks del &kde; o que estan dissenyades per executar-se sota el Plasma del &kde; però que no estan creades ni associades amb el projecte &kde;.</para
+></listitem>
+
+        <listitem
+><para
+>Plasma, el qual és un entorn d'escriptori complet d'«espai de treball». Això és el que els usuaris veuen normalment quan «inicien la sessió en el &kde;».</para
+></listitem>
+
+        <listitem
+><para
+>El conjunt d'aplicacions del &kde;. Aquesta és una col·lecció de programari útil inclòs amb la Plataforma i l'escriptori &plasma;, agrupats en mòduls individuals, que inclouen utilitats com el &dolphin;, jocs com el <application
+>KSudoku</application
+> i programari de productivitat llançat pel &kde; com el &kontact;.</para
+></listitem>
+
+        <listitem
+><para
+>Finalment, hi ha una col·lecció de programari (també recopilada en mòduls) el desenvolupament és compatible amb els recursos del &kde; (com la traducció, control del codi font, seguiment d'errors, &etc;) però el &kde; no l'allibera com a part del Plasma o el conjunt d'aplicacions. Aquests mòduls es coneixen com a «Extragear». </para
+></listitem>
+    </itemizedlist>
+</listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="selecting-modules">
+<title
+>Seleccionar els mòduls a construir</title>
+
+<para
+>La selecció de quins dels mòduls possibles per a construir estan controlats pel <link linkend="kdesrc-buildrc"
+>fitxer de configuració</link
+>. Després de la secció <literal
+>global</literal
+> hi ha una llista de mòduls per a construir, entre claudàtors per mòdul... línies de mòdul final. Es mostra una entrada d'exemple per a un mòdul a l'<xref linkend="conf-module-example"/>.</para>
+
+<example id="conf-module-example">
+<title
+>Exemple d'una entrada «module» al fitxer de configuració</title>
+<programlisting
+>module <replaceable
+>kdesrc-build-git</replaceable>
+    # Les opcions per a aquest mòdul van aquí, exemple:
+    <link linkend="conf-repository"
+>repository</link
+> kde:kdesrc-build
+    <link linkend="conf-make-options"
+>make-options</link
+> -j4 # Executa 4 compilacions alhora
+end module
+</programlisting>
+</example>
+
+<note
+><para
+>A la pràctica, aquesta construcció de mòdul generalment no s'utilitza directament. En canvi, la majoria dels mòduls s'especifiquen mitjançant conjunts de mòduls com es descriu a continuació.</para
+></note>
+
+<para
+>Quan només s'utilitzen entrades <literal
+>module</literal
+>, el &kdesrc-build; les construeix en l'ordre en què els llisteu, i no intenta descarregar cap altre repositori que no sigui el que especifiqueu directament. </para>
+
+</sect2>
+
+<sect2 id="module-sets">
+<title
+>Conjunts de mòduls</title>
+
+<para
+>El codi font del &kde; es descompon en una gran quantitat de repositoris relativament petits basats en Git. Per a facilitar la gestió de la gran quantitat de repositoris involucrats en qualsevol instal·lació útil basada en el &kde;, el &kdesrc-build; admet l'agrupació de múltiples mòduls i el tractament del grup com a un «conjunt de mòduls». </para>
+
+<sect3 id="module-set-concept">
+<title
+>El concepte bàsic del conjunt de mòduls</title>
+
+<para
+>En utilitzar un conjunt de mòduls, podreu declarar amb rapidesa molts mòduls de Git que es descarregaran i construiran, com si haguéssiu escrit una declaració de mòdul separada per a cadascun. L'opció <link linkend="conf-repository"
+>repository</link
+> es gestiona especialment per a configurar des d'on es descarregarà cada mòdul, i totes les altres opcions contingudes en el conjunt de mòduls es copiaran a cada mòdul generat d'aquesta manera.</para>
+
+<example id="example-using-module-sets">
+<title
+>Emprar conjunts de mòduls</title>
+<programlisting
+>global
+    <option
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></option
+> <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+module <replaceable
+>qt</replaceable>
+    # Opcions eliminades per brevetat:
+end module
+
+module-set <replaceable
+>kde-support-libs</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <replaceable
+>kde-git</replaceable>
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>automoc</replaceable
+> <replaceable
+>attica</replaceable
+> <replaceable
+>akonadi</replaceable>
+end module-set
+
+# Altres mòduls segons sigui necessari...
+module <replaceable
+>kdesupport</replaceable>
+end module
+</programlisting>
+</example>
+
+<para
+>En l'<xref linkend="example-using-module-sets"/> es mostra un breu conjunt de mòduls. Quan el &kdesrc-build; troba aquest conjunt de mòduls, actua com si, per a cada mòdul indicat a <option
+>use-modules</option
+>, s'hagués declarat un mòdul individual, amb el seu <option
+>repository</option
+> igual que <option
+>repository</option
+> del «module-set» seguit immediatament pel nom del mòdul indicat.</para>
+
+<para
+>A més, es poden passar altres opcions en un conjunt de mòduls, les quals es copiaran a cada mòdul nou que es crea d'aquesta manera. En utilitzar el conjunt de mòduls, és possible declarar amb rapidesa molts mòduls Git que es basen en el mateix URL del fitxer. A més, és possible assignar un nom als conjunts de mòduls (com es mostra a l'exemple), el qual permet consultar amb rapidesa tot el grup de mòduls des de la línia d'ordres.</para>
+
+</sect3>
+<sect3 id="module-sets-kde">
+<title
+>Suport especial per a conjunts de mòduls del KDE</title>
+
+<para
+>El suport del conjunt de mòduls descrit fins ara és general per a qualsevol mòdul basat en Git. Per als repositoris Git del &kde;, el &kdesrc-build; inclou característiques addicionals per a facilitar les coses als usuaris i desenvolupadors. Aquest suport s'habilita especificant <literal
+>kde-projects</literal
+> com el <option
+>repository</option
+> per al conjunt de mòduls. </para>
+
+<para
+>El &kdesrc-build; normalment només construeix els mòduls que heu llistat en el fitxer de configuració, en l'ordre en què els heu llistat. Però amb un conjunt de mòduls del <literal
+>kde-projects</literal
+>, el &kdesrc-build; pot fer una resolució de dependències dels mòduls específics del &kde;, i a més inclou automàticament mòduls en la construcció, fins i tot si només s'especifica indirectament.</para>
+
+<example id="example-using-kde-module-sets">
+<title
+>Emprar conjunts de mòduls «kde-projects»</title>
+<programlisting
+># Només afegeix un mòdul per al juk (el repo kde/kdemultimedia/juk)
+module-set <replaceable
+>juk-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>juk</replaceable>
+end module-set
+
+# Afegeix tots els mòduls a kde/multimedia/*, inclòs el juk,
+# però no les altres dependències
+module-set <replaceable
+>multimedia-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde/multimedia</replaceable>
+end module-set
+
+# Afegeix tots els mòduls que es troben a kde/multimedia/*,
+# i totes les dependències a «kde-projects» des de fora del
+# kde/kdemultimedia
+module-set <replaceable
+>multimedia-deps-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde/multimedia</replaceable>
+    <option
+>include-dependencies</option
+> <replaceable
+>true</replaceable>
+end module-set
+
+# Tots els mòduls creats a partir d'aquests tres conjunts de mòduls es
+# col·locaran automàticament en l'ordre de dependència adequat,
+# independentment de la configuració de les dependències d'inclusió
+</programlisting>
+</example>
+
+<tip
+><para
+>Aquesta construcció del conjunt de mòduls <literal
+>kde-projects</literal
+> és el mètode principal per a declarar quins mòduls voleu construir.</para
+></tip>
+
+<para
+>Tots els conjunts de mòduls utilitzen les opcions <link linkend="conf-repository"
+>repository</link
+> i <link linkend="conf-use-modules"
+>use-modules</link
+>. Els conjunts de mòduls <link linkend="kde-projects-module-sets"
+><literal
+>kde-projects</literal
+></link
+> té un valor <option
+>repository</option
+> predefinit, però altres tipus de conjunts de mòduls també utilitzaran l'opció <link linkend="conf-git-repository-base"
+>git-repository-base</link
+>. </para>
+</sect3>
+
+</sect2>
+
+<sect2 id="kde-projects-module-sets">
+<title
+>La base de dades oficial de mòduls del &kde;</title>
+
+<para
+>Els repositoris Git del &kde; permeten agrupar mòduls Git relacionats en col·leccions de mòduls relacionats (&pex;, kdegraphics). Git no reconeix aquestes agrupacions, però el &kdesrc-build; les pot comprendre, utilitzant <link linkend="module-sets"
+>conjunts de mòduls</link
+> amb una opció <option
+>repository</option
+> establerta a «<literal
+>kde-projects</literal
+>».</para>
+
+<para
+>El &kdesrc-build; reconeixerà que el repositori <literal
+>kde-projects</literal
+> necessita un tractament especial i ajustarà el procés de construcció adequadament. Entre altres coses, el &kdesrc-build; farà:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Descarrega l'última base de dades de mòduls des de l'<ulink url="https://commits.kde.org/"
+>arxiu git del &kde;</ulink
+>.</para
+></listitem>
+
+<listitem
+><para
+>Intenteu trobar un mòdul amb el nom indicat a l'opció <option
+>use-modules</option
+> del conjunt de mòduls en aquesta base de dades.</para
+></listitem>
+
+<listitem
+><para
+>Per a cada mòdul que es trobi, el &kdesrc-build; cercarà el repositori apropiat a la base de dades, en funció de l'opció <link linkend="conf-branch-group"
+>branch-group</link
+> vigent. Si hi ha un repositori i està actiu per al grup branca, el &kdesrc-build; el farà servir automàticament per a descarregar o actualitzar el codi font. </para
+></listitem>
+
+</itemizedlist>
+
+<note
+><para
+>A la base de dades actual, alguns grups de mòduls no només tenen una col·lecció de mòduls, sinó que <emphasis
+>també</emphasis
+> declaren el seu propi repositori &git;. En aquestes situacions, el &kdesrc-build; preferirà el repositori &git; del grup en lloc d'incloure els repositoris dels fills. </para
+></note>
+
+<para
+>El següent exemple mostra com utilitzar la base de dades del mòdul &kde; per a instal·lar la biblioteca multimèdia Phonon.</para>
+
+<informalexample>
+<programlisting
+>module-set <replaceable
+>media-support</replaceable>
+    # Aquesta opció haurà de ser «kde-projects» per utilitzar la base de dades dels mòduls.
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Aquesta opció tria quins mòduls cercar a la base de dades.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>phonon/phonon</replaceable
+> <replaceable
+>phonon-gstreamer</replaceable
+> <replaceable
+>phonon-vlc</replaceable>
+end module-set
+</programlisting>
+</informalexample>
+
+<tip
+><para
+>S'utilitza <literal
+>phonon/phonon</literal
+>, ja que (amb la base de dades del projecte actual) el &kdesrc-build; hauria de decidir entre el grup de projectes anomenat «phonon» o el projecte individual anomenat «phonon». Actualment, el &kdesrc-build; triarà el primer, el qual generarà molts més dorsals dels necessaris.</para
+></tip>
+
+<para
+>El següent exemple potser és més realista i mostra una característica només disponible amb la base de dades de mòduls del &kde;: construir totes les aplicacions gràfiques del &kde; amb una sola declaració.</para>
+
+<informalexample>
+<programlisting
+>module-set <replaceable
+>kdegraphics</replaceable>
+    # Aquesta opció haurà de ser «kde-projects» per utilitzar la base de dades dels mòduls.
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Aquesta opció tria quins mòduls cercar a la base de dades.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <literal
+>kdegraphics/libs</literal
+> <literal
+>kdegraphics/*</literal>
+end module-set
+</programlisting>
+</informalexample>
+
+<para
+>Aquí es demostren dues habilitats importants:</para>
+
+<orderedlist>
+
+<listitem
+><para
+>El &kdesrc-build; permet especificar mòduls que són descendents d'un mòdul indicat, sense construir el mòdul pare, utilitzant la sintaxi <userinput
+><replaceable
+>nom_mòdul</replaceable
+>/*</userinput
+>. En realitat, es requereix en aquest cas, ja que el mòdul base, kdegraphics, està marcat com a inactiu perquè no es construeixi accidentalment juntament amb els seus mòduls fills. L'especificació dels mòduls descendents permet que el &kdesrc-build; ometi el mòdul inhabilitat. </para
+></listitem>
+
+<listitem
+><para
+>El &kdesrc-build; tampoc afegirà un mòdul indicat a la llista de construcció més d'una vegada. Això permet configurar manualment <literal
+>kdegraphics/libs</literal
+> per a construir-lo primer, abans que la resta del <literal
+>kdegraphics</literal
+>, sense intentar construir <literal
+>kdegraphics/libs</literal
+> dues vegades. Això solia ser necessari per al maneig adequat de les dependències, i avui segueix sent una opció alternativa en cas que la base de dades del projecte &kde; no tingui metadades sobre les dependències. </para
+></listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="ignoring-project-modules">
+<title
+>Filtrar mòduls del projecte &kde;</title>
+
+<para
+>Podeu decidir que voleu construir tots els programes dins d'una agrupació de mòduls del &kde;, <emphasis
+>excepte</emphasis
+> un programa indicat.</para>
+
+<para
+>Per exemple, el grup <literal
+>kdeutils</literal
+> inclou un programa anomenat <application
+>kremotecontrol</application
+>. Si el vostre ordinador no té el maquinari adequat per a rebre els senyals enviats pels controls remots, llavors podríeu decidir que preferiu no descarregar, construir i instal·lar el <application
+>kremotecontrol</application
+> cada vegada que actualitzeu el <literal
+>kdeutils</literal
+>.</para>
+
+<para
+>Podeu aconseguir això utilitzant l'opció de configuració <link linkend="conf-ignore-modules"
+>ignore-modules</link
+>. A la línia d'ordres, l'<link linkend="ignoring-modules"
+>opció &cmd-ignore-modules;</link
+> fa el mateix, però és més oportú per a filtrar un mòdul només una vegada. </para>
+
+<example id="example-ignoring-a-module">
+<title
+>Exemple per ignorar un mòdul «kde-project» en un grup</title>
+<programlisting
+>module-set <replaceable
+>utils</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Aquesta opció tria quins mòduls cercar a la base de dades.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>kdeutils</replaceable>
+
+    # Aquesta opció «manlleva» aquests mòduls dels mòduls escollits
+    # anteriorment per «use-modules».
+    <option
+><link linkend="conf-ignore-modules"
+>ignore-modules</link
+></option
+> <replaceable
+>kremotecontrol</replaceable>
+end module-set
+
+module-set <replaceable
+>graphics</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Aquesta opció tria quins mòduls cercar a la base de dades.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>extragear/graphics</replaceable>
+
+    # Aquesta opció «manlleva» aquests mòduls dels mòduls escollits
+    # anteriorment per «use-modules».
+    # En aquest cas, *ambdós* extragear/graphics/kipi-plugins i
+    # extragear/graphics/kipi-plugins/kipi-plugins-docs seran ignorats
+    <option
+><link linkend="conf-ignore-modules"
+>ignore-modules</link
+></option
+> <replaceable
+>extragear/graphics/kipi-plugins</replaceable>
+end module-set
+</programlisting>
+</example>
+
+</sect2>
+
+</sect1>

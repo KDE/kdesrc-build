@@ -1,0 +1,209 @@
+<chapter id="features">
+<title
+>Característiques de l'script</title>
+
+<sect1 id="features-overview">
+<title
+>Resum de les característiques</title>
+
+<para
+>Característiques incloses de &kdesrc-build;: </para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Podeu «fingir» fer les operacions. Si passeu <option
+>--pretend</option
+> o <option
+>-p</option
+> a la línia d'ordres, l'script donarà una descripció detallada de les ordres que esteu a punt d'executar, sense executar-lo realment. No obstant això, si mai heu executat el &kdesrc-build;, voldreu executar primer l'ordre <command
+>kdesrc-build <option
+><link linkend="cmdline-metadata-only"
+>--metadata-only</link
+></option
+></command
+> només perquè funcioni <option
+>--pretend</option
+>. <tip
+><para
+>Per obtenir una descripció encara més detallada del que està fent el &kdesrc-build;, intenteu utilitzar l'opció <option
+>--debug</option
+>. </para
+></tip>
+
+</para
+></listitem>
+
+<listitem
+><para
+>El &kdesrc-build; permet extreure ràpidament els mòduls. Si el mòdul que esteu extraient ja s'ha extret anteriorment, llavors el &kdesrc-build; descarregarà només les comissions que encara no estan al vostre ordinador. </para>
+
+<tip
+><para
+>En general, no hi ha necessitat de cap preparació especial per a realitzar l'extracció inicial d'un mòdul Git, ja que el repositori Git complet haurà de descarregar-se igualment, de manera que és fàcil per al servidor determinar què enviar.</para
+></tip>
+
+<para
+>Això és més ràpid i ajuda a manllevar la càrrega en els servidors anònims de &git; de kde.org.</para>
+</listitem>
+
+<listitem
+><para
+>Es proporciona una altra acceleració en iniciar el procés de construcció d'un mòdul tan aviat com s'hagi descarregat el codi font d'aquest mòdul. (Disponible des de la versió 1.6). </para
+></listitem>
+
+<listitem
+><para
+>Excel·lent suport per a compilar la biblioteca de les &Qt; (en cas que el programari &kde; que esteu intentant compilar depengui d'unes &Qt; recents no disponibles a la vostra distribució). </para
+></listitem>
+
+<listitem
+><para
+>El &kdesrc-build; no requereix una <acronym
+>IGU</acronym
+> present per a funcionar. Per tant, podreu construir el programari &kde; sense necessitat d'un entorn gràfic. </para
+></listitem>
+
+<listitem
+><para
+>Admet la configuració d'opcions predeterminades per a tots els mòduls (com la configuració de la compilació o les opcions de configuració). Aquestes opcions normalment també es poden canviar per a mòduls específics.</para>
+
+<para
+>A més, el &kdesrc-build; <link linkend="kdesrc-build-std-flags"
+>afegirà indicadors estàndard</link
+> segons correspongui per evitar-vos problemes i possibles errors en escriure. Nota Bene: això no s'aplica quan es configura una cadena d'eines (personalitzada) a través de, &pex;: <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+> </para
+></listitem>
+
+<listitem
+><para
+>El &kdesrc-build; pot extreure una <link linkend="using-branches"
+>branca o etiqueta</link
+> específica d'un mòdul. També podeu assegurar-vos que s'extregui una <link linkend="conf-revision"
+>revisió</link
+> d'un mòdul. </para
+></listitem>
+
+<listitem
+><para
+>El &kdesrc-build; pot canviar automàticament un directori de codi font per extreure des d'un repositori, branca o etiqueta diferent. Això succeeix automàticament quan canvieu una opció que canvia quin hauria de ser l'&url; del repositori, però haureu d'utilitzar l'opció <link linkend="cmdline-src-only"
+>--src-only</link
+> perquè el &kdesrc-build; sàpiga que és acceptable fer el canvi. </para
+></listitem>
+
+<listitem
+><para
+>El &kdesrc-build; pot <link linkend="partial-builds"
+>extreure només parts d'un mòdul</link
+>, per a aquelles situacions en què només necessiteu un programa d'un mòdul gran. </para
+></listitem>
+
+<listitem
+><para
+>Per als desenvolupadors: el &kdesrc-build; <link linkend="ssh-agent-reminder"
+>recordarà</link
+> si feu servir git+ssh:// però que el <application
+>ssh-agent</application
+> no s'està executant, ja que això conduirà a repetides sol·licituds de la contrasenya per a &ssh;. </para
+></listitem>
+
+<listitem
+><para
+>Podeu <link linkend="deleting-build-dir"
+>suprimir el directori de construcció</link
+> d'un mòdul després de la seva instal·lació per estalviar espai a costa del temps de compilació futur. </para
+></listitem>
+
+<listitem
+><para
+>Les ubicacions dels directoris utilitzats pel &kdesrc-build; són configurables (fins i tot per mòdul). </para
+></listitem>
+
+<listitem
+><para
+>Feu servir el &sudo;, o una ordre diferent especificada per l'usuari per a <link linkend="root-installation"
+>instal·lar mòduls</link
+> de manera que el &kdesrc-build; no necessiti executar-se com a superusuari. </para
+></listitem>
+
+<listitem
+><para
+>El &kdesrc-build; s'executa de manera predeterminada <link linkend="build-priority"
+>amb prioritat reduïda</link
+> per a permetre-us seguir amb el vostre ordinador mentre està funcionant el &kdesrc-build;. </para
+></listitem>
+
+<listitem
+><para
+>Té suport per utilitzar les <link linkend="using-branches"
+>etiquetes i branques</link
+> del &kde;. </para
+></listitem>
+
+<listitem
+><para
+>Hi ha suport per a <link linkend="resuming"
+>reprendre una construcció</link
+> des d'un mòdul indicat. Fins i tot podreu <link linkend="ignoring-modules"
+>ignorar alguns mòduls</link
+> temporalment per a una construcció indicada. </para
+></listitem>
+
+<listitem
+><para
+>El &kdesrc-build; mostrarà el <link linkend="build-progress"
+>progrés de la vostra construcció</link
+> quan feu servir el &cmake;, i sempre cronometrarà el procés de construcció de manera que conegueu després quant temps ha trigat. </para
+></listitem>
+
+<listitem
+><para
+>Ve integrat amb un conjunt sensat d'opcions predeterminades apropiades per a construir una instal·lació bàsica del &kde; d'un únic usuari des dels repositoris anònims de codi font. </para
+></listitem>
+
+<listitem
+><para
+>Expansió per a les opcions de configuració. Per exemple, podeu especificar: <programlisting
+>qtdir ~/kdesrc/build/qt</programlisting>
+</para
+></listitem>
+
+<listitem
+><para
+>Estableix de manera automàtica un sistema de construcció, amb el directori de codi font no és el mateix que el directori de construcció, per a mantenir impecable el directori de codi font. </para
+></listitem>
+
+<listitem
+><para
+>Podeu especificar opcions globals per aplicar a cada mòdul per extreure, i també donar opcions per aplicar a mòduls individuals. </para
+></listitem>
+
+<listitem
+><para
+>Reconstruccions forçades completes, executant el &kdesrc-build; amb l'opció <option
+>--refresh-build</option
+>. </para
+></listitem>
+
+<listitem
+><para
+>Podeu especificar diversos valors d'entorn per utilitzar durant la construcció, <envar
+>QTDIR</envar
+>, <envar
+>DO_NOT_COMPILE</envar
+> i <envar
+>CXXFLAGS</envar
+>. </para
+></listitem>
+
+<listitem
+><para
+>Registre de les ordres. Els registres estan datats i numerats perquè sempre tingueu un registre d'un script executat. A més, es crea un enllaç simbòlic especial cridat últim per apuntar sempre a l'entrada de registre més recent en el directori de registre. </para
+></listitem>
+
+</itemizedlist>
+
+</sect1
+>&kdesrc-build-logging; </chapter>

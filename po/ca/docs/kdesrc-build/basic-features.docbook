@@ -1,0 +1,233 @@
+<sect1 id="basic-features">
+<title
+>Característiques bàsiques de &kdesrc-build;</title>
+
+<sect2 id="using-qt">
+<title
+>Implementació de les &Qt;</title>
+<para
+>El &kdesrc-build; admet la construcció del conjunt d'eines de les &Qt; utilitzat pel programari &kde; com a una comoditat per als usuaris. Aquest suport és gestionat per un mòdul especial anomenat qt.</para>
+
+<note
+><para
+>Les &Qt; es desenvolupen sota un repositori separat del programari &kde; ubicat a <ulink url="http://code.qt.io/cgit/qt/"
+>http://code.qt.io/cgit/qt/</ulink
+>.</para
+></note>
+
+<para
+>Per a construir les &Qt;, assegureu-vos que la configuració de <link linkend="conf-qtdir"
+>qtdir</link
+> estigui establerta al directori en el que esteu cercant les &Qt;, com es descriu a <xref linkend="configure-data"/>.</para>
+
+<para
+>A continuació, haureu d'assegurar-vos que el mòdul qt es troba afegit al <filename
+>.kdesrc-buildrc</filename
+>, abans que qualsevol altre mòdul en el fitxer. Si utilitzeu el fitxer de configuració de mostra, simplement podreu descomentar l'entrada existent per al mòdul qt.</para>
+
+<para
+>Ara, haureu de verificar que les opcions <link linkend="conf-repository"
+>repository</link
+> i <link linkend="conf-branch"
+>branch</link
+> estiguin establertes adequadament:</para>
+
+<orderedlist>
+<listitem
+><para
+>La primera opció és per a construir les &Qt; utilitzant una rèplica mantinguda en els repositoris de codi font del &kde; (no s'aplicarà cap altra canvi, és simplement un clon del codi font oficial). Això és molt recomanable a causa de problemes ocasionals amb la clonació de tot un mòdul de les &Qt; des del seu repositori oficial.</para>
+
+<para
+>Per utilitzar aquesta opció, podeu establir l'opció <option
+>repository</option
+> per al mòdul qt a <userinput
+>kde:qt</userinput
+>.</para>
+</listitem>
+
+<listitem
+><para
+>D'altra manera, per a construir les &Qt; estàndard, establiu l'opció <option
+>repository</option
+> a <userinput
+>git://gitorious.org/qt/qt.git</userinput
+>. Recordeu que podríeu experimentar problemes en realitzar el clonatge inicial de les &Qt; des d'aquest repositori.</para
+></listitem>
+</orderedlist>
+
+<para
+>En ambdós casos, l'opció de branca s'haurà d'establir a <userinput
+>master</userinput
+> (a menys que vulgueu construir una branca diferent).</para>
+
+</sect2>
+
+<sect2 id="kdesrc-build-std-flags">
+<title
+>Indicadors estàndard afegits pel &kdesrc-build;</title>
+<para
+>Nota d'en Bene: aquesta secció no s'aplica als mòduls per als quals hàgiu configurat una cadena d'eines personalitzada, &pex;, utilitzant <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>.</para>
+
+<para
+>Per estalviar temps, el &kdesrc-build; afegeix alguns camins estàndard a l'entorn: </para>
+
+<itemizedlist>
+<listitem
+><para
+>El camí a les biblioteques del &kde; i les &Qt; s'afegeix automàticament a la variable <envar
+>LD_LIBRARY_PATH</envar
+>. Això vol dir que no necessitareu editar la «&libpath;» per a incloure'l. </para
+></listitem>
+
+<listitem
+><para
+>El camí als programes de desenvolupament del &kde; i les &Qt; s'afegeix automàticament a la variable <envar
+>PATH</envar
+>. Això vol dir que no necessitareu editar la «&binpath;» per a incloure'l. </para
+></listitem>
+
+<listitem
+><para
+>El camí al <application
+>pkg-config</application
+> proporcionat pel &kde; s'afegeix automàticament a la variable <envar
+>PKG_CONFIG_PATH</envar
+>. Això vol dir que no necessitareu utilitzar la «&set-env;» per a incloure'l. </para
+></listitem>
+
+<listitem
+><para
+>L'opció per a «&qtdir;» es propagarà automàticament a la variable d'entorn <envar
+>QTDIR</envar
+> durant la construcció. </para
+></listitem>
+
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="build-priority">
+<title
+>Canviar la prioritat de construcció de &kdesrc-build;</title>
+<para
+>Els programes poden executar-se amb diferents nivells de prioritat en els sistemes operatius, inclosos &Linux; i &BSD;. Això permet que el sistema assigni temps als diferents programes d'acord amb la seva importància. </para>
+
+<para
+>El &kdesrc-build; normalment se li assignarà una prioritat baixa perquè la resta dels programes en el sistema no es vegin afectats i puguin executar amb normalitat. Utilitzant aquesta tècnica, el &kdesrc-build; utilitzarà CPU addicional quan estigui disponible. </para>
+
+<para
+>El &kdesrc-build; encara mantindrà un nivell de prioritat prou alt perquè s'executi abans que la rutina dels processos per lots i abans que els programes amb donació de CPU com <ulink url="http://setiathome.ssl.berkeley.edu/"
+>Seti@Home</ulink
+>. </para>
+
+<para
+>Per a alterar el &kdesrc-build; de manera que utilitzi un nivell de prioritat més alt (o més baix) de forma permanent, llavors haureu d'ajustar l'opció «&niceness;» al <link linkend="configure-data"
+>fitxer de configuració</link
+>. L'opció «&niceness;» controla com serà d'«agradable» el &kdesrc-build; amb els altres programes. En altres paraules, tenir una «&niceness;» més alta, li dona al &kdesrc-build; una prioritat més baixa. Llavors, per a donar-li al &kdesrc-build; una prioritat més alta, reduïu la «&niceness;» (i viceversa). La «&niceness;» pot anar des de 0 (gens agradable, màxima prioritat) fins a 20 (superagradable, menor prioritat).</para>
+
+<para
+>També podreu canviar temporalment la prioritat per al &kdesrc-build; utilitzant l'opció &cmd-nice; de la <link linkend="cmdline"
+>línia d'ordres</link
+>. El valor de l'opció s'utilitza exactament igual que per a la «&niceness;».</para>
+
+<note
+><para
+>És possible que alguns programes executats pel superusuari tinguin un bon valor negatiu, amb una prioritat corresponentment més alta per a aquests programes. Establir una «&niceness;» negativa (o fins i tot de 0) per al &kdesrc-build; no és una gran idea, ja que no ajudarà significativament al temps d'execució, però farà que l'ordinador sembli molt lent en el cas que encara necessiteu utilitzar-lo. </para
+></note>
+
+<informalexample>
+<para
+>Per a executar el &kdesrc-build; amb una «&niceness;» de 15 (una prioritat inferior a la normal):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--nice=<replaceable
+>15</replaceable
+></option
+></userinput
+>
+</screen>
+
+<para
+>O bé, podeu editar el <link linkend="configure-data"
+>fitxer de configuració</link
+> perquè el canvi sigui permanent:</para>
+
+<screen
+>&niceness; <replaceable
+>15</replaceable
+>
+</screen>
+</informalexample>
+
+<tip>
+<para
+>L'opció <link linkend="conf-niceness"
+>&niceness;</link
+> només afectarà l'ús del/s processador/s de l'ordinador. Un altre efecte important en el rendiment de l'ordinador es relaciona amb la quantitat de dades d'entrada o sortida (<acronym
+>E/S</acronym
+>) que utilitza un programa. Per a controlar la quantitat d'<acronym
+>E/S</acronym
+> que pot utilitzar un programa, els sistemes operatius &Linux; moderns admeten una eina similar que s'anomena <application
+>ionice</application
+>. El &kdesrc-build; l'admet, (però només per habilitar o inhabilitar completament) utilitzant l'opció <link linkend="conf-use-idle-io-priority"
+>use-idle-io-priority</link
+>, des del &kdesrc-build; versió 1.12. </para>
+</tip>
+
+</sect2>
+
+<sect2 id="root-installation">
+<title
+>Instal·lar com a superusuari</title>
+<para
+>Possiblement voldreu que el &kdesrc-build; executi la instal·lació amb privilegis de superusuari. Això podria no estar recomanat per a la instal·lació en tot el sistema. No obstant això, també és útil quan s'utilitza una construcció del &kde; per a un sol usuari. Això es deu al fet que alguns mòduls (especialment el kdebase) instal·len programes que necessitaran breument permisos elevats quan s'executin. No podran assolir aquests nivells de permís a menys que s'instal·lin amb aquests permisos. </para>
+
+<para
+>Simplement podeu executar el &kdesrc-build; directament com a superusuari, però no es recomana, ja que el programa no ha estat auditat per a aquest tipus d'ús. Encara que hauria de ser segur executar el programa d'aquesta manera, és millor evitar executar-lo com a superusuari quan sigui possible.</para>
+
+<para
+>Per a solucionar això, el &kdesrc-build; proporciona l'opció «&make-install-prefix;». Podreu utilitzar aquesta opció per a especificar una ordre que realitzarà la instal·lació com un altre usuari. La forma recomanada d'utilitzar aquesta ordre és amb el programa &sudo;, el qual executarà l'ordre per a la instal·lació com a superusuari. </para>
+
+<informalexample>
+<para
+>Per exemple, per instal·lar tots els mòduls utilitzant el &sudo;, podríeu fer quelcom com això:</para>
+
+<screen
+>global
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+  # Altres opcions
+end global
+</screen>
+
+<para
+>Per a utilitzar «&make-install-prefix;» només per a un mòdul, això funcionarà: </para>
+
+<screen
+>module <replaceable
+>un_nom_de_mòdul</replaceable>
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+end module
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="build-progress">
+<title
+>Mostrar el progrés d'una construcció de mòduls</title>
+<para
+>Aquesta característica sempre està disponible i s'habilita automàticament quan és possible. El que fa això és mostrar un progrés estimat de la construcció mentre es construeix un mòdul. D'aquesta manera, sabreu quant de temps durà construir un mòdul. </para>
+
+</sect2>
+
+</sect1>

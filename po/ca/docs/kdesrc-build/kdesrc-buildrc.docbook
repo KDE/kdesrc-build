@@ -1,0 +1,341 @@
+<chapter id="kdesrc-buildrc">
+<title
+>Configurar el &kdesrc-build;</title>
+
+<sect1 id="kdesrc-buildrc-overview">
+<title
+>Resum de la configuració de &kdesrc-build;</title>
+
+<para
+>Per utilitzar l'script, haureu de tenir un fitxer en el directori d'inici anomenat <filename
+>.kdesrc-buildrc</filename
+>, el qual descriu els mòduls que us agradaria descarregar i construir, i qualsevol opció o paràmetre de configuració a utilitzar per a aquests mòduls. </para>
+
+<sect2 id="kdesrc-buildrc-layout">
+<title
+>Disposició del fitxer de configuració</title>
+
+<sect3 id="kdesrc-buildrc-layout-global">
+<title
+>Configuració global</title>
+
+<para
+>El fitxer de configuració comença amb les opcions globals, especificades com les següents: </para>
+
+<programlisting
+>global
+<replaceable
+>nom_opció valor_opció</replaceable>
+<replaceable
+>[...]</replaceable>
+end global
+</programlisting>
+
+</sect3>
+<sect3 id="kdesrc-buildrc-layout-modules">
+<title
+>Configuració del mòdul</title>
+
+<para
+>Després li segueixen una o més seccions de mòdul, especificades en una de les dues formes següents: </para>
+
+<itemizedlist>
+<listitem>
+<programlisting
+>module <replaceable
+>nom_mòdul</replaceable>
+<replaceable
+>nom_opció valor_opció</replaceable>
+<replaceable
+>[...]</replaceable>
+end module
+</programlisting>
+</listitem>
+
+<listitem>
+<programlisting
+>module-set <replaceable
+>nom_conjunt_mòduls</replaceable>
+  repository <userinput
+>kde-projects</userinput
+> or <userinput
+><replaceable
+>git://amfitrió.org/camí/al/repo.git</replaceable
+></userinput>
+  use-modules <replaceable
+>noms_mòduls</replaceable>
+
+# També es poden establir altres opcions
+<replaceable
+>nom_opció valor_opció</replaceable>
+<replaceable
+>[...]</replaceable>
+end module-set
+</programlisting>
+</listitem>
+</itemizedlist>
+
+<important
+><para
+>Recordeu que la segona forma, els «module-set», <emphasis
+>només funcionarà per als mòduls basats en Git</emphasis
+>.</para
+></important>
+
+<para
+>Per als mòduls Git, el <replaceable
+>nom_mòdul</replaceable
+> haurà de ser un mòdul del repositori &git; del &kde; (per exemple, kdeartwork o kde-wallpapers). </para>
+
+<para
+>Per als mòduls basats en Git, el <replaceable
+>nom_mòdul</replaceable
+> podrà ser essencialment el que vulgueu, sempre que no dupliqueu cap altre nom de mòdul a la configuració. Recordeu que la disposició del directori de codi font i de construcció es basarà en el nom del mòdul si no utilitzeu l'opció <link linkend="conf-dest-dir"
+>dest-dir</link
+>. </para>
+
+<para
+>No obstant això, per als <emphasis
+>conjunts de mòduls</emphasis
+> de Git, els <replaceable
+>noms_mòduls</replaceable
+> s'hauran de correspondre amb els mòduls git reals en el <option
+>repository</option
+> triat. Vegeu <link linkend="conf-git-repository-base"
+>git-repository-base</link
+> o <link linkend="conf-use-modules"
+>use-modules</link
+> per a més informació. </para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-option-values">
+<title
+>Processament dels valors de les opcions</title>
+
+<para
+>En general, s'utilitza el contingut de tota la línia després de la secció <replaceable
+>nom_opció</replaceable
+>, així com el <replaceable
+>valor_opció</replaceable
+>.</para>
+
+<para
+>One modification that &kdesrc-build; performs is that a sequence "<userinput
+>${<replaceable
+>name-of-option</replaceable
+>}</userinput
+>" is replaced with the value of that option from the global configuration. This allows you to reference the value of existing options, including options already set by &kdesrc-build;.</para>
+
+<para
+>Per a veure un exemple d'aquest ús, vegeu l'<xref linkend="make-options-example"/>.</para>
+
+<para
+>You can also introduce your own non-standard global variables for referencing them further in the config. To do this, your option name should be prepended with underscore symbol. Example: <example id="custom-global-option-example">
+<title
+>Introducing your own global option for referencing later in config</title>
+<programlisting
+>global
+  _ver 6  # ← your custom variable (starting with underscore)
+  _kde ~/kde${_ver}  # ← custom variable can contain another defined variable
+  source-dir ${_kde}/src  # ← note that nested variable (_kde → _ver) is also resolved
+end global
+
+options kdepim
+  log-dir /custom/path/logs${_ver} # ← you can use custom variable just like a standard
+end options
+</programlisting>
+</example>
+</para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-options-groups">
+<title
+>«Opcions» dels mòduls</title>
+
+<para
+>Hi ha un tipus final d'entrada al fitxer de configuració, grups <literal
+>options</literal
+>, els quals es poden indicar sempre que es pugui utilitzar <literal
+>module</literal
+> o <literal
+>module-set</literal
+>.</para>
+
+<programlisting
+>options <replaceable
+>nom_mòdul</replaceable>
+<replaceable
+>nom_opció valor_opció</replaceable>
+<replaceable
+>[...]</replaceable>
+end options
+</programlisting>
+
+<para
+>Un grup <literal
+>options</literal
+> pot tenir conjunts d'opcions com una declaració de mòdul, i està associat amb un mòdul existent. Qualsevol opció establerta d'aquesta manera s'utilitzarà per a <emphasis
+>superposar</emphasis
+> les opcions establertes per al mòdul associat.</para>
+
+<important
+><para
+>El nom del mòdul associat <emphasis
+>haurà</emphasis
+> de coincidir amb el nom indicat a la declaració <literal
+>options</literal
+>. Aneu amb compte de no escriure malament el nom.</para
+></important>
+
+<para
+>Això és útil per a permetre la declaració de tot un <literal
+>module-set</literal
+>, tots amb les mateixes opcions i després utilitzant grups <literal
+>options</literal
+> per a fer canvis individuals.</para>
+
+<para
+>Els grups <literal
+>options</literal
+> també poden aplicar-se a conjunts de mòduls amb nom. Això permet als usuaris experts utilitzar un fitxer de configuració comú (el qual inclourà les declaracions de <literal
+>module-set</literal
+>) com a línia de base, i després fer canvis a les opcions utilitzades per aquests conjunts de mòduls en els fitxers de configuració que fan servir l'ordre <literal
+><link linkend="kdesrc-buildrc-including"
+>include</link
+></literal
+> per a fer referència a la configuració base.</para>
+
+<example id="ex-options-group">
+<title
+>Exemple d'ús de les opcions</title>
+
+<para
+>En aquest exemple, hem triat construir tots els mòduls de l'agrupació de programari multimèdia del &kde;. No obstant això, volem utilitzar una versió diferent de l'aplicació &kmix; (potser per a provar una correcció d'error). Funciona de la següent manera:</para>
+
+<programlisting
+>module-set <replaceable
+>kde-multimedia-set</replaceable>
+  repository <userinput
+>kde-projects</userinput>
+  use-modules <replaceable
+>kde/kdemultimedia</replaceable>
+  branch <replaceable
+>master</replaceable>
+end module-set
+
+# kmix forma part del grup kde/kdemultimedia, encara que no hem anomenat
+# mai el kmix en aquest fitxer, el &kdesrc-build; esbrinarà el canvi.
+options <replaceable
+>kmix</replaceable>
+  branch <replaceable
+>KDE/4.12</replaceable>
+end options
+</programlisting>
+
+<para
+>Ara, quan executeu el &kdesrc-build;, es construiran tots els programes multimèdia del &kde; des de la branca «master» del repositori de codi font, però el &kmix; es crearà des de la branca més antiga «KDE/4.12». Per utilitzar <literal
+>options</literal
+>, no haureu de llistar individualment tots els <emphasis
+>altres</emphasis
+> programes multimèdia del &kde; per a indicar l'opció de la branca correcta.</para>
+
+</example>
+
+<note>
+<para
+>Recordeu que aquesta característica només està disponible en el &kdesrc-build; a partir de la versió 1.16, o utilitzant la versió de desenvolupament després de la 2014-01-12.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-including">
+<title
+>Incloure altres fitxers de configuració</title>
+
+<para
+>Dins del fitxer de configuració, podreu fer referència a altres fitxers utilitzant la paraula clau <literal
+>include</literal
+> amb un fitxer, el qual actuarà com si el fitxer a què es fa referència s'hagi inserit en el fitxer de configuració en aquest punt. </para>
+
+<informalexample
+><para
+>Per exemple, podríeu tenir quelcom com això:</para>
+<programlisting
+>global
+    include <replaceable
+>~/common-kdesrc-build-options</replaceable>
+
+    # Inseriu aquí les opcions específiques.
+
+end global
+</programlisting>
+</informalexample>
+
+<note
+><para
+>Si no especifiqueu el camí complet cap al fitxer a incloure, llavors se cercarà començant des del directori que conté el fitxer d'origen. Això també funciona de manera recursiva.</para
+></note>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-common">
+<title
+>Opcions de configuració d'ús habitual</title>
+
+<para
+>La següent és una llista d'opcions d'ús comú. Feu clic sobre l'opció per obtenir més informació referent a això. Per a veure la llista completa d'opcions, vegeu la <xref linkend="conf-options-table"/>. </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+>, per a definir amb quins indicadors configurar un mòdul utilitzant el &cmake;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-branch"
+>branch</link
+>, per extreure des d'una branca en lloc de <literal
+>master</literal
+>.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-configure-flags"
+>configure-flags</link
+>, per a definir amb quins indicadors configurar les &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, per a establir el directori en el qual instal·lar el &kde;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>, per a passar opcions al programa &make; (com el nombre de CPU a utilitzar).</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-qtdir"
+>qtdir</link
+>, per a establir el camí cap a les &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, per a canviar on descarregar el codi font.</para
+></listitem>
+</itemizedlist>
+
+</sect2>
+</sect1
+>&conf-options-table; </chapter>

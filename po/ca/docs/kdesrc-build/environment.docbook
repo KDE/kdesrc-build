@@ -1,0 +1,166 @@
+<sect1 id="environment">
+<title
+>Establir l'entorn per executar el vostre Escriptori &plasma; del &kde;</title>
+
+<para
+>Assumint que utilitzeu un usuari dedicat per a construir el &plasma; del &kde;, i que ja teniu instal·lada una versió de &plasma;, executar el nou &plasma; pot ​​ser una mica complicat, ja que aquest té prioritat sobre l'anterior. Haureu de canviar les variables d'entorn dels vostres scripts d'inici de sessió per assegurar-vos que s'utilitza l'escriptori recentment creat. </para>
+
+<sect2 id="session-driver">
+<title
+>Instal·lar un controlador d'inici de sessió automàtic</title>
+
+<para
+>A partir de la versió 1.16, el &kdesrc-build; intentarà instal·lar un controlador d'inici de sessió apropiat, el qual us permetrà iniciar la sessió en el vostre escriptori &kde; construït amb el &kdesrc-build; des del vostre gestor d'inici de sessió. Això es pot inhabilitar utilitzant l'opció <option
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></option
+> del fitxer de configuració.</para>
+
+<note
+><para
+>La configuració de la sessió no succeeix mentre s'executa el &kdesrc-build; en el mode simulació.</para
+></note>
+
+<para
+>Aquest controlador funciona configurant un tipus de sessió «<literal
+>xsession</literal
+>» personalitzada. Aquest tipus de sessió hauria de funcionar de manera predeterminada amb el gestor d'inici de sessió «sddm» (on apareix com una sessió «Personalitzada»), però altres gestors d'inici de sessió (com <application
+>LightDM</application
+> i <application
+>gdm</application
+>) poden requerir la instal·lació de fitxers addicionals per habilitar el suport de <literal
+>xsession</literal
+>.</para>
+
+<sect3 id="xsession-distribution-setup">
+<title
+>Afegir el suport «xsession» per a les distribucions</title>
+
+<para
+>Els gestors d'inici de sessió predeterminats per a algunes distribucions poden requerir la instal·lació de paquets addicionals per a admetre inicis de sessió de <literal
+>xsession</literal
+>.</para>
+
+<itemizedlist>
+<listitem
+><para
+>La distribució <ulink url="https://getfedora.org/"
+>Fedora</ulink
+> &Linux; requereix que s'instal·li el paquet <literal
+>xorg-x11-xinit-session</literal
+> per al suport personalitzat d'inici de sessió <literal
+>xsession</literal
+>.</para
+></listitem>
+
+<listitem
+><para
+>La distribució <ulink url="https://www.debian.org/"
+>Debian</ulink
+> &Linux; i derivades han d'admetre inicis de sessió personalitzats de <literal
+>xsession</literal
+>, però requereixen que s'estableixi l'opció <option
+><userinput
+>allow-user-xsession</userinput
+></option
+> al <filename
+>/etc/X11/Xsession.options</filename
+>. Vegeu també la <ulink url="https://www.debian.org/doc/manuals/debian-reference/ch07.en.html#_customizing_the_x_session_classic_method"
+>documentació de Debian sobre la personalització de la sessió X</ulink
+>.</para
+></listitem>
+
+<listitem
+><para
+>Per a les altres distribucions, aneu a <xref linkend="xsession-manual-setup"/>.</para
+></listitem>
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="xsession-manual-setup">
+<title
+>Afegir manualment suport per a «xsession»</title>
+
+<para
+>Si no hi ha hagut instruccions específiques de la distribució per a la vostra distribució a la <xref linkend="xsession-distribution-setup"/>, podreu afegir manualment una entrada «Inici de sessió personalitzat xsession» a la llista de tipus de sessió de la vostra distribució de la següent manera:</para>
+
+<procedure id="proc-adding-xsession-type">
+<title
+>Afegir un tipus de sessió a «.xsession» per accedir.</title>
+
+<note
+><para
+>Aquest procediment probablement requerirà privilegis administratius per a completar-lo. </para
+></note>
+
+<step performance="required">
+<para
+>Creeu el fitxer <filename
+>/usr/share/xsessions/kdesrc-build.desktop</filename
+>.</para>
+</step>
+
+<step performance="required">
+<para
+>Assegureu-vos que el fitxer acabat de crear contingui el següent text:</para>
+<literallayout
+><userinput>
+Type=XSession
+Exec=<co id="session-homedir"/><replaceable
+>$HOME</replaceable
+>/.xsession
+Name=KDE Plasma Desktop (unstable; kdesrc-build)
+</userinput
+></literallayout>
+
+<calloutlist>
+<callout arearefs="session-homedir"
+><para
+>L'entrada <replaceable
+>$HOME</replaceable
+> s'haurà de substituir pel camí complet cap al vostre directori d'inici (exemple, <filename class="directory"
+><replaceable
+>/home/usuari</replaceable
+></filename
+>). L'especificació de l'entrada d'escriptori no permet fitxers genèrics d'usuari. </para
+></callout>
+
+</calloutlist>
+</step>
+
+<step performance="optional"
+><para
+>Quan es reinicia el gestor d'inici de sessió, s'hauria de mostrar un nou tipus de sessió, «KDE Plasma Desktop (unestable; kdesrc-build)» a la seva llista de sessions, el qual hauria d'intentar executar el fitxer <filename
+>.xsession</filename
+> instal·lat pel &kdesrc-build; si és seleccionat quan inicieu la sessió.</para>
+
+<note
+><para
+>Pot ser més fàcil reiniciar l'ordinador per a reiniciar el gestor d'inici de la sessió, si el gestor d'inici de la sessió no realitza un seguiment de les actualitzacions en el directori <filename class="directory"
+>/usr/share/xsessions</filename
+>.</para
+></note>
+
+</step>
+
+</procedure>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="old-profile-instructions">
+<title
+>Configurar l'entorn manualment</title>
+<para
+>Aquesta documentació sol incloure instruccions sobre quines variables d'entorn establir per a carregar l'escriptori recentment creat. Aquestes instruccions s'han traslladat a un apèndix (<xref linkend="old-profile-setup"/>).</para>
+
+<para
+>Si teniu la intenció de configurar el vostre propi suport d'inici de sessió, podeu consultar aquest apèndix o veure el fitxer <filename
+>kde-env-master.sh.in</filename
+> inclòs amb el codi font de &kdesrc-build;.</para>
+
+</sect2>
+
+</sect1>

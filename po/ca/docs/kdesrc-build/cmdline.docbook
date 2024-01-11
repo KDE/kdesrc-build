@@ -1,0 +1,149 @@
+<chapter id="cmdline">
+<title
+>Opcions de la línia d'ordres i les variables d'entorn</title>
+
+<sect1 id="cmdline-usage">
+<title
+>Ús de la línia d'ordres</title>
+
+<para
+>El &kdesrc-build; està dissenyat per a executar-se de la següent manera:</para>
+
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>--options</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>mòduls a construir</replaceable
+></arg
+> </cmdsynopsis>
+
+<para
+>Si no s'especifica cap mòdul per construir a la línia d'ordres, llavors el &kdesrc-build; construirà tots els mòduls definits al fitxer de configuració, en l'ordre indicat en aquest fitxer (encara que això pot ser modificat per diverses opcions del fitxer de configuració).</para>
+
+<sect2 id="cmdline-usage-options">
+<title
+>Opcions d'ús habitual a la línia d'ordres</title>
+
+<para
+>La llista completa d'opcions de línia d'ordres es proporciona als <xref linkend="supported-cmdline-params"/>. Les opcions utilitzades més sovint inclouen:</para>
+
+<variablelist>
+  <varlistentry>
+    <term
+><option
+>--pretend</option
+> (o <option
+>-p</option
+>)</term>
+    <listitem
+><para
+>Aquesta opció fa que el &kdesrc-build; indiqui quines accions prendria, sense fer-les. Això pot ser útil per assegurar-vos que els mòduls que creieu que està construint, en realitat es construiran.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--refresh-build</option
+></term>
+    <listitem
+><para
+>Aquesta opció força al &kdesrc-build; a construir els mòduls indicats des d'un punt d'inici absolutament nou. Qualsevol directori de construcció existent per a aquest mòdul s'eliminarà i es reconstruirà. Aquesta opció és útil si obteniu errors en construir un mòdul, i de vegades és necessària quan canvien les biblioteques de les &Qt; o del &kde;.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-src</option
+></term>
+    <listitem
+><para
+>Aquesta opció omet el procés d'actualització del codi font. Podeu utilitzar-la si heu actualitzat recentment el codi font (potser ho heu fet manualment o executant recentment el &kdesrc-build;) però encara voleu reconstruir alguns mòduls.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-build</option
+></term>
+    <listitem
+><para
+>Aquesta opció és similar a <option
+>--no-src</option
+> anterior, però aquesta vegada s'omet el procés de construcció.</para
+></listitem>
+  </varlistentry>
+</variablelist>
+
+</sect2>
+
+<sect2 id="cmdline-usage-modules">
+<title
+>Especificar els mòduls a construir</title>
+
+<para
+>En general, especificar els mòduls per construir és tan senzill com passar el nom del mòdul tal com l'heu definit al fitxer de configuració. També podeu passar mòduls que formen part d'un conjunt de mòduls, ja sigui com s'anomena a <link linkend="conf-use-modules"
+>use-modules</link
+>, o el nom de tot el conjunt de mòduls, si li heu donat un nom.</para>
+
+<para
+>En el cas específic dels conjunts de mòduls basats en la <link linkend="kde-projects-module-sets"
+>base de dades del projecte &kde;</link
+>, el &kdesrc-build; expandirà els components del nom del mòdul per a determinar el mòdul exacte que voleu. Per exemple, l'entrada del projecte &kde; que el &kdesrc-build; situa el projecte a <literal
+>extragear/utils/kdesrc-build</literal
+>. Podreu especificar qualsevol dels següents per a construir el &kdesrc-build;:</para>
+
+<informalexample>
+<screen
+><prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+extragear/utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+kdesrc-build</replaceable
+></option
+>
+</screen>
+</informalexample>
+
+<note
+><para
+>Les ordres a l'exemple anterior van precedides pel nom del mòdul amb un <symbol
+>+</symbol
+>. Això forçarà que el nom del mòdul s'interpreti com un mòdul des de la base de dades del projecte &kde;, encara que aquest mòdul no s'ha definit en el fitxer de configuració. </para
+></note>
+
+<para
+>Aneu amb compte especificant projectes molt genèrics (&pex;, <literal
+>extragear/utils</literal
+>), ja que això pot conduir a la construcció d'una gran quantitat de mòduls. Hauríeu d'utilitzar l'opció <option
+>--pretend</option
+> abans de construir un conjunt de mòduls nou per assegurar-vos que només esteu construint els mòduls que voleu.</para>
+
+</sect2>
+</sect1
+>&supported-envvars; &supported-cmdline-params; </chapter>

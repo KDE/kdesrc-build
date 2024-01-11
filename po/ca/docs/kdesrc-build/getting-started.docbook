@@ -1,0 +1,265 @@
+<chapter id="getting-started">
+<title
+>Com començar</title>
+
+<para
+>En aquest capítol, hem mostrat com utilitzar el &kdesrc-build; per extreure els mòduls des del repositori del &kde; i construir-los. També proporcionem una explicació bàsica de l'estructura del codi font del &kde; i els passos que haureu de realitzar abans d'executar l'script. </para>
+
+<para
+>Tots els temes presents en aquest capítol estan coberts amb encara més detalls en l'article <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+>Build from Source</ulink
+>, al <ulink url="https://community.kde.org/"
+>wiki de la comunitat &kde;</ulink
+>. Si esteu construint el &kde; per primera vegada, és una bona idea llegir-lo o consultar-lo com a font de referència. Trobareu informació detallada sobre les eines i requisits per empaquetar, dificultats i estratègies comunes en la compilació, i informació sobre com executar la vostra nova instal·lació del &kde;. </para>
+
+<sect1 id="before-building">
+<title
+>Preparar el sistema per a construir el &kde;</title>
+
+<sect2 id="before-building-users">
+<title
+>Configurar un compte d'usuari nou</title>
+
+<para
+>Es recomana que utilitzeu un compte d'usuari diferent per a construir, instal·lar i executar el programari &kde;, ja que es requereixen menys permisos i per evitar interferir amb els paquets de la vostra distribució. Si ja teniu instal·lats els paquets del &kde;, la millor opció seria crear un usuari diferent (dedicat) per a construir i executar el nou &kde;. </para>
+
+<tip
+><para
+>Deixar el sistema &kde; intacte també permet tenir una recuperació d'emergència en el cas que un error en el codi faci que la vostra última construcció de programari quedi inutilitzable. </para
+></tip>
+
+<para
+>Si voleu, també podreu configurar per a instal·lar-lo en un directori de tot el sistema (&pex;, <filename class="directory"
+>/usr/src/local</filename
+>). Aquest document no cobreix aquest tipus d'instal·lació, ja que suposem que sabeu el que esteu fent. </para>
+
+</sect2>
+<sect2 id="before-building-preparation">
+<title
+>Assegureu-vos que el sistema està preparat per a construir programari &kde;</title>
+
+<para
+>Abans d'utilitzar l'script &kdesrc-build; (o qualsevol altra estratègia de construcció) haureu d'instal·lar les eines de desenvolupament i les biblioteques necessàries per al &kde;. La llista gairebé completa de les eines requerides es troba a la pàgina <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>«Build Requirements» al wiki de la comunitat &kde;</ulink
+>. </para>
+
+<para
+>Aquí hi ha una llista d'algunes de les coses que necessitareu:</para>
+<itemizedlist>
+
+<listitem
+><para
+>Us cal el &cmake;, aquest programari és el que fa servir el &kde; per a gestionar la configuració del codi font en temps de construcció i la generació de les ordres de construcció específiques per al vostre sistema. La versió requerida variarà segons les versions del programari &kde; que estigueu creant (consulteu la TechBase per obtenir informació específica), però amb les distribucions modernes, el &cmake; inclòs amb la distribució hauria de ser suficient. </para
+></listitem>
+
+<listitem
+><para
+>També haureu d'instal·lar els clients per al control del codi font necessaris per a extreure el codi font del &kde;. Això vol dir que almenys necessitareu el següent:</para>
+
+<itemizedlist>
+<listitem
+><para
+>El <ulink url="https://git-scm.com/"
+>gestor Git per al control del codi font</ulink
+>, el qual s'utilitza per a tot el <ulink url="https://commits.kde.org/"
+>codi font</ulink
+> del &kde;.</para
+></listitem>
+
+<listitem
+><para
+>Encara que no és obligatori, el gestor <ulink url="http://bazaar.canonical.com/"
+>Bazaar</ulink
+> per al control del codi font s'utilitza per a un únic mòdul (libdbusmenu-qt), el qual es requereix per a les biblioteques del &kde;. La majoria dels usuaris poden instal·lar aquesta biblioteca a través dels seus paquets de distribució, però si voleu, el &kdesrc-build; també admet la seva construcció. Però per a construir la libdbusmenu-qt, haureu de tenir instal·lat el Bazaar.</para
+></listitem>
+</itemizedlist
+></listitem>
+
+<listitem
+><para
+>El llenguatge Perl per a crear scripts és necessari per al &kdesrc-build;, alguns repositoris del &kde; i les &Qt; (si construïu des del codi font).</para>
+
+<para
+>El Perl que ve amb la seva distribució hauria de ser adequat (almenys haurà de ser el Perl 5.14), però també necessitareu alguns mòduls addicionals (el &kdesrc-build; us avisarà si no hi són presents):</para>
+
+<itemizedlist>
+    <listitem
+><para
+>IO::Socket::SSL</para
+></listitem>
+    <listitem
+><para
+>JSON::PP o JSON::XS</para
+></listitem>
+    <listitem
+><para
+>YAML::PP, YAML::XS o YAML::Syck</para
+></listitem>
+</itemizedlist>
+</listitem>
+
+<listitem
+><para
+>Us cal un entorn de desenvolupament C++ complet (compilador, biblioteca estàndard, temps d'execució i qualsevol altre paquet de desenvolupament requerit). Les versions mínimes requerides variaran segons el mòdul &kde;: la col·lecció Frameworks 5 del &kde; admet compiladors més antics, mentre que el Plasma 5 del &kde; i les aplicacions &kde; tendeixen a requerir compiladors més recents.</para>
+<para
+>Els compiladors GCC 4.8 o Clang 4 són el mínim recomanat. Moltes distribucions admeten la instal·lació senzilla d'aquestes eines utilitzant un paquet «build-essentials», una opció per instal·lar les «dependències de construcció» amb les &Qt;, o característiques similars. El wiki de la comunitat &kde; té una pàgina que fa el <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/Install_the_dependencies"
+>seguiment dels paquets recomanats per a les principals distribucions</ulink
+>. </para>
+</listitem>
+
+<listitem
+><para
+>Us cal una eina de construcció que en realitat realitzi els passos de compilació (generats pel &cmake;). Es recomana el Make de GNU i haurà d'estar disponible a través del gestor de paquets. El &cmake; admet altres opcions, com l'eina de construcció &ninja;, la qual pot ser utilitzada pel &kdesrc-build; utilitzant l'opció <link linkend="conf-custom-build-command"
+>custom-build-command</link
+> del fitxer de configuració. </para
+></listitem>
+
+<listitem
+><para
+>Finalment, necessitareu les biblioteques de les &Qt; apropiades (inclosos els paquets de desenvolupament) per a la versió del programari &kde; que esteu construint. El &kdesrc-build; no admet oficialment la construcció de les &Qt; 5 (la versió principal actual), per la qual cosa es recomana utilitzar els paquets de desenvolupament de la vostra distribució o veure la pàgina wiki de la comunitat &kde; a <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/OwnQt5"
+>self-building Qt 5</ulink
+>. </para
+></listitem>
+</itemizedlist>
+
+<note
+><para
+>La majoria de les distribucions de sistema operatiu inclouen un mètode per a instal·lar amb facilitat les eines de desenvolupament requerides. Consulteu la pàgina wiki <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>Required devel packages</ulink
+> de la comunitat &kde; per a veure si aquestes instruccions ja estan disponibles.</para
+></note>
+
+<important
+><para
+>Alguns d'aquests paquets es divideixen en biblioteques (o programes, o utilitats) i paquets de desenvolupament. Almenys necessitareu el programa o biblioteca <emphasis
+>i</emphasis
+> el seu paquet de desenvolupament. </para
+></important>
+
+</sect2>
+
+<sect2 id="before-building-prepare-script">
+<title
+>Configurar el &kdesrc-build;</title>
+
+<sect3 id="get-kdesrc-build">
+<title
+>Instal·lar el &kdesrc-build;</title>
+<para
+>Els desenvolupadors del &kde; realitzen canvis freqüents en el &kdesrc-build; per a mantenir-lo sincronitzat amb els avenços en el desenvolupament del &kde;, incloses millores en la configuració recomanada del &kdesrc-build;, mòduls afegits, millores en els indicadors de &cmake;, &etc;</para>
+
+<para
+>A causa d'això, recomanem obtenir el &kdesrc-build; directament des del seu repositori de codi font i després actualitzar-lo periòdicament.</para>
+
+<para
+>Podeu obtenir el &kdesrc-build; des del seu repositori de codi font executant:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>clone</option
+> <option
+>https://invent.kde.org/sdk/kdesrc-build.git</option
+> <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput
+>
+</programlisting>
+
+<para
+>Substituïu <option
+><replaceable
+>~/kdesrc-build</replaceable
+></option
+> amb el directori on voleu instal·lar-lo. </para>
+
+<para
+>Podeu actualitzar més tard el &kdesrc-build; executant:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>cd <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput>
+<prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>pull</option
+></command
+></userinput
+>
+</programlisting>
+
+<tip
+><para
+>Recomanem afegir el directori d'instal·lació de &kdesrc-build; a la vostra variable d'entorn <envar
+>PATH</envar
+>, de manera que pugueu executar el &kdesrc-build; sense haver d'especificar completament el seu camí cada vegada.</para
+></tip>
+</sect3>
+
+<sect3 id="setup-rcfile">
+<title
+>Preparar el fitxer de configuració</title>
+
+<para
+>El &kdesrc-build; utilitza un <link linkend="configure-data"
+>fitxer de configuració</link
+> per a controlar quins mòduls es construeixen, on s'instal·laran, &etc; Aquest fitxer es troba a <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, si està establerta <envar
+>$XDG_CONFIG_HOME</envar
+>).</para>
+
+<para
+>Podeu utilitzar <application
+>kdesrc-build --generate-config</application
+> per a preparar una configuració senzilla del kdesrc-build. Després podreu editar el fitxer de configuració <filename
+>~/.config/kdesrc-buildrc</filename
+> per a fer els canvis que considereu adients.</para>
+
+<sect4 id="setup-rcfile-manually">
+<title
+>Configurar manualment el fitxer de configuració</title>
+
+<para
+>També podreu configurar el fitxer de configuració manualment, copiant el fitxer de configuració de mostra <filename
+>kdesrc-buildrc-kf5-sample</filename
+> inclòs a <filename
+>~/.config/kdesrc-buildrc</filename
+> i després editant-lo. El <xref linkend="kdesrc-buildrc"/> serà una referència útil per a això, especialment la seva <link linkend="conf-options-table"
+>taula per a les opcions de configuració</link
+>. </para>
+
+<para
+>El &kdesrc-build; conté molts fitxers de configuració recomanats per admetre els Frameworks 5 del &kde;, el &plasma; 5 i altres aplicacions &kde;. Vegeu <xref linkend="kdesrc-buildrc-including"/> per a obtenir informació sobre com utilitzar altres fitxers de configuració des del vostre propi <filename
+>kdesrc-buildrc</filename
+>. </para>
+
+<para
+>Trobareu més informació sobre la sintaxi en el <link linkend="configure-data"
+>fitxer de configuració</link
+> a <xref linkend="configure-data"/> i al <xref linkend="kdesrc-buildrc"/>. </para>
+</sect4>
+</sect3>
+</sect2>
+</sect1
+>&configure-data; &building-and-troubleshooting; &building-specific-modules; &environment; &kde-modules-and-selection; &quick-start-conclusion; </chapter>

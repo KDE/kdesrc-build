@@ -1,0 +1,131 @@
+<sect1 id="configure-data">
+<title
+>Establir les dades de configuració</title>
+
+<para
+>Per utilitzar el &kdesrc-build;, haureu de tenir un fitxer en el vostre directori d'inici anomenat <filename
+>~/.config</filename
+> (o a <envar
+>$XDG_CONFIG_HOME</envar
+>, si està establerta), el qual especifica les opcions generals i els mòduls que voleu descarregar i construir. </para>
+
+<note
+><para
+>És possible utilitzar diferents fitxers de configuració per al &kdesrc-build;, el qual es descriu en el <xref linkend="kdesrc-buildrc"/>. Si necessiteu utilitzar múltiples configuracions, consulteu aquesta secció. Aquí, assumirem que la configuració està emmagatzemada en el <filename
+>~/.config/kdesrc-buildrc</filename
+>. </para
+></note>
+
+<para
+>La manera més fàcil de procedir és utilitzar el fitxer <filename
+>kdesrc-buildrc-kf5-sample</filename
+> com a plantilla, canviar les opcions globals perquè coincideixi amb el que voleu, i també canviar la llista de mòduls que voleu construir. </para>
+
+<para
+>L'opció predeterminada hauria de ser apropiada per a realitzar una construcció del &kde;. Algunes opcions de configuració que és possible que vulgueu modificar inclouen: </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, la qual canvia el directori de destinació en què es troba instal·lat el vostre programari &kde;. De manera predeterminada és <filename class="directory"
+>~/kde/usr</filename
+>, el qual és per a una instal·lació d'un únic usuari.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-branch-group"
+>branch-group</link
+>, la qual es pot utilitzar per a triar la branca de desenvolupament adequada per als mòduls del &kde; com a un conjunt. Hi ha moltes configuracions de construcció admeses, però és probable que vulgueu triar <option
+>kf5-qt5</option
+> de manera que el &kdesrc-build; descarregui el codi més recent basat en les &Qt; 5 i els Frameworks 5 del &kde;.</para>
+
+<tip
+><para
+>El &kdesrc-build; utilitzarà un grup predeterminat de branca si no en trieu un, però aquest predeterminat canviarà amb el temps, de manera que és millor triar-ne un perquè el grup de branca no canviï de forma inesperada.</para
+></tip>
+</listitem>
+
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, per a controlar el directori que utilitza el &kdesrc-build; per a descarregar el codi font, executar el procés de construcció i desar els registres. De manera predeterminada és <filename class="directory"
+>~/kde/src</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+>, la qual estableix les opcions per a passar a l'ordre &cmake; en compilar cada mòdul. Normalment, això es fa servir per a establir entre les construccions «debug» o «release», per a habilitar (o inhabilitar) característiques opcionals, o per passar informació al procés de construcció sobre la ubicació de les biblioteques requerides. </para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>, la qual estableix les opcions utilitzades quan s'executa l'ordre <application
+>make</application
+> per a compilar cada mòdul (una vegada que el &cmake; ha establert el sistema de construcció). </para>
+
+<para
+>L'opció més típica és <option
+>-j<replaceable
+>N</replaceable
+></option
+>, on <replaceable
+>N</replaceable
+> s'haurà de substituir amb el nombre màxim de tasques de compilació que voleu permetre. Un nombre major (fins al nombre de CPU lògiques que hi ha disponibles al vostre sistema) conduirà a construccions més ràpides, però requerirà més recursos del sistema. </para>
+
+<tip
+><para
+>El &kdesrc-build; estableix l'opció <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> al nombre detectat de nuclis de processament disponibles. Feu servir aquest valor en el fitxer de configuració per a evitar haver de configurar-ho manualment. </para
+></tip>
+
+<example id="make-options-example">
+<title
+>Configurar el Make per a emprar totes les CPU disponibles, amb excepcions</title>
+<screen
+>global
+    # El «make» utilitza automàticament aquesta variable d'entorn,
+    # incloses les ordres de «make» que no s'executen directament
+    # en el kdesrc-build, com les «configure» de les Qt
+    set-env MAKEFLAGS -j<literal
+>${num-cores}</literal>
+    &hellip;
+end global
+
+&hellip;
+
+module-set <replaceable
+>big-module-set</replaceable>
+    repository kde-projects
+    use-modules <replaceable
+>calligra</replaceable>
+    make-options -j2 # Redueix del nombre de tasques de construcció per a aquests mòduls
+end module-set
+</screen>
+</example>
+
+<note
+><para
+>Alguns repositoris Git molt grans poden saturar el sistema si intenteu compilar amb massa tasques de construcció alhora, en especial els repositoris com els repositoris WebKit de les &Qt; i WebEngine de les &Qt;. Per a mantenir la interactivitat del sistema, és possible que hàgiu de reduir el nombre de tasques de construcció per a certs mòduls.</para>
+<para
+><xref linkend="make-options-example"/> dona un exemple de com fer això.</para>
+</note>
+
+</listitem>
+</itemizedlist>
+
+<para
+>Possiblement voldreu seleccionar diferents mòduls per construir, el qual es descriu a <xref linkend="selecting-modules"/>.</para>
+
+</sect1>

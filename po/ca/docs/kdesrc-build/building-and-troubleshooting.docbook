@@ -1,0 +1,160 @@
+<sect1 id="building-and-troubleshooting">
+<title
+>Emprar l'script &kdesrc-build;</title>
+<para
+>Amb les dades de configuració establertes, ara estareu a punt per executar l'script. Fins i tot si encara teniu alguns ajustos o altres lectures que voleu fer, és una bona idea almenys carregar les metadades del projecte &kde;.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title
+>Carregar les metadades del projecte</title>
+
+<para
+>Des d'una finestra de terminal, accediu amb l'usuari que utilitzeu per a compilar el programari &kde; i executeu l'script: </para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--metadata-only</option
+></userinput
+>
+</screen>
+
+<para
+>Aquesta ordre configurarà el directori de codi font i connectarà amb els repositoris &git; del &kde; per a descarregar la seva base de dades i la base de dades amb les metadades de dependències, sense realitzar cap canvi més. És útil executar això per separat, ja que aquestes metadades són útils per a altres ordres de &kdesrc-build;. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title
+>Vista prèvia del que succeirà quan s'executi el kdesrc-build</title>
+
+<para
+>Amb les metadades del projecte instal·lades, és possible obtenir una vista prèvia del que farà el &kdesrc-build; quan es llanci. Això es pot fer amb l'opció <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+> de la línia d'ordres.</para>
+
+<screen
+><prompt
+>&percnt; </prompt
+><command
+>./kdesrc-build</command
+> <option
+>--pretend</option
+>
+</screen>
+
+<para
+>Hauríeu de veure un missatge indicant que alguns paquets s'han construït correctament (encara que en realitat no s'hagi de construir res). Si no es mostren problemes significatius, podreu continuar executant l'script.</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> </userinput
+>
+</screen>
+
+<para
+>Aquesta ordre descarregarà el codi font apropiat, i construirà i instal·larà cada mòdul en ordre. Després, hauríeu de veure una sortida similar a la de l'<xref linkend="example-build-sequence"/>:</para>
+
+<example id="example-build-sequence">
+<title
+>Sortida d'exemple d'una execució de kdesrc-build</title>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 200 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+</sect2>
+
+<sect2 id="fixing-build-failures">
+<title
+>Resolució de les fallades de construcció</title>
+
+<para
+>Depenent de quants mòduls estigueu descarregant, és possible que el &kdesrc-build; no tingui èxit la primera vegada que compileu el programari &kde;. No desespereu! </para>
+
+<para
+>El &kdesrc-build; registra la sortida de cada ordre que s'executa. De manera predeterminada, els fitxers de registre es mantenen a <filename class="directory"
+>~/kdesrc/log</filename
+>. Per a veure què va provocar un error per a un mòdul en la darrera ordre de &kdesrc-build;, en general és suficient amb mirar a <filename class="directory"
+>~/kdesrc/log/latest/<replaceable
+>nom_mòdul</replaceable
+>/error.log</filename
+>.</para>
+
+<tip
+><para
+>Potser la manera més fàcil d'esbrinar quin error va causar que un mòdul no es pogués construir és cercar cap enrere amb una cerca que no distingeixi entre majúscules i minúscules, començant des del final del fitxer a la cerca de la paraula <literal
+>error</literal
+>. Una vegada la trobeu, desplaceu-vos-hi per assegurar-vos que no hi hagi altres missatges d'error a prop. El primer missatge d'error en un grup sol ser el problema subjacent.</para
+></tip>
+
+<para
+>En aquest fitxer, veureu l'error que va fer que la compilació fallés per a aquest mòdul. Si el fitxer diu (a la part inferior) que li falten alguns paquets, intenteu instal·lar el paquet (inclosos els paquets «-dev» apropiats) abans de construir de nou aquest mòdul. Quan executeu de nou el &kdesrc-build;, assegureu-vos de passar l'opció <link linkend="cmdline-reconfigure"
+>--reconfigure</link
+> perquè el &kdesrc-build; forci el mòdul a comprovar de nou els paquets que falten.</para>
+
+<para
+>O, si l'error sembla un error de construcció (com un error de sintaxi, «prototip incorrecte», «tipus desconegut» o similar), llavors és probable que sigui un error amb el codi font del &kde;, el qual amb sort es resoldrà en uns pocs dies. Si no es resol dins d'aquest temps, sou lliure d'enviar a la llista de correu <email
+>kde-devel@kde.org</email
+> (és possible que primer es requereixi una subscripció) per informar de la fallada de construcció.</para>
+
+<para
+>Trobareu exemples més comuns de coses que poden sortir malament i les seves solucions, així com consells i estratègies generals per a construir el programari &kde; al <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+>Build from Source</ulink
+>. </para>
+
+<para
+>D'altra banda, suposant que tot ha anat bé, hauríeu de tenir una instal·lació nova del &kde; a l'ordinador, i ara és simplement qüestió d'executar-la, el qual es descriu a continuació a <xref linkend="environment"/>.</para>
+
+<note
+><para
+>Per obtenir més informació sobre les característiques de registre de &kdesrc-build;, vegeu el <xref linkend="kdesrc-build-logging"/>.</para
+></note>
+</sect2>
+
+</sect1>

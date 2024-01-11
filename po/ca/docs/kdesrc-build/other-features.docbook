@@ -1,0 +1,146 @@
+<sect1 id="other-features">
+<title
+>Altres característiques de &kdesrc-build;</title>
+
+<sect2 id="changing-verbosity">
+<title
+>Canviar la quantitat de sortida des de &kdesrc-build;</title>
+<para
+>El &kdesrc-build; té diverses opcions per a controlar la quantitat de sortida que genera l'script. En qualsevol cas, sempre es generaran errors.</para>
+
+<itemizedlist>
+<listitem
+><para
+>L'opció <option
+>--quiet</option
+> (la forma curta és <option
+>-q</option
+>) farà que el &kdesrc-build; sigui majoritàriament silenciós. Només es mostraran els missatges importants, avisos o errors. Quan estigui disponible, es mostrarà la informació sobre el progrés de la construcció.</para
+></listitem>
+
+<listitem
+><para
+>L'opció <option
+>--really-quiet</option
+> (sense forma curta) farà que el &kdesrc-build; només mostri els avisos o errors importants mentre s'està executant.</para
+></listitem>
+
+<listitem
+><para
+>L'opció <option
+>--verbose</option
+> (la forma curta és <option
+>-v</option
+>) farà que el &kdesrc-build; sigui molt detallat en la seva sortida.</para
+></listitem>
+
+<listitem
+><para
+>L'opció <option
+>--debug</option
+> només és per a la finalitat de depuració, farà que el &kdesrc-build; actuï com si estigués activada <option
+>--verbose</option
+>, farà que les ordres també surtin al terminal i mostrarà la informació de depuració per a moltes funcions.</para
+></listitem>
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="kdesrc-build-color">
+<title
+>Sortida amb color</title>
+<para
+>Quan s'executa des del &konsole; o un terminal diferent, la sortida de &kdesrc-build; normalment es mostrarà en text amb color.</para>
+
+<para
+>És possible inhabilitar això utilitzant <option
+>--no-color</option
+> a la línia d'ordres, o establint l'opció «&colorful-output;» al <link linkend="configure-data"
+>fitxer de configuració</link
+> a <userinput
+>false</userinput
+> (fals). </para>
+
+<informalexample>
+<para
+>Inhabilitar la sortida amb color al fitxer de configuració:</para>
+<screen
+>global
+  colorful-output false
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="deleting-build-dir">
+<title
+>Eliminar directoris innecessaris després d'una construcció</title>
+<para
+>Disposeu de poc espai al disc però encara voleu executar una extracció del &kde; per a la darrera generació? El &kdesrc-build; pot ajudar a reduir l'ús del disc en construir el &kde; des del &git;.</para>
+
+<note
+><para
+>Recordeu que construir el &kde; ocupa molt espai. Hi ha diverses peces principals que utilitzen molt d'espai quan s'utilitza el &kdesrc-build;:</para
+></note>
+
+<orderedlist>
+<listitem
+><para
+>L'extracció del codi font real pot ocupar una bona quantitat d'espai. Els mòduls predeterminats ocupen aproximadament 1,6 gigabytes d'espai en el disc. Podreu reduir aquesta quantitat assegurant-vos que només esteu creant tants mòduls com realment voleu. El &kdesrc-build; no suprimirà el codi font del disc, encara que sí que ho farà si suprimiu l'entrada al <link linkend="configure-data"
+>fitxer de configuració</link
+>, així que assegureu-vos d'anar-hi i suprimiu les extraccions del codi font que no s'empra des del directori de codi font. Recordeu que els fitxers del codi font es descarreguen d'Internet, <emphasis
+>no els haureu</emphasis
+> de suprimir si en realitat els utilitzeu, almenys fins que acabeu d'utilitzar el &kdesrc-build;.</para>
+
+<para
+>A més, si ja té instal·lades les &Qt; per la vostra distribució (i el més probable és que ho feu), probablement no necessitareu instal·lar el mòdul qt. Això reduirà en uns 200 megabytes la mida del codi font en el disc.</para>
+</listitem>
+
+<listitem>
+<para
+>El &kdesrc-build; crearà un directori de construcció separat per a construir el codi font. De vegades, el &kdesrc-build; haurà de copiar un directori de codi font per a crear un directori de construcció fals. Quan succeeix això, s'utilitzaran enllaços simbòlics que estalvien espai, de manera que això no hauria de ser una molèstia en l'espai al disc. El directori de construcció normalment serà molt més gran que el directori de codi font per a un mòdul. Per exemple, el directori de construcció per al kdebase és d'aproximadament 1.050 megabytes, mentre que el codi font del kdebase és de només uns 550 megabytes.</para>
+
+<para
+>Afortunadament, el directori de construcció no caldrà una vegada s'hagi compilat i instal·lat correctament un mòdul. El &kdesrc-build; pot eliminar automàticament el directori de construcció després d'instal·lar un mòdul, vegeu els exemples a continuació per obtenir més informació. Recordeu que fer aquest pas farà que sigui impossible que el &kdesrc-build; realitzi construccions incrementals, les quals estalviaran temps.</para>
+</listitem>
+
+<listitem
+><para
+>Finalment, es necessita espai en el disc per a la instal·lació pròpiament dita del &kde;, la qual no s'executarà des del directori de construcció. Aquesta normalment ocupa menys espai que el directori de construcció. No obstant això, és més difícil obtenir xifres exactes. </para
+></listitem>
+</orderedlist>
+
+<para
+>Com es redueixen els requisits d'espai del &kde;? Una manera és utilitzar els indicadors de compilació adequats, per optimitzar la reducció d'espai en lloc de la velocitat. Una altra manera, la qual pot tenir un gran efecte, és eliminar la informació de depuració de la vostra construcció del &kde;. </para>
+
+<warning
+><para
+>Haureu d'estar molt segur de conèixer el que esteu fent abans de decidir eliminar la informació de depuració. Executar un programari d'última generació vol dir que estareu executant un programari que és molt més probable que es bloquegi que una versió estable. Si utilitzeu programari sense la informació de depuració, podria ser molt difícil crear un bon informe d'error per a resoldre-ho, i és probable que hàgiu de tornar a habilitar la informació de depuració per a l'aplicació afectada i reconstruir-la per ajudar a un desenvolupador a solucionar el bloqueig. Per tant, elimineu la informació de depuració sota el vostre propi risc. </para
+></warning>
+
+<informalexample>
+<para
+>Elimineu el directori de construcció després de la instal·lació d'un mòdul. El directori del codi font encara es mantindrà i la depuració estarà habilitada:</para>
+
+<screen
+>global
+  configure-flags      --enable-debug
+  remove-after-install builddir        # Elimina el directori de construcció després d'instal·lar
+end global
+</screen>
+
+<para
+>Elimineu el directori de construcció després de la instal·lació, sense la informació de depuració i amb optimització de la mida.</para>
+
+<screen
+>global
+  cxxflags             -Os             # Optimitza per a la mida
+  configure-flags      --disable-debug
+  remove-after-install builddir        # Elimina el directori de construcció després d'instal·lar
+end global
+</screen>
+</informalexample>
+</sect2>
+
+</sect1>

@@ -1,0 +1,102 @@
+<sect1 id="kdesrc-build-logging">
+<title
+>Registre de construcció de &kdesrc-build;</title>
+
+<sect2 id="logging-overview">
+<title
+>Resum del registre</title>
+
+<para
+>El registre és una característica de &kdesrc-build; per la qual el resultat de cada ordre que executa es desa en un fitxer per al seu posterior examen, si cal. Això es fa perquè sovint és necessari tenir la sortida d'aquests programes quan hi ha una fallada de construcció, perquè hi ha moltes raons per les quals una construcció pot fallar.</para>
+
+<sect3 id="log-directory-layout">
+<title
+>Disposició del directori de registre</title>
+
+<para
+>Els registres sempre s'emmagatzemen sota el directori de registre. La destinació del directori de registre està controlada per l'opció <link linkend="conf-log-dir"
+>log-dir</link
+>, la qual de manera predeterminada és <filename class="directory"
+><symbol
+>${source-dir}</symbol
+>/log</filename
+> (on <symbol
+>${source-dir}</symbol
+> és el valor de l'opció <link linkend="conf-source-dir"
+>source-dir</link
+>. A la resta d'aquesta secció, aquest valor s'anomenarà <symbol
+>${log-dir}</symbol
+>).</para>
+
+<para
+>Sota <symbol
+>${log-dir}</symbol
+>, hi ha un conjunt de directoris, un per a cada vegada que s'ha executat el &kdesrc-build;. Cada directori s'anomena amb la data i el número d'execució. Per exemple, la segona vegada que s'executa el &kdesrc-build; el 26 de maig de 2004, crearia un directori anomenat <filename
+>2004-05-26-02</filename
+>, on 2004-05-26 és per a la data, i -02 és el número d'execució.</para>
+
+<para
+>Per a la vostra comoditat, el &kdesrc-build; també crearà un enllaç amb els registres per a la vostra última execució, anomenada <filename class="directory"
+>latest</filename
+> (última). Per tant, els registres de la darrera execució de &kdesrc-build; sempre estaran sota <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest</filename
+>. </para>
+
+<para
+>Ara, cada directori per a una execució de &kdesrc-build; contindrà un conjunt de directoris, un per a cada mòdul del &kde; que intenteu construir. A més, d'un fitxer anomenat <filename
+>build-status</filename
+> (estat de la construcció), el qual us permetrà determinar quins mòduls s'han compilat i quins han fallat.</para>
+
+<note
+><para
+>Si un mòdul en si té un submòdul (com extragear/multimèdia, playground/utils o KDE/kdelibs), llavors hi haurà d'haver una disposició coincident en el directori de registre. Per exemple, els registres per a KDE/kdelibs després de l'última execució de &kdesrc-build; es trobaran a <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/KDE/kdelibs</filename
+>, i no a <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/kdelibs</filename
+>. </para
+></note>
+
+<para
+>A cada directori de registre del mòdul, trobareu un conjunt de fitxers per a cada operació que realitza el &kdesrc-build;. Si el &kdesrc-build; actualitza un mòdul, és possible que vegeu noms de fitxer com <filename
+>git-checkout-update.log</filename
+> (per a extreure un mòdul o en actualitzar un mòdul que ja s'ha extret). Si s'ha executat l'ordre <command
+>configure</command
+>, llavors esperaríeu veure un <filename
+>configure.log</filename
+> en aquest directori.</para>
+
+<para
+>Si succeeix un error, hauríeu de poder veure una explicació de per què en un dels fitxers. Per ajudar a determinar quin fitxer conté l'error, el &kdesrc-build; crearà un enllaç des del fitxer que conté l'error (com <filename
+>build-1.log</filename
+> cap a un fitxer anomenat <filename
+>error.log</filename
+>).</para>
+
+<para
+>El resultat de tot això és que per a veure perquè un mòdul no s'ha pogut construir després de l'última execució de &kdesrc-build;, el fitxer que haureu de mirar primer és <filename
+><symbol
+>${log-dir}</symbol
+>/latest/<replaceable
+>nom_mòdul</replaceable
+>/error.log</filename
+>. </para>
+
+<tip
+><para
+>Si el fitxer <filename
+>error.log</filename
+> està buit (especialment després d'una instal·lació), llavors potser no hi ha hagut cap error. Algunes de les eines utilitzades pel sistema de construcció del &kde;, de vegades informen erròniament d'un error quan no n'hi havia cap.</para>
+
+<para
+>A més, algunes ordres evadiran la redirecció de la sortida de &kdesrc-build; i obviaran el fitxer de registre en certes circumstàncies (normalment quan es realitza la primera extracció des de &git;), i la sortida d'error en aquest cas no estarà en el fitxer de registre sinó al &konsole; o terminal on vàreu executar el &kdesrc-build;.</para>
+</tip>
+
+</sect3>
+</sect2>
+</sect1>

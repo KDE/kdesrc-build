@@ -1,0 +1,166 @@
+<appendix id="appendix-modules">
+<title
+>Mòduls del &kde; i organització del codi font</title>
+<sect1 id="module-concept">
+<title
+>El «Mòdul»</title>
+
+<para
+>El &kde; agrupa el seu programari en «mòduls» de diverses mides. Inicialment, aquesta era una agrupació flexible d'alguns mòduls grans, però amb la introducció dels <ulink url="https://commits.kde.org/"
+>repositoris de codi font</ulink
+> basats en <ulink url="https://git-scm.com/"
+>Git</ulink
+>, aquests mòduls grans es van dividir encara més en molts mòduls més petits. </para>
+
+<para
+>El &kdesrc-build; també utilitza aquest concepte de mòdul. En essència, un «mòdul» és una agrupació de codi que es pot descarregar, construir, provar i instal·lar. </para>
+
+<sect2 id="single-modules">
+<title
+>Mòduls individuals</title>
+
+<para
+>És fàcil establir el &kdesrc-build; per a construir un sol mòdul. La següent llista és un exemple de com es veuria una declaració per a un mòdul basat en Git al <link linkend="kdesrc-buildrc"
+>fitxer de configuració</link
+>.</para>
+
+<programlisting
+>module <replaceable
+>kdefoo</replaceable>
+    <option
+><replaceable
+>cmake-options -DCMAKE_BUILD_TYPE=Debug</replaceable
+></option>
+end module
+</programlisting>
+
+<tip
+><para
+>Aquest és un mòdul basat en Git, ja que no utilitza una opció <link linkend="conf-repository"
+>repository</link
+>. A més, l'opció <option
+>cmake-options</option
+> només es llista com un exemple, no és obligatòria.</para
+></tip>
+
+</sect2>
+<sect2 id="module-groups">
+<title
+>Grups de mòduls relacionats</title>
+
+<para
+>Ara, la majoria dels mòduls de codi font del &kde; estan basats en Git, i normalment es combinen en grups de mòduls.</para>
+
+<para
+>Per tant, el &kdesrc-build; també admet grups de mòduls, utilitzant <link linkend="module-sets"
+>conjunts de mòduls («module-set»)</link
+>. Un exemple:</para>
+
+<programlisting
+>module-set <replaceable
+>mòduls_base</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde-runtime kde-workspace kde-baseapps</replaceable>
+end module-set
+</programlisting>
+
+<tip
+><para
+>Si voleu, podeu deixar el nom del conjunt de mòduls (<replaceable
+>mòduls_base</replaceable
+>) buit. Aquesta opció <option
+>repository</option
+> li diu al &kdesrc-build; des d'on descarregar el codi font, però també podeu utilitzar un URL <symbol
+>git://</symbol
+>.</para
+></tip>
+
+<para
+>Una característica especial del «<option
+>repository</option
+> <literal
+>kde-projects</literal
+>» és que el &kdesrc-build; inclourà automàticament qualsevol mòdul de Git que s'agrupi sota els mòduls que llisteu (a la base de dades del Projecte &kde;).</para>
+</sect2>
+
+<sect2 id="module-branch-groups">
+<title
+>Mòduls «branch-group»</title>
+
+<para
+>Portant el concepte d'un <link linkend="module-groups"
+>branch-group</link
+> més enllà, els desenvolupadors del &kde; finalment van descobrir que sincronitzar els noms de les branques a Git en un gran nombre de repositoris s'estava tornant difícil, especialment durant l'impuls de desenvolupament per als nous Frameworks del &kde; per a les &Qt; 5. </para>
+
+<para
+>Per tant, es va desenvolupar el concepte dels «branch-group», per a permetre als usuaris i desenvolupadors seleccionar només uns quants grups, i permetre que l'script seleccioni automàticament la branca Git adequada. </para>
+
+<para
+>El &kdesrc-build; admet aquesta característica a partir de la versió 1.16-pre2, a través de l'opció <link linkend="conf-branch-group"
+>branch-group</link
+>. </para>
+
+<example id="ex-branch-group">
+<title
+>Exemple d'ús de «branch-group»</title>
+
+<para
+>«branch-group» es pot utilitzar al fitxer de configuració de la següent manera: </para>
+
+<programlisting
+>global
+    # Selecciona els Frameworks 5 del KDE i altres aplicacions basades en les Qt5
+    <option
+>branch-group</option
+> <replaceable
+>kf5-qt5</replaceable>
+
+    # Les altres opcions globals van aquí...
+end global
+
+module-set
+    # «branch-group» només funciona per a «kde-projects»
+    <option
+>repository</option
+> kde-projects
+
+    # «branch-group» s'hereta del conjunt global, però es pot especificar
+    # aquí.
+
+    <option
+>use-modules</option
+> <replaceable
+>kdelibs kde-workspace</replaceable>
+end module-set
+
+# La branca del kdelibs serà «frameworks»
+# La branca del kde-workspace serà «master» (l'agost de 2013)
+</programlisting>
+
+<para
+>En aquest cas, el mateix <literal
+>branch-group</literal
+> proporciona diferents noms de branca per a cada mòdul Git. </para>
+</example>
+
+<para
+>Aquesta característica requereix algunes dades mantingudes pels desenvolupadors del &kde; en un repositori de Git anomenat <literal
+>kde-build-metadata</literal
+>, però aquest mòdul serà inclòs automàticament pel &kdesrc-build; (encara que veureu que apareix a la sortida de l'script). </para>
+
+<tip
+><para
+>Els mòduls del &kde; que no tenen establert un nom de branca per al grup de branques que trieu, tindran el nom de la branca adequada, com si no haguéssiu especificat cap <literal
+>branch-group</literal
+>. </para
+></tip>
+
+</sect2>
+
+</sect1>
+</appendix>

@@ -1,0 +1,194 @@
+<appendix id="appendix-profile">
+<title
+>Procediments en la configuració del perfil substituït</title>
+
+<sect1 id="old-profile-setup">
+<title
+>Configurar un perfil d'inici de sessió del &kde;</title>
+
+<para
+>Aquestes instruccions cobreixen com configurar el perfil requerit per a garantir que l'ordinador podrà iniciar la sessió en l'escriptori &plasma; del &kde; acabat de construir. Normalment, el &kdesrc-build; intentarà fer-ho automàticament (vegeu <xref linkend="session-driver"/>). Aquesta secció de l'apèndix pot ser útil per a aquells que no poden utilitzar la implementació de &kdesrc-build; per a la configuració del perfil d'inici de sessió. No obstant això, les instruccions poden no estar sempre actualitzades, també podria ser útil consultar el fitxer <filename
+>kde-env-master.sh.in</filename
+> inclòs amb el codi font de &kdesrc-build;.</para>
+
+<sect2 id="changing-profile">
+<title
+>Canviar la configuració del perfil d'inici</title>
+
+<important
+><para
+>El <filename
+>.bash_profile</filename
+> és el fitxer de configuració per a l'inici de sessió per al popular intèrpret d'ordres <application
+>bash</application
+>, utilitzat per moltes distribucions de &Linux;. Si utilitzeu un intèrpret d'ordres diferent, possiblement haureu d'ajustar les mostres que es proporcionen en aquesta secció per al vostre intèrpret d'ordres en particular.</para
+></important>
+
+<para
+>Obriu o creeu el fitxer <filename
+>.bash_profile</filename
+> en el directori d'inici amb el vostre editor favorit i afegiu-lo al final del fitxer: Si esteu creant el mòdul qt (en el mode predeterminat), en el seu lloc afegiu: <programlisting>
+QTDIR=(camí al «qtdir»)   # De manera predeterminada ~/kdesrc/build/qt.
+PATH=${install-dir}/bin:$QTDIR/bin:$PATH
+MANPATH=$QTDIR/doc/man:$MANPATH
+
+# Actua adequadament si encara no s'ha establert la LD_LIBRARY_PATH.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib
+else
+  LD_LIBRARY_PATH=${install-dir}:/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+fi
+export QTDIR PATH MANPATH LD_LIBRARY_PATH
+</programlisting
+> o, si no esteu construint qt (i, en el seu lloc, esteu utilitzant les &Qt; del vostre sistema), afegiu això en el seu lloc: <programlisting
+>PATH=$KDEDIR/bin:$QTDIR/bin:$PATH
+
+# Actua de manera adequada si encara no s'ha establert LD_LIBRARY_PATH.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH LD_LIBRARY_PATH
+</programlisting>
+</para>
+
+<para
+>Si no utilitzeu un usuari dedicat, establiu una $<envar
+>KDEHOME</envar
+> diferent per al nou entorn al <filename
+>.bash_profile</filename
+>: <programlisting
+>export KDEHOME="${HOME}/.kde-git"
+
+# Crea si cal
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
+</programlisting>
+</para>
+
+<note>
+<para
+>Si més tard, el Menú K està buit o massa ple d'aplicacions de la distribució, possiblement caldrà establir les variables d'entorn <acronym
+>XDG</acronym
+> al <filename
+>.bash_profile</filename
+>: <programlisting
+>XDG_CONFIG_DIRS="/etc/xdg"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
+export XDG_CONFIG_DIRS XDG_DATA_DIRS
+</programlisting>
+
+</para>
+</note>
+
+</sect2>
+<sect2 id="starting-kde">
+<title
+>Iniciar el &kde;</title>
+
+<para
+>Ara que ha ajustat les opcions de l'entorn per utilitzar el &kde; correcte, és important assegurar-vos que també s'utilitzi l'script d'inici correcte. </para>
+
+<para
+>Obriu el fitxer de text <filename
+>.xinitrc</filename
+> des del directori d'inici o si cal, creeu-lo. Afegiu la línia: <programlisting
+><command
+>exec</command
+> <option
+>${install-dir}/bin/startkde</option
+>
+</programlisting>
+</para>
+
+<important
+><para
+>En algunes distribucions, podria ser necessari realitzar els mateixos passos amb el fitxer <filename
+>.xsession</filename
+>, també en el directori d'inici. Això és especialment cert quan s'utilitzen gestors d'inici de sessió gràfics com el «sddm», <application
+>gdm</application
+> o <application
+>xdm</application
+>.</para>
+</important>
+
+<para
+>Ara inicieu el nou &kde;: en els sistemes &BSD; i &Linux; amb suport de terminal virtual, s'utilitzen les dreceres <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F1</keycap
+></keycombo
+> «...» <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F12</keycap
+></keycombo
+> per a canviar des de la consola virtual 1 fins a la 12. Això permet executar més d'un entorn d'escriptori alhora. Els primers sis són terminals de text i els següents 6 són pantalles gràfiques. </para>
+
+<para
+>Si quan inicieu l'ordinador, se us presentarà el gestor de la pantalla gràfica, podreu utilitzar el nou entorn &kde;, encara que no apareixerà com una opció. La majoria dels gestors de la pantalla, inclòs el «sddm», tenen l'opció d'utilitzar una «Sessió personalitzada» en iniciar la sessió. Amb aquesta opció, la configuració de la sessió es carregarà des del fitxer <filename
+>.xsession</filename
+> que hi ha al directori d'inici. Si ja heu modificat aquest fitxer com s'ha descrit anteriorment, aquesta opció hauria de carregar en la vostra nova instal·lació del &kde;. </para>
+
+<para
+>Si no és així, hi ha alguna cosa més que podreu provar que normalment hauria de funcionar: premeu <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+>, i se us presentarà un terminal de text. Inicieu la sessió amb l'usuari dedicat i escriviu: </para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<tip>
+<para
+>Podeu executar el &kde; des del codi font i l'antic &kde; alhora! Inicieu la sessió amb l'usuari habitual, inicieu l'escriptori estable del &kde;. Premeu <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+> (o <keycap
+>F1</keycap
+>, <keycap
+>F3</keycap
+>, &etc;) i se us presentarà un terminal de text. Inicieu la sessió amb l'usuari dedicat de &git; per al &kde; i escriviu:</para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<para
+>Podreu tornar a l'escriptori &kde; del vostre usuari habitual prement la drecera per a l'escriptori que ja esteu executant. Aquesta normalment serà <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+>, possiblement caldrà utilitzar <keycap
+>F6</keycap
+> o <keycap
+>F8</keycap
+> en el seu lloc. Per tornar al &kde; compilat amb el &kdesrc-build;, utilitzareu la mateixa seqüència, excepte amb la tecla de funció. Per exemple, si necessiteu introduir <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+> per canviar al &kde; normal, haureu d'introduir <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F8</keycap
+></keycombo
+> per tornar al &kde; de &kdesrc-build;.</para>
+</tip>
+
+</sect2>
+</sect1>
+
+</appendix>
