@@ -186,10 +186,9 @@ sub readCommandLineOptionsAndSelectors (@options)
             $opts->{run_mode} = 'install';
             $phases->phases('install');
         },
-        prefix => sub {
+        'install-dir' => sub {
             my ($optName, $arg) = @_;
-            $auxOptions{prefix} = $arg;
-            $foundOptions{'install-dir'} = $arg; #TODO: Still needed for compat?
+            $auxOptions{'install-dir'} = $arg;
             $foundOptions{reconfigure} = 1;
         },
         query => sub {
@@ -202,7 +201,7 @@ sub readCommandLineOptionsAndSelectors (@options)
             # Add useful aliases
             $arg = 'source-dir'  if $arg =~ /^src-?dir$/;
             $arg = 'build-dir'   if $arg =~ /^build-?dir$/;
-            $arg = 'install-dir' if $arg eq 'prefix';
+            $arg = 'install-dir' if $arg =~ /^install-?dir$/;
 
             $opts->{run_mode} = 'query';
             $auxOptions{query} = $arg;
@@ -455,7 +454,6 @@ sub _supportedOptions
         'no-metadata',
         'no-src|S',
         'no-tests',
-        'prefix=s',
         'pretend|dry-run|p',
         'print-modules',
         'query=s',

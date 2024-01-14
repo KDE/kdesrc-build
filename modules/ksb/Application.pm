@@ -960,6 +960,9 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
             if ($option eq "kdedir") {  # todo This message is temporary. Remove it after 09.04.2024.
                 error "r[Please edit your config. Replace \"b[kdedir]r[\" with \"b[install-dir]r[\".";
             }
+            if ($option eq "prefix") {  # todo This message is temporary. Remove it after 14.04.2024.
+                error "r[Please edit your config. Replace \"b[prefix]r[\" with \"b[install-dir]r[\".";
+            }
             die ksb::BuildException::Config->new($option, "Unrecognized option \"$option\" found at $current_file:$.");
         }
 

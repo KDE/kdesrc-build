@@ -542,13 +542,13 @@ sub _safe_run_cmake
         push @commands, "-DCMAKE_CXX_FLAGS:STRING=$cxxflags";
     }
 
-    my $prefix = $module->installationPath();
+    my $installdir = $module->installationPath();
 
-    push @commands, "-DCMAKE_INSTALL_PREFIX=$prefix";
+    push @commands, "-DCMAKE_INSTALL_PREFIX=$installdir";
 
-    # Add custom Qt to the prefix (but don't overwrite a user-set prefix)
+    # Add custom Qt to the prefix (but don't overwrite a user-set install-dir)
     my $qtdir = $module->getOption('qtdir');
-    if ($qtdir && $qtdir ne $prefix &&
+    if ($qtdir && $qtdir ne $installdir &&
         !grep { /^\s*-DCMAKE_PREFIX_PATH/ } (@commands)
        )
     {

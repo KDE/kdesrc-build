@@ -1022,19 +1022,13 @@ sub destDir ($self)
 
 # Subroutine to return the installation path of a given module (the value
 # that is passed to the CMAKE_INSTALL_PREFIX CMake option).
-# It is based on the "prefix" and, if it is not set, the "install-dir" option.
-# The user may use '$MODULE' or '${MODULE}' in the "prefix" option to have
+# It is based on the "install-dir" option.
+# The user may use '$MODULE' or '${MODULE}' in the "install-dir" option to have
 # them replaced by the name of the module in question.
 sub installationPath
 {
     my $self = assert_isa(shift, 'ksb::Module');
-    my $path = $self->getOption('prefix');
-
-    if (!$path)
-    {
-        return $self->getOption('install-dir');
-    }
-
+    my $path = $self->getOption('install-dir');
     my $moduleName = $self->name();
     $path =~ s/(\$\{MODULE})|(\$MODULE\b)/$moduleName/g;
 

@@ -44,23 +44,23 @@ sub configureInternal
     my $cxxflags = $module->getOption('cxxflags');
     $module->buildContext()->queueEnvironmentVariable('CXXFLAGS', $cxxflags);
 
-    my $prefix = $module->getOption('prefix');
+    my $installdir = $module->getOption('install-dir');
     my $qtdir  = $module->getOption('qtdir');
 
-    if ($prefix && $qtdir && $prefix ne $qtdir) {
+    if ($installdir && $qtdir && $installdir ne $qtdir) {
         warning (<<EOF);
 b[y[*]
 b[y[*] Building the Qt module, but the install directory for Qt is not set to the
 b[y[*] Qt directory to use.
-b[y[*]   install directory ('prefix' option): b[$prefix]
+b[y[*]   install directory ('install-dir' option): b[$installdir]
 b[y[*]   Qt install to use ('qtdir'  option): b[$qtdir]
 b[y[*]
-b[y[*] Try setting b[qtdir] to the same setting as the Qt module's b[prefix].
+b[y[*] Try setting b[qtdir] to the same setting as the Qt module's b[install-dir].
 b[y[*]
 EOF
     }
 
-    $prefix ||= $qtdir; # Use qtdir for install if prefix not set
+    $installdir ||= $qtdir; # Use qtdir for install if install-dir not set
 
     # Some users have added -prefix manually to their flags, they
     # probably shouldn't anymore. :)
@@ -75,7 +75,7 @@ b[y[*]
 EOF
     }
 
-    push @commands, "-prefix", $prefix;
+    push @commands, "-prefix", $installdir;
     unshift @commands, $script;
 
     my $builddir = $module->fullpath('build');

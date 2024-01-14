@@ -108,7 +108,6 @@ my %internalGlobalOptions = (
     "manual-update"        => "",
     "niceness"             => "10",
     "no-src"               => "",
-    "prefix"               => "", # Override installation prefix.
     "pretend"              => "",
     "reconfigure"          => "",
     "refresh-build"        => "",
