@@ -92,87 +92,92 @@ my $libname = "lib";
 $libname = "lib64" if (-d "/usr/lib64" and not -l "/usr/lib64");
 $libname = "lib/x86_64-linux-gnu" if (-d "/usr/lib/x86_64-linux-gnu");
 
-# Should be used for internal state that shouldn't be exposed as a hidden
-# cmdline option, or has other cmdline switches (e.g. debug/verbose handling).
-my %internalGlobalOptions = (
-    "async"                => 1,
-    "build-system-only"    => "",
-    "build-when-unchanged" => 1, # Safe default
-    "colorful-output"      => 1, # Use color by default.
+# These options are used for internal state, they are _not_ exposed as cmdline options
+my %GlobalOptions_private = (
     "debug-level"          => ksb::Debug::INFO,
-    "filter-out-phases"    => '',
-    "git-desired-protocol" => 'git', # protocol to use for git *push* URLs (fetch requires https)
+    "filter-out-phases"    => "",
+    "git-desired-protocol" => "git", # protocol to use for git *push* URLs (fetch requires https)
     "git-repository-base"  => {}, # Base path template for use multiple times.
-    "ignore-modules"       => '', # See also: use-modules, kde-projects
     "manual-build"         => "",
     "manual-update"        => "",
-    "niceness"             => "10",
-    "no-src"               => "",
-    "pretend"              => "",
-    "reconfigure"          => "",
-    "refresh-build"        => "",
-    "repository"           => '',     # module's git repo
-    "revision"             => '', # Was only useful for Subversion modules at cmdline. TODO Implement for git?
-    "set-env"              => { }, # Hash of environment vars to set
-    "ssh-identity-file"    => '', # If set, is passed to ssh-add.
+    "repository"           => "", # module's git repo
+    "set-env"              => {}, # Hash of environment vars to set
+    "ssh-identity-file"    => "", # If set, is passed to ssh-add.
     "use-modules"          => "",
 );
 
-# Holds boolean flags that could be altered from cmdline.
-# These must be completely disjoint from the options provided in
-# ksb::Cmdline to GetOptionsFromArray! This is now checked at runtime so
-# if you forget the test suite should catch you.
-our %defaultGlobalFlags = (
+# These options are exposed as cmdline options, but _not from here_.
+# Their more complex specifier is made in ksb::Cmdline _supportedOptions().
+my %GlobalOptions_with_extra_specifier = (
+    "build-when-unchanged" => 1,
+    "colorful-output"      => 1,
+    "ignore-modules"       => "",
+    "niceness"             => "10", # todo convert to int?
+    "no-src"               => "",
+    "pretend"              => "",
+    "refresh-build"        => "",
+);
+
+# These options are exposed as cmdline options without parameters, and having the negatable form with "--no-".
+our %GlobalOptions_with_negatable_form = (
+    "async"                          => 1,
+    "compile-commands-export"        => 1, # 2021-02-06 allow to generate compile_commands.json via cmake, for clangd tooling
+    "compile-commands-linking"       => 0, # 2021-02-06 link generated compile_commands.json back to the source directory
     "delete-my-patches"              => 0, # Should only be set from cmdline
     "delete-my-settings"             => 0, # Should only be set from cmdline
     "disable-agent-check"            => 0, # If true we don't check on ssh-agent
-    "compile-commands-export"        => 1, # 2021-02-06 allow to generate compile_commands.json via cmake, for clangd tooling
-    "compile-commands-linking"       => 0, # 2021-02-06 link generated compile_commands.json back to the source directory
     "generate-vscode-project-config" => 0,
     "include-dependencies"           => 1,
     "install-after-build"            => 1,
     "install-environment-driver"     => 1, # Setup ~/.config/kde-env-*.sh for login scripts
     "install-session-driver"         => 0, # Above, + ~/.xsession
     "purge-old-logs"                 => 1,
-    "run-tests"                      => 0,  # 1 = make test, upload = make Experimental
+    "run-tests"                      => 0, # 1 = make test, upload = make Experimental  # todo why boolean option may have "upload" value?
     "stop-on-failure"                => 1,
     "use-clean-install"              => 0,
     "use-idle-io-priority"           => 0,
     "use-inactive-modules"           => 0,
 );
 
-# Holds other cmdline-accessible options that aren't simply binary flags.
-our %defaultGlobalOptions = (
-    "binpath"              => '',
-    "branch"               => "",
-    "branch-group"         => "", # Overrides branch, uses JSON data.
-    "build-dir"            => "$ENV{HOME}/kde/build",
-    "cmake-generator"      => "",
-    "cmake-options"        => "",
-    "cmake-toolchain"      => "",
-    "configure-flags"      => "",
-    "custom-build-command" => '',
-    "cxxflags"             => "-pipe",
-    "directory-layout"     => "flat",
-    "dest-dir"             => '${MODULE}', # single quotes used on purpose!
-    "do-not-compile"       => "",
-    "http-proxy"           => '', # Proxy server to use for HTTP.
-    "install-dir"          => "$ENV{HOME}/kde/usr",
-    "libname"              => $libname,
-    "libpath"              => "",
-    "log-dir"              => "log",
-    "make-install-prefix"  => "",  # Some people need sudo
-    "make-options"         => "",
-    "ninja-options"        => "",
-    "num-cores"            => "",  # Used for build constraints
-    "num-cores-low-mem"    => 2,   # Used only in rc-file but documented
-    "override-build-system"=> "",
-    "persistent-data-file" => "",
-    "qmake-options"        => "",
-    "qtdir"                => "",
-    "remove-after-install" => "none", # { none, builddir, all }
-    "source-dir"           => "$ENV{HOME}/kde/src",
-    "tag"                  => "",
+# These options are exposed as cmdline options that require some parameter
+our %GlobalOptions_with_parameter = (
+    "binpath"               => "",
+    "branch"                => "",
+    "branch-group"          => "", # Overrides branch, uses JSON data.
+    "build-dir"             => "$ENV{HOME}/kde/build",
+    "cmake-generator"       => "",
+    "cmake-options"         => "",
+    "cmake-toolchain"       => "",
+    "configure-flags"       => "",
+    "custom-build-command"  => "",
+    "cxxflags"              => "-pipe",
+    "directory-layout"      => "flat",
+    "dest-dir"              => '${MODULE}', # single quotes used on purpose!
+    "do-not-compile"        => "",
+    "http-proxy"            => "", # Proxy server to use for HTTP.
+    "install-dir"           => "$ENV{HOME}/kde/usr",
+    "libname"               => $libname,
+    "libpath"               => "",
+    "log-dir"               => "log",
+    "make-install-prefix"   => "", # Some people need sudo
+    "make-options"          => "",
+    "ninja-options"         => "",
+    "num-cores"             => "", # Used for build constraints
+    "num-cores-low-mem"     => 2,  # Used only in rc-file but documented
+    "override-build-system" => "",
+    "persistent-data-file"  => "",
+    "qmake-options"         => "",
+    "qtdir"                 => "",
+    "remove-after-install"  => "none", # { none, builddir, all }
+    "revision"              => "", # Was only useful for Subversion modules at cmdline. TODO Implement for git?
+    "source-dir"            => "$ENV{HOME}/kde/src",
+    "tag"                   => "",
+);
+
+# These options are exposed as cmdline options without parameters
+our %GlobalOptions_without_parameter = (
+    "build-system-only"    => "",
+    "reconfigure"          => "",
 );
 
 sub new ($class)
@@ -186,9 +191,11 @@ sub new ($class)
         context => $self, # Fix link to buildContext (i.e. $self)
         build_options => {
             global => {
-                %internalGlobalOptions,
-                %defaultGlobalFlags,
-                %defaultGlobalOptions,
+                %GlobalOptions_private,
+                %GlobalOptions_with_extra_specifier,
+                %GlobalOptions_without_parameter,
+                %GlobalOptions_with_negatable_form,
+                %GlobalOptions_with_parameter,
             },
             # Module options are stored under here as well, keyed by module->name()
         },

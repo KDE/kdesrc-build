@@ -256,20 +256,10 @@ sub readCommandLineOptionsAndSelectors (@options)
     };
 
     $foundOptions{$_} //= $flagHandler
-        foreach (keys %ksb::BuildContext::defaultGlobalFlags);
+        foreach (keys %ksb::BuildContext::GlobalOptions_with_negatable_form);
 
-    # build options for Getopt::Long, starting from basic options that are not
-    # simple flags or string-valued options.
+    # build options for Getopt::Long
     my @supportedOptions = _supportedOptions();
-
-    push @supportedOptions,
-        # Special sub used (see above), but have to tell Getopt::Long to look
-        # for negatable boolean flags
-        (map { "$_!" } (keys %ksb::BuildContext::defaultGlobalFlags)),
-
-        # Default handling fine, still have to ask for strings.
-        (map { "$_:s" } (keys %ksb::BuildContext::defaultGlobalOptions)),
-        ;
 
     # Actually read the options.
     my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
@@ -424,49 +414,31 @@ sub _showAuthorAndExit
     exit;
 }
 
-# These are options that are not simple global flags or string-values options,
-# which can be handled easily (and are handled, by making definitions for all
-# flags in ksb::BuildContext::defaultGlobalFlags and
-# ksb::BuildContext::defaultGlobalOptions).
+# Return option specifiers ready to be fed into GetOptionsFromArray
 sub _supportedOptions
 {
-    # option names ready to be fed into GetOptionsFromArray
-    my @options = (
-        'async!',
+    # See https://perldoc.perl.org/5.005/Getopt::Long for options specification format
+
+    my @non_context_options = (
         'author',
         'build-only',
-        'build-system-only',
-        'build-when-unchanged|force-build',
-        'colorful-output|color!',
-        'debug',
         'dependency-tree',
         'dependency-tree-fullpath',
         'help|h',
-        'ignore-modules|!=s{,}',
-        'd', # --include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
         'install-only',
         'list-build',
         'metadata-only',
-        'niceness|nice:10',
         'no-build',
-        'D', # --no-include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
         'no-install',
         'no-metadata',
-        'no-src|S',
         'no-tests',
-        'pretend|dry-run|p',
         'print-modules',
         'query=s',
-        'quiet|quite|q',
         'rc-file=s',
-        'really-quiet',
         'rebuild-failures',
-        'reconfigure',
-        'refresh-build|r',
         'resume',
         'resume-after|after|a=s',
         'resume-from|from|f=s',
-        'revision=i',
         'set-module-option-value=s',
         'show-info',
         'src-only|s',
@@ -474,9 +446,30 @@ sub _supportedOptions
         'stop-after|to=s',
         'stop-before|until=s',
         'uninstall',
-        'verbose',
         'version|v',
     );
+
+    my @context_options_with_extra_specifier = (
+        'build-when-unchanged|force-build',
+        'colorful-output|color!',
+        'ignore-modules|!=s{,}',
+        'niceness|nice:10',
+        'no-src|S',
+        'pretend|dry-run|p',
+        'refresh-build|r',
+    );
+
+    my @options_converted_to_canonical = (
+        'd', # --include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
+        'debug',
+        'D', # --no-include-dependencies, which is already pulled in via ksb::BuildContext::defaultGlobalFlags
+        'quiet|quite|q',
+        'really-quiet',
+        'verbose',
+    );
+
+    # For now, place the options we specified above
+    my @options = (@non_context_options, @context_options_with_extra_specifier, @options_converted_to_canonical);
 
     # Remove stuff like ! and =s from list above;
     my @optNames = map { m/([a-zA-Z-]+)/; $1 } @options;
@@ -486,13 +479,21 @@ sub _supportedOptions
 
     @optsSeen{@optNames} = (1) x @optNames;
 
-    $optsSeen{$_}++ foreach keys %ksb::BuildContext::defaultGlobalFlags;
-    $optsSeen{$_}++ foreach keys %ksb::BuildContext::defaultGlobalOptions;
+    $optsSeen{$_}++ foreach keys %ksb::BuildContext::GlobalOptions_with_negatable_form;
+    $optsSeen{$_}++ foreach keys %ksb::BuildContext::GlobalOptions_with_parameter;
+    $optsSeen{$_}++ foreach keys %ksb::BuildContext::GlobalOptions_without_parameter;
 
     my @violators = grep { $optsSeen{$_} > 1 } keys %optsSeen;
     if (@violators) {
         die "The following options overlap in ksb::Cmdline: [" . join(', ', @violators) . "]!";
     }
+
+    # Now, place the rest of the options, that have specifier dependent on group
+    push @options,
+        (map { "$_!" } (keys %ksb::BuildContext::GlobalOptions_with_negatable_form)),
+        (map { "$_=s" } (keys %ksb::BuildContext::GlobalOptions_with_parameter)),
+        (map { "$_" } (keys %ksb::BuildContext::GlobalOptions_without_parameter)),
+    ;
 
     return @options;
 }
