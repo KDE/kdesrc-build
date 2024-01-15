@@ -142,7 +142,7 @@ sub readCommandLineOptionsAndSelectors (@options)
     %foundOptions = (
         'show-info' => sub { _showInfoAndExit();    },
         version     => sub { _showVersionAndExit(); },
-        author      => sub { _showAuthorAndExit();  },
+        'show-options-specifiers' => sub { _showOptionsSpecifiersAndExit(); },
         help        => sub { _showHelpAndExit();    },
 
         # Intended as a short option, -d would imply --include-dependencies and
@@ -399,17 +399,16 @@ sub _showInfoAndExit
     exit;
 }
 
-sub _showAuthorAndExit
+sub _showOptionsSpecifiersAndExit
 {
-    my $version = "kdesrc-build " . scriptVersion();
-    say <<~DONE;
-        $version was written (mostly) by:
-          Michael Pyne <mpyne\@kde.org>
+    my @supportedOptions = _supportedOptions();
 
-        Many people have contributed code, bugfixes, and documentation.
+    # The initial setup options are handled outside of Cmdline (in the starting script).
+    my @initial_options = ("initial-setup", "install-distro-packages", "generate-config", "update-shellrc");
 
-        Please report bugs using the KDE Bugzilla, at https://bugs.kde.org/
-        DONE
+    foreach my $option (@supportedOptions, @initial_options) {
+        print "$option\n";
+    }
 
     exit;
 }
@@ -420,7 +419,6 @@ sub _supportedOptions
     # See https://perldoc.perl.org/5.005/Getopt::Long for options specification format
 
     my @non_context_options = (
-        'author',
         'build-only',
         'dependency-tree',
         'dependency-tree-fullpath',
@@ -441,6 +439,7 @@ sub _supportedOptions
         'resume-from|from|f=s',
         'set-module-option-value=s',
         'show-info',
+        'show-options-specifiers',
         'src-only|s',
         'start-program|run=s{,}',
         'stop-after|to=s',
