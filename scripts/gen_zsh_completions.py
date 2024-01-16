@@ -146,6 +146,37 @@ for conflicting_set in conflicting_sets:
                 set_tails[id(conflicting_set)] = f"\"[{short_descriptions[opt]}]\"" + set_tails[id(conflicting_set)]
                 break
 
+
+# sort first by positive options; positive and negative goes in pair.
+def set_sort(input_set) -> list:
+    listed = list(input_set)
+    
+    negative = []
+    positive = []
+    
+    for el in listed:
+        if el.startswith("--no-"):
+            negative.append(el)
+        else:
+            positive.append(el)
+    
+    result = []
+    positive.sort()
+    
+    while len(positive) > 0:
+        el = positive.pop(0)
+        result.append(el)
+        if "--no-" + el.removeprefix("--") in negative:
+            result.append("--no-" + el.removeprefix("--"))
+            negative.remove("--no-" + el.removeprefix("--"))
+    
+    negative.sort()
+    while len(negative) > 0:
+        result.append(negative.pop(0))
+    
+    return result
+
+
 # Start printing
 print("""\
 #compdef kdesrc-build"
@@ -158,8 +189,8 @@ _arguments \\\
 
 for conflicting_set in conflicting_sets:
     if len(conflicting_set) > 1:
-        sting_spaced = " ".join(list(conflicting_set))
-        sting_commaed = ",".join(list(conflicting_set))
+        sting_spaced = " ".join(set_sort(conflicting_set))
+        sting_commaed = ",".join(set_sort(conflicting_set))
         
         appending = set_tails[id(conflicting_set)]
         print(f"  \"({sting_spaced})\"{{{sting_commaed}}}{appending} \\")
