@@ -449,7 +449,7 @@ sub _supportedOptions
     );
 
     my @context_options_with_extra_specifier = (
-        'build-when-unchanged|force-build',
+        'build-when-unchanged|force-build!',
         'colorful-output|color!',
         'ignore-modules|!=s{,}',
         'niceness|nice:10',
