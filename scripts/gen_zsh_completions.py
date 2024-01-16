@@ -110,7 +110,6 @@ for individual_option in individual_options:
 # Adding descriptions:
 short_descriptions = {  # contains one of the options (any of them) from set, and description for a set
   "--help": "Displays help on commandline options",
-  "--version": "Displays version information",
   "--pretend": "Dont actually take major actions, instead describe what would be done",
   "--list-build": "List what modules would be built in the order in which they would be built",
   "--dependency-tree": "Print out dependency information on the modules that would be built",
@@ -125,10 +124,8 @@ short_descriptions = {  # contains one of the options (any of them) from set, an
   "--stop-before": "Stops just before or after the given package is reached",
   "--include-dependencies": "Builds/Skip KDE-based dependencies",
   "--stop-on-failure": "Stops/Does not stop the build as soon as a package fails to build",
-  "--quiet": "Do not be as noisy with the output.",
-  "--really-quiet": "Only output warnings and errors.",
-  "--verbose": "Be very descriptive about what is going on, and what kdesrc-build is doing.",
-  "--show-info": "Displays information about kdesrc-build and the operating system",
+  "--verbose": "Change the level of verbosity",
+  "--version": "Script information",
   "--color": "Toggle colorful output",
   "--metadata-only": "Only perform/Skip the metadata download process",
   "--build-only": "Only perform/Skip the build process.",
