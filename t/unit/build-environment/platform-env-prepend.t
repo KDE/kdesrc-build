@@ -1,4 +1,4 @@
-# Test that empty install-dir and/or qtdir do not cause empty /bin settings to be
+# Test that empty install-dir and/or qt-install-dir do not cause empty /bin settings to be
 # configured in environment.
 
 use ksb;
@@ -34,7 +34,7 @@ sub no_bare_bin
     local $ENV{PATH} = $newPath;
 
     $ctx->setOption('install-dir', ''); # must be set but empty
-    $ctx->setOption('qtdir', '/dev/null');
+    $ctx->setOption('qt-install-dir', '/dev/null');
 
     $mod->setupEnvironment();
 
@@ -53,7 +53,7 @@ $ctx->resetEnvironment();
     $newPath =~ s(:/bin:)()g;
     local $ENV{PATH} = $newPath;
 
-    $ctx->setOption('qtdir', ''); # must be set but empty
+    $ctx->setOption('qt-install-dir', ''); # must be set but empty
     $ctx->setOption('install-dir', '/dev/null');
 
     $mod->setupEnvironment();
@@ -73,7 +73,7 @@ $ctx->resetEnvironment();
     $newPath =~ s(:/bin:)()g;
     local $ENV{PATH} = $newPath;
 
-    $ctx->setOption('qtdir', '/dev/null');
+    $ctx->setOption('qt-install-dir', '/dev/null');
     $ctx->setOption('install-dir', '/dev/null');
 
     $mod->setupEnvironment();

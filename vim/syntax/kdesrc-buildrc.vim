@@ -40,7 +40,7 @@ syn keyword ksbrcOption contained skipwhite nextgroup=ksbrcStringValue
             \ custom-build-command cxxflags dest-dir do-not-compile install-dir libname
             \ libpath log-dir make-install-prefix make-options
             \ cmake-generator cmake-toolchain ninja-options
-            \ override-build-system prefix qtdir repository
+            \ override-build-system prefix qt-install-dir repository
             \ revision source-dir tag remove-after-install
             \ qmake-options git-user directory-layout
 

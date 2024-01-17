@@ -670,18 +670,18 @@ sub setupEnvironment ($self)
     # Build system's environment injection
     my $buildSystem = $self->buildSystem();
 
-    # Suppress injecting qtdir/install-dir related environment variables if a toolchain is also set
+    # Suppress injecting qt-install-dir/install-dir related environment variables if a toolchain is also set
     # Let the toolchain files/definitions take care of themselves.
     if ($buildSystem->hasToolchain()) {
         whisper ("\tNot setting environment variables for b[$self]: a custom toolchain is used");
     } else {
         my $installdir   = $self->getOption('install-dir');
-        my $qtdir    = $self->getOption('qtdir');
+        my $qt_installdir    = $self->getOption('qt-install-dir');
         my $libname  = $self->getOption('libname'); # e.g. "lib" or "lib64"
 
         # Ensure the platform libraries we're building can be found, as long as they
         # are not the system's own libraries.
-        for my $platformDir ($qtdir, $installdir) {
+        for my $platformDir ($qt_installdir, $installdir) {
             next unless $platformDir;       # OK, assume system platform is usable
             next if $platformDir eq '/usr'; # Don't 'fix' things if system platform
                                             # manually set

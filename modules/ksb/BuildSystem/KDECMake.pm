@@ -251,10 +251,8 @@ sub prepareModuleBuildEnvironment
 {
     my ($self, $ctx, $module, $prefix) = @_;
 
-    #
-    # Suppress injecting qtdir/install-dir related environment variables if a toolchain is also set
+    # Suppress injecting qt-install-dir/install-dir related environment variables if a toolchain is also set
     # Let the toolchain files/definitions take care of themselves.
-    #
     return if $self->hasToolchain();
 
     # Avoid moving /usr up in env vars
@@ -268,11 +266,11 @@ sub prepareModuleBuildEnvironment
         $ctx->prependEnvironmentValue('XDG_DATA_DIRS', "$prefix/share");
     }
 
-    my $qtdir = $module->getOption('qtdir');
-    if ($qtdir && $qtdir ne $prefix) {
+    my $qt_installdir = $module->getOption('qt-install-dir');
+    if ($qt_installdir && $qt_installdir ne $prefix) {
         # Ensure we can find Qt5's own CMake modules
-        $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $qtdir);
-        $ctx->prependEnvironmentValue('CMAKE_MODULE_PATH', "$qtdir/lib/cmake");
+        $ctx->prependEnvironmentValue('CMAKE_PREFIX_PATH', $qt_installdir);
+        $ctx->prependEnvironmentValue('CMAKE_MODULE_PATH', "$qt_installdir/lib/cmake");
     }
 }
 
@@ -547,12 +545,12 @@ sub _safe_run_cmake
     push @commands, "-DCMAKE_INSTALL_PREFIX=$installdir";
 
     # Add custom Qt to the prefix (but don't overwrite a user-set install-dir)
-    my $qtdir = $module->getOption('qtdir');
-    if ($qtdir && $qtdir ne $installdir &&
+    my $qt_installdir = $module->getOption('qt-install-dir');
+    if ($qt_installdir && $qt_installdir ne $installdir &&
         !grep { /^\s*-DCMAKE_PREFIX_PATH/ } (@commands)
        )
     {
-        push @commands, "-DCMAKE_PREFIX_PATH=$qtdir";
+        push @commands, "-DCMAKE_PREFIX_PATH=$qt_installdir";
     }
 
     if ($module->getOption('run-tests') &&

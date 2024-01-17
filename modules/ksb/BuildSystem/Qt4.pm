@@ -18,7 +18,7 @@ sub needsInstalled
 {
     my $self = assert_isa(shift, 'ksb::BuildSystem::Qt4');
     my $module = $self->module();
-    return $module->getOption('qtdir') ne $module->fullpath('build');
+    return $module->getOption('qt-install-dir') ne $module->fullpath('build');
 }
 
 sub name
@@ -52,11 +52,11 @@ sub configureInternal
     my $cxxflags = $module->getOption('cxxflags');
     $module->buildContext()->queueEnvironmentVariable('CXXFLAGS', $cxxflags);
 
-    my $prefix = $module->getOption('qtdir');
+    my $prefix = $module->getOption('qt-install-dir');
 
     if (!$prefix)
     {
-        error ("\tThe b[qtdir] option must be set to determine where to install r[b[$module]");
+        error ("\tThe b[qt-install-dir] option must be set to determine where to install r[b[$module]");
         return 0;
     }
 

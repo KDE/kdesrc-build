@@ -963,6 +963,9 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
             if ($option eq "prefix") {  # todo This message is temporary. Remove it after 14.04.2024.
                 error "r[Please edit your config. Replace \"b[prefix]r[\" with \"b[install-dir]r[\".";
             }
+            if ($option eq "qtdir") {  # todo This message is temporary. Remove it after 17.04.2024.
+                error "r[Please edit your config. Replace \"b[qtdir]r[\" with \"b[qt-install-dir]r[\".";
+            }
             die ksb::BuildException::Config->new($option, "Unrecognized option \"$option\" found at $current_file:$.");
         }
 
@@ -1864,8 +1867,8 @@ sub _checkForEssentialBuildPrograms
 {
     my $ctx = assert_isa(shift, 'ksb::BuildContext');
     my $installdir = $ctx->getOption('install-dir');
-    my $qtdir = $ctx->getOption('qtdir');
-    my @preferred_paths = ("$installdir/bin", "$qtdir/bin");
+    my $qt_installdir = $ctx->getOption('qt-install-dir');
+    my @preferred_paths = ("$installdir/bin", "$qt_installdir/bin");
 
     return 1 if pretending();
 
