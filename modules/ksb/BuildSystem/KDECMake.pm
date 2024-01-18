@@ -466,8 +466,9 @@ sub _readFile
 {
     my ($file_path) = @_;
 
+    my $content = "";  # Avoid lefting content uninitialized. We still need to return empty string in case file could not be opened.
     open my $file, '<', $file_path or warning("\tCouldn't open $file_path: $!");
-    my $content = do { local $/; <$file> };
+    $content = do { local $/; <$file> };
     close $file;
 
     return $content;
