@@ -193,11 +193,10 @@ short_descriptions = {  # contains one of the options (any of them) from set, an
 }
 
 for conflicting_set in conflicting_sets:
-    if len(conflicting_set) > 1:
-        for opt in list(conflicting_set):
-            if opt in short_descriptions:
-                set_tails[id(conflicting_set)] = f"\"[{short_descriptions[opt]}]\"" + set_tails[id(conflicting_set)]
-                break
+    for opt in list(conflicting_set):
+        if opt in short_descriptions:
+            set_tails[id(conflicting_set)] = f"\"[{short_descriptions[opt]}]\"" + set_tails[id(conflicting_set)]
+            break
 
 
 # sort first by positive options; positive and negative goes in pair.
