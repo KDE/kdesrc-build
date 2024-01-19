@@ -28,21 +28,20 @@
 >Відкрийте або створіть файл <filename
 >.bash_profile</filename
 > у домашньому каталозі за допомогою вашого улюбленого редактора, і додайте в кінець файла наступні рядки. Якщо ви збираєте модуль qt (це типова поведінка), додайте: <programlisting>
-QTDIR=(шлях до qtdir)   # Типовим є ~/kdesrc/build/qt.
-PATH=${install-dir}/bin:$QTDIR/bin:$PATH
-MANPATH=$QTDIR/doc/man:$MANPATH
+PATH=${install-dir}/bin:${qt-install-dir}/bin:$PATH
+MANPATH=${qt-install-dir}/doc/man:$MANPATH
 
 # Дійте у відповідності до того, чи встановлено змінну LD_LIBRARY_PATH.
 if [ -z $LD_LIBRARY_PATH ]; then
-  LD_LIBRARY_PATH=${install-dir}/lib:$QTDIR/lib
+  LD_LIBRARY_PATH=${install-dir}:/lib:${qt-install-dir}/lib
 else
-  LD_LIBRARY_PATH=${install-dir}/lib:$QTDIR/lib:$LD_LIBRARY_PATH
+  LD_LIBRARY_PATH=${install-dir}:/lib:${qt-install-dir}/lib:$LD_LIBRARY_PATH
 fi
 
-export QTDIR PATH MANPATH LD_LIBRARY_PATH
+export PATH MANPATH LD_LIBRARY_PATH
 </programlisting
 > або, якщо ви не збираєте qt (а замість неї використовуєте системну бібліотеку &Qt;), додайте такі рядки: <programlisting
->PATH=${install-dir}/bin:$QTDIR/bin:$PATH
+>PATH=${install-dir}/bin:${qt-install-dir}/bin:$PATH
 
 # Діяти відповідно, якщо ще не встановлено LD_LIBRARY_PATH.
 if [ -z $LD_LIBRARY_PATH ]; then
