@@ -39,7 +39,7 @@ sub ignoredModules
                         grep { !/^\s*$/ }     # 2 Filter empty lines
                         map  { s/#.*$//; $_ } # 1 Remove comments
                         (<$fh>);
-
+    close($fh);
     return @ignoreModules;
 }
 
