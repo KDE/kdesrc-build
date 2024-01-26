@@ -57,8 +57,8 @@ use POSIX qw(:sys_wait_h _exit :errno_h);
 use constant {
     # We use a named remote to make some git commands work that don't accept the
     # full path.
-    KDE_PROJECT_ID   => 'kde-projects',  # git-repository-base for sysadmin/repo-metadata
-    QT_PROJECT_ID    => 'qt-projects',   # git-repository-base for qt.io Git repo
+    KDE_PROJECT_ID   => 'kde-projects',  # git-repository-base for sysadmin/repo-metadata. The value is determined as "kde:$repoPath.git", where $repoParh is read from yaml metadata file for each module.
+    QT_PROJECT_ID    => 'qt-projects',   # git-repository-base for qt.io Git repo. The value is set as "https://invent.kde.org/qt/qt/qt5.git" when the module set transforms to qt5 super module.
 };
 
 ### Package methods
