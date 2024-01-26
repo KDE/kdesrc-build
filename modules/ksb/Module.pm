@@ -855,7 +855,7 @@ sub setOption
     my ($self, %options) = @_;
 
     # Ensure we don't accidentally get fed module-set options
-    for (qw(git-repository-base use-modules ignore-modules)) {
+    for (qw(use-modules ignore-modules)) {
         if (exists $options{$_}) {
             error (" r[b[*] module b[$self] should be declared as module-set to use b[$_]");
             die ksb::BuildException::Config->new($_, "Option $_ can only be used in module-set");

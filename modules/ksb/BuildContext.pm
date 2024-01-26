@@ -97,7 +97,7 @@ my %GlobalOptions_private = (
     "debug-level"          => ksb::Debug::INFO,
     "filter-out-phases"    => "",
     "git-desired-protocol" => "git", # protocol to use for git *push* URLs (fetch requires https)
-    "git-repository-base"  => {}, # Base path template for use multiple times.
+    "git-repository-base"  => {},
     "manual-build"         => "",
     "manual-update"        => "",
     "repository"           => "", # module's git repo
@@ -799,23 +799,6 @@ sub getOption ($self, $key, $level = 'module')
 sub setOption
 {
     my ($self, %options) = @_;
-
-    # Special-case handling
-    my $repoOption = 'git-repository-base';
-    if (exists $options{$repoOption}) {
-        my $value = $options{$repoOption};
-        my ($repo, $url) = ($value =~ /^([a-zA-Z0-9_-]+)\s+(.+)$/);
-
-        if (!$repo || !$url) {
-            die ksb::BuildException::Config->new($repoOption,
-                "Invalid git-repository-base setting: $value");
-        }
-
-        # This will be a hash reference instead of a scalar
-        my $hashref = $self->getOption($repoOption) || { };
-        $hashref->{$repo} = $url;
-        delete $options{$repoOption};
-    }
 
     # Actually set options.
     $self->SUPER::setOption(%options);

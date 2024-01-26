@@ -136,6 +136,34 @@ sub setOption ($self, %options)
         delete $options{'set-env'};
     }
 
+    # Special-case handling
+    my $repoOption = 'git-repository-base';
+    if (exists $options{$repoOption}) {
+        my $value = $options{$repoOption};
+
+        if (ref($value) eq 'HASH') {
+            # The case when we merge the constructed OptionBase module (from the config) into the BuildContext. The type of $value is a hash (dict).
+            foreach my $key (keys %{$value}) {
+                $self->{options}{$repoOption}{$key} = $value->{$key};
+            }
+            delete $options{$repoOption};
+        } else {
+            # The case when we first read the option from the config. The type of $value is a scalar (string).
+            my ($repo, $url) = ($value =~ /^([a-zA-Z0-9_-]+)\s+(.+)$/);
+
+            if (!$repo || !$url) {
+                die ksb::BuildException::Config->new($repoOption,
+                    "Invalid git-repository-base setting: $value");
+            }
+
+            # This will be a hash reference instead of a scalar
+            my $hashref = $self->getOption($repoOption) || {};
+            $hashref->{$repo} = $url;
+            $self->{options}{$repoOption} = $hashref;
+            return
+        }
+    }
+
     # Everything else can be dumped straight into our hash.
     @{$self->{options}}{keys %options} = values %options;
 }

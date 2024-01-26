@@ -924,10 +924,6 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
     assert_isa($module, 'ksb::OptionsBase');
 
     state $moduleID = 0;
-    my $endWord = $module->isa('ksb::BuildContext') ? 'global'     :
-                  $module->isa('ksb::ModuleSet')    ? 'module-set' :
-                  $module->isa('ksb::Module')       ? 'module'     :
-                                                      'options';
 
     # Just look for an end marker if terminator not provided.
     $endRE //= qr/^end[\w\s]*$/;
@@ -945,6 +941,11 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
         # Sanity check, make sure the section is correctly terminated
         if(/^(module\b|options\b)/)
         {
+            my $endWord = $module->isa('ksb::BuildContext') ? 'global'     :
+                          $module->isa('ksb::ModuleSet')    ? 'module-set' :
+                          $module->isa('ksb::Module')       ? 'module'     :
+                                                              'options';
+
             error ("Invalid configuration file $current_file at line $.\nAdd an 'end $endWord' before " .
                    "starting a new module.\n");
             die make_exception('Config', "Invalid file $current_file");
@@ -1097,7 +1098,7 @@ sub _readConfigurationOptions ($ctx, $fh, $cmdlineGlobalOptions, $deferredOption
         # Now read in each global option.
         my $globalOpts = _parseModuleOptions($ctx, $fileReader, ksb::OptionsBase->new());
 
-        # Remove any cmdline options so they don't overwrite build context
+        # For those options that user passed in cmdline, we do not want their corresponding config options to overwrite build context, so we forget them.
         delete @{$globalOpts->{options}}{keys %{$cmdlineGlobalOptions}};
         $ctx->mergeOptionsFrom($globalOpts);
 
