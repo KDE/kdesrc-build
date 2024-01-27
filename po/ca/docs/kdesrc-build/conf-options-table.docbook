@@ -110,7 +110,7 @@
 >Fals</member>
 </simplelist>
 <para
->Si esteu utilitzant &ssh; per a descarregar el codi font del &git; (com quan s'utilitza el protocol git+ssh), aquesta opció controla si el &kdesrc-build; intentarà i s'assegurarà que si utilitzeu el ssh-agent, en realitat s'estaran gestionant algunes identitats &ssh;. Això és per evitar que &ssh; sol·liciti una contrasenya per a cada mòdul.</para>
+>Si esteu utilitzant &ssh; per a descarregar el codi font del &git; (com quan s'utilitza el protocol git+ssh), aquesta opció controla si el &kdesrc-build; intentarà i s'assegurarà que si utilitzeu el ssh-agent, en realitat s'estaran gestionant algunes identitats &ssh;. Això és per a evitar que &ssh; sol·liciti una contrasenya per a cada mòdul.</para>
 <para
 >Opcions relacionades de la línia d'ordres: --disable-agent-check, --no-disable-agent-check</para>
 </entry>
@@ -170,6 +170,89 @@
 </entry>
 </row>
 
+<row id="conf-git-repository-base">
+<entry
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Tipus</member
+><member
+>Cadena</member>
+<member
+>Disponible des de</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Aquesta opció s'utilitza per a crear un nom curt per a fer referència a un URL base del repositori Git específic, en les declaracions de <link linkend="module-sets"
+>conjunts de mòduls</link
+> posteriors, la qual cosa és útil per a declarar amb rapidesa la creació de molts mòduls de Git.</para>
+
+<para
+>Haureu d'especificar dues coses (separades per un espai): el nom que s'assignarà a l'URL base i l'URL base real en si. Per exemple:</para>
+
+<para>
+<programlisting
+>global
+    # Altres opcions
+    # Aquest és el camí habitual per a tots els mòduls de servidor Git anònim.
+    git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Declaracions del mòdul
+
+module-set
+    # Ara podreu fer servir àlies que heu definit amb anterioritat, però <emphasis
+>només</emphasis
+> sobre un conjunt de mòduls.    repository <replaceable
+>kde-git</replaceable>
+    <link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>module1.git</replaceable
+> <replaceable
+>module2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>L'opció <literal
+>use-modules</literal
+> del conjunt de mòduls ha creat dos mòduls internament, amb el &kdesrc-build; comportant-se com si hagués llegit:</para>
+
+<programlisting
+>module module1
+    repository kde:<replaceable
+>module1.git</replaceable>
+end module
+
+module module2
+    repository kde:<replaceable
+>module2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>El prefix de repositori &git; és <literal
+>kde:</literal
+>, utilitzat abans és una drecera que el &kdesrc-build; configurarà automàticament. Consulteu l'article <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>URL Renaming</ulink
+> de TechBase per a obtenir més informació. Recordeu que, a diferència de la majoria de les altres opcions, aquesta opció es pot especificar múltiples vegades per a crear tants àlies com sigui necessari.</para>
+
+<tip
+><para
+>No es requereix utilitzar aquesta opció per a aprofitar el conjunt de mòduls, aquesta opció existeix per a facilitar l'ús del mateix repositori en molts conjunts de mòduls diferents.</para
+></tip>
+</entry>
+</row>
+
 <row id="conf-install-environment-driver">
 <entry
 ><link linkend="conf-install-environment-driver"
@@ -191,7 +274,7 @@
 >17.08</member>
 </simplelist>
 <para
->Instal·la un script d'intèrpret d'ordres que pot obtenir-se en els scripts de configuració del perfil d'un usuari per establir amb facilitat les variables d'entorn necessàries per executar l'escriptori Plasma creat pel &kdesrc-build;.</para>
+>Instal·la un script d'intèrpret d'ordres que pot obtenir-se en els scripts de configuració del perfil d'un usuari per a establir amb facilitat les variables d'entorn necessàries per a executar l'escriptori Plasma creat pel &kdesrc-build;.</para>
 
 <para
 >Aquest controlador modificarà els següents fitxers:</para>
@@ -773,7 +856,7 @@
 >Makefiles de l'Unix</member>
 </simplelist>
 <para
->Especifiqueu quin generador utilitzar amb el &cmake;. Actualment s'admeten tant els <literal
+>Especifiqueu quin generador utilitzar amb el &cmake;. Actualment s'admet tant el <literal
 >Ninja</literal
 > com els <literal
 >Makefiles de l'Unix</literal
@@ -807,11 +890,11 @@
 >Cadena</member>
 </simplelist>
 <para
->Especifiqueu un fitxer de cadena d'eines per utilitzar-lo amb el &cmake;. </para>
+>Especifiqueu un fitxer de cadena d'eines per a utilitzar-lo amb el &cmake;. </para>
 <para
 >Quan es configura un fitxer de cadena d'eines vàlid, el &kdesrc-build; <emphasis
 >ja no establirà automàticament les variables d'entorn</emphasis
->. Utilitzeu «&set-env;», «&binpath;» i «&libpath;» per arreglar l'entorn manualment si el vostre fitxer de cadena d'eines no funciona de manera predeterminada amb el &kdesrc-build;. Per a més informació consulteu <link linkend="kdesrc-build-std-flags"
+>. Utilitzeu «&set-env;», «&binpath;» i «&libpath;» per a arreglar l'entorn manualment si el vostre fitxer de cadena d'eines no funciona de manera predeterminada amb el &kdesrc-build;. Per a més informació consulteu <link linkend="kdesrc-build-std-flags"
 >el resum dels indicadors estàndard afegits pel &kdesrc-build;</link
 >. </para>
 <para
@@ -842,7 +925,7 @@
 <para
 >Afegeix opcions globals per al sistema de construcció predeterminat, superposarà les opcions globals per als altres sistemes de construcció.</para>
 <para
->Utilitzeu aquesta opció per especificar quins indicadors passar al &cmake; en crear el sistema de construcció per al mòdul. Quan s'utilitza com una opció global, s'aplicarà a tots els mòduls que construeixi aquest script. Quan s'utilitza com una opció de mòdul, s'afegirà al final de les opcions globals. Això permet especificar opcions habituals al &cmake; en la secció global.</para>
+>Utilitzeu aquesta opció per a especificar quins indicadors passar al &cmake; en crear el sistema de construcció per al mòdul. Quan s'utilitza com una opció global, s'aplicarà a tots els mòduls que construeixi aquest script. Quan s'utilitza com una opció de mòdul, s'afegirà al final de les opcions globals. Això permet especificar opcions habituals al &cmake; en la secció global.</para>
 
 <para
 >Aquesta opció no s'aplicarà a les qt (les quals no utilitzen el &cmake;). En el seu lloc utilitzeu <link linkend="conf-configure-flags"
@@ -942,7 +1025,7 @@
 <para
 >Afegeix opcions globals per al sistema de construcció predeterminat, superposarà les opcions globals per als altres sistemes de construcció.</para>
 <para
->Utilitzeu aquesta opció per especificar quins indicadors passar a ./configure en crear el sistema de construcció per al mòdul. Quan s'utilitza això com una opció global, s'aplicarà a tots els mòduls que construeixi aquest script. <emphasis
+>Utilitzeu aquesta opció per a especificar quins indicadors passar a ./configure en crear el sistema de construcció per al mòdul. Quan s'utilitza això com una opció global, s'aplicarà a tots els mòduls que construeixi aquest script. <emphasis
 >Aquesta opció només funcionarà per a les qt.</emphasis
 ></para>
 
@@ -1000,7 +1083,7 @@
 <para
 >Afegeix opcions globals per al sistema de construcció predeterminat, superposarà les opcions globals per als altres sistemes de construcció.</para>
 <para
->Utilitzeu aquesta opció per especificar quins indicadors utilitzar per a construir el mòdul. Aquesta opció s'especifica aquí en lloc d'amb <link linkend="conf-configure-flags"
+>Utilitzeu aquesta opció per a especificar quins indicadors utilitzar per a construir el mòdul. Aquesta opció s'especifica aquí en lloc d'amb <link linkend="conf-configure-flags"
 >configure-flags</link
 > o <link linkend="conf-cmake-options"
 >cmake-options</link
@@ -1363,7 +1446,7 @@
 >${MODULE}</varname
 > o <varname
 >$MODULE</varname
-> en el camí per expandir el nom del mòdul.</para>
+> en el camí per a expandir el nom del mòdul.</para>
 <para
 >Opcions relacionades de la línia d'ordres: <xref linkend="cmdline-install-dir"/></para>
 </entry>
@@ -1531,7 +1614,7 @@
 <para
 >Establiu el valor de l'opció a <userinput
 >true</userinput
-> (cert) per evitar que el procés de construcció intenti construir aquest mòdul. Encara es mantindrà actualitzat quan s'actualitzi des de &git;. Aquesta opció és exactament equivalent a l'opció <link linkend="cmdline-no-build"
+> (cert) per a evitar que el procés de construcció intenti construir aquest mòdul. Encara es mantindrà actualitzat quan s'actualitzi des de &git;. Aquesta opció és exactament equivalent a l'opció <link linkend="cmdline-no-build"
 ><option
 >--no-build</option
 > </link
@@ -1558,7 +1641,7 @@
 <para
 >Establiu el valor de l'opció a <userinput
 >true</userinput
-> (cert) per evitar que el procés de construcció intenti actualitzar (i, per extensió, construir o instal·lar) aquest mòdul. Si establiu aquesta opció per a un mòdul, essencialment l'haureu de descomentar.</para>
+> (cert) per a evitar que el procés de construcció intenti actualitzar (i, per extensió, construir o instal·lar) aquest mòdul. Si establiu aquesta opció per a un mòdul, essencialment l'haureu de descomentar.</para>
 </entry>
 </row>
 
@@ -1575,9 +1658,9 @@
 >Cadena</member>
 </simplelist>
 <para
->Establiu aquesta variable per passar les opcions de la línia d'ordres a l'ordre de construcció <command
+>Establiu aquesta variable per a passar les opcions de la línia d'ordres a l'ordre de construcció <command
 >ninja</command
->. Això pot ser útil per habilitar la sortida «detallada» o per a reduir manualment el nombre de tasques de construcció en paral·lel que faria servir el <command
+>. Això pot ser útil per a habilitar la sortida «detallada» o per a reduir manualment el nombre de tasques de construcció en paral·lel que faria servir el <command
 >ninja</command
 >.</para>
 
@@ -1600,7 +1683,7 @@
 >qtwebengine</replaceable>
     # Restringeix el make i el ninja a l'ús de no més de 6 tasques de
     # compilació separades, fins i tot quan hi hagi més CPU disponible,
-    # per evitar quedar-se sense memòria
+    # per a evitar quedar-se sense memòria
     <option
 ><link linkend="conf-make-options"
 >make-options</link
@@ -1810,7 +1893,7 @@ end options
 >Cadena</member>
 </simplelist>
 <para
->Aquesta opció controla a on s'instal·laran el mòduls qt després de la construcció. Si no especifiqueu aquesta opció, el &kdesrc-build; assumirà que el sistema operatiu proporciona les &Qt;. </para>
+>Aquesta opció controla a on s'instal·laran els mòduls qt després de la construcció. Si no especifiqueu aquesta opció, el &kdesrc-build; assumirà que el sistema operatiu proporciona les &Qt;. </para>
 <para
 >Opcions relacionades de la línia d'ordres: --qt-install-dir <replaceable
 >camí</replaceable
@@ -1906,7 +1989,7 @@ end options
 >1.16</member>
 </simplelist>
 <para
->Si aquesta opció s'estableix en un valor diferent de 0 (zero), el &kdesrc-build; forçarà l'actualització del codi font per portar el mòdul a la revisió exacta indicada, fins i tot si estan vigents opcions com la <link linkend="conf-branch"
+>Si aquesta opció s'estableix en un valor diferent de 0 (zero), el &kdesrc-build; forçarà l'actualització del codi font per a portar el mòdul a la revisió exacta indicada, fins i tot si estan vigents opcions com la <link linkend="conf-branch"
 >branch</link
 > (branca). Si el mòdul ja es troba en la revisió indicada, no s'actualitzarà més a menys que aquesta opció es canviï o s'elimini de la configuració.</para>
 <para
@@ -1952,7 +2035,7 @@ end options
 >Cadena</member>
 </simplelist>
 <para
->Aquesta opció accepta un conjunt de valors separats per espais, on el primer valor és la variable d'entorn per establir, i la resta dels valors són el que voleu que estableixi la variable. Per exemple, per establir la variable <envar
+>Aquesta opció accepta un conjunt de valors separats per espais, on el primer valor és la variable d'entorn per a establir, i la resta dels valors són el que voleu que estableixi la variable. Per exemple, per a establir la variable <envar
 >RONALD</envar
 > a McDonald, haureu de posar aquesta ordre a la secció corresponent:</para>
 <programlisting
@@ -1990,7 +2073,7 @@ end options
 ></member>
 </simplelist>
 <para
->Aquesta opció s'utilitza per a configurar el directori a l'ordinador per emmagatzemar el codi font de &git; del &kde;. Podeu utilitzar la titlla (~) per a representar el directori d'inici si feu servir aquesta opció.</para>
+>Aquesta opció s'utilitza per a configurar el directori a l'ordinador per a emmagatzemar el codi font de &git; del &kde;. Podeu utilitzar la titlla (~) per a representar el directori d'inici si feu servir aquesta opció.</para>
 <para
 >Opcions relacionades de la línia d'ordres: --source-dir <replaceable
 >camí</replaceable
@@ -2086,7 +2169,7 @@ end options
 >.</para>
 
 <para
->Això pot ser útil per assegurar que no hi hagi fitxers antics de biblioteca que estan perduts, les metadades de &cmake;, &etc; que puguin causar problemes a les instal·lacions del &kde; de llarga durada. Tanmateix, això només funciona en els sistemes de construcció que admeten la desinstal·lació.</para>
+>Això pot ser útil per a assegurar que no hi hagi fitxers antics de biblioteca que estan perduts, les metadades de &cmake;, &etc; que puguin causar problemes a les instal·lacions del &kde; de llarga durada. Tanmateix, això només funciona en els sistemes de construcció que admeten la desinstal·lació.</para>
 <para
 >Opcions relacionades de la línia d'ordres: --use-clean-install, --no-use-clean-install</para>
 </entry>
@@ -2113,88 +2196,6 @@ end options
 </thead>
 <tbody>
 
-<row id="conf-git-repository-base">
-<entry
-><link linkend="conf-git-repository-base"
->git-repository-base</link
-></entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Tipus</member
-><member
->Cadena</member>
-<member
->Disponible des de</member
-><member
->1.12.1</member>
-</simplelist>
-<para
->Aquesta opció s'utilitza per a crear un nom curt per a fer referència a un URL base del repositori Git específic, en les declaracions de <link linkend="module-sets"
->conjunts de mòduls</link
-> posteriors, la qual cosa és útil per a declarar amb rapidesa la creació de molts mòduls de Git.</para>
-
-<para
->Haureu d'especificar dues coses (separades per un espai): el nom que s'assignarà a l'URL base i l'URL base real en si. Per exemple:</para>
-
-<para>
-<programlisting
->global
-    # Altres opcions
-    # Aquest és el camí habitual per a tots els mòduls de servidor Git anònim.
-    git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Declaracions del mòdul
-
-module-set
-    # Ara podreu fer servir àlies que heu definit amb anterioritat, però <emphasis
->només</emphasis
-> sobre un conjunt de mòduls.    repository <replaceable
->kde-git</replaceable>
-    <link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->module1.git</replaceable
-> <replaceable
->module2.git</replaceable>
-end module-set
-</programlisting>
-</para>
-
-<para
->L'opció <literal
->use-modules</literal
-> del conjunt de mòduls ha creat dos mòduls internament, amb el &kdesrc-build; comportant-se com si hagués llegit:</para>
-
-<programlisting
->module module1
-    repository kde:<replaceable
->module1.git</replaceable>
-end module
-
-module module2
-    repository kde:<replaceable
->module2.git</replaceable>
-end module
-</programlisting>
-
-<para
->El prefix de repositori &git; és <literal
->kde:</literal
->, utilitzat abans és una drecera que el &kdesrc-build; configurarà automàticament. Consulteu l'article <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->URL Renaming</ulink
-> de TechBase per obtenir més informació. Recordeu que, a diferència de la majoria de les altres opcions, aquesta opció es pot especificar múltiples vegades per a crear tants àlies com sigui necessari.</para>
-
-<tip
-><para
->No es requereix utilitzar aquesta opció per aprofitar el conjunt de mòduls, aquesta opció existeix per a facilitar l'ús del mateix repositori en molts conjunts de mòduls diferents.</para
-></tip>
-</entry>
-</row>
 
 <row id="conf-ignore-modules">
 <entry
@@ -2298,7 +2299,7 @@ end module
 <para
 >Vegeu <xref linkend="module-sets"/> i <link linkend="conf-git-repository-base"
 >git-repository-base</link
-> per obtenir una descripció del seu ús i un exemple.</para>
+> per a obtenir una descripció del seu ús i un exemple.</para>
 </entry>
 </row>
 
