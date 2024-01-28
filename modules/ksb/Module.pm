@@ -79,7 +79,7 @@ sub new
         croak_internal ("Invalid context $ctx");
     }
 
-    # Clone the passed-in phases so we can be different.
+    # Clone the passed-in phases so we can be different. They may be modified later in setOption.
     my $phases = dclone($ctx->phases()) if $ctx;
 
     my %newOptions = (
@@ -868,6 +868,52 @@ sub setOption
             $self->phases()->filterOutPhase($phase);
         }
         delete $options{'filter-out-phases'};
+    }
+
+    # Phases changes handling
+    #
+    # The context phases were handled by cmdline. The module-sets will eventually be expanded to modules. For module, we will handle its phases.
+    if (exists $options{"no-src"}) {
+        $self->phases()->filterOutPhase("update");
+        delete $options{"no-src"};
+    }
+    if (exists $options{"no-install"}) {
+        $self->phases()->filterOutPhase("install");
+        delete $options{"no-install"};
+    }
+    if (exists $options{"no-tests"}) {
+        $self->phases()->filterOutPhase("test");  # May not work properly yet.
+        delete $options{"no-tests"};
+    }
+    if (exists $options{"no-build"}) {
+        $self->phases()->filterOutPhase("build");
+        delete $options{"no-build"};
+    }
+    if (exists $options{"uninstall"}) {
+        # Not useful yet. Currently only may be useful to disable uninstallation when uninstalling with cmdline ("uninstall" run_mode)
+        if ($self->phases()->has("uninstall")) {
+            $self->phases->phases("uninstall");
+        } else {
+            $self->phases()->clear();
+        }
+        delete $options{"uninstall"};
+    }
+    if (exists $options{"build-only"}) {
+        if ($self->phases()->has("build")) {
+            $self->phases->phases("build");
+        } else {
+            $self->phases()->clear();
+        }
+        delete $options{"build-only"};
+    }
+    if (exists $options{"install-only"}) {
+        # Not useful yet, because install is invoked by run_mode or in the end of building function. See a todo with text "Likewise this should be a phase to run."
+        if ($self->phases()->has("install")) {
+            $self->phases->phases("install");
+        } else {
+            $self->phases()->clear();
+        }
+        delete $options{"install-only"};
     }
 
     $self->SUPER::setOption(%options);

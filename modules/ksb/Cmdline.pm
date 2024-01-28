@@ -413,23 +413,30 @@ sub _showOptionsSpecifiersAndExit
     exit;
 }
 
+our @phase_changing_options = (
+    'build-only',
+    'install-only',
+    'no-build',
+    'no-install',
+    'no-src|S',
+    'no-tests',
+    'src-only|s',
+    'uninstall',
+);
+
+
 # Return option specifiers ready to be fed into GetOptionsFromArray
 sub _supportedOptions
 {
     # See https://perldoc.perl.org/5.005/Getopt::Long for options specification format
 
     my @non_context_options = (
-        'build-only',
         'dependency-tree',
         'dependency-tree-fullpath',
         'help|h',
-        'install-only',
         'list-build',
         'metadata-only',
-        'no-build',
-        'no-install',
         'no-metadata',
-        'no-tests',
         'print-modules',
         'query=s',
         'rc-file=s',
@@ -440,11 +447,9 @@ sub _supportedOptions
         'set-module-option-value=s',
         'show-info',
         'show-options-specifiers',
-        'src-only|s',
         'start-program|run=s{,}',
         'stop-after|to=s',
         'stop-before|until=s',
-        'uninstall',
         'version|v',
     );
 
@@ -453,7 +458,6 @@ sub _supportedOptions
         'colorful-output|color!',
         'ignore-modules|!=s{,}',
         'niceness|nice:10',
-        'no-src|S',
         'pretend|dry-run|p',
         'refresh-build|r',
     );
@@ -468,7 +472,7 @@ sub _supportedOptions
     );
 
     # For now, place the options we specified above
-    my @options = (@non_context_options, @context_options_with_extra_specifier, @options_converted_to_canonical);
+    my @options = (@non_context_options, @phase_changing_options, @context_options_with_extra_specifier, @options_converted_to_canonical);
 
     # Remove stuff like ! and =s from list above;
     my @optNames = map { m/([a-zA-Z-]+)/; $1 } @options;

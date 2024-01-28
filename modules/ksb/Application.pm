@@ -951,7 +951,8 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
     _markModuleSource($module, $fileReader->currentFilename() . ":$.");
     $module->setOption('#entry_num', $moduleID++);
 
-    my @all_possible_options = sort keys %{$ctx->{build_options}->{global}};
+    my @phase_changing_options_canonical = map { my $element = $_; $element =~ s/\|.*//; $element } @ksb::Cmdline::phase_changing_options;
+    my @all_possible_options = sort keys %{$ctx->{build_options}->{global}}, @phase_changing_options_canonical;
 
     # Read in each option
     while (($_ = _readNextLogicalLine($fileReader)) && ($_ !~ $endRE))

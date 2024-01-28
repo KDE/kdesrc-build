@@ -113,7 +113,6 @@ my %GlobalOptions_with_extra_specifier = (
     "colorful-output"      => 1,
     "ignore-modules"       => "",
     "niceness"             => "10", # todo convert to int?
-    "no-src"               => "",
     "pretend"              => "",
     "refresh-build"        => "",
 );
