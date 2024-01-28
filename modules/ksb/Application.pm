@@ -264,7 +264,7 @@ EOF
     }
 
     # Convert list to hash for lookup
-    my %ignoredSelectors =
+    my %ignored_in_cmdline =
         map { $_, 1 } @{$opts->{'ignore-modules'}};
 
     my @startProgramAndArgs = @{$opts->{'start-program'}};
@@ -312,6 +312,13 @@ EOF
     my @optionModulesAndSets =
         _readConfigurationOptions($ctx, $fh, $cmdlineGlobalOptions, $deferredOptions);
     close $fh;
+
+    my %ignored_in_global_section =
+        map { $_, 1 } split(" ", $ctx->{options}->{"ignore-modules"});
+    $ctx->{options}->{"ignore-modules"} = "";
+
+    # For user convenience, cmdline ignored selectors would not override the config selectors. Instead, they will be merged.
+    my %ignoredSelectors = (%ignored_in_cmdline, %ignored_in_global_section);
 
     # Check if we're supposed to drop into an interactive shell instead.  If so,
     # here's the stop off point.

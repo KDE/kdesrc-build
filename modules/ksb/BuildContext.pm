@@ -795,13 +795,23 @@ sub getOption ($self, $key, $level = 'module')
     $self->ksb::OptionsBase::getOption($key);
 }
 
-# OVERRIDE: Overrides OptionsBase::setOption to handle some global-only options.
+# OVERRIDE
 sub setOption
 {
     my ($self, %options) = @_;
 
-    # Actually set options.
-    $self->SUPER::setOption(%options);
+    # Special case handling.
+    if (exists $options{'filter-out-phases'}) {
+        for my $phase (split(' ', $options{'filter-out-phases'})) {
+            $self->phases()->filterOutPhase($phase);
+        }
+        delete $options{'filter-out-phases'};
+    }
+
+    # Our immediate parent class Module overrides this, but we actually
+    # want the OptionsBase version to be used instead, because Module's version specifically checks for
+    # some options prohibited for it (such as "ignore-modules") but we may want such for BuildContext.
+    $self->ksb::OptionsBase::setOption(%options);
 
     # Automatically respond to various global option changes.
     while (my ($key, $value) = each %options) {
