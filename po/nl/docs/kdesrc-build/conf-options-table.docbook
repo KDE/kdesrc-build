@@ -170,6 +170,90 @@
 </entry>
 </row>
 
+<row id="conf-git-repository-base">
+<entry
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Type</member
+><member
+>Tekenreeks</member>
+<member
+>Beschikbare sinds</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Deze optie gebruikt u voor het creëren van een verkorte naam om naar een specifieke Git-repository gebaseerde URL te refereren in latere <link linkend="module-sets"
+>module set</link
+> declaraties, wat handig is bij het snel declareren van veel te bouwen Git modules.</para>
+
+<para
+>U moet twee dingen (gescheiden door een spatie) specificeren: De naam waaraan de basis URL wordt toegekend en de actuele basis URL zelf. Bijvoorbeeld:</para>
+
+<para>
+<programlisting
+>global
+   # andere opties
+   # Dit is het algemene pad naar alle anonieme Git server modules.
+   git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Module declaraties
+
+module-set
+   # Nu kunt u de alias gebruiken die u eerder definieerde, maar <emphasis
+>alleen</emphasis>
+   # in een module-set.
+   repository <replaceable
+>kde-git</replaceable>
+   <link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>module1.git</replaceable
+> <replaceable
+>module2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>De module-instelling <literal
+>use-modules</literal
+> optie creëerde twee modules intern, waardoor &kdesrc-build; zich gedraagt alsof het heeft ingelezen:</para>
+
+<programlisting
+>module module1
+    repository kde:<replaceable
+>module1.git</replaceable>
+end module
+
+module module2
+    repository kde:<replaceable
+>module2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>Het hierboven gebruikte &git; repository voorvoegsel <literal
+>kde:</literal
+> is een afkorting die automatisch door &kdesrc-build; wordt opgezet. Zie het artikel <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>URL Renaming</ulink
+> in de TechBase voor meer informatie. Merk op dat in tegenstelling tot andere opties, u deze optie meerdere keren kan specificeren om net zoveel aliassen als nodig te creëren.</para>
+
+<tip
+><para
+>Het is geen vereiste om deze optie te gebruiken om de module-set handig te gebruiken, deze optie bestaat om makkelijk dezelfde repository in veel verschillende module sets te gebruiken.</para
+></tip>
+</entry>
+</row>
+
 <row id="conf-install-environment-driver">
 <entry
 ><link linkend="conf-install-environment-driver"
@@ -1626,29 +1710,6 @@ einde opties
 </entry>
 </row>
 
-<row id="conf-no-src">
-<entry
-><link linkend="conf-no-src"
->no-src</link
-></entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Type</member
-><member
->Booleaanse waarde</member>
-<member
->Standaardwaarde</member
-><member
->Onwaar</member>
-</simplelist>
-<para
->Als u deze optie op true heeft gezet dan zal &kdesrc-build; de broncode voor de module niet automatisch updaten. Maar het zal wel proberen om de module zoals altijd te bouwen.</para>
-<para
->Gerelateerde opties voor de opdrachtregel: <xref linkend="cmdline-no-src"/></para>
-</entry>
-</row>
-
 <row id="conf-override-build-system">
 <entry
 ><link linkend="conf-override-build-system"
@@ -2102,6 +2163,240 @@ einde opties
 </tgroup>
 </table>
 
+<para
+>Deze opties vereisen geen waarde (behalve "filter-out-phases"). Ze worden toegepast als ze aanwezig zijn in een sectie.</para>
+<table id="options-phase-selection-table">
+<title
+>Selectie-opties voor fase</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Naam van optie</entry>
+<entry
+>Bereik</entry>
+<entry
+>Beschrijving</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-no-src">
+<entry
+><link linkend="conf-no-src"
+>no-src</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>globaal</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>opties</member
+></simplelist
+></entry>
+<entry>
+<para
+>De fase <emphasis
+>bijwerken</emphasis
+> verwijderen. De andere fasen die zijn aangeboden zullen nog steeds verwerkt worden.</para>
+<para
+>Gerelateerde opties voor de opdrachtregel: <xref linkend="cmdline-no-src"/></para>
+</entry>
+</row>
+
+<row id="conf-no-install">
+<entry
+><link linkend="conf-no-install"
+>no-install</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>globaal</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>opties</member
+></simplelist
+></entry>
+<entry>
+<para
+>De fase <emphasis
+>installeren</emphasis
+> verwijderen. De andere fasen die zijn aangeboden zullen nog steeds verwerkt worden.</para>
+<para
+>Gerelateerde opties voor de opdrachtregel: <xref linkend="cmdline-no-install"/></para>
+</entry>
+</row>
+
+<row id="conf-no-tests">
+<entry
+><link linkend="conf-no-tests"
+>no-tests</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>globaal</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>opties</member
+></simplelist
+></entry>
+<entry>
+<para
+>De fase <emphasis
+>testen</emphasis
+> verwijderen. De andere fasen die zijn aangeboden zullen nog steeds verwerkt worden.</para>
+<para
+>Gerelateerde opties voor de opdrachtregel: --no-tests</para>
+</entry>
+</row>
+
+<row id="conf-no-build">
+<entry
+><link linkend="conf-no-build"
+>no-build</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>globaal</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>opties</member
+></simplelist
+></entry>
+<entry>
+<para
+>De fase <emphasis
+>bouwen</emphasis
+> verwijderen. De andere fasen die zijn aangeboden zullen nog steeds verwerkt worden.</para>
+<para
+>Gerelateerde opties voor de opdrachtregel: <xref linkend="cmdline-no-build"/></para>
+</entry>
+</row>
+
+<row id="conf-build-only">
+<entry
+><link linkend="conf-build-only"
+>build-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>globaal</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>opties</member
+></simplelist
+></entry>
+<entry>
+<para
+>Als het een fase <emphasis
+>bouwen</emphasis
+> had, verwijder elke andere fase. Anders, verwijder alle fasen.</para>
+<para
+>Gerelateerde opties voor de opdrachtregel: <xref linkend="cmdline-build-only"/></para>
+</entry>
+</row>
+
+<row id="conf-install-only">
+<entry
+><link linkend="conf-install-only"
+>install-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>globaal</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>opties</member
+></simplelist
+></entry>
+<entry>
+<para
+>Als het een fase <emphasis
+>installeren</emphasis
+> had, verwijder elke andere fase. Anders, verwijder alle fasen.</para>
+<para
+>Gerelateerde opties voor de opdrachtregel: <xref linkend="cmdline-install-only"/></para>
+</entry>
+</row>
+
+<row id="conf-uninstall">
+<entry
+><link linkend="conf-uninstall"
+>uninstall</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>globaal</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>opties</member
+></simplelist
+></entry>
+<entry>
+<para
+>Als het een fase <emphasis
+>installatie verwijderen</emphasis
+> had, verwijder elke andere fase. Anders, verwijder alle fasen.</para>
+<para
+>Gerelateerde opties voor de opdrachtregel: --uninstall</para>
+</entry>
+</row>
+
+<row id="conf-filter-out-phases">
+<entry
+><link linkend="conf-filter-out-phases"
+>filter-out-phases</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>globaal</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>opties</member
+></simplelist
+></entry>
+<entry>
+<para
+>Die fasen verwijderen die in de lijst staan (spatie gescheiden) in deze optie. De andere fasen die aanwezig waren zullen nog steeds verwerkt worden.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
 
 <table id="options-module-set-table">
 <title
@@ -2118,89 +2413,6 @@ einde opties
 </thead>
 <tbody>
 
-<row id="conf-git-repository-base">
-<entry
-><link linkend="conf-git-repository-base"
->git-repository-base</link
-></entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Type</member
-><member
->Tekenreeks</member>
-<member
->Beschikbare sinds</member
-><member
->1.12.1</member>
-</simplelist>
-<para
->Deze optie gebruikt u voor het creëren van een verkorte naam om naar een specifieke Git-repository gebaseerde URL te refereren in latere <link linkend="module-sets"
->module set</link
-> declaraties, wat handig is bij het snel declareren van veel te bouwen Git modules.</para>
-
-<para
->U moet twee dingen (gescheiden door een spatie) specificeren: De naam waaraan de basis URL wordt toegekend en de actuele basis URL zelf. Bijvoorbeeld:</para>
-
-<para>
-<programlisting
->global
-   # andere opties
-   # Dit is het algemene pad naar alle anonieme Git server modules.
-   git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Module declaraties
-
-module-set
-   # Nu kunt u de alias gebruiken die u eerder definieerde, maar <emphasis
->alleen</emphasis>
-   # in een module-set.
-   repository <replaceable
->kde-git</replaceable>
-   <link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->module1.git</replaceable
-> <replaceable
->module2.git</replaceable>
-end module-set
-</programlisting>
-</para>
-
-<para
->De module-instelling <literal
->use-modules</literal
-> optie creëerde twee modules intern, waardoor &kdesrc-build; zich gedraagt alsof het heeft ingelezen:</para>
-
-<programlisting
->module module1
-    repository kde:<replaceable
->module1.git</replaceable>
-end module
-
-module module2
-    repository kde:<replaceable
->module2.git</replaceable>
-end module
-</programlisting>
-
-<para
->Het hierboven gebruikte &git; repository voorvoegsel <literal
->kde:</literal
-> is een afkorting die automatisch door &kdesrc-build; wordt opgezet. Zie het artikel <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->URL Renaming</ulink
-> in de TechBase voor meer informatie. Merk op dat in tegenstelling tot andere opties, u deze optie meerdere keren kan specificeren om net zoveel aliassen als nodig te creëren.</para>
-
-<tip
-><para
->Het is geen vereiste om deze optie te gebruiken om de module-set handig te gebruiken, deze optie bestaat om makkelijk dezelfde repository in veel verschillende module sets te gebruiken.</para
-></tip>
-</entry>
-</row>
 
 <row id="conf-ignore-modules">
 <entry
@@ -2219,9 +2431,9 @@ end module
 >1.16</member>
 </simplelist>
 <para
->Kan nu alleen gebruikt worden in module-set, zie <ulink url="https://bugs.kde.org/show_bug.cgi?id=472917"
->Bug 472917</ulink
->.</para>
+>Deze optie kan gebruikt worden in de globale sectie en in module-sets.</para>
+<para
+>Merk op dat wanneer in de globale sectie gespecificeerd, de opdrachtregeloptie &cmd-ignore-modules; dit niet overschrijft, maar in plaats daarvan achtervoegt.</para>
 <para
 >De in deze optie genoemde modules, welke door &kdesrc-build; worden geselecteerd wegens de optie <link linkend="conf-use-modules"
 >use-modules</link

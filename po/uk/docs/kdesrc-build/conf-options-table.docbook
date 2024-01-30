@@ -170,6 +170,90 @@
 </entry>
 </row>
 
+<row id="conf-git-repository-base">
+<entry
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Тип</member
+><member
+>Рядок</member>
+<member
+>Доступний з версії</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Цей параметр використовується для скорочення посилань на базову адресу певного сховища Git у наступних оголошеннях <link linkend="module-sets"
+>наборів модулів</link
+>. Параметр корисний для оголошення збирання декількох модулів Git.</para>
+
+<para
+>Вам слід вказати два значення (відокремлених пробілами): назву, яку буде пов’язано з базовою адресою, та саму базову адресу. Приклад:</para>
+
+<para>
+<programlisting
+>global
+# інші параметри
+# Загальна адреса всіх модулів сервера Git з анонімним доступом.
+git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Оголошення модулів
+
+module-set
+# Тепер можна скористатися раніше визначеним псевдонімом, але <emphasis
+>лише</emphasis>
+# у межах module-set.
+repository <replaceable
+>kde-git</replaceable>
+<link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>модуль1.git</replaceable
+> <replaceable
+>модуль2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>Параметр <literal
+>use-modules</literal
+> набору модулів створив два записи модулів. &kdesrc-build; поводитиметься так, наче було вказано:</para>
+
+<programlisting
+>module модуль1
+    repository kde:<replaceable
+>модуль1.git</replaceable>
+end module
+
+module модуль2
+    repository kde:<replaceable
+>модуль2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>Префікс сховища &git; <literal
+>kde:</literal
+>, використаний вище, є скороченням, яке буде автоматично встановлено &kdesrc-build;. Щоб дізнатися більше, ознайомтеся зі статтею TechBase щодо <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>перейменування адрес</ulink
+>. Зауважте, що на відміну від більшості інших параметрів, цей параметр може бути вказано декілька разів з метою визначення потрібних вам замінників адрес.</para>
+
+<tip
+><para
+>Для того, щоб скористатися перевагами наборів модулів, не обов’язково використовувати цей параметр. Цей параметр призначено лише для спрощення використання одного сховища у декількох наборах модулів.</para
+></tip>
+</entry>
+</row>
+
 <row id="conf-install-environment-driver">
 <entry
 ><link linkend="conf-install-environment-driver"
@@ -1620,29 +1704,6 @@ end options
 </entry>
 </row>
 
-<row id="conf-no-src">
-<entry
-><link linkend="conf-no-src"
->no-src</link
-></entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Тип</member
-><member
->Булеве</member>
-<member
->Типове значення</member
-><member
->False</member>
-</simplelist>
-<para
->Якщо для цього параметра встановлення значення «true», &kdesrc-build; не оновлюватиме код модуля автоматично. Скрипт все ж намагатиметься зібрати цей модуль, якщо згідно налаштувань його слід спробувати зібрати.</para>
-<para
->Пов'язаний параметр командного рядка: <xref linkend="cmdline-no-src"/></para>
-</entry>
-</row>
-
 <row id="conf-override-build-system">
 <entry
 ><link linkend="conf-override-build-system"
@@ -1932,7 +1993,7 @@ end options
 >true</userinput
 >, модуль буде зібрано з підтримкою запуску комплексу тестів, комплекс тестів буде виконано у процесі збирання. &kdesrc-build; покаже вам спрощений звіт щодо результатів тестування. Цей параметр буде корисним для розробників або тих, хто бажає переконатися, що систему налаштовано належним чином.</para>
 <para
->Пов'язані параметри командного рядка:: --run-tests, --no-run-tests</para>
+>Пов'язані параметри командного рядка: --run-tests, --no-run-tests</para>
 </entry>
 </row>
 
@@ -2096,6 +2157,240 @@ end options
 </tgroup>
 </table>
 
+<para
+>Для цих параметрів не потрібно передавати жодних значень (окрім «filter-out-phases»). Їх буде застосовано, якщо ви вкажете їх у розділі.</para>
+<table id="options-phase-selection-table">
+<title
+>Параметри вибору фази</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Назва параметра</entry>
+<entry
+>Область дії</entry>
+<entry
+>Опис</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-no-src">
+<entry
+><link linkend="conf-no-src"
+>no-src</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>options</member
+></simplelist
+></entry>
+<entry>
+<para
+>Вилучити фазу <emphasis
+>update</emphasis
+>. Інші вказані фази буде оброблено.</para>
+<para
+>Пов'язаний параметр командного рядка: <xref linkend="cmdline-no-src"/></para>
+</entry>
+</row>
+
+<row id="conf-no-install">
+<entry
+><link linkend="conf-no-install"
+>no-install</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>options</member
+></simplelist
+></entry>
+<entry>
+<para
+>Вилучити фазу <emphasis
+>install</emphasis
+>. Інші вказані фази буде оброблено.</para>
+<para
+>Пов'язаний параметр командного рядка: <xref linkend="cmdline-no-install"/></para>
+</entry>
+</row>
+
+<row id="conf-no-tests">
+<entry
+><link linkend="conf-no-tests"
+>no-tests</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>options</member
+></simplelist
+></entry>
+<entry>
+<para
+>Вилучити фазу <emphasis
+>test</emphasis
+>. Інші вказані фази буде оброблено.</para>
+<para
+>Пов'язані параметри командного рядка: --no-tests</para>
+</entry>
+</row>
+
+<row id="conf-no-build">
+<entry
+><link linkend="conf-no-build"
+>no-build</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>options</member
+></simplelist
+></entry>
+<entry>
+<para
+>Вилучити фазу <emphasis
+>build</emphasis
+>. Інші вказані фази буде оброблено.</para>
+<para
+>Пов'язаний параметр командного рядка: <xref linkend="cmdline-no-build"/></para>
+</entry>
+</row>
+
+<row id="conf-build-only">
+<entry
+><link linkend="conf-build-only"
+>build-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>options</member
+></simplelist
+></entry>
+<entry>
+<para
+>Якщо була фаза <emphasis
+>build</emphasis
+>, вилучити усі інші фази. Якщо фази не було, вилучити усі фази взагалі.</para>
+<para
+>Пов'язаний параметр командного рядка: <xref linkend="cmdline-build-only"/></para>
+</entry>
+</row>
+
+<row id="conf-install-only">
+<entry
+><link linkend="conf-install-only"
+>install-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>options</member
+></simplelist
+></entry>
+<entry>
+<para
+>Якщо була фаза <emphasis
+>install</emphasis
+>, вилучити усі інші фази. Якщо фази не було, вилучити усі фази взагалі.</para>
+<para
+>Пов'язаний параметр командного рядка: <xref linkend="cmdline-install-only"/></para>
+</entry>
+</row>
+
+<row id="conf-uninstall">
+<entry
+><link linkend="conf-uninstall"
+>uninstall</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>options</member
+></simplelist
+></entry>
+<entry>
+<para
+>Якщо була фаза <emphasis
+>uninstall</emphasis
+>, вилучити усі інші фази. Якщо фази не було, вилучити усі фази взагалі.</para>
+<para
+>Пов'язаний параметр командного рядка: --uninstall</para>
+</entry>
+</row>
+
+<row id="conf-filter-out-phases">
+<entry
+><link linkend="conf-filter-out-phases"
+>filter-out-phases</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+><member
+>options</member
+></simplelist
+></entry>
+<entry>
+<para
+>Вилучити фази зі списку (відокремлені пробілами) в аргументах цього параметра. Інші вказані фази буде оброблено.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
 
 <table id="options-module-set-table">
 <title
@@ -2112,89 +2407,6 @@ end options
 </thead>
 <tbody>
 
-<row id="conf-git-repository-base">
-<entry
-><link linkend="conf-git-repository-base"
->git-repository-base</link
-></entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Тип</member
-><member
->Рядок</member>
-<member
->Доступний з версії</member
-><member
->1.12.1</member>
-</simplelist>
-<para
->Цей параметр використовується для скорочення посилань на базову адресу певного сховища Git у наступних оголошеннях <link linkend="module-sets"
->наборів модулів</link
->. Параметр корисний для оголошення збирання декількох модулів Git.</para>
-
-<para
->Вам слід вказати два значення (відокремлених пробілами): назву, яку буде пов’язано з базовою адресою, та саму базову адресу. Приклад:</para>
-
-<para>
-<programlisting
->global
-# інші параметри
-# Загальна адреса всіх модулів сервера Git з анонімним доступом.
-git-repository-base <replaceable
->kde-git</replaceable
-> <replaceable
->kde:</replaceable>
-end global
-
-# Оголошення модулів
-
-module-set
-# Тепер можна скористатися раніше визначеним псевдонімом, але <emphasis
->лише</emphasis>
-# у межах module-set.
-repository <replaceable
->kde-git</replaceable>
-<link linkend="conf-use-modules"
->use-modules</link
-> <replaceable
->модуль1.git</replaceable
-> <replaceable
->модуль2.git</replaceable>
-end module-set
-</programlisting>
-</para>
-
-<para
->Параметр <literal
->use-modules</literal
-> набору модулів створив два записи модулів. &kdesrc-build; поводитиметься так, наче було вказано:</para>
-
-<programlisting
->module модуль1
-    repository kde:<replaceable
->модуль1.git</replaceable>
-end module
-
-module модуль2
-    repository kde:<replaceable
->модуль2.git</replaceable>
-end module
-</programlisting>
-
-<para
->Префікс сховища &git; <literal
->kde:</literal
->, використаний вище, є скороченням, яке буде автоматично встановлено &kdesrc-build;. Щоб дізнатися більше, ознайомтеся зі статтею TechBase щодо <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
->перейменування адрес</ulink
->. Зауважте, що на відміну від більшості інших параметрів, цей параметр може бути вказано декілька разів з метою визначення потрібних вам замінників адрес.</para>
-
-<tip
-><para
->Для того, щоб скористатися перевагами наборів модулів, не обов’язково використовувати цей параметр. Цей параметр призначено лише для спрощення використання одного сховища у декількох наборах модулів.</para
-></tip>
-</entry>
-</row>
 
 <row id="conf-ignore-modules">
 <entry
@@ -2213,9 +2425,9 @@ end module
 >1.16</member>
 </simplelist>
 <para
->У поточній версії можна використовувати лише для наборів модулів, див. <ulink url="https://bugs.kde.org/show_bug.cgi?id=472917"
->ваду 472917</ulink
->.</para>
+>Цей параметр можна використовувати у загальному розділі (global) та у наборах модулів (module-sets).</para>
+<para
+>Зауважте, що якщо вказано у загальному розділі (global), параметр командного рядка &cmd-ignore-modules; не має пріоритету над цим параметром, а лише доповнює його значення.</para>
 <para
 >Модулі, названі у цьому параметрі, які мало б бути вибрано &kdesrc-build; через визначення параметра <link linkend="conf-use-modules"
 >use-modules</link
