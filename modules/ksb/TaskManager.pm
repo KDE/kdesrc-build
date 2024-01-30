@@ -291,10 +291,22 @@ EOF
         $moduleSet = " from g[$moduleSet]"
             if $moduleSet;
         note ("Building g[$modOutput]$moduleSet ($cur_module/$num_modules)");
-
         my $start_time = time;
+
+	my ($sec, $min, $hour, $mday, $mon, $year) = localtime($start_time);
+	$year += 1900;
+	$mon += 1;
+	my $formatted_start_time = sprintf("%04d-%02d-%02d %02d:%02d:%02d", $year, $mon, $mday, $hour, $min, $sec);
+	note ("  Phase Started : $formatted_start_time");
+
         my $failedPhase = _buildSingleModule($ipc, $ctx, $module, \$start_time);
-        my $elapsed = prettify_seconds(time - $start_time);
+	my $end_time = time;
+        ($sec, $min, $hour, $mday, $mon, $year) = localtime($end_time);
+        $year += 1900;
+        $mon += 1;
+        my $formatted_end_time = sprintf("%04d-%02d-%02d %02d:%02d:%02d", $year, $mon, $mday, $hour, $min, $sec);
+
+        my $elapsed = prettify_seconds($end_time - $start_time);
 
         if ($failedPhase) {
             # FAILURE
@@ -323,7 +335,7 @@ EOF
 
             $statusViewer->numberModulesSucceeded(1 + $statusViewer->numberModulesSucceeded);
         }
-
+        note ("  Phase Ended : $formatted_end_time");
         $cur_module++;
         print "\n"; # Space things out
     }
