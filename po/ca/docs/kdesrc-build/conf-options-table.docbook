@@ -3,7 +3,7 @@
 >Taula de les opcions de configuració disponibles</title>
 
 <para
->Aquí hi ha una taula de les diverses opcions, conté la següent informació:</para>
+>Aquí hi ha taules de les diverses opcions, que contenen la informació següent:</para>
 
 <itemizedlist>
 
@@ -14,9 +14,19 @@
 
 <listitem
 ><para
->Una descripció de com respondrà el &kdesrc-build; si l'opció s'estableix tant a la secció global com a la secció del mòdul al <link linkend="configure-data"
->fitxer de configuració</link
->, mentre es crea un mòdul.</para
+>L'àmbit de l'opció: <emphasis
+>global</emphasis
+>, <emphasis
+>module</emphasis
+> o <emphasis
+>module-set</emphasis
+>. Les opcions en els àmbits <emphasis
+>module</emphasis
+> o <emphasis
+>module-set</emphasis
+> també es poden definir en les seccions de les <emphasis
+>opcions</emphasis
+>. </para
 ></listitem>
 
 <listitem
@@ -1702,31 +1712,6 @@ end options
 </entry>
 </row>
 
-<row id="conf-no-src">
-<entry
-><link linkend="conf-no-src"
->no-src</link
-></entry>
-<entry>
-<simplelist type='horiz' columns='2'>
-<member
->Tipus</member
-><member
->Booleà</member>
-<member
->Valor per defecte</member
-><member
->Fals</member>
-</simplelist>
-<para
->Si aquesta opció s'estableix a <userinput
->true</userinput
-> (cert), el &kdesrc-build; no actualitzarà automàticament el codi font del mòdul. Encara intentarà construir el mòdul si normalment ho hagués intentat de totes maneres.</para>
-<para
->Opcions relacionades de la línia d'ordres: <xref linkend="cmdline-no-src"/></para>
-</entry>
-</row>
-
 <row id="conf-override-build-system">
 <entry
 ><link linkend="conf-override-build-system"
@@ -2180,16 +2165,236 @@ end options
 </tgroup>
 </table>
 
-
-<table id="options-module-set-table">
+<para
+>Aquestes opcions no requereixen cap valor (excepte «filter-out-phases»). S'apliquen si es presenten en una secció.</para>
+<table id="options-phase-selection-table">
 <title
->Opcions només d'àmbit de conjunt de mòduls i global</title>
+>Opcions de selecció de fase</title>
 <tgroup cols="2">
 
 <thead>
 <row>
 <entry
 >Nom de l'opció</entry>
+<entry
+>Àmbit</entry>
+<entry
+>Descripció</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-no-src">
+<entry
+><link linkend="conf-no-src"
+>no-src</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Elimina la fase d'<emphasis
+>actualització</emphasis
+>. Les altres fases que es presentin encara es processaran.</para>
+<para
+>Opcions relacionades de la línia d'ordres: <xref linkend="cmdline-no-src"/></para>
+</entry>
+</row>
+
+<row id="conf-no-install">
+<entry
+><link linkend="conf-no-install"
+>no-install</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Elimina la fase d'<emphasis
+>instal·lació</emphasis
+>. Les altres fases que es presentin encara es processaran.</para>
+<para
+>Opcions relacionades de la línia d'ordres: <xref linkend="cmdline-no-install"/></para>
+</entry>
+</row>
+
+<row id="conf-no-tests">
+<entry
+><link linkend="conf-no-tests"
+>no-tests</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Elimina la fase de <emphasis
+>proves</emphasis
+>. Les altres fases que es presentin encara es processaran.</para>
+<para
+>Opcions relacionades de la línia d'ordres: --no-tests</para>
+</entry>
+</row>
+
+<row id="conf-no-build">
+<entry
+><link linkend="conf-no-build"
+>no-build</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Elimina la fase de <emphasis
+>construcció</emphasis
+>. Les altres fases que es presentin encara es processaran.</para>
+<para
+>Opcions relacionades de la línia d'ordres: <xref linkend="cmdline-no-build"/></para>
+</entry>
+</row>
+
+<row id="conf-build-only">
+<entry
+><link linkend="conf-build-only"
+>build-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Si té la fase de <emphasis
+>construcció</emphasis
+>, elimina qualsevol altra fase. En cas contrari, elimina totes les fases.</para>
+<para
+>Opcions relacionades de la línia d'ordres: <xref linkend="cmdline-build-only"/></para>
+</entry>
+</row>
+
+<row id="conf-install-only">
+<entry
+><link linkend="conf-install-only"
+>install-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Si té la fase d'<emphasis
+>instal·lació</emphasis
+>, elimina qualsevol altra fase. En cas contrari, elimina totes les fases.</para>
+<para
+>Opcions relacionades de la línia d'ordres: <xref linkend="cmdline-install-only"/></para>
+</entry>
+</row>
+
+<row id="conf-uninstall">
+<entry
+><link linkend="conf-uninstall"
+>uninstall</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Si té la fase de <emphasis
+>desinstal·lació</emphasis
+>, elimina qualsevol altra fase. En cas contrari, elimina totes les fases.</para>
+<para
+>Opcions relacionades de la línia d'ordres: --uninstall</para>
+</entry>
+</row>
+
+<row id="conf-filter-out-phases">
+<entry
+><link linkend="conf-filter-out-phases"
+>filter-out-phases</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Elimina les fases que es llisten (separades per espais) en aquesta opció. Les altres fases que es presentin encara es processaran.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<table id="options-module-set-table">
+<title
+>Opcions de selecció de mòduls</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Nom de l'opció</entry>
+<entry
+>Àmbit</entry>
 <entry
 >Descripció</entry>
 </row>
@@ -2201,6 +2406,14 @@ end options
 <entry
 ><link linkend="conf-ignore-modules"
 >ignore-modules</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module-set</member
+></simplelist
 ></entry>
 <entry>
 <simplelist type='horiz' columns='2'>
@@ -2214,9 +2427,7 @@ end options
 >1.16</member>
 </simplelist>
 <para
->Actualment només es pot usar en els conjunts de mòduls, vegeu <ulink url="https://bugs.kde.org/show_bug.cgi?id=472917"
->l'error 472917</ulink
->.</para>
+>Tingueu en compte que quan s'especifica a la secció global, l'opció &cmd-ignore-modules; de la línia d'ordres no anul·la aquesta opció, sinó que l'afegeix.</para>
 <para
 >Els mòduls nomenats per aquesta opció, els quals serien triats pel &kdesrc-build; a causa d'una opció <link linkend="conf-use-modules"
 >use-modules</link
@@ -2254,6 +2465,12 @@ end options
 ><link linkend="conf-use-modules"
 >use-modules</link
 ></entry>
+<entry
+><simplelist type='vert'
+><member
+>module-set</member
+></simplelist
+></entry>
 <entry>
 <simplelist type='horiz' columns='2'>
 <member
@@ -2265,10 +2482,6 @@ end options
 ><member
 >1.12.1</member>
 </simplelist>
-<para
->Només es pot utilitzar en <link linkend="module-sets"
->module-set</link
->.</para>
 <para
 >Aquesta opció permet especificar amb facilitat molts mòduls diferents per a construir en el mateix punt el <link linkend="kdesrc-buildrc"
 >fitxer de configuració</link
