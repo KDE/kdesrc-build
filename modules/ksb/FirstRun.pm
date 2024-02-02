@@ -200,14 +200,18 @@ DONE
         }
 
         @packages = (@missing_packages_not_grouped, @missing_packages_from_required_groups);
-        if (!@packages) {
-            @installCmd = "# All dependencies are already installed. No need to run pacman. :)";
-        }
     }
 
-    say colorize (" b[*] Running 'b[@installCmd @packages]'");
-    my $result = system (@installCmd, @packages);
-    my $exitStatus = $result >> 8;
+    my $exitStatus;
+    my $result;
+    if (@packages) {
+        say colorize(" b[*] Running 'b[@installCmd @packages]'");
+        $result = system(@installCmd, @packages);
+        $exitStatus = $result >> 8;
+    } else {
+        say colorize(" b[*] All dependencies are already installed. No need to run installer. b[:)]");
+        $exitStatus = 0;
+    }
 
     # Install one at a time if we can, but check if sudo is present
     my $hasSudo = defined locate_exe('sudo');
