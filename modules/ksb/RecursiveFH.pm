@@ -12,13 +12,14 @@ use File::Basename; # dirname
 # TODO: Replace make_exception with appropriate croak_* function.
 sub new
 {
-    my ($class, $rcfile) = @_;
+    my ($class, $rcfile, $ctx) = @_;
     my $data = {
         'filehandles' => [],    # Stack of filehandles to read
         'filenames'   => [],    # Corresponding tack of filenames (full paths)
         'base_path'   => [],    # Base directory path for relative includes
         'current'     => undef, # Current filehandle to read
         'current_fn'  => undef, # Current filename
+        'ctx'         => $ctx,
     };
 
     my $self = bless($data, $class);
@@ -156,6 +157,26 @@ sub readLine
                     include $filename
                 Alternatively, you can regenerate the config with --generate-config option.
                 EOM
+            }
+
+            my $optionRE = qr/\$\{([a-zA-Z0-9-_]+)\}/;  # Example of matched string is "${option-name}" or "${_option-name}".
+            my $ctx = $self->{ctx};
+
+            # Replace reference to global option with their value.
+            my ($sub_var_name) = ($filename =~ $optionRE);
+            while ($sub_var_name)
+            {
+                my $sub_var_value = $ctx->getOption($sub_var_name) || "";
+                if(!$ctx->hasOption($sub_var_name)) {
+                    warning (" *\n * WARNING: y[$sub_var_name] used in $self->{current_fn}:$. is not set in global context.\n *");
+                }
+
+                debug ("Substituting \${$sub_var_name} with $sub_var_value");
+
+                $filename =~ s/\$\{$sub_var_name\}/$sub_var_value/g;
+
+                # Replace other references as well.
+                ($sub_var_name) = ($filename =~ $optionRE);
             }
 
             open ($newFh, '<', $filename) or

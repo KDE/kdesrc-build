@@ -1097,7 +1097,7 @@ sub _readConfigurationOptions ($ctx, $fh, $cmdlineGlobalOptions, $deferredOption
     my $rcfile = $ctx->rcFile();
     my ($option, %readModules);
 
-    my $fileReader = ksb::RecursiveFH->new($rcfile);
+    my $fileReader = ksb::RecursiveFH->new($rcfile, $ctx);
     $fileReader->addFile($fh, $rcfile);
 
     # Read in global settings
