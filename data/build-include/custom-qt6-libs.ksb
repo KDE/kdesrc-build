@@ -1,140 +1,147 @@
 # These libs are likely part of your distro
-
-# So you only need to include this file if you compile your own Qt6,
+# So you only need to include this module-set if you compile your own Qt6,
 # to avoid mixing your own Qt with the distro's Qt.
 
+module-set custom-qt6-libs
+    repository _  # just to allow the module-set to be validated
+    use-modules libgpg-error gpgme libaccounts-qt signond packagekit-qt libsignon-glib qtkeychain libquotient cmark \
+        kdsoap qcoro appstream wayland wayland-protocols qmltermwidget kcolorpicker kimageannotator
+end module-set
+
+# ---
+
 # keep libgpg-error in sync with gpgme, see below
-module libgpg-error
+options libgpg-error
     repository https://dev.gnupg.org/source/libgpg-error.git
     branch master
     # NOTE: you need to run ./autogen.sh before kdesrc-build runs configure.
     # Maybe we can ask kdesrc-build do to that?
     configure-flags --enable-maintainer-mode
-end module
+end options
 
 # qgpgme is part of gpgme...
-module gpgme
+options gpgme
     repository https://dev.gnupg.org/source/gpgme.git
     branch master
     # NOTE: you need to run ./autogen.sh before kdesrc-build runs configure.
     # Maybe we can ask kdesrc-build do to that?
     configure-flags --enable-maintainer-mode --enable-languages=cpp,qt6
-end module
+end options
 
 # For kaccounts-integration
 
 # upstream isn't ported to Qt6 yet, use fork meanwhile
-module libaccounts-qt
+options libaccounts-qt
   repository https://gitlab.com/nicolasfella/libaccounts-qt.git
   branch qt6
   qmake-options PREFIX=${install-dir}
   override-build-system qmake6
-end module
+end options
 
 # upstream isn't ported to Qt6 yet, use fork meanwhile
-module signond
+options signond
   repository https://gitlab.com/nicolasfella/signond.git
   branch qt6
   qmake-options PREFIX=${install-dir} CONFIG+=no_etc
   override-build-system qmake6
-end module
+end options
 
 # For apper
 
-module packagekit-qt
+options packagekit-qt
   repository https://github.com/PackageKit/PackageKit-Qt.git
   cmake-options -DBUILD_WITH_QT6=ON
   branch main
-end module
+end options
 
-module libsignon-glib
+options libsignon-glib
   # this one does depend on qt, it seems
   repository https://gitlab.com/accounts-sso/libsignon-glib.git
   qmake-options PREFIX=${install-dir}
-end module
+end options
 
 # Mandatory for krita
 
-#module quazip
+#options quazip
 #  repository https://github.com/stachenov/quazip.git
 #  branch master
-#end module
+#end options
 
 # For kaidan
 
-#module qxmpp
+#options qxmpp
 #  repository https://github.com/qxmpp-project/qxmpp.git
 #  branch master
 #  cmake-options -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF
-#end module
+#end options
 
 # For neochat
 
-module qtkeychain
+options qtkeychain
   cmake-options -DBUILD_WITH_QT6=ON
   repository https://github.com/frankosterfeld/qtkeychain.git
   branch main
-end module
+end options
 
-module libquotient
+options libquotient
   repository https://github.com/quotient-im/libQuotient
   branch dev
   cmake-options -DBUILD_SHARED_LIBS=ON -DBUILD_WITH_QT6=ON -DQuotient_ENABLE_E2EE=on
-end module
+end options
 
-module cmark
+options cmark
   repository https://github.com/commonmark/cmark.git
   branch master
-end module
+end options
 
 # for kio-extras
-module kdsoap
+options kdsoap
   repository https://github.com/KDAB/KDSoap
   cmake-options -DKDSoap_QT6=true
   branch master
-end module
+end options
 
 # For neochat, spacebar, possibly more
-module qcoro
+options qcoro
   repository https://github.com/danvratil/qcoro
   cmake-options -DUSE_QT_VERSION=6 -DBUILD_SHARED_LIBS=ON
   branch main
-end module
+end options
 
-module appstream
+options appstream
   repository https://github.com/ximion/appstream
   configure-flags -Dqt=true
   set-env LDFLAGS -Wl,-rpath=${install-dir}/${libname}
   branch main
-end module
+end options
 
-module wayland
+options wayland
   repository https://gitlab.freedesktop.org/wayland/wayland
   branch main
-end module
+end options
 
-module wayland-protocols
+options wayland-protocols
   repository https://gitlab.freedesktop.org/wayland/wayland-protocols
   branch main
-end module
+end options
 
 # For qmlkonsole
-module qmltermwidget
+options qmltermwidget
   repository https://invent.kde.org/jbbgameich/qmltermwidget
   branch master
   cmake-options -DBUILD_SHARED_LIBS=ON -DBUILD_WITH_QT6=ON
-end module
+end options
 
-module kcolorpicker
+options kcolorpicker
   repository https://github.com/ksnip/kColorPicker
   branch master
   cmake-options -DBUILD_SHARED_LIBS=ON -DBUILD_WITH_QT6=ON
-end module
+end options
 
-module kimageannotator
+options kimageannotator
   repository https://github.com/ksnip/kImageAnnotator
   branch master
   cmake-options -DBUILD_SHARED_LIBS=ON -DBUILD_WITH_QT6=ON
-end module
+end options
 
 # kate: syntax kdesrc-buildrc;
