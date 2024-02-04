@@ -97,7 +97,7 @@ my %GlobalOptions_private = (
     "debug-level"          => ksb::Debug::INFO,
     "filter-out-phases"    => "",
     "git-desired-protocol" => "git", # protocol to use for git *push* URLs (fetch requires https)
-    "git-repository-base"  => { "qt6-copy" => "https://invent.kde.org/qt/qt/" },
+    "git-repository-base"  => { "qt6-copy" => "https://invent.kde.org/qt/qt/", "_" => "fake/" },
     "manual-build"         => "",
     "manual-update"        => "",
     "repository"           => "", # module's git repo

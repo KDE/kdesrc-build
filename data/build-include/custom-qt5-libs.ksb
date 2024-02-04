@@ -1,137 +1,144 @@
 # These libs are likely part of your distro
-
-# So you only need to include this file if you compile your own Qt5,
+# So you only need to include this module-set if you compile your own Qt5,
 # to avoid mixing your own Qt with the distro's Qt.
 
+module-set custom-qt5-libs
+    repository _  # just to allow the module-set to be validated
+    use-modules libgpg-error gpgme poppler libaccounts-glib libaccounts-qt signond packagekit-qt qtspeech quazip \
+    libomemo-c qxmpp qtkeychain libquotient cmark kdsoap qcoro appstream wayland wayland-protocols qmltermwidget
+end module-set
+
+# ---
+
 # keep libgpg-error in sync with gpgme, see below
-module libgpg-error
+options libgpg-error
     repository https://dev.gnupg.org/source/libgpg-error.git
     branch master
     # NOTE: you need to run ./autogen.sh before kdesrc-build runs configure.
     # Maybe we can ask kdesrc-build do to that?
     configure-flags --enable-maintainer-mode
-end module
+end options
 
 # qgpgme is part of gpgme...
-module gpgme
+options gpgme
     repository https://dev.gnupg.org/source/gpgme.git
     branch master
     # NOTE: you need to run ./autogen.sh before kdesrc-build runs configure.
     # Maybe we can ask kdesrc-build do to that?
     configure-flags --enable-maintainer-mode --enable-languages=cpp,qt5
-end module
+end options
 
 # For okular
 
-module poppler
+options poppler
   repository https://gitlab.freedesktop.org/poppler/poppler.git
   branch master
   cmake-options -DWITH_GLIB=OFF -DLIB_SUFFIX=64 -DENABLE_UNSTABLE_API_ABI_HEADERS=1
-end module
+end options
 
 # For kaccounts-integration
 
-module libaccounts-glib
+options libaccounts-glib
   # doesn't depend on qt, but this way it's the right version for libaccounts-qt below
   repository https://gitlab.com/accounts-sso/libaccounts-glib.git
-end module
+end options
 
-module libaccounts-qt
+options libaccounts-qt
   repository https://gitlab.com/accounts-sso/libaccounts-qt.git
   qmake-options PREFIX=${install-dir}
-end module
+end options
 
-module signond
+options signond
   repository https://gitlab.com/accounts-sso/signond.git
   qmake-options PREFIX=${install-dir}
-end module
+end options
 
 # For apper
 
-module packagekit-qt
+options packagekit-qt
   repository https://github.com/PackageKit/PackageKit-Qt.git
   branch main
-end module
+end options
 
 # Mandatory for kmouth, optional for kpimtextedit
 
-module qtspeech
+options qtspeech
   repository https://code.qt.io/qt/qtspeech.git
   branch 5.15.2
-end module
+end options
 
 # Mandatory for krita
 
-module quazip
+options quazip
   repository https://github.com/stachenov/quazip.git
   branch master
-end module
+end options
 
 # For kaidan
 
-module libomemo-c
+options libomemo-c
   repository https://github.com/dino/libomemo-c.git
   cmake-options -DBUILD_SHARED_LIBS=ON
-end module
+end options
 
-module qxmpp
+options qxmpp
   repository https://github.com/qxmpp-project/qxmpp.git
   branch master
   cmake-options -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_OMEMO=ON
-end module
+end options
 
 # For neochat
 
-module qtkeychain
+options qtkeychain
   repository https://github.com/frankosterfeld/qtkeychain.git
   branch main
-end module
+end options
 
-module libquotient
+options libquotient
   repository https://github.com/quotient-im/libQuotient
   branch dev
   cmake-options -DBUILD_SHARED_LIBS=ON -DQuotient_ENABLE_E2EE=on
-end module
+end options
 
-module cmark
+options cmark
   repository https://github.com/commonmark/cmark.git
   branch master
-end module
+end options
 
 # for kio-extras
-module kdsoap
+options kdsoap
   repository https://github.com/KDAB/KDSoap
   branch master
-end module
+end options
 
 # For neochat, spacebar, possibly more
-module qcoro
+options qcoro
   repository https://github.com/danvratil/qcoro
   cmake-options -DUSE_QT_VERSION=5 -DBUILD_SHARED_LIBS=ON
   branch main
-end module
+end options
 
-module appstream
+options appstream
   repository https://github.com/ximion/appstream
   configure-flags -Dqt=true
   branch main
-end module
+end options
 
-module wayland
+options wayland
   repository https://gitlab.freedesktop.org/wayland/wayland
   branch main
-end module
+end options
 
-module wayland-protocols
+options wayland-protocols
   repository https://gitlab.freedesktop.org/wayland/wayland-protocols
   branch main
-end module
+end options
 
 # For qmlkonsole
-module qmltermwidget
+options qmltermwidget
   repository https://invent.kde.org/jbbgameich/qmltermwidget
   branch master
   cmake-options -DBUILD_SHARED_LIBS=ON
-end module
+end options
 
 # kate: syntax kdesrc-buildrc;
