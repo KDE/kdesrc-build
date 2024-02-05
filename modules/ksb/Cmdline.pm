@@ -198,11 +198,6 @@ sub readCommandLineOptionsAndSelectors (@options)
             die("Invalid query mode $arg")
                 unless $arg =~ $validMode;
 
-            # Add useful aliases
-            $arg = 'source-dir'  if $arg =~ /^src-?dir$/;
-            $arg = 'build-dir'   if $arg =~ /^build-?dir$/;
-            $arg = 'install-dir' if $arg =~ /^install-?dir$/;
-
             $opts->{run_mode} = 'query';
             $auxOptions{query} = $arg;
             $auxOptions{pretend} = 1; # Implied pretend mode

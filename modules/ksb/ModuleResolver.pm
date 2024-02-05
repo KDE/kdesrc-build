@@ -292,7 +292,7 @@ sub _resolveSingleSelector
     }
     elsif ($forcedToKDEProject) {
         # Just assume it's a kde-projects module and expand away...
-        $selector = ksb::ModuleSet::KDEProjects->new($ctx, '_cmdline');
+        $selector = ksb::ModuleSet::KDEProjects->new($ctx, "forced_to_kde_project");
         $selector->setModulesToFind($selectorName);
         $selector->setOption('#include-dependencies', $includingDeps);
     }

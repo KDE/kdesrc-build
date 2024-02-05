@@ -632,26 +632,29 @@ sub runAllModulePhases
 
     my $runMode = $self->runMode();
 
-    if ($runMode eq 'query') {
-        my $queryMode = $ctx->getOption('query', 'module');
+    if ($runMode eq "query") {
+        my $queryMode = $ctx->getOption("query", "module");
 
-        # Default to ->getOption as query method.
+        my $query;
         # $_[0] is short name for first param.
-        my $query = sub { $_[0]->getOption($queryMode) };
-        $query = sub { $_[0]->fullpath('source') } if $queryMode eq 'source-dir';
-        $query = sub { $_[0]->fullpath('build') }  if $queryMode eq 'build-dir';
-        $query = sub { $_[0]->installationPath() } if $queryMode eq 'install-dir';
-        $query = sub { $_[0]->fullProjectPath() }  if $queryMode eq 'project-path';
-        $query = sub { ($_[0]->scm()->_determinePreferredCheckoutSource())[0] // '' }
-            if $queryMode eq 'branch';
+        if ($queryMode eq "source-dir") {
+            $query = sub { $_[0]->fullpath("source") }
+        } elsif ($queryMode eq "build-dir") {
+            $query = sub { $_[0]->fullpath("build") }
+        } elsif ($queryMode eq "install-dir") {
+            $query = sub { $_[0]->installationPath() }
+        } elsif ($queryMode eq "project-path") {
+            $query = sub { $_[0]->fullProjectPath() }
+        } elsif ($queryMode eq "branch") {
+            $query = sub {($_[0]->scm()->_determinePreferredCheckoutSource())[0] // ""}
+        } elsif ($queryMode eq "module-set") {
+            $query = sub { $_[0]->{"module-set"}->{"name"} // "undefined_module-set"}
+        } else {  # Default to ->getOption as query method.
+            $query = sub { $_[0]->getOption($queryMode) }
+        }
 
-        if (@modules == 1) {
-            # No leading module name, just the value
-            say $query->($modules[0]);
-        } else {
-            for my $m (@modules) {
-                say "$m: ", $query->($m);
-            }
+        for my $m (@modules) {
+            say "$m: ", $query->($m);
         }
 
         return 0;

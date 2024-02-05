@@ -4,7 +4,7 @@
 
 module-set custom-qt6-libs
     repository _  # just to allow the module-set to be validated
-    use-modules libgpg-error gpgme libaccounts-qt signond packagekit-qt libsignon-glib qtkeychain libquotient cmark \
+    use-modules libgpg-error gpgme poppler libaccounts-qt signond packagekit-qt libsignon-glib qtkeychain libquotient cmark \
         kdsoap qcoro appstream wayland wayland-protocols qmltermwidget kcolorpicker kimageannotator
 end module-set
 
@@ -26,6 +26,13 @@ options gpgme
     # NOTE: you need to run ./autogen.sh before kdesrc-build runs configure.
     # Maybe we can ask kdesrc-build do to that?
     configure-flags --enable-maintainer-mode --enable-languages=cpp,qt6
+end options
+
+# for KFileMetaData
+options poppler
+  repository https://gitlab.freedesktop.org/poppler/poppler.git
+  branch master
+  cmake-options -DWITH_GLIB=OFF -DENABLE_UNSTABLE_API_ABI_HEADERS=1 -DENABLE_QT5=OFF -DENABLE_QT6=ON
 end options
 
 # For kaccounts-integration
