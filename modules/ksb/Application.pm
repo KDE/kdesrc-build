@@ -642,16 +642,10 @@ sub runAllModulePhases
         $query = sub { $_[0]->fullpath('build') }  if $queryMode eq 'build-dir';
         $query = sub { $_[0]->installationPath() } if $queryMode eq 'install-dir';
         $query = sub { $_[0]->fullProjectPath() }  if $queryMode eq 'project-path';
-        $query = sub { ($_[0]->scm()->_determinePreferredCheckoutSource())[0] // '' }
-            if $queryMode eq 'branch';
+        $query = sub { ($_[0]->scm()->_determinePreferredCheckoutSource())[0] // '' } if $queryMode eq 'branch';
 
-        if (@modules == 1) {
-            # No leading module name, just the value
-            say $query->($modules[0]);
-        } else {
-            for my $m (@modules) {
-                say "$m: ", $query->($m);
-            }
+        for my $m (@modules) {
+            say "$m: ", $query->($m);
         }
 
         return 0;
