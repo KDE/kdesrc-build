@@ -64,7 +64,7 @@ package ksb::Application {
     }
 };
 
-my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --include-dependencies setmod1 setmod3);
+my @args = qw(--pretend --rc-file t/integration/fixtures/sample-rc/kdesrc-buildrc --include-dependencies setmod1 setmod3);
 
 {
     my $app = ksb::Application->new(@args);

@@ -41,7 +41,7 @@ BEGIN {
 # using log_command and run_logged_p from ksb::Util
 use ksb::Application;
 
-my $app = ksb::Application->new(qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc));
+my $app = ksb::Application->new(qw(--pretend --rc-file t/integration/fixtures/sample-rc/kdesrc-buildrc));
 my @moduleList = @{$app->{modules}};
 
 is(scalar @moduleList, 4, 'Right number of modules');

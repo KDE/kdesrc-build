@@ -39,7 +39,7 @@ BEGIN {
 use ksb::Application;
 use ksb::Module;
 
-my @args = qw(--pretend --rc-file t/data/bug-395627/kdesrc-buildrc);
+my @args = qw(--pretend --rc-file t/integration/fixtures/bug-395627/kdesrc-buildrc);
 
 {
     my $app = ksb::Application->new(@args);

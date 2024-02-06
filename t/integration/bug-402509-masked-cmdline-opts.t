@@ -20,7 +20,7 @@ my $section_header = "File: $filename (click to toggle collapse)";
 print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 # </editor-fold>
 
-my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --stop-on-failure setmod3);
+my @args = qw(--pretend --rc-file t/integration/fixtures/sample-rc/kdesrc-buildrc --stop-on-failure setmod3);
 
 {
     my $app = ksb::Application->new(@args);

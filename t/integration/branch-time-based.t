@@ -14,7 +14,7 @@ my $section_header = "File: $filename (click to toggle collapse)";
 print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$section_header\n";  # displayed in collapsible section in gitlab ci job log
 # </editor-fold>
 
-my $app = ksb::Application->new(qw(--pretend --rc-file t/data/branch-time-based/kdesrc-buildrc));
+my $app = ksb::Application->new(qw(--pretend --rc-file t/integration/fixtures/branch-time-based/kdesrc-buildrc));
 my @moduleList = $app->modules();
 
 is(scalar @moduleList, 3, 'Right number of modules');

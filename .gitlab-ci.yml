@@ -1,22 +1,12 @@
 default:
-  image: invent-registry.kde.org/sysadmin/ci-images/suse-qt515:latest
+  image: invent-registry.kde.org/sysadmin/ci-images/suse-qt66:latest
   tags:
     - Linux
 
-unit-test:
+unit-tests:
   script:
     - prove -v -I modules -r t/unit
 
-smoke-test:
+integration-tests:
   script:
-    - prove -v -I modules -r t/smoke
-
-
-# Verifies that kdesrc-build itself can get to a basic install from a supported
-# scratch Docker repo
-# Commented out because it takes so much time though :(
-#install-test-opensuse:
-#  image: opensuse/leap:15.0
-#  script:
-#    - ./kdesrc-build --initial-setup && ./kdesrc-build --metadata-only
-#    - ./kdesrc-build --include-dependencies --stop-on-failure dolphin
+    - prove -v -I modules -r t/integration

@@ -15,7 +15,7 @@ print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$sectio
 # </editor-fold>
 
 # Unit test of _readOSRelease
-my @kvPairs = ksb::OSSupport->_readOSRelease('t/data/os-release');
+my @kvPairs = ksb::OSSupport->_readOSRelease('t/integration/fixtures/os-release');
 
 is(scalar @kvPairs, 4, 'Right number of key/value pairs');
 
@@ -27,7 +27,7 @@ is($opts{ID_LIKE}, 'sabayon gentoo-hardened gentoo', 'Right ID_LIKE');
 is($opts{SPECIAL}, '$VAR \\ ` " is set', 'Right SPECIAL');
 
 # Use tests
-my $os = new_ok('ksb::OSSupport', ['t/data/os-release']);
+my $os = new_ok('ksb::OSSupport', ['t/integration/fixtures/os-release']);
 is($os->bestDistroMatch(qw/arch kdesrc-build sabayon/), 'kdesrc-build', 'ID preferred');
 is($os->bestDistroMatch(qw/ubuntu fedora gentoo/), 'gentoo', 'ID_LIKE respected');
 is($os->bestDistroMatch(qw/fedora gentoo gentoo-hardened sabayon/), 'sabayon', 'ID_LIKE preference order proper');

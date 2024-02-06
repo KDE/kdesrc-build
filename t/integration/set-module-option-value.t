@@ -15,7 +15,7 @@ print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$sectio
 # </editor-fold>
 
 my $app = ksb::Application->new(qw(
-    --pretend --rc-file t/data/sample-rc/kdesrc-buildrc
+    --pretend --rc-file t/integration/fixtures/sample-rc/kdesrc-buildrc
     --set-module-option-value), 'module2,tag,fake-tag10',
    '--set-module-option-value', 'setmod2,tag,tag-setmod10');
 my @moduleList = @{$app->{modules}};

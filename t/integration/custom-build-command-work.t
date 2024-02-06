@@ -69,7 +69,7 @@ package ksb::BuildSystem {
     }
 };
 
-my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc --no-metadata
+my @args = qw(--pretend --rc-file t/integration/fixtures/sample-rc/kdesrc-buildrc --no-metadata
               --custom-build-command echo --override-build-system generic);
 {
     my $app = ksb::Application->new(@args);

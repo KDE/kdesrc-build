@@ -17,7 +17,7 @@ print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$sectio
 
 # The file has a module-set that only refers to juk but should expand to
 # kcalc juk in that order
-my @args = qw(--pretend --rc-file t/data/kde-projects/kdesrc-buildrc-with-deps);
+my @args = qw(--pretend --rc-file t/integration/fixtures/kde-projects/kdesrc-buildrc-with-deps);
 
 {
     my $app = ksb::Application->new(@args);

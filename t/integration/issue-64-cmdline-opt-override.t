@@ -24,7 +24,7 @@ print "\e[0Ksection_start:${timestamp1}:$filename\[collapsed=true]\r\e[0K$sectio
 
 # The issue used num-cores as an example, but should work just as well
 # with make-options
-my @args = qw(--pretend --rc-file t/data/sample-rc/kdesrc-buildrc);
+my @args = qw(--pretend --rc-file t/integration/fixtures/sample-rc/kdesrc-buildrc);
 {
     my $app = ksb::Application->new(@args);
     my @moduleList = @{$app->{modules}};
