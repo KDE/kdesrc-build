@@ -254,9 +254,7 @@ sub addModule
     if (list_has($self->{modules}, $module)) {
         debug("Skipping duplicate module ", $module->name());
     }
-    # TODO: Shouldn't this support all modules, not just 'proj' modules?
-    elsif ($module->scmType() eq 'proj' &&
-           ($path = $module->fullProjectPath()) &&
+    elsif (($path = $module->fullProjectPath()) &&
         # See if the name matches any given in the ignore list.
            any(sub { $path =~ /(^|\/)$_($|\/)/ }, $self->{ignore_list}))
     {
