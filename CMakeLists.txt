@@ -73,7 +73,7 @@ install(PROGRAMS
 install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
 
 install(FILES
-        completions/zsh/_kdesrc-modules
+        completions/zsh/_kdesrc-build_modules
         completions/zsh/_kdesrc-build
         completions/zsh/_kdesrc-install
         completions/zsh/_kdesrc-test
