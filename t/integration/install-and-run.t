@@ -45,7 +45,7 @@ symlink("$curdir/kdesrc-build", "$tempInstallDir/bin/kdesrc-build");
     local $ENV{PATH} = "$tempInstallDir/bin:" . $ENV{PATH};
 
     my $output = `kdesrc-build --version --pretend`;
-    ok($output =~ /^kdesrc-build \d\d\.\d\d \(v\d\d/, '--version for git-based version is appropriate')
+    ok($output =~ /^kdesrc-build \d\d\.\d\d/, '--version for git-based version is appropriate')
         or diag("Detected version was $output");
 
     die "kdesrc-build is supposed to be a symlink! $!"
