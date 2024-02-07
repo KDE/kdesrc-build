@@ -80,7 +80,9 @@ symlink("$curdir/kdesrc-build", "$tempInstallDir/bin/kdesrc-build");
         if ($buildResult == -1 || ($buildResult >> 8) != 0);
 
     # Ensure newly-installed version is first in PATH
-    local $ENV{PATH} = "$tempInstallDir/bin:" . $ENV{PATH};
+    local $ENV{PATH} = "$tempInstallDir/share/kdesrc-build:" . $ENV{PATH};  # Currently, we install to share.
+    # Note, that when you are running this test in your system with really installed kdesrc-build somewhere available in PATH, this test
+    # will not be checked properly (it will check invoke your kdesrc-build, but not that was installed in tmpdir).
 
     # Ensure we don't accidentally use the git repo modules/ path when we need to use
     # installed or system Perl modules
