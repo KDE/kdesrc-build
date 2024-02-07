@@ -50,7 +50,7 @@ sub ignoredModules
 sub logicalModuleGroups
 {
     my $self = shift;
-    my $path = $self->module()->fullpath('source') . "/dependencies/logical-module-structure";
+    my $path = $self->module()->fullpath('source') . "/dependencies/logical-module-structure.json";
 
     # The {} is an empty JSON obj to support pretend mode
     my $fh = pretend_open($path, '{}') or
