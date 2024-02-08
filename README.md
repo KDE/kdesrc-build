@@ -125,33 +125,6 @@ For each module built, kdesrc-build will complete these steps:
 Hopefully everything will go well the first time, and kdesrc-build will be able
 to download and build all of the modules that you ask for. :)
 
-## UPGRADING KDESRC-BUILD
-
-Upgrading is simple.
-
-You can delete your old kdesrc-build directory (make sure you don't have any
-local changes in there first, or your kdesrc-buildrc file!) and then install
-the new version where the old kdesrc-build directory used to be.
-
-In fact, it is recommended to use git to update kdesrc-build itself, so that
-kdesrc-build updates itself automatically when run. This is set up already in
-the sample configuration for KF5, where kdesrc-build is configured to update
-itself.
-
-One thing to keep in mind when using kdesrc-build to manage keeping itself
-up to date is that updates won't take effect until the *next* time you run
-kdesrc-build.
-
-You may want to edit the kdesrc-buildrc configuration file to make sure any new
-options are included. You should always read the changes for the new version
-however, as sometimes there are slight changes in behavior necessary to adapt
-to updates in the source repository. If you are running kdesrc-build from its
-git repository, you can use the "git log" command from inside the kdesrc-build
-source directory to see the latest changes.
-
-You can use the `./kdesrc-build --version` command to ensure that you have
-successfully upgraded kdesrc-build.
-
 ## SAMPLE CONFIGURATION
 
 A sample configuration file is included for demonstration purposes. You could
