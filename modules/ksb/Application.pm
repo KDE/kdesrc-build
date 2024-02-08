@@ -756,19 +756,6 @@ sub finish ($self, $exitcode = 0)
 {
     my $ctx = $self->context();
 
-    if ($self->{_base_pid} == $$ and !$ENV{'KDESRC_BUILD_IGNORE_ANNOUNCEMENT'}) {
-         my $text = <<~END;
-
-         g[*] b[y[KDE Builder announcement]
-        There is a brand new utility called b[kde-builder] - reimplementation of b[kdesrc-build] in Python.
-        It is a drop-in replacement, the application configs and the logic are the same.
-        It is currently under testing. Please give it a try, and report any issues you encounter.
-        https://invent.kde.org/ashark/kde-builder
-        END
-
-        warning ($text);
-    }
-
     if (pretending() || $self->{_base_pid} != $$) {
         # Abort early if pretending or if we're not the same process
         # that was started by the user (e.g. async mode, forked pipe-opens
