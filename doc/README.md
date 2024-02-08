@@ -40,30 +40,7 @@ not available.
 Documentation for kdesrc-build itself is mostly within the source files, but I've put
 scattered attempts together over time trying to improve that.
 
-### POD format docs
-
-I think I've settled on using [Perl's "POD"
-format](https://perldoc.perl.org/perlpodspec) for documentation, even though
-it's awful, simply because that's the best way to integrate the documentation
-as close to the source code as possible.
-
-See the source-reference/serve-docs.pl script (which requires
-[Mojolicious](https://metacpan.org/pod/Mojolicious) and
-[Mojolicious::Plugin::PODViewer](https://metacpan.org/pod/Mojolicious::Plugin::PODViewer)
-to be installed from CPAN. I recommend
-[cpanminus](https://metacpan.org/pod/App::cpanminus) to handle CPAN management
-unless you are used to something else.
-
-### Older docs
-
-Older bits of documentation including `Internals.txt` (at the repository root)
-and AsciiDoc-based documentation (in doc/source-reference) are likely still
-helpful even though they're older, as the source has not drastically changed
-over the years.
-
-The AsciiDoc documentation in doc/source-reference has a CMakeLists.txt command
-in that directory to build the documentation, assuming you have
-[Asciidoctor](https://asciidoctor.org/) installed.
+Older bits of documentation can be found in source-reference directory.
 
 ## kdesrc-build Tricks
 

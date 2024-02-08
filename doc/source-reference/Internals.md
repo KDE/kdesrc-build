@@ -1,4 +1,4 @@
-Title: Module list construction
+# Module list construction
 
 An overview of the steps performed in constructing the module list:
 

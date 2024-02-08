@@ -1,6 +1,6 @@
-= ksb::Module
+# ksb::Module
 
-== DESCRIPTION
+## DESCRIPTION
 
 This is ksb::Module, one of the core classes within kdesrc-build. It represents
 any single "buildable" module that kdesrc-build can manage. It acts as a common
@@ -13,12 +13,12 @@ The many options available to the user are managed using setOption/getOption
 kdesrc-build manages persistent metadata for each module as well, see
 {set,get}PersistentOption
 
-== METHODS
+## METHODS
 
 The basic description of each method is listed here for ease of reference. See
 the source code itself for more detail.
 
-=== Perl integration
+### Perl integration
 
 These functions are used to integrate into the Perl runtime or for use from
 other Perl modules.
@@ -29,7 +29,7 @@ other Perl modules.
 
 * ``compare``, for sorting ksb::Modules amongst each other based on name.
 
-=== CONFIGURATION
+### CONFIGURATION
 
 These functions are used to configure what the ksb::Module object should do,
 change settings, etc.
@@ -58,12 +58,12 @@ change settings, etc.
 
 * ``unsetPersistentOption``, removes an existing persistent option.
 
-=== INTROSPECTION
+### INTROSPECTION
 
 These functions are generally just read-only accessors of information about the
 object.
 
-==== BASIC INFORMATION
+#### BASIC INFORMATION
 
 * ``name``, returns the module name. Only one module with a given name can be
   present during a build.
@@ -77,7 +77,7 @@ object.
 * ``moduleSet``, returns the ksb::ModuleSet that was assigned earlier as the
   source set. If no module set was assigned, returns a valid (but null) set.
 
-==== PLUGIN HANDLERS
+#### PLUGIN HANDLERS
 
 * ``scm``, **autodetects** the appropriate scm plugin if not already done (or
   manually set), and then returns the ksb::Updater plugin.
@@ -96,7 +96,7 @@ object.
   Can be a Git-style SHA or something else entirely.
   Can case an autodetection of the scm plugin.
 
-==== PATHS
+#### PATHS
 
 Various path-handling functions. These aren't always easy to tell what they do
 just from the method name, sadly.
@@ -135,7 +135,7 @@ just from the method name, sadly.
 * ``installationPath``, as labeled on the tin. Prefers the 'prefix' option but
   falls back to 'install-dir' if not set.
 
-==== USER AND PERSISTENT OPTIONS
+#### USER AND PERSISTENT OPTIONS
 
 * ``getOption``, returns the value of the given named option. If no such option
   exists, inherits the same value from the module's build context. If no such
@@ -165,7 +165,7 @@ just from the method name, sadly.
   kdesrc-build run. kdesrc-build uses the location of the rc-file to determine
   where to look for data from prior runs.
 
-==== KDE-SPECIFIC HANDLERS
+#### KDE-SPECIFIC HANDLERS
 
 * ``fullProjectPath``, returns the logical module path in the git.kde.org
   infrastructure for the module, if it's defined from a kde-projects module
@@ -176,7 +176,7 @@ just from the method name, sadly.
   ``moduleSet()`` function should return a ksb::ModuleSet that is-a
   ksb::ModuleSet::KDEProjects.
 
-=== OPERATIONS
+### OPERATIONS
 
 * ``update``, which executes the update (or pretends to do so) using the
   appropriate source control system and returns a true/false value reflecting
