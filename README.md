@@ -7,25 +7,9 @@ It does this by automating the process of downloading source code from the
 KDE source code repositories, building that source code, and installing it
 to your local system.
 
-## Note the Alternatives
+## Quick howto
 
-NOTICE!
-
-If you are a power user just trying to test the latest KDE releases like [KDE
-Plasma 5](https://www.kde.org/plasma-desktop) or the [KDE
-Applications](https://www.kde.org/applications/) then there are potentially
-easier options you may wish to consider first. KDE provides a quick-starter
-distribution, [KDE neon Developer Edition](https://neon.kde.org/download), and
-your favorite distribution may also have <q>bleeding edge</q> packages that may
-be easier to try out.
-
-However if you're testing out the latest KDE Frameworks or are involved in
-development yourself, you'll probably find it easiest to use kdesrc-build.
-Continue on, to learn how to set it up.
-
-## QUICK HOWTO
-
-1. Set up minimum dependencies
+### Set up minimum dependencies
 
 - You must have at least [Perl](https://www.perl.org/get.html) version 5.26
   installed. Most distributions include at least a minimal Perl set up, and
@@ -36,86 +20,82 @@ Continue on, to learn how to set it up.
   and kdesrc-build itself. Any supported version should be fine but We
   recommend at least version 2.26.
 
-- If you wish to run the interactive setup script you must have [dialog](https://invisible-island.net/dialog/)
-  installed.
+### Install kdesrc-build
 
-2. Install kdesrc-build:
+If using Arch Linux, you can use [kdesrc-build-git](https://aur.archlinux.org/packages/kdesrc-build-git) AUR package.
 
-- Clone kdesrc-build from git, by running from a terminal:
+For other distributions, you will need to make a local installation:
+
+- Clone `kdesrc-build` to the folder you will use it from (assume it is `~/.local`):
 
 ```shell
-$ mkdir -p ~/kde/src
-$ cd ~/kde/src
+$ cd ~/.local/share
 $ git clone https://invent.kde.org/sdk/kdesrc-build.git
-$ cd kdesrc-build # kdesrc-build is in this directory
+$ ln -sf ~/.local/share/kdesrc-build/kdesrc-build ~/.local/bin
+$ ln -sf ~/.local/share/kdesrc-build/kdesrc-run ~/.local/bin
 ```
 
 - Make sure it works by running:
 
 ```shell
-$ cd ~/kde/src/kdesrc-build
-$ ./kdesrc-build --version
+$ cd ~
+$ kdesrc-build --version
 ```
 
-You should see output similar to `kdesrc-build 18.10 (v18.10-20-g1c39943)`.
-Later we will set up kdesrc-build to keep itself updated automatically.
+You should see output similar to `kdesrc-build 22.07 (v22.07-577-g469df9b)`.
 
-2. Set up kdesrc-build:
+### Set up kdesrc-build:
 
-- Now that kdesrc-build is installed and works, you need to set up kdesrc-build
-  to work appropriately on your particular system.
+Now that `kdesrc-build` is installed and works, you need to set up kdesrc-build
+to work appropriately on your particular system.
 
 ```shell
-$ cd ~/kde/src/kdesrc-build
-$ ./kdesrc-build --initial-setup
+$ kdesrc-build --initial-setup
 ```
 
--  This will install the distribution packages dependencies required by kdesrc-build,
-   generate a configuration file, and add itself to your path for convenience.
+This will install the distribution packages dependencies required by `kdesrc-build`,
+generate a configuration file, and add itself to your path for convenience.
 
-3. Download the KDE project and dependency data:
+### Download the KDE project and dependency data:
 
 ```shell
-$ cd ~/kde/src/kdesrc-build
-$ ./kdesrc-build --metadata-only
+$ kdesrc-build --metadata-only
 ```
 
 This will download information describing the KDE source repositories and
-their dependencies, which will help kdesrc-build figure out what to build.
+their dependencies, which will help `kdesrc-build` figure out what to build.
 
-kdesrc-build will maintain this automatically, but running this step separately
+`kdesrc-build` will maintain this automatically, but running this step separately
 helps to verify that kdesrc-build can properly reach the KDE source repository
 and allows the `--pretend` option in the next step to provide more accurate
 output.
 
-4. Verify kdesrc-build has a good build plan:
+### Verify kdesrc-build has a good build plan:
 
 ```shell
-$ cd ~/kde/src/kdesrc-build
-$ ./kdesrc-build --pretend
+$ kdesrc-build --pretend
 ```
 
-This will have kdesrc-build go through the steps that it would perform, but
-without actually doing them. kdesrc-build will do some basic pre-checks in this
+This will have `kdesrc-build` go through the steps that it would perform, but
+without actually doing them. `kdesrc-build` will do some basic pre-checks in this
 stage to ensure that required command-line commands are available, including
 `cmake`, `git`, `qmake`, and others.
 
-This is the last good chance to make sure that kdesrc-build is set the way you
+This is the last good chance to make sure that `kdesrc-build` is set the way you
 want it. If this command gives you a message that all modules were successfully
 built, you can move onto the next step.
 
-5. Perform your first build:
+### Perform your first build:
 
 ```shell
-$ cd ~/kde/src/kdesrc-build
-$ ./kdesrc-build dolphin
+$ kdesrc-build dolphin
 ```
 
-This will build [Dolphin](https://www.kde.org/applications/system/dolphin/),
-the Plasma 5 file manager and its KDE-based dependencies. We choose Dolphin
+This will build [Dolphin](https://apps.kde.org/dolphin/),
+the Plasma file manager and its KDE-based dependencies. We choose Dolphin
 since it is a good test case to exercise the whole build process.
 
-For each module built, kdesrc-build will complete these steps:
+For each module built, `kdesrc-build` will complete these steps:
 
 - Update source code (initial download or later update)
 - Set up the build system and configure source code with your options, if needed
@@ -123,21 +103,12 @@ For each module built, kdesrc-build will complete these steps:
 - Install the module
 
 Hopefully everything will go well the first time, and kdesrc-build will be able
-to download and build all of the modules that you ask for. :)
+to download and build all the modules that you ask for.
 
-## SAMPLE CONFIGURATION
-
-A sample configuration file is included for demonstration purposes. You could
-copy it to `~/.config/kdesrc-buildrc` and edit manually. However,
-it is advised to use provided `kdesrc-build --generate-config` script instead.
-
-## HELP!!!
+## Further documentation
 
 This is only a very cursory guide. For more information please see the KDE
-Community [Get Involved for
-Development](https://community.kde.org/Get_Involved/development) page.
-
-## REFERENCE
+Community [Get Involved/Development](https://community.kde.org/Get_Involved/development) page.
 
 kdesrc-build includes a limited command-line description with the --help
 option.
@@ -148,7 +119,7 @@ handbook](https://docs.kde.org/?application=kdesrc-build) online.
 Once you've set up a KDE development environment, kdesrc-build itself can
 generate and build documentation (a handbook and a man page).
 
-The handbook would be available in KHelpCenter (help:/kdesrc-build), while the
+The handbook would be available in KHelpCenter (`help:/kdesrc-build`), while the
 man page would be available in the KDE man pages or in the kdesrc-build build
 directory:
 
@@ -157,19 +128,11 @@ $ cd ~/kde/build/kdesrc-build/doc
 $ man ./kdesrc-build.1
 ```
 
-You can also ask for help online on the #kde-devel channel of IRC (irc.kde.org).
-
-Additionally you can ask for help on the KDE support mailing lists, such as
-kde-devel@kde.org
-
-Finally you can drop me an email at mpyne@kde.org (although I have a job/family
-and therefore don't always have time to respond)
-
 ### Behind the Curtain
 
 For each build, kdesrc-build does several things:
 
-- Finds the configuration file (based on the --rc-file option or by looking for
+- Finds the configuration file (based on the `--rc-file` option or by looking for
   `kdesrc-buildrc` in the current directory and falling back to
   `~/.config/kdesrc-buildrc`)
 - Reads the configuration file to generate:
@@ -186,7 +149,7 @@ For each build, kdesrc-build does several things:
       in dependency order.
 - Builds each module in the resulting list of modules. This is broken into
   "phases", and each phase's output is logged to a specific directory for
-  inspection later (by default, ~/kde/src/log).
+  inspection later (by default, `~/kde/src/log`).
 
 kdesrc-build takes some pains to do perform source code updates and builds in
 the way that a developer really would at the command line, using the same
@@ -210,27 +173,3 @@ online handbook](https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdlin
 | `--stop-after`           | Stops the build just *after* the given module, otherwise the same as `--stop-before`.                                                            |
 | `--no-src`               | Perform module builds as normal but don't try to update source directories. Use this when you've updated source codes yourself.                  |
 | `--refresh-build`        | Completely cleans under the module build directories before building. Takes more time but can help recover from a broken build directory set up. |
-
-### Cleaning the build and install directories
-
-kdesrc-build will if possible avoid regenerating the build system and avoid
-complete rebuilds of existing modules. This avoids wasting significant amounts
-of time rebuilding source codes that have not changed, as all supported build
-systems are smart enough to rebuild when necessary.
-
-However it can sometimes happen that a rebuild is needed but wasn't detected.
-If this happens you can force a build directory to be fully rebuilt using the
-`--refresh-build` option to kdesrc-build.
-
-If all else fails and your development environment which was working fine now
-can't seem to upgrade modules anymore, another option is to consider deleting
-the install directory (~/kde/usr by default) completely and rebuilding
-everything (using `--refresh-build`), but this can take a significant amount of
-time!
-
-## CONTACT INFO
-
-If you find a bug, please report it at the [KDE
-Bugzilla](https://bugs.kde.org/)
-
-If you have any questions, please let me know: Michael Pyne <mpyne@kde.org>
