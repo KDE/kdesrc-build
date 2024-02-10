@@ -674,19 +674,9 @@ DONE
     _cleanup_log_directory($ctx)
         if $ctx->getOption('purge-old-logs');
 
-    # Prove that we can introduce an event loop, the sub won't run
-    # until we start an event loop.
-    Mojo::IOLoop->timer(0 => sub ($loop) {
-        my $workLoad        = $self->workLoad();
-        my $dependencyGraph = $workLoad->{dependencyInfo}->{graph};
-        my $ctx             = $self->context();
-
-        _output_failed_module_lists($ctx, $dependencyGraph);
-
-        $loop->stop; # Stop waiting in I/O loop to resume main thread
-    });
-
-    Mojo::IOLoop->start; # start event loop and block until it is ended
+    my $workLoad = $self->workLoad();
+    my $dependencyGraph = $workLoad->{dependencyInfo}->{graph};
+    _output_failed_module_lists($ctx, $dependencyGraph);
 
     # Record all failed modules. Unlike the 'resume-list' option this doesn't
     # include any successfully-built modules in between failures.
