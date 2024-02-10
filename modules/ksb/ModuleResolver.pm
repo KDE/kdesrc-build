@@ -370,10 +370,6 @@ sub _resolveGuessedModules
             if (!@setResults) {
                 croak_runtime ("$searchItem doesn't match any modules.");
             }
-
-            my $foundModule = first { $_->name() eq $searchItem } @setResults;
-            $guessedModule = $foundModule if $foundModule;
-
             push @results, @setResults;
         }
     }
