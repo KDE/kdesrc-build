@@ -624,6 +624,8 @@ sub runAllModulePhases
             $query = sub {($_[0]->scm()->_determinePreferredCheckoutSource())[0] // ""}
         } elsif ($queryMode eq "module-set") {
             $query = sub { $_[0]->{"module-set"}->{"name"} // "undefined_module-set"}
+        } elsif ($queryMode eq "build-system") {
+            $query = sub { $_[0]->buildSystem()->name() }
         } else {  # Default to ->getOption as query method.
             $query = sub { $_[0]->getOption($queryMode) }
         }
