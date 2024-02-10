@@ -752,7 +752,6 @@ sub update
         {
             error ("Unable to create separate source directory for r[$self]: $module_src_dir");
             $ipc->sendIPCMessage(ksb::IPC::MODULE_FAILURE, $moduleName);
-            next;
         }
     }
 
