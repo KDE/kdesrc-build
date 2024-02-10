@@ -444,24 +444,6 @@ EOF
         ! exists $ignoredSelectors{$_->moduleSet()->name() // ''}
     } @modules;
 
-    if(exists $cmdlineGlobalOptions->{'list-build'}) {
-        for my $module (@modules) {
-            my $branch = ksb::DependencyResolver::_getBranchOf($module);
-            print(' ── ', $module->name());
-            if($branch) {
-                print(' : ', $branch);
-            }
-            print("\n");
-        }
-
-        my $result = {
-            dependencyInfo => $moduleGraph,
-            selectedModules => [],
-            build => 0
-        };
-        return $result;
-    }
-
     my $result = {
         dependencyInfo => $moduleGraph,
         selectedModules => \@modules,
@@ -619,13 +601,6 @@ sub runAllModulePhases
     my $self = shift;
     my $ctx = $self->context();
     my @modules = $self->modules();
-
-    if ($ctx->getOption('print-modules')) {
-        for my $m (@modules) {
-            say ((" " x ($m->getOption('#dependency-level', 'module') // 0)), "$m");
-        }
-        return 0; # Abort execution early!
-    }
 
     # Add to global module list now that we've filtered everything.
     $ctx->addModule($_) foreach @modules;

@@ -333,8 +333,6 @@ sub _showHelpAndExit
         Important Options:
             --pretend (or -p)      Don't actually take major actions, instead describe
                                    what would be done.
-            --list-build           List what modules would be built in the order in
-                                   which they would be built.
             --dependency-tree      Print out dependency information on the modules that
                                    would be built, using a `tree` format. Very useful
                                    for learning how modules relate to each other. May
@@ -429,10 +427,8 @@ sub _supportedOptions
         'dependency-tree',
         'dependency-tree-fullpath',
         'help|h',
-        'list-build',
         'metadata-only',
         'no-metadata',
-        'print-modules',
         'query=s',
         'rc-file=s',
         'rebuild-failures',

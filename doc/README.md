@@ -48,10 +48,6 @@ These are some kdesrc-build tricks that probably should be documented with the
 [KDE Community Wiki page](https://community.kde.org/Get_Involved/development#Set_up_kdesrc-build)
 but for now they're at least worth nothing here:
 
-- Use `--print-modules` to view which modules kdesrc-build would build, in the
-  order they would be built in. This implies `--pretend` although it doesn't hurt
-  to include that.
-
 - Use `kdesrc-build --rebuild-failures` (potentially with `--no-src`) to
   rebuild modules that failed to build during the last kdesrc-build run. This
   is particularly useful when a silly local error breaks an important module
@@ -107,7 +103,7 @@ but for now they're at least worth nothing here:
 - Use `--resume-from` (or `--resume-after`) to have kdesrc-build start the
   build from a later module than normal, and `--stop-before` (or
   `--stop-after`) to have kdesrc-build stop the build at an earlier module than
-  normal. This can also be used with `--print-modules`.
+  normal.
 
 - Use the `ignore-modules` option with your module sets if you want to build
   every module in the set *except* for a few specific ones.
