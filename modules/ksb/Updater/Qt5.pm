@@ -100,8 +100,6 @@ sub updateCheckout ($self)
         # init-repository to have it complete the checkout.
         return $self->_updateRepository(); # num commits
     }
-
-    return 0; # num commits
 }
 
 1;
