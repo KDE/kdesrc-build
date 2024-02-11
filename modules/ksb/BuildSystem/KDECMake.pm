@@ -233,9 +233,6 @@ sub cmakeGenerator
 
 sub needsInstalled
 {
-    my $self = shift;
-
-    return 0 if $self->name() eq 'kde-common'; # Vestigial
     return 1;
 }
 
