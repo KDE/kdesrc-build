@@ -414,7 +414,8 @@ sub _handle_async_build ($ipc, $ctx)
 
         $SIG{INT} = sub { POSIX::_exit(EINTR); };
 
-        if ($updaterPid) {
+        if ($updaterPid == 0) {
+            # child of monitor
             # If the user sends SIGHUP during the build, we should allow the
             # current module to complete and then exit early.
             local $SIG{HUP} = sub {
@@ -429,6 +430,7 @@ sub _handle_async_build ($ipc, $ctx)
 
             POSIX::_exit (_handle_updates ($updaterToMonitorIPC, $ctx));
         } else {
+            # still monitor
             # If the user sends SIGHUP during the build, we should allow the
             # current module to complete and then exit early.
             local $SIG{HUP} = sub {
@@ -468,7 +470,7 @@ sub _handle_async_build ($ipc, $ctx)
             $DO_STOP = 1;
         };
 
-        $0 = 'kdesrc-build[build]';
+        $0 = 'kdesrc-build-build';
         $ipc->setReceiver();
         $result = _handle_build ($ipc, $ctx);
     }
