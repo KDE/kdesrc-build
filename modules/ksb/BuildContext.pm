@@ -787,7 +787,7 @@ sub listFailedModules
 # level supports a common idiom of ksb::Module's getOption, this permits us to
 # provide that argument unilaterally even if the call lands here at runtime due
 # to application against 'global' module.
-sub getOption ($self, $key, $level = 'module')
+sub getOption ($self, $key)
 {
     $self->ksb::OptionsBase::getOption($key);
 }

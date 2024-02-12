@@ -649,7 +649,13 @@ sub applyUserEnvironment
     # Let's see if the user has set env vars to be set.
     # Note the global set-env must be checked separately anyways, so
     # we limit inheritance when searching.
-    my $env_hash_ref = $self->getOption('set-env', 'module');
+    my $env_hash_ref;
+    if ($ctx->name() eq $self->name())
+    {
+        $env_hash_ref = $ctx->getOption("set-env");
+    } else {
+        $env_hash_ref = $self->getOption("set-env", "module");
+    }
 
     while (my ($key, $value) = each %{$env_hash_ref})
     {

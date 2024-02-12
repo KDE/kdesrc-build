@@ -608,7 +608,7 @@ sub runAllModulePhases
     my $runMode = $self->runMode();
 
     if ($runMode eq "query") {
-        my $queryMode = $ctx->getOption("query", "module");
+        my $queryMode = $ctx->getOption("query");
 
         my $query;
         # $_[0] is short name for first param.
@@ -1669,7 +1669,7 @@ sub _output_failed_module_lists
 # given location while expanding out template entries within the source file.
 #
 # The template language is *extremely* simple: <% foo %> is replaced entirely
-# with the result of $ctx->getOption(foo, 'no-inherit'). If the result
+# with the result of $ctx->getOption(foo). If the result
 # evaluates false for any reason than an exception is thrown. No quoting of
 # any sort is used in the result, and there is no way to prevent expansion of
 # something that resembles the template format.
@@ -1714,7 +1714,7 @@ sub _installTemplatedFile
                 \s*%>     # remaining whitespace and closing bracket
               }
               {
-                  $ctx->getOption($1, 'module') //
+                  $ctx->getOption($1) //
                       croak_runtime("Invalid variable $1")
               }gxe;
               # Replace all matching expressions, use extended regexp w/
