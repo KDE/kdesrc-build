@@ -783,10 +783,6 @@ sub listFailedModules
 # OVERRIDE: Our immediate parent class Module overrides this, but we actually
 # want the OptionsBase version to be used instead, until we break the recursive
 # use of Module's own getOption calls on our getOption.
-#
-# level supports a common idiom of ksb::Module's getOption, this permits us to
-# provide that argument unilaterally even if the call lands here at runtime due
-# to application against 'global' module.
 sub getOption ($self, $key)
 {
     $self->ksb::OptionsBase::getOption($key);
