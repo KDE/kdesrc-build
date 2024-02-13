@@ -277,7 +277,16 @@ EOF
     # disable async if only running a single phase.
 #   $cmdlineGlobalOptions->{async} = 0 if (scalar $ctx->phases()->phases() == 1);
 
+    $ctx->setOption(%{$cmdlineGlobalOptions});
+
+    # _readConfigurationOptions will add pending global opts to ctx while ensuring
+    # returned modules/sets have any such options stripped out. It will also add
+    # module-specific options to any returned modules/sets.
     my $fh = $ctx->loadRcFile();
+    my @optionModulesAndSets =
+        _readConfigurationOptions($ctx, $fh, $cmdlineGlobalOptions, $deferredOptions);
+    close $fh;
+
     $ctx->loadPersistentOptions();
 
     if (exists $cmdlineGlobalOptions->{'resume'}) {
@@ -301,17 +310,6 @@ EOF
 
         unshift @selectors, split(/,\s*/, $moduleList);
     }
-
-    # Everything else in cmdlineOptions should be OK to apply directly as a module
-    # or context option by now.
-    $ctx->setOption(%{$cmdlineGlobalOptions});
-
-    # _readConfigurationOptions will add pending global opts to ctx while ensuring
-    # returned modules/sets have any such options stripped out. It will also add
-    # module-specific options to any returned modules/sets.
-    my @optionModulesAndSets =
-        _readConfigurationOptions($ctx, $fh, $cmdlineGlobalOptions, $deferredOptions);
-    close $fh;
 
     my %ignored_in_global_section =
         map { $_, 1 } split(" ", $ctx->{options}->{"ignore-modules"});
