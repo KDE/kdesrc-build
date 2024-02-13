@@ -638,7 +638,7 @@ sub runAllModulePhases
     my $result; # shell-style (0 == success)
 
     # If power-profiles-daemon is in use, request switching to performance mode.
-    my $dbusConnection = $self->_holdPerformancePowerProfileIfPossible();
+    _holdPerformancePowerProfileIfPossible();
 
     if ($runMode eq 'build') {
         # build and (by default) install.  This will involve two simultaneous
@@ -1968,23 +1968,17 @@ sub _installSignalHandlers
     @SIG{@signals} = ($handlerRef) x scalar @signals;
 }
 
-sub _holdPerformancePowerProfileIfPossible ($self)
+sub _holdPerformancePowerProfileIfPossible
 {
-    my $ctx = $self->context();
-
-    my $dbusConnection;
     eval {
         info("Holding performance profile");
 
         return if pretending();
 
         # The hold will be automatically released once kdesrc-build exits
-        ksb::DBus::requestPerformanceProfile()->then(sub ($stream) {
-            $dbusConnection = $stream;
-        });
+        ksb::DBus::requestPerformanceProfile();
     };
-
-    return $dbusConnection;
+    return;
 }
 
 # Accessors
