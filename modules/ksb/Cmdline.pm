@@ -428,7 +428,7 @@ sub _supportedOptions
         'dependency-tree-fullpath',
         'help|h',
         'metadata-only',
-        'no-metadata',
+        'no-metadata|M',
         'query=s',
         'rc-file=s',
         'rebuild-failures',
