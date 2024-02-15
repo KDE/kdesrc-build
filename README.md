@@ -54,7 +54,7 @@ $ kdesrc-build --initial-setup
 ```
 
 This will install the distribution packages dependencies required by `kdesrc-build`,
-generate a configuration file, and add itself to your path for convenience.
+generate a configuration file.
 
 ### Download the KDE project and dependency data:
 

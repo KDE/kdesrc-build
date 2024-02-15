@@ -186,7 +186,6 @@ short_descriptions = {  # contains one of the options (any of them) from set, an
     "--stop-on-failure": "Stops/Does not stop the build as soon as a package fails to build",
     "--tag": "Download a specific release of a module",
     "--uninstall": "Uninstalls the module",
-    "--update-shellrc": "Installs Plasma env vars (~/.bashrc)",
     "--use-clean-install": "Run make uninstall directly before running make install",
     "--use-idle-io-priority ": "Use lower priority for disk and other I/O",
     "--use-inactive-modules": "Allow kdesrc-build to also clone and pull from repositories marked as inactive",

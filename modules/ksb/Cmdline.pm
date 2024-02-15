@@ -343,8 +343,7 @@ sub _showHelpAndExit
             --refresh-build        Start the build from scratch.
               (or -r)
             --rc-file=<filename>   Read configuration from filename instead of default.
-            --initial-setup        Installs Plasma env vars (~/.bashrc), required
-                                   system pkgs, and a base kdesrc-buildrc.
+            --initial-setup        Installs required system pkgs, and a base kdesrc-buildrc.
 
             --resume-from=<pkg>    Skips modules until just before or after the given
             --resume-after=<pkg>       package, then operates as normal.
@@ -371,7 +370,7 @@ sub _showHelpAndExit
             It looks like kdesrc-build has not yet been setup. For easy setup, run:
                 $0 --initial-setup
 
-            This will adjust your ~/.bashrc to find installed software, run your system's
+            This will run your system's
             package manager to install required dependencies, and setup a kdesrc-buildrc
             that can be edited from there.
             DONE
@@ -397,7 +396,7 @@ sub _showOptionsSpecifiersAndExit
     my @supportedOptions = _supportedOptions();
 
     # The initial setup options are handled outside of Cmdline (in the starting script).
-    my @initial_options = ("initial-setup", "install-distro-packages", "generate-config", "update-shellrc");
+    my @initial_options = ("initial-setup", "install-distro-packages", "generate-config");
 
     foreach my $option (@supportedOptions, @initial_options) {
         print "$option\n";

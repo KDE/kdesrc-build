@@ -67,8 +67,6 @@ sub setupUserSystem
     $baseDir = shift;
     my @setup_steps = @_;
     my $os = ksb::OSSupport->new;
-    my $envShell = $ENV{'SHELL'} // 'undefined';
-    my $shellName = (split '/', $envShell)[-1];
 
     eval {
         if (grep { $_ eq "install-distro-packages" } @setup_steps) {
@@ -87,10 +85,6 @@ sub setupUserSystem
                 die;
             }
             _setupBaseConfiguration();
-        }
-        if (grep { $_ eq "update-shellrc" } @setup_steps) {
-            say colorize("=== update-shellrc ===");
-            _setupShellRcFile($shellName);
         }
     };
 
@@ -351,78 +345,6 @@ DONE
 
     close $sampleFh
         or _throw("Error closing $xdgConfigHomeShort/kdesrc-buildrc: $!");
-}
-
-sub _setupShellRcFile
-{
-    my ($shellName) = @_;
-    my $rcFilepath = undef;
-    my $printableRcFilepath = undef;
-    my $extendedShell = 1;
-
-    if ($shellName eq 'bash') {
-        $rcFilepath = "$ENV{'HOME'}/.bashrc";
-    } elsif ($shellName eq 'zsh') {
-        if (defined $ENV{'ZDOTDIR'}) {
-            $rcFilepath = "$ENV{'ZDOTDIR'}/.zshrc";
-        } else {
-            $rcFilepath = "$ENV{'HOME'}/.zshrc";
-        }
-    } elsif ($shellName eq 'fish') {
-      if (defined($ENV{'XDG_CONFIG_HOME'})) {
-        $rcFilepath = "$ENV{'XDG_CONFIG_HOME'}/fish/conf.d/kdesrc-build.fish";
-      } else {
-        $rcFilepath = "$ENV{'HOME'}/.config/fish/conf.d/kdesrc-build.fish";
-      }
-    } else {
-        $rcFilepath = "$ENV{'HOME'}/.profile";
-        say colorize(" y[b[*] Couldn't detect the shell, using $rcFilepath.");
-        $extendedShell = 0;
-    }
-
-    $printableRcFilepath = $rcFilepath;
-    $printableRcFilepath =~ s/^$ENV{HOME}/~/;
-
-    open(my $file, '<', "$baseDir/data/kdesrc-run-completions.sh") or _throw("Cannot open file \"$baseDir/data/kdesrc-run-completions.sh\"");
-    my $kdesrc_run_completions = do { local $/; <$file> };
-    close($file);
-    # Used for bash/zsh and requires non-POSIX syntax support.
-    my $EXT_SHELL_RC_SNIPPET = $kdesrc_run_completions . SHELL_SEPARATOR_SNIPPET;
-    my $addToShell = yesNoPrompt(colorize(" b[*] Update your b[y[$printableRcFilepath]?"));
-
-    if ($addToShell) {
-        open(my $rcFh, '>>', $rcFilepath)
-            or _throw("Couldn't open $rcFilepath: $!");
-
-        say $rcFh '';
-
-        if ($shellName ne 'fish') {
-          say $rcFh BASE_SHELL_SNIPPET . "export PATH=\"$baseDir:\$PATH\"\n";
-
-          say $rcFh $EXT_SHELL_RC_SNIPPET
-              if $extendedShell;
-        } else {
-          say $rcFh BASE_SHELL_SNIPPET . "fish_add_path --global $baseDir\n";
-        }
-
-        close($rcFh)
-            or _throw("Couldn't save changes to $rcFilepath: $!");
-
-        say colorize(<<DONE);
-
-     - Added b[y[kdesrc-build] directory into PATH
-     - Added b[y[kdesrc-run] shell function
- b[*] b[g[Shell rc-file is successfully setup].
-DONE
-    } else {
-        say colorize(<<DONE);
-
- b[*] You can manually configure your shell rc-file with the snippet below:
-DONE
-        say BASE_SHELL_SNIPPET . "export PATH=\"$baseDir:\$PATH\"\n";
-        say $EXT_SHELL_RC_SNIPPET
-            if $extendedShell;
-    }
 }
 
 sub _findBestInstallCmd
