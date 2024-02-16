@@ -311,6 +311,12 @@ EOF
         unshift @selectors, split(/,\s*/, $moduleList);
     }
 
+    if (exists $cmdlineGlobalOptions->{"list-installed"}) {
+        say foreach sort { $a cmp $b }
+            grep { defined $ctx->{persistent_options}->{$_}{'install-dir'} } keys %{$ctx->{persistent_options}};
+        exit;
+    }
+
     my %ignored_in_global_section =
         map { $_, 1 } split(" ", $ctx->{options}->{"ignore-modules"});
     $ctx->{options}->{"ignore-modules"} = "";

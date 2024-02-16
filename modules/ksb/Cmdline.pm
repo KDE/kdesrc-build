@@ -426,6 +426,7 @@ sub _supportedOptions
         'dependency-tree',
         'dependency-tree-fullpath',
         'help|h',
+        "list-installed",
         'metadata-only',
         'no-metadata|M',
         'query=s',

@@ -14,7 +14,7 @@ function _comp_kdesrc_run
   # If the exit status indicates failure, set the wordlist empty to avoid
   # unrelated messages.
   local modules
-  if ! modules=$(kdesrc-run --list-installed);
+  if ! modules=$(kdesrc-build --list-installed);
   then
       modules=""
   fi

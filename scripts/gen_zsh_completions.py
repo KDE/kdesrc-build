@@ -142,6 +142,7 @@ short_descriptions = {  # contains one of the options (any of them) from set, an
     "--generate-vscode-project-config": "Generate a vscode project config",
     "--help": "Displays help on commandline options",
     "--http-proxy": "Use specified URL as a proxy server for any HTTP network communications",
+    "--list-installed": "Print installed modules and exit",
     "--ignore-modules": "Do not include specified modules in the update/build process",
     "--include-dependencies": "Builds/Skip KDE-based dependencies",
     "--initial-setup": "Installs Plasma env vars (~/.bashrc), required system pkgs, and a base kdesrc-buildrc",

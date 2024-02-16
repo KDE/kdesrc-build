@@ -18,7 +18,6 @@ kdesrc-run [options] <module-name> [arguments]
   -f, --fork              Launch the program in a new session.
   -q, --quiet             Do not print run information.
   -h, --help              Print usage information and exit.
-  --list-installed        Print installed modules and exit.
 
 =head1 EXAMPLES
 
@@ -49,17 +48,15 @@ our $optExec;
 our $optFork          = 0;
 our $optHelp          = 0;
 our $optQuiet         = 0;
-our $optListInstalled = 0;
 
 GetOptions(
     'exec|e=s'       => \$optExec,
     'fork|f'         => \$optFork,
     'help|h'         => sub { pod2usage(0); },
     'quiet|q'        => \$optQuiet,
-    'list-installed' => \$optListInstalled,
 );
 
-if ($#ARGV == -1 && not $optListInstalled) {
+if ($#ARGV == -1) {
     pod2usage(0);
 }
 
@@ -83,12 +80,6 @@ my $buildData = do {
     local $/ = undef;
     decode_json(<$fh>);
 };
-
-if ($optListInstalled) {
-    say foreach sort { $a cmp $b }
-        grep { defined $buildData->{$_}{'install-dir'} } keys %$buildData;
-    exit;
-}
 
 if (not defined $buildData->{$module}) {
     say qq(Module "$module" has not been built yet.);
