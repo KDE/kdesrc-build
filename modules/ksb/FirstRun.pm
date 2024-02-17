@@ -78,14 +78,12 @@ sub setupUserSystem
 # Internal functions
 
 # Reads from the files from data/pkg and dumps the contents in a hash keyed by filename (the "[pkg/vendor/version]" part between each resource).
-my %packages;
 sub _readPackages
 {
     my $vendor = shift;
     my $version = shift;
 
-    return \%packages if %packages;
-
+    my %packages;
     open(my $file, '<', "$baseDir/data/pkg/$vendor.ini") or _throw("Cannot open file \"$baseDir/data/pkg/$vendor.ini\"");
     my $cur_file;
     my $cur_value;
@@ -111,6 +109,39 @@ sub _readPackages
     close($file);
 
     $commit->();
+
+    # <editor-fold desc="Perl specific dependencies additions">
+    # pl2py: This is perl specific, not going to kde-builder
+    my %packages2;
+    open(my $file2, '<', "$baseDir/data/perl-dependencies/$vendor.ini") or _throw("Cannot open file \"$baseDir/data/pkg/$vendor.ini\"");
+    my $cur_file2;
+    my $cur_value2;
+    my $commit2 = sub {
+        return unless $cur_file2;
+        $packages2{$cur_file2} = ($cur_value2 =~ s/ *$//r);
+        $cur_value2 = '';
+    };
+
+    while(my $line = <$file2>) {
+        next if $line =~ /^\s*#/;
+        chomp $line;
+
+        my ($fname) = ($line =~ /^\[ *([^ ]+) *\]$/);
+        if ($fname) {
+            $commit2->();
+            $cur_file2 = $fname;
+        }
+        else {
+            $cur_value2 .= "$line\n";
+        }
+    }
+    close($file2);
+    $commit2->();
+
+    # Merging
+    $packages{$cur_file} = $packages{$cur_file} . $packages2{$cur_file2};
+    # </editor-fold>
+
     return \%packages;
 }
 
