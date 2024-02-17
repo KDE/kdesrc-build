@@ -38,6 +38,7 @@ use ksb::ModuleSet 0.20;
 use ksb::ModuleSet::KDEProjects;
 use ksb::ModuleSet::Qt;
 use ksb::RecursiveFH;
+use ksb::StartProgram;
 use ksb::TaskManager;
 use ksb::Updater::Git;
 use ksb::Util;
@@ -324,13 +325,8 @@ EOF
     # For user convenience, cmdline ignored selectors would not override the config selectors. Instead, they will be merged.
     my %ignoredSelectors = (%ignored_in_cmdline, %ignored_in_global_section);
 
-    # Check if we're supposed to drop into an interactive shell instead.  If so,
-    # here's the stop off point.
-
     if (@startProgramAndArgs) {
-        $ctx->setupEnvironment(); # Read options from set-env
-        $ctx->commitEnvironmentChanges(); # Apply env options to environment
-        _executeCommandLineProgram(@startProgramAndArgs); # noreturn
+        StartProgram::executeCommandLineProgram($ctx, @startProgramAndArgs); # noreturn
     }
 
     if (!isTesting()) {
@@ -1196,40 +1192,6 @@ sub _readConfigurationOptions ($ctx, $fh, $cmdlineGlobalOptions, $deferredOption
     }
 
     return @module_list;
-}
-
-# Exits out of kdesrc-build, executing the user's preferred shell instead.  The
-# difference is that the environment variables should be as set in kdesrc-build
-# instead of as read from .bashrc and friends.
-#
-# You should pass in the options to run the program with as a list.
-#
-# Meant to implement the --run command line option.
-sub _executeCommandLineProgram
-{
-    my ($program, @args) = @_;
-
-    if (!$program)
-    {
-        error ("You need to specify a program with the --run option.");
-        exit 1; # Can't use finish here.
-    }
-
-    if (($< != $>) && ($> == 0))
-    {
-        error ("kdesrc-build will not run a program as root unless you really are root.");
-        exit 1;
-    }
-
-    debug ("Executing b[r[$program] ", join(' ', @args));
-
-    exit 0 if pretending();
-
-    exec $program, @args or do {
-        # If we get to here, that sucks, but don't continue.
-        error ("Error executing $program: $!");
-        exit 1;
-    };
 }
 
 # Function: _handle_install

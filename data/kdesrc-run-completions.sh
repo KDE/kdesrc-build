@@ -1,5 +1,5 @@
-## Autocomplete for kdesrc-run
-function _comp_kdesrc_run
+## Autocomplete for kdesrc-build --run
+function _comp_kdesrc_build_run
 {
   local cur
   COMPREPLY=()
@@ -10,7 +10,7 @@ function _comp_kdesrc_run
     return 0
   fi
 
-  # Retrieve build modules through kdesrc-run
+  # Retrieve build modules through kdesrc-build
   # If the exit status indicates failure, set the wordlist empty to avoid
   # unrelated messages.
   local modules
@@ -26,4 +26,4 @@ function _comp_kdesrc_run
 }
 
 ## Register autocomplete function
-complete -o nospace -F _comp_kdesrc_run kdesrc-run
+complete -o nospace -F _comp_kdesrc_build_run kdesrc-build

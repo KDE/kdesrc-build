@@ -232,7 +232,6 @@ sub readCommandLineOptionsAndSelectors (@options)
 
         # Getopt::Long doesn't set these up for us even though we specify an
         # array. Set them up ourselves.
-        'start-program'  => [ ],
         'ignore-modules' => [ ],
 
         # Module selectors, the <> is Getopt::Long shortcut for an
@@ -256,6 +255,26 @@ sub readCommandLineOptionsAndSelectors (@options)
     # build options for Getopt::Long
     my @supportedOptions = _supportedOptions();
 
+    # If we have --run option, grab all the rest arguments to pass to the corresponding parser.
+    # This way the arguments after --run could start with "-" or "--".
+    my $run_index = -1;
+    foreach my $i (0 .. $#options) {
+        if ($options[$i] eq "--run" or $options[$i] eq "--start-program") {
+            $run_index = $i;
+            last;
+        }
+    }
+
+    if ($run_index != -1) {
+        @{ $opts->{"start-program"} } = @options[$run_index+1 .. $#options];
+        @options = @options[0 .. $run_index-1]; # remove all after --run, and the --run itself
+
+        if (! @{ $opts->{"start-program"} }){ # check this here, because later the empty list will be treated as not wanting to start program
+            error ("You need to specify a module with the --run option");
+            exit 1; # Do not continue
+        }
+    }
+
     # Actually read the options.
     my $optsSuccess = GetOptionsFromArray(\@options, \%foundOptions,
         # Options here should not duplicate the flags and options defined below
@@ -269,9 +288,8 @@ sub readCommandLineOptionsAndSelectors (@options)
         croak_runtime("Error reading command-line options.");
     }
 
-    # Don't get ignore-modules and start-program (i.e. --run) confused with
-    # global options
-    my @protectedKeys = ('ignore-modules', 'start-program');
+    # Don't get ignore-modules confused with global options
+    my @protectedKeys = ('ignore-modules');
     @{$opts}{@protectedKeys} = @foundOptions{@protectedKeys};
     delete @foundOptions{@protectedKeys};
 
@@ -438,7 +456,6 @@ sub _supportedOptions
         'set-module-option-value=s',
         'show-info',
         'show-options-specifiers',
-        'start-program|run=s{,}',
         'stop-after|to=s',
         'stop-before|until=s',
         'version|v',

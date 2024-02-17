@@ -46,7 +46,6 @@ endif()
 
 # Currently, kdesrc-build real file (not a symlink) expects to be near its data and modules. Need to make a symlink in PKGBUILD then.
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
-install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-run DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build)
 
 install(DIRECTORY data/ DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build/data)
 

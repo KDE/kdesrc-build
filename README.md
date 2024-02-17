@@ -32,7 +32,6 @@ For other distributions, you will need to make a local installation:
 $ cd ~/.local/share
 $ git clone https://invent.kde.org/sdk/kdesrc-build.git
 $ ln -sf ~/.local/share/kdesrc-build/kdesrc-build ~/.local/bin
-$ ln -sf ~/.local/share/kdesrc-build/kdesrc-run ~/.local/bin
 ```
 
 - Make sure it works by running:

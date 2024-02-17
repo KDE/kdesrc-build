@@ -153,7 +153,7 @@ sub _handle_updates ($ipc, $ctx)
         # running ->update() from short-circuiting if an error is noted.
         $hadError = !$module->update($ipc, $ctx) || $hadError;
 
-        # Cache module directories, e.g. to be consumed in kdesrc-run
+        # Cache module directories, e.g. to be consumed in kdesrc-build --run
         # This is needed for --no-async mode where the buildSingleModule won't run
         # But the other one is needed for --async mode since persistent options
         # only work from within the build process
@@ -173,7 +173,7 @@ sub _buildSingleModule ($ipc, $ctx, $module, $startTimeRef)
     $ctx->resetEnvironment();
     $module->setupEnvironment();
 
-    # Cache module directories, e.g. to be consumed in kdesrc-run
+    # Cache module directories, e.g. to be consumed in kdesrc-build --run
     $module->setPersistentOption('source-dir',  $module->fullpath('source'));
     $module->setPersistentOption('build-dir',   $module->fullpath('build'));
     $module->setPersistentOption('install-dir', $module->installationPath());

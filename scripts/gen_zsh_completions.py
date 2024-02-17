@@ -178,7 +178,7 @@ short_descriptions = {  # contains one of the options (any of them) from set, an
     "--resume": "Resume after a build failure",
     "--resume-from": "Skips modules until just before or after the given package, then operates as normal",
     "--revision": "Checkout a specific numbered revision",
-    "--run": "A program to run with kdesrc-build",
+    # "--run": "A program to run with kdesrc-build",  # Todo Needs to be added separately
     "--run-tests": "Built the modules with support for running their test suite",
     "--set-module-option-value": "Override an option in your configuration file for a specific module",
     "--source-dir": "Directory that stores the KDE sources",
