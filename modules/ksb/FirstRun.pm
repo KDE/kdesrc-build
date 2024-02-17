@@ -34,33 +34,11 @@ environments as fielded in "minimal Docker container" forms of popular distros.
 
 =cut
 
-use constant {
-    # Used for all sh-compatible shells
-    BASE_SHELL_SNIPPET => <<'RC',
-# kdesrc-build #################################################################
-
-## Add kdesrc-build to PATH
-RC
-
-    SHELL_SEPARATOR_SNIPPET => <<'RC',
-################################################################################
-RC
-};
-
 =head1 FUNCTIONS
 
 =cut
 
 our $baseDir;
-
-sub yesNoPrompt {
-    my $msg = shift;
-
-    local $| = 1;
-    print "$msg (y/N) ";
-    chomp(my $answer = <STDIN>);
-    return lc($answer) eq 'y';
-}
 
 sub setupUserSystem
 {
