@@ -83,6 +83,10 @@ sub new
 
     my $workLoad = $self->generateModuleList(@options);
     if (!$workLoad->{build}) {
+        if (scalar(@options) == 2 && $options[0] eq "--metadata-only" && $options[0] eq "--metadata-only") {  # Twice passed option hack from FirstRun
+            return;  # Avoid exit, we can continue in the --install-distro-packages in FirstRun
+            # Todo: Currently we still need to exit when normal use like `kdesrc-build --metadata-only`, because otherwise script tries to proceed. Fix it.
+        }
         print "No modules to build, exiting.\n";
         exit 0;
     }
@@ -94,7 +98,7 @@ sub new
 
     # After this call, we must run the finish() method
     # to cleanly complete process execution.
-    if (!pretending() && !$self->context()->takeLock())
+    if (!pretending() && !$self->context()->takeLock())  # todo move takeLock to the place before the actual work, not when creating an instance of Application.
     {
         print "$0 is already running!\n";
         exit 1; # Don't finish(), it's not our lockfile!!
