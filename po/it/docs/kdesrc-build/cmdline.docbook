@@ -1,0 +1,149 @@
+<chapter id="cmdline">
+<title
+>Opzioni da riga di comando e variabili d'ambiente</title>
+
+<sect1 id="cmdline-usage">
+<title
+>Uso dalla riga di comando</title>
+
+<para
+>&kdesrc-build; è progettato per essere usato come segue:</para>
+
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>--options</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>moduli da generare</replaceable
+></arg
+> </cmdsynopsis>
+
+<para
+>Se nessun modulo viene specificato sulla riga di comando, &kdesrc-build; genererà tutti i moduli definiti nel suo file di configurazione, nell'ordine elencato in quel file (anche se ciò è soggetto a modifiche da parte di diverse opzioni del file di configurazione).</para>
+
+<sect2 id="cmdline-usage-options">
+<title
+>Opzioni dalla riga di comando di uso comune</title>
+
+<para
+>L'elenco completo delle opzioni dalla riga di comando è dato nel<xref linkend="supported-cmdline-params"/>. Tra le opzioni più comunemente usate ci sono:</para>
+
+<variablelist>
+  <varlistentry>
+    <term
+><option
+>--pretend</option
+> (o <option
+>-p</option
+>)</term>
+    <listitem
+><para
+>Questa opzione fa indicare a &kdesrc-build; le azioni che effettuerebbe, senza implementarle davvero. Può essere utile per assicurarsi che i moduli che pensi di generare siano effettivamente quelli che saranno generati.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--refresh-build</option
+></term>
+    <listitem
+><para
+>Questa opzione costringe &kdesrc-build; a generare i moduli dati da un punto di partenza completamente nuovo. Qualsiasi cartella di generazione esistente per un modulo viene rimossa e il modulo viene rigenerato. Questa opzione è utile se incontri errori nella generazione di un modulo, e a volte è necessaria quando cambiano le librerie di &Qt; o &kde;.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-src</option
+></term>
+    <listitem
+><para
+>Questa opzione salta il processo di aggiornamento del codice sorgente. Potresti usarla se hai aggiornato il codice sorgente da poco (con &kdesrc-build; o magari manualmente), ma vuoi lo stesso rigenerare qualche modulo.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-build</option
+></term>
+    <listitem
+><para
+>Questa opzione è simile a <option
+>--no-src</option
+> sopra, ma stavolta è il processo di generazione che viene saltato.</para
+></listitem>
+  </varlistentry>
+</variablelist>
+
+</sect2>
+
+<sect2 id="cmdline-usage-modules">
+<title
+>Specificare i moduli da generare</title>
+
+<para
+>In generale, specificare i moduli da generare è facile come passare il loro nome come definito nel file di configurazione. Puoi anche passare dei moduli che fanno parte di un insieme, come indicato in <link linkend="conf-use-modules"
+>use-modules</link
+> o il nome di tutto l'insieme, se gliene hai dato uno.</para>
+
+<para
+>Nel caso specifico di insiemi di moduli basati sulla <link linkend="kde-projects-module-sets"
+>banca dati dei progetti di &kde;</link
+>, &kdesrc-build; espanderà i componenti dei nomi dei moduli per determinare il modulo che vuoi. Per esempio, la voce dei progetti di &kde; di &kdesrc-build; indica il progetto come <literal
+>extragear/utils/kdesrc-build</literal
+>. Potresti specificare uno qualsiasi dei seguenti per generare &kdesrc-build;:</para>
+
+<informalexample>
+<screen
+><prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+extragear/utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+kdesrc-build</replaceable
+></option
+>
+</screen>
+</informalexample>
+
+<note
+><para
+>I comandi nell'esempio precedente mettevano un <symbol
+>+</symbol
+> davanti al nome del modulo. Questo fa interpretare il nome come un modulo della banca dati dei progetti di &kde;, anche se quel modulo non è definito nel tuo file di configurazione. </para
+></note>
+
+<para
+>Fai attenzione se specifichi progetti molto grandi (per esempio <literal
+>extragear/utils</literal
+>), perché può portare alla generazione di molti moduli. Dovresti usare l'opzione <option
+>--pretend</option
+> prima di generare un nuovo modulo per assicurarti di generare solo i moduli che vuoi.</para>
+
+</sect2>
+</sect1
+>&supported-envvars; &supported-cmdline-params; </chapter>

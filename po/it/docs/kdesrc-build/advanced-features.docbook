@@ -1,0 +1,549 @@
+<sect1 id="advanced-features">
+<title
+>Funzionalità avanzate</title>
+
+<sect2 id="partial-builds">
+<title
+>Generare parzialmente un modulo</title>
+<para
+>È possibile generare solo parti di un singolo modulo di &kde;. Per esempio, potresti voler compilare solo un programma di un modulo. &kdesrc-build; ha delle funzionalità per facilitare questa scelta; ci sono diversi modi per farlo. </para>
+
+<sect3 id="not-compiling">
+<title
+>Rimuovere delle cartelle da una generazione</title>
+<para
+>È possibile scaricare un intero deposito ma far trascurare al sistema alcune cartelle durante la generazione. Questo richiede che il modulo utilizzi &cmake; e che il sistema di generazione del modulo permetta che la cartella da rimuovere sia opzionale. </para>
+
+<para
+>Questa azione è controllata con l'opzione &do-not-compile;.</para>
+
+<important
+><para
+>Questa opzione richiede almeno che il sistema di generazione del modulo sia riconfigurato dopo averlo cambiato. Questo si fa usando il comando <userinput
+><command
+>kdesrc-build</command
+> <option
+>&cmd-reconfigure;</option
+> <option
+><replaceable
+>modulo</replaceable
+></option
+></userinput
+>. </para
+></important>
+
+<informalexample>
+<para
+>Per rimuovere la cartella <filename class="directory"
+>python</filename
+> dal processo di generazione di kdebindings:</para>
+
+<screen
+>module <replaceable
+>kdebindings</replaceable>
+  &do-not-compile; <replaceable
+>python</replaceable>
+end module
+</screen>
+
+</informalexample>
+
+<note
+><para
+>Questa funzione dipende da alcune convenzioni comuni usate nella maggior parte dei moduli di &kde;. Perciò potrebbe non funzionare con tutti i programmi.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="using-branches">
+<title
+>Supporto per rami e tag in &kdesrc-build;</title>
+
+<sect3 id="branches-and-tags">
+<title
+>Cosa sono i rami e i tag?</title>
+
+<para
+>&git; supporta la gestione della cronologia del codice di &kde;. &kde; usa questo supporto per creare rami di sviluppo e per segnare il deposito ogni volta che c'è un nuovo rilascio. </para>
+
+<para
+>Per esempio, gli sviluppatori di &kmail; potrebbero lavorare a una nuova funzionalità in un ramo diverso per non interferire con la versione usata dagli altri sviluppatori. Questo ramo contiene dei lavori in corso, mentre il ramo principale (detto master) potrebbe averne altri. </para>
+
+<para
+>Un tag, invece, è un punto specificato nel codice sorgente in un certo momento. Ciò viene usato dalla squadra di amministrazione di &kde; per segnare una versione del codice sorgente adatta al rilascio, lasciando allo stesso tempo che gli sviluppatori possano lavorare sul codice. </para>
+
+</sect3>
+
+<sect3 id="branch-support">
+<title
+>Come usare rami e tag</title>
+
+<para
+>Il supporto per rami e tag viene gestito da una serie di opzioni, che vanno da una richiesta generica di una versione allo scaricamento di un &url; specifico per gli utenti avanzati. </para>
+
+<para
+>Il modo più semplice è usare le opzioni &branch; e &tag;. Devi solo usare l'opzione insieme al nome del ramo o tag voluto del modulo, e &kdesrc-build; cercherà di determinare la posizione giusta all'interno del deposito di &kde; da cui scaricare. Per la maggior parte dei moduli di &kde; funziona tutto bene.</para>
+
+<informalexample>
+<para
+>Per scaricare kdelibs di &kde; 4.6 (che è noto semplicemente come il ramo 4.6): </para>
+
+<screen
+>module kdelibs
+  branch <replaceable
+>4.6</replaceable>
+  # altre opzioni...
+end module
+</screen>
+
+<para
+>Oppure, per scaricare kdemultimedia per il rilascio &kde; 4.6.1:</para>
+
+<screen
+>module kdemultimedia
+  tag <replaceable
+>4.6.1</replaceable>
+  # altre opzioni...
+end module
+</screen>
+
+</informalexample>
+
+<tip
+><para
+>Puoi specificare un valore globale per il ramo. Se lo fai, non dimenticarti di specificare un ramo diverso per i moduli che non dovrebbero usare quello globale! </para
+></tip>
+</sect3>
+
+</sect2>
+
+<sect2 id="stopping-the-build-early">
+<title
+>Fermare prima la generazione</title>
+
+<sect3 id="the-build-continues">
+<title
+>La generazione normalmente prosegue anche se si verificano problemi</title>
+
+<para
+>&kdesrc-build; aggiornerà, genererà e installerà normalmente tutti i moduli presenti nell'elenco dei moduli specificato da generare, anche se un modulo restituisce un errore durante la generazione. Questa è di solito una comodità che ti permette di aggiornare i pacchetti software anche se viene fatto un semplice errore in uno dei depositi dei sorgenti durante lo sviluppo che causa la rottura della generazione. </para>
+
+<para
+>Tuttavia, potresti voler fermare le attività di &kdesrc-build; quando un modulo non riesce a generare e installare. Questa operazione ti permette di risparmiare il tempo che perderesti nel tentare di fare progressi quando i moduli restanti nell'elenco di generazione non sono in grado di generare correttamente o, in special modo, se non hai ancora generato correttamente i moduli dell'elenco. </para>
+
+</sect3>
+
+<sect3 id="stop-on-failure-stops-early">
+<title
+>Non fermare prima con --no-stop-on-failure</title>
+
+<para
+>Il metodo principale per eseguire questa operazione è usare l'opzione a riga di comando <link linkend="cmdline-stop-on-failure"
+>--no-stop-on-failure</link
+> quando esegui &kdesrc-build;. </para>
+
+<para
+>Questa opzione può essere impostata anche nel <link linkend="conf-stop-on-failure"
+>file di configurazione</link
+> affinché diventi la modalità operativa normale. </para>
+
+<para
+>È anche possibile istruire &kdesrc-build; al tempo di esecuzione per fermare la generazione <emphasis
+>dopo</emphasis
+> il completamento del modulo corrente su cui sta lavorando. È l'opposto dell'interruzione di &kdesrc-build; con un comando come <keycombo action="simul"
+>&Ctrl;<keycap
+>C</keycap
+></keycombo
+>, che interrompe &kdesrc-build; immediatamente, perdendo però l'avanzamento del modulo corrente. </para>
+
+<important
+><para
+>L'interruzione di &kdesrc-build; durante l'installazione di un modulo, quando è abilitata l'opzione <link linkend="conf-use-clean-install"
+>use-clean-install</link
+>, significa che il modulo interrotto non sarà disponibile fino a quando &kdesrc-build; non sarà in grado di generare correttamente il modulo.</para>
+
+<para
+>Se hai la necessità di interrompere &kdesrc-build;, in questa situazione, spegnendolo in modo non elegante, prova almeno a evitare di farlo mentre &kdesrc-build; sta installando un modulo.</para>
+</important>
+
+</sect3>
+
+<sect3 id="stopping-early-without-stop-on-failure">
+<title
+>Fermare &kdesrc-build; con eleganza quando stop-on-failure è «false»</title>
+
+<para
+>Come detto sopra, è possibile spegnere prima &kdesrc-build; in modo elegante una volta che ha completato il modulo su cui sta lavorando. Per farlo, devi inviare il segnale <literal
+>HUP</literal
+> di POSIX a &kdesrc-build;. </para>
+
+<para
+>Puoi farlo con un comando come <command
+>pkill</command
+> (nei sistemi &Linux;), nel modo seguente:</para>
+
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>pkill <option
+>-HUP</option
+> kdesrc-build</command
+></userinput
+>
+</programlisting>
+
+<para
+>Una volta eseguito correttamente, nell'output di &kdesrc-build; comparirà un messaggio simile a:</para>
+
+<programlisting
+>[ build ] recv SIGHUP, will end after this module
+</programlisting>
+
+<note>
+<para
+>&kdesrc-build; potrebbe mostrare più volte questo messaggio a seconda del numero di singoli processi di &kdesrc-build; attivi. Ciò è normale e non è un'indicazione di errore.</para>
+</note>
+
+<para
+>Una volta che &kdesrc-build; ha riconosciuto il segnale, fermerà l'elaborazione dopo che il modulo corrente è generato e installato. Se &kdesrc-build; sta ancora aggiornando il codice sorgente quando viene ricevuta la richiesta, &kdesrc-build; si fermerà dopo che viene completato l'aggiornamento del codice sorgente del modulo. Una volta che entrambi i processi di aggiornamento e generazione vengono fermati prima, &kdesrc-build; restituirà i risultati parziali e si chiuderà. </para>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="building-successfully">
+<title
+>Come &kdesrc-build; cerca di far riuscire la generazione</title>
+
+<sect3 id="automatic-rebuilds">
+<title
+>Rigenerazioni automatiche</title>
+
+<para
+>&kdesrc-build; includeva delle funzionalità per cercare automaticamente di rigenerare un modulo dopo un errore (e a volte questo tentativo funzionava, a causa di imperfezioni nel sistema di generazione del tempo). Grazie al passaggio a &cmake;, il sistema di generazione non presenta più questi problemi, e quindi &kdesrc-build; non cercherà di generare un modulo più di una volta. Ci sono tuttavia situazioni in cui &kdesrc-build; cercherà autonomamente di fare qualcosa:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Se cambi le opzioni <link linkend="conf-configure-flags"
+>configure-flags</link
+> o <link linkend="conf-cmake-options"
+>cmake-options</link
+> di un modulo, &kdesrc-build; se ne accorgerà e rieseguirà automaticamente <command
+>configure</command
+> o <command
+>cmake</command
+> per quel modulo.</para
+></listitem>
+
+<listitem
+><para
+>Se il sistema di generazione non esiste (anche se &kdesrc-build; non l'ha eliminato), &kdesrc-build; lo ricreerà automaticamente. Ciò è utile per poter effettuare un <link linkend="cmdline-refresh-build"
+>--refresh-build</link
+> completo per un modulo particolare senza doverlo fare su altri.</para
+></listitem>
+
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="manual-rebuilds">
+<title
+>Rigenerare un modulo manualmente</title>
+<para
+>Se cambi le impostazioni di un'opzione di un modulo, o cambia il codice sorgente del modulo in un modo che &kdesrc-build; non riconosce, potresti dover rigenerare il modulo a mano.</para>
+
+<para
+>Per farlo basta eseguire <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+><replaceable
+>modulo</replaceable
+></option
+></userinput
+>. </para>
+
+<para
+>Se volessi invece che &kdesrc-build; rigenerasse il modulo automaticamente durante il prossimo aggiornamento normale della generazione, puoi creare un file speciale. Ogni modulo ha una cartella di generazione. Se crei un file di nome <filename
+>refresh-me</filename
+> nella cartella di generazione di un modulo, &kdesrc-build; rigenererà il modulo la prossima volta che partirà il processo di generazione, anche se normalmente avrebbe effettuato la più veloce generazione incrementale.</para>
+
+<tip>
+<para
+>Come impostazione predefinita, la cartella di generazione è <filename class="directory"
+>~/kde/build/<replaceable
+>modulo</replaceable
+>/</filename
+>. Se cambi l'impostazione dell'opzione &build-dir;, usa quella invece di <filename class="directory"
+>~/kde/build</filename
+>.</para>
+</tip>
+
+<informalexample>
+<para
+>Rigenerazione usando <filename
+>refresh-me</filename
+> per il modulo <replaceable
+>kdelibs</replaceable
+>:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>touch</command
+> <filename
+>~/kdesrc/build/<replaceable
+>kdelibs</replaceable
+>.refresh-me</filename
+></userinput>
+<prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+</informalexample>
+</sect3>
+
+</sect2>
+
+<sect2 id="changing-environment">
+<title
+>Cambiare le impostazioni delle variabili d'ambiente</title>
+<para
+>Normalmente &kdesrc-build; usa l'ambiente presente all'avvio quando esegue i programmi per effettuare aggiornamenti e generazioni. Ciò è utile per quando si esegue &kdesrc-build; dalla riga di comando.</para>
+
+<para
+>Tuttavia, potresti voler cambiare le impostazioni delle variabili d'ambiente per cui &kdesrc-build; non fornisce direttamente un'opzione (per esempio, per configurare delle variabili d'ambiente richieste se chiami &kdesrc-build; da un programma come &cron;). Ciò è possibile con l'opzione &set-env;.</para>
+
+<para
+>Al contrario della maggior parte delle opzioni, può essere impostata più volte, e accetta due voci, separate da spazi. La prima è il nome della variabile d'ambiente da impostare, e il resto della riga è il suo valore.</para>
+
+<informalexample>
+<para
+>Impostare <userinput
+><envar
+>DISTRO</envar
+>=<replaceable
+>BSD</replaceable
+></userinput
+> per tutti i moduli:</para>
+<screen
+>global
+  set-env <replaceable
+>DISTRO</replaceable
+> <replaceable
+>BSD</replaceable>
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="resuming">
+<title
+>Riprendere le generazioni</title>
+
+<sect3 id="resuming-failed">
+<title
+>Riprendere una generazione non riuscita o annullata</title>
+
+<para
+>Puoi dire a &kdesrc-build; di iniziare a generare da un modulo diverso da quello che sceglierebbe normalmente. Ciò può essere utile quando una serie di moduli non è riuscita, o se hai annullato una generazione a metà. Puoi controllare questo comportamento con le opzioni &cmd-resume-from; e &cmd-resume-after;.</para>
+
+<note
+><para
+>Alcune versioni precedenti di &kdesrc-build; saltavano l'aggiornamento del sorgente alla ripresa di una generazione. Questa non è più l'impostazione predefinita, ma puoi sempre usare l'opzione da riga di comando <option
+>--no-src</option
+> per saltare l'aggiornamento.</para
+></note>
+
+<informalexample>
+<para
+>Riavvio della generazione a partire da kdebase:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-from=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<informalexample>
+<para
+>Riprendere la generazione dopo kdebase (nel caso che hai corretto il problema manualmente e hai installato il modulo da te):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-after=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<para
+>Se l'ultima generazione di &kdesrc-build; si è conclusa con un errore, puoi usare anche l'opzione <link linkend="cmdline-resume"
+>--resume</link
+>, che riprende l'ultima generazione a partire dal modulo che ha provocato l'errore. Gli aggiornamenti di codice sorgente e metadati vengono saltati (ma se ti servono, è di solito meglio usare <link linkend="cmdline-resume-from"
+>--resume-from</link
+>).</para>
+
+
+</sect3>
+
+<sect3 id="ignoring-modules">
+<title
+>Ignorare dei moduli in una generazione</title>
+
+<para
+>Analogamente a come si può <link linkend="resuming-failed"
+>riprendere la generazione di un modulo</link
+>, si può invece scegliere di aggiornare e generare tutto normalmente, ma ignorando una serie di moduli.</para>
+
+<para
+>Puoi farlo usando l'opzione &cmd-ignore-modules;. Questa opzione dice a &kdesrc-build; di ignorare tutti i moduli sulla riga di comando durante l'aggiornamento e la generazione.</para>
+
+<informalexample>
+<para
+>Ignorare extragear/multimedia e kdereview in un'esecuzione completa:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--ignore-modules</option
+> <replaceable
+>extragear/multimedia kdereview</replaceable
+></userinput
+>
+</screen>
+</informalexample>
+
+</sect3>
+</sect2>
+
+<sect2 id="changing-env-from-cmd-line">
+<title
+>Cambiare le opzioni dalla riga di comando</title>
+
+<sect3 id="changing-global-opts">
+<title
+>Cambiare le opzioni globali</title>
+<para
+>Puoi cambiare le impostazioni delle opzioni lette dal <link linkend="configure-data"
+>file di configurazione</link
+> direttamente dalla riga di comando. Questa modifica si sostituirà alle impostazioni del file di configurazione, ma solo temporaneamente. Ha effetto solo fintanto che è presente sulla riga di comando.</para>
+
+<para
+>&kdesrc-build; ti permette di cambiare opzioni con un nome come <replaceable
+>nome-opzione</replaceable
+> passando un argomento sulla riga di comando nella forma <userinput
+><option
+>--<replaceable
+>nome-opzione</replaceable
+>=valore</option
+></userinput
+>. &kdesrc-build; capirà se l'opzione non è tra le proprie, e ne cercherà il nome nel suo elenco di opzioni. Se non lo troverà, ti avvertirà, altrimenti ricorderà il valore impostato e sostituirà qualsiasi impostazione del file di configurazione.</para>
+
+<informalexample>
+<para
+>Impostare l'opzione &source-dir; a <filename
+>/dev/null</filename
+> per fare una prova:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+> <option
+>--<replaceable
+>source-dir</replaceable
+>=<replaceable
+>/dev/null</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+<sect3 id="changing-module-opts">
+<title
+>Cambiare le opzioni dei moduli</title>
+<para
+>È anche possibile cambiare le opzioni solo per un modulo specifico. La sintassi è simile: --<replaceable
+>modulo</replaceable
+>,<replaceable
+>nome-opzione</replaceable
+>=<replaceable
+>valore</replaceable
+>. </para>
+
+<para
+>Questa modifica si sostituisce a qualsiasi impostazione simile per il modulo trovata nel <link linkend="configure-data"
+>file di configurazione</link
+>, e si applica solo quando l'opzione viene passata dalla riga di comando.</para>
+
+<informalexample>
+<para
+>Usare una diversa cartella di generazione per il modulo kdeedu:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--<replaceable
+>kdeedu</replaceable
+>,<replaceable
+>build-dir</replaceable
+>=<replaceable
+>diversa</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+</sect2>
+
+</sect1>

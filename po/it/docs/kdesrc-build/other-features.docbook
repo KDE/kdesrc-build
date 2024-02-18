@@ -1,0 +1,146 @@
+<sect1 id="other-features">
+<title
+>Altre funzionalità di &kdesrc-build;</title>
+
+<sect2 id="changing-verbosity">
+<title
+>Cambiare la quantità di output da &kdesrc-build;</title>
+<para
+>&kdesrc-build; ha diverse opzioni per controllare la quantità di output generato dallo script. In ogni caso, gli errori saranno sempre segnalati.</para>
+
+<itemizedlist>
+<listitem
+><para
+>L'opzione <option
+>--quiet</option
+> (la sua forma breve è <option
+>-q</option
+>) fa stare &kdesrc-build; per lo più zitto. Solo i messaggi importanti, gli avvertimenti e gli errori saranno mostrati. Quando disponibile, il progresso della generazione sarà ancora mostrato.</para
+></listitem>
+
+<listitem
+><para
+>L'opzione <option
+>--really-quiet</option
+> (senza forma breve) fa visualizzare a &kdesrc-build; solo gli avvisi importanti o gli errori durante l'esecuzione.</para
+></listitem>
+
+<listitem
+><para
+>L'opzione <option
+>--verbose</option
+> (la sua forma breve è <option
+>-v</option
+>) fa generare a &kdesrc-build; dell'output molto dettagliato.</para
+></listitem>
+
+<listitem
+><para
+>L'opzione <option
+>--debug</option
+> è solo per scopi di prova e correzione, fa funzionare &kdesrc-build; come se <option
+>--verbose</option
+> fosse attiva, mette i comandi nell'output del terminale, e visualizzerà informazioni di debug per molte funzioni.</para
+></listitem>
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="kdesrc-build-color">
+<title
+>Output colorato</title>
+<para
+>Anche se viene eseguito da &konsole; o da un altro terminale, &kdesrc-build; sarà normalmente visualizzato con del testo colorato.</para>
+
+<para
+>Puoi disattivarlo usando l'opzione <option
+>--no-color</option
+> sulla riga di comando, o impostando l'opzione &colorful-output; nel <link linkend="configure-data"
+>file di configurazione</link
+> a <userinput
+>false</userinput
+>. </para>
+
+<informalexample>
+<para
+>Disattivare l'output colorato nel file di configurazione:</para>
+<screen
+>global
+  colorful-output false
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="deleting-build-dir">
+<title
+>Rimuovere cartelle non necessarie dopo la generazione</title>
+<para
+>Se hai poco spazio su disco ma vuoi comunque avere l'ultimo codice sorgente di &kde;, &kdesrc-build; può ridurre l'occupazione del disco durante la generazione di &kde; da &git;.</para>
+
+<note
+><para
+>Tieni presente che generare &kde; porta via molto spazio. Ci sono diverse parti ingombranti durante l'uso di &kdesrc-build;:</para
+></note>
+
+<orderedlist>
+<listitem
+><para
+>Il codice sorgente stesso può portar via un bel po' di spazio. I moduli predefiniti portano via 1,6 gigabyte di spazio su disco. Puoi ridurre questa quantità assicurandoti di generare solo i moduli che vuoi davvero. &kdesrc-build; non eliminerà il codice sorgente dal disco anche se elimini la voce corrispondente dal <link linkend="configure-data"
+>file di configurazione</link
+>, quindi assicurati di eliminare il codice sorgente inutilizzato. Nota che i file sorgenti sono scaricati da Internet, e <emphasis
+>non</emphasis
+> dovresti eliminarli se li stai usando, almeno fino a quando non hai finito di usare &kdesrc-build;.</para>
+
+<para
+>Inoltre, se hai già una versione di &Qt; installata dalla tua distribuzione (e ce ne sono buone probabilità), probabilmente non hai bisogno di installare il modulo qt. Ciò risparmierà circa 200 megabyte di spazio su disco.</para>
+</listitem>
+
+<listitem>
+<para
+>&kdesrc-build; creerà una cartella di generazione separata per generarci il codice sorgente. A volte &kdesrc-build; dovrà copiare una cartella di codice sorgente in una cartella di generazione finta. Quando questo avviene, si usano dei collegamenti simbolici per risparmiare spazio, per cui non dovrebbe creare problemi d'ingombro. La cartella di generazione sarà di solito molto più grande della cartella del codice sorgente di un modulo. Per esempio, la cartella di generazione di kdebase è di circa 1050 megabyte, mentre il codice sorgente di kdebase è solo di circa 550 megabyte.</para>
+
+<para
+>Fortunatamente, la cartella di generazione non è necessaria dopo che un modulo è stato correttamente generato e installato. &kdesrc-build; può rimuovere automaticamente la cartella di generazione dopo l'installazione di un modulo; vedi gli esempi sotto per maggiori informazioni. Nota che questo passo renderà impossibile a &kdesrc-build; l'uso di veloci generazioni incrementali.</para>
+</listitem>
+
+<listitem
+><para
+>Infine, c'è lo spazio necessario per l'installazione di &kde; stessa, che non va dalla cartella di generazione. Questa usa tipicamente meno spazio della cartella di generazione. È però difficile avere numeri esatti. </para
+></listitem>
+</orderedlist>
+
+<para
+>Come si riducono i requisiti di spazio di &kde;? Un modo è usare i flag di compilazione giusti, ottimizzando per ridurre lo spazio invece che per la velocità. Un altro modo che può avere un effetto notevole è rimuovere le informazioni di debug dalla generazione di &kde;. </para>
+
+<warning
+><para
+>Dovresti sapere bene quello che stai facendo prima di decidere di rimuovere le informazioni di debug. Usare programmi di ultimissima generazione vuol dire che stai usando programmi potenzialmente molto più inclini ad andare in crash di un rilascio stabile. Se stai usando programmi senza informazioni di debug, potrebbe essere molto difficile creare una buona segnalazione di errori per far risolvere il problema, e probabilmente dovrai riabilitare il debug per l'applicazione affetta e rigenerarla per aiutare uno sviluppatore a correggere il problema. Quindi, rimuovi le informazioni di debug a tuo rischio e pericolo! </para
+></warning>
+
+<informalexample>
+<para
+>Rimuovere la cartella di generazione dopo l'installazione di un modulo. La cartella del codice sorgente è tenuta, e il debug è abilitato:</para>
+
+<screen
+>global
+  configure-flags      --enable-debug
+  remove-after-install builddir        # Rimuovi la cartella di generazione dopo l'installazione
+end global
+</screen>
+
+<para
+>Rimuovere la cartella di generazione dopo l'installazione, senza informazioni di debug, con ottimizzazione per le dimensioni.</para>
+
+<screen
+>global
+  cxxflags             -Os             # Ottimizza per le dimensioni
+  configure-flags      --disable-debug
+  remove-after-install builddir        # Rimuovi la cartella di generazione dopo l'installazione
+end global
+</screen>
+</informalexample>
+</sect2>
+
+</sect1>
