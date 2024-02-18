@@ -89,9 +89,13 @@ eval {
     my @setup_steps;
 
     if (grep { $_ eq "--initial-setup" } @ARGV) {
+        push @setup_steps, "install-distro-packages-perl";  # pl2py: kdesrc-specific, not going to kde-builder
         push @setup_steps, "install-distro-packages";
         push @setup_steps, "generate-config";
     } else {
+        if (grep {$_ eq "--install-distro-packages-perl"} @ARGV) {  # pl2py: kdesrc-specific, not going to kde-builder
+            push @setup_steps, "install-distro-packages-perl";
+        }
         if (grep {$_ eq "--install-distro-packages"} @ARGV) {
             push @setup_steps, "install-distro-packages";
         }
@@ -112,6 +116,7 @@ if ($@) {
     say STDERR <<DONE;
 * kdesrc-build was unable to load initial setup support for some reason.
 * Did you remember to install the base dependencies for kdesrc-build?
+* Ensure you have run --install-distro-packages-perl (included in --initial-setup) before you run further steps.
 * https://community.kde.org/Get_Involved/development/Set_up_a_development_environment#Install_basic_tools
 
 $@

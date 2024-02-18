@@ -47,9 +47,29 @@ sub setupUserSystem
     my $os = ksb::OSSupport->new;
 
     eval {
+        if (grep { $_ eq "install-distro-packages-perl" } @setup_steps) {
+            say colorize("=== install-distro-packages-perl ===");
+            my $perl_distro_deps_path = "$baseDir/data/perl-dependencies";
+            _installSystemPackages($os, $perl_distro_deps_path);
+        }
         if (grep { $_ eq "install-distro-packages" } @setup_steps) {
             say colorize("=== install-distro-packages ===");
-            _installSystemPackages($os);
+
+            # The distro dependencies are listed in sysadmin/repo-metadata repository
+            # First, we need to download metadata with Application.
+
+            eval {
+                require ksb::Application;  # Do not import in the beginning, because perl packages may not yet be installed.
+            };
+            if ($@){
+                # We get here when even no perl-json-xs is installed. If it is, the other message will be shown.
+                say colorize (" r[b[*] r[Could not load Application. Ensure you have run b[--install-distro-packages-perl]r[ first.");
+            }
+
+            ksb::Application->new();  # invokes _downloadKDEProjectMetadata internally
+
+            my $metadata_distro_deps_path = ($ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state") . "/sysadmin-repo-metadata/distro-dependencies";
+            _installSystemPackages($os, $metadata_distro_deps_path);
         }
         if (grep { $_ eq "generate-config" } @setup_steps) {
             say colorize("=== generate-config ===");
@@ -82,9 +102,10 @@ sub _readPackages
 {
     my $vendor = shift;
     my $version = shift;
+    my $deps_data_path = shift;
 
     my %packages;
-    open(my $file, '<', "$baseDir/data/pkg/$vendor.ini") or _throw("Cannot open file \"$baseDir/data/pkg/$vendor.ini\"");
+    open(my $file, '<', "$deps_data_path/$vendor.ini") or _throw("Cannot open file \"$baseDir/data/pkg/$vendor.ini\"");
     my $cur_file;
     my $cur_value;
     my $commit = sub {
@@ -110,38 +131,6 @@ sub _readPackages
 
     $commit->();
 
-    # <editor-fold desc="Perl specific dependencies additions">
-    # pl2py: This is perl specific, not going to kde-builder
-    my %packages2;
-    open(my $file2, '<', "$baseDir/data/perl-dependencies/$vendor.ini") or _throw("Cannot open file \"$baseDir/data/pkg/$vendor.ini\"");
-    my $cur_file2;
-    my $cur_value2;
-    my $commit2 = sub {
-        return unless $cur_file2;
-        $packages2{$cur_file2} = ($cur_value2 =~ s/ *$//r);
-        $cur_value2 = '';
-    };
-
-    while(my $line = <$file2>) {
-        next if $line =~ /^\s*#/;
-        chomp $line;
-
-        my ($fname) = ($line =~ /^\[ *([^ ]+) *\]$/);
-        if ($fname) {
-            $commit2->();
-            $cur_file2 = $fname;
-        }
-        else {
-            $cur_value2 .= "$line\n";
-        }
-    }
-    close($file2);
-    $commit2->();
-
-    # Merging
-    $packages{$cur_file} = $packages{$cur_file} . $packages2{$cur_file2};
-    # </editor-fold>
-
     return \%packages;
 }
 
@@ -154,6 +143,7 @@ sub _throw
 sub _installSystemPackages
 {
     my $os = shift;
+    my $deps_data_path = shift;
     my $vendor = $os->vendorID;
     my $osVersion = $os->vendorVersion;
 
@@ -161,7 +151,7 @@ sub _installSystemPackages
  b[-] Installing b[system packages] for b[$vendor]...
 DONE
 
-    my @packages = _findBestVendorPackageList($os);
+    my @packages = _findBestVendorPackageList($os, $deps_data_path);
     if (!@packages) {
         say colorize (" r[b[*] Packages could not be installed, because kdesrc-build does not know your distribution (" . $vendor .")");
         return;
@@ -399,6 +389,7 @@ sub _findBestInstallCmd
 sub _findBestVendorPackageList
 {
     my $os = shift;
+    my $deps_data_path = shift;
 
     # Debian handles Ubuntu also
     my @supportedDistros = qw/alpine arch debian fedora freebsd gentoo mageia opensuse/;
@@ -406,13 +397,13 @@ sub _findBestVendorPackageList
     my $bestVendor = $os->bestDistroMatch(@supportedDistros);
     my $version = $os->vendorVersion();
     say colorize ("    Installing packages for b[$bestVendor]/b[$version]");
-    return _packagesForVendor($bestVendor, $version);
+    return _packagesForVendor($bestVendor, $version, $deps_data_path);
 }
 
 sub _packagesForVendor
 {
-    my ($vendor, $version) = @_;
-    my $packagesRef = _readPackages($vendor, $version);
+    my ($vendor, $version, $deps_data_path) = @_;
+    my $packagesRef = _readPackages($vendor, $version, $deps_data_path);
 
     foreach my $opt ("pkg/$vendor/$version", "pkg/$vendor/unknown") {
         next unless exists $packagesRef->{$opt};
