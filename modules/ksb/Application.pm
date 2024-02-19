@@ -83,7 +83,7 @@ sub new
 
     my $workLoad = $self->generateModuleList(@options);
     if (!$workLoad->{build}) {
-        if (scalar(@options) == 2 && $options[0] eq "--metadata-only" && $options[0] eq "--metadata-only") {  # Twice passed option hack from FirstRun
+        if (scalar(@options) == 3 && $options[0] eq "--metadata-only" && $options[1] eq "--rc-file" && $options[2] eq "--skip--") {  # Exactly this command line from FirstRun
             return;  # Avoid exit, we can continue in the --install-distro-packages in FirstRun
             # Todo: Currently we still need to exit when normal use like `kdesrc-build --metadata-only`, because otherwise script tries to proceed. Fix it.
         }
@@ -287,13 +287,14 @@ EOF
     # _readConfigurationOptions will add pending global opts to ctx while ensuring
     # returned modules/sets have any such options stripped out. It will also add
     # module-specific options to any returned modules/sets.
-    my $fh = $ctx->loadRcFile();
-    my @optionModulesAndSets =
-        _readConfigurationOptions($ctx, $fh, $cmdlineGlobalOptions, $deferredOptions);
-    close $fh;
+    my @optionModulesAndSets;
+    if ($ctx->{rcFiles}[0] ne "--skip--") {  # we do not want to require existing config file when downloading metadata the first time in FirstRun (which is needed to read distro-dependencies)
+        my $fh = $ctx->loadRcFile();
+        @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $cmdlineGlobalOptions, $deferredOptions);
+        close $fh;
 
-    $ctx->loadPersistentOptions();
-
+        $ctx->loadPersistentOptions();
+    }
     if (exists $cmdlineGlobalOptions->{'resume'}) {
         my $moduleList = $ctx->getPersistentOption('global', 'resume-list');
         if (!$moduleList) {
@@ -495,7 +496,9 @@ sub _downloadKDEProjectMetadata
 
             if ($updateDesired && (!pretending() || $updateNeeded)) {
                 $metadataModule->scm()->updateInternal();
-                $ctx->setPersistentOption('global', 'last-metadata-update', time);
+                if ($ctx->{rcFiles}[0] ne "--skip--") {  # user may not yet decided his persistent-data-file at FirstRun.
+                    $ctx->setPersistentOption('global', 'last-metadata-update', time);
+                }
             }
 
             ksb::Debug::setPretending($wasPretending);
