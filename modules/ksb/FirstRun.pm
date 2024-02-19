@@ -108,7 +108,7 @@ sub _readPackages
     my $deps_data_path = shift;
 
     my %packages;
-    open(my $file, '<', "$deps_data_path/$vendor.ini") or _throw("Cannot open file \"$baseDir/data/pkg/$vendor.ini\"");
+    open(my $file, '<', "$deps_data_path/$vendor.ini") or _throw("Cannot open file \"$deps_data_path/$vendor.ini\"");
     my $cur_file;
     my $cur_value;
     my $commit = sub {
@@ -301,11 +301,9 @@ DONE
     }
     $numCores ||= 4;
     my $numCoresLow = _getNumCoresForLowMemory($numCores);
-    my $build_include_dir = $baseDir =~ s/^$ENV{HOME}/~/r . "/data/build-include";
 
     $sampleRc =~ s/%\{num_cores}/$numCores/g;
     $sampleRc =~ s/%\{num_cores_low}/$numCoresLow/g;
-    $sampleRc =~ s/%\{build_include_dir}/$build_include_dir/g;
 
     my $gl = ksb::BuildContext->new()->{"build_options"}->{"global"};  # real global defaults
 

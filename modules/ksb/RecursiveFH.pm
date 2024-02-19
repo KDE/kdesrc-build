@@ -139,23 +139,30 @@ sub readLine
                 die make_exception('Config', "Unable to handle file include '$line' from $self->{current_fn}:$.");
             }
 
-            my $newFh;
-            my $prefix = $self->currentBasePath();
-
-            $filename =~ s/^~\//$ENV{HOME}\//; # Tilde-expand
-            $filename = "$prefix/$filename" unless $filename =~ m(^/);
-
             # Existing configurations (before 2023 December) may have pointed to the build-include files located in root of project
             # Warn those users to update the path, and automatically map to new location
-            # TODO remove this check later
+            # TODO remove this check after May 2024
             if ($filename =~ /-build-include$/) {
-                $filename =~ s/-build-include$/.ksb/;
-                $filename =~ s/\/([^\/]+)$/\/data\/build-include\/$1/;  # insert "/data/build-include" before last "/" in string
+                $filename =~ s/-build-include$/.ksb/;  # replace the ending "-build-include" with ".ksb"
+                $filename =~ s,.*/([^/]+)$,\${module-definitions-dir}/$1,;  # extract the file name (after the last /), and append it to "${module-definitions-dir}/" string
                 warning (<<~EOM);
-                y[Warning:] The include line defined in $self->{current_fn}:$. uses an old path to build-include file. The build-include files are located in "data/build-include".
-                Please manually edit the line as follows:
-                    include $filename
+                y[Warning:] The include line defined in $self->{current_fn}:$. uses an old path to build-include file.
+                The module-definitions files are now located in repo-metadata.
+                The configuration file is intended to only have this include line (please manually edit your config):
+                    include \${module-definitions-dir}/kf6-qt6.ksb
                 Alternatively, you can regenerate the config with --generate-config option.
+                Mapping this line to "include $filename"
+                EOM
+            }
+            if ($filename =~ /\/data\/build-include/) {
+                $filename =~ s,.*/data/build-include/([^/]+)$,\${module-definitions-dir}/$1,;  # extract the file name (after the last /), and append it to "${module-definitions-dir}/" string
+                warning (<<~EOM);
+                y[Warning:] The include line defined in $self->{current_fn}:$. uses an old path with data/build-include.
+                The module-definitions files are now located in repo-metadata.
+                The configuration file is intended to only have this include line (please manually edit your config):
+                    include \${module-definitions-dir}/kf6-qt6.ksb
+                Alternatively, you can regenerate the config with --generate-config option.
+                Mapping this line to "include $filename"
                 EOM
             }
 
@@ -178,6 +185,11 @@ sub readLine
                 # Replace other references as well.
                 ($sub_var_name) = ($filename =~ $optionRE);
             }
+
+            my $newFh;
+            my $prefix = $self->currentBasePath();
+            $filename =~ s/^~\//$ENV{HOME}\//; # Tilde-expand
+            $filename = "$prefix/$filename" unless $filename =~ m(^/);
 
             open ($newFh, '<', $filename) or
                 die make_exception('Config', "Unable to open file '$filename' which was included from $self->{current_fn}:$.");

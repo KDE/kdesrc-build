@@ -94,16 +94,17 @@ $libname = "lib/x86_64-linux-gnu" if (-d "/usr/lib/x86_64-linux-gnu");
 
 # These options are used for internal state, they are _not_ exposed as cmdline options
 my %GlobalOptions_private = (
-    "debug-level"          => ksb::Debug::INFO,
-    "filter-out-phases"    => "",
-    "git-desired-protocol" => "git", # protocol to use for git *push* URLs (fetch requires https)
-    "git-repository-base"  => { "qt6-copy" => "https://invent.kde.org/qt/qt/", "_" => "fake/" },
-    "manual-build"         => "",
-    "manual-update"        => "",
-    "repository"           => "", # module's git repo
-    "set-env"              => {}, # Hash of environment vars to set
-    "ssh-identity-file"    => "", # If set, is passed to ssh-add.
-    "use-modules"          => "",
+    "debug-level"            => ksb::Debug::INFO,
+    "filter-out-phases"      => "",
+    "git-desired-protocol"   => "git", # protocol to use for git *push* URLs (fetch requires https)
+    "git-repository-base"    => { "qt6-copy" => "https://invent.kde.org/qt/qt/", "_" => "fake/" },
+    "manual-build"           => "",
+    "manual-update"          => "",
+    "module-definitions-dir" => ($ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state") . "/sysadmin-repo-metadata/module-definitions",
+    "repository"             => "", # module's git repo
+    "set-env"                => {}, # Hash of environment vars to set
+    "ssh-identity-file"      => "", # If set, is passed to ssh-add.
+    "use-modules"            => "",
 );
 
 # These options are exposed as cmdline options, but _not from here_.
