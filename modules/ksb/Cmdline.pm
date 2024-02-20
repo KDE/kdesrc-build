@@ -323,77 +323,14 @@ sub _showVersionAndExit
 
 sub _showHelpAndExit
 {
-    # According to XDG spec, if $XDG_CONFIG_HOME is not set, then we should
-    # default to ~/.config
-    my $xdgConfigHome = $ENV{XDG_CONFIG_HOME} // "$ENV{HOME}/.config";
-    my $xdgConfigHomeShort = $xdgConfigHome =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
-
-    my $pwd = $ENV{PWD};
-    my $pwdShort = $pwd =~ s/^$ENV{HOME}/~/r; # Replace $HOME with ~
-
-    my $scriptVersion = scriptVersion();
-
     say <<~DONE;
-        kdesrc-build $scriptVersion
-        Copyright (c) 2003 - 2023 Michael Pyne <mpyne\@kde.org> and others, and is
-        distributed under the terms of the GNU GPL v2.
+        This script automates the download, build, and install process for KDE software using the latest available source code.
 
-        This script automates the download, build, and install process for KDE software
-        using the latest available source code.
-
-        Configuration is controlled from "$pwdShort/kdesrc-buildrc" or
-        "$xdgConfigHomeShort/kdesrc-buildrc".
-        See kdesrc-buildrc-sample for an example.
-
-        Usage: \$ $0 [--options] [module names]
-            All configured modules are built if none are listed.
-
-        Important Options:
-            --pretend (or -p)      Don't actually take major actions, instead describe
-                                   what would be done.
-            --dependency-tree      Print out dependency information on the modules that
-                                   would be built, using a `tree` format. Very useful
-                                   for learning how modules relate to each other. May
-                                   generate a lot of output.
-            --no-src   (or -S)     Don't update source code, just build/install.
-            --src-only (or -s)     Only update the source code
-            --metadata-only        Only update dependency info and KDE project database
-            --refresh-build        Start the build from scratch.
-              (or -r)
-            --rc-file=<filename>   Read configuration from filename instead of default.
-            --initial-setup        Installs required system pkgs, and a base kdesrc-buildrc.
-
-            --resume-from=<pkg>    Skips modules until just before or after the given
-            --resume-after=<pkg>       package, then operates as normal.
-            --stop-before=<pkg>    Stops just before or after the given package is
-            --stop-after=<pkg>         reached.
-
-            --include-dependencies
-             -d                    Also builds KDE-based dependencies of given modules.
-              (This is enabled by default; use --no-include-dependencies or -D to disable)
-
-        More docs at https://docs.kde.org/?application=kdesrc-build
-            Supported configuration options: https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
-            Supported cmdline options:       https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdline.html
+        Documentation at https://docs.kde.org/?application=kdesrc-build
+            Commonly used command line options:             https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/cmdline.html#cmdline-commonly-used-options
+            Supported command-line parameters:              https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/supported-cmdline-params.html
+            Table of available configuration options:       https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html
         DONE
-
-    # Look for indications that this is the first run
-    my @possibleConfigPaths = ("./kdesrc-buildrc",
-                               "$xdgConfigHome/kdesrc-buildrc",
-                               "$ENV{HOME}/.kdesrc-buildrc");
-
-    if (!grep { -e $_ } (@possibleConfigPaths)) {
-        say <<~DONE;
-              **  **  **  **  **
-            It looks like kdesrc-build has not yet been setup. For easy setup, run:
-                $0 --initial-setup
-
-            This will run your system's
-            package manager to install required dependencies, and setup a kdesrc-buildrc
-            that can be edited from there.
-            DONE
-    }
-
     exit;
 }
 
