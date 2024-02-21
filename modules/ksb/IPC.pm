@@ -332,7 +332,7 @@ sub waitForStreamStart
             $self->{'updates_done'} = 1;
         }
         elsif ($ipcType == ksb::IPC::MODULE_LOGMSG) {
-            my ($ipcModuleName, $logMessage) = split(',', $buffer);
+            my ($ipcModuleName, $logMessage) = split(",", $buffer, 2);
             $self->{messages}->{$ipcModuleName} //= [ ];
             push @{$self->{messages}->{$ipcModuleName}}, $logMessage;
         }
