@@ -382,7 +382,6 @@ sub _supportedOptions
         'dependency-tree-fullpath',
         'help|h',
         "list-installed",
-        'metadata-only',
         'no-metadata|M',
         'query=s',
         'rc-file=s',

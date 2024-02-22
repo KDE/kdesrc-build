@@ -66,7 +66,7 @@ sub setupUserSystem
                 say colorize (" r[b[*] r[Could not load Application. Ensure you have run b[--install-distro-packages-perl]r[ first.");
             }
 
-            ksb::Application->new(("--metadata-only", "--rc-file", "<skip>"));  # invokes _downloadKDEProjectMetadata internally
+            ksb::Application->new(("--metadata-only", "--metadata-only"));  # invokes _downloadKDEProjectMetadata internally
             # We use a hack to catch exactly this command line to make the app not exit. This way we do not influence the normal behavior, and we
             # do not create a normal instance of Application, because it will create a lockfile.
             # todo remove this hack after moving takeLock to another place before actual work from the Application::new

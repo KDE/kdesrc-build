@@ -83,12 +83,12 @@ sub new
 
     my $workLoad = $self->generateModuleList(@options);
     if (!$workLoad->{build}) {
-        if (scalar(@options) == 3 && $options[0] eq "--metadata-only" && $options[1] eq "--rc-file" && $options[2] eq "<skip>") {  # Exactly this command line from FirstRun
+        if (scalar(@options) == 2 && $options[0] eq "--metadata-only" && $options[1] eq "--metadata-only") {  # Exactly this command line from FirstRun
             return;  # Avoid exit, we can continue in the --install-distro-packages in FirstRun
-            # Todo: Currently we still need to exit when normal use like `kdesrc-build --metadata-only`, because otherwise script tries to proceed. Fix it.
+            # Todo: Currently we still need to exit when normal use like `kdesrc-build --metadata-only`, because otherwise script tries to proceed with "my $result = $app->runAllModulePhases();". Fix it.
         }
         print "No modules to build, exiting.\n";
-        exit 0;
+        exit 0;  # todo When --metadata-only was used and $self->context->{rcFile} is not /fake/dummy_config, before exiting, it should store persistent option for last-metadata-update.
     }
 
     $self->{modules} = $workLoad->{selectedModules};
@@ -284,17 +284,34 @@ EOF
 
     $ctx->setOption(%{$cmdlineGlobalOptions});
 
+    # We download repo-metadata before reading config, because config already includes the module-definitions from it.
+    $self->_downloadKDEProjectMetadata(); # Uses test data automatically
+
     # _readConfigurationOptions will add pending global opts to ctx while ensuring
     # returned modules/sets have any such options stripped out. It will also add
     # module-specific options to any returned modules/sets.
-    my @optionModulesAndSets;
-    if ($ctx->{rcFiles}[0] ne "<skip>") {  # we do not want to require existing config file when downloading metadata the first time in FirstRun (which is needed to read distro-dependencies)
-        my $fh = $ctx->loadRcFile();
-        @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $cmdlineGlobalOptions, $deferredOptions);
-        close $fh;
+    my $fh = $ctx->loadRcFile();
+    my @optionModulesAndSets = _readConfigurationOptions($ctx, $fh, $cmdlineGlobalOptions, $deferredOptions);
+    close $fh;
 
-        $ctx->loadPersistentOptions();
+    $ctx->loadPersistentOptions();
+
+    # After we have read config, we know owr persistent options, and can read/overwrite them.
+    if ($ctx->getOption("metadata-update-skipped")) {
+        my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
+        if (time - ($lastUpdate) >= 7200) {
+            warning(" r[b[*] Skipped metadata update, but it hasn't been updated recently!");
+        }
+    } else {
+        $ctx->setPersistentOption('global', 'last-metadata-update', time);  # do not care of previous value, just overwrite if it was there
     }
+
+    # The user might only want metadata to update to allow for a later
+    # --pretend run, check for that here.
+    if (exists $cmdlineGlobalOptions->{'metadata-only'}) {
+        return;
+    }
+
     if (exists $cmdlineGlobalOptions->{'resume'}) {
         my $moduleList = $ctx->getPersistentOption('global', 'resume-list');
         if (!$moduleList) {
@@ -338,14 +355,6 @@ EOF
         # Running in a test harness, avoid downloading metadata which will be
         # ignored in the test or making changes to git config
         ksb::Updater::Git::verifyGitConfig($ctx);
-    }
-
-    $self->_downloadKDEProjectMetadata(); # Uses test data automatically
-
-    # The user might only want metadata to update to allow for a later
-    # --pretend run, check for that here.
-    if (exists $cmdlineGlobalOptions->{'metadata-only'}) {
-        return;
     }
 
     # At this point we have our list of candidate modules / module-sets (as read in
@@ -466,7 +475,7 @@ sub _downloadKDEProjectMetadata
 {
     my $self = shift;
     my $ctx = $self->context();
-    my $updateStillNeeded = 0;
+    my $updateNeeded = 0;
 
     my $wasPretending = pretending();
 
@@ -475,17 +484,19 @@ sub _downloadKDEProjectMetadata
             $ctx->getKDEProjectsMetadataModule())
         {
             my $sourceDir = $metadataModule->getSourceDir();
-            super_mkdir($sourceDir);
+            ksb::Debug::setPretending(0);  # We will create the source-dir for metadata even if we were in pretending mode
+            if (!super_mkdir($sourceDir)){
+                $updateNeeded = 1;
+                croak_runtime "Could not create $sourceDir directory!";
+            }
+            ksb::Debug::setPretending($wasPretending);
 
             my $moduleSource = $metadataModule->fullpath('source');
             my $updateDesired = !$ctx->getOption('no-metadata') && $ctx->phases()->has('update');
-            my $updateNeeded = (! -e $moduleSource) || is_dir_empty($moduleSource);
-            my $lastUpdate = $ctx->getPersistentOption('global', 'last-metadata-update') // 0;
+            $updateNeeded = (! -e $moduleSource) || is_dir_empty($moduleSource);
 
-            $updateStillNeeded ||= $updateNeeded;
-
-            if (!$updateDesired && $updateNeeded && (time - ($lastUpdate)) >= 7200) {
-                warning (" r[b[*] Skipping build metadata update, but it hasn't been updated recently!");
+            if (!$updateDesired && !$updateNeeded) {
+                $ctx->setOption("metadata-update-skipped", 1);
             }
 
             if ($updateNeeded && pretending()) {
@@ -494,11 +505,9 @@ sub _downloadKDEProjectMetadata
                 ksb::Debug::setPretending(0);
             }
 
-            if ($updateDesired && (!pretending() || $updateNeeded)) {
+            if (($updateDesired && !pretending()) || $updateNeeded) {
                 $metadataModule->scm()->updateInternal();
-                if ($ctx->{rcFiles}[0] ne "<skip>") {  # user may not yet decided his persistent-data-file at FirstRun.
-                    $ctx->setPersistentOption('global', 'last-metadata-update', time);
-                }
+                # "last-metadata-update" will be set after config is read, so value will be overriden
             }
 
             ksb::Debug::setPretending($wasPretending);
@@ -510,7 +519,7 @@ sub _downloadKDEProjectMetadata
     ksb::Debug::setPretending($wasPretending);
 
     if ($err) {
-        die $err if $updateStillNeeded;
+        die $err if $updateNeeded;
 
         # Assume previously-updated metadata will work if not updating
         warning (" b[r[*] Unable to download required metadata for build process");
@@ -910,7 +919,7 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
     state $moduleID = 0;
 
     # Just look for an end marker if terminator not provided.
-    $endRE //= qr/^end[\w\s]*$/;
+    $endRE //= qr/^\s*end[\w\s]*$/;
 
     _markModuleSource($module, $fileReader->currentFilename() . ":$.");
     $module->setOption('#entry_num', $moduleID++);

@@ -178,6 +178,7 @@ our %GlobalOptions_with_parameter = (
 our %GlobalOptions_without_parameter = (
     "build-system-only"    => "",
     "reconfigure"          => "",
+    "metadata-only"        => "",
 );
 
 sub new ($class)
@@ -636,50 +637,60 @@ sub loadRcFile
         # load the file, we need to fail to load at all.
         my $failedFile = $rcFiles[0];
 
-        error (<<EOM);
-Unable to open config file $failedFile
+        error (<<~EOM);
+            Unable to open config file $failedFile
 
-Script stopping here since you specified --rc-file on the command line to
-load $failedFile manually.  If you wish to run the script with no configuration
-file, leave the --rc-file option out of the command line.
+            Script stopping here since you specified --rc-file on the command line to
+            load $failedFile manually.  If you wish to run the script with no configuration
+            file, leave the --rc-file option out of the command line.
 
-If you want to force an empty rc file, use --rc-file /dev/null
+            If you want to force an empty rc file, use --rc-file /dev/null
 
-EOM
+            EOM
         croak_runtime("Missing $failedFile");
     }
 
-    # If no configuration but no --rc-file option was used, warn the user
-    # and fail, as there are too many possible modes of using kdesrc-build
-    # for kdesrc-buildrc-sample to be appropriate.
+    if ($self->getOption("metadata-only")){
+        # If configuration file in default location was not found, and no --rc-file option was used, and metadata-only option was used.
 
-    error (<<EOM);
-b[No configuration file is present.]
+        # In FirstRun user may decide to use --install-distro-packages before --generate-config.
+        # --install-distro-packages requires the metadata to be downloaded to read the "disrto-dependencies" from it.
+        # After downloading metadata, we normally should change 'last-metadata-update' persistent option value.
+        # To store persistent option, we should know persistent-data-file value, and it is read from config.
+        # At this moment we know that there is no config at default location, and user did not specified the --rc-file option.
+        # And because we do not want to _require_ the config to be available yet, we just will provide dummy config.
+        # This way the --metadata-only option could work in both cases: when user has config and when he has not.
+        # When he has config (not current case), the persistent option "last-metadata-update" will be set as expected, and after the build process will be stored in persistent file.
+        # When he has no config (the current case), we will let the _readConfigurationOptions function do its work on fake config, then we will return.
+        my $dummyConfig = <<~END;
+            global
+                persistent-data-file /not/existing/file  # should not exist in file system (so it is not tried to be read, otherwise we should provide a valid json)
+            end global
 
-kdesrc-build requires a configuration file to select which KDE software modules
-to build, what options to build them with, the path to install to, etc.
+            # To suppress warning about no modules in configuration.
+            module fake
+            end module
+            END
 
-When run, kdesrc-build will use `kdesrc-buildrc' config file located in the
-current working directory. If no such file exists, kdesrc-build will use
-`$xdgConfigHomeShort/kdesrc-buildrc' instead.
+        open $fh, '<', \$dummyConfig;
+        $self->{rcFile} = "/fake/dummy_config";
+        return $fh;
+    } else {
+        # If no configuration and no --rc-file option was used, warn the user and fail.
+        error (<<~EOM);
+        b[No configuration file is present.]
 
-A sample configuration suitable for KDE 4 software is included at the file
-`kdesrc-buildrc-sample' which can be copied to the correct location and then
-edited.
+        kdesrc-build requires a configuration file to select which KDE software modules
+        to build, what options to build them with, the path to install to, etc.
 
-KDE Frameworks 5 users can use the `kdesrc-buildrc-kf5-sample' file which can
-be copied to the correct location and then edited.
+        When run, kdesrc-build will use `kdesrc-buildrc' config file located in the
+        current working directory. If no such file exists, kdesrc-build will use
+        `$xdgConfigHomeShort/kdesrc-buildrc' instead.
 
-In either case b[once the configuration file is setup to your liking], you
-should run:
-b[kdesrc-build --metadata-only]
-
-to download needed information about the KDE source repositories and then:
-b[kdesrc-build --pretend]
-
-to preview what kdesrc-build will do.
-EOM
-    croak_runtime("No configuration available");
+        You can generate config with b[--generate-config].
+        EOM
+        croak_runtime("No configuration available");
+    }
 }
 
 # Returns the base directory that holds the configuration file. This is
