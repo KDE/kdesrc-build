@@ -52,9 +52,11 @@ install(DIRECTORY data/ DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build/data)
 install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
 
 install(FILES
-        completions/zsh/_kdesrc-build_modules
         completions/zsh/_kdesrc-build
-        completions/zsh/_kdesrc-run
+        completions/zsh/_kdesrc-build_module_sets
+        completions/zsh/_kdesrc-build_modules
+        completions/zsh/_kdesrc-build_modules_and_module_sets
+        completions/zsh/_kdesrc-build_run
     DESTINATION ${KDE_INSTALL_ZSHAUTOCOMPLETEDIR})
 
 if (ECM_FOUND)
