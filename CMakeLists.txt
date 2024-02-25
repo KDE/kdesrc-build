@@ -32,7 +32,6 @@ else()
     set(KDE_INSTALL_DATADIR  "${CMAKE_INSTALL_PREFIX}/share" CACHE PATH "The parent directory where applications can install their data")
     set(KDE_INSTALL_BINDIR   "${CMAKE_INSTALL_PREFIX}/bin"  CACHE PATH "The install dir for executables")
     set(KDE_INSTALL_METAINFODIR "${KDE_INSTALL_DATADIR}/metainfo" CACHE PATH "AppStream metadata directory")
-    set(KDE_INSTALL_ZSHAUTOCOMPLETEDIR "${KDE_INSTALL_DATADIR}/zsh/site-functions" CACHE PATH "Zsh functions and autocompletion definitions")
 endif()
 
 set(KDESRC_BUILD_INSTALL_MODULES TRUE CACHE BOOL "Controls whether to install the modules that make up the script. Leave enabled unless running straight from source")
@@ -50,14 +49,6 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/kdesrc-build DESTINATION ${KDE_INST
 install(DIRECTORY data/ DESTINATION ${KDE_INSTALL_DATADIR}/kdesrc-build/data)
 
 install(FILES org.kde.kdesrc-build.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
-
-install(FILES
-        completions/zsh/_kdesrc-build
-        completions/zsh/_kdesrc-build_module_sets
-        completions/zsh/_kdesrc-build_modules
-        completions/zsh/_kdesrc-build_modules_and_module_sets
-        completions/zsh/_kdesrc-build_run
-    DESTINATION ${KDE_INSTALL_ZSHAUTOCOMPLETEDIR})
 
 if (ECM_FOUND)
     feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
