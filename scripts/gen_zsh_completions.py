@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-# SPDX-FileCopyrightText: 2024 Andrew Shark <ashark@linuxcomp.ru>
-#
-# SPDX-License-Identifier: GPL-2.0-or-later
-
 """
 This script generates the zsh completions file.
 """
@@ -254,5 +250,5 @@ for conflicting_set in conflicting_sets:
 
 print("""\
   \\
-  "*:: :_kdesrc-build_modules"\
+  "*:: :_kdesrc-build_modules_and_module_sets"\
 """)
