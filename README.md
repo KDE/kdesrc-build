@@ -7,6 +7,10 @@ It does this by automating the process of downloading source code from the
 KDE source code repositories, building that source code, and installing it
 to your local system.
 
+**kdesrc-build** is a predecessor of a newly used tool called [**kde-builder**](https://invent.kde.org/sdk/kde-builder).  
+The predecessor project was written in Perl, and this was a significant barrier for new contributions.
+The successor project is written in Python - a much more acknowledged language. This means that newly wanted features can be implemented with ease.
+
 ## Quick howto
 
 ### Set up minimum dependencies
