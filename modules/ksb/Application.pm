@@ -52,6 +52,7 @@ use File::Basename; # basename, dirname
 use File::Copy ();  # copy
 use File::Glob ':glob';
 use POSIX qw(:sys_wait_h _exit :errno_h);
+use Cwd qw(getcwd);
 
 ### Package-specific variables (not shared outside this file).
 
@@ -506,7 +507,10 @@ sub _downloadKDEProjectMetadata
             }
 
             if (($updateDesired && !pretending()) || $updateNeeded) {
+                my $orig_wd = getcwd();
                 $metadataModule->scm()->updateInternal();
+                debug("Return to the original working directory after metadata downloading");  # This is needed to pick the config file from that directory
+                p_chdir($orig_wd);
                 # "last-metadata-update" will be set after config is read, so value will be overriden
             }
 
