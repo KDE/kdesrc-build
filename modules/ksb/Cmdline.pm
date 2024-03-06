@@ -361,6 +361,7 @@ sub _showHelpAndExit
             --refresh-build        Start the build from scratch.
               (or -r)
             --rc-file=<filename>   Read configuration from filename instead of default.
+            --generate-config      Generates a basic kdesrc-buildrc
             --initial-setup        Installs required system pkgs, and a base kdesrc-buildrc.
 
             --resume-from=<pkg>    Skips modules until just before or after the given
