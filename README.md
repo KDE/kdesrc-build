@@ -33,9 +33,13 @@ For other distributions, you will need to make a local installation:
 - Clone `kdesrc-build` to the folder you will use it from (assume it is `~/.local`):
 
 ```shell
+$ mkdir -p ~/.local/share
 $ cd ~/.local/share
 $ git clone https://invent.kde.org/sdk/kdesrc-build.git
+$ mkdir -p ~/.local/bin
 $ ln -sf ~/.local/share/kdesrc-build/kdesrc-build ~/.local/bin
+# Make sure that the directory "~/.local/bin" is in $PATH.
+$ echo $PATH
 ```
 
 - Make sure it works by running:
