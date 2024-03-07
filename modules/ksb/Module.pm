@@ -702,6 +702,9 @@ sub setupEnvironment ($self)
             $ctx->prependEnvironmentValue('LD_LIBRARY_PATH', "$platformDir/$libname");
             $ctx->prependEnvironmentValue('PATH', "$platformDir/bin");
         }
+        if ($qt_installdir) {
+            $ctx->prependEnvironmentValue('PKG_CONFIG_PATH', "$qt_installdir/lib/pkgconfig");
+        }
 
         my $binpath  = $self->getOption('binpath');
         my $libpath  = $self->getOption('libpath');
