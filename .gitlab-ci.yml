@@ -3,10 +3,15 @@ default:
   tags:
     - Linux
 
-unit-tests:
+include:
+  - project: sysadmin/ci-utilities
+    file:
+      - /gitlab-templates/reuse-lint.yml
+
+tests:
+  image: invent-registry.kde.org/sysadmin/ci-images/suse-qt67:latest
+  tags:
+    - Linux
   script:
     - prove -v -I modules -r t/unit
-
-integration-tests:
-  script:
     - prove -v -I modules -r t/integration
