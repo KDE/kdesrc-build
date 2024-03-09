@@ -349,6 +349,7 @@ sub _showHelpAndExit
             All configured modules are built if none are listed.
 
         Important Options:
+            --run                  Run the built application.
             --pretend (or -p)      Don't actually take major actions, instead describe
                                    what would be done.
             --dependency-tree      Print out dependency information on the modules that
