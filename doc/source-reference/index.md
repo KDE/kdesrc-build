@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2018 Michael Pyne <mpyne@kde.org>
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # kdesrc-build documentation
 
 Michael Pyne <mpyne@kde.org>

@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2004 - 2024 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2004 - 2024 The kdesrc-build authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::BuildException 0.20;
 
 # A class to wrap 'exception' messages for the script, allowing them to be

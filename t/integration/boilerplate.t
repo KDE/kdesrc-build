@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Ensure 'use ksb;' causes strict mode to activate
 
 use ksb;

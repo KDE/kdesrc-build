@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2018, 2019 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Verify that --ignore-modules works for modules that would be included with
 # --include-dependencies in effect.
 # See bug 394497 -- https://bugs.kde.org/show_bug.cgi?id=394497

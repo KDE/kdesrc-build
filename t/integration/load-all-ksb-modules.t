@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Loads every single ksb module to make sure they all compile.
 use ksb;
 use Test::More import => ['!note'];

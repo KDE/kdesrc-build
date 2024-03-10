@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019, 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Verify that --no-include-dependencies is recognized and results
 # in right value.
 
