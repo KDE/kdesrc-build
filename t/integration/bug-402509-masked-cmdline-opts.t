@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2018, 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Checks that we don't inadvertently eat non-option arguments in cmdline
 # processing, which happened with some cmdline options that were inadvertently
 # handled both directly in _readCommandLineOptionsAndSelectors and indirectly

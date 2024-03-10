@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2015, 2023 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::ModuleResolver 0.20;
 
 # Handle proper resolution of module selectors, including option

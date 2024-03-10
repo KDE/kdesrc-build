@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Verify that test kde-project data still results in workable build.
 
 use ksb;

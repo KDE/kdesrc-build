@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2012, 2013 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::Debug 0.20;
 
 # Debugging routines and constants for use with kdesrc-build

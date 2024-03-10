@@ -1,3 +1,9 @@
+<!--
+    SPDX-FileCopyrightText: 2018 Michael Pyne <mpyne@kde.org>
+    SPDX-FileCopyrightText: 2024 Andrew Shark <ashark@linuxcomp.ru>
+    SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # Tests
 
 ## Running tests

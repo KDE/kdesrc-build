@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2012 Michael Pyne <mpyne@kde.org>
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # Module list construction
 
 An overview of the steps performed in constructing the module list:

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2015 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::StatusView 0.20;
 
 # Helper used to handle a generic 'progress update' status for the module

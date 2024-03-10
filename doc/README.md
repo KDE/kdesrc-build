@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2022 Michael Pyne <mpyne@kde.org>
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # kdesrc-build Documentation
 
 If you're reading this, it's probably from Gitlab. Welcome!

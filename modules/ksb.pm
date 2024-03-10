@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb;
 
 # Enables default boilerplate Perl standards used by kdesrc-build, including minimum Perl version,

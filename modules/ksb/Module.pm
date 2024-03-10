@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2012, 2013, 2016, 2019, 2020, 2022 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2020 Johan Ouwerkerk <jm.ouwerkerk@gmail.com>
+# SPDX-FileCopyrightText: 2024 Andrew Shark <ashark@linuxcomp.ru>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::Module 0.20;
 
 use ksb;

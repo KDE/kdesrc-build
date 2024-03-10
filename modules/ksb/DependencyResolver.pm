@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2012, 2013, 2014, 2015, 2020, 2022, 2023 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2019 Johan Ouwerkerk <jm.ouwerkerk@gmail.com>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::DependencyResolver;
 
 # Class: DependencyResolver

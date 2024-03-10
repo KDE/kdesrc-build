@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2018 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test ksb::OSSupport
 
 use ksb;

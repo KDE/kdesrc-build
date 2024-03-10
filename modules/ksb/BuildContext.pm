@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2012, 2013, 2014, 2015, 2017, 2022, 2023 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2024 Andrew Shark <ashark@linuxcomp.ru>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::BuildContext 0.35;
 
 use ksb;

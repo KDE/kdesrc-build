@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2012 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::IPC::Null 0.10;
 
 # Dummy IPC module in case SysVIPC doesn't work or async mode is not needed.

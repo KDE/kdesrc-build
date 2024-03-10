@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 Johan Ouwerkerk <jm.ouwerkerk@gmail.com>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test comparison operation for sorting modules into debug order
 
 use ksb;

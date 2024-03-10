@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2012, 2013, 2014, 2015, 2017, 2018, 2019, 2020, 2021, 2022 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2020 Johan Ouwerkerk <jm.ouwerkerk@gmail.com>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::Updater::Git 0.15;
 
 # Module which is responsible for updating git-based source code modules. Can
