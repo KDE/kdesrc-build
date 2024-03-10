@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2022, 2023 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2024 Andrew Shark <ashark@linuxcomp.ru>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::Cmdline 0.10;
 
 use ksb;

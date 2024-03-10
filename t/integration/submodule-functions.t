@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019, 2022, 2023 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test submodule-related features
 
 use ksb;

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2012, 2013 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::Updater::KDEProjectMetadata 0.30;
 
 # Updater used only to specifically update the "repo-metadata" module

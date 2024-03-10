@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2022 Michael Pyne <mpyne@kde.org>
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # IPC Notes
 
 To support the [async](https://docs.kde.org/trunk5/en/kdesrc-build/kdesrc-build/conf-options-table.html#conf-async)

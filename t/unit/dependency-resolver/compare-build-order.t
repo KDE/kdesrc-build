@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2020 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2019 Johan Ouwerkerk <jm.ouwerkerk@gmail.com>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test comparison operation for sorting modules into build order
 
 use ksb;

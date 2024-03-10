@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2012, 2013 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::IPC::Pipe 0.20;
 
 # IPC class that uses pipes in addition to forking for IPC.

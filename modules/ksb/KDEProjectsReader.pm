@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2013, 2014, 2017, 2023 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::KDEProjectsReader 0.50;
 
 # Class: KDEProjectsReader

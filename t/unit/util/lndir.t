@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test safe_lndir_p
 
 use ksb;

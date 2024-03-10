@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2018, 2020, 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test use of --set-module-option-value
 
 use ksb;

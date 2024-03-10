@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2012, 2017, 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::BuildSystem::Qt4 0.10;
 
 use ksb;

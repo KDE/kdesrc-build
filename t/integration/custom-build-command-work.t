@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021, 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Ensure that the custom-build-command can at least make it to the
 # $module->buildInternal() portion when no build system can be auto-detected.
 

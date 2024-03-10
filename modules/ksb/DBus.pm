@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::DBus 0.10;
 
 use ksb;

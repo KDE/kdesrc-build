@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2012, 2014 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2016 David Faure <faure@kde.org>
+# SPDX-FileCopyrightText: 2024 Andrew Shark <ashark@linuxcomp.ru>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::RecursiveFH;
 
 use ksb;

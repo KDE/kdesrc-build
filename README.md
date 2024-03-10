@@ -1,3 +1,8 @@
+<!--
+    SPDX-FileCopyrightText: 2018, 2022 Michael Pyne <mpyne@kde.org>
+    SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # kdesrc-build
 
 This script streamlines the process of setting up and maintaining a development

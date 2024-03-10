@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2012 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::Version;
 
 use ksb;
