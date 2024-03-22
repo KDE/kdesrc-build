@@ -357,6 +357,7 @@ sub _findBestInstallCmd
         "cmd/install/fedora/unknown"   => "dnf -y install",
         "cmd/install/freebsd/unknown"  => "pkg install -y",
         "cmd/install/gentoo/unknown"   => "emerge -v --noreplace",
+        "cmd/install/openbsd/unknown"  => "pkg_add",
         "cmd/install/opensuse/unknown" => "zypper install -y --no-recommends",
     );
 
@@ -393,7 +394,7 @@ sub _findBestVendorPackageList
     my $deps_data_path = shift;
 
     # Debian handles Ubuntu also
-    my @supportedDistros = qw/alpine arch debian fedora freebsd gentoo mageia opensuse/;
+    my @supportedDistros = qw/alpine arch debian fedora freebsd gentoo mageia openbsd opensuse/;
 
     my $bestVendor = $os->bestDistroMatch(@supportedDistros);
     my $version = $os->vendorVersion();

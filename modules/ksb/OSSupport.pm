@@ -53,6 +53,11 @@ sub new
     # $file might be undef
     my @kvListRef = $self->_readOSRelease($file);
 
+    if (scalar(@kvListRef) == 0)
+    {
+        @kvListRef = $self->_readOS();
+    }
+
     # Result comes in a listref which itself contains 2-elem
     # lists... flatten list so it can be assigned to the hash
     %{$self} = map { @{$_}[0,1] } @kvListRef;
@@ -215,6 +220,12 @@ sub _readOSRelease
     # Return should be one list per line, hopefully each list has
     # exactly 2 values ([$key, $value]).
     return nested_quotewords('=', 0, @lines);
+}
+
+sub _readOS
+{
+    my @result = (['ID', $^O]);
+    return @result;
 }
 
 1;
