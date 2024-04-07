@@ -13,8 +13,7 @@
     Permission is granted to copy, distribute and/or modify this document under
     the terms of the GNU Free Documentation License, Version 1.2 or any later
     version published by the Free Software Foundation; with no Invariant
-    Sections, no Front-Cover Texts, and no Back-Cover Texts.  A copy of the
-    license is included in COPYING.DOC.
+    Sections, no Front-Cover Texts, and no Back-Cover Texts.
  -->
 
 <refentry lang="&language;">
@@ -181,7 +180,7 @@
 
 <listitem>
 <para
->Esegue una prima configurazione per gli utenti che eseguono &kdesrc-build; sulle comuni distribuzioni. Questa include l'installazione delle dipendenze conosciute del sistema, l'impostazione del file di configurazione predefinito e le modifiche a ~/.bashrc per rendere il software installato accessibile a &kdesrc-build;. È perfettamente uguale all'uso concomitante di «--install-distro-packages --generate-config --update-shellrc». </para>
+>Esegue una prima configurazione per gli utenti che eseguono &kdesrc-build; sulle comuni distribuzioni. Questa include l'installazione delle dipendenze conosciute del sistema, l'impostazione del file di configurazione predefinito e le modifiche a ~/.bashrc per rendere il software installato accessibile a &kdesrc-build;. È perfettamente uguale all'uso concomitante di «--install-distro-packages --generate-config --update-shellrc». In kdesrc-build (implementazione perl) usa in aggiunta «--install-distro-packages-perl». </para>
 </listitem>
 </varlistentry>
 
@@ -206,18 +205,6 @@
 <listitem>
 <para
 >Genera il file di configurazione di &kdesrc-build;. </para>
-</listitem>
-</varlistentry>
-
-<varlistentry>
-<term>
-<option
->--update-shellrc</option>
-</term>
-
-<listitem>
-<para
->Modifica «~/.bashrc» (o un altro file rc di shell) per aggiungere &kdesrc-build; alla tua variabile $PATH e abilitare il completamento automatico. </para>
 </listitem>
 </varlistentry>
 
@@ -278,7 +265,7 @@
 <varlistentry>
 <term>
 <option
->--no-metadata</option>
+>-M, --no-metadata</option>
 </term>
 
 <listitem>
@@ -612,13 +599,6 @@
 >Verranno incluse tutte le dipendenze note, che potrebbero essere più di quanto ti serva. Considera l'uso dell'opzione <option
 >--resume-from</option
 > (e altre simili opzioni) per controllare l'elenco di generazione quando usi questa opzione. </para>
-
-<para
->Per vedere l'elenco di moduli che verrebbero generati, usa <option
->--print-modules</option
-> o <option
->--pretend</option
->. </para>
 </listitem>
 </varlistentry>
 
@@ -713,34 +693,6 @@
 <varlistentry>
 <term>
 <option
->--prefix=<replaceable
->pippo</replaceable
-></option>
-</term>
-
-<listitem>
-<para
->Imposta il valore di <option
->kdedir</option
-> a <replaceable
->pippo</replaceable
-> per questa esecuzione. Inoltre, implica <option
->--reconfigure</option
->. <emphasis
->Non</emphasis
-> fa quello che potresti pensare (sostituire l'opzione <option
->prefix</option
-> per cambiare dove vengono installati i moduli), anche se i moduli vengono normalmente installati nell'impostazione <option
->kdedir</option
-> se <option
->prefix</option
-> non è impostata. </para>
-</listitem>
-</varlistentry>
-
-<varlistentry>
-<term>
-<option
 >--nice=<replaceable
 >pippo</replaceable
 ></option>
@@ -781,9 +733,7 @@
 <para
 >Esegue il programma di nome <replaceable
 >pippo</replaceable
-> con l'ambiente di generazione normale di <command
->kdesrc-build</command
->. Tutti gli argomenti da riga di comando presenti dopo questa opzione vengono passati a <replaceable
+> usando le variabili d'ambiente prefix.sh. Tutti gli argomenti da riga di comando presenti dopo questa opzione vengono passati a <replaceable
 >pippo</replaceable
 > quando viene eseguito. </para>
 </listitem>
@@ -856,14 +806,21 @@
 ></listitem>
     <listitem
 ><para
+><option
+>module-set</option
+>, fa sì che &kdesrc-build; restituisca il nome del gruppo di moduli che contiene il modulo. Può essere utilizzato per generare la cache di completamento automatico zsh.</para
+></listitem>
+    <listitem
+><para
+><option
+>build-system</option
+>, che fa sì che &kdesrc-build; restituisca il sistema di generazione rilevato per il modulo. Può essere utilizzato per eseguire il debug dei problemi di rilevamento automatico dei sistemi di generazione, o quando si sviluppano test per sistemi di generazione specifici. </para
+></listitem>
+    <listitem
+><para
 >In alternativa, possono essere usati i nomi delle opzioni, validi per i moduli, contenuti nel file di configurazione, i cui valori risolti saranno elencati per ciascun modulo. </para
 ></listitem>
     </itemizedlist>
-
-<para
->Se un singolo modulo viene passato alla riga di comando, allora il risultato sarà semplicemente il valore del parametro che è stato ricercato. Se vengono passati più moduli (multipli o no) sulla riga di comando, allora ciascuna riga sarà prefissata dal nome del modulo. In ogni caso, <command
->kdesrc-build</command
-> si ferma una volta che vengono restituiti tutti i valori. </para>
 
 <para
 >Questa opzione è stata aggiunta con <command
@@ -896,73 +853,6 @@
 kdepim: master
 </screen>
 </informalexample>
-</listitem>
-</varlistentry>
-
-<varlistentry>
-<term>
-<option
->--print-modules</option>
-</term>
-
-<listitem>
-<para
->Prende tutte le azioni specificate sulla riga di comando (o nel file di configurazione) fino al riordino delle dipendenze dei moduli incluso, stampa i moduli che verrebbero elaborati uno per riga, e quindi esce senza fare altro. </para>
-
-<para
->I metadati di <literal
->kde-project</literal
-> vengono scaricati per primi (però, vedi <option
->--pretend</option
-> o <option
->--no-src</option
->). </para>
-
-<para
->Il risultato non è pienamente compatibile con l'uso di script, perché potrebbero essere generati altri messaggi prima dell'elenco dei moduli. </para>
-
-<para
->Questo è utili soprattutto per capire velocemente quali dipendenze <command
->kdesrc-build</command
-> determina per un modulo, il che vuol dire che è utile solo per i moduli di <literal
->kde-projects</literal
->. Questa opzione è compatibile con <option
->--resume-from</option
->, <option
->--resume-after</option
->, <option
->--stop-before</option
->, e <option
->--stop-after</option
->. </para>
-</listitem>
-</varlistentry>
-
-<varlistentry>
-<term>
-<option
->--list-build</option>
-</term>
-
-<listitem>
-<para
->Prende tutte le azioni specificate sulla riga di comando (o nel file di configurazione) fino al riordino delle dipendenze dei moduli incluso, stampa i moduli che verrebbero elaborati uno per riga, e quindi esce senza fare altro. </para>
-<para
->Questa opzione è simile a <option
->--print-modules</option
-> ma include anche quali commit/rami/tag specifici debbano essere generati. Inoltre, l'ordine in cui i moduli sono elencati corrisponde all'ordine in cui questi verrebbero generati. </para>
-
-<para
->I metadati di <literal
->kde-project</literal
-> vengono scaricati per primi (però, vedi <option
->--pretend</option
-> o <option
->--no-src</option
->). </para>
-
-<para
->Il risultato non è pienamente compatibile con l'uso di script, perché potrebbero essere generati altri messaggi prima dell'elenco dei moduli. </para>
 </listitem>
 </varlistentry>
 
