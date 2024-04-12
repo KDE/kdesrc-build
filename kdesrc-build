@@ -41,42 +41,46 @@ use v5.26;
 use strict;
 use warnings;
 
-# On many container-based distros, even FindBin is missing to conserve space.
-# But we can use File::Spec to do nearly the same.
+# In most environments $RealBin can be provided by FindBin but on many
+# container-based distros even FindBin is missing to conserve space.
+# If it is missing we can use File::Spec to do nearly the same.
+use File::Spec;
 my $RealBin;
-my $modPath;
 
-# The File::Spec calls have to run when parsing (i.e. in BEGIN) to make the
-# 'use lib' below work (which itself implicitly uses BEGIN { })
+# We have to amend @INC when parsing (i.e. in BEGIN) to make the
+# use call below (which itself implicitly use BEGIN { }) work
 BEGIN {
-    use File::Spec;
+    # Try FindBin first since it handles relative symlinks to this binary
+    # better.
+    eval {
+      require FindBin;
+      $RealBin = $FindBin::RealBin;
+    };
+    # Could not load FindBin, do our best to emulate what it does.
+    if ($@) {
+        my $scriptPath = $0;
+        for (1..16) {
+            last unless -l $scriptPath;
+            $scriptPath = readlink $scriptPath;
+        }
+        die "Too many symlinks followed looking for script" if -l $scriptPath;
 
-    # resolve symlinks
-    my $scriptPath = $0;
-    for (1..16) {
-        last unless -l $scriptPath;
-        $scriptPath = readlink $scriptPath;
+        my ($volume, $directories, $script) = File::Spec->splitpath($scriptPath);
+        $RealBin = File::Spec->catpath($volume, $directories, '');
     }
-    die "Too many symlinks followed looking for script" if -l $scriptPath;
-
-    my ($volume, $directories, $script) = File::Spec->splitpath($scriptPath);
-
-    $RealBin = File::Spec->catpath($volume, $directories, '');
     die "Couldn't find base directory!" unless $RealBin;
 
     # Use modules in git repo if running from git dir, otherwise assume
     # system install
-    $modPath = File::Spec->rel2abs('modules', $RealBin);
+    my $modPath = File::Spec->rel2abs('modules', $RealBin);
     $modPath = ($RealBin =~ s,/bin/?$,/share/kdesrc-build/modules,r)
         unless -d $modPath;
 
     die "Couldn't find modules for kdesrc-build!" unless $modPath;
-}
 
-# We use third party embedded modules but we should prefer system versions if
-# available so add to the end of @INC rather than the beginning, this is why
-# we don't do "use lib '$modPath'"
-BEGIN {
+    # We use third party embedded modules but we should prefer system versions if
+    # available so add to the end of @INC rather than the beginning, this is why
+    # we don't do "use lib '$modPath'"
     push @INC, "$modPath";
 }
 
