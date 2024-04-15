@@ -965,7 +965,7 @@ sub _parseModuleOptions ($ctx, $fileReader, $module, $endRE=undef)
             if ($option eq "qtdir") {  # todo This message is temporary. Remove it after 17.04.2024.
                 error "r[Please edit your config. Replace \"b[qtdir]r[\" with \"b[qt-install-dir]r[\".";
             }
-            die ksb::BuildException::Config->new($option, "Unrecognized option \"$option\" found at $current_file:$.");
+            error("Unrecognized option \"$option\" found at $current_file:$.");
         }
 
         eval { $module->setOption($option, $value); };
