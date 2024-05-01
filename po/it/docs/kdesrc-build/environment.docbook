@@ -1,0 +1,176 @@
+<sect1 id="environment">
+<title
+>Impostare l'ambiente per far funzionare il desktop &plasma; di &kde;</title>
+
+<para
+>Supponendo che tu stia usando un utente apposito per generare &plasma; di &kde;, e che abbia già installato una versione di &plasma;, far funzionare il nuovo &plasma; potrebbe essere un po' difficile, perché il nuovo deve prendere la precedenza sul vecchio. Devi cambiare le variabili d'ambiente dei tuoi script d'accesso per assicurarti che venga usato il desktop appena generato. </para>
+
+<sect2 id="session-driver">
+<title
+>Installare automaticamente un driver d'accesso</title>
+
+<para
+>A partire dalla versione 1.16, &kdesrc-build; cercherà di installare un driver d'accesso appropriato che permetterà di accedere al desktop &kde; generato da &kdesrc-build; dal gestore degli accessi. Questo può essere disabilitato con l'opzione <option
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></option
+> nel file di configurazione.</para>
+
+<note
+><para
+>La configurazione della sessione non avviene quando &kdesrc-build; è eseguito in modalità di prova (opzione <option
+>--pretend</option
+>).</para
+></note>
+
+<para
+>Questo driver funziona impostando un tipo di sessione <quote
+><literal
+>xsession</literal
+></quote
+> personalizzato. Questo tipo di sessione dovrebbe normalmente funzionare con il gestore d'accesso sddm (dove compare come la sessione <quote
+>Custom</quote
+>), ma altri gestori (come <application
+>LightDM</application
+> e <application
+>gdm</application
+>) potrebbero richiedere l'installazione di altri file per abilitare il supporto per <literal
+>xsession</literal
+>.</para>
+
+<sect3 id="xsession-distribution-setup">
+<title
+>Aggiungere il supporto per xsession in varie distribuzioni</title>
+
+<para
+>I gestori d'accesso predefiniti per alcune distribuzioni potrebbero richiedere l'installazione di pacchetti aggiuntivi per poter supportare gli accessi con <literal
+>xsession</literal
+>.</para>
+
+<itemizedlist>
+<listitem
+><para
+>La distribuzione &Linux; <ulink url="https://getfedora.org/"
+>Fedora</ulink
+> richiede l'installazione del pacchetto <literal
+>xorg-x11-xinit-session</literal
+> per il supporto degli accessi con <literal
+>xsession</literal
+> personalizzati.</para
+></listitem>
+
+<listitem
+><para
+><ulink url="https://www.debian.org/"
+>Debian</ulink
+> e le distribuzioni &Linux; da esso derivate dovrebbero supportare gli accessi con <literal
+>xsession</literal
+> personalizzati, ma richiedono l'impostazione dell'opzione <option
+><userinput
+>allow-user-xsession</userinput
+></option
+> nel file <filename
+>/etc/X11/Xsession.options</filename
+>. Vedi anche la <ulink url="http://www.debian.org/doc/manuals/debian-reference/ch07.en.html#_customizing_the_x_session_classic_method"
+>documentazione su come configurare la sessione X</ulink
+> di Debian.</para
+></listitem>
+
+<listitem
+><para
+>Per le altre distribuzioni, vai al<xref linkend="xsession-manual-setup"/>.</para
+></listitem>
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="xsession-manual-setup">
+<title
+>Aggiungere il supporto per xsession manualmente</title>
+
+<para
+>Se non ci sono istruzioni specifiche per la tua distribuzione nel<xref linkend="xsession-distribution-setup"/>, puoi aggiungere manualmente una voce per l'<quote
+>accesso con xsession personalizzato</quote
+> all'elenco di tipi di sessione della tua distribuzione come segue:</para>
+
+<procedure id="proc-adding-xsession-type">
+<title
+>Aggiungere un tipo di sessione d'accesso .xsession</title>
+
+<note
+><para
+>Questa procedura probabilmente richiederà privilegi amministrativi per essere effettuata. </para
+></note>
+
+<step performance="required">
+<para
+>Crea il file <filename
+>/usr/share/xsessions/kdesrc-build.desktop</filename
+>.</para>
+</step>
+
+<step performance="required">
+<para
+>Assicurati che il file appena creato contenga il quanto segue:</para>
+<literallayout
+><userinput>
+Type=XSession
+Exec=<co id="session-homedir"/><replaceable
+>$HOME</replaceable
+>/.xsession
+Name=KDE Plasma Desktop (unstable; kdesrc-build)
+</userinput
+></literallayout>
+
+<calloutlist>
+<callout arearefs="session-homedir"
+><para
+>La voce <replaceable
+>$HOME</replaceable
+> deve essere sostituita dal percorso completo alla tua cartella HOME (per esempio, <filename class="directory"
+>/home/<replaceable
+>utente</replaceable
+></filename
+>). La specifica delle voci desktop non permette file generici per tutti gli utenti. </para
+></callout>
+
+</calloutlist>
+</step>
+
+<step performance="optional"
+><para
+>Al riavvio del gestore degli accessi, dovrebbe essere mostrato un nuovo tipo di sessione nell'elenco, <quote
+>KDE Plasma Desktop (unstable; kdesrc-build)</quote
+>, che dovrebbe cercare di eseguire il file <filename
+>.xsession</filename
+> installato da &kdesrc-build; se viene selezionato all'accesso.</para>
+
+<note
+><para
+>La cosa più facile potrebbe essere riavviare il computer per riavviare il gestore degli accessi, se il gestore non tiene traccia degli aggiornamenti alla cartella <filename class="directory"
+>/usr/share/xsessions</filename
+>.</para
+></note>
+
+</step>
+
+</procedure>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="old-profile-instructions">
+<title
+>Configurare l'ambiente manualmente</title>
+<para
+>Questa documentazione includeva precedentemente istruzioni su quali variabili d'ambiente impostare per caricare il desktop appena generato. Queste istruzioni sono state spostate nell'appendice (<xref linkend="old-profile-setup"/>).</para>
+
+<para
+>Se vuoi configurare il tuo supporto per l'accesso, puoi consultare questa appendice o il file <filename
+>kde-env-master.sh.in</filename
+> incluso nel codice sorgente di &kdesrc-build;.</para>
+
+</sect2>
+
+</sect1>

@@ -1,0 +1,102 @@
+<sect1 id="kdesrc-build-logging">
+<title
+>Registro della generazione di &kdesrc-build;</title>
+
+<sect2 id="logging-overview">
+<title
+>Panoramica del registro</title>
+
+<para
+>La registrazione è una funzionalità di &kdesrc-build; grazie alla quale l'output di ogni comando eseguito da &kdesrc-build; viene salvato in un file per essere analizzato in seguito, se necessario. Ciò si fa perché è spesso necessario avere l'output di questi programmi in caso di un errore di generazione, perché ci sono molti motivi per cui una generazione potrebbe non riuscire.</para>
+
+<sect3 id="log-directory-layout">
+<title
+>Schema della cartella di registro</title>
+
+<para
+>I registri sono sempre tenuti nella cartella di registro. L'indirizzo della cartella di registro è controllato dall'opzione <link linkend="conf-log-dir"
+>log-dir</link
+>, che ha come valore predefinito <filename class="directory"
+><symbol
+>${cartella-sorgente}</symbol
+>/log</filename
+> (dove <symbol
+>${cartella-sorgente}</symbol
+> è il valore dell'opzione <link linkend="conf-source-dir"
+>source-dir</link
+>); in questa sezione, verrà indicato con <symbol
+>${cartella-registro}</symbol
+>).</para>
+
+<para
+>Sotto <symbol
+>${cartella-registro}</symbol
+> c'è una serie di cartelle, una per ogni volta che è stato eseguito &kdesrc-build;. Ogni cartella ha per nome la data e il numero di esecuzione. Per esempio, la seconda volta che &kdesrc-build; è stato eseguito il 26 maggio 2004 verrebbe creata la cartella <filename
+>2004-05-26-02</filename
+>, dove 2004-05-26 è per la data e -02 per il numero dell'esecuzione.</para>
+
+<para
+>Per comodità, &kdesrc-build; creerà anche un collegamento ai registri dell'ultima esecuzione, chiamato <filename class="directory"
+>latest</filename
+>. Quindi i registri dell'ultima esecuzione di &kdesrc-build; saranno sempre sotto <filename class="directory"
+><symbol
+>${cartella-registro}</symbol
+>/latest</filename
+>. </para>
+
+<para
+>Ogni cartella di un'esecuzione di &kdesrc-build; conterrà a sua volta una serie di cartelle, una per ogni modulo di &kde; che &kdesrc-build; ha cercato di generare. Inoltre, la cartella conterrà un file <filename
+>build-status</filename
+>, che ti permette di determinare quali moduli sono stati generati correttamente e quali no.</para>
+
+<note
+><para
+>Se il modulo contiene un sottomodulo (come extragear/multimedia, playground/utils, o KDE/kdelibs), ci sarà una struttura corrispondente nelle cartelle di registro. Per esempio, i registri di KDE/kdelibs dopo l'ultima esecuzione di &kdesrc-build; saranno in <filename class="directory"
+><symbol
+>${cartella-registro}</symbol
+>latest/KDE/kdelibs</filename
+>, e non in <filename class="directory"
+><symbol
+>${cartella-registro}</symbol
+>/latest/kdelibs</filename
+>. </para
+></note>
+
+<para
+>In ogni cartella di registro dei moduli troverai una serie di file per ogni operazione effettuata da &kdesrc-build;. Se &kdesrc-build; aggiorna un modulo, potresti vedere dei file come <filename
+>git-checkout-update.log</filename
+> (per il ritiro di un modulo o per l'aggiornamento di un modulo che è stato ritirato in precedenza). Se è stato eseguito il comando <command
+>configure</command
+>, dovresti aspettarti di vedere un <filename
+>configure.log</filename
+> nella cartella.</para>
+
+<para
+>Se si è verificato un errore, dovresti poterne vedere una spiegazione in uno dei file. Per aiutarti a capire quale file contiene l'errore, &kdesrc-build; creerà un collegamento dal file contenente l'errore (come <filename
+>build-1.log</filename
+>) a un file chiamato <filename
+>error.log</filename
+>.</para>
+
+<para
+>Insomma, per vedere perché un modulo non è stato generato dopo l'ultima esecuzione di &kdesrc-build; la prima cosa che devi guardare è il file <filename
+><symbol
+>${cartella-registro}</symbol
+>/latest/<replaceable
+>nome-modulo</replaceable
+>/error.log</filename
+>. </para>
+
+<tip
+><para
+>Se il file <filename
+>error.log</filename
+> è vuoto (soprattutto dopo un'installazione), forse non c'è davvero stato nessun errore. Alcuni degli strumenti usati dal sistema di generazione di &kde; segnaleranno errori per sbaglio anche se in realtà non ce ne sono.</para>
+
+<para
+>Inoltre, alcuni comandi evaderanno il redirezionamento dell'output di &kdesrc-build; ed eviteranno il file di registro in certe circostanze (di solito quando si effettua il primo ritiro da &git;), e l'output di errore in quel caso non è nel file di registro ma nella &konsole; o nel terminale dove hai eseguito &kdesrc-build;.</para>
+</tip>
+
+</sect3>
+</sect2>
+</sect1>

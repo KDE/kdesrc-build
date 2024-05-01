@@ -1,0 +1,136 @@
+<sect1 id="configure-data">
+<title
+>Impostare i dati della configurazione</title>
+
+<para
+>Per usare &kdesrc-build;, dovresti avere un file nella tua cartella <filename
+>~/.config</filename
+> (o in <envar
+>$XDG_CONFIG_HOME</envar
+>, se impostato) chiamato <filename
+>.kdesrc-buildrc</filename
+>, che imposta le opzioni generali e specifica i moduli che vuoi scaricare e generare. </para>
+
+<note
+><para
+>È possibile usare diversi file di configurazione per &kdesrc-build;, come descritto nel<xref linkend="kdesrc-buildrc"/>. Se hai bisogno di usare configurazioni multiple, vedi quella sezione. Qui, presumeremo che la configurazione sia salvata in <filename
+>~/.config/kdesrc-buildrc</filename
+>. </para
+></note>
+
+<para
+>Il modo più semplice di procedere è usare il file <filename
+>kdesrc-buildrc-kf5-sample</filename
+> come modello, cambiando le opzioni globali per adattarle alle tue esigenze e cambiando anche l'elenco dei moduli da generare. </para>
+
+<para
+>Le impostazioni predefinite dovrebbero essere appropriate per generare &kde;. Alcune impostazioni che potresti voler cambiare includono: </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, che cambia la cartella di destinazione in cui il tuo software &kde; sarà installato. Il valore predefinito è <filename class="directory"
+>~/kde/usr</filename
+>, che è un'installazione per un solo utente.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-branch-group"
+>branch-group</link
+>, che puoi usare per scegliere il ramo di sviluppo appropriato per tutti i moduli &kde; nel loro insieme. Sono supportate molte configurazioni di generazione ma probabilmente sceglierai <option
+>kf5-qt5</option
+>, dunque &kdesrc-build; scaricherà l'ultimo codice basato su &Qt; 5 e &kde; Frameworks 5.</para>
+
+<tip
+><para
+>Se non ne scegli uno, &kdesrc-build; utilizzerà un gruppo di rami predefinito, ma questo cambierà nel tempo; è dunque meglio sceglierne uno in modo che il gruppo di rami non cambi in modo inaspettato.</para
+></tip>
+</listitem>
+
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, per controllare la cartella di &kdesrc-build; utilizza per scaricare il codice sorgente, avviando il processo di generazione e salvando i registri. Questo è impostato in modo predefinito in <filename class="directory"
+>~/kde/src</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+>, che imposta le opzioni da passare al comando  &cmake; quando si generano i moduli. Tipicamente questo è utilizzato per impostare uno tra i modelli di generazione <quote
+>debug</quote
+> o <quote
+>release</quote
+>, per abilitare (o disabilitare) le funzioni opzionali o per passare informazioni al processo di generazione riguardo la posizione delle librerie richieste. </para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>, che imposta le opzioni utilizzate quando si esegue realmente il comando <application
+>make</application
+> per generare ogni modulo (una volta che &cmake; ha stabilito il sistema di generazione). </para>
+
+<para
+>L'opzione più tipica è <option
+>-j<replaceable
+>N</replaceable
+></option
+>, dove <replaceable
+>N</replaceable
+> deve essere sostituito col numero massimo di operazioni di compilazione che vuoi consentire. Un numero più alto (fino al numero di CPU logici disponibili nel tuo sistema) porta a generazioni più rapide ma richiede maggiore impegno di risorse del sistema. </para>
+
+<tip
+><para
+>&kdesrc-build; imposta l'opzione <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> al numero rilevato di core di elaborazione disponibili. Puoi utilizzare questo valore nel tuo file di configurazione in modo da evitare di impostarlo manualmente. </para
+></tip>
+
+<example id="make-options-example">
+<title
+>Configurare Make per utilizzare tutte le CPU disponibili, con eccezioni</title>
+<screen
+>global
+    # Questa variabile d'ambiente viene utilizzata automaticamente da make, inclusi
+    # i comandi make non eseguiti direttamente da kdesrc-build, come il configure di Qt
+    set-env MAKEFLAGS -j<literal
+>${num-cores}</literal>
+    &hellip;
+end global
+
+&hellip;
+
+module-set <replaceable
+>big-module-set</replaceable>
+    repository kde-projects
+    use-modules <replaceable
+>calligra</replaceable>
+    make-options -j2 # Numero ridotto di operazioni di generazione solo per questi moduli
+end module-set
+</screen>
+</example>
+
+<note
+><para
+>Alcuni depositi Git molto grandi potrebbero affossare il tuo sistema se provi a compilare con troppe operazioni di generazione simultanee, in particolare i depositi tipo &Qt; WebKit e &Qt; WebEngine. Per mantenere l'interattività del sistema potresti dover ridurre il numero di operazioni di generazione per i moduli specifici.</para>
+<para
+><xref linkend="make-options-example"/> fornisce un esempio su come farlo.</para>
+</note>
+
+</listitem>
+</itemizedlist>
+
+<para
+>Potresti voler selezionare diversi moduli da generare, come descritto in <xref linkend="selecting-modules"/>.</para>
+
+</sect1>

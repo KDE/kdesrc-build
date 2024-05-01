@@ -1,0 +1,198 @@
+<appendix id="appendix-profile">
+<title
+>Procedure sostituite di configurazione dei profili</title>
+
+<sect1 id="old-profile-setup">
+<title
+>Configurare in profilo d'accesso di &kde;</title>
+
+<para
+>Queste istruzioni indicano come configurare il profilo necessario per assicurare che il computer possa accedere al desktop &plasma; di &kde; appena generato. &kdesrc-build; cercherà normalmente di farlo da sé (vedi <xref linkend="session-driver"/>). Questa sezione dell'appendice può essere utile per chi non può usare il supporto di &kdesrc-build; per la configurazione del profilo di accesso. Tuttavia le istruzioni potrebbero non sempre essere aggiornate, e può essere utile consultare il file <filename
+>kde-env-master.sh.in</filename
+> incluso nel codice sorgente di &kdesrc-build;.</para>
+
+<sect2 id="changing-profile">
+<title
+>Cambiare le impostazioni del profilo di avvio</title>
+
+<important
+><para
+>Il file <filename
+>.bash_profile</filename
+> contiene le impostazioni di accesso alla popolare shell <application
+>Bash</application
+> usata da molte distribuzioni &Linux;. Se usi una shell diversa, potresti dover correggere i campioni forniti in questa sezione per la tua shell.</para
+></important>
+
+<para
+>Apri o crea il file <filename
+>.bash_profile</filename
+> nella cartella Home con un qualsiasi editor di testo. Se stai generando il modulo qt (che è l'impostazione predefinita), aggiungi: <programlisting>
+PATH=${install-dir}/bin:${qt-install-dir}/bin:$PATH
+MANPATH=${qt-install-dir}/doc/man:$MANPATH
+
+# Fai la cosa giusta se LD_LIBRARY_PATH non è già impostata.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}:/lib:${qt-install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}:/lib:${qt-install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH MANPATH LD_LIBRARY_PATH
+</programlisting
+> Oppure, se non stai generando qt (e stai usando le librerie &Qt; del sistema), aggiungi: <programlisting
+>PATH=${install-dir}/bin:${qt-install-dir}/bin:$PATH
+
+# Fai la cosa giusta se LD_LIBRARY_PATH non è già impostata.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH LD_LIBRARY_PATH
+</programlisting>
+</para>
+
+<para
+>Se non stai usando un utente apposito, imposta una diversa variabile $<envar
+>KDEHOME</envar
+> per il nuovo ambiente nel file <filename
+>.bash_profile</filename
+>: <programlisting
+>export KDEHOME="${HOME}/.kde-git"
+
+# Crealo se necessario
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
+</programlisting>
+</para>
+
+<note>
+<para
+>Se in seguito il menu K è vuoto o troppo affollato da applicazioni della tua distribuzione, potresti dover impostare le variabili d'ambiente <acronym
+>XDG</acronym
+> nel tuo <filename
+>.bash_profile</filename
+>: <programlisting
+>XDG_CONFIG_DIRS="/etc/xdg"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
+export XDG_CONFIG_DIRS XDG_DATA_DIRS
+</programlisting>
+
+</para>
+</note>
+
+</sect2>
+<sect2 id="starting-kde">
+<title
+>Avviare &kde;</title>
+
+<para
+>Adesso che hai adattato le impostazioni d'ambiente per usare il &kde; giusto, è importante assicurarsi che sia usato anche lo script <command
+>startkde</command
+> giusto. </para>
+
+<para
+>Apri il file di testo <filename
+>.xinitrc</filename
+> dalla cartella Home, o crealo se necessario. Aggiungi la riga: <programlisting
+><command
+>exec</command
+> <option
+>${install-dir}/bin/startkde</option
+>
+</programlisting>
+</para>
+
+<important
+><para
+>Su alcune distribuzioni, potrebbe essere necessario effettuare gli stessi passi con il file <filename
+>.xsession</filename
+>, anch'esso nella cartella Home. Ciò è vero in particolare quando si usano gestori di accesso grafici come sddm, <application
+>gdm</application
+> o <application
+>xdm</application
+>.</para>
+</important>
+
+<para
+>Adesso, avvia il tuo nuovo &kde;: nei sistemi &BSD; e &Linux; con supporto per i terminali virtuali, le combinazioni di tasti da <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F1</keycap
+></keycombo
+> a <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F12</keycap
+></keycombo
+>vengono usate per selezionare le console virtuali dalla 1 alla 12. Ciò permette di avere più di un ambiente desktop allo stesso tempo. Le prime sei sono terminali di testo, e le seguenti sono terminali grafici. </para>
+
+<para
+>Se invece quando avvii il computer ti viene presentato un gestore grafico, puoi usare il nuovo ambiente &kde; anche se non è elencato nelle opzioni. La maggior parte dei gestori d'accesso grafici, sddm incluso, hanno l'opzione di usare una <quote
+>sessione personalizzata</quote
+> all'accesso. Con questa opzione, vengono caricate le tue impostazioni di sessione dal file <filename
+>.xsession</filename
+> nella tua cartella Home. Se hai già modificato il file come descritto sopra, questa opzione dovrebbe farti entrare nella nuova installazione di &kde;. </para>
+
+<para
+>Se non lo fa, c'è qualcos'altro da provare che di solito funziona: Premi <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+>, e ti troverai davanti a un terminale testuale. Accedi con l'utente dedicato e scrivi: </para>
+
+<screen
+><command
+>start</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<tip>
+<para
+>Puoi usare il &kde; dal codice sorgente e il vecchio &kde; allo stesso tempo! accedi usando il tuo utente regolare, avvia il desktop stabile di &kde;. Premi <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+> (o <keycap
+>F1</keycap
+>, <keycap
+>F3</keycap
+>, eccetera) e ti sarà presentato un terminale testuale. Accedi con l'utente &git; dedicato a &kde; e scrivi:</para>
+
+<screen
+><command
+>start</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<para
+>Puoi tornare al desktop &kde; del tuo utente regolare premendo il tasto scorciatoia per il desktop già in esecuzione. Questo è normalmente <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+>, ma potrebbe anche essere <keycap
+>F6</keycap
+> o <keycap
+>F8</keycap
+>. Per tornare al tuo &kde; compilato con &kdesrc-build;, devi usare la stessa sequenza, ma con il prossimo tasto funzione. Per esempio, se hai dovuto inserire <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+> per andare al &kde; normale, devi premere <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F8</keycap
+></keycombo
+> per tornare al &kde; di &kdesrc-build;.</para>
+</tip>
+
+</sect2>
+</sect1>
+
+</appendix>

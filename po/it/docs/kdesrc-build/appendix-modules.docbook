@@ -1,0 +1,178 @@
+<appendix id="appendix-modules">
+<title
+>Moduli di &kde; e organizzazione del codice sorgente</title>
+<sect1 id="module-concept">
+<title
+>Il <quote
+>modulo</quote
+></title>
+
+<para
+>&kde; raggruppa i suoi programmi in <quote
+>moduli</quote
+> di varie dimensioni. Questi erano inizialmente un vago raggruppamento di alcuni grandi moduli, ma con l'introduzione dei <ulink url="https://commits.kde.org/"
+>depositi di codice sorgente</ulink
+> basati su <ulink url="https://git-scm.com/"
+>Git</ulink
+> questi grandi moduli sono stati divisi in molti moduli più piccoli. </para>
+
+<para
+>Anche &kdesrc-build; usa questo concetto di modulo. Essenzialmente, un <quote
+>modulo</quote
+> è un raggruppamento di codice che può essere scaricato, generato, testato e installato. </para>
+
+<sect2 id="single-modules">
+<title
+>Moduli singoli</title>
+
+<para
+>È facile far generare un singolo modulo a &kdesrc-build;. L'elenco seguente è un esempio di come può essere scritta una dichiarazione per un modulo basato su &git; nel <link linkend="kdesrc-buildrc"
+>file di configurazione</link
+>.</para>
+
+<programlisting
+>module <replaceable
+>kdepippo</replaceable>
+    <option
+><replaceable
+>cmake-options -DCMAKE_BUILD_TYPE=Debug</replaceable
+></option>
+end module
+</programlisting>
+
+<tip
+><para
+>Questo è un modulo basato su &git; perché non usa un'opzione <link linkend="conf-repository"
+>repository</link
+>. Inoltre, l'opzione <option
+>cmake-options</option
+> è elencata solo come esempio e non è necessaria.</para
+></tip>
+
+</sect2>
+<sect2 id="module-groups">
+<title
+>Gruppi di moduli collegati</title>
+
+<para
+>La maggior parte dei moduli di &kde; sono oggi basati su &git;, e sono normalmente combinati in gruppi di moduli.</para>
+
+<para
+>&kdesrc-build; supporta pertanto anche i gruppi di moduli, con gli <link linkend="module-sets"
+>insiemi di moduli</link
+>. Per esempio:</para>
+
+<programlisting
+>module-set <replaceable
+>moduli-base</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde-runtime kde-workspace kde-baseapps</replaceable>
+end module-set
+</programlisting>
+
+<tip
+><para
+>Se preferisci, puoi lasciare il nome dell'insieme di moduli (<replaceable
+>moduli-base</replaceable
+>). L'impostazione di <option
+>repository</option
+> dice a &kdesrc-build; da dove scaricare il codice sorgente, ma puoi anche usare un URL <symbol
+>git://</symbol
+>.</para
+></tip>
+
+<para
+>Una funzionalità speciale di <quote
+><option
+>repository</option
+> <literal
+>kde-projects</literal
+></quote
+> è che &kdesrc-build; includerà automaticamente tutti i moduli &git; raggruppati sotto i moduli da te elencati (nella banca dati dei progetti di &kde;).</para>
+</sect2>
+
+<sect2 id="module-branch-groups">
+<title
+><quote
+>Gruppi di rami</quote
+> dei moduli</title>
+
+<para
+>Estendendo il concetto di <link linkend="module-groups"
+>gruppo di moduli</link
+>, gli sviluppatori di &kde; hanno notato che sincronizzare il nome dei rami di Git in molti depositi stava diventando difficile, soprattutto durante il lavoro per le nuove infrastrutture di &kde; per &Qt; 5. </para>
+
+<para
+>È stato quindi sviluppato il concetto di <quote
+>gruppi di rami</quote
+>, per permettere a utenti e sviluppatori di selezionare uno tra pochi gruppi, e permettere allo script di selezionare automaticamente il ramo di Git appropriato. </para>
+
+<para
+>&kdesrc-build; supporta questa funzionalità dalla versione 1.16-pre2, attraverso l'opzione <link linkend="conf-branch-group"
+>branch-group</link
+>. </para>
+
+<example id="ex-branch-group">
+<title
+>Esempio dell'uso dei gruppi di rami</title>
+
+<para
+>I gruppi di rami si possono usare nel file di configurazione come segue: </para>
+
+<programlisting
+>global
+    # Seleziona KDE Frameworks 5 e altre applicazioni basate su Qt5
+    <option
+>branch-group</option
+> <replaceable
+>kf5-qt5</replaceable>
+
+    # Altre opzioni globali vanno qui...
+end global
+
+module-set
+    # branch-group funziona solo per kde-projects
+    <option
+>repository</option
+> kde-projects
+
+    # branch-group viene ereditato da quello impostato globalmente,
+    # ma potrebbe essere specificato qui.
+
+    <option
+>use-modules</option
+> <replaceable
+>kdelibs kde-workspace</replaceable>
+end module-set
+
+# Il ramo di kdelibs sarà «frameworks»
+# Il ramo di kde-workspace sarà «master» (nell'agosto 2013)
+</programlisting>
+
+<para
+>In questo caso lo stesso <literal
+>branch-group</literal
+> produce diversi nomi di rami per ogni modulo di Git. </para>
+</example>
+
+<para
+>Questa funzionalità richiede alcuni dati gestiti dagli sviluppatori di &kde; in un deposito Git chiamato <literal
+>kde-build-metadata</literal
+>, però questo modulo verrà incluso automaticamente da &kdesrc-build; (anche se lo potresti veder apparire nell'output dello script). </para>
+
+<tip
+><para
+>I moduli di &kde; che non hanno il nome di un ramo impostato per il gruppo di rami che scegli saranno predefiniti al nome di un ramo appropriato, come se non avessi specificato <literal
+>branch-group</literal
+>. </para
+></tip>
+
+</sect2>
+
+</sect1>
+</appendix>

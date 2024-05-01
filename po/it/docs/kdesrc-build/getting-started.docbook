@@ -1,0 +1,267 @@
+<chapter id="getting-started">
+<title
+>Per cominciare</title>
+
+<para
+>In questo capitolo, mostriamo come usare &kdesrc-build; per ritirare i moduli dal deposito di &kde; e generarli. Diamo anche una rapida spiegazione della struttura del codice sorgente di &kde; e di cosa devi fare prima di eseguire lo script. </para>
+
+<para
+>Tutti gli argomenti qui presenti sono trattati in maggiore dettaglio nell'articolo <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+> Build from Source</ulink
+>, nel <ulink url="https://community.kde.org/"
+>wiki della Comunità di &kde;</ulink
+>. Se stai compilando &kde; per la prima volta, è una buona idea leggerlo, o almeno consultarlo come riferimento. Troverai informazioni dettagliate sugli strumenti di gestione dei pacchetti e su requisiti, errori di compilazione comuni, strategie e informazioni su come far funzionare la nuova installazione di &kde;. </para>
+
+<sect1 id="before-building">
+<title
+>Preparare il sistema per la generazione di &kde;</title>
+
+<sect2 id="before-building-users">
+<title
+>Configurare un nuovo account utente</title>
+
+<para
+>Si raccomanda di usare un diverso account per generare, installare ed eseguire il software di &kde;, perché servono meno permessi e per evitare di interferire con i pacchetti della tua distribuzione. Se hai già installato i pacchetti di &kde;, la cosa migliore sarebbe creare un altro utente (apposito) per generare ed eseguire il nuovo &kde;. </para>
+
+<tip
+><para
+>Lasciare intatto il tuo sistema &kde; permette anche di avere un ripiego d'emergenza nel caso in cui un errore di codice renda inutilizzabile la tua ultima generazione del software. </para
+></tip>
+
+<para
+>Puoi anche configurare un'installazione in una cartella globale (per es. <filename class="directory"
+>/usr/src/local</filename
+>), se vuoi. Questo documento non tratta questo tipo di installazione, dato che presupponiamo che tu sappia quello che stai facendo. </para>
+
+</sect2>
+<sect2 id="before-building-preparation">
+<title
+>Assicurati che il tuo sistema sia pronto a generare il software di &kde;</title>
+
+<para
+>Prima di usare lo script &kdesrc-build; (o qualsiasi altra strategia di generazione) devi installare gli strumenti di sviluppo e le librerie necessarie a &kde;. L'elenco quasi completo degli strumenti necessari può essere recuperato dalla pagina <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>Build Requirements del wiki della Comunità di &kde;</ulink
+>. </para>
+
+<para
+>Ecco un elenco di alcune delle cose che ti serviranno:</para>
+<itemizedlist>
+
+<listitem
+><para
+>Ti servirà &cmake;, il software che &kde; usa per gestire la configurazione della generazione al volo del codice sorgente e la generazione dei comandi di compilazione specifici per il tuo sistema. La versione richiesta varia a seconda delle versioni del software &kde; che stai generando (per le specifiche consulta la TechBase), ma con le moderne distribuzioni il &cmake; incluso nella tua dovrebbe andare bene. </para
+></listitem>
+
+<listitem
+><para
+>Devi anche installare i client di controllo sorgenti necessari per eseguire il checkout del codice sorgente di &kde;. Ciò vuol dire che ti serve almeno quanto segue:</para>
+
+<itemizedlist>
+<listitem
+><para
+>Il <ulink url="https://git-scm.com/"
+>gestore di controllo dei sorgenti Git</ulink
+>, utilizzato per tutto il <ulink url="https://commits.kde.org/"
+>codice sorgente</ulink
+> di &kde;</para
+></listitem>
+
+<listitem
+><para
+>Anche se non è un requisito, il gestore di controllo dei sorgenti <ulink url="http://bazaar.canonical.com/"
+>Bazaar</ulink
+> viene usato per un solo modulo (libdbusmenu-qt) richiesto per le librerie di &kde;. La maggior parte degli utenti può installare questa libreria con i loro sistemi di distribuzione dei pacchetti, ma &kdesrc-build; ne supporta la generazione, se lo vuoi. Per generare libdbusmenu-qt, però, dovrai installare Bazaar.</para
+></listitem>
+</itemizedlist
+></listitem>
+
+<listitem
+><para
+>Per &kdesrc-build; è richiesto il linguaggio di script Perl, alcuni depositi &kde; e &Qt; (se compili da sorgente).</para>
+
+<para
+>Il Perl incluso nella tua distribuzione dovrebbe andare bene (è necessario almeno Perl 5.14), ma avrai bisogno anche di alcuni moduli aggiuntivi (&kdesrc-build; ti avviserà se non sono presenti):</para>
+
+<itemizedlist>
+    <listitem
+><para
+>IO::Socket::SSL</para
+></listitem>
+    <listitem
+><para
+>JSON::PP o JSON::XS</para
+></listitem>
+    <listitem
+><para
+>YAML::PP, YAML::XS, o YAML::Syck</para
+></listitem>
+</itemizedlist>
+</listitem>
+
+<listitem
+><para
+>Avrai bisogno di un ambiente di sviluppo C++ completo (compilatore, libreria standard, runtime e tutti i pacchetti di sviluppo richiesti). Le versioni richieste minime variano a seconda del modulo &kde;: la raccolta &kde; Frameworks 5 supporta i compilatori più datati, mentre &kde; Plasma 5 e &kde; Applications richiedono in genere compilatori più recenti.</para>
+<para
+>I compilatori minimi raccomandati sono GCC 4.8 o Clang 4. Molte distribuzioni supportano un'installazione facile di questi strumenti tramite il pacchetto <quote
+>build-essentials</quote
+>, un'opzione per installare «dipendenze di compilazione» con &Qt;, o funzionalità simili. Il wiki KDE Community ha una pagina <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/Install_the_dependencies"
+>che riassume i pacchetti raccomandati per le distribuzioni principali</ulink
+> (in inglese). </para>
+</listitem>
+
+<listitem
+><para
+>Avrai bisogno di uno strumento di compilazione che esegue realmente i passaggi della compilazione (come generati da &cmake;). È raccomandato GNU Make e deve essere disponibile tramite il tuo gestore di pacchetti. &cmake; non supporta altre opzioni, come lo strumento di generazione &ninja;, che può essere utilizzato da &kdesrc-build; tramite l'opzione del file di configurazione <link linkend="conf-custom-build-command"
+>custom-build-command</link
+>. </para
+></listitem>
+
+<listitem
+><para
+>Infine, avrai bisogno delle librerie &Qt; corrette (pacchetti di sviluppo inclusi) per la versione del software &kde; che stai generando. &kdesrc-build; non supporta ufficialmente la generazione di &Qt; 5 (l'attuale versione principale), dunque consigliamo di usare i pacchetti di sviluppo della tua distribuzione o di consultare la pagina del wiki KDE Community <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/OwnQt5"
+>self-building Qt 5</ulink
+>. </para
+></listitem>
+</itemizedlist>
+
+<note
+><para
+>La maggior parte delle distribuzioni di sistemi operativi ha un modo di installare facilmente gli strumenti di sviluppo necessari. Consulta la pagina wiki della Comunità <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>Required devel packages</ulink
+> per vedere se queste istruzioni sono già disponibili.</para
+></note>
+
+<important
+><para
+>Alcuni di questi pacchetti sono divisi in librerie (o programmi) e pacchetti di sviluppo. Ti serviranno almeno il programma o la libreria, <emphasis
+>e</emphasis
+> il suo pacchetto di sviluppo. </para
+></important>
+
+</sect2>
+
+<sect2 id="before-building-prepare-script">
+<title
+>Configurare &kdesrc-build;</title>
+
+<sect3 id="get-kdesrc-build">
+<title
+>Installare &kdesrc-build;</title>
+<para
+>Gli sviluppatori di &kde; apportano modifiche frequenti al file &kdesrc-build; in modo da mantenerlo sincronizzato con i cambiamenti ai processi di sviluppo in &kde;, incluse migliorie alla configurazione &kdesrc-build; raccomandata, moduli aggiunti, migliorie dei flag &cmake;, ecc.</para>
+
+<para
+>A causa di questo, consigliamo di recuperare &kdesrc-build; direttamente dal deposito del suo codice sorgente e di aggiornarlo con frequenza.</para>
+
+<para
+>Puoi recuperare &kdesrc-build; dal deposito del suo codice sorgente eseguendo:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>clone</option
+> <option
+>https://invent.kde.org/sdk/kdesrc-build.git</option
+> <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput
+>
+</programlisting>
+
+<para
+>Sostituisci <option
+><replaceable
+>~/kdesrc-build</replaceable
+></option
+> con la cartella dove lo vuoi installare. </para>
+
+<para
+>Puoi aggiornare &kdesrc-build; in seguito eseguendo:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>cd <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput>
+<prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>pull</option
+></command
+></userinput
+>
+</programlisting>
+
+<tip
+><para
+>Raccomandiamo di aggiungere la cartella di installazione di &kdesrc-build; alla variabile di ambiente <envar
+>PATH</envar
+>, in modo da poter avviare &kdesrc-build; senza dover digitare ogni volta il suo percorso completo.</para
+></tip>
+</sect3>
+
+<sect3 id="setup-rcfile">
+<title
+>Preparare il file di configurazione</title>
+
+<para
+>&kdesrc-build; usa un <link linkend="configure-data"
+>file di configurazione</link
+> per controllare quali moduli sono costruiti, dove sono installati, ecc. Questo file si trova in <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, se <envar
+>$XDG_CONFIG_HOME</envar
+> è impostato).</para>
+
+<para
+>Puoi usare <application
+>kdesrc-build --generate-config</application
+> per preparare una semplice configurazione di &kdesrc-build;. Puoi quindi modificare il file di configurazione <filename
+>~/.config/kdesrc-buildrc</filename
+> ottenuto per fare le modifiche che ti servono.</para>
+
+<sect4 id="setup-rcfile-manually">
+<title
+>Impostazione manuale del file di configurazione</title>
+
+<para
+>Puoi anche impostare manualmente il tuo file di configurazione, copiando il file di configurazione di esempio incluso <filename
+>kdesrc-buildrc-kf5-sample</filename
+> in <filename
+>~/.config/kdesrc-buildrc</filename
+> e poi modificando il file. <xref linkend="kdesrc-buildrc"/> sarà un utile riferimento per questo, in particolare la sua <link linkend="conf-options-table"
+>tabella delle opzioni di configurazione</link
+>. </para>
+
+<para
+>&kdesrc-build; contiene molti file di configurazione consigliati per il supporto di &kde; Frameworks 5, &plasma; 5, e altre applicazioni &kde;. Consulta <xref linkend="kdesrc-buildrc-including"/> per informazioni su come usare altri file di configurazione dalla tua copia di <filename
+>kdesrc-buildrc</filename
+>. </para>
+
+<para
+>Puoi trovare maggiori informazioni sulla sintassi del <link linkend="configure-data"
+>file di configurazione</link
+> nel<xref linkend="configure-data"/> e nel<xref linkend="kdesrc-buildrc"/>. </para>
+</sect4>
+</sect3>
+</sect2>
+</sect1
+>&configure-data; &building-and-troubleshooting; &building-specific-modules; &environment; &kde-modules-and-selection; &quick-start-conclusion; </chapter>

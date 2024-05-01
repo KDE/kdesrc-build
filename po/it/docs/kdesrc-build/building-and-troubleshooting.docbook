@@ -1,0 +1,164 @@
+<sect1 id="building-and-troubleshooting">
+<title
+>Usare lo script &kdesrc-build;</title>
+<para
+>Una volta stabiliti i dati di configurazione, sei pronto per avviare lo script. Anche se devi ancora fare alcune regolazioni o approfondire alcune letture, è una buona idea caricare almeno i metadati del progetto &kde;.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title
+>Caricare i metadati del progetto</title>
+
+<para
+>Da una finestra di terminale, accedi come l'utente che vuoi usare per compilare il software &kde; ed esegui lo script: </para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--metadata-only</option
+></userinput
+>
+</screen>
+
+<para
+>Questo comando imposta la cartella sorgente e connette ai depositi &git; di KDE per scaricare la relativa banca dati e la banca dati dei metadati delle dipendenze, senza eseguire ulteriori modifiche. È bene avviarlo separatamente dato che questi metadati sono utili per altri comandi &kdesrc-build;. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title
+>Eseguire un'anteprima di ciò che avverrà quando avvierai kdesrc-build</title>
+
+<para
+>Con i metadati del progetto installati, è possibile fare un'anteprima di cosa farà &kdesrc-build; una volta avviato. Ciò può essere fatto con l'opzione a riga di comando <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+>.</para>
+
+<screen
+><prompt
+>&percnt; </prompt
+><command
+>./kdesrc-build</command
+> <option
+>--pretend</option
+>
+</screen>
+
+<para
+>Dovrebbe comparire un messaggio che ti avvisa che alcuni pacchetti sono stati generati correttamente (sebbene niente di ciò sia stato realmente fatto). Se non compaiono problemi seri, puoi procedere all'avvio reale dello script.</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+
+<para
+>Questo comando scaricherà il codice sorgente corretto, compilerà e installerà in ordine ciascun modulo. Successivamente dovresti osservare un output simile a quello in <xref linkend="example-build-sequence"/>:</para>
+
+<example id="example-build-sequence">
+<title
+>Output esemplificativo di un'esecuzione di kdesrc-build</title>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 200 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+</sect2>
+
+<sect2 id="fixing-build-failures">
+<title
+>Risoluzione di errori di generazione</title>
+
+<para
+>A seconda di quanti moduli stai scaricando, è possibile che &kdesrc-build; non riesca la prima volta che compili il software &kde;. Non disperare! </para>
+
+<para
+>&kdesrc-build; registra l'output di ogni comando che esegue. Come impostazione predefinita, i file di registro sono tenuti in <filename class="directory"
+>~/kdesrc/log</filename
+>. Per vedere cosa ha causato un errore in un modulo l'ultima volta che si è avviato &kdesrc-build;, è di solito sufficiente guardare in <filename class="directory"
+>~/kdesrc/log/latest/<replaceable
+>nome-modulo</replaceable
+>/error.log</filename
+>.</para>
+
+<tip
+><para
+>Il modo più facile di trovare quale errore ha causato l'interruzione della generazione di un modulo è forse cercare partendo dalla fine, senza distinguere le maiuscole, la parola <literal
+>error</literal
+>. Una volta trovata, scorri in alto per assicurarti che non ci siano altri messaggi d'errore nei paraggi. Il primo messaggio d'errore in un gruppo è di solito il problema fondamentale.</para
+></tip>
+
+<para
+>In quel file, vedrai l'errore che ha impedito la generazione del modulo. Se il file dice (in fondo) che ti mancano dei pacchetti, prova ad installarli (includendo i pacchetti -dev appropriati) prima di generare quel modulo. Assicurati, quando fai ripartire &kdesrc-build;, di passare l'opzione <link linkend="cmdline-reconfigure"
+>--reconfigure</link
+> in modo che &kdesrc-build; costringa il modulo a ricontrollare i pacchetti mancanti.</para>
+
+<para
+>Se l'errore sembra essere un errore di generazione (come un errore di sintassi, <quote
+>prototipo errato</quote
+>, <quote
+>tipo sconosciuto</quote
+>), è probabilmente un errore del codice sorgente di &kde;, che si spera venga risolto nel giro di pochi giorni. Se non viene risolto, manda pure un messaggio alla lista <email
+>kde-devel@kde.org</email
+> (è possibile ti venga richiesto di iscriverti) per segnalare l'errore di generazione.</para>
+
+<para
+>Puoi trovare altri esempi comuni di cose che possono andare storte e le relative soluzioni, oltre a suggerimenti e strategie generali per generare software &kde;, nella guida <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+>Build from Source</ulink
+> (in inglese). </para>
+
+<para
+>Invece, se tutto è andato bene, dovresti avere un nuovo &kde; installato sul computer, e ora è solo questione di farlo partire, come descritto nel<xref linkend="environment"/>.</para>
+
+<note
+><para
+>Per maggiori informazioni sulle funzionalità di registro di &kdesrc-build;, vedi <xref linkend="kdesrc-build-logging"/>.</para
+></note>
+</sect2>
+
+</sect1>
