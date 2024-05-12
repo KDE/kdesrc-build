@@ -1,0 +1,164 @@
+<sect1 id="building-and-troubleshooting">
+<title
+>Att använda skriptet &kdesrc-build;</title>
+<para
+>När inställningsdata är upprättad, är du redo att köra skriptet. Även om du fortfarande har en del finjustering eller annat som du vill läsa, är det en god idé att åtminstone läsa in &kde;-projektets metadata.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title
+>Läsa in projektmetadata</title>
+
+<para
+>Logga in till användaren som du använder för att kompilera &kde;:s programvara i ett terminalfönster, och kör skriptet: </para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--metadata-only</option
+></userinput
+>
+</screen>
+
+<para
+>Kommandot ställer in källkodskatalogen och ansluter till KDE:s &git;-arkiv för att ladda ner databasen med &kde;:s git-arkiv, och databasen med metadata över beroenden, utan att göra några ytterligare ändringar. Det är användbart att göra det separat, eftersom metadata är användbar för andra kommandon i &kdesrc-build;. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title
+>Förhandsgranska vad som kommer att hända när kdesrc-build kör</title>
+
+<para
+>När projektets metadata är installerad är det möjligt att granska vad &kdesrc-build; kommer att göra när det startas. Det kan åstadkommas med kommandoradsväljaren <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+>.</para>
+
+<screen
+><prompt
+>&percnt; </prompt
+><command
+>./kdesrc-build</command
+> <option
+>--pretend</option
+>
+</screen>
+
+<para
+>Du ska se ett meddelande som talar om att några paket har byggts med lyckat resultat (även om ingenting faktiskt byggdes). Om inga väsentliga problem visas, kan du fortsätta att verkligen köra skriptet.</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+
+<para
+>Kommandot laddar ner lämplig källkod, bygger och installerar varje modul i tur och ordning. Efteråt ska du se utmatning som liknar den i <xref linkend="example-build-sequence"/>.</para>
+
+<example id="example-build-sequence">
+<title
+>Exempel på utmatning från en kdesrc-build körning</title>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 200 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+</sect2>
+
+<sect2 id="fixing-build-failures">
+<title
+>Lösa byggfel</title>
+
+<para
+>Beroende på hur många moduler du laddar ner, är det möjligt att &kdesrc-build; inte lyckas första gången du kompilerar &kde;:s programvara. Ge inte upp hoppet! </para>
+
+<para
+>&kdesrc-build; loggar utmatningen från varje kommando som körs. Normalt lagras loggfilerna i <filename class="directory"
+>~/kdesrc/log</filename
+>. För att se vad som orsakade ett fel för en modul vid det senaste &kdesrc-build;-kommandot, är det oftast tillräckligt att titta i <filename class="directory"
+>~/kdesrc/log/latest/<replaceable
+>modulnamn</replaceable
+>/error.log</filename
+>.</para>
+
+<tip
+><para
+>Det kanske enklaste sättet att ta reda på vilka fel som gör att bygget av en modul misslyckas är att söka bakåt efter ordet <literal
+>error</literal
+> från slutet av filen med en sökning som inte är skiftlägeskänslig. När det hittats, rulla uppåt för att vara säker på att det inte finns några andra felmeddelanden i närheten. Det första felmeddelandet i en grupp är ofta det bakomliggande problemet.</para
+></tip>
+
+<para
+>I filen ser du felet som orsakade att byggprocessen misslyckades för modulen. Om det står (längst ner) i filen att vissa paket saknas, försök att installera paketet (inklusive eventuella lämpliga -dev paket) innan du försöker bygga modulen igen. Försäkra dig om att skicka med väljaren <link linkend="cmdline-reconfigure"
+>--reconfigure</link
+> när &kdesrc-build; körs igen, så att &kdesrc-build; gör att modulen letar efter de saknade paketen igen.</para>
+
+<para
+>Eller om felet verkar vara ett byggfel (som ett syntaxfel, <quote
+>incorrect prototype</quote
+>, <quote
+>unknown type</quote
+> eller likande) är det nog ett fel i &kde;:s källkod, som förhoppningsvis löses inom några dagar. Om det inte har lösts inom den tiden, skicka gärna ett brev till e-postlistan <email
+>kde-devel@kde.org</email
+> (prenumeration kan krävas först) för att rapportera byggfelet.</para>
+
+<para
+>Du hittar fler vanliga exempel på saker som kan gå fel och deras lösningar, samt allmänna tips och strategier för att bygga &kde;:s programvara i <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+> Build from Source</ulink
+>. </para>
+
+<para
+>Å andra sidan, under förutsättning att allt gick bra, ska en ny &kde;-version vara installerad på datorn, och nu är det helt enkelt bara en fråga om att köra den, vilket beskrivs härnäst i <xref linkend="environment"/>.</para>
+
+<note
+><para
+>För mer information om loggningssystemet i &kdesrc-build;, se <xref linkend="kdesrc-build-logging"/>.</para
+></note>
+</sect2>
+
+</sect1>

@@ -1,0 +1,185 @@
+<sect1 id="other-features">
+<title
+>Andra funktioner i &kdesrc-build;</title>
+
+<sect2 id="changing-verbosity">
+<title
+>Ändra mängden utmatning från &kdesrc-build;</title>
+<para
+>&kdesrc-build; har flera väljare för att styra mängden utmatning som skriptet skapar. Hur som helst, kommer fel alltid att matas ut.</para>
+
+<table>
+  <title
+>Tabell över felsökningsnivåer</title>
+  <tgroup cols="3">
+  
+  <thead>
+    <row>
+      <entry
+>Felsökningsnivå</entry>
+      <entry
+>Nivånamn</entry>
+      <entry
+>Kommandoradsväljare</entry>
+    </row>
+  </thead>
+  <tbody>
+  
+  <row>
+    <entry
+>0</entry>
+    <entry
+>AVLUSNING</entry>
+    <entry
+>--debug</entry>
+  </row>
+    
+  <row>
+    <entry
+>1</entry>
+    <entry
+>VISKNING</entry>
+    <entry
+>--verbose</entry>
+  </row>
+  
+  <row>
+    <entry
+>2</entry>
+    <entry
+>INFORMATION</entry>
+    <entry
+>Normalt vald</entry>
+  </row>
+  
+  <row>
+    <entry
+>3</entry>
+    <entry
+>ANMÄRKNING</entry>
+    <entry
+>--quiet</entry>
+  </row>
+  
+  <row>
+    <entry
+>4</entry>
+    <entry
+>VARNING</entry>
+    <entry
+>--really-quiet</entry>
+  </row>
+  
+  <row>
+    <entry
+>5</entry>
+    <entry
+>FEL</entry>
+    <entry
+>Inget sätt att välja</entry>
+  </row>
+  
+  </tbody>
+  </tgroup>
+</table>
+
+</sect2>
+
+<sect2 id="kdesrc-build-color">
+<title
+>Färgutmatning</title>
+<para
+>När &kdesrc-build; körs från &konsole; eller en annan terminal, visas normalt färglagd text.</para>
+
+<para
+>Du kan inaktivera det genom att använda väljaren <option
+>--no-color</option
+> på kommandoraden, eller ställa in alternativet &colorful-output; i <link linkend="configure-data"
+>inställningsfilen</link
+> till <userinput
+>false</userinput
+>. </para>
+
+<informalexample>
+<para
+>Inaktivera färgutmatning i inställningsfilen:</para>
+<screen
+>global
+  colorful-output false
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="deleting-build-dir">
+<title
+>Ta bort onödiga kataloger efter en byggprocess</title>
+<para
+>Har du ont om diskutrymme men vill ändå köra de allra senaste utcheckningen av &kde;? &kdesrc-build; kan hjälpa dig att reducera diskanvändning medan du bygger &kde; från &git;.</para>
+
+<note
+><para
+>Var medveten om att det går åt mycket utrymme för att bygga &kde;. Det finns flera stora delar som använder utrymme när &kdesrc-build; används:</para
+></note>
+
+<orderedlist>
+<listitem
+><para
+>Själva utcheckningen av källkoden kan uppta ett försvarligt utrymme. Standardmodulerna upptar ungefär 1.6 Gibyte diskutrymme. Du kan reducera storleken genom att försäkra dig om att du bara bygger så många moduler som du verkligen vill ha. &kdesrc-build; tar inte bort källkod från disken även om du tar bort posten från <link linkend="configure-data"
+>inställningsfilen</link
+>, så försäkra dig om att du går till och tar bort oanvända utcheckningar i källkodskatalogen. Observera att källkodsfilerna laddas ner från Internet, och du <emphasis
+>ska inte</emphasis
+> ta bort dem om du faktiskt använder dem, åtminstone till du är klar med användning av &kdesrc-build;.</para>
+
+<para
+>Om du dessutom har installerat &Qt; från distributionen (och chansen är stor att du har det), behöver du troligen inte installera modulen qt. Det hyvlar av omkring 200 Mibyte från källkodsstorleken på disk.</para>
+</listitem>
+
+<listitem>
+<para
+>&kdesrc-build; skapar en separat byggkatalog för att bygga källkoden. Ibland måste &kdesrc-build; kopiera en källkodskatalog för att skapa en falsk byggkatalog. När det sker, används platsbesparande symboliska länkar, så det bör inte vara något krångel med diskutrymme. Byggkatalogen är typiskt mycket större än en moduls källkodskatalog. Byggkatalogen för kdebase är till exempel omkring 1050 Mibyte, medan källkoden för kdebase bara är omkring 550 Mibyte.</para>
+
+<para
+>Som tur är krävs inte byggkatalogen efter en modul har byggts och installerats med lyckat resultat. &kdesrc-build; kan automatiskt ta bort byggkatalogen efter en modul har installerats. Se exemplen nedan för mer information. Observera att genom att utföra detta steg, blir det omöjligt för &kdesrc-build; att utföra tidsbesparande inkrementella byggprocesser.</para>
+</listitem>
+
+<listitem
+><para
+>Till sist krävs diskutrymme för själva installationen av &kde;, som inte körs från byggkatalogen. Det upptar typiskt mindre utrymme än byggkatalogen. Det är dock svårare att få fram exakta siffror. </para
+></listitem>
+</orderedlist>
+
+<para
+>Hur reducerar man utrymmeskraven för &kde;? Ett sätt är att använda riktiga kompilatorflaggor för att optimera för reducering av utrymme istället för hastighet. Ett annat sätt, som kan ha stor effekt, är att ta bort felsökningsinformation från det färdigbyggda &kde;. </para>
+
+<warning
+><para
+>Du bör vara mycket säker på att du vet vad du gör innan du bestämmer dig för att ta bort felsökningsinformation. Att köra den allra senaste programvaran betyder att du kör programvara som potentiellt har mycket större sannolikhet att krascha än stabila utgåvor. Om du kör programvara utan felsökningsinformation kan det vara mycket svårt att skapa en bra felrapport för att få problemet löst, och du måste troligen aktivera felsökning igen för programmet som påverkas och bygga om för att hjälpa en utvecklare att rätta kraschen. Så ta bort felsökningsinformation på egen risk! </para
+></warning>
+
+<informalexample>
+<para
+>Ta bort byggkatalogen efter en modul har installerats. Källkoden behålls fortfarande, och felsökning är aktiverad:</para>
+
+<screen
+>global
+  configure-flags      --enable-debug
+  remove-after-install builddir        # Ta bort byggkatalog efter installation
+end global
+</screen>
+
+<para
+>Ta bort byggkatalogen efter installation, utan felsökningsinformation, med storleksoptimering.</para>
+
+<screen
+>global
+  cxxflags             -Os             # Optimera för storlek
+  configure-flags      --disable-debug
+  remove-after-install builddir        # Ta bort byggkatalog efter installation
+end global
+</screen>
+</informalexample>
+</sect2>
+
+</sect1>

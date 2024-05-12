@@ -1,0 +1,174 @@
+<sect1 id="environment">
+<title
+>Ställa in miljön för att köra ditt &kde; &plasma;-skrivbord</title>
+
+<para
+>Med antagandet att du använder en särskild användare för att bygga &kde; &plasma; och redan har en installerad version av &plasma;, kan det vara något krångligt att köra det nya &plasma;, eftersom det nya måste ges företräde över det gamla. Du måste ändra miljövariabler i inloggningsskript för att försäkra dig om att det nyss byggda skrivbordet används. </para>
+
+<sect2 id="session-driver">
+<title
+>Installerar automatiskt en drivrutin för inloggning</title>
+
+<para
+>Från och med version 1.16 försöker &kdesrc-build; installera en lämplig drivrutin för inloggning, som låter dig logga in på &kde;-skrivbordet som byggts av &kdesrc-build; från din inloggningshanterare. Det kan inaktiveras genom att använda inställningsalternativet <option
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></option
+> i inställningsfilen.</para>
+
+<note
+><para
+>Sessionsinställning sker inte medan &kdesrc-build; gör i låtsasläge.</para
+></note>
+
+<para
+>Drivrutinen fungerar genom att skapa en egen <quote
+><literal
+>xsession</literal
+></quote
+> sessionstyp. Denna typ av session ska fungera direkt med inloggningshanteraren sddm (där den visas som en <quote
+>Egen</quote
+> session), men andra inloggningshanterare (som <application
+>LightDM</application
+> och <application
+>gdm</application
+>) kan kräva att ytterligare filer installeras för att aktivera stöd för <literal
+>xsession</literal
+>.</para>
+
+<sect3 id="xsession-distribution-setup">
+<title
+>Lägger till xsession-stöd för distributioner</title>
+
+<para
+>Den förinställda inloggningshanteraren för vissa distributioner kan kräva att ytterligare paket installeras för att stödja inloggning med <literal
+>xsession</literal
+>.</para>
+
+<itemizedlist>
+<listitem
+><para
+>Distributionen <ulink url="https://getfedora.org/"
+>Fedora</ulink
+> &Linux; kräver att paketet <literal
+>xorg-x11-xinit-session</literal
+> är installerat för att stödja inloggning med en egen <literal
+>xsession</literal
+>.</para
+></listitem>
+
+<listitem
+><para
+><ulink url="https://www.debian.org/"
+>Debian</ulink
+> och &Linux;-distributioner baserade på Debian ska stödja inloggning med en egen <literal
+>xsession</literal
+>, men kräver att alternativet <option
+><userinput
+>allow-user-xsession</userinput
+></option
+> ställs in i <filename
+>/etc/X11/Xsession.options</filename
+>. Se också Debians <ulink url="https://www.debian.org/doc/manuals/debian-referencech07.en.html#_customizing_the_x_session_classic_method"
+>dokumentation om att anpassa en X-session</ulink
+>.</para
+></listitem>
+
+<listitem
+><para
+>För övriga distributioner, se <xref linkend="xsession-manual-setup"/>.</para
+></listitem>
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="xsession-manual-setup">
+<title
+>Manuellt tillägg av stöd för xsession</title>
+
+<para
+>Om det inte fanns några distributionsspecifika anvisningar för din distribution i <xref linkend="xsession-distribution-setup"/>, kan du lägga till en post i distributionens lista med sessionstyper för <quote
+>inloggning med egen xsession</quote
+> på följande sätt:</para>
+
+<procedure id="proc-adding-xsession-type">
+<title
+>Lägga till en .xsession inloggningssessionstyp.</title>
+
+<note
+><para
+>Proceduren kräver troligen administratörsrättigheter för att kunna göras färdig. </para
+></note>
+
+<step performance="required">
+<para
+>Skapa filen <filename
+>/usr/share/xsessions/kdesrc-build.desktop</filename
+>.</para>
+</step>
+
+<step performance="required">
+<para
+>Försäkra dig om att filen som just skapas innehåller följande text:</para>
+<literallayout
+><userinput>
+Type=XSession
+Exec=<co id="session-homedir"/><replaceable
+>$HOME</replaceable
+>/.xsession
+Name=KDE Plasma Desktop (unstable; kdesrc-build)
+</userinput
+></literallayout>
+
+<calloutlist>
+<callout arearefs="session-homedir"
+><para
+>Värdet <replaceable
+>$HOME</replaceable
+> måste ersättas av den fullständiga sökvägen till din hemkatalog (exempelvis <filename class="directory"
+>/home/<replaceable
+>användare</replaceable
+></filename
+>). Specifikationen av skrivbordsposter tillåter inte generella användarfiler. </para
+></callout>
+
+</calloutlist>
+</step>
+
+<step performance="optional"
+><para
+>När inloggningshanteraren startas om, ska den visa en ny sessionstyp, <quote
+>KDE Plasma Desktop (unstable; kdesrc-build)</quote
+> i listan med sessioner, vilket ska försöka köra filen <filename
+>.xsession</filename
+> som installerats av &kdesrc-build;, om den är markerad när du loggar in.</para>
+
+<note
+><para
+>Det kan vara enklast att starta om datorn för att starta om inloggningshanteraren, om inloggningshanteraren inte bevakar uppdateringar av katalogen <filename class="directory"
+>/usr/share/xsessions</filename
+>.</para
+></note>
+
+</step>
+
+</procedure>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="old-profile-instructions">
+<title
+>Ange miljön för hand</title>
+<para
+>Dokumentationen innehöll tidigare instruktioner om vilka miljövariabler som ska ställas in för att kunna läsa in det nybyggda skrivbordet. Dessa instruktioner har flyttats till ett appendix (<xref linkend="old-profile-setup"/>).</para>
+
+<para
+>Om du har för avsikt att ställa in eget stöd för inloggning, kan du titta i appendixet eller visa filen <filename
+>kde-env-master.sh.in</filename
+> som ingår i källkoden för &kdesrc-build;.</para>
+
+</sect2>
+
+</sect1>

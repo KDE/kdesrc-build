@@ -1,0 +1,2535 @@
+<sect1 id="conf-options-table">
+<title
+>Tabell av tillgängliga inställningsalternativ</title>
+
+<para
+>Här är tabeller med diverse alternativ, som innehåller följande information:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Alternativets namn</para
+></listitem>
+
+<listitem
+><para
+>Alternativets omfattning: <emphasis
+>global</emphasis
+>, <emphasis
+>module</emphasis
+> eller <emphasis
+>module-set</emphasis
+>. Alternativen i <emphasis
+>module</emphasis
+> och/eller <emphasis
+>module-set</emphasis
+> kan också definieras i sektionen <emphasis
+>options</emphasis
+>. </para
+></listitem>
+
+<listitem
+><para
+>Särskilda kommentarer om alternativets syfte och användning.</para
+></listitem>
+
+</itemizedlist>
+
+<table id="options-global-table">
+<title
+>Alternativ med enbart global omfattning</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Alternativnamn</entry>
+<entry
+>Beskrivning</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-async">
+<entry
+><link linkend="conf-async"
+>async</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.6</member>
+</simplelist>
+<para
+>Alternativet aktiverar asynkront användningssätt, där uppdatering av källkoden och byggprocessen utförs i parallell, istället för att vänta på alla uppdateringar av källkoden innan byggprocessen startas.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-async"/></para>
+</entry>
+</row>
+
+<row id="conf-colorful-output">
+<entry
+><link linkend="conf-colorful-output"
+>colorful-output</link
+></entry>
+<entry
+><simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+</simplelist
+><para
+>Ställ in alternativet till <userinput
+>false</userinput
+> för att inaktivera den färgglada utmatningen från &kdesrc-build;. Observera att &kdesrc-build; inte matar ut färgkoder till något annat än en terminal (såsom xterm, &konsole; eller den vanliga terminalen i &Linux;).</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-color"/></para>
+</entry>
+</row>
+
+<row id="conf-disable-agent-check">
+<entry
+><link linkend="conf-disable-agent-check"
+>disable-agent-check</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+</simplelist>
+<para
+>Om du använder &ssh; för att ladda ner källkod från &git; (till exempel om du använder protokollet git+ssh), bestämmer alternativet om &kdesrc-build; försöker säkerställa att om du använder ssh-agent, så hanterar det verkligen några &ssh;-identiteter. Det görs för att försöka förhindra att &ssh; frågar efter din lösenordsfras för varje modul.</para>
+<para
+>Relaterad kommandoradsväljare: --disable-agent-check, --no-disable-agent-check</para>
+</entry>
+</row>
+
+<row id="conf-git-desired-protocol">
+<entry
+><link linkend="conf-git-desired-protocol"
+>git-desired-protocol</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+>git</member>
+<member
+>Historikinformation</member
+><member
+>Väljaren lades till i &kdesrc-build; 1.16. Innan 20.06 användes väljaren för att ställa in hämtningswebbadressen istället för uppladdningswebbadressen. Från 20.06 används alltid <literal
+>https</literal
+> när KDE-projekt uppdateras.</member>
+</simplelist>
+<para
+>Väljaren gäller bara moduler från ett arkiv som ingår i <link linkend="kde-projects-module-sets"
+>&kde;-projektet</link
+>.</para>
+
+<para
+>Vad väljaren i själva verket gör är att ställa in vilket nätverksprotokoll som ska föredras när källkod för dessa moduler laddas upp. Normalt används det mycket effektiva protokollet <literal
+>git</literal
+>, men det kan vara blockerat i vissa nätverk (t.ex. interna företagsnätverk, öppna wifi-nätverk). Ett alternativt protokoll som stöds mycket bättre är protokollet <literal
+>https</literal
+> som används för webbplatser på Internet.</para>
+
+<para
+>Om du använder ett av dessa begränsade nätverk kan du ändra väljaren till <userinput
+>http</userinput
+> för att föredra kommunikation med <literal
+>https</literal
+> istället.</para>
+
+<tip
+><para
+>Du kan också behöva väljaren <link linkend="conf-http-proxy"
+>http-proxy</link
+>, om en HTTP-proxy också behövs för nätverkstrafik.</para
+></tip>
+
+<para
+>I alla andra situationer ska väljaren inte användas, eftersom standardprotokollet är det effektivaste.</para>
+
+</entry>
+</row>
+
+<row id="conf-git-repository-base">
+<entry
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Alternativet används för att skapa ett kort namn för att hänvisa till en specifik baswebbadress för ett Git-arkiv i senare deklarationer av <link linkend="module-sets"
+>moduluppsättningar</link
+>, vilket är användbart för att snabbt deklarera många Git-moduler att bygga.</para>
+
+<para
+>Två saker måste anges (åtskilda med ett mellanslag): Namnet som baswebbadressen ska tilldelas till, och själva baswebbadressen. Till exempel:</para>
+
+<para>
+<programlisting
+>global
+    # övriga alternativ
+    # Den gemensamma sökvägen till alla anonyma Git-servermoduler.
+    git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Moduldeklarationer
+
+module-set
+    # Nu kan ett alias som tidigare definierades användas, men <emphasis
+>bara</emphasis
+> i en moduluppsättning.
+    repository <replaceable
+>kde-git</replaceable>
+    <link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>modul1.git</replaceable
+> <replaceable
+>modul2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>Moduluppsättningarnas alternativ <literal
+>use-modules</literal
+> skapar två moduler internt, och &kdesrc-build; beter sig som om det hade läst in:</para>
+
+<programlisting
+>module modul1
+    repository kde:<replaceable
+>modul1.git</replaceable>
+end module
+
+module modul2
+    repository kde:<replaceable
+>modul2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>Prefixet <literal
+>kde:</literal
+> för &git;-arkiv som används ovan är en genväg som automatiskt ställs in av &kdesrc-build;. Se teknikbasens artikel <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>URL Renaming</ulink
+> för mer information. Observera att i motsats till de flesta andra alternativ kan detta anges flera gånger för att skapa så många alias som behövs.</para>
+
+<tip
+><para
+>Det är inte nödvändigt att använda alternativet för att dra fördel av moduluppsättningar. Alternativet finns för att göra det enkelt att använda samma arkiv för många olika moduluppsättningar.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-install-environment-driver">
+<entry
+><link linkend="conf-install-environment-driver"
+>install-environment-driver</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+<member
+>Tillgängligt sedan</member
+><member
+>17.08</member>
+</simplelist>
+<para
+>Installera ett skalskript som kan anropas i en användares profilinställningsskript för att enkelt upprätta nödvändiga miljövariabler för att köra Plasma-skrivbordet som byggts av &kdesrc-build;.</para>
+
+<para
+>Drivrutinen ändra följande filer:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (som normalt finns som <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (som normalt finns som <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>Skriptet <filename
+>kde-env-user.sh</filename
+> är valfritt. Det är avsett för användaranpassning (se avsnittet <ulink url="https://userbase.kde.org/KDE_System_Administration/Environment_Variables#Troubleshooting_and_Debugging"
+>Troubleshooting and Debugging</ulink
+> på &kde;:s användarbas för exempel på anpassningsbara inställningar), men inställningarna kan göras på andra ställen av användaren i befintliga profilinställningsskript.</para>
+
+<para
+>Funktionen kan inaktiveras genom att ställa in alternativet till <replaceable
+>false</replaceable
+>, och försäkra att också alternativet <link linkend="conf-install-session-driver"
+>install-session-driver</link
+> är inaktiverat.</para>
+
+<tip
+><para
+>&kdesrc-build; skriver inte över befintliga filer om du inte också anger kommandoradsväljaren <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+>.</para
+></tip>
+<para
+>Relaterad kommandoradsväljare: --install-environment-driver, --no-install-environment-driver</para>
+</entry>
+</row>
+
+<row id="conf-install-session-driver">
+<entry
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Om aktiverat, försöker &kdesrc-build; installera en drivrutin för den grafiska inloggningshanteraren som låter dig logga in på &kde;-skrivbordet som byggts med &kdesrc-build;.</para>
+
+<para
+>Drivrutinen ändra följande filer:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>~/.xsession</filename
+></para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (som normalt finns som <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (som normalt finns som <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>Om du hanterar en egen inloggningshanterare kan du inaktivera funktionen genom att ställa in alternativet till <replaceable
+>false</replaceable
+>. Om aktiverad, aktiverar funktionen också funktionen <link linkend="conf-install-environment-driver"
+>install-environment-driver</link
+>.</para>
+
+<tip
+><para
+>&kdesrc-build; skriver inte över befintliga filer om du inte också anger kommandoradsväljaren <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+>.</para
+></tip>
+<para
+>Relaterad kommandoradsväljare: --install-session-driver, --no-install-session-driver</para>
+</entry>
+</row>
+
+<row id="conf-niceness">
+<entry
+><link linkend="conf-niceness"
+>niceness</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Heltal</member>
+<member
+>Förvalt värde</member
+><member
+>10</member>
+</simplelist>
+<para
+>Ställ in alternativet till ett tal mellan 20 och 0. Ju högre nummer, desto lägre prioritet ställer &kdesrc-build; in åt sig själv, dvs. ju högre numret är desto "snällare" är programmet.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-nice"/></para>
+</entry>
+</row>
+
+<row id="conf-num-cores">
+<entry
+><link linkend="conf-num-cores"
+>num-cores</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Heltal</member>
+<member
+>Förvalt värde</member
+><member
+>Beror på systemet</member>
+<member
+>Tillgängligt sedan</member
+><member
+>20.07</member>
+</simplelist>
+<para
+>Alternativet definieras av &kdesrc-build; (när <command
+>kdesrc-build --generate-config</command
+> används) till antal tillgängliga processorer (som indikeras av det externa programmet <application
+>nproc</application
+>). Om &kdesrc-build; inte kan detektera antal processorer, ställs värdet in till 4.</para>
+
+<para
+>Se <xref linkend="make-options-example"/> för ett exempel på användning av alternativet.</para>
+<para
+>Relaterad kommandoradsväljare: --num-cores <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-num-cores-low-mem">
+<entry
+><link linkend="conf-num-cores-low-mem"
+>num-cores-low-mem</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Heltal</member>
+<member
+>Förvalt värde</member
+><member
+>Beror på systemet</member>
+<member
+>Tillgängligt sedan</member
+><member
+>20.07</member>
+</simplelist>
+<para
+>Alternativet definieras av &kdesrc-build; (när <command
+>kdesrc-build --generate-config</command
+> används) till antal processorer som anses vara säkert för tunga eller andra högintensiva moduler, såsom <literal
+>qtwebengine</literal
+>, för att undvika att minnet tar slut under bygget.</para>
+
+<para
+>Den typiska beräkningen är en processorkärna per 2 Gibibyte (GiB) totalt minne. Åtminstone en kärna anges, och inte fler än <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+>.</para>
+
+<para
+>Även om alternativet är avsett att stödja &Qt;-moduler, kan det användas för vilken modul som helst på samma sätt som <option
+>num-cores</option
+> används.</para>
+
+<para
+>Om &kdesrc-build; inte kan detektera tillgängligt minne ställs värdet in till 2.</para>
+
+<para
+>Relaterad kommandoradsväljare: --num-cores-low-mem <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-persistent-data-file">
+<entry
+><link linkend="conf-persistent-data-file"
+>persistent-data-file</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.15</member>
+</simplelist>
+<para
+>Använd väljaren för att ändra var &kdesrc-build; lagrar bestående data. Normalt lagras sådan data i en fil som heter <filename
+>.kdesrc-build-data</filename
+> i samma katalog som inställningsfilen som används. Om den allmänna inställningsfilen används, lagras den i <filename
+>~/.local/state/kdesrc-build-data</filename
+> (<filename
+>$XDG_STATE_HOME/kdesrc-build-data</filename
+>, om <envar
+>$XDG_STATE_HOME</envar
+> är angivet). Om du har flera tillgängliga inställningar i samma katalog, kan det vara bra att ställa in alternativet så att de olika inställningarna inte råkar ut för konflikter i bestående data. </para>
+<para
+>Related command-line option: --persistent-data-file <replaceable
+>fil</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-ssh-identity-file">
+<entry
+><link linkend="conf-ssh-identity-file"
+>ssh-identity-file</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.14.2</member>
+</simplelist>
+<para
+>Sätt alternativet för att bestämma vilken privat SSH nyckelfil används av kommandot <command
+>ssh-add</command
+> när &kdesrc-build; laddar ner källkod från arkiv som kräver behörighetskontroll. Se också: <xref linkend="ssh-agent-reminder"/>.</para>
+</entry>
+</row>
+
+<row id="conf-use-idle-io-priority">
+<entry
+><link linkend="conf-use-idle-io-priority"
+>use-idle-io-priority</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.12</member>
+</simplelist>
+<para
+>Använd lägre prioritet för disk och annan in- och utmatning, vilket kan förbättra svarsbenägenheten hos resten av systemet signifikant, till kostnad av något längre körtider för &kdesrc-build;.</para>
+<para
+>Relaterad kommandoradsväljare: --use-idle-io-priority, --no-use-idle-io-priority</para>
+</entry>
+</row>
+
+<row id="conf-use-inactive-modules">
+<entry
+><link linkend="conf-use-inactive-modules"
+>use-inactive-modules</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+</simplelist>
+<para
+>Tillåt kdesrc-build att också skapa en dubblett och hämta från arkiv markerade som inaktiva.</para>
+<para
+>Related command-line option: --use-inactive-modules, --no-use-inactive-modules</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<!-- Between tables -->
+
+<table id="option-table">
+<title
+>Alternativ med alla omfattningar (moduler, modul-uppsättningar och globala)</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Alternativnamn</entry>
+<entry
+>Beskrivning</entry>
+</row>
+</thead>
+
+<tbody>
+
+<row id="conf-binpath">
+<entry
+><link linkend="conf-binpath"
+>binpath</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Ange alternativet för att sätta miljövariabeln PATH under byggprocessen. Du kan inte överskrida alternativet i ett modulalternativ. Förvalt värde är $<envar
+>PATH</envar
+> som är inställd när skriptet startar. Miljövariabeln ska innehålla sökvägar till utvecklingsverktygen åtskilda med kolon. Sökvägarna <filename class="directory"
+>${install-dir}/bin</filename
+> och <filename class="directory"
+>${qt-install-dir}/bin</filename
+>  läggs automatiskt till. Du kan använda tilde (~) för eventuella sökvägar du lägger till med det här alternativet.</para>
+<para
+>Related command-line option: --binpath <replaceable
+>sökväg</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-branch">
+<entry
+><link linkend="conf-branch"
+>branch</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+>master</member>
+</simplelist>
+<para
+>Checka ut den angivna grenen istället för förvald gren.</para>
+<note
+><para
+>För de flesta &kde;-moduler vill man troligtvis använda alternativet <link linkend="conf-branch-group"
+>branch-group</link
+> istället och använda det här alternativet för undantag från fall till fall.</para
+></note>
+<para
+>Relaterad kommandoradsväljare: --branch <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-branch-group">
+<entry
+><link linkend="conf-branch-group"
+>branch-group</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.16-pre2</member>
+</simplelist>
+<para
+>Ställ in alternativet till en allmän grupp som du vill att moduler ska väljas från.</para>
+
+<para
+>För modultyper i &git; som stöds, bestämmer &kdesrc-build; den verkliga grenen att använda baserat på regler kodade av &kde;-utvecklarna (reglerna kan ses i källkodsarkivet <literal
+>kde-build-metadata</literal
+> i din källkodskatalog). Efter att en gren har bestämts används den som om du hade angivit den själv med alternativet <link linkend="conf-branch"
+>branch</link
+>. </para>
+
+<para
+>Det är användbart om du bara försöker upprätthålla senaste version för ett antal normala utvecklingsspår utan att behöva ta hänsyn till alla ändringar av namn på grenar.</para>
+
+<para
+>Observera att om du <emphasis
+>själv</emphasis
+> använder <literal
+>branch</literal
+> överskrider det den här inställningen. Samma sak gäller andra specifika alternativ för att välja gren såsom <link linkend="conf-tag"
+>tag</link
+>.</para>
+
+<note
+><para
+>Väljaren gäller bara &git; moduler i <literal
+>kde-projects</literal
+> (det vanliga fallet). Se också <xref linkend="kde-projects-module-sets"/>. </para
+></note>
+
+<para
+>RRelaterad kommandoradsväljare: --branch-group <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-build-dir">
+<entry
+><link linkend="conf-build-dir"
+>build-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+><filename class="directory"
+>~/kde/build</filename
+></member>
+</simplelist>
+<para
+>Använd alternativet för att ändra katalogen som innehåller den byggda källkoden. Det finns tre olika sätt att använda det.</para>
+
+<orderedlist>
+
+<listitem
+><para
+>Relativt till &kde;:s &git; källkatalog (se <link linkend="conf-source-dir"
+>alternativet source-dir</link
+>). Det är det normala värdet, och väljs om du skriver in ett katalognamn som inte börjar med tilde (~) eller snedstreck (/).</para
+></listitem>
+
+<listitem
+><para
+>Absolut sökväg. Om du anger en sökväg som börjar med /, används den direkt. Exempelvis <filename class="directory"
+>/tmp/kde-obj-dir/</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+>Relativt till din hemkatalog. Om du anger en sökväg som börjar med ~, används den relativt i förhållande till din hemkatalog, på motsvarande sätt som skalets expansion av tilde. Exempelvis skulle <filename class="directory"
+>~/builddir</filename
+> ställa in byggkatalogen till <filename class="directory"
+>/home/användarnamn/builddir</filename
+>.</para
+></listitem>
+
+</orderedlist>
+
+<para
+>Förvånansvärd nog kan alternativet ändras per modul.</para>
+<para
+>Relaterad kommandoradsväljare: --build-dir <replaceable
+>sökväg</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-build-when-unchanged">
+<entry
+><link linkend="conf-build-when-unchanged"
+>build-when-unchanged</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+</simplelist>
+<para
+>Bestäm om &kdesrc-build; alltid försöker bygga en modul som inte har några uppdateringar av källkoden.</para>
+
+<para
+>Om inställt till <userinput
+>true</userinput
+>, försöker &kdesrc-build; alltid utföra byggfasen för en modul, även om modulen inte har några uppdateringar av källkoden. Med värdet är det mer sannolikt att få ett korrekt bygge.</para>
+
+<para
+>Om inställt till <userinput
+>false</userinput
+>, försöker &kdesrc-build; bara utföra byggfasen för en modul, om modulen har en uppdateringar av källkoden, eller i andra situationer när det är troligt att ett ombygge krävs. Det kan spara tid, särskilt om &kdesrc-build; körs dagligen, eller ännu oftare.</para>
+
+<important
+><para
+>Funktionen tillhandahålls enbart som en optimering. Liksom många andra optimeringar, finns det överväganden gällande installationens riktighet. Exempelvis kan ändringar av modulen qt eller kdelibs leda till att andra moduler måste byggas om, även om källkoden inte ändras alls.</para
+></important>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-build-when-unchanged"/></para>
+</entry>
+</row>
+
+<row id="conf-cmake-generator">
+<entry
+><link linkend="conf-cmake-generator"
+>cmake-generator</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+>Unix Makefile</member>
+</simplelist>
+<para
+>Ange vilken generator som ska användas med &cmake;. För närvarande stöds både <literal
+>Ninja</literal
+> och <literal
+>Unix Makefiles</literal
+> samt extra generatorer baserade på dem såsom <literal
+>Eclipse CDT4 - Ninja</literal
+>. Ogiltiga värden (som inte stöds) ignoreras, och behandlas som inte angivna. </para>
+
+<para
+>Observera att om en giltig generator också anges via <link linkend="conf-cmake-options"
+>cmake-options</link
+> överskrider den värdet på <literal
+>cmake-generator</literal
+>.</para>
+<para
+>Relaterad kommandoradsväljare: --cmake-generator <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-cmake-toolchain">
+<entry
+><link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Ange en utvecklingsverktygsfil att använda med &cmake;. </para>
+<para
+>När en giltig utvecklingsverktygsfil är inställd, kommer &kdesrc-build; <emphasis
+>inte ställa in miljövariabler automatiskt</emphasis
+>. Du kan använda &set-env;, &binpath; och &libpath; för att manuellt rätta miljön om verktygskedjefilen inte fungerar som den är med &kdesrc-build;. Se <link linkend="kdesrc-build-std-flags"
+>översikten över standardflaggor som läggs till av &kdesrc-build;</link
+> för mer information. </para>
+<para
+>Observera att om giltiga utvecklingsverktyg också anges via <link linkend="conf-cmake-options"
+>cmake-options</link
+> överskrider den värdet på <literal
+>cmake-toolchain</literal
+>.</para>
+<para
+>Relaterad kommandoradsväljare: --cmake-toolchain <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-cmake-options">
+<entry
+><link linkend="conf-cmake-options"
+>cmake-options</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Lägger till globala alternativ för det normala byggsystemet, överskrider global för andra byggsystem.</para>
+<para
+>Använd det här alternativet för att ange vilka flaggor som ska skickas till &cmake; när byggsystemet för modulen skapas. När det används som ett allmänt alternativ, används det för alla moduler som skriptet bygger. När det används som ett modulalternativ, läggs det till i slutet av de allmänna alternativen. Det låter dig ange gemensamma &cmake;-alternativ i den allmänna delen.</para>
+
+<para
+>Alternativet gäller inte för qt (som inte använder &cmake;). Använd <link linkend="conf-configure-flags"
+>configure-flags</link
+> istället.</para>
+
+<para
+>Om en giltig generator anges bland de listade alternativen överskrider den värdet på <link linkend="conf-cmake-generator"
+>cmake-generator</link
+>. Ogiltiga generatorer (som inte stöds) ignoreras och skickas inte till &cmake;. </para>
+
+<para
+>Om giltiga utvecklingsverktyg anges bland de listade alternativen överskrider den värdet på <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>. Ogiltiga utvecklingsverktyg ignoreras och skickas inte till &cmake;. </para>
+
+<para
+>Eftersom alternativen skickas direkt till kommandoraden för &cmake;, ska de anges som de skulle skrivits till &cmake;. Till exempel:</para>
+
+<programlisting
+>cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
+</programlisting>
+
+<para
+>Eftersom det är krångligt, anstränger sig &kdesrc-build; för att så länge övriga alternativ är rätt inställda, ska du kunna lämna det här alternativet tomt. (Med andra ord, <emphasis
+>nödvändiga</emphasis
+> parametrar för &cmake; ställs in automatiskt åt dig.)</para>
+<para
+>Relaterad kommandoradsväljare: --cmake-options <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-compile-commands-export">
+<entry
+><link linkend="conf-compile-commands-export"
+>compile-commands-export</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+</simplelist>
+<para
+>Aktiverar generering av <literal
+>compile_commands.json</literal
+> via CMake i byggkatalogen. </para>
+<para
+>Relaterad kommandoradsväljare: --compile-commands-export, --no-compile-commands-export</para>
+</entry>
+</row>
+
+<row id="conf-compile-commands-linking">
+<entry
+><link linkend="conf-compile-commands-linking"
+>compile-commands-linking</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+</simplelist>
+<para
+>Aktiverar att skapa symboliska länkar från <literal
+>compile_commands.json</literal
+> genererad via CMake i byggkatalogen till motsvarande källkodskatalog. </para>
+<para
+>Relaterad kommandoradsväljare: --compile-commands-linking, --no-compile-commands-linking</para>
+</entry>
+</row>
+
+<row id="conf-configure-flags">
+<entry
+><link linkend="conf-configure-flags"
+>configure-flags</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Lägger till globala alternativ för det normala byggsystemet, överskrider global för andra byggsystem.</para>
+<para
+>Använd det här alternativet för att ange vilka flaggor som ska skickas till ./configure när byggsystemet för modulen skapas. När det används som ett allmänt alternativ, används det för alla moduler som skriptet bygger. <emphasis
+>Alternativet  fungerar bara för qt.</emphasis
+></para>
+
+<para
+>För att ändra konfigurationsinställningar för KDE-moduler, se <link linkend="conf-cmake-options"
+>cmake-options</link
+>. </para>
+<para
+>Relaterad kommandoradsväljare: --configure-flags <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-custom-build-command">
+<entry
+><link linkend="conf-custom-build-command"
+>custom-build-command</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+    <para
+>Alternativet kan anges för att köra ett annorlunda kommando (exempelvis annat än <command
+>make</command
+>) för att utföra byggprocessen. &kdesrc-build; bör i allmänhet göra rätt, så alternativet ska inte behövas anges. Det kan dock vara användbart för att använda alternativa byggsystem. </para>
+
+    <para
+>Alternativets värde används som kommandoraden att köra, ändrad av <link linkend="conf-make-options"
+>make-options</link
+> som vanligt. </para>
+<para
+>Relaterad kommandoradsväljare: --custom-build-command <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-cxxflags">
+<entry
+><link linkend="conf-cxxflags"
+>cxxflags</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Lägger till globala alternativ för det normala byggsystemet, överskrider global för andra byggsystem.</para>
+<para
+>Använd det här alternativet för att ange vilka flaggor som ska användas för att bygga modulen. Alternativet anges här istället för med <link linkend="conf-configure-flags"
+>configure-flags</link
+> eller <link linkend="conf-cmake-options"
+>cmake-options</link
+> eftersom alternativet också sätter miljövariabeln <envar
+>CXXFLAGS</envar
+> under byggprocessen.</para>
+
+<para
+>Observera att för &kde; 4 och alla andra moduler som använder &cmake;, är det nödvändigt att ställa in alternativet CMAKE_BUILD_TYPE option till <userinput
+>none</userinput
+> när modulen konfigureras. Det kan göras med alternativet <link linkend="conf-cmake-options"
+>cmake-options</link
+>. </para>
+<para
+>Relaterad kommandoradsväljare: --cxxflags <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-dest-dir">
+<entry
+><link linkend="conf-dest-dir"
+>dest-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Använd alternativet för att ändra namnet en modul får på disk. Om modulen till exempel är extragear/network, skulle du kunna ändra det till extragear-network med det här alternativet. Observera att även om detta ändrar modulens namn på disk, är det inte en god idé att låta kataloger eller katalogåtskiljare ingå i namnet, eftersom det kommer i konflikt med eventuella <link linkend="conf-build-dir"
+>build-dir</link
+> eller <link linkend="conf-source-dir"
+>source-dir</link
+> alternativ.</para>
+<para
+>Relaterad kommandoradsväljare: --dest-dir <replaceable
+>sökväg</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-do-not-compile">
+<entry
+><link linkend="conf-do-not-compile"
+>do-not-compile</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Använd alternativet för att välja en specifik uppsättning kataloger att inte bygga i en modul (istället för alla). Katalogerna att inte bygga ska skiljas åt med mellanslag.</para>
+
+<para
+>Observera att källkoden till programmen fortfarande laddas ner.</para>
+
+<para
+>För att exempelvis inaktivera bygge av katalogerna <literal
+>codeeditor</literal
+> och <literal
+>minimaltest</literal
+> i ramverket <literal
+>syntaxhighlighting</literal
+>, skulle du lägga till <userinput
+>do-not-compile codeeditor minimaltest</userinput
+>, och lägga till "do-not-compile juk kscd" i alternativen för syntaxfärgläggning.</para>
+
+<para
+>Se <xref linkend="not-compiling"/> för ett exempel.</para>
+<para
+>Relaterad kommandoradsväljare: --do-not-compile <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-git-user">
+<entry
+><link linkend="conf-git-user"
+>git-user</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>15.09</member>
+</simplelist>
+<para
+>Alternativet är avsett för &kde;-utvecklare. Om det anges, används det för att automatiskt ställa in identitetsinformation för källkodshanteringssystemet &git; för <emphasis
+>nyligen nerladdade</emphasis
+> &git;-moduler (inklusive det stora flertalet &kde;-moduler).</para>
+
+<para
+>Specifikt fylls användarens namn och e-postfält i till de värden som anges med alternativet för varje nytt &git;-arkiv.</para>
+
+<para
+>Värdet måste anges på formen <option
+><replaceable
+>Användarnamn</replaceable
+> &lt;<replaceable
+>e-post@exempel.se</replaceable
+>&gt;</option
+>.</para>
+
+<para
+>Exempelvis skulle en utvecklare vid namn <quote
+>Anna Johansson</quote
+> med e-postadressen <quote
+>anna@exempel.se</quote
+> använda:</para>
+<para>
+<programlisting
+><symbol
+>git-user</symbol
+> <replaceable
+>Anna Johansson</replaceable
+> &lt;<replaceable
+>anna@exempel.se</replaceable
+>&gt;
+</programlisting>
+</para>
+
+</entry>
+</row>
+
+<row id="conf-http-proxy">
+<entry
+><link linkend="conf-http-proxy"
+>http-proxy</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Alternativet, om det anges, använder den angivna webbadressen som en proxyserver att använda för all HTTP-nätverkskommunikation (till exempel vid nerladdning av <link linkend="kde-projects-module-sets"
+>KDE-projektdatabasen</link
+>) .</para>
+
+<para
+>Dessutom försöker &kdesrc-build; försäkra sig om att verktygen det beror på också använder proxyservern, om möjligt, genom att ställa in miljövariabeln <envar
+>http_proxy</envar
+> till den angivna servern, <emphasis
+>om denna miljövariabel inte redan finns</emphasis
+>.</para>
+<para
+>Relaterad kommandoradsväljare: --http-proxy <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-directory-layout">
+<entry
+><link linkend="conf-directory-layout"
+>directory-layout</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Giltiga värden</member
+><member
+><userinput
+>flat</userinput
+>, <userinput
+>invent</userinput
+>, <userinput
+>metadata</userinput
+></member>
+<member
+>Förvalt värde</member
+><member
+>flat</member>
+</simplelist>
+<para
+>Alternativet används för att ställa in den layout som &kdesrc-build; ska använda när källkods- och byggkataloger skapas.</para>
+<para
+>Layouten <userinput
+>flat</userinput
+> grupperar alla moduler direkt under källkods- och byggkatalogerna på toppnivå. Exempelvis skulle <literal
+>source/extragear/network/telepathy/ktp-text-ui</literal
+> med layouten<userinput
+>metadata</userinput
+> vara <literal
+>source/ktp-text-ui</literal
+> vid användning av layouten <userinput
+>flat</userinput
+> istället. </para>
+<para
+>Layouten <userinput
+>invent</userinput
+> skapar en kataloghierarki som speglar de relativa sökvägarna för arkiv på <ulink url="https://invent.kde.org/"
+>invent.kde.org</ulink
+>. Exempelvis skulle <literal
+>source/kde/applications/kate</literal
+> med layouten <userinput
+>metadata</userinput
+> vara <literal
+>source/utilities/kate</literal
+> vid användning av layouten <userinput
+>invent</userinput
+> istället. Layouten påverkar bara KDE-projekt. Det är ett bra val för folk som börjar använda &kdesrc-build;. </para>
+<para
+>Slutligen är layouten <userinput
+>metadata</userinput
+> samma som det tidigare förvalda beteendet. Layouten organiserar KDE-projekt enligt projektsökvägarna specificerade i projektets metadata för modulerna. Det är ett bra val om du vill ha en kataloglayout som följer vissa KDE-processer, men observera att sökvägen därför inte alltid är stabil. Resultatet kan bli att &kdesrc-build; överger en gammal kopia av arkivet och skapar en dubblett för ett projekt på grund av ändringar av projektets metadata.</para>
+<para
+>Relaterad kommandoradsväljare: --directory-layout <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-generate-vscode-project-config">
+<entry
+><link linkend="conf-generate-vscode-project-config"
+>generate-vscode-project-config</link
+></entry>
+
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+</simplelist>
+
+<para
+>Modulinställning överskrider allmän</para>
+
+<para
+>Ställ in alternativet till <userinput
+>true</userinput
+> för att få &kdesrc-build; att skapa VS Code projektfiler (katalogen .vscode) i modulens källkodskatalog.</para>
+
+<para
+>Katalogen .vscode skapas i projektets källkatalog, men endast om den inte redan finns. Inställningarna möjliggör att använda LSP, bygga, felsöka och köra projektet inne i VS Code.</para>
+
+<para
+>Inställningen rekommenderar även utökningar att installera som är användbara för att arbeta med de flesta KDE-projekt.</para>
+
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-generate-vscode-project-config"/></para>
+</entry>
+</row>
+
+<row id="conf-include-dependencies">
+<entry
+><link linkend="conf-include-dependencies"
+>include-dependencies</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+</simplelist>
+<para
+>Bestämmer om &kdesrc-build; ska inkludera den här modulens kända beroenden i bygget, utan att kräva att du nämner dessa beroenden (inte ens indirekt).</para>
+
+<note
+><para
+>Alternativet fungerar bara för moduler baserade på <link linkend="kde-projects-module-sets"
+><literal
+>kde-project</literal
+></link
+>, och kräver att metadata som underhålls av &kde;-utvecklare är korrekt för vald <link linkend="conf-branch-group"
+>branch-group</link
+>.</para
+></note>
+
+<para
+>Det är för att stödja att bygga program som behöver versioner av &Qt; eller &plasma; som är senare en de som stöds av vanliga operativsystem.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-include-dependencies"/></para>
+</entry>
+</row>
+
+<row id="conf-install-after-build">
+<entry
+><link linkend="conf-install-after-build"
+>install-after-build</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+</simplelist>
+<para
+>Alternativet används för att installera paketet efter det har byggts med lyckat resultat. Du kan också använda kommandoradsväljaren <link linkend="cmdline-no-install"
+><option
+>--no-install</option
+></link
+>.</para>
+<para
+>Relaterad kommandoradsväljare: --install-after-build, --no-install-after-build</para>
+</entry>
+</row>
+
+<row id="conf-install-dir">
+<entry
+><link linkend="conf-install-dir"
+>install-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+><filename class="directory"
+>~/kde/usr</filename
+></member>
+</simplelist>
+<para
+>Alternativet styr var modulen ska installeras efter att den har byggts. Om du ändrar det till en katalog som behöver systemadministratörsåtkomst, kanske du också bör läsa om alternativet <link linkend="conf-make-install-prefix"
+>make-install-prefix</link
+>.</para>
+<para
+>Genom att ändra alternativet för en specifik modul kan du installera den i en annan katalog än där &kde;:s plattformsbibliotek installeras, om du exempelvis bara använder &kdesrc-build; för att bygga program.</para>
+<para
+>Du kan använda <varname
+>${MODULE}</varname
+> eller <varname
+>$MODULE</varname
+> i sökvägen för att expandera dem till modulens namn.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-install-dir"/></para>
+</entry>
+</row>
+
+<row id="conf-libname">
+<entry
+><link linkend="conf-libname"
+>libname</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+>Automatiskt detekterad</member>
+</simplelist>
+<para
+>Ställ in alternativet för att ändra standardnamnet på det installerade bibliotekskatalogen inuti ${install-dir} and ${qt-install-dir}. På många system är det antingen "lib" eller "lib64". Automatisk identifiering försöker göras för att ställa in rätt namn som förval, men om gissningen är fel så kan det ändras med den här inställningen.</para>
+<para
+>Relaterad kommandoradsväljare: --libname <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-libpath">
+<entry
+><link linkend="conf-libpath"
+>libpath</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Ange alternativet för att sätta miljövariabeln <envar
+>LD_LIBRARY_PATH</envar
+> under byggprocessen. Du kan inte överskrida inställningen med ett modulalternativ. Förvalt värde är tomt, men sökvägarna <filename class="directory"
+>${install-dir}/$<envar
+>LIBNAME</envar
+></filename
+> och <filename class="directory"
+>${qt-install-dir}/$<envar
+>LIBNAME</envar
+></filename
+> läggs automatiskt till. Du kan använda tilde (~) i alla sökvägar du lägger till med alternativet.</para>
+<para
+>Relaterad kommandoradsväljare: --libpath <replaceable
+>sökväg</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-log-dir">
+<entry
+><link linkend="conf-log-dir"
+>log-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Använd det här alternativet för att ändra katalogen som används för att lagra loggfiler som skapas av skriptet.</para>
+<para
+>Relaterad kommandoradsväljare: --log-dir <replaceable
+>sökväg</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-make-install-prefix">
+<entry
+><link linkend="conf-make-install-prefix"
+>make-install-prefix</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Sätt den här variabeln till en lista åtskilda med mellanslag, som tolkas som ett kommando och dess väljare för att föregå kommandot <userinput
+><command
+>make</command
+> <option
+>install</option
+></userinput
+> som används för att installera moduler. Det är användbart för att till exempel installera paket med &sudo;, men var försiktig när du hanterar systemadministratörsrättigheter.</para>
+<para
+>Relaterad kommandoradsväljare: --make-install-prefix <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-make-options">
+<entry
+><link linkend="conf-make-options"
+>make-options</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Ange den här variabeln för att skicka kommandoradsväljare till kommandot <command
+>make</command
+>. Det är användbart för program som <ulink url="https://github.com/distcc/distcc"
+><application
+>distcc</application
+></ulink
+> eller system med mer än en processorkärna.</para>
+<para
+>Observera att inte alla byggsystem som stöds använder <command
+>make</command
+>. För byggsystem som använder <command
+>ninja</command
+> för att bygga (såsom  <link linkend="conf-override-build-system"
+>byggsystemet <application
+>Meson</application
+></link
+>, se inställningen <link linkend="conf-ninja-options"
+>ninja-options</link
+>.</para>
+<para
+>Relaterad kommandoradsväljare: --make-options <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-manual-build">
+<entry
+><link linkend="conf-manual-build"
+>manual-build</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+</simplelist>
+<para
+>Ställ in alternativets värdet till <userinput
+>true</userinput
+> för att förhindra att byggprocessen försöker bygga modulen. Den hålls fortfarande uppdaterad vid uppdatering från &git;. Alternativet motsvarar exakt kommandoradsväljaren <link linkend="cmdline-no-build"
+><option
+>--no-build</option
+></link
+>. </para>
+</entry>
+</row>
+
+<row id="conf-manual-update">
+<entry
+><link linkend="conf-manual-update"
+>manual-update</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+</simplelist>
+<para
+>Sätt alternativvärdet till <userinput
+>true</userinput
+> för att förhindra att byggprocessen försöker uppdatera (och som en följd, bygga eller installera) modulen. Om du anger alternativet för en modul, är det i stort sett samma som att kommentera bort den.</para>
+</entry>
+</row>
+
+<row id="conf-ninja-options">
+<entry
+><link linkend="conf-ninja-options"
+>ninja-options</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Ställ in variabeln för att skicka kommandoradsväljare till byggkommandot <command
+>ninja</command
+>. Det kan vara användbart för att aktivera <quote
+>detaljerad</quote
+> utmatning eller för att manuellt reducera antal byggjobb som <command
+>ninja</command
+> skulle använda.</para>
+
+<note
+><para
+>Observera att inställningen bara styr ninja när det används med &kdesrc-build;. &Qt;-modulen <quote
+>webengine</quote
+> använder <command
+>ninja</command
+> indirekt, men stöder bara officiellt att byggas med <command
+>make</command
+>. I detta fall kan <literal
+>NINJAFLAGS</literal
+> ställas in som ett sätt att låta <command
+>make</command
+> skicka lämpliga flaggor när det senare anropar <command
+>ninja</command
+>, genom att använda <link linkend="conf-make-options"
+>make-options</link
+>.</para>
+
+<programlisting
+>options <replaceable
+>qtwebengine</replaceable>
+    # Begränsa make och ninja att inte använda fler än 6 separata kompileringsjobb
+    # även om fler processorer är tillgängliga, för att undvika att få slut på minne
+    <option
+><link linkend="conf-make-options"
+>make-options</link
+></option
+> -j<replaceable
+>6</replaceable
+> NINJAFLAGS=-j<replaceable
+>6</replaceable>
+end options
+</programlisting>
+</note>
+<para
+>Relaterad kommandoradsväljare: --ninja-options <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-override-build-system">
+<entry
+><link linkend="conf-override-build-system"
+>override-build-system</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+>Automatiskt detekterad</member>
+<member
+>Giltiga värden</member
+><member
+>KDE, Qt, qmake, generic, autotools, meson</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Normalt detekterar &kdesrc-build; lämpligt byggsystem att använda för en modul när den har laddats ner. Det görs genom att kontrollera att specifika filer finns i modulens källkodskatalog.</para>
+
+<para
+>Vissa moduler kan innehålla mer än en uppsättning filer som krävs, vilket skulle kunna förvirra den automatiska detekteringen. I detta fall kan du ange rätt byggtyp manuellt.</para>
+
+<para
+>De byggtyper som för närvarande stöds och kan anges är:</para>
+
+<variablelist>
+    <varlistentry>
+        <term
+>KDE</term>
+        <listitem
+><para
+>Används för att bygga &kde;-moduler. I själva verket kan den användas för att bygga nästan vilken modul som helst som använder &cmake;, men det är bäst att inte förlita sig på det.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>Qt</term>
+        <listitem
+><para
+>Används för att bygga själva &Qt;-biblioteket.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>qmake</term>
+        <listitem
+><para
+>Används för att bygga &Qt;-moduler som använder <literal
+>.pro</literal
+>-filer i enlighet med <application
+>qmake</application
+>.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>generic</term>
+        <listitem
+><para
+>Används för att bygga moduler som använder enkla Makefiles och inte kräver någon särskild konfigurering.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>autotools</term>
+        <listitem
+><para
+>Det här är det standardiserade konfigureringsverktyget som används för de flesta programvaror med fri och öppen källkod som inte ingår i någon av de övriga kategorierna.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>meson</term>
+        <listitem
+><para
+>Detta är ett <ulink url="https://mesonbuild.com"
+>relativt nytt verktyg</ulink
+> som ökar i popularitet som en ersättning till autotools, och kan krävas för vissa moduler som inte ingår i &kde;.</para
+></listitem>
+    </varlistentry>
+</variablelist>
+
+<para
+>Relaterad kommandoradsväljare: --override-build-system <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-purge-old-logs">
+<entry
+><link linkend="conf-purge-old-logs"
+>purge-old-logs</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+</simplelist>
+<para
+>Alternativet bestämmer om gamla loggkataloger automatiskt tas bort eller inte.</para>
+<para
+>Relaterad kommandoradsväljare: --purge-old-logs, --no-purge-old-logs</para>
+</entry>
+</row>
+
+<row id="conf-qmake-options">
+<entry
+><link linkend="conf-qmake-options"
+>qmake-options</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Alla väljare som anges här skickas till kommandot <command
+>qmake</command
+>, för moduler som använder byggsystemet <symbol
+>qmake</symbol
+>. Det går exempelvis att använda väljaren <userinput
+>PREFIX=/sökväg/till/qt</userinput
+> i qmake för att överskrida var modulen installeras. </para>
+<para
+>Relaterad kommandoradsväljare: --qmake-options <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-qt-install-dir">
+<entry
+><link linkend="conf-qt-install-dir"
+>qt-install-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Alternativet bestämmer var qt-moduler ska installeras efter bygget. Om alternativet inte anges, antar &kdesrc-build; att &Qt; tillhandahålls av operativsystemet. </para>
+<para
+>Relaterad kommandoradsväljare: --qt-install-dir <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-remove-after-install">
+<entry
+><link linkend="conf-remove-after-install"
+>remove-after-install</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Giltiga värden</member
+><member
+>none, builddir, all</member>
+<member
+>Förvalt värde</member
+><member
+>none</member>
+</simplelist>
+<para
+>Om du har ont om hårddiskutrymme kan du vilja använda det här alternativet för att automatiskt ta bort byggkatalogen (eller både källkatalogen och byggkatalogen för engångsinstallationer) efter modulen har installerats med lyckat resultat. </para>
+<para
+>Möjliga värden för alternativet är: <itemizedlist>
+<listitem
+><para
+>none - Ta inte bort någonting.</para
+></listitem>
+<listitem
+><para
+>builddir - Ta bort byggkatalogen men inte källkoden.</para
+></listitem>
+<listitem
+><para
+>all - Ta både bort källkoden och byggkatalogen.</para
+></listitem>
+</itemizedlist>
+</para>
+
+<para
+>Observera att användning av alternativet kan ha en markant effekt både på användning av bandbredd (om du använder <replaceable
+>all</replaceable
+>) och tiden det tar att kompilera &kde;:s programvara, eftersom &kdesrc-build; inte kommer att kunna utföra inkrementella byggprocesser.</para>
+<para
+>Relaterad kommandoradsväljare: --remove-after-install <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-repository">
+<entry
+><link linkend="conf-repository"
+>repository</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.10</member>
+</simplelist>
+<para
+>Alternativet används för att ange &git;-arkivet för att ladda ner modulens källkod. &Qt; (och därför qt) behöver alternativet, samt diverse &kde;-moduler som håller på att konverteras att använda &git;.</para
+></entry>
+</row>
+
+<row id="conf-revision">
+<entry
+><link linkend="conf-revision"
+>revision</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Om alternativet ställs in till ett annat värde än 0 (noll), tvingar &kdesrc-build; uppdateringen att ge modulen exakt den version som anges, även om alternativ som <link linkend="conf-branch"
+>branch</link
+> gäller. Om modulen redan har angiven version, kommer den inte att uppdateras ytterligare om inte alternativet ändras eller tas bort från konfigurationen.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-revision"/></para>
+</entry>
+</row>
+
+<row id="conf-run-tests">
+<entry
+><link linkend="conf-run-tests"
+>run-tests</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+</simplelist>
+<para
+>Om satt till <userinput
+>true</userinput
+>, byggs modulen med stöd för att köra sin testsvit, och testsviten körs som en del av byggprocessen. &kdesrc-build; visar en enkel rapport med testresultatet. Det är användbar för utvecklare eller de som vill försäkra sig om att systemet är riktigt inställt.</para>
+<para
+>Relaterad kommandoradsväljare: --run-tests, --no-run-tests</para>
+</entry>
+</row>
+
+<row id="conf-set-env">
+<entry
+><link linkend="conf-set-env"
+>set-env</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+</simplelist>
+<para
+>Det här alternativet accepterar en uppsättning värden åtskilda av mellanslag, där det första värdet är miljövariabeln att sätta, och följande värden är vad du vill sätta variabeln till. För att till exempel sätta variabeln <envar
+>RONALD</envar
+> till McDonald, skulle du skriva följande kommando under lämplig sektion:</para>
+<programlisting
+><command
+>set-env</command
+> <envar
+>RONALD</envar
+> <userinput
+>McDonald</userinput
+>
+</programlisting>
+<para
+>Alternativet är särskilt på det sätt att det kan upprepas utan att överskrida tidigare inställningar av set-env i samma del av <link linkend="configure-data"
+>inställningsfilen</link
+>. På så sätt kan du ställa in mer än en miljövariabel per modul (eller allmänt).</para>
+</entry>
+</row>
+
+<row id="conf-source-dir">
+<entry
+><link linkend="conf-source-dir"
+>source-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Förvalt värde</member
+><member
+><filename class="directory"
+>~/kde/src</filename
+></member>
+</simplelist>
+<para
+>Alternativet används för att ange katalogen på datorn där &kde;:s &git;-källkod ska lagras. Tilde (~) kan utnyttjas för att representera hemkatalogen om alternativet används.</para>
+<para
+>Relaterad kommandoradsväljare: --source-dir <replaceable
+>path</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-stop-on-failure">
+<entry
+><link linkend="conf-stop-on-failure"
+>stop-on-failure</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Sant</member>
+</simplelist>
+<para
+>Att ställa in alternativet till <userinput
+>false</userinput
+> låter skriptet fortsätta köra efter ett fel uppstår i bygg- eller installationsprocessen.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-stop-on-failure"/></para>
+</entry>
+</row>
+
+<row id="conf-tag">
+<entry
+><link linkend="conf-tag"
+>tag</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>Använd alternativet för att ladda ner en specifik utgåva av en modul.</para>
+<para
+><emphasis
+>Observera:</emphasis
+> Chansen är mycket stor att du <emphasis
+>inte vill</emphasis
+> använda alternativet. Utgåvor av &kde; är tillgängliga som komprimerade tar-arkiv från <ulink url="https://download.kde.org/"
+>&kde;:s nerladdningsplats</ulink
+>.</para>
+<para
+>Relaterad kommandoradsväljare: --tag <replaceable
+>värde</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-use-clean-install">
+<entry
+><link linkend="conf-use-clean-install"
+>use-clean-install</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Booleskt</member>
+<member
+>Förvalt värde</member
+><member
+>Falskt</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.12</member>
+</simplelist>
+<para
+>Sätt det här alternativet till <userinput
+>true</userinput
+> för att få &kdesrc-build; att köra <command
+>make uninstall</command
+> direkt innan <command
+>make install</command
+> körs.</para>
+
+<para
+>Det kan vara användbart för att försäkra sig om att inte några kvarblivna gamla biblioteksfiler, &cmake; metadata, etc. kan orsaka problem i långlivade installationer av &kde;. Dock fungerar det bara med byggsystem som stöder <command
+>make uninstall</command
+>.</para>
+<para
+>Relaterad kommandoradsväljare: --use-clean-install, --no-use-clean-install</para>
+</entry>
+</row>
+
+</tbody>
+
+</tgroup>
+</table>
+
+<para
+>Alternativen kräver inga värden (utom "filter-out-phases"). De används om de anges i en sektion.</para>
+<table id="options-phase-selection-table">
+<title
+>Alternativ för val av fas</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Alternativnamn</entry>
+<entry
+>Omfattning</entry>
+<entry
+>Beskrivning</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-no-src">
+<entry
+><link linkend="conf-no-src"
+>no-src</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Ta bort fasen <emphasis
+>update</emphasis
+>. De andra faserna som anges behandlas fortfarande.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-no-src"/></para>
+</entry>
+</row>
+
+<row id="conf-no-install">
+<entry
+><link linkend="conf-no-install"
+>no-install</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Ta bort fasen <emphasis
+>install</emphasis
+>. De andra faserna som anges behandlas fortfarande.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-no-install"/></para>
+</entry>
+</row>
+
+<row id="conf-no-tests">
+<entry
+><link linkend="conf-no-tests"
+>no-tests</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Ta bort fasen <emphasis
+>test</emphasis
+>. De andra faserna som anges behandlas fortfarande.</para>
+<para
+>Relaterad kommandoradsväljare: --no-tests</para>
+</entry>
+</row>
+
+<row id="conf-no-build">
+<entry
+><link linkend="conf-no-build"
+>no-build</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Ta bort fasen <emphasis
+>build</emphasis
+>. De andra faserna som anges behandlas fortfarande.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-no-build"/></para>
+</entry>
+</row>
+
+<row id="conf-build-only">
+<entry
+><link linkend="conf-build-only"
+>build-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Om fasen <emphasis
+>build</emphasis
+> finns, ta bort alla andra faser. Ta annars bort alla faser.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-build-only"/></para>
+</entry>
+</row>
+
+<row id="conf-install-only">
+<entry
+><link linkend="conf-install-only"
+>install-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Om fasen <emphasis
+>install</emphasis
+> finns, ta bort alla andra faser. Ta annars bort alla faser.</para>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-install-only"/></para>
+</entry>
+</row>
+
+<row id="conf-uninstall">
+<entry
+><link linkend="conf-uninstall"
+>uninstall</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Om fasen <emphasis
+>uninstall</emphasis
+> finns, ta bort alla andra faser. Ta annars bort alla faser.</para>
+<para
+>Relaterad kommandoradsväljare: --uninstall</para>
+</entry>
+</row>
+
+<row id="conf-filter-out-phases">
+<entry
+><link linkend="conf-filter-out-phases"
+>filter-out-phases</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>Ta bort faserna som listas (åtskilda med mellanslag) i alternativet. De andra faserna som anges behandlas fortfarande.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<table id="options-module-set-table">
+<title
+>Alternativ för moduluppsättningar</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>Alternativnamn</entry>
+<entry
+>Omfattning</entry>
+<entry
+>Beskrivning</entry>
+</row>
+</thead>
+<tbody>
+
+
+<row id="conf-ignore-modules">
+<entry
+><link linkend="conf-ignore-modules"
+>ignore-modules</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>"Observera att när det anges i den allmänna delen, överskrider inte kommandoradsväljaren &cmd-ignore-modules; det, utan Istället läggs den till sist.</para>
+<para
+>Moduler som namnges av alternativet, som skulle ha valts av &kdesrc-build; på grund av alternativet <link linkend="conf-use-modules"
+>use-modules</link
+>, hoppas istället över helt. Använd alternativet när du vill bygga en hel gruppering av <link linkend="kde-projects-module-sets"
+>kde-project</link
+> projekt <emphasis
+>utom</emphasis
+> några specifika moduler.</para>
+
+<para
+>Alternativets värde behöver inte nödvändigtvis namnge modulen direkt. Vilken modul som helst där fullständiga delar i följd av dess <link linkend="kde-projects-module-sets"
+>&kde; projektmodul-sökväg</link
+> matchar ett av alternativets värden ignoreras, så det går alltså att ignorera flera moduler på detta sätt.</para>
+
+<para
+>Exempelvis skulle alternativvärdet <replaceable
+>libs</replaceable
+> göra att både <symbol
+>kde/kdegraphics/libs</symbol
+> och <symbol
+>playground/libs</symbol
+> skulle exkluderas (dock inte <symbol
+>kde/kdelibs</symbol
+> eftersom den fullständiga delen <quote
+>kdelibs</quote
+> är det som jämförs med).</para>
+
+<tip
+><para
+>Se också <xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+<para
+>Relaterad kommandoradsväljare: <xref linkend="cmdline-ignore-modules"/></para>
+</entry>
+</row>
+
+<row id="conf-use-modules">
+<entry
+><link linkend="conf-use-modules"
+>use-modules</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>Typ</member
+><member
+>Sträng</member>
+<member
+>Tillgängligt sedan</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>Alternativet gör det möjligt att enkelt specificera många olika moduler som ska byggas på samma ställe i <link linkend="kdesrc-buildrc"
+>inställningsfilen</link
+>.</para>
+
+<para
+>Varje identifierare som används i alternativet konverteras internt till en &kdesrc-build;-modul, med alternativet <link linkend="conf-repository"
+><option
+>repository</option
+></link
+> inställt till moduluppsättningens arkiv, kombinerat med identifierarens namn för att slutgiltigt kunna bestämma arkivet att ladda ner från. Alla andra alternativ som finns i moduluppsättningen kopieras också till de skapade modulerna utan ändring.</para>
+
+<para
+>Ordningen som modulerna definieras i alternativet är viktigt eftersom det också är ordningen som &kdesrc-build; kommer att behandla de skapade modulerna vid uppdatering, byggning och installation. Alla moduler definierade i en given moduluppsättning kommer att hanteras innan &kdesrc-build; går vidare till nästa modul efter moduluppsättningen.</para>
+
+<para
+>Om alternativ för en skapad modul måste ändras, deklarera helt enkelt modulen igen efter den har definierats i moduluppsättningen och ställ in alternativen efter behov. Även om alternativen som modulen använder kommer att ändras på detta sätt, uppdateras och byggs modulen ändå i ordningen som anges av moduluppsättningen (dvs. du kan inte ordna om byggföljden genom att göra det).</para>
+
+<important
+><para
+>Namnet att använda för modulen om du gör det, är helt enkelt namnet du angav i <option
+>use-modules</option
+>, med undantag för att ett eventuellt <literal
+>.git</literal
+> tas bort.</para
+></important>
+
+<para
+>Se <xref linkend="module-sets"/> och <link linkend="conf-git-repository-base"
+>git-repository-base</link
+> för en beskrivning av dess användning och ett exempel.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+</sect1>

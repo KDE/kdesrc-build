@@ -1,0 +1,102 @@
+<sect1 id="kdesrc-build-logging">
+<title
+>Byggloggning i &kdesrc-build;</title>
+
+<sect2 id="logging-overview">
+<title
+>Översikt över loggning</title>
+
+<para
+>Loggning är en funktion i &kdesrc-build; varigenom utmatningen från varje kommando som &kdesrc-build; kör sparas i en fil för senare undersökning, om nödvändigt. Det görs eftersom det ofta är nödvändigt att ha utmatningen från programmen när ett byggfel uppstår, eftersom det finns så många orsaker att en byggprocess kan misslyckas från början.</para>
+
+<sect3 id="log-directory-layout">
+<title
+>Loggningskatalogens layout</title>
+
+<para
+>Loggarna lagras alltid i loggkatalogen. Platsen för loggkatalogen styrs av alternativet <link linkend="conf-log-dir"
+>log-dir</link
+>, som normalt är <filename class="directory"
+><symbol
+>${source-dir}</symbol
+>/log</filename
+> (där  <symbol
+>${source-dir}</symbol
+> är värdet av alternativet <link linkend="conf-source-dir"
+>source-dir</link
+>. I resten av avsnittet kallas värdet <symbol
+>${log-dir}</symbol
+>).</para>
+
+<para
+>I <symbol
+>${log-dir}</symbol
+> finns en uppsättning kataloger, en för varje gång &kdesrc-build; kördes. Varje katalog namnges med datum och körnumret. Exempelvis, den andra gången &kdesrc-build; körs 26:e maj, 2004, skulle en katalog som heter <filename
+>2004-05-26-02</filename
+> skapas, där 2004-05-26 står för datumet och -02 är körnumret.</para>
+
+<para
+>För din bekvämlighet skapar &kdesrc-build; också en länk till loggarna för den senaste körningen, som heter <filename class="directory"
+>latest</filename
+>. Loggarna för den senaste körningen av &kdesrc-build; ska alltid finnas under <filename
+><symbol
+>${log-dir}</symbol
+>/latest</filename
+>. </para>
+
+<para
+>Varje katalog för en körning av &kdesrc-build; innehåller nu i sin tur en uppsättning kataloger, en för varje &kde;-modul som &kdesrc-build; försöker bygga. Dessutom finns en fil som heter <filename
+>build-status</filename
+> i katalogen, som låter dig avgöra vilka moduler som byggdes och vilka som misslyckades.</para>
+
+<note
+><para
+>Om en modul själv har en delmodul (såsom extragear/multimedia, playground/utils eller KDE/kdelibs), finns i själva verket motsvarande struktur i loggkatalogen. Loggarna för KDE/kdelibs efter den senaste körningen av &kdesrc-build; finns till exempel i <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/KDE/kdelibs</filename
+>, och inte i <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/kdelibs</filename
+>. </para
+></note>
+
+<para
+>Du hittar en uppsättning filer för varje åtgärd som &kdesrc-build; utför i varje modulloggkatalog. Om &kdesrc-build; uppdaterar en modul, kan du se filnamn såsom <filename
+>git-checkout-update.log</filename
+> (för en utcheckning av en modul eller när en modul uppdateras som redan har checkats ut). Om kommandot <command
+>configure</command
+> kördes, kan du förvänta dig att se filen <filename
+>configure.log</filename
+> i katalogen.</para>
+
+<para
+>Om ett fel uppstod, bör du kunna se en förklaring av varför i en av filerna. För att hjälpa till att avgöra vilken fil som innehåller felet, skapar &kdesrc-build; en länk från filen med felet (såsom <filename
+>build-1.log</filename
+> till en fil som heter <filename
+>error.log</filename
+>).</para>
+
+<para
+>Slutresultatet av allt detta är att för att se varför en modul misslyckades byggas efter den senaste körningen av &kdesrc-build;, är filen du först ska titta i <filename
+><symbol
+>${log-dir}</symbol
+>/latest/<replaceable
+>modulnamn</replaceable
+>/error.log</filename
+>. </para>
+
+<tip
+><para
+>Om filen <filename
+>error.log</filename
+> är tom (särskilt efter en installation), kanske det inte var något fel. Vissa verktyg som används av &kde;:s byggsystem rapporterar ibland av misstag ett fel när det inte fanns något.</para>
+
+<para
+>Dessutom kringgår några kommandon omdirigeringen av utmatning som &kdesrc-build; gör, och går förbi loggfilen under vissa omständigheter (normalt när den första utcheckningen från &git; sker), och felutmatningen finns inte i loggfilen i detta fall, utan istället i terminalen där &kdesrc-build; kördes</para>
+</tip>
+
+</sect3>
+</sect2>
+</sect1>

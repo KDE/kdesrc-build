@@ -1,0 +1,178 @@
+<appendix id="appendix-modules">
+<title
+>&kde;-moduler och organisation av källkoden</title>
+<sect1 id="module-concept">
+<title
+><quote
+>Modulen</quote
+></title>
+
+<para
+>&kde; grupperar programvaran i <quote
+>moduler</quote
+> av olika storlek. Det var från början en lös gruppering av några få stora moduler, men vid introduktionen av <ulink url="https://git-scm.com/"
+>Git</ulink
+>-baserade <ulink url="https://commits.kde.org/"
+>källkodsarkiv</ulink
+>, delades dessa stora moduler ytterligare i många mindre moduler. </para>
+
+<para
+>&kdesrc-build; använder också modulkonceptet. I stort sett är en <quote
+>modul</quote
+> en gruppering av kod som kan laddas ner, byggas, testas och installeras. </para>
+
+<sect2 id="single-modules">
+<title
+>Enskilda moduler</title>
+
+<para
+>Det är enkelt att ställa in &kdesrc-build; att bygga en enstaka modul. Följande listning är ett exempel på hur en deklaration för en modul baserad på Git skulle se ut i <link linkend="kdesrc-buildrc"
+>inställningsfilen</link
+>.</para>
+
+<programlisting
+>module <replaceable
+>kdexxx</replaceable>
+    <option
+><replaceable
+>cmake-options -DCMAKE_BUILD_TYPE=Debug</replaceable
+></option>
+end module
+</programlisting>
+
+<tip
+><para
+>Det är en modul baserad på Git eftersom den inte använder alternativet <link linkend="conf-repository"
+>repository</link
+>. Dessutom listas alternativet <option
+>cmake-options</option
+> bara som ett exempel, det krävs inte.</para
+></tip>
+
+</sect2>
+<sect2 id="module-groups">
+<title
+>Grupper av relaterade moduler</title>
+
+<para
+>Nu är de flesta &kde;-moduler baserade på Git, och kombineras normalt i modulgrupper.</para>
+
+<para
+>Därför stöder &kdesrc-build; också modulgrupper, med <link linkend="module-sets"
+>module sets</link
+>. Ett exempel:</para>
+
+<programlisting
+>module-set <replaceable
+>base-modules</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde-runtime kde-workspace kde-baseapps</replaceable>
+end module-set
+</programlisting>
+
+<tip
+><para
+>Du kan lämna moduluppsättningens namn tomt om du vill (<replaceable
+>base-modules</replaceable
+> i detta fall). Inställningen <option
+>repository</option
+> talar om för &kdesrc-build; varifrån källkoden ska laddas ner, men du kan också använda en webbadress som börjar med <symbol
+>git://</symbol
+>.</para
+></tip>
+
+<para
+>En särskild funktion med <quote
+><option
+>repository</option
+> <literal
+>kde-projects</literal
+></quote
+> är att &kdesrc-build; automatiskt inkluderar alla Git-moduler som är grupperade under modulerna du listar (i KDE:s projekdatabas).</para>
+</sect2>
+
+<sect2 id="module-branch-groups">
+<title
+>Modulen <quote
+>branch groups</quote
+></title>
+
+<para
+>När konceptet med en <link linkend="module-groups"
+>grupp av moduler</link
+> fördes vidare, fann &kde;-utvecklarna till slut att synkronisering av namnen på Git-grenarna över ett stort antal arkiv började bli svårt, särskilt under utvecklingsoffensiven av det nya &kde;-ramverket för &Qt; 5. </para>
+
+<para
+>Alltså utvecklades konceptet <quote
+>branch groups</quote
+> (grengrupper) för att låta användare bara välja en eller några få grupper och låta skriptet automatiskt välja lämplig Git-gren. </para>
+
+<para
+>&kdesrc-build; stöder funktionen från version 1.16-pre2, via alternativet <link linkend="conf-branch-group"
+>branch-group</link
+>. </para>
+
+<example id="ex-branch-group">
+<title
+>Exempel på användning av branch-group</title>
+
+<para
+>branch-group kan användas på följande sätt i inställningsfilen: </para>
+
+<programlisting
+>global
+    # Välj KDE Frameworks 5 och andra Qt5-baserade program
+    <option
+>branch-group</option
+> <replaceable
+>kf5-qt5</replaceable>
+
+    # Andra globala alternativ här ...
+end global
+
+module-set
+    # branch-group fungerar bara för kde-projects
+    <option
+>repository</option
+> kde-projects
+
+    # branch-group ärvs från den som ställs in globalt, men skulle kunna
+    # specificeras här.
+
+    <option
+>use-modules</option
+> <replaceable
+>kdelibs kde-workspace</replaceable>
+end module-set
+
+# Gren för kdelibs kommer att vara "frameworks"
+# Gren för kde-workspace kommer att vara "master" (från augusti 2013)
+</programlisting>
+
+<para
+>I detta fall ger samma <literal
+>branch-group</literal
+> som ger olika namn på grenar för varje Git-modul. </para>
+</example>
+
+<para
+>Funktionen kräver att en del data underhålls av &kde;-utvecklarna i Git-arkivet vid namn <literal
+>kde-build-metadata</literal
+>. Dock inkluderas modulen automatiskt av &kdesrc-build; (även om du kan se den visas i skriptets utdata). </para>
+
+<tip
+><para
+>För &kde;-moduler som inte har ett inställt namn på grenen för grengruppen du väljer,  får normalt ett lämpligt grennamn, som om du inte hade angivit <literal
+>branch-group</literal
+> alls. </para
+></tip>
+
+</sect2>
+
+</sect1>
+</appendix>

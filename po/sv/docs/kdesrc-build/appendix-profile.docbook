@@ -1,0 +1,198 @@
+<appendix id="appendix-profile">
+<title
+>Ersatta procedurer för att ställa in en profil</title>
+
+<sect1 id="old-profile-setup">
+<title
+>Ställa in en inloggningsprofil för &kde;</title>
+
+<para
+>Instruktionerna täcker hur man ställer in profilen som krävs för att säkerställa att datorn kan logga in på det nybyggda &kde; &plasma;-skrivbordet. &kdesrc-build; försöker normalt göra det automatiskt (se <xref linkend="session-driver"/>). Detta appendix kan vara användbart för de som inte kan använda det inbyggda stödet i &kdesrc-build; för inställning av inloggningsprofil. Dock kanske instruktionerna inte alltid är aktuella, och det kan också vara värt att titta i filen <filename
+>kde-env-master.sh</filename
+> som ingår i källkoden för &kdesrc-build;.</para>
+
+<sect2 id="changing-profile">
+<title
+>Ändra startprofilinställningar</title>
+
+<important
+><para
+>Filen <filename
+>.bash_profile</filename
+> är inloggningsinställningarna för det populära skalet <application
+>bash</application
+> som används av många &Linux;-distributioner. Om du använder ett annat skal, kan du behöva justera exemplen som ges i det här avsnittet för ditt specifika skal.</para
+></important>
+
+<para
+>Öppna eller skapa filen <filename
+>.bash_profile</filename
+> i hemkatalogen med din favoriteditor och lägg till i slutet av filen: Om du bygger qt-modulen (det gör du normalt), lägg istället till: <programlisting>
+PATH=${install-dir}/bin:${qt-install-dir}/bin:$PATH
+MANPATH=${qt-install-dir}/doc/man:$MANPATH
+
+# Agera på rätt sätt om LD_LIBRARY_PATH inte redan är inställd.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}:/lib:${qt-install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}:/lib:${qt-install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH MANPATH LD_LIBRARY_PATH
+</programlisting
+> eller, om du inte bygger qt (och istället använder systemets &Qt;), lägg till detta istället: <programlisting
+>PATH=${install-dir}/bin:${qt-install-dir}/bin:$PATH
+
+# Agera på rätt sätt om LD_LIBRARY_PATH inte redan är inställd.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH LD_LIBRARY_PATH
+</programlisting>
+</para>
+
+<para
+>Om du inte använder en särskild användare ställ in en annan $<envar
+>KDEHOME</envar
+> för din nya miljö i <filename
+>.bash_profile</filename
+>: <programlisting
+>export KDEHOME="${HOME}/.kde-git"
+
+# Create it if needed
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
+</programlisting>
+</para>
+
+<note>
+<para
+>Om din K-meny senare är tom eller för tätpackad med program från din distribution, kanske du måste ange miljövariabeln <acronym
+>XDG</acronym
+> i din <filename
+>.bash_profile</filename
+>: <programlisting
+>XDG_CONFIG_DIRS="/etc/xdg"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
+export XDG_CONFIG_DIRS XDG_DATA_DIRS
+</programlisting>
+
+</para>
+</note>
+
+</sect2>
+<sect2 id="starting-kde">
+<title
+>Starta &kde;</title>
+
+<para
+>När du nu har justerat dina miljöinställningar för att använda rätt &kde;, är det viktigt att försäkra dig om att det rätta <command
+>startkde</command
+>-skriptet också används. </para>
+
+<para
+>Öppna textfilen <filename
+>.xinitrc</filename
+> från hemkatalogen, eller skapa den om det behövs. Lägg till raden: <programlisting
+><command
+>exec</command
+> <option
+>${install-dir}/bin/startkde</option
+>
+</programlisting>
+</para>
+
+<important
+><para
+>Det kan vara nödvändigt att utföra samma steg med filen <filename
+>.xsession</filename
+>, också i hemkatalogen. Det är särskilt sant om grafiska inloggningshanterare som sddm, <application
+>gdm</application
+> eller <application
+>xdm</application
+> används.</para>
+</important>
+
+<para
+>Starta nu det nya &kde;: i &BSD;- och &Linux;-system med stöd för virtuella terminaler, används tangentkombinationerna <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F1</keycap
+></keycombo
+> ... <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F12</keycap
+></keycombo
+> för att byta till virtuell konsoll 1 till och med 12. Det låter dig köra fler än en skrivbordsmiljö samtidigt. De första sex är textterminaler, och de följande sex är grafiska skärmar. </para>
+
+<para
+>Om den grafiska inloggningshanteraren visas istället när du startar datorn, kan du använda den nya &kde;-miljön även om den inte anges som ett alternativ. De flesta inloggningshanterare, inklusive sddm, har ett alternativ att använda en <quote
+>Egen session</quote
+> när du loggar in. Med det alternativet laddas dina sessionsinställningar från filen <filename
+>.xsession</filename
+> i din hemkatalog. Om du redan har ändrat filen som beskrivs ovan, ska alternativet starta den nya &kde;-installationen. </para>
+
+<para
+>Om det inte gör det, finns det något annat som du kan prova som normalt ska fungera: Tryck på <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+>, så visas en textterminal. Logga in som den särskilda användaren och skriv: </para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<tip>
+<para
+>Du kan köra &kde; från källkod och det gamla &kde; samtidigt. Logga in som din vanliga användare, och starta det stabila &kde;-skrivbordet. Tryck på <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+> (eller <keycap
+>F1</keycap
+>, <keycap
+>F3</keycap
+>, etc.) så visas en textterminal. Logga in som den särskilda &kde; &git;-användaren och skriv:</para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<para
+>Du kan gå tillbaka till &kde;-skrivbordet för din vanliga användare genom att trycka på snabbtangenten för skrivbordet som redan kör. Den är normalt <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+>, men du kanske måste använda <keycap
+>F6</keycap
+> eller <keycap
+>F8</keycap
+> istället. För att returnera till &kde; kompilerat med &kdesrc-build;, ska du använda samma sekvens, utom med nästa funktionstangent. Om du till exempel behövde skriva <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+> för att byta till det vanliga &kde;, skulle du behöva skriva <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F8</keycap
+></keycombo
+> för att gå tillbaka till &kde; byggt med &kdesrc-build;.</para>
+</tip>
+
+</sect2>
+</sect1>
+
+</appendix>

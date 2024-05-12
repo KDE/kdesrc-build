@@ -1,0 +1,136 @@
+<sect1 id="configure-data">
+<title
+>Ange inställningsinformation</title>
+
+<para
+>För att använda &kdesrc-build; ska du ha en fil i katalogen <filename
+>~/.config</filename
+> (eller i <envar
+>$XDG_CONFIG_HOME</envar
+>, om angivet) vid namn <filename
+>kdesrc-buildrc</filename
+>, som ställer in allmänna alternativ och anger modulerna som du vill ladda ner och bygga. </para>
+
+<note
+><para
+>Det är möjligt att använda andra inställningsfiler för &kdesrc-build;, som beskrivs i <xref linkend="kdesrc-buildrc"/>. Om du behöver använda flera inställningar, se det avsnittet.Här antar vi att inställningarna är lagrade i <filename
+>~/.config/kdesrc-buildrc</filename
+>. </para
+></note>
+
+<para
+>Det enklaste sättet att fortsätta är att använda filen <filename
+>kdesrc-buildrc-kf5-sample</filename
+> som mall, och ändra allmänna inställningar för att stämma med vad du vill ha, och dessutom ändra listan med moduler du vill bygga. </para>
+
+<para
+>Standardinställningarna bör vara lämpliga för att utföra byggprocessen för &kde;. Vissa inställningar som du kan vilja ändra omfattar: </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, som ändrar målkatalogen där din &kde; programvaran är installerad. Det är normalt <filename class="directory"
+>~/kde/usr</filename
+>, som är en enanvändarinstallation.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-branch-group"
+>branch-group</link
+> som kan användas för att välja lämplig utvecklingsgren för &kde;-moduler som helhet. Det finns många byggkonfigurationer som stöds, men det är troligtvis <option
+>kf5-qt5</option
+> som du ska välja så att &kdesrc-build; laddar ner den senaste koden baserad på &Qt; 5 och &kde; Ramverk 5.</para>
+
+<tip
+><para
+>&kdesrc-build; använder en standardgrupp om du inte väljer någon, men standardvärdet ändras med tiden, så det är bättre att välja en så att inte grengruppen oväntat ändras.</para
+></tip>
+</listitem>
+
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, för att bestämma katalogen som &kdesrc-build; använder för att ladda ner källkoden, utföra byggprocessen, och spara loggar. Det är normal <filename class="directory"
+>~/kde/src</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+> som ställer in alternativ att skicka till kommandot &cmake; när varje modul byggs. Oftast används det för att välja mellan byggvarianterna <quote
+>debug</quote
+> och <quote
+>release</quote
+>, för att aktivera (eller inaktivera) valfria funktioner, eller för att skicka information till byggprocessen om platsen för nödvändiga bibliotek. </para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+> som ställer in väljare använda när kommandot <application
+>make</application
+> faktiskt utförs för att bygga varje modul (när väl &cmake; har etablerat byggsystemet). </para>
+
+<para
+>Den mest typiska väljaren är <option
+>-j<replaceable
+>N</replaceable
+></option
+>, där <replaceable
+>N</replaceable
+> ska ersättas med det maximala antal kompileringsjobb som du vill tillåta. Ett större tal (upp till antalet logiska processorer som systemet har tillgängligt) leder till en snabbare byggprocess, men kräver mer systemresurser. </para>
+
+<tip
+><para
+>&kdesrc-build; ställer in alternativet <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> till detekterat antal processorkärnor. Du kan använda värdet i din egen inställningsfil för att undvika att behöva ange det manuellt. </para
+></tip>
+
+<example id="make-options-example">
+<title
+>Anpassa Make för att använda alla tillgängliga processorer, med undantag</title>
+<screen
+>global
+    # Miljövariabeln används automatiskt av make, inklusive
+    # make-kommandon som inte direkt körs av kdesrc-build, såsom Qt:s configure
+    set-env MAKEFLAGS -j<literal
+>${num-cores}</literal>
+    &hellip;
+end global
+
+&hellip;
+
+module-set <replaceable
+>big-module-set</replaceable>
+    repository kde-projects
+    use-modules <replaceable
+>calligra</replaceable>
+    make-options -j2 # Reducerat antal byggjobb för bara dessa moduler
+end module-set
+</screen>
+</example>
+
+<note
+><para
+>Några mycket stora Git-arkiv kan översvämma systemet om du försöker kompilera med för många byggjobb på en gång, särskilt arkiv som &Qt; Webkit och &Qt; WebEngine. För att behålla systemets interaktivitet måste du kanske reducera antal byggjobb för specifika moduler.</para>
+<para
+><xref linkend="make-options-example"/> ger ett exempel på hur man kan göra det.</para>
+</note>
+
+</listitem>
+</itemizedlist>
+
+<para
+>Du kanske vill välja andra moduler att bygga, vilket beskrivs i <xref linkend="selecting-modules"/>.</para>
+
+</sect1>

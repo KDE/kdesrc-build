@@ -1,0 +1,149 @@
+<chapter id="cmdline">
+<title
+>Kommandoradsväljare och miljövariabler</title>
+
+<sect1 id="cmdline-usage">
+<title
+>Användning av kommandoraden</title>
+
+<para
+>&kdesrc-build; är konstruerat för att köras på följande sätt:</para>
+
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>--väljare</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>moduler att bygga</replaceable
+></arg
+> </cmdsynopsis>
+
+<para
+>Om inga moduler att bygga anges på kommandoraden, bygger &kdesrc-build; alla moduler som är definierade i inställningsfilen, i den ordning de anges i filen (även om det kan ändras av diverse alternativ i inställningsfilen).</para>
+
+<sect2 id="cmdline-usage-options">
+<title
+>Ofta använda kommandoradsväljare</title>
+
+<para
+>Den fullständiga listan med kommandoradsväljare anges i <xref linkend="supported-cmdline-params"/>. De oftast använda väljarna omfattar:</para>
+
+<variablelist>
+  <varlistentry>
+    <term
+><option
+>--pretend</option
+> (eller <option
+>-p</option
+>)</term>
+    <listitem
+><para
+>Väljaren gör att &kdesrc-build; indikerar vilka åtgärder som skulle utföras, utan att verkligen implementera dem. Det kan vara användbart för att försäkra dig om att modulerna som du tror du bygger verkligen kommer att byggas.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--refresh-build</option
+></term>
+    <listitem
+><para
+>Väljaren tvingar &kdesrc-build; att bygga de angivna modulerna från en fullständigt ren utgångspunkt. Eventuella befintliga byggkataloger för modulerna tas bort och byggs om. Väljaren är användbar om du får fel när en modul byggs, och krävs ibland när &Qt;- eller &kde;-bibliotek ändras.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-src</option
+></term>
+    <listitem
+><para
+>Alternativet hoppar över uppdateringsprocessen av källkoden. Du kan vilja använda det om du uppdaterade källkoden nyligen (kanske gjorde du det manuellt, eller körde nyligen &kdesrc-build;), men ändå vill bygga om vissa moduler.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-build</option
+></term>
+    <listitem
+><para
+>Väljaren liknar <option
+>--no-src</option
+> ovan, men den här gången hoppas byggprocessen över.</para
+></listitem>
+  </varlistentry>
+</variablelist>
+
+</sect2>
+
+<sect2 id="cmdline-usage-modules">
+<title
+>Ange moduler att bygga</title>
+
+<para
+>I allmänhet är det så enkelt som att ange modulnamnet definierat i inställningsfilen för att ange moduler att bygga. Du kan också ange moduler som ingår i en moduluppsättning, antingen som de namnges under <link linkend="conf-use-modules"
+>use-modules</link
+>, eller med hela moduluppsättningen, om du har givit den ett namn.</para>
+
+<para
+>I det specifika fallet med moduluppsättningar baserade på <link linkend="kde-projects-module-sets"
+>KDE:s projektdatabas</link
+>, expanderar &kdesrc-build; modulnamnets komponenter för att bestämma exakt den modul du vill ha. Exempelvis placerar KDE:s projektposten för &kdesrc-build; projektet i <literal
+>extragear/utils/kdesrc-build</literal
+>. Du måste ange något av följande för att bygga &kdesrc-build;:</para>
+
+<informalexample>
+<screen
+><prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+extragear/utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+kdesrc-build</replaceable
+></option
+>
+</screen>
+</informalexample>
+
+<note
+><para
+>Kommandona i föregående exempel inledde modulnamn med <symbol
+>+</symbol
+>. Det tvingar modulnamnet att tolkas som en modul från KDE:s projektdatabas, även om modulen inte har definierats i inställningsfilen. </para
+></note>
+
+<para
+>Var försiktig med att ange mycket generella projekt (t.ex. <literal
+>extragear/utils</literal
+> ensamt), eftersom det kan leda till att ett stort antal moduler byggs. Du bör använda väljaren <option
+>--pretend</option
+> innan en ny modul byggs för att försäkra dig om att bara de moduler du vill kommer att byggas.</para>
+
+</sect2>
+</sect1
+>&supported-envvars; &supported-cmdline-params; </chapter>

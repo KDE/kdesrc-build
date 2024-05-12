@@ -1,0 +1,230 @@
+<sect1 id="basic-features">
+<title
+>Grundläggande funktioner i &kdesrc-build;</title>
+
+<sect2 id="using-qt">
+<title
+>stöd för qt</title>
+<para
+>&kdesrc-build; stöder att bygga &Qt;-verktygslådan som används an &kde;-programvara som en bekvämlighet för användaren. Stödet hanteras av en särskild modul som kallas qt.</para>
+
+<note
+><para
+>&Qt; utvecklas i ett separat arkiv från &kde;-programvara, lokaliserat på <ulink url="http://code.qt.io/cgit/qt/"
+>http://code.qt.io/cgit/qt/</ulink
+>.</para
+></note>
+
+<para
+>För att bygga &Qt; måste du försäkra dig om att inställningen <link linkend="conf-qt-install-dir"
+>qt-install-dir</link
+> pekar på katalogen där du vill att &Qt; ska installeras, som beskrivs i <xref linkend="configure-data"/>.</para>
+
+<para
+>Därefter måste du försäkra dig om att modulen qt läggs till i <filename
+>kdesrc-buildrc</filename
+>, innan några andra moduler i filen. Om du använder exemplet på inställningsfil, kan du helt enkelt ta bort kommentarerna från den befintliga posten för modulen qt.</para>
+
+<para
+>Nu bör du kontrollera att alternativet <link linkend="conf-repository"
+>repository</link
+> och alternativen <link linkend="conf-branch"
+>branch</link
+> är lämpligt inställda:</para>
+
+<orderedlist>
+<listitem
+><para
+>Det första möjligheten är att bygga &Qt; med användning av en spegelplats som underhålls i &kde;:s källkodsarkiv (inga andra ändringar har lagts till, det är helt enkelt en klon av den officiella källan). Det rekommenderas starkt på grund av att det ibland uppstår problem med  att klona hela &Qt;-modulen från det officiella arkivet.</para>
+
+<para
+>Alternativet <option
+>repository</option
+> kan ställas in till <userinput
+>kde:qt</userinput
+> för modulen qt, för att använda den möjligheten.</para>
+</listitem>
+
+<listitem
+><para
+>Annars, för att bygga standard-&Qt;, ställ in alternativet <option
+>repository</option
+> till <userinput
+>git://gitorious.org/qt/qt.git</userinput
+>. Observera att det kan uppstå problem att skapa den ursprungliga klonen av &Qt; från detta arkiv.</para
+></listitem>
+</orderedlist>
+
+<para
+>I båda fall ska alternativet branch ställas in till <userinput
+>master</userinput
+> (om du inte vill bygga en annan gren).</para>
+
+</sect2>
+
+<sect2 id="kdesrc-build-std-flags">
+<title
+>Standardflaggor tillagda av &kdesrc-build;</title>
+<para
+>Observera: avsnittet gäller inte för moduler där  du har ställt in en egen verktygskedja, t.ex. genom att använda <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>.</para>
+
+<para
+>För att spara tid, lägger &kdesrc-build; till några standardsökvägar i miljön åt dig: </para>
+
+<itemizedlist>
+<listitem
+><para
+>Sökvägen till &kde;- och &Qt;-biblioteken läggs till i variabeln <envar
+>LD_LIBRARY_PATH</envar
+> automatiskt. Det betyder att du inte behöver redigera &libpath; för att inkludera dem. </para
+></listitem>
+
+<listitem
+><para
+>Sökvägen till program för utvecklingsstöd i &kde; och &Qt; läggs till i variabeln <envar
+>PATH</envar
+> automatiskt. Det betyder att du inte behöver redigera &binpath; för att inkludera dem. </para
+></listitem>
+
+<listitem
+><para
+>Sökvägen till <application
+>pkg-config</application
+> som tillhandahålls av &kde; läggs till i variabeln <envar
+>PKG_CONFIG_PATH</envar
+> automatiskt. Det betyder att du inte behöver använda &set-env; för att lägga till dem. </para
+></listitem>
+
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="build-priority">
+<title
+>Ändra byggprioritet i &kdesrc-build;</title>
+<para
+>Program kan köra med olika prioritetsnivåer på operativsystem, inklusive &Linux; och &BSD;. Det tillåter systemet att tilldela tid för de olika programmen enligt hur viktiga de är. </para>
+
+<para
+>&kdesrc-build; tilldelar normalt sig själv låg prioritet så att resten av programmen på systemet är opåverkade och kan köra normalt. Genom att använda den här tekniken, använder &kdesrc-build; extra processorkraft när den är tillgänglig. </para>
+
+<para
+>&kdesrc-build; behåller fortfarande prioritetsnivån nog hög så att det kör innan rutinmässiga bakgrundsprocesser och innan program som donerar processorkraft såsom <ulink url="http://setiathome.ssl.berkeley.edu/"
+>Seti@Home</ulink
+>. </para>
+
+<para
+>För att ändra &kdesrc-build; så att det använder en högre (eller lägre) prioritetsnivå permanent, måste du justera inställningen av &niceness; i <link linkend="configure-data"
+>inställningsfilen</link
+>. Alternativet &niceness; styr hur <quote
+>snällt</quote
+> &kdesrc-build; är mot andra program. Med andra ord, att ha en högre &niceness; ger &kdesrc-build; lägre prioritet. Så för att ge &kdesrc-build; en högre prioritet, reducera &niceness; (och tvärtom). &niceness; kan gå från 0 (inte alls snällt, högsta prioritet) till 20 (supersnällt, lägsta prioritet).</para>
+
+<para
+>Du kan också tillfälligt ändra prioritet hos &kdesrc-build; genom att använda <link linkend="cmdline"
+>kommandoradsväljaren</link
+> &cmd-nice;. Väljarens värde är exakt samma som för &niceness;.</para>
+
+<note
+><para
+>Det är möjligt för vissa program som körs av systemadministratören att ha ett negativt snällhetsvärde, vilket motsvarar ännu högre prioritet för sådana program. Att ange en negativ &niceness; (eller till och med 0) för &kdesrc-build; är inte en god idé, eftersom det inte förbättrar körtiden nämnvärt, men gör att datorn verkar mycket slö om du ändå behöver använda den. </para
+></note>
+
+<informalexample>
+<para
+>För att köra &kdesrc-build; med snällhetsgrad 15 (en lägre prioritet än normal) skriv:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--nice=<replaceable
+>15</replaceable
+></option
+></userinput
+>
+</screen>
+
+<para
+>Eller kan du redigera <link linkend="configure-data"
+>inställningsfilen</link
+> för att göra ändringen permanent:</para>
+
+<screen
+>&niceness; <replaceable
+>15</replaceable
+>
+</screen>
+</informalexample>
+
+<tip>
+<para
+>Alternativet <link linkend="conf-niceness"
+>niceness</link
+> påverkar bara användning av datorns processor(er). En annan stor effekt på datorns prestanda har att göra med hur mycket in- och utmatning av data (<acronym
+>I/O</acronym
+>) som ett program använder. För att bestämma hur mycket <acronym
+>I/O</acronym
+> ett program kan använda, stöder moderna &Linux;-operativsystem ett liknande verktyg som kallas <application
+>ionice</application
+>. &kdesrc-build; stöder <application
+>ionice</application
+> (men bara för att aktivera eller inaktivera det helt och hållet), med alternativet  <link linkend="conf-use-idle-io-priority"
+>use-idle-io-priority</link
+>, sedan &kdesrc-build; version 1.12. </para>
+</tip>
+
+</sect2>
+
+<sect2 id="root-installation">
+<title
+>Installera som systemadministratör</title>
+<para
+>Du kanske också vill att &kdesrc-build; ska köra installationen med rättigheter som systemadministratör. Det kan gälla för systeminstallation, som inte rekommenderas. Det är dock också användbart när den rekommenderade installationen som enanvändare av &kde; används. Det beror på att vissa moduler (i synnerhet kdebase) installerar program som tillfälligt behöver förhöjda rättigheter när de kör. De kan inte uppnå dessa rättighetsnivåer om de inte installeras med förhöjda rättigheter. </para>
+
+<para
+>Du skulle helt enkelt kunna köra &kdesrc-build; som systemadministratör direkt, men det rekommenderas inte, eftersom programmet inte har granskats för den sortens användning. Även om det bör vara säkert att köra programmet på det sättet, är det bättre att undvika att köra som systemadministratör när det är möjligt.</para>
+
+<para
+>För att hantera detta, tillhandahåller &kdesrc-build; alternativet &make-install-prefix;. Du kan använda alternativet för att ange ett kommando som används för att utföra installationen som en annan användare. Det rekommenderade sättet att använda kommandot är med programmet &sudo;, som kör installationskommandot som systemadministratör. </para>
+
+<informalexample>
+<para
+>För att till exempel installera alla moduler genom att använda &sudo;, skulle du kunna göra något liknande:</para>
+
+<screen
+>global
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+  # Övriga alternativ
+end global
+</screen>
+
+<para
+>För att använda &make-install-prefix; för bara en enda modul, skulle det här fungera: </para>
+
+<screen
+>module <replaceable
+>något-modul-namn</replaceable>
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+end module
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="build-progress">
+<title
+>Visa förloppet för en byggprocess av en modul</title>
+<para
+>Funktionen är alltid tillgänglig, och automatiskt aktiverad om möjligt. Vad den gör är att visa ett uppskattat byggförlopp medan en modul byggs, på så sätt vet du hur mycket längre det kommer att ta att bygga en modul. </para>
+
+</sect2>
+
+</sect1>

@@ -1,0 +1,1156 @@
+<sect1 id="supported-cmdline-params">
+<title
+>Kommandoradsväljare som stöds</title>
+
+<sect2>
+<title
+>Generella</title>
+<variablelist>
+
+<varlistentry id="cmdline-pretend">
+<term
+><option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+> (eller <option
+>--dry-run</option
+> eller <option
+>-p</option
+>)</term>
+<listitem
+><para
+>&kdesrc-build; kör igenom uppdaterings- och byggprocessen, men istället för att utföra några åtgärder för att uppdatera eller bygga, skriver ut vad skriptet skulle ha gjort (t.ex. vilka kommandon att köra, steg att utföra, etc.).</para>
+
+<note
+><para
+>Enkla läskommandon (som att läsa information) kan fortfarande utföras, för att göra utmatningen mer relevant (som att simulera om källkod skulle checkas ut eller uppdateras på ett riktigt sätt). </para
+></note>
+
+<important
+><para
+>Alternativet kräver att viss nödvändig metadata är tillgänglig, vilken normalt laddas ner automatiskt, men nerladdningar är inaktiverade i låtsasläge. Om du aldrig har kört &kdesrc-build; (och därför inte har denna metadata), måste du först köra kommandot <command
+>kdesrc-build <option
+>--metadata-only</option
+></command
+> för att ladda ner nödvändig metadata. </para
+></important>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-include-dependencies">
+<term
+><option
+><link linkend="cmdline-include-dependencies"
+>--include-dependencies</link
+></option
+> (eller <option
+>-d</option
+>), <option
+>--no-include-dependencies</option
+> (eller <option
+>-D</option
+>)</term>
+<listitem
+><para
+>Väljaren gör att &kdesrc-build; automatiskt inkluderar andra &kde;- och &Qt;-moduler i byggprocessen, om det krävs för modulerna som du har krävt ska byggas på kommandoraden eller i <link linkend="configure-data"
+>inställningsfilen</link
+>.</para>
+
+<para
+>Modulerna som läggs till lagras i &kde;:s källkodshanteringssystem. Se <xref linkend="kde-projects-module-sets"/>.</para>
+
+<para
+>Motsvarande alternativ i inställningsfilen är <link linkend="conf-include-dependencies"
+>include-dependencies</link
+>.</para>
+
+<para
+>Alternativet är normalt aktiverat.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-ignore-modules">
+<term
+><option
+><link linkend="cmdline-ignore-modules"
+>--ignore-modules</link
+></option
+> (eller <option
+>-!</option
+>) <parameter
+>module [module ...]</parameter
+></term>
+<listitem
+><para
+>Inkludera inte moduler som skickas på resten av kommandoraden i uppdaterings- och byggprocessen (det är användbart om du vill bygga de flesta modulerna i <link linkend="configure-data"
+>inställningsfilen</link
+> och bara hoppa över några få). </para>
+<para
+>Observera att alternativet inte överskrider inställningsalternativet <link linkend="conf-ignore-modules"
+>ignore-modules</link
+> i den allmänna delen. Istället, läggs den till sist.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-run">
+<term
+><option
+><link linkend="cmdline-run"
+>--run</link
+></option
+> (eller <option
+>--start-program</option
+>) [-e|--exec name] [-f|--fork] <parameter
+>program [parametrar ...]</parameter
+></term>
+<listitem
+><para
+>Alternativet tolkar nästa parameter på kommandoraden som ett program att köra, och &kdesrc-build; slutar då att läsa inställningsfilen, läser prefix.sh för att applicera miljövariabler, och kör därefter angivet program.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-revision">
+<term
+><option
+><link linkend="cmdline-revision"
+>--revision</link
+></option
+> <replaceable
+>id</replaceable
+></term>
+<listitem
+><para
+>Väljaren gör att &kdesrc-build; checkar ut en särskilt numrerad version av varje &git;-modul, och överskrider eventuella alternativ som <link linkend="conf-branch"
+>branch</link
+>, <link linkend="conf-tag"
+>tag</link
+> eller <link linkend="conf-revision"
+>revision</link
+> redan är angivna för modulerna.</para>
+
+<para
+>Väljaren är troligen inte en god idé, och stöds bara för kompatibilitet med äldre skript. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-delete-my-patches">
+<term
+><option
+><link linkend="cmdline-delete-my-patches"
+>--delete-my-patches</link
+></option
+>, <option
+>--no-delete-my-patches</option
+></term>
+<listitem
+><para
+>Väljaren används för att låta &kdesrc-build; ta bort källkataloger som kan innehålla användardata, så att modulerna kan laddas ner igen. Den är normalt bara användbar för &kde;-utvecklare (som kan ha lokala ändringar som skulle tas bort).</para>
+
+<para
+>Normalt ska inte väljaren användas, utan &kdesrc-build; ber att få köras om med den vid behov.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-delete-my-settings">
+<term
+><option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+>, <option
+>--no-delete-my-settings</option
+></term>
+<listitem
+><para
+>Väljaren används för att låta &kdesrc-build; skriva över befintliga filer som kan innehålla användardata.</para>
+
+<para
+>För närvarande används den bara för inställning av en xsession för inloggningshanteraren. Normalt ska inte väljaren användas, utan &kdesrc-build; ber att få köras om med den vid behov.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-option-name">
+<term
+><option
+><link linkend="cmdline-option-name"
+>--<replaceable
+>&lt;alternativnamn&gt;</replaceable
+></link
+></option
+> <replaceable
+>värde</replaceable
+></term>
+<listitem
+><para
+>Du kan använda alternativet för att överskrida ett alternativ i <link linkend="configure-data"
+>inställningsfilen</link
+> för varje modul. För att till exempel överskrida alternativet <link linkend="conf-log-dir"
+>log-dir</link
+>, skulle du skriva <userinput
+><parameter
+>--log-dir=<filename class="directory"
+><replaceable
+>/sökväg/till/katalog</replaceable
+></filename
+></parameter
+></userinput
+>. </para>
+
+<note
+><para
+>Funktionen kan bara användas för alternativnamn som redan känns igen av &kdesrc-build; som ännu inte stöds av relevanta kommandoradsväljare. Exempelvis har inställningsfilens alternativ <link linkend="conf-async"
+>async</link
+> de specifika kommandoradsväljarna <link linkend="cmdline-async"
+>--async</link
+> och <link linkend="cmdline-no-async"
+>--no-async</link
+> som föredras av &kdesrc-build;. </para
+></note>
+
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-set-module-option-value">
+<term
+><option
+><link linkend="cmdline-set-module-option-value"
+>--set-module-option-value</link
+> <replaceable
+>&lt;modulnamn&gt;</replaceable
+>,<replaceable
+>&lt;alternativnamn&gt;</replaceable
+>,<replaceable
+>&lt;alternativvärde&gt;</replaceable
+></option
+></term>
+<listitem
+><para
+>Du kan använda alternativet för att överskrida ett alternativ i <link linkend="configure-data"
+>inställningsfilen</link
+> för en specifik modul. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Återuppta och stoppa</title>
+<variablelist>
+
+<varlistentry id="cmdline-resume-from">
+<term
+><option
+><link linkend="cmdline-resume-from"
+>--resume-from</link
+></option
+> (eller <option
+>--from</option
+> eller <option
+>-f</option
+>) <replaceable
+>module</replaceable
+></term>
+<listitem
+><para
+>Alternativet är användbart för att återuppta byggprocessen från den angivna modulen. Man ska inte ange andra modulnamn på kommandoraden. </para>
+
+<note
+><para
+>Om du vill undvika uppdateringar av källkod vid återupptagande, skicka helt enkelt också med <option
+><userinput
+>--no-src</userinput
+></option
+> förutom övriga alternativ. </para
+></note>
+
+<para
+>Se också: <link linkend="cmdline-resume-after"
+>--resume-after</link
+> och <xref linkend="resuming-failed"/>. Du bör föredra att använda kommandoradsväljaren om du har rättat byggfelet och vill att &kdesrc-build; ska göra färdigt byggprocessen.</para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-resume-after">
+<term
+><option
+><link linkend="cmdline-resume-after"
+>--resume-after</link
+></option
+> (eller <option
+>--after</option
+> eller <option
+>-a</option
+>) <replaceable
+>modul</replaceable
+></term>
+<listitem
+><para
+>Alternativet används för att återuppta byggprocessen efter den angivna modulen. Man ska inte ange andra modulnamn på kommandoraden. </para>
+
+<note
+><para
+>Om du vill undvika uppdateringar av källkod vid återupptagande, skicka helt enkelt också med <option
+><userinput
+>--no-src</userinput
+></option
+> förutom övriga alternativ. </para
+></note>
+
+<para
+>Se också: <link linkend="cmdline-resume-from"
+>--resume-from</link
+> och <xref linkend="resuming-failed"/>.  Du bör föredra att använda kommandoradsväljaren om du har rättat byggfelet och har också byggt och installerat modulen själv, och vill att &kdesrc-build; ska starta igen med nästa modul.</para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-resume">
+<term
+><option
+><link linkend="cmdline-resume"
+>--resume</link
+></option
+></term>
+<listitem
+><para
+>Väljaren används för att köra &kdesrc-build; efter ett byggfel har uppstått. </para
+><para
+>Den återupptar bygget från modulen som misslyckades, med användning av listan över moduler som tidigare väntade på att byggas, och inaktiverar dessutom källkods- och metadatauppdateringar. När felet väl har rättats kan du snabbt komma tillbaka till att bygga modulerna som du tidigare byggde utan att mixtra med <option
+><link linkend="cmdline-resume-from"
+>--resume-from</link
+></option
+> och <option
+><link linkend="cmdline-stop-before"
+>--stop-before</link
+></option
+>. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-before">
+<term
+><option
+><link linkend="cmdline-stop-before"
+>--stop-before</link
+></option
+> (eller <option
+>--until</option
+>) <replaceable
+>modul</replaceable
+></term>
+<listitem
+><para
+>Alternativet används för att stoppa den normala byggprocessen precis <emphasis
+>innan</emphasis
+> en modul normalt skulle ha byggts. </para
+><para
+>Om den normala bygglistan exempelvis var <simplelist type="inline"
+> <member
+>modul-A</member
+><member
+>modul-B</member
+><member
+>modul-C</member
+></simplelist
+>, skulle <option
+>--stop-before=<replaceable
+>modul-B</replaceable
+></option
+> göra att &kdesrc-build; bara bygger <literal
+>modul-A</literal
+>. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-after">
+<term
+><option
+><link linkend="cmdline-stop-after"
+>--stop-after</link
+></option
+> (eller <option
+>--to</option
+>) <replaceable
+>modul</replaceable
+></term>
+<listitem
+><para
+>Alternativet används för att stoppa den normala byggprocessen precis <emphasis
+>efter</emphasis
+> en modul normalt skulle ha byggts. </para
+><para
+>Om den normala bygglistan exempelvis var <simplelist type="inline"
+> <member
+>modul-A</member
+><member
+>modul-B</member
+><member
+>modul-C</member
+></simplelist
+>, skulle <option
+>--stop-after=<replaceable
+>modul-B</replaceable
+></option
+> göra att &kdesrc-build; bygger <literal
+>modul-A</literal
+> och <literal
+>modul-B</literal
+>. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-on-failure">
+<term
+><option
+><link linkend="cmdline-stop-on-failure"
+>--stop-on-failure</link
+></option
+>, <option
+>--no-stop-on-failure</option
+></term>
+<listitem
+><para
+>Väljaren gör att bygget avbryts så fort ett fel uppstår. Det normala beteendet är --stop-on-failure. Det går att överskrida om du vill fortsätta med återstående moduler i bygget, för att undvika att slösa tid ifall problemet gäller en enskild modul. </para
+><para
+>Se också inställningsfilens alternativ <link linkend="conf-stop-on-failure"
+>stop-on-failure</link
+>. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-rebuild-failures">
+<term
+><option
+><link linkend="cmdline-rebuild-failures"
+>--rebuild-failures</link
+></option
+></term>
+<listitem
+><para
+>Använd väljaren för att bara bygga moduler som misslyckades byggas vid en tidigare körning av &kdesrc-build;. Det är användbart om ett väsentligt antal misslyckanden inträffade, blandat med lyckade byggen. Efter att ha rättat problemet som orsakade misslyckade byggen är det enkelt att bara bygga modulerna som tidigare misslyckades.</para>
+
+<note
+><para
+>Observera att listan med <quote
+>tidigare misslyckade moduler</quote
+> nollställs varje gång en körning av &kdesrc-build; blir klar med några misslyckade moduler. Den nollställs dock inte av ett fullständigt lyckat bygge, så det är möjligt att bygga om några moduler med lyckat resultat och ändå använda väljaren.</para
+></note>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Modulinformation</title>
+<variablelist>
+
+<varlistentry id="cmdline-query">
+<term
+><option
+><link linkend="cmdline-query"
+>--query</link
+></option
+> <userinput
+><replaceable
+>frågetyp</replaceable
+></userinput
+></term>
+<listitem
+><para
+>Det här kommandot gör att &kdesrc-build; frågar efter en parameter i modulerna i bygglistan (antingen angivna på kommandoraden eller inlästa från inställningsfilen), och skriver ut resultatet på skärmen (en modul per rad).</para>
+
+<para
+>Väljaren måste anges med en <quote
+>frågetyp</quote
+>, som kan vara en av följande:</para>
+    <itemizedlist>
+    <listitem
+><para
+><parameter
+>source-dir</parameter
+>, vilket gör att &kdesrc-build; skriver ut den fullständiga sökvägen där modulens källkod är lagrad. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>build-dir</parameter
+>, vilket gör att &kdesrc-build; skriver ut den fullständiga sökvägen där modulens byggprocess sker. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>install-dir</parameter
+>, vilket gör att &kdesrc-build; skriver ut den fullständiga sökvägen där modulen installeras. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>project-path</parameter
+>, vilket gör att &kdesrc-build;  skriver ut modulens plats i hierarkin av KDE:s källkodsarkiv. Se <xref linkend="kde-projects-module-sets"/> för mer information om denna hierarki. </para
+></listitem>
+    <listitem
+><para
+><option
+>branch</option
+>, vilket gör att &kdesrc-build; skriver ut den upplösta grenen som används för varje modul i git, baserat på gällande inställningar för <link linkend="conf-tag"
+>tag</link
+>, <link linkend="conf-branch"
+>branch</link
+> och <link linkend="conf-branch-group"
+>branch-group</link
+>. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>source-dir</parameter
+>, vilket gör att &kdesrc-build; skriver ut den fullständiga sökvägen för moduluppsättningen som innehåller modulen. Det kan användas för att generera cachen för automatisk komplettering för zsh. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>build-system</parameter
+>, som gör att &kdesrc-build; matar ut namnet på byggsystemet som detekteras för modulen. Det kan användas för att felsöka problem med automatisk detektering av byggsystem, eller när tester för specifika byggsystem utvecklas. </para
+></listitem>
+    <listitem
+><para
+>Vilket alternativnamn som helst som är giltigt för modulerna i <link linkend="conf-options-table"
+>inställningsfilen</link
+>. </para
+></listitem>
+    </itemizedlist>
+
+<informalexample>
+<para
+>Exempelvis kommandot <quote
+><command
+>kdesrc-build</command
+> <parameter
+>--query</parameter
+> <parameter
+><replaceable
+>branch</replaceable
+></parameter
+> <parameter
+><replaceable
+>kactivities</replaceable
+></parameter
+> <parameter
+><replaceable
+>kdepim</replaceable
+></parameter
+></quote
+> kan sluta med följande utdata:</para>
+<screen
+>kactivities: master
+kdepim: master
+</screen>
+</informalexample>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-dependency-tree">
+<term
+><option
+><link linkend="cmdline-dependency-tree"
+>--dependency-tree</link
+></option
+></term>
+<listitem>
+<para
+>Skriver ut beroendeinformation för modulerna som skulle byggas genom att använda ett (rekursivt) trädformat. Den listade informationen omfattar också vilken specifik incheckning, gren eller etikett som de beror på, och om beroenden skulle byggas eller inte. Observera: Genererad utdata kan bli ganska omfattande för program med många beroenden. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-dependency-tree-fullpath">
+<term
+><option
+><link linkend="cmdline-dependency-tree-fullpath"
+>--dependency-tree-fullpath</link
+></option
+></term>
+<listitem>
+<para
+>Skriver ut beroendeinformation för modulerna som skulle byggas genom att använda ett (rekursivt) trädformat, med fullständigt sökvägsformat. Observera: Genererad utdata kan bli ganska omfattande för program med många beroenden. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-list-installed">
+<term
+><option
+><link linkend="cmdline-list-installed"
+>--list-installed</link
+></option
+></term>
+<listitem>
+<para
+>Skriv ut installerade moduler och avsluta. Det kan användas för att generera automatisk komplettering för väljaren --run. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Undanta specifik åtgärd</title>
+<variablelist>
+
+<varlistentry id="cmdline-no-metadata">
+<term
+><option
+><link linkend="cmdline-no-metadata"
+>--no-metadata</link
+></option
+> (eller <option
+>-M</option
+>)</term>
+<listitem
+><para
+>Ladda inte automatiskt ner den extra metadata som behövs för &kde;:s git-moduler. Uppdateringen av själva modulernas källkod sker ändå om du inte också använder <link linkend="cmdline-no-src"
+>--no-src</link
+>. </para
+><para
+>Detta kan vara användbart om du ofta kör om &kdesrc-build;, eftersom metadata inte ändras särskilt ofta. Observera dock att många andra funktioner kräver att metadata är tillgänglig. Du bör fundera på att köra &kdesrc-build; med väljaren <link linkend="cmdline-metadata-only"
+>--metadata-only</link
+> en gång och därefter använda den här väljaren för efterföljande körningar. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-src">
+<term
+><option
+><link linkend="cmdline-no-src"
+>--no-src</link
+></option
+> (eller <option
+>-S</option
+>)</term>
+<listitem
+><para
+>Hoppa över att kontakta &git;-servern. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-build">
+<term
+><option
+><link linkend="cmdline-no-build"
+>--no-build</link
+></option
+></term>
+<listitem
+><para
+>Hoppa över byggprocessen. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-install">
+<term
+><option
+><link linkend="cmdline-no-install"
+>--no-install</link
+></option
+></term>
+<listitem
+><para
+>Installera inte automatiskt paket efter de har byggts. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Bara specifik åtgärd</title>
+<variablelist>
+
+<varlistentry id="cmdline-metadata-only">
+<term
+><option
+><link linkend="cmdline-metadata-only"
+>--metadata-only</link
+></option
+></term>
+<listitem
+><para
+>Utför bara processen för nerladdning av metadata. &kdesrc-build; hanterar det normalt automatiskt, men det går att använda detta för att få  kommandoradsväljaren <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+> att fungera. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-src-only">
+<term
+><option
+><link linkend="cmdline-src-only"
+>--src-only</link
+></option
+> (eller <option
+>-s</option
+>)</term>
+<listitem
+><para
+>Utför bara uppdatering av källkoden. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-build-only">
+<term
+><option
+><link linkend="cmdline-build-only"
+>--build-only</link
+></option
+></term>
+<listitem
+><para
+>Utför bara byggprocessen. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-only">
+<term
+><option
+><link linkend="cmdline-install-only"
+>--install-only</link
+></option
+></term>
+<listitem
+><para
+>Om det är den enda kommandoradsväljaren försöker den installera alla moduler som finns i <filename 
+>log/latest/build-status</filename 
+>. Om kommandoradsväljare anges efter alternativet, antas alla vara moduler att installera (även om de inte lyckades byggas vid den senaste körningen). </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-build-system-only">
+<term
+><option
+><link linkend="cmdline-build-system-only"
+>--build-system-only</link
+></option
+></term>
+<listitem
+><para
+>Väljaren gör att &kdesrc-build; avbryter bygga en modul precis innan kommandot <command
+>make</command
+> skulle ha körts. Det stöds bara för kompatibilitet med äldre versioner, effekten är inte till hjälp för det nuvarande byggsystemet för &kde;. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Byggbeteende</title>
+<variablelist>
+
+<varlistentry id="cmdline-build-when-unchanged">
+<term
+><option
+><link linkend="cmdline-build-when-unchanged"
+>--build-when-unchanged</link
+></option
+> (eller <option
+>--force-build</option
+>), <option
+>--no-build-when-unchanged</option
+> (eller <option
+>--no-force-build</option
+>)</term>
+<listitem
+><para
+>Att aktivera alternativet inaktiverar explicit att hoppa över byggprocessen (en optimering som styrs av alternativet <link linkend="conf-build-when-unchanged"
+>build-when-unchanged</link
+>). Det är användbart för att göra att &kdesrc-build; kör bygget när du har ändrat något som &kdesrc-build; kan inte kontrollera. Alternativet är normalt aktiverat.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-refresh-build">
+<term
+><option
+><link linkend="cmdline-refresh-build"
+>--refresh-build</link
+></option
+> (eller <option
+>-r</option
+>)</term>
+<listitem
+><para
+>Skapa om byggsystemet och bygg från grunden. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-reconfigure">
+<term
+><option
+><link linkend="cmdline-reconfigure"
+>--reconfigure</link
+></option
+></term>
+<listitem
+><para
+>Kör <command
+>cmake</command
+> (för &kde;-moduler) eller <command
+>configure</command
+> (för &Qt;) igen, utan att rensa byggkatalogen. Du ska normalt inte behöva ange detta, eftersom &kdesrc-build; detekterar när relevanta alternativ ändras och automatiskt kör om bygginställningen. Väljaren är implicit om <parameter
+><link linkend="cmdline-refresh-build"
+>--refresh-build</link
+></parameter
+> används. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-dir">
+<term
+><option
+><link linkend="cmdline-install-dir"
+>--install-dir</link
+> <replaceable
+>sökväg</replaceable
+></option
+></term>
+<listitem
+><para
+>Låter dig ändra katalogen där modulerna ska installeras. Alternativet innebär <link linkend="cmdline-reconfigure"
+><option
+>--reconfigure</option
+></link
+>, men att använda <link linkend="cmdline-refresh-build"
+><option
+>--refresh-build </option
+></link
+> kan ändå krävas. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-vscode-project-config">
+<term
+><option
+><link linkend="cmdline-generate-vscode-project-config"
+>--generate-vscode-project-config</link
+></option
+>, <option
+>--no-generate-vscode-project-config</option
+></term>
+<listitem
+><para
+>Generera katalogen <filename
+>.vscode</filename
+> med inställningar för att bygga och felsöka i Visual Studio Code. Alternativet är normalt inaktiverat. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Skriptets körtid</title>
+<variablelist>
+
+<varlistentry id="cmdline-async">
+<term
+><option
+><link linkend="cmdline-async"
+>--async</link
+></option
+>, <option
+>--no-async</option
+></term>
+<listitem
+><para
+>Aktiverar eller inaktiverar <link linkend="conf-async"
+>asynkront läge</link
+>, som kan utföra källkodsuppdateringar och bygga moduler samtidigt. Om det är inaktiverat utförs uppdateringen i sin helhet innan bygget startar. Om du inaktiverar alternativet blir den övergripande processen långsammare. Om du stöter på IPC-fel när du kör &kdesrc-build; försök att inaktivera det och skicka en <ulink url="https://bugs.kde.org/"
+>felrapport</ulink
+>. Alternativet är normalt aktiverat. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-color">
+<term
+><option
+><link linkend="cmdline-color"
+>--color</link
+></option
+> (eller <option
+>--colorful-output</option
+>), <option
+>--no-color</option
+> (eller <option
+>--no-colorful-output</option
+>)</term>
+<listitem
+><para
+>Aktivera eller inaktivera färglagd utmatning. Normalt är alternativet aktiverat för interaktiva terminaler. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-nice">
+<term
+><option
+><link linkend="cmdline-nice"
+>--nice</link
+></option
+> (eller <option
+>--niceness</option
+>) <replaceable
+>värde</replaceable
+></term>
+<listitem
+><para
+>Värdet justerar datorns processorprioritet begärd av &kdesrc-build; och ska vara i intervallet 0-20. 0 är högst prioritet (eftersom det är det lägsta <quote
+>nice</quote
+> värdet), 20 är lägst prioritet. Alternativets förvalda värde är 10. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-rc-file">
+<term
+><option
+><link linkend="cmdline-rc-file"
+>--rc-file</link
+></option
+> <replaceable
+>fil</replaceable
+></term>
+<listitem
+><para
+>Filen att läsa inställningsalternativen från. Det normala värdet för parametern är <filename 
+>kdesrc-buildrc</filename 
+> (i den aktuella arbetskatalogen). Om filen inte finns, används <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>, om <envar
+>$XDG_CONFIG_HOME</envar
+> är definierat) istället. Se även <xref linkend="kdesrc-buildrc"/>. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Inställning</title>
+<variablelist>
+
+<varlistentry id="cmdline-initial-setup">
+<term
+><option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></term>
+<listitem
+><para
+>Låter &kdesrc-build; utföra en initial engångsinställning nödvändig för att förbereda systemet så att &kdesrc-build; kan fungera, och så att den nyinstallerade &kde;-programvaran kan köra. </para>
+<para
+>Det omfattar:</para>
+<itemizedlist>
+<listitem
+><para
+>Installera kända beroenden (på &Linux;-distributioner som stöds)</para
+></listitem>
+<listitem
+><para
+>Lägga till nödvändiga miljövariabler i <literal
+>~/.bashrc</literal
+></para
+></listitem>
+</itemizedlist>
+<para
+>Alternativet är exakt ekvivalent med att använda <option
+><link linkend="cmdline-install-distro-packages"
+>--install-distro-packages</link
+></option
+> <option
+><link linkend="cmdline-generate -config"
+>--generate-config</link
+></option
+> samtidigt. I kdesrc-build (perl-implementering) använder den dessutom "--install-distro-packages-perl". </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-distro-packages">
+<term
+><option
+><link linkend="cmdline-install-distro-packages"
+>--install-distro-packages</link
+></option
+></term>
+<listitem
+><para
+>Installerar distributionspaket (eller &Linux;-distributioner som stöds) nödvändig för att förbereda systemet så att &kdesrc-build; kan fungera, och så att den nyinstallerade &kde;-programvaran kan köra. </para>
+<para
+>Se även <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-config">
+<term
+><option
+><link linkend="cmdline-generate-config"
+>--generate-config</link
+></option
+></term>
+<listitem
+><para
+>Generera inställningsfilen för &kdesrc-build;. </para>
+<para
+>Se även <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Detaljnivå</title>
+ 
+<variablelist>
+
+<varlistentry id="cmdline-debug">
+<term
+><option
+><link linkend="cmdline-debug"
+>--debug</link
+></option
+></term>
+<listitem
+><para
+>Aktiverar felsökningsläge för skriptet. För närvarande innebär det att all utdata skrivs ut på standardutmatningen förutom att den loggas i loggkatalogen som vanligt. Dessutom är många funktioner mycket mer detaljerade om vad de gör i felsökningsläge. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-quiet">
+<term
+><option
+><link linkend="cmdline-quiet"
+>--quiet</link
+></option
+> (eller <option
+>--quite</option
+> or <option
+>-q</option
+>)</term>
+<listitem
+><para
+>Var inte så högljudd med utmatningen. Med den här väljaren matas bara det viktigaste ut. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-really-quiet">
+<term
+><option
+><link linkend="cmdline-really-quiet"
+>--really-quiet</link
+></option
+></term>
+<listitem
+><para
+>Mata bara ut varningar och fel. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-verbose">
+<term
+><option
+><link linkend="cmdline-verbose"
+>--verbose</link
+></option
+></term>
+<listitem
+><para
+>Beskriv i detalj vad som händer, och vad &kdesrc-build; gör. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>Skriptinformation</title>
+<variablelist>
+
+<varlistentry id="cmdline-version">
+<term
+><option
+><link linkend="cmdline-version"
+>--version</link
+></option
+> (eller <option
+>-v</option
+>)</term>
+<listitem
+><para
+>Visa programmets version. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-help">
+<term
+><option
+><link linkend="cmdline-help"
+>--help</link
+></option
+> (eller <option
+>-h</option
+>)</term>
+<listitem
+><para
+>Visa bara enkel hjälp om skriptet. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-show-info">
+<term
+><option
+><link linkend="cmdline-show-info"
+>--show-info</link
+></option
+></term>
+<listitem
+><para
+>Visar information om &kdesrc-build; och operativsystemet, vilket kan vara användbart i felrapporter eller när hjälp efterfrågas på forum eller e-postlistor. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-show-options-specifiers">
+<term
+><option
+><link linkend="cmdline-show-options-specifiers"
+>--show-options-specifiers</link
+></option
+></term>
+<listitem
+><para
+>Skriv ut specificerade rader (med formatet som GetOpts::Long accepterar) för alla kommandoradsväljare som stöds av skriptet. Det kan användas av utvecklare, till exempel för att generera automatiska kompletteringsfunktioner för zsh. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+
+</sect2>
+</sect1>

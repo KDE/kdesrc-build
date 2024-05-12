@@ -1,0 +1,207 @@
+<chapter id="features">
+<title
+>Skriptets funktioner</title>
+
+<sect1 id="features-overview">
+<title
+>Översikt över funktioner</title>
+
+<para
+>Funktionerna i &kdesrc-build; omfattar: </para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Du kan <quote
+>låtsas</quote
+> att utföra åtgärden. Om du skickar med <option
+>--pretend</option
+> eller <option
+>-p</option
+> på kommandoraden, ger skriptet en utförlig beskrivning av de kommandon som ska göras, utan att i själva verket utföra dem. Om du dock aldrig tidigare har kört &kdesrc-build;, bör du köra kommandot <command
+>kdesrc-build <option
+><link linkend="cmdline-metadata-only"
+>--metadata-only</link
+></option
+></command
+> först för att <option
+>--pretend</option
+> ska fungera. <tip
+><para
+>För en ännu utförligare beskrivning av vad &kdesrc-build; gör, prova att använda väljaren <option
+>--debug</option
+>. </para
+></tip>
+
+</para
+></listitem>
+
+<listitem
+><para
+>&kdesrc-build; kan (med hjälp av &kde;:s FTP-server) tillåta snabb utcheckning av moduler. Om modulen du checkar ut redan har paketerats på hemsidan, laddar &kdesrc-build; ner den versionen och förbereder den för användning på datorn. </para>
+
+<tip
+><para
+>Det finns i regel inget behov för någon särskild förberedelse för att utföra en inledande utcheckning av en Git-modul, eftersom hela Git-arkivet ändå måste laddas ner, så det är lätt för servern att avgöra vad som ska sändas.</para
+></tip>
+
+<para
+>Det är snabbare för dig, och hjälper till att minska lasten på de anonyma &git;-servrarna.</para>
+</listitem>
+
+<listitem
+><para
+>En annan uppsnabbning tillhandahålls genom att starta byggprocessen för en modul så fort källkoden för den modulen har laddats ner (tillgänglig sedan version 1.6). </para
+></listitem>
+
+<listitem
+><para
+>Utmärkt stöd för att bygga &Qt;-biblioteket (i det fall då &kde;-programvaran som du försöker bygga beror på en nyare version av &Qt;, som inte är tillgänglig i distributionen). </para
+></listitem>
+
+<listitem
+><para
+>&kdesrc-build; kräver inte att ett grafiskt gränssnitt är tillgängligt för att fungera. Du kan alltså bygga &kde;:s programvara utan att behöva en alternativ grafisk miljö. </para
+></listitem>
+
+<listitem
+><para
+>Stöder inställning av standardalternativ för alla moduler (som kompileringsinställningarna eller konfigureringsalternativen). Sådana alternativ kan dessutom normalt ändras för specifika moduler.</para>
+
+<para
+>Dessutom lägger &kdesrc-build; till <link linkend="kdesrc-build-std-flags"
+>standardflaggor</link
+> där det är lämpligt, för att spara dig besvär och möjliga fel från att skriva in dem själv. Observera: det gäller dock inte när en (egen) verktygskedja är inställd, t.ex. <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>. </para
+></listitem>
+
+<listitem
+><para
+>&kdesrc-build; kan checka ut en särskilt <link linkend="using-branches"
+>gren eller tagg</link
+> av en modul. Du kan också försäkra dig om att en specifik <link linkend="conf-revision"
+>revision</link
+> av en modul checkas ut. </para
+></listitem>
+
+<listitem
+><para
+>&kdesrc-build; kan automatiskt ändra källkodskatalog för att checka ut från ett annat arkiv, gren eller tagg. Det sker automatiskt när du ändrar ett alternativ som ändrar vad arkivets webbadress är, men du måste använda väljaren <link linkend="cmdline-src-only"
+>--src-only</link
+> för att tala om för &kdesrc-build; att det är acceptabelt att utföra bytet. </para
+></listitem>
+
+<listitem
+><para
+>&kdesrc-build; kan <link linkend="partial-builds"
+>checka ut delar av en modul</link
+>, för de situationer där du bara behöver ett program från en stor modul. </para
+></listitem>
+
+<listitem
+><para
+>För utvecklare: &kdesrc-build; kommer att <link linkend="ssh-agent-reminder"
+>påminna dig</link
+> om du använder git+ssh:// men <application
+>ssh-agent</application
+> inte kör, eftersom det leder till upprepad begäran om lösenord från &ssh;. </para
+></listitem>
+
+<listitem
+><para
+>Kan <link linkend="deleting-build-dir"
+>ta bort byggkatalogen</link
+> för en modul efter den har installerats för att spara utrymme till bekostnad av framtida kompileringstid. </para
+></listitem>
+
+<listitem
+><para
+>Platserna för katalogerna som används av &kdesrc-build; kan ställas in (till och med per modul). </para
+></listitem>
+
+<listitem
+><para
+>Kan använda &sudo;, eller ett annat användarspecificerat kommando för att <link linkend="root-installation"
+>installera moduler</link
+> så att &kdesrc-build; inte behöver köras som systemadministratör. </para
+></listitem>
+
+<listitem
+><para
+>&kdesrc-build; kör normalt <link linkend="build-priority"
+>med reducerad prioritet</link
+> för att låta dig fortsätta använda datorn medan &kdesrc-build; arbetar. </para
+></listitem>
+
+<listitem
+><para
+>Har stöd för att använda &kde;:s <link linkend="using-branches"
+>taggar och grenar</link
+>. </para
+></listitem>
+
+<listitem
+><para
+>Det finns stöd för att <link linkend="resuming"
+>återuppta en byggprocess</link
+> från en given modul. Du kan till och med <link linkend="ignoring-modules"
+>ignorera vissa moduler</link
+> tillfälligt för en given byggprocess. </para
+></listitem>
+
+<listitem
+><para
+>&kdesrc-build; visar <link linkend="build-progress"
+>förloppet för byggprocessen</link
+>när &cmake; används, och tar alltid tid på byggprocessen så att du i efterhand vet hur lång tid den tog. </para
+></listitem>
+
+<listitem
+><para
+>Levereras med en inbyggt rimlig uppsättning förvalda alternativ lämpligt för att bygga en grundläggande enanvändarinstallation av &kde; från de anonyma källkodsarkiven. </para
+></listitem>
+
+<listitem
+><para
+>Expanderar dina inställningsalternativ med tilde. Du kan till exempel ange: <programlisting
+>install-dir ~/kde/usr</programlisting>
+</para
+></listitem>
+
+<listitem
+><para
+>Ställer automatiskt in ett byggsystem med källkodskatalogen skild från byggkatalogen, för att hålla källkodskatalogen orörd. </para
+></listitem>
+
+<listitem
+><para
+>Du kan ange allmänna alternativ att använda för alla moduler som checkas ut, och du kan dessutom ange alternativ som ska användas för enskilda moduler. </para
+></listitem>
+
+<listitem
+><para
+>Tvinga fullständig omkompilering genom att köra &kdesrc-build; med väljaren <option
+>--refresh-build</option
+>. </para
+></listitem>
+
+<listitem
+><para
+>Du kan ange diverse miljövariabler som ska användas under byggprocessen, inklusive <envar
+>DO_NOT_COMPILE</envar
+> och <envar
+>CXXFLAGS</envar
+>. </para
+></listitem>
+
+<listitem
+><para
+>Kommandologgning. Loggar dateras och numreras så att du alltid har en logg av en körning av skriptet. Dessutom skapas en symbolisk länk som heter latest, som alltid pekar på den senaste loggen i loggkatalogen. </para
+></listitem>
+
+</itemizedlist>
+
+</sect1
+>&kdesrc-build-logging; </chapter>

@@ -1,0 +1,519 @@
+<sect1 id="kde-modules-and-selection">
+<title
+>Organisation och urval av moduler</title>
+
+<sect2 id="kde-layers">
+<title
+>Organisation av KDE-programvara</title>
+
+<para
+>&kde;-programvara är uppdelad i olika komponenter, där en stor del kan byggas av &kdesrc-build;. Att förstå organisationen hjälper till att välja programvarumoduler att bygga. </para>
+
+<orderedlist>
+<listitem
+><para
+>På lägsta nivån finns &Qt;-biblioteket, som är en mycket kraftfull, plattformsoberoende <quote
+>verktygslåda</quote
+>. &kde; är baserat på &Qt; och vissa av de bibliotek som inte hör till &kde;, men krävs av &kde;, är också baserade på &Qt;. &kdesrc-build; kan bygga &Qt; eller använda ett som redan är installerat på systemet om versionen är tillräckligt ny.</para
+></listitem>
+
+<listitem
+><para
+>Ovanpå &Qt; finns nödvändiga bibliotek som krävs för att &kde;-programvara ska fungera. Vissa av dessa bibliotek anses inte vara en del av själva &kde;, på grund av deras generella natur, med är ändå väsentliga för &kde;-plattformen. Dessa bibliotek samlas i modulen<literal
+>kdesupport</literal
+>, men anses inte vara en del av <quote
+>Ramverk-biblioteken</quote
+>.</para>
+</listitem>
+
+<listitem
+><para
+>Ovanpå de här väsentliga biblioteken kommer <ulink url="https://community.kde.org/Frameworks"
+>&kde; Ramverk</ulink
+>, ibland förkortat som KF5, vilka är väsentliga bibliotek för &kde;:s Plasma-skrivbord, &kde;-program och annan tredjepartsprogramvara. </para
+> </listitem>
+
+<listitem
+><para
+>Ovanpå ramverket, finns flera olika saker:</para>
+    <itemizedlist>
+        <listitem
+><para
+><quote
+>Tredjepartsprogram</quote
+>. Detta är program som använder &kde;:s ramverk eller är konstruerade för att köra med &kde; Plasma, men inte skapas av eller i samröre med &kde;-projektet.</para
+></listitem>
+
+        <listitem
+><para
+>Plasma, som är en komplett skrivbordsmiljö, <quote
+>arbetsyta</quote
+>. Det är vad användare normalt ser när de <quote
+>loggar in med &kde;</quote
+>.</para
+></listitem>
+
+        <listitem
+><para
+>&kde;:s programvarusvit. Det är en samling användbar programvara som inkluderas med plattformen och &plasma;-skrivbord, grupperade i individuella moduler, inklusive verktyg som &dolphin;, spel som <application
+>Ksudoku</application
+> och produktivitetsprogram som ges ut av &kde;, såsom &kontact;.</para
+></listitem>
+
+        <listitem
+><para
+>Till sist, finns en samling programvara (också samlad i moduler) vars utveckling stöds av resurser som tillhandahålls av &kde; (såsom översättning, källkodskontroll, feluppföljning, etc.), men inte ges ut av &kde; eller som en del av Plasma eller programvarusamlingen. Dessa moduler kallas för <quote
+>extragear</quote
+>. </para
+></listitem>
+    </itemizedlist>
+</listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="selecting-modules">
+<title
+>Välja moduler att bygga</title>
+
+<para
+>Att välja vilka av möjliga moduler som ska byggas styrs av <link linkend="kdesrc-buildrc"
+>inställningsfilen</link
+>. Efter sektionen <literal
+>global</literal
+> finns en lista av moduler att bygga, omgivna av raderna module ... end module. Ett exempel på en post för en modul visas i <xref linkend="conf-module-example"/>.</para>
+
+<example id="conf-module-example">
+<title
+>Exempel på modulpost i inställningsfilen</title>
+<programlisting
+>module <replaceable
+>kdesrc-build-git</replaceable>
+    # Alternativ för modulen anges här, exempelvis:
+    <link linkend="conf-repository"
+>repository</link
+> kde:kdesrc-build
+    <link linkend="conf-make-options"
+>make-options</link
+> -j4 # Kör 4 kompileringar samtidigt
+end module
+</programlisting>
+</example>
+
+<note
+><para
+>I praktiken används oftast inte modulkonstruktionen direkt. Istället anges de flesta moduler via moduluppsättningar som beskrivs nedan.</para
+></note>
+
+<para
+>När bara poster som <literal
+>module</literal
+> används, bygger &kdesrc-build; dem i ordningen som anges, och försöker inte ladda ner några andra arkiv utom de som är direkt angivna. </para>
+
+</sect2>
+
+<sect2 id="module-sets">
+<title
+>Moduluppsättningar</title>
+
+<para
+>&kde;:s källkod är uppdelad i ett stort antal relativ små Git-baserade arkiv. För att göra det enklare att hantera det stora antalet arkiv som är inblandade i alla användbara &kde;-baserade installationer, stöder &kdesrc-build; gruppering av flera moduler och att behandla gruppen som en <quote
+>moduluppsättning</quote
+>. </para>
+
+<sect3 id="module-set-concept">
+<title
+>Moduluppsättningarnas grundkoncept</title>
+
+<para
+>Genom att använda en moduluppsättning kan man enkelt deklarera att många Git-moduler ska laddas ner och byggas, som om en separat moduldeklaration skrevs ut för var och en av dem. Alternativet <link linkend="conf-repository"
+>repository</link
+> hanteras på ett särskilt sätt för att ställa in varifrån varje modul laddas ner, medan alla andra alternativ som finns i moduluppsättningen kopieras till varje modul som skapas på detta sätt.</para>
+
+<example id="example-using-module-sets">
+<title
+>Använda moduluppsättningar</title>
+<programlisting
+>global
+    <option
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></option
+> <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+module <replaceable
+>qt</replaceable>
+    # Alternativ borttagna för korthets skull
+end module
+
+module-set <replaceable
+>kde-support-libs</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <replaceable
+>kde-git</replaceable>
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>automoc</replaceable
+> <replaceable
+>attica</replaceable
+> <replaceable
+>akonadi</replaceable>
+end module-set
+
+# Övriga moduler efter behov...
+module <replaceable
+>kdesupport</replaceable>
+end module
+</programlisting>
+</example>
+
+<para
+>I <xref linkend="example-using-module-sets"/> visas en kortfattad moduluppsättning. När &kdesrc-build; träffar på moduluppsättningen, beter det sig som om en individuell modul har skapats för varje modul angiven i <option
+>use-modules</option
+> lika med moduluppsättningens <option
+>repository</option
+> omedelbart följt av det angivna modulnamnet.</para>
+
+<para
+>Dessutom kan andra alternativ tas med i en moduluppsättning, som kopieras till varje ny modul som skapas på detta sätt. Genom att använda moduluppsättningar är det möjligt att snabbt deklarera många Git-moduler som är baserade på webbadressen för samma arkiv. Dessutom är det möjligt att namnge moduluppsättningar (som visas i exemplet), vilket gör det möjligt att snabbt referera till hela gruppen av moduler på kommandoraden.</para>
+
+</sect3>
+<sect3 id="module-sets-kde">
+<title
+>Särskilt stöd för KDE:s moduluppsättningar</title>
+
+<para
+>Stödet för moduluppsättningar som hittills beskrivits är generell för vilken Git-baserad modul som helst. För &kde;:s Git-arkiv innehåller &kdesrc-build; ytterligare funktioner för att göra saker lättare för användare och utvecklare. Stödet aktiveras genom att ange <literal
+>kde-projects</literal
+> som <option
+>repository</option
+> för moduluppsättningen. </para>
+
+<para
+>&kdesrc-build; bygger normalt bara modulerna som är listade i inställningsfilen, i ordningen som de listas. Men med moduluppsättningen <literal
+>kde-projects</literal
+>, kan &kdesrc-build; utföra beroendehantering för &kde;-specifika moduler, och dessutom automatiskt inkludera moduler i bygget även om de bara specificeras indirekt.</para>
+
+<example id="example-using-kde-module-sets">
+<title
+>Använda kde-projects moduluppsättningar</title>
+<programlisting
+># Lägger bara till en modul för juk (arkivet kde/kdemultimedia/juk)
+module-set <replaceable
+>juk-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>juk</replaceable>
+end module-set
+
+# Lägger till alla moduler som finns i kde/multimedia/*, inklusive juk,
+# men inga andra beroenden
+module-set <replaceable
+>multimedia-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde/multimedia</replaceable>
+end module-set
+
+# Lägger till alla moduler som finns i kde/multimedia/*, och alla beroenden
+# på kde-projects utanför kde/kdemultimedia
+module-set <replaceable
+>multimedia-deps-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde/multimedia</replaceable>
+    <option
+>include-dependencies</option
+> <replaceable
+>true</replaceable>
+end module-set
+
+# Alla moduler som skapas av dessa tre moduluppsättningar läggs automatiskt i
+# korrekt beroendeordning, oberoende av inställningen av include-dependencies
+</programlisting>
+</example>
+
+<tip
+><para
+>Konstruktionen med moduluppsättningen <literal
+>kde-projects</literal
+> är huvudmetoden för att ange vilka moduler som man vill bygga.</para
+></tip>
+
+<para
+>Alla moduluppsättningar använder alternativen <link linkend="conf-repository"
+>repository</link
+> och <link linkend="conf-use-modules"
+>use-modules</link
+>. Moduluppsättningarna <link linkend="kde-projects-module-sets"
+><literal
+>kde-projects</literal
+></link
+> har ett fördefinierat värde på <option
+>repository</option
+>, men andra typer av moduluppsättningar använder också alternativet <link linkend="conf-git-repository-base"
+>git-repository-base</link
+>. </para>
+</sect3>
+
+</sect2>
+
+<sect2 id="kde-projects-module-sets">
+<title
+>&kde;:s officiella moduldatabas</title>
+
+<para
+>&kde;:s Git-arkiv tillåter att relaterade Git-moduler grupperas i samlingar av relaterade moduler (t.ex. kdegraphics). Git känner inte till sådana grupperingar, men &kdesrc-build; kan förstå grupperna genom att använda <link linkend="module-sets"
+>moduluppsättningar</link
+> med alternativet <option
+>repository</option
+> inställt till <quote
+><literal
+>kde-projects</literal
+></quote
+>.</para>
+
+<para
+>&kdesrc-build; förstår att arkivet <literal
+>kde-projects</literal
+> kräver särskild hantering, och justerar kompileringsprocessen därefter. Bland annat kommer &kdesrc-build; att:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Ladda ner den senaste moduldatabasen från <ulink url=" https://commits.kde.org/"
+>&kde;:s git-arkiv</ulink
+>.</para
+></listitem>
+
+<listitem
+><para
+>Försök att hitta en modul med det givna namnet i moduluppsättningens inställning i databasen, <option
+>use-modules</option
+>.</para
+></listitem>
+
+<listitem
+><para
+>För varje modul som hittas, slår &kdesrc-build; upp lämpligt arkiv i databasen, i själva verket baserat på inställningen <link linkend="conf-branch-group"
+>branch-group</link
+>. Om ett arkiv finns och är aktivt för grengruppen, använder &kdesrc-build; det automatiskt för att ladda ner eller uppdatera källkoden. </para
+></listitem>
+
+</itemizedlist>
+
+<note
+><para
+>I den nuvarande databasen har vissa modulgrupper inte bara en samling moduler, utan de anger <emphasis
+>också</emphasis
+> sitt eget &git;-arkiv. I dessa situationer föredrar &kdesrc-build; för närvarande gruppens &git;-arkiv istället för att inkludera delmodulernas arkiv. </para
+></note>
+
+<para
+>Nästa exempel visar hur man använder &kde;s moduldatabas för att installera multimediabiblioteket Phonon.</para>
+
+<informalexample>
+<programlisting
+>module-set <replaceable
+>media-support</replaceable>
+    # Denna väljare måste vara kde-projects för att använda moduldatabasen.
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Denna väljare anger vilken modul som ska sökas efter i databasen.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>phonon/phonon</replaceable
+> <replaceable
+>phonon-gstreamer</replaceable
+> <replaceable
+>phonon-vlc</replaceable>
+end module-set
+</programlisting>
+</informalexample>
+
+<tip
+><para
+>Här används <literal
+>phonon/phonon</literal
+> eftersom &kdesrc-build; annars skulle behöva välja mellan projektgruppen vid namn <quote
+>phonon</quote
+> eller det enskilda projektet vid namn <quote
+>phonon</quote
+> (med den nuvarande projektdatabasen). För närvarande skulle &kdesrc-build; välja det första, vilket skulle bygga många fler gränssnitt än vad som behövs.</para
+></tip>
+
+<para
+>Nästa exempel är kanske mer realistiskt, och visar en funktion som bara är tillgänglig med &kde;s moduldatabas: Att bygga alla &kde;:s grafikprogram med en enda deklaration.</para>
+
+<informalexample>
+<programlisting
+>module-set <replaceable
+>kdegraphics</replaceable>
+    # Denna väljare måste vara kde-projects för att använda moduldatabasen.
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Denna väljare anger vilka moduler som ska sökas efter i databasen.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <literal
+>kdegraphics/libs</literal
+> <literal
+>kdegraphics/*</literal>
+end module-set
+</programlisting>
+</informalexample>
+
+<para
+>Här åskådliggörs två viktiga möjligheter:</para>
+
+<orderedlist>
+
+<listitem
+><para
+>&kdesrc-build; låter dig ange moduler som är härstammar från en given modul, utan att bygga modulen själv, genom att använda syntaxen <userinput
+><replaceable
+>modulnamn</replaceable
+>/*</userinput
+>. Det krävs i själva verket i det här fallet, eftersom basmodulen, kdegraphics, är markerad som inaktiv, så att den inte av misstag byggs med sina ättlingar. Att ange ättlingar låter &kdesrc-build; hoppa förbi den inaktiverade modulen. </para
+></listitem>
+
+<listitem
+><para
+>&kdesrc-build; lägger inte heller till en given modul i bygglistan mer än en gång. Det låter oss manuellt ange att <literal
+>kdegraphics/libs</literal
+> ska byggas först, innan resten av <literal
+>kdegraphics</literal
+> utan att försöka bygga <literal
+>kdegraphics/libs</literal
+> två gånger. Det krävdes tidigare för riktig beroendehantering, och är idag ett reservalternativ i fall &kde;:s projektdatabas saknar metadata för beroenden. </para
+></listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="ignoring-project-modules">
+<title
+>Filtrera bort &kde;:s projektmoduler</title>
+
+<para
+>Du kan bestämma dig för att du vill bygga alla program i en gruppering av &kde;-moduler <emphasis
+>utom</emphasis
+> ett visst program.</para>
+
+<para
+>Exempelvis inkluderar gruppen <literal
+>kdeutils</literal
+> ett program som heter <application
+>kremotecontrol</application
+>. Om datorn inte har lämplig hårdvara för att ta emot signaler som skickas från fjärrkontroller kanske du bestämmer att du inte vill ladda ner, bygga och installera <application
+>kremotecontrol</application
+> varje gång som <literal
+>kdeutils</literal
+> uppdateras.</para>
+
+<para
+>Du kan åstadkomma det genom att använda inställningsalternativet <link linkend="conf-ignore-modules"
+>ignore-modules</link
+>. På kommandoraden gör väljaren <link linkend="ignoring-modules"
+>&cmd-ignore-modules;</link
+> samma sak, men är bekvämare för att bara filtrera bort en modul en enstaka gång. </para>
+
+<example id="example-ignoring-a-module">
+<title
+>Exempel på att ignorera en kde-project modul i en grupp</title>
+<programlisting
+>module-set <replaceable
+>utils</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+     # Denna väljare anger vilka moduler som ska sökas efter i databasen.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>kdeutils</replaceable>
+
+    # Denna väljare "subtraherar bort" moduler från modulerna som väljes av use-modules ovan.
+    <option
+><link linkend="conf-ignore-modules"
+>ignore-modules</link
+></option
+> <replaceable
+>kremotecontrol</replaceable>
+end module-set
+
+module-set <replaceable
+>graphics</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Denna väljare anger vilka moduler som ska sökas efter i databasen.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>extragear/graphics</replaceable>
+
+    #  Denna väljare "subtraherar bort" moduler från modulerna som väljes av use-modules ovan.
+    # I detta fall, ignoreras *både* extragear/graphics/kipi-plugins
+    # och extragear/graphics/kipi-plugins/kipi-plugins-docs
+    <option
+><link linkend="conf-ignore-modules"
+>ignore-modules</link
+></option
+> <replaceable
+>extragear/graphics/kipi-plugins</replaceable>
+end module-set
+</programlisting>
+</example>
+
+</sect2>
+
+</sect1>
