@@ -351,7 +351,7 @@ sub _findBestInstallCmd
 {
     my $os = shift;
     my %cmdsRef =  (
-        "cmd/install/alpine/unknown"   => "apk add --virtual .makedeps-kdesrc-build",
+        "cmd/install/alpine/unknown"   => "apk add",
         "cmd/install/arch/unknown"     => "pacman -S --noconfirm",
         "cmd/install/debian/unknown"   => "apt-get -q -y --no-install-recommends install",
         "cmd/install/fedora/unknown"   => "dnf -y install",
