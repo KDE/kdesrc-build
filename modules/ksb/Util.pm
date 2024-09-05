@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2012, 2013, 2015, 2022 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2020 Johan Ouwerkerk <jm.ouwerkerk@gmail.com>
+# SPDX-FileCopyrightText: 2023 Andrew Shark <ashark@linuxcomp.ru>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::Util 0.30;
 
 # Useful utilities, which are exported into the calling module's namespace by default.

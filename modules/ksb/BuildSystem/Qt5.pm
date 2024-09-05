@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2019, 2022 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2024 Andrew Shark <ashark@linuxcomp.ru>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::BuildSystem::Qt5 0.10;
 
 # Build system for the Qt5 toolkit

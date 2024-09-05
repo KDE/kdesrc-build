@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019, 2021, 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test that empty install-dir and/or qt-install-dir do not cause empty /bin settings to be
 # configured in environment.
 

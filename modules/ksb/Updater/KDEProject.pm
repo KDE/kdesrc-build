@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2012, 2013, 2017 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::Updater::KDEProject 0.20;
 
 # An update class for KDE Project modules (i.e. those that use "repository

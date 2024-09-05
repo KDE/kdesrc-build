@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test prune_under_directory_p, including ability to remove read-only files in
 # sub-tree
 

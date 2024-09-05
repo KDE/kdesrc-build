@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 Johan Ouwerkerk <jm.ouwerkerk@gmail.com>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test detection of dependency cycles in a dependency graph
 
 use ksb;

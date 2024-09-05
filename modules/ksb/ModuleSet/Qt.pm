@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::ModuleSet::Qt 0.10;
 
 # Class: ModuleSet::Qt

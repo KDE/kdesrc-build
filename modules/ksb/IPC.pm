@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2012, 2013, 2016, 2020 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::IPC;
 
 # Handles the asynchronous communications needed to perform update and build

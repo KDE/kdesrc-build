@@ -1,4 +1,9 @@
 ## Autocomplete for kdesrc-build --run
+
+# SPDX-FileCopyrightText: 2021 Sebastian Engel <dev@sebastianengel.eu>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 function _comp_kdesrc_build_run
 {
   local cur

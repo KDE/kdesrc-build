@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021, 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Test that empty num-cores settings (which could lead to blank -j being passed
 # to the build in some old configs) have their -j filtered out.
 

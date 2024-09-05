@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2012, 2013, 2016, 2018, 2022 Michael Pyne <mpyne@kde.org>
+# SPDX-FileCopyrightText: 2023 Kristen McWilliam <kmcwilliampublic@gmail.com>
+# SPDX-FileCopyrightText: 2023, 2024 Andrew Shark <ashark@linuxcomp.ru>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package ksb::BuildSystem::KDECMake 0.20;
 
 # Class responsible for building CMake-based modules, with special support for KDE modules.

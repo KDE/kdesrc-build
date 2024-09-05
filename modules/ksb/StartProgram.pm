@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2021 Luis Kao <kogiokkafrms@gmail.com>
+# SPDX-FileCopyrightText: 2024 Andrew Shark <ashark@linuxcomp.ru>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 package StartProgram;
 
 use ksb;

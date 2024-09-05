@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2018, 2022 Michael Pyne <mpyne@kde.org>
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Verify that a user-set CMAKE_PREFIX_PATH is not removed, even if we supply
 # "magic" of our own
 # See bug 395627 -- https://bugs.kde.org/show_bug.cgi?id=395627
