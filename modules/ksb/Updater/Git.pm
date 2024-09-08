@@ -548,7 +548,7 @@ sub updateExistingClone
 
         info ("Fetching remote changes to g[$module]");
         return run_logged_p($module, 'git-fetch', undef,
-            ['git', 'fetch', '--tags', $remoteName]);
+            ['git', 'fetch', '-f', '--tags', $remoteName]);
     })->then(sub ($exitcode) {
         croak_runtime ("Unable to perform git fetch for $remoteName ($cur_repo)")
             unless $exitcode == 0;
