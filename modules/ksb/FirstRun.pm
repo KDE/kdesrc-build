@@ -9,7 +9,6 @@ use ksb;
 
 # Only include Perl core modules that are likely to always be present in
 # a distro's base Perl install.
-use File::Spec qw(splitpath);
 use List::Util qw(min max first);
 use File::Path qw(make_path);
 
