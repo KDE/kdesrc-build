@@ -51,6 +51,7 @@ sub _createMetadataModule
     $metadataModule->setOption('#kde-project-path', $moduleName);
     $metadataModule->setScmType('metadata');
     $metadataModule->setOption('branch', 'master');
+    $metadataModule->setOption('directory-layout', 'metadata');
     $metadataModule->setOption("source-dir",  $ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state");
 
     my $moduleSet = ksb::ModuleSet::KDEProjects->new($ctx, '<kde-projects dependencies>');
