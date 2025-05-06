@@ -75,7 +75,7 @@ sub setupUserSystem
             # do not create a normal instance of Application, because it will create a lockfile.
             # todo remove this hack after moving takeLock to another place before actual work from the Application::new
 
-            my $metadata_distro_deps_path = ($ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state") . "/sysadmin-repo-metadata/distro-dependencies";
+            my $metadata_distro_deps_path = ($ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state") . "/sysadmin/repo-metadata/distro-dependencies";
             _installSystemPackages($os, $metadata_distro_deps_path);
         }
         if (grep { $_ eq "generate-config" } @setup_steps) {

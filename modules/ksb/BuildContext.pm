@@ -105,7 +105,7 @@ my %GlobalOptions_private = (
     "git-repository-base"    => { "qt6-copy" => "https://invent.kde.org/qt/qt/", "_" => "fake/" },
     "manual-build"           => "",
     "manual-update"          => "",
-    "module-definitions-dir" => ($ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state") . "/sysadmin-repo-metadata/module-definitions",
+    "module-definitions-dir" => ($ENV{XDG_STATE_HOME} // "$ENV{HOME}/.local/state") . "/sysadmin/repo-metadata/module-definitions",
     "repository"             => "", # module's git repo
     "set-env"                => {}, # Hash of environment vars to set
     "ssh-identity-file"      => "", # If set, is passed to ssh-add.
