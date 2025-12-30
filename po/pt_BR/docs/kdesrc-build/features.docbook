@@ -1,0 +1,216 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<chapter id="features">
+<title
+>Funcionalidades do Programa</title>
+
+<sect1 id="features-overview">
+<title
+>Visão Geral das Funcionalidades</title>
+
+<para
+>As funcionalidades do &kdesrc-build; incluem: </para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Você poderá <quote
+>fingir</quote
+> efetuar as operações. Se passar a opção <option
+>--pretend</option
+> ou <option
+>-p</option
+> na linha de comando, o programa fornecerá uma descrição completa dos comandos que está prestes a executar, sem executá-los de fato. Contudo, se você nunca executou o &kdesrc-build;, deverá primeiro executar o comando <command
+>kdesrc-build <option
+><link linkend="cmdline-metadata-only"
+>--metadata-only</link
+></option
+></command
+> para que a opção <option
+>--pretend</option
+> funcione. <tip
+><para
+>Para uma descrição ainda mais detalhada do que o &kdesrc-build; está fazendo, tente usar a opção <option
+>--debug</option
+>. </para
+></tip>
+
+</para
+></listitem>
+
+<listitem
+><para
+>O &kdesrc-build; permite que você faça o checkout de módulos rapidamente. Se o módulo que você está fazendo o checkout já tiver sido feito anteriormente, então o &kdesrc-build; baixará apenas os commits que ainda não estão no seu computador. </para>
+
+<tip
+><para
+>Normalmente não existe necessidade de qualquer preparação para a obtenção inicial de um módulo do Git, uma vez que é necessário transferir o repositório do Git inteiro, de qualquer forma, sendo simples para o servidor determinar o que deve enviar.</para
+></tip>
+
+<para
+>Isto é mais rápido para você, e ajuda a liberar alguma carga nos servidores anônimos de &git; do kde.org.</para>
+</listitem>
+
+<listitem
+><para
+>Outra melhoria de performance é conseguida ao iniciar o processo de compilação de um módulo assim que o código-fonte desse módulo tenha sido transferido. (Disponível desde a versão 1.6) </para
+></listitem>
+
+<listitem
+><para
+>Um excelente suporte para compilação da biblioteca &Qt; (no caso de o ambiente do &kde; que você está tentando compilar depender de uma versão recente do &Qt; que não esteja disponível na sua distribuição). </para
+></listitem>
+
+<listitem
+><para
+>O &kdesrc-build; não precisa de uma <acronym
+>GUI</acronym
+> presente para funcionar. Por isso, você poderá compilar o &kde; sem precisar de um ambiente gráfico. </para
+></listitem>
+
+<listitem
+><para
+>Suporta a definição de opções padrão para todos os módulos (como as opções de compilação ou de configuração). Essas opções também poderão ser modificadas normalmente para módulos específicos.</para>
+
+<para
+>Do mesmo modo, o &kdesrc-build; irá <link linkend="kdesrc-build-std-flags"
+>adicionar opções padrão</link
+>, como for apropriado, para lhe poupar trabalho e alguns erros possíveis, definindo-as você mesmo. Nota Bene: isto não se aplica quando uma cadeia de ferramentas (personalizada) é configurada através de, por exemplo: <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+> </para
+></listitem>
+
+<listitem
+><para
+>O &kdesrc-build; poderá baixar uma <link linkend="using-branches"
+>marca ou ramificação específica</link
+> de um módulo. Você poderá também ter a certeza de que é usada uma <link linkend="conf-revision"
+>versão</link
+> específica em vez de um módulo. </para
+></listitem>
+
+<listitem
+><para
+>O &kdesrc-build; poderá mudar automaticamente a pasta de origem para baixar a partir de um repositório, ramificação ou marca diferentes. Isto acontece automaticamente quando você mudar alguma opção que altere o &url; do repositório, se bem que você deve usar a opção <link linkend="cmdline-src-only"
+>--src-only</link
+> para deixar que o &kdesrc-build; saiba que é aceitável efetuar a mudança. </para
+></listitem>
+
+<listitem
+><para
+>O &kdesrc-build; pode <link linkend="partial-builds"
+>obter apenas partes de um módulo</link
+>, para aquelas situações em que você só precisa de um programa de um módulo maior. </para
+></listitem>
+
+<listitem
+><para
+>Para desenvolvedores: O &kdesrc-build; irá <link linkend="ssh-agent-reminder"
+>lembrar de você</link
+> se você usar o git+ssh:// mas o <application
+>ssh-agent</application
+> não estiver em execução, uma vez que isso levará a pedidos de senha repetidos do &ssh;. </para
+></listitem>
+
+<listitem
+><para
+>Pode <link linkend="deleting-build-dir"
+>remover a pasta de compilação</link
+> de um módulo, após a sua instalação, para poupar espaço, em detrimento de um maior tempo de compilação. </para
+></listitem>
+
+<listitem
+><para
+>Os locais das pastas usadas pelo &kdesrc-build; são configuráveis (até mesmo por módulo). </para
+></listitem>
+
+<listitem
+><para
+>Pode usar o &sudo; ou um comando definido pelo usuário para <link linkend="root-installation"
+>instalar os módulos</link
+>, para que o &kdesrc-build; não precise ser executado como superusuário. </para
+></listitem>
+
+<listitem
+><para
+>O &kdesrc-build; executa <link linkend="build-priority"
+>com prioridade reduzida</link
+> por padrão, para lhe permitir ainda usar o seu computador, enquanto o &kdesrc-build; estiver trabalhando. </para
+></listitem>
+
+<listitem
+><para
+>Possui suporte para usar as <link linkend="using-branches"
+>marcas e ramificações</link
+> do &kde;. </para
+></listitem>
+
+<listitem
+><para
+>Existe o suporte para <link linkend="resuming"
+>prosseguir com uma compilação</link
+> de um determinado módulo. Você pode até <link linkend="ignoring-modules"
+>ignorar alguns módulos</link
+> temporariamente para uma determinada compilação. </para
+></listitem>
+
+<listitem
+><para
+>O &kdesrc-build; mostrará o <link linkend="build-progress"
+>progresso da sua compilação</link
+> ao usar o &cmake;, e irá medir sempre o tempo do processo de compilação, para que você saiba quanto tempo levou efetivamente. </para
+></listitem>
+
+<listitem
+><para
+>Vem com um conjunto seguro de opções padrão, apropriadas para compilar uma instalação mono-usuário básica do &kde; a partir do repositório de código-fonte anônimo. </para
+></listitem>
+
+<listitem
+><para
+>Expansão do til (~) para as suas opções de configuração. Por exemplo, você poderá especificar: <programlisting
+>install-dir ~/kde/usr</programlisting>
+</para
+></listitem>
+
+<listitem
+><para
+>Configura automaticamente um sistema de compilação, onde a pasta de código não é a mesma que a pasta de compilação, para que você mantenha as suas pastas de origem limpas. </para
+></listitem>
+
+<listitem
+><para
+>Você poderá indicar as opções globais a aplicar a todos os módulos a serem obtidos, assim como poderá indicar opções para serem aplicadas aos módulos individualmente. </para
+></listitem>
+
+<listitem
+><para
+>Você pode forçar compilações completas do zero, caso execute o &kdesrc-build; com a opção <option
+>--refresh-build</option
+>. </para
+></listitem>
+
+<listitem
+><para
+>Você pode especificar vários valores de ambiente a serem usados ​​durante a compilação, incluindo <envar
+>DO_NOT_COMPILE</envar
+> e <envar
+>CXXFLAGS</envar
+>. </para
+></listitem>
+
+<listitem
+><para
+>Registro dos comandos. Os arquivos de registro são datados e numerados, para que você tenha sempre um relatório de execução de um programa. Do mesmo modo, é criada uma ligação simbólica 'latest' para apontar sempre para o item de registro mais recente na respectiva pasta. </para
+></listitem>
+
+</itemizedlist>
+
+</sect1
+>&kdesrc-build-logging; </chapter>

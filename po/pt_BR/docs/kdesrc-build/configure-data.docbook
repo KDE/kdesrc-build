@@ -1,0 +1,144 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="configure-data">
+<title
+>Definindo os Dados de Configuração</title>
+
+<para
+>Para usar o &kdesrc-build;, você deve ter um arquivo em seu diretório <filename
+>~/.config</filename
+> (ou em <envar
+>$XDG_CONFIG_HOME</envar
+>, se configurado) chamado <filename
+>kdesrc-buildrc</filename
+>, que define as opções gerais e especifica os módulos que você gostaria de baixar e compilar. </para>
+
+<note
+><para
+>É possível usar arquivos de configuração diferentes para o &kdesrc-build;, que estão descritos em <xref linkend="kdesrc-buildrc"/>. Se você precisar usar várias configurações, veja esta seção. Aqui, nós iremos considerar que a configuração está armazenada em <filename
+>~/.config/kdesrc-buildrc</filename
+>. </para
+></note>
+
+<para
+>A forma mais simples de prosseguir é usar o arquivo <filename
+>kdesrc-buildrc-kf5-sample</filename
+> como modelo, definir as opções globais de acordo com as suas necessidades e a lista dos módulos que deseja compilar. </para>
+
+<para
+>A configuração padrão deverá ser apropriada para efetuar uma compilação do &kde;. Algumas opções que você poderá querer alterar incluem: </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, que muda a pasta de destino para onde o &kde; será instalado. Ela é por padrão a <filename class="directory"
+>~/kde/usr</filename
+>, que é uma instalação para um único usuário.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-branch-group"
+>branch-group</link
+>, que pode ser usado para escolher o branch de desenvolvimento apropriado para os módulos do &kde; como um todo. Existem muitas configurações de compilação suportadas, mas você provavelmente desejará escolher <option
+>kf6-qt6</option
+> para que o &kdesrc-build; baixe o código mais recente baseado no &Qt; 6 e no &kde; Frameworks 6.</para>
+
+<tip
+><para
+>O &kdesrc-build; usará um grupo de ramificação padrão se você não escolher um, mas esse padrão mudará com o tempo, então é melhor escolher um para que o grupo de ramificação não mude inesperadamente.</para
+></tip>
+</listitem>
+
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, para controlar o diretório que o &kdesrc-build; usa para baixar o código-fonte, executar o processo de compilação e salvar os logs. O padrão é <filename class="directory"
+>~/kde/src</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+>, que define as opções a serem passadas para o comando &cmake; ao compilar cada módulo. Normalmente, isso é usado para definir entre compilações <quote
+>debug</quote
+> ou <quote
+>release</quote
+>, para habilitar (ou desabilitar) recursos opcionais ou para passar informações para o processo de compilação sobre a localização das bibliotecas necessárias. </para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>, que define as opções usadas ao executar o comando <application
+>make</application
+> para compilar cada módulo (depois que o &cmake; tiver estabelecido o sistema de compilação). </para>
+
+<para
+>A opção mais comum é <option
+>-j<replaceable
+>N</replaceable
+></option
+>, onde <replaceable
+>N</replaceable
+> deve ser substituído pelo número máximo de tarefas de compilação que você deseja permitir. Um número maior (até o número de CPUs lógicas disponíveis em seu sistema) resulta em compilações mais rápidas, mas requer mais recursos do sistema. </para>
+
+<tip
+><para
+>O &kdesrc-build; define a opção <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> para o número detectado de núcleos de processamento disponíveis. Você pode usar esse valor em seu próprio arquivo de configuração para evitar ter que defini-lo manualmente. </para
+></tip>
+
+<example id="make-options-example">
+<title
+>Configurando o Make para usar todas as CPUs disponíveis, com exceções</title>
+<screen
+>global
+    # Esta variável de ambiente é usada automaticamente pelo make,
+    # incluindo comandos make que não são executados diretamente
+    # pelo kdesrc-build, como o configure do Qt.
+    set-env MAKEFLAGS -j<literal
+>${num-cores}</literal>
+    &hellip;
+end global
+
+&hellip;
+
+module-set <replaceable
+>big-module-set</replaceable>
+    repository kde-projects
+    use-modules <replaceable
+>calligra</replaceable>
+    make-options -j2 # Número reduzido de tarefas de compilação apenas para esses módulos.
+end module-set
+</screen>
+</example>
+
+<note
+><para
+>Alguns repositórios Git muito grandes podem sobrecarregar seu sistema se você tentar compilar com muitas tarefas de compilação ao mesmo tempo, especialmente repositórios como o &Qt; WebKit e o &Qt; WebEngine. Para manter a interatividade do sistema, você pode precisar reduzir o número de tarefas de compilação para módulos específicos.</para>
+<para
+><xref linkend="make-options-example"/> fornece um exemplo de como fazer isso.</para>
+</note>
+
+</listitem>
+</itemizedlist>
+
+<para
+>Você pode desejar selecionar módulos diferentes para compilar, os quais estão descritos em <xref linkend="selecting-modules"/>.</para>
+
+</sect1>

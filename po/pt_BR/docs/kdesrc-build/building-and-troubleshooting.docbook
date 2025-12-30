@@ -1,0 +1,171 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="building-and-troubleshooting">
+<title
+>Usando o script &kdesrc-build;</title>
+<para
+>Com os dados de configuração definidos, agora você está pronto para executar o script. Mesmo que você ainda tenha alguns ajustes ou outras leituras que queira fazer, é uma boa ideia pelo menos carregar os metadados do projeto KDE.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title
+>Carregando metadados do projeto</title>
+
+<para
+>A partir de uma janela de terminal, autentique-se com o usuário que usará para compilar o &kde; e execute o programa: </para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--metadata-only</option
+></userinput
+>
+</screen>
+
+<para
+>Este comando irá configurar o diretório de origem e conectar-se aos repositórios &git; do KDE para baixar o banco de dados de repositórios e o banco de dados de metadados de dependências, sem fazer quaisquer outras alterações. É útil executar este comando separadamente, pois esses metadados são úteis para outros comandos do &kdesrc-build;. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title
+>Pré-visualizando o que acontecerá quando o kdesrc-build for executado</title>
+
+<para
+>Com os metadados do projeto instalados, é possível pré-visualizar o que o &kdesrc-build; fará quando executado. Isso pode ser feito com a opção de linha de comando <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+>.</para>
+
+<screen
+><prompt
+>&percnt; </prompt
+><command
+>./kdesrc-build</command
+> <option
+>--pretend</option
+>
+</screen>
+
+<para
+>Você deverá ver uma mensagem informando que alguns pacotes foram compilados com sucesso (embora nada tenha sido compilado de fato). Se não houver problemas significativos, você poderá prosseguir com a execução do script.</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+
+<para
+>Este comando fará o download do código-fonte apropriado, compilará e instalará cada módulo em ordem. Depois disso, você deverá ver uma saída semelhante à de <xref linkend="example-build-sequence"/>:</para>
+
+<example id="example-build-sequence">
+<title
+>Resultado de exemplo de uma execução do kdesrc-build</title>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 200 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+</sect2>
+
+<sect2 id="fixing-build-failures">
+<title
+>Resolvendo falhas de compilação</title>
+
+<para
+>Dependendo dos módulos que baixar, pode ser possível que o &kdesrc-build; não consiga ter sucesso na primeira vez que compilar o &kde;. Não se desespere! </para>
+
+<para
+>O &kdesrc-build; registra o resultado de todos os comandos que executa. Por padrão, os arquivos de registro são mantidos em <filename class="directory"
+>~/kdesrc/log</filename
+>. Para ver o que causou um determinado erro num módulo no último comando do &kdesrc-build;, normalmente é suficiente ver o <filename class="directory"
+>~/kdesrc/log/latest/<replaceable
+>nome-módulo</replaceable
+>/error.log</filename
+>.</para>
+
+<tip
+><para
+>Talvez a forma mais simples de descobrir que erro provocou um problema na compilação de um módulo será pesquisar para trás sem distinção de maiúsculas/minúsculas, a partir do fim do arquivo, pela palavra <literal
+>erro</literal
+>. Assim que a encontrar, suba um pouco para garantir que não existem outros erros por perto. A primeira mensagem de erro de um grupo é normalmente o problema subjacente.</para
+></tip>
+
+<para
+>Nesse arquivo, você irá ver o erro que fez com que a compilação falhasse para esse módulo. Se o arquivo disser (no fim) que faltam alguns pacotes, tente instalar o pacote (incluindo os pacotes -dev apropriados) antes de tentar compilar esse módulo. Certifique-se de que executa o &kdesrc-build; de novo para passar a opção <link linkend="cmdline-reconfigure"
+>--reconfigure</link
+>, para que o &kdesrc-build; force a verificação dos pacotes em falta por parte do módulo de novo.</para>
+
+<para
+>Ou, se o erro parecer ser um erro de compilação do código do &kde; (como um erro de sintaxe, <quote
+>protótipo incorreto</quote
+>, <quote
+>tipo desconhecido</quote
+> ou algo do gênero), pode ser que isso seja resolvido dentro de alguns dias. Se não for resolvido em tempo útil, sinta-se à vontade para enviar um e-mail para <email
+>kde-devel@kde.org</email
+> (poderá ser necessário inscrever-se) para comunicar o erro de compilação.</para>
+
+<para
+>Você poderá encontrar mais exemplos comuns das coisas que poderão correr mal e as suas soluções, assim como algumas sugestões e estratégias gerais para compilar o &kde;, na página <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+> Build from Source (compilação a partir do código-fonte)</ulink
+>. </para>
+
+<para
+>Por outro lado, assumindo que tudo correu bem, você deverá ter uma nova instalação do &kde; no seu computador, sendo agora apenas uma questão de executá-lo, sendo isto descrito a seguir em <xref linkend="environment"/>.</para>
+
+<note
+><para
+>Para mais informações sobre as funcionalidades de registro do &kdesrc-build;, veja em <xref linkend="kdesrc-build-logging"/>.</para
+></note>
+</sect2>
+
+</sect1>

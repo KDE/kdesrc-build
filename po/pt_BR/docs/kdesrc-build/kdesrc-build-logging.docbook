@@ -1,0 +1,109 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="kdesrc-build-logging">
+<title
+>Registro de compilação do &kdesrc-build;</title>
+
+<sect2 id="logging-overview">
+<title
+>Visão geral do registro</title>
+
+<para
+>O registro é uma funcionalidade do &kdesrc-build; que consiste no fato do resultado de todos os comandos que o &kdesrc-build; executa serem salvos em um arquivo para serem posteriormente examinados, caso seja necessário. Isto é feito porque frequentemente é necessário ter o resultado destes programas quando houver um erro de compilação, uma vez que poderão existir várias razões para a compilação falhar, em primeiro lugar.</para>
+
+<sect3 id="log-directory-layout">
+<title
+>Layout da pasta de registro</title>
+
+<para
+>Os registros são sempre salvos sob a pasta de registro. O destino da pasta de registro é controlado pela opção <link linkend="conf-log-dir"
+>log-dir</link
+>, que por padrão é <filename class="directory"
+><symbol
+>${source-dir}</symbol
+>/log</filename
+> (onde o <symbol
+>${source-dir}</symbol
+> é o valor da opção <link linkend="conf-source-dir"
+>source-dir</link
+>. No resto desta seção, este valor será referido como <symbol
+>${log-dir}</symbol
+>).</para>
+
+<para
+>Sob a <symbol
+>${log-dir}</symbol
+>, existe um conjunto de pastas, uma de cada vez que o &kdesrc-build; foi executado. Cada pasta possui como nome a data e o número da execução. Por exemplo, a segunda vez que o &kdesrc-build; foi executado em 26 de maio de 2004, será criada uma pasta chamada <filename
+>2004-05-26-02</filename
+>, onde o 2004-05-26 corresponde à data e o -02 é o número da execução.</para>
+
+<para
+>Para sua conveniência, o &kdesrc-build; irá também criar uma ligação para os registros da sua última execução, chamada <filename class="directory"
+>latest</filename
+>. Assim, os registros da execução mais recente do &kdesrc-build; deverão estar sempre sob a <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest</filename
+>. </para>
+
+<para
+>Agora, cada pasta de uma execução do &kdesrc-build; irá conter, por sua vez, um conjunto de pastas, uma por cada módulo &kde; que o &kdesrc-build; tenta compilar. Do mesmo modo, irá conter um arquivo chamado <filename
+>build-status</filename
+> nessa pasta, que lhe permitirá determinar quais os módulos que compilaram bem e os que falharam.</para>
+
+<note
+><para
+>Se um módulo em si tiver um submódulo (como o extragear/multimedia, playground/utils ou KDE/kdelibs), então, haverá um layout equivalente na pasta de registros. Por exemplo, os registros do KDE/kdelibs, após a última execução do &kdesrc-build;, irão aparecer em <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/KDE/kdelibs</filename
+> e não em <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/kdelibs</filename
+>. </para
+></note>
+
+<para
+>Em cada diretório de logs de módulo, você encontrará um conjunto de arquivos para cada operação que o &kdesrc-build; executa. Se o &kdesrc-build; atualizar um módulo, você poderá ver nomes de arquivo como <filename
+>git-checkout-update.log</filename
+> (para um checkout de módulo ou ao atualizar um módulo que já foi extraído). Se o comando <command
+>configure</command
+> foi executado, você esperará ver um arquivo <filename
+>configure.log</filename
+> nesse diretório.</para>
+
+<para
+>Se ocorreu um erro, você deverá ser capaz de ver uma explicação do motivo em um dos arquivos. Para ajudá-lo a determinar qual o arquivo que contém o erro, o &kdesrc-build; irá criar um link do arquivo que contém o erro (do tipo <filename
+>build-1.log</filename
+> para um arquivo chamado <filename
+>error.log</filename
+>).</para>
+
+<para
+>A vantagem de tudo isto é que, para ver onde um arquivo falhou na compilação, após a sua última execução do &kdesrc-build;, o arquivo que deverá ver primeiro é o <filename
+><symbol
+>${log-dir}</symbol
+>/latest/<replaceable
+>nome-módulo</replaceable
+>/error.log</filename
+>. </para>
+
+<tip
+><para
+>Se o arquivo <filename
+>error.log</filename
+> estiver em branco (especialmente após uma instalação), então provavelmente não houve qualquer erro. Algumas das ferramentas usadas pelo sistema de compilação do &kde; irão comunicar por engano um erro quando não ocorreu nada.</para>
+
+<para
+>Do mesmo modo, alguns comandos poderão fugir ao redirecionamento do resultado do &kdesrc-build; e ignorar o arquivo de registro em certas circunstâncias (normalmente ao obter o conteúdo do &git; na primeira vez), e o resultado do erro, nesse caso, não estará no arquivo de registro mas sim no &konsole; ou no terminal onde executou o &kdesrc-build;.</para>
+</tip>
+
+</sect3>
+</sect2>
+</sect1>

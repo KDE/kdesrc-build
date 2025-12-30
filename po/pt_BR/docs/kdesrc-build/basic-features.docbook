@@ -1,0 +1,237 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="basic-features">
+<title
+>Funcionalidades básicas do &kdesrc-build;</title>
+
+<sect2 id="using-qt">
+<title
+>Suporte para o 'qt'</title>
+<para
+>O &kdesrc-build; suporta a compilação do conjunto de ferramentas do &Qt; usado pelos programas do &kde; como uma conveniência para os usuários. Este suporte é manipulado por um módulo especial denominado 'qt'.</para>
+
+<note
+><para
+>O &Qt; é desenvolvido sob um repositório separado dos programas do &kde;, localizado em <ulink url="http://code.qt.io/cgit/qt/"
+>http://code.qt.io/cgit/qt/</ulink
+>.</para
+></note>
+
+<para
+>Para compilar o &Qt;, você deve certificar-se de que a configuração <link linkend="conf-qt-install-dir"
+>qt-install-dir</link
+> está definida para a pasta que você gostaria de instalar o &Qt;, conforme descrito em <xref linkend="configure-data"/>.</para>
+
+<para
+>Você deve certificar-se de que o módulo do 'qt' está adicionado ao seu <filename
+>.kdesrc-buildrc</filename
+>, antes de qualquer outro módulo no arquivo. Se você estiver usando o arquivo de configuração de exemplo, basta retirar o comentário da entrada existente para o módulo 'qt'.</para>
+
+<para
+>Agora você deve verificar se as opções <link linkend="conf-repository"
+>repository</link
+> e <link linkend="conf-branch"
+>branch</link
+> foram definidas apropriadamente:</para>
+
+<orderedlist>
+<listitem
+><para
+>A primeira opção é para compilar o &Qt; usando um espelho mantido nos repositórios de código do &kde; (nenhuma outra alteração é aplicada, ele é simplesmente um clone do código oficial). Isto é altamente recomendado devido a problemas ocasionais com o processo de clonagem completa do módulo do &Qt; a partir do seu repositório oficial.</para>
+
+<para
+>Você pode definir a opção <option
+>repository</option
+> do módulo qt para <userinput
+>kde:qt</userinput
+> para usar esta opção.</para>
+</listitem>
+
+<listitem
+><para
+>Caso contrário, para compilar o &Qt; padrão, defina sua opção <option
+>repository</option
+> para <userinput
+>git://gitorious.org/qt/qt.git</userinput
+>. Observe que você pode experimentar problemas ao executar a clonagem inicial do &Qt; a partir deste repositório.</para
+></listitem>
+</orderedlist>
+
+<para
+>Em ambos os casos, a opção 'branch' deve ser definida para <userinput
+>master</userinput
+> (a menos que você deseje compilar uma 'branch' diferente).</para>
+
+</sect2>
+
+<sect2 id="kdesrc-build-std-flags">
+<title
+>Opções normais adicionadas pelo &kdesrc-build;</title>
+<para
+>Nota Bene: esta seção não se aplica a módulos para os quais você configurou uma cadeia de ferramentas personalizada, usando, por exemplo, o <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>.</para>
+
+<para
+>Para lhe poupar tempo, o &kdesrc-build; adiciona alguns locais padrão ao seu ambiente: </para>
+
+<itemizedlist>
+<listitem
+><para
+>O local das bibliotecas do &kde; e do &Qt; é adicionado automaticamente à variável <envar
+>LD_LIBRARY_PATH</envar
+>. Isto significa que não irá precisar editar a &libpath; para incluí-los. </para
+></listitem>
+
+<listitem
+><para
+>O local dos programas de suporte ao desenvolvimento do &kde; e do &Qt; é adicionado automaticamente à variável <envar
+>PATH</envar
+>. Isto significa que não irá precisar editar a &binpath; para incluir. </para
+></listitem>
+
+<listitem
+><para
+>O local do <application
+>pkg-config</application
+> fornecido com o &kde; é adicionado automaticamente ao <envar
+>PKG_CONFIG_PATH</envar
+>. Isto significa que não terá de usar o &set-env; para os incluí-los. </para
+></listitem>
+
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="build-priority">
+<title
+>Mudando a prioridade de compilação do &kdesrc-build;</title>
+<para
+>Os programas poderão ser executados com diferentes níveis de prioridades nos Sistemas Operacionais, incluindo o &Linux; e o &BSD;. Isto permite ao sistema reservar tempo para os diferentes programas, de acordo com a sua importância. </para>
+
+<para
+>O &kdesrc-build; irá reservar uma prioridade baixa para si próprio, para que o resto dos programas do seu sistema não sejam afetados e possam rodar normalmente. Com esta técnica, o &kdesrc-build; irá usar CPU extra quando estiver disponível. </para>
+
+<para
+>O &kdesrc-build; irá ainda manter uma prioridade suficientemente alta, para que se execute antes dos processos rotineiros e antes dos programas de doação de CPU, como o <ulink url="http://setiathome.ssl.berkeley.edu/"
+>Seti@Home</ulink
+>. </para>
+
+<para
+>Para alterar o &kdesrc-build;, de modo a usar um nível de prioridade maior (ou menor) de forma permanente, então você terá que ajustar a opção &niceness; no <link linkend="configure-data"
+>arquivo de configuração</link
+>. A opção &niceness; controla quão <quote
+>legal</quote
+> é o &kdesrc-build; com os outros programas. Em outras palavras, um &niceness; maior, dará ao &kdesrc-build; uma prioridade menor. Assim, para dar ao &kdesrc-build; uma maior prioridade, reduza o &niceness; (e vice-versa). O &niceness; pode ir de 0 (nada legal, prioridade máxima) até 20 (super legal, prioridade mínima).</para>
+
+<para
+>Você poderá também mudar temporariamente a prioridade do &kdesrc-build; ao usar a <link linkend="cmdline"
+>opção de linha de comando</link
+> &cmd-nice;. O valor da opção é usado da mesma forma que no &niceness;.</para>
+
+<note
+><para
+>É possível para alguns programas executados pelo superusuário ter um valor de prioridade negativo, com uma prioridade de sistema corresponde ainda maior para alguns programas. A configuração de um valor negativo (ou mesmo 0) do &niceness; para o &kdesrc-build; não é uma boa ideia, uma vez que não irá melhorar muito o tempo de compilação, mas tornará o seu computador muito lento, se ainda precisar usá-lo. </para
+></note>
+
+<informalexample>
+<para
+>Para executar o &kdesrc-build; com uma prioridade igual a 15 (menor que o normal):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--nice=<replaceable
+>15</replaceable
+></option
+></userinput
+>
+</screen>
+
+<para
+>Ou você poderá editar o <link linkend="configure-data"
+>arquivo de configuração</link
+> para tornar a mudança permanente:</para>
+
+<screen
+>&niceness; <replaceable
+>15</replaceable
+>
+</screen>
+</informalexample>
+
+<tip>
+<para
+>A opção <link linkend="conf-niceness"
+>niceness</link
+> somente afeta o uso do(s) processador(es) do computador. Uma outra que afeta significativamente o desempenho do computador se refere a quantos dados de entrada ou saída (<acronym
+>I/O</acronym
+>) um programa usa. Para controlar quanto <acronym
+>I/O</acronym
+> um programa pode usar, os sistemas operacionais &Linux; modernos suportam uma ferramenta similar denominada <application
+>ionice</application
+>. O &kdesrc-build; suporta o <application
+>ionice</application
+>, (mas somente para ativá-lo ou desativá-lo completamente) usando a opção <link linkend="conf-use-idle-io-priority"
+>use-idle-io-priority</link
+>, desde a versão 1.12 do &kdesrc-build;. </para>
+</tip>
+
+</sect2>
+
+<sect2 id="root-installation">
+<title
+>Instalação como superusuário</title>
+<para
+>Você poderá ter o &kdesrc-build; executando a instalação com privilégios de superusuário. Isto pode acontecer no caso da instalação a nível do sistema (não recomendada). Também é útil se você usar uma instalação normal para um único usuário, todavia. Isto acontece porque alguns módulos (especialmente o 'kdebase') instalam programas que, por breves instantes, irão necessitar de permissões elevadas ao serem executados. Eles não conseguirão obter esses níveis de permissões, a menos que tenham sido instalados com as permissões elevadas. </para>
+
+<para
+>Você poderá simplesmente executar o &kdesrc-build; diretamente como superusuário, mas isto não é recomendável, uma vez que o programa não foi testado para esse tipo de uso. Ainda que possa ser seguro executá-lo dessa forma, é melhor evitar executar este programa como superusuário, sempre que possível.</para>
+
+<para
+>Para cuidar disso, o &kdesrc-build; oferece a opção &make-install-prefix;. Você poderá usar esta opção para indicar um comando a usar para efetuar a instalação como outro usuário. A forma recomendada de usar este comando é com o programa &sudo;, que irá então executar o comando de instalação como superusuário. </para>
+
+<informalexample>
+<para
+>Por exemplo, para instalar todos os módulos com o &sudo;, você poderá fazer algo como:</para>
+
+<screen
+>global
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+  # Outras opções
+end global
+</screen>
+
+<para
+>Para usar o &make-install-prefix; apenas num módulo, isto irá funcionar: </para>
+
+<screen
+>module <replaceable
+>algum-nome-módulo</replaceable>
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+end module
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="build-progress">
+<title
+>Mostrando o progresso da compilação de um módulo</title>
+<para
+>Esta funcionalidade está sempre disponível e está ativada automaticamente, sempre que possível. O que isto faz é mostrar o progresso estimado da compilação ao compilar um módulo, para que você saiba desta forma quanto tempo mais irá levar para compilar um módulo. </para>
+
+</sect2>
+
+</sect1>

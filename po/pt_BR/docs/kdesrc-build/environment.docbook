@@ -1,0 +1,181 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="environment">
+<title
+>Configurando o ambiente para executar o seu ambiente de trabalho &plasma; do &kde;</title>
+
+<para
+>Assumindo que você está usando um usuário dedicado para compilar o &kde; &plasma;e já possui uma versão do &plasma; instalada, a execução do seu &plasma; novo precisará de alguns truques, uma vez que o &plasma; novo terá de ter precedência sobre o antigo. Você deve alterar as variáveis de ambiente dos seus scripts de inicialização para ter certeza de que é usada a mais nova compilação do ambiente de trabalho. </para>
+
+<sect2 id="session-driver">
+<title
+>Instalar automaticamente um driver de autenticação</title>
+
+<para
+>Desde a versão 1.16, o &kdesrc-build; irá tentar instalar um driver de autenticação apropriado, o que lhe permitirá iniciar a sua sessão no seu ambiente de trabalho &kde; compilado pelo &kdesrc-build; a partir do seu gerenciador de autenticação. Isto poderá ser desativado com a opção <option
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></option
+> do arquivo de configuração.</para>
+
+<note
+><para
+>A configuração da sessão não ocorre quando o &kdesrc-build; estiver em execução no modo simulado.</para
+></note>
+
+<para
+>Este driver funciona ao definir um tipo de sessão personalizado com o <quote
+><literal
+>xsession</literal
+></quote
+>. Este tipo de sessão deverá funcionar por padrão com o gerenciador de autenticação sddm (onde aparece como uma sessão <quote
+>Personalizada</quote
+>), mas os outros gerenciadores de autenticação (como o <application
+>LightDM</application
+> e o <application
+>gdm</application
+>) poderão necessitar de arquivos adicionais instalados para ativar o suporte ao <literal
+>xsession</literal
+>.</para>
+
+<sect3 id="xsession-distribution-setup">
+<title
+>Adicionar o suporte da xsession para as distribuições</title>
+
+<para
+>Os gerenciadores de autenticação predefinidos de algumas distribuições poderão necessitar de pacotes adicionais instalados para ter suporte as autenticações com o <literal
+>xsession</literal
+>.</para>
+
+<itemizedlist>
+<listitem
+><para
+>A distribuição &Linux; <ulink url="https://getfedora.org/"
+>Fedora</ulink
+> precisa que o pacote <literal
+>xorg-x11-xinit-session</literal
+> esteja instalado para ter o suporte personalizado de sessões do <literal
+>xsession</literal
+>.</para
+></listitem>
+
+<listitem
+><para
+>As distribuições de &Linux; <ulink url="https://www.debian.org/"
+>Debian</ulink
+> e derivadas deverão ter suporte às autenticações personalizadas com o <literal
+>xsession</literal
+>, mas precisam que a opção <option
+><userinput
+>allow-user-xsession</userinput
+></option
+> esteja configurada no arquivo <filename
+>/etc/X11/Xsession.options</filename
+>. Veja também a documentação do Debian sobre <ulink url="https://www.debian.org/doc/manuals/debian-reference/ch07.en.html#_customizing_the_x_session_classic_method"
+>como personalizar a sessão de X.</ulink
+></para
+></listitem>
+
+<listitem
+><para
+>Para outras distribuições, vá para <xref linkend="xsession-manual-setup"/>.</para
+></listitem>
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="xsession-manual-setup">
+<title
+>Adicionar manualmente o suporte ao xsession</title>
+
+<para
+>Se não existirem instruções específicas para a sua distribuição em <xref linkend="xsession-distribution-setup"/>, você pode adicionar manualmente um item de <quote
+>Sessão personalizada do xsession</quote
+> na lista de tipos de sessões da sua distribuição da seguinte forma:</para>
+
+<procedure id="proc-adding-xsession-type">
+<title
+>Adicionar um tipo de sessão de autenticação no .xsession.</title>
+
+<note
+><para
+>Este procedimento irá necessitar de privilégios administrativos para ser concluído. </para
+></note>
+
+<step performance="required">
+<para
+>Crie o arquivo <filename
+>/usr/share/xsessions/kdesrc-build.desktop</filename
+>.</para>
+</step>
+
+<step performance="required">
+<para
+>Certifique-se de que o arquivo recém-criado tenha o seguinte texto:</para>
+<literallayout
+><userinput>
+Type=XSession
+Exec=<co id="session-homedir"/><replaceable
+>$HOME</replaceable
+>/.xsession
+Name=Área de Trabalho Plasma do KDE (instável; kdesrc-build)
+</userinput
+></literallayout>
+
+<calloutlist>
+<callout arearefs="session-homedir"
+><para
+>O item <replaceable
+>$HOME</replaceable
+> deverá ser substituído pela localização completa da sua pasta pessoal (por exemplo, <filename class="directory"
+>/home/<replaceable
+>usuário</replaceable
+></filename
+>). A definição de itens desktop não permite arquivos genéricos para os usuários. </para
+></callout>
+
+</calloutlist>
+</step>
+
+<step performance="optional"
+><para
+>Quando o gerenciador de autenticação for reiniciado, ele deve mostrar um novo tipo de sessão, o <quote
+>Área de Trabalho Plasma do KDE (instável; kdesrc-build)</quote
+> na sua lista de sessões, que deverá então tentar executar o arquivo <filename
+>.xsession</filename
+> instalado pelo &kdesrc-build;, caso o tenha selecionado na sua autenticação.</para>
+
+<note
+><para
+>Pode ser mais simples reiniciar o computador para reiniciar o gerenciador de autenticação, caso este não acompanhe as atualizações da pasta <filename class="directory"
+>/usr/share/xsessions</filename
+>.</para
+></note>
+
+</step>
+
+</procedure>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="old-profile-instructions">
+<title
+>Configurar manualmente o ambiente</title>
+<para
+>Esta documentação era utilizada para incluir instruções sobre as variáveis de ambiente a definir para carregar o novo ambiente de trabalho. Estas instruções foram movidas para um apêndice (<xref linkend="old-profile-setup"/>).</para>
+
+<para
+>Se pretender configurar o seu próprio suporte para autenticações, poderá consultar esse apêndice ou ver o arquivo <filename
+>kde-env-master.sh.in</filename
+>, que vem incluído com o código do &kdesrc-build;.</para>
+
+</sect2>
+
+</sect1>

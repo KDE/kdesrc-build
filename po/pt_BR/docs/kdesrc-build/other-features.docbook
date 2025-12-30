@@ -1,0 +1,192 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="other-features">
+<title
+>Outras funcionalidades do &kdesrc-build;</title>
+
+<sect2 id="changing-verbosity">
+<title
+>Mudando a quantidade de mensagens do resultado do &kdesrc-build;</title>
+<para
+>O &kdesrc-build; possui várias opções para controlar a quantidade de dados de saída que o programa gera. Em qualquer caso, os erros serão sempre apresentados.</para>
+
+<table>
+  <title
+>Tabela de níveis de depuração</title>
+  <tgroup cols="3">
+  
+  <thead>
+    <row>
+      <entry
+>Nível de depuração</entry>
+      <entry
+>Nome do nível</entry>
+      <entry
+>Opção de linha de comando</entry>
+    </row>
+  </thead>
+  <tbody>
+  
+  <row>
+    <entry
+>0</entry>
+    <entry
+>DEPURAÇÃO</entry>
+    <entry
+>--debug</entry>
+  </row>
+    
+  <row>
+    <entry
+>1</entry>
+    <entry
+>WHISPER</entry>
+    <entry
+>--verbose</entry>
+  </row>
+  
+  <row>
+    <entry
+>2</entry>
+    <entry
+>INFO</entry>
+    <entry
+>Selecionado por padrão</entry>
+  </row>
+  
+  <row>
+    <entry
+>3</entry>
+    <entry
+>NOTA</entry>
+    <entry
+>--quiet</entry>
+  </row>
+  
+  <row>
+    <entry
+>4</entry>
+    <entry
+>AVISO</entry>
+    <entry
+>--really-quiet</entry>
+  </row>
+  
+  <row>
+    <entry
+>5</entry>
+    <entry
+>ERRO</entry>
+    <entry
+>Nenhuma maneira de selecionar</entry>
+  </row>
+  
+  </tbody>
+  </tgroup>
+</table>
+
+</sect2>
+
+<sect2 id="kdesrc-build-color">
+<title
+>Resultado colorido</title>
+<para
+>Ao ser executado a partir do &konsole; ou de um terminal diferente, o &kdesrc-build; irá mostrar normalmente o texto a cores.</para>
+
+<para
+>Você poderá desativar isto com a opção <option
+>--no-color</option
+> na linha de comando ou configurando a opção &colorful-output; no <link linkend="configure-data"
+>arquivo de configuração</link
+> como <userinput
+>false</userinput
+>. </para>
+
+<informalexample>
+<para
+>Desativando as mensagens a cores no arquivo de configuração:</para>
+<screen
+>global
+  colorful-output false
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="deleting-build-dir">
+<title
+>Removendo as pastas desnecessárias após uma compilação</title>
+<para
+>Você está com falta de espaço em disco mas deseja ainda fazer uma extração atualizada do &kde;? O &kdesrc-build; poderá ajudar a reduzir o uso do seu disco ao compilar o &kde; a partir do &git;.</para>
+
+<note
+><para
+>Tenha em mente que a compilação do &kde; ocupa bastante espaço. Existem muitos componentes grandes em termos de espaço ao usar o &kdesrc-build;:</para
+></note>
+
+<orderedlist>
+<listitem
+><para
+>A extração de código atual poderá levar bastante espaço. Os módulos padrão possuem cerca de 1,6 gigabytes de espaço em disco. Você poderá reduzir esta quantidade, se tiver certeza que só vai compilar os módulos que deseja de fato. O &kdesrc-build; não irá remover o código-fonte do disco, mesmo que remova o item do <link linkend="configure-data"
+>arquivo de configuração</link
+>, assim certifique-se de que são apagados os módulos extraídos e não usados da pasta de código. Lembre-se que os arquivos de código são obtidos da Internet, assim você <emphasis
+>não deverá</emphasis
+> removê-los se for usar estes arquivos de fato, pelo menos até acabar de usar o &kdesrc-build;.</para>
+
+<para
+>Da mesma forma, se você já tiver um &Qt; instalado pela sua distribuição (e é bastante possível que isso aconteça), provavelmente não irá necessitar instalar o módulo 'qt'. Isso irá poupar cerca de 200 MB do código no disco.</para>
+</listitem>
+
+<listitem>
+<para
+>O &kdesrc-build; irá criar uma pasta de compilação separada, para onde irá compilar o código-fonte. Algumas vezes o &kdesrc-build; terá que copiar uma pasta de código para criar uma pasta de compilação falsa. Quando isso acontecer, são usadas as ligações simbólicas, caracterizadas por poupar espaço, assim isso não deverá ser um problema a nível de espaço em disco. A pasta de compilação será tipicamente muito maior que a pasta de código de um módulo. Por exemplo, a pasta de compilação do 'kdebase' ocupa cerca de 1050 megabytes, enquanto o código do 'kdebase' ocupa apenas cerca de 550 megabytes.</para>
+
+<para
+>Felizmente, a pasta de compilação não é necessária após um módulo ter sido compilado e instalado com sucesso. O &kdesrc-build; poderá remover automaticamente a pasta de compilação após a instalação de um módulo; veja os exemplos abaixo para mais informações. Lembre-se que a utilização deste passo tornará impossível ao &kdesrc-build; efetuar as compilações incrementais que poupam tempo.</para>
+</listitem>
+
+<listitem
+><para
+>Finalmente, existe o espaço em disco necessário para a própria instalação do &kde;, que não se executa a partir da pasta de compilação. Este espaço é normalmente menor que o da pasta de compilação. É mais difícil ter os valores exatos, de qualquer forma. </para
+></listitem>
+</orderedlist>
+
+<para
+>Como reduz os requisitos de espaço do &kde;? Uma forma é usar as opções de compilação adequadas, para otimizar a redução de espaço em vez da velocidade. Outra forma, que poderá ser bem eficaz, é remover a informação de depuração da sua compilação do &kde;. </para>
+
+<warning
+><para
+>Você deverá saber bem o que está fazendo, antes de decidir remover a informação de depuração. A execução de aplicativos muito atuais significa que está rodando programas que, potencialmente, poderão ter tendência a travar, algo que não acontece numa versão estável. Se você estiver rodando 'software' sem informações de depuração, poderá ser bastante difícil criar um bom relatório de erros para que o seu erro seja resolvido; assim, é possível que tenha que reativar a informação de depuração do aplicativo afetado e recompilá-lo para ajudar um programador a resolver o problema. Então, remova a informação de depuração por sua conta e risco! </para
+></warning>
+
+<informalexample>
+<para
+>A remoção da pasta de compilação, após a instalação de um módulo. A pasta do código é ainda mantida e a depuração fica ativa:</para>
+
+<screen
+>global
+  configure-flags      --enable-debug
+  remove-after-install builddir        # Remover a pasta de compilação após a instalação
+end global
+</screen>
+
+<para
+>A remoção da pasta de compilação após a instalação, sem informações de depuração e com otimizações do tamanho.</para>
+
+<screen
+>global
+  cxxflags             -Os             # Otimizar o tamanho
+  configure-flags      --disable-debug
+  remove-after-install builddir        # Remover a pasta de compilação após a instalação
+end global
+</screen>
+</informalexample>
+</sect2>
+
+</sect1>

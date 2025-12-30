@@ -1,0 +1,184 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<appendix id="appendix-modules">
+<title
+>Organização dos módulos e do código-fonte do &kde;</title>
+<sect1 id="module-concept">
+<title
+>O <quote
+>Módulo</quote
+></title>
+
+<para
+>O &kde; agrupa os seus programas em <quote
+>módulos</quote
+> de diversos tamanhos. Isto era apenas um agrupamento lógico de alguns módulos grandes, mas com a introdução dos <ulink url="https://commits.kde.org/"
+>repositórios de código-fonte</ulink
+> baseados no <ulink url="https://git-scm.com/"
+>Git</ulink
+>, estes grandes módulos foram por sua vez divididos em muitos módulos mais pequenos. </para>
+
+<para
+>O &kdesrc-build; também usa este conceito de módulos. Em resumo, um <quote
+>módulo</quote
+> é um agrupamento de código que poderá ser transferido, compilado, testado e instalado. </para>
+
+<sect2 id="single-modules">
+<title
+>Módulos individuais</title>
+
+<para
+>É fácil indicar ao &kdesrc-build; para compilar um único módulo. Na lista a seguir está um exemplo de como deveria ser uma declaração de um módulo baseado em Git no <link linkend="kdesrc-buildrc"
+>arquivo de configuração</link
+>.</para>
+
+<programlisting
+>module <replaceable
+>kdefoo</replaceable>
+    <option
+><replaceable
+>cmake-options -DCMAKE_BUILD_TYPE=Debug</replaceable
+></option>
+end module
+</programlisting>
+
+<tip
+><para
+>Este é um módulo baseado no Git, uma vez que não usa uma opção <link linkend="conf-repository"
+>repository</link
+>. Do mesmo modo, a opção <option
+>cmake-options</option
+> aparece apenas como exemplo, não sendo obrigatória.</para
+></tip>
+
+</sect2>
+<sect2 id="module-groups">
+<title
+>Grupos de módulos relacionados</title>
+
+<para
+>Agora, a maioria dos módulos de código do &kde; são baseados no Git do &kde;, estando normalmente reunidos em grupos de módulos.</para>
+
+<para
+>Deste modo, o &kdesrc-build; também suporta grupos de módulos, usando os <link linkend="module-sets"
+>conjuntos de módulos</link
+>. Por exemplo:</para>
+
+<programlisting
+>module-set <replaceable
+>base-modules</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde-runtime kde-workspace kde-baseapps</replaceable>
+end module-set
+</programlisting>
+
+<tip
+><para
+>Você poderá deixar o nome do conjunto de módulos (<replaceable
+>módulos-base</replaceable
+> neste caso) vazio se o desejar. Esta opção <option
+>repository</option
+> indica ao &kdesrc-build; de onde transferir o código, mas poderá também usar uma URL <symbol
+>git://</symbol
+>.</para
+></tip>
+
+<para
+>Uma funcionalidade especial do <quote
+><option
+>repository</option
+> <literal
+>kde-projects</literal
+></quote
+> é que o &kdesrc-build; irá incluir automaticamente todos os módulos do Git que estiverem agrupados sob os módulos que apresentar (no banco de dados do Projeto KDE).</para>
+</sect2>
+
+<sect2 id="module-branch-groups">
+<title
+><quote
+>Grupos de ramificações</quote
+> do módulo</title>
+
+<para
+>Levando adiante o conceito de <link linkend="module-groups"
+>grupo de módulos</link
+>, os desenvolvedores do &kde; descobriram eventualmente que a sincronização dos nomes das ramificações Git por uma grande quantidade de repositórios estava ficando mais difícil, especialmente durante o esforço de desenvolvimento das novo &kde; Frameworks para a &Qt; 5. </para>
+
+<para
+>Assim, o conceito de <quote
+>grupos de ramificações</quote
+> foi desenvolvido de modo a permitir aos usuários e desenvolvedores selecionar um de alguns grupos, permitindo ao script selecionar automaticamente a ramificação Git apropriada. </para>
+
+<para
+>O &kdesrc-build; tem suporte a essa funcionalidade desde a versão 1.16-pre2, através da opção <link linkend="conf-branch-group"
+>branch-group</link
+>. </para>
+
+<example id="ex-branch-group">
+<title
+>Exemplo de uso do branch-group</title>
+
+<para
+>O branch-group pode ser usado no arquivo de configuração da seguinte forma: </para>
+
+<programlisting
+>global
+    # Selecionar o KDE Frameworks 5 e outros aplicativos baseados na Qt5
+    <option
+>branch-group</option
+> <replaceable
+>kf5-qt5</replaceable>
+
+    # Outras opções globais aqui...
+end global
+
+module-set
+    # O branch-group só funciona para o kde-projects
+    <option
+>repository</option
+> kde-projects
+
+    # O branch-group herda da definição global, mas pode ser definido aqui.
+
+    <option
+>use-modules</option
+> <replaceable
+>kdelibs kde-workspace</replaceable>
+end module-set
+
+# A ramificação kdelibs será a "frameworks"
+# A ramificação kde-workspace será a "master" (em agosto de 2013)
+</programlisting>
+
+<para
+>Nesse caso, o mesmo <literal
+>branch-group</literal
+> devolve diferentes nomes de ramificações para cada módulo Git. </para>
+</example>
+
+<para
+>Esta funcionalidade requer a manutenção de alguns dados por parte dos desenvolvedores do &kde; em um repositório Git chamado <literal
+>kde-build-metadata</literal
+>. Contudo, esse módulo será incluído automaticamente pelo &kdesrc-build; (ainda que você possa vê-lo aparecer no resultado do script). </para>
+
+<tip
+><para
+>Os módulos do &kde; que não têm um nome de ramificação definido para o grupo de ramificações que você escolher terão, por padrão, um nome de ramificação apropriado, como se não tivesse indicado o <literal
+>branch-group</literal
+> em tudo. </para
+></tip>
+
+</sect2>
+
+</sect1>
+</appendix>

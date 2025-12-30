@@ -1,0 +1,156 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<chapter id="cmdline">
+<title
+>Opções da Linha de Comando e Variáveis de Ambiente</title>
+
+<sect1 id="cmdline-usage">
+<title
+>Uso da linha de comando</title>
+
+<para
+>O &kdesrc-build; foi desenhado para ser executado como a seguir:</para>
+
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>--options</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>módulos a compilar</replaceable
+></arg
+> </cmdsynopsis>
+
+<para
+>Se nenhum módulo a ser compilado for especificado na linha de comando, então o kdesrc-build compilará todos os módulos do seu arquivo de configuração, na ordem listada neste arquivo (apesar disto poder ser modificado por várias opções do arquivo de configuração).</para>
+
+<sect2 id="cmdline-usage-options">
+<title
+>Opções de linha de comando comumente usadas</title>
+
+<para
+>A lista completa das opções da linha de comando é fornecida em <xref linkend="supported-cmdline-params"/>. As opções mais comumente usadas incluem:</para>
+
+<variablelist>
+  <varlistentry>
+    <term
+><option
+>--pretend</option
+> (ou <option
+>-p</option
+>)</term>
+    <listitem
+><para
+>Esta opção faz com que o &kdesrc-build; indique que ações seriam tomadas, sem de fato realizá-las. Isto pode ser útil para certificar-se de que os módulos que você pensa que serão compilados sejam de fato compilados.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--refresh-build</option
+></term>
+    <listitem
+><para
+>Esta opção força que o &kdesrc-build; compile os módulos fornecidos a partir de um ponto inicial totalmente limpo. Qualquer diretório de compilação existente para este módulo será removido e ele será recompilado. Esta opção é útil se você tiver erros ao compilar um módulo e algumas vezes é necessária quando as bibliotecas &Qt; ou &kde; mudam.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-src</option
+></term>
+    <listitem
+><para
+>Esta opção faz com que seja pulado o processo de atualização de código. Você pode usá-la se você tiver atualizado recentemente o código-fonte (talvez você tenha feito isto manualmente ou tenha executado o &kdesrc-build; recentemente) mas ainda deseja recompilar alguns módulos.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-build</option
+></term>
+    <listitem
+><para
+>Esta opção é semelhante ao <option
+>--no-src</option
+> acima, mas com ela o processo de compilação é pulado.</para
+></listitem>
+  </varlistentry>
+</variablelist>
+
+</sect2>
+
+<sect2 id="cmdline-usage-modules">
+<title
+>Especificando os módulos a compilar</title>
+
+<para
+>Em geral, especificar módulos a compilar é tão simples quanto passar os nomes dos módulos como você definiu no arquivo de configuração. Você pode também passar módulos que são parte de um conjunto de módulos, como nomeados em <link linkend="conf-use-modules"
+>use-modules</link
+>, ou o nome de todo o conjunto de módulos em si se você fornecer o seu nome.</para>
+
+<para
+>No caso específico de conjuntos de módulos baseados no <link linkend="kde-projects-module-sets"
+>banco de dados do projeto KDE</link
+>, o &kdesrc-build; expandirá o nome de módulo dos componentes para determinar o módulo exato que você deseja. Por exemplo, a entrada do &kdesrc-build; no projeto do KDE está localizada em <literal
+>extragear/utils/kdesrc-build</literal
+>. Você pode especificar qualquer uma das opções a seguir para compilar o &kdesrc-build;:</para>
+
+<informalexample>
+<screen
+><prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+extragear/utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+utils/kdesrc-build</replaceable
+></option>
+<prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+kdesrc-build</replaceable
+></option
+>
+</screen>
+</informalexample>
+
+<note
+><para
+>Os comandos no exemplo anterior precede o nome do módulo com um <symbol
+>+</symbol
+>. Isto força que o nome do módulo seja interpretado como um módulo do banco de dados de projeto do KDE, mesmo se este módulo não tiver sido definido em seu arquivo de configuração. </para
+></note>
+
+<para
+>Seja cuidadoso ao especificar projetos muito genéricos (por exemplo, <literal
+>extragear/utils</literal
+> em si), uma vez que isto pode levar a uma grande quantidade de módulos a serem compilados. Você deve usar a opção <option
+>--pretend</option
+> antes de compilar um novo módulo para certificar-se de que serão compilados somente os módulos que desejar.</para>
+
+</sect2>
+</sect1
+>&supported-envvars; &supported-cmdline-params; </chapter>

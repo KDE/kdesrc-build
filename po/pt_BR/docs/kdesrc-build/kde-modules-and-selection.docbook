@@ -1,0 +1,526 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="kde-modules-and-selection">
+<title
+>Organização e seleção dos módulos</title>
+
+<sect2 id="kde-layers">
+<title
+>Organização do Software do KDE</title>
+
+<para
+>As aplicações do &kde; estão divididas em diversos componentes, muitos dos quais poderão ser compilados pelo &kdesrc-build;. A compreensão desta organização irá ajudá-lo a selecionar adequadamente os módulos de aplicações que deseja compilar. </para>
+
+<orderedlist>
+<listitem
+><para
+>No nível inferior vem a biblioteca &Qt;, que é uma biblioteca multiplataforma e muito poderosa. O &kde; baseia-se no &Qt; e algumas das bibliotecas fora do &kde; que são necessárias também se baseiam no &Qt;. O &kdesrc-build; poderá compilar o &Qt; ou usar o que já está instalado no seu sistema, caso seja uma versão recente o suficiente.</para
+></listitem>
+
+<listitem
+><para
+>Além do &Qt;, existem bibliotecas obrigatórias necessárias para o funcionamento do software &kde;. Algumas dessas bibliotecas não são consideradas parte do próprio &kde; devido à sua natureza genérica, mas ainda são essenciais para a Plataforma &kde;. Essas bibliotecas são agrupadas sob o módulo <literal
+>kdesupport</literal
+>, mas não são consideradas parte das bibliotecas do <quote
+>Frameworks</quote
+>.</para>
+</listitem>
+
+<listitem
+><para
+>Além dessas bibliotecas essenciais, temos o <ulink url="https://community.kde.org/Frameworks"
+>&kde; Frameworks</ulink
+>, às vezes abreviados como KF5, que são bibliotecas essenciais para o ambiente de trabalho &kde; Plasma, aplicativos &kde; e outros softwares de terceiros. </para
+> </listitem>
+
+<listitem
+><para
+>No topo do Frameworks, vêm diversas coisas diferentes:</para>
+    <itemizedlist>
+        <listitem
+><para
+><quote
+>Aplicações de terceiros</quote
+>. São aplicativos que usam os Frameworks do &kde; ou são projetados para serem executados no &kde; Plasma, mas não são desenvolvidos pelo projeto &kde; nem associados a ele.</para
+></listitem>
+
+        <listitem
+><para
+>Plasma, que é um <quote
+>espaço de trabalho</quote
+> de ambiente de desktop completo. Isso é o que os usuários normalmente veem quando fazem <quote
+>login no &kde;</quote
+>.</para
+></listitem>
+
+        <listitem
+><para
+>O pacote de aplicativos &kde;. Esta é uma coleção de softwares úteis incluídos na Plataforma e no &plasma; Desktop, agrupados em módulos individuais, incluindo utilitários como &dolphin;, jogos como <application
+>KSudoku</application
+> e softwares de produtividade lançados pela &kde;, como o &kontact;.</para
+></listitem>
+
+        <listitem
+><para
+>Finalmente, existe uma coleção de software (também agrupada em módulos) cujo desenvolvimento é suportado por recursos do &kde; (como tradução, controle de versão, rastreamento de bugs, &etc;), mas que não é lançada pelo &kde; como parte do Plasma ou do pacote de aplicativos. Esses módulos são conhecidos como <quote
+>Extragear</quote
+>. </para
+></listitem>
+    </itemizedlist>
+</listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="selecting-modules">
+<title
+>Selecionar os módulos a compilar</title>
+
+<para
+>A seleção de qual dos módulos possíveis a compilar é controlada pelo <link linkend="kdesrc-buildrc"
+>arquivo de configuração</link
+>. Depois da seção <literal
+>global</literal
+>, existe uma lista com os módulos a compilar, delimitada pelas linhas 'module ... end module'. Aparece um item de exemplo para um módulo em <xref linkend="conf-module-example"/>.</para>
+
+<example id="conf-module-example">
+<title
+>Item de exemplo de módulo no arquivo de configuração</title>
+<programlisting
+>module <replaceable
+>kdesrc-build-git</replaceable>
+    # Opções para este módulo vão aqui, exemplo:
+    <link linkend="conf-repository"
+>repository</link
+> kde:kdesrc-build
+    <link linkend="conf-make-options"
+>make-options</link
+> -j4 # Roda 4 compilações por vez
+end module
+</programlisting>
+</example>
+
+<note
+><para
+>Na prática, essa construção de módulo geralmente não é usada diretamente. Em vez disso, a maioria dos módulos é especificada por meio de conjuntos de módulos, conforme descrito abaixo.</para
+></note>
+
+<para
+>Ao usar apenas entradas <literal
+>module</literal
+>, o &kdesrc-build; as compila na ordem em que você as lista e não tenta baixar nenhum outro repositório além daqueles que você especifica diretamente. </para>
+
+</sect2>
+
+<sect2 id="module-sets">
+<title
+>Conjuntos de Módulos</title>
+
+<para
+>O código-fonte do &kde; é decomposto em um grande número de repositórios relativamente pequenos baseados em Git. Para facilitar o gerenciamento do grande número de repositórios envolvidos em qualquer instalação útil baseada em &kde;, o &kdesrc-build; suporta o agrupamento de múltiplos módulos e o tratamento do grupo como um <quote
+>conjunto de módulos</quote
+>. </para>
+
+<sect3 id="module-set-concept">
+<title
+>O conceito básico de conjunto de módulos</title>
+
+<para
+>Se usar um conjunto de módulos, poderá declarar rapidamente muitos módulos do Git para serem transferidos e compilados, como se tivesse definido uma declaração de módulo em separado para cada um. A opção <link linkend="conf-repository"
+>repository</link
+> é tratada de forma especial para definir de onde foi transferido cada módulo, sendo todas as outras opções existentes no conjunto de módulos copiadas para cada módulo gerado desta forma.</para>
+
+<example id="example-using-module-sets">
+<title
+>Usar os conjuntos de módulos</title>
+<programlisting
+>global
+    <option
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></option
+> <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+module <replaceable
+>qt</replaceable>
+    # Opções removidas para resumir
+end module
+
+module-set <replaceable
+>kde-support-libs</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <replaceable
+>kde-git</replaceable>
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>automoc</replaceable
+> <replaceable
+>attica</replaceable
+> <replaceable
+>akonadi</replaceable>
+end module-set
+
+# Outros módulos conforme necessário...
+module <replaceable
+>kdesupport</replaceable>
+end module
+</programlisting>
+</example>
+
+<para
+>Em <xref linkend="example-using-module-sets"/>, aparece um breve conjunto de módulos. Quando o &kdesrc-build; encontrar este conjunto de módulos, irá atuar como se, para cada módulo indicado em <option
+>use-modules</option
+>, fosse declarado um módulo individual com o seu <option
+>repository</option
+> igual à opção <option
+>repository</option
+> do conjunto, seguida do nome do módulo indicado.</para>
+
+<para
+>Além disso, poderá passar outras opções num conjunto de módulos, as quais são copiadas para os novos módulos que forem criados desta forma. Ao usar os conjuntos de módulos, é possível declarar rapidamente vários módulos do Git que se baseiam todos na mesma URL de repositório. Além disso, é possível atribuir um nome aos conjuntos de módulos (como demonstrado no exemplo), o que lhe permite referenciar diretamente o grupo inteiro de módulos a partir da linha de comando.</para>
+
+</sect3>
+<sect3 id="module-sets-kde">
+<title
+>Suporte especial para conjuntos de módulos KDE</title>
+
+<para
+>O suporte a conjuntos de módulos descrito até agora é geral para quaisquer módulos baseados em Git. Para os repositórios Git do &kde;, o &kdesrc-build; inclui recursos adicionais para facilitar o trabalho de usuários e desenvolvedores. Esse suporte é habilitado especificando <literal
+>kde-projects</literal
+> como o <option
+>repository</option
+> para o conjunto de módulos. </para>
+
+<para
+>Normalmente, o &kdesrc-build; compila apenas os módulos listados no seu arquivo de configuração, na ordem em que você os listou. Mas com um conjunto de módulos <literal
+>kde-projects</literal
+>, o &kdesrc-build; pode realizar a resolução de dependências de módulos específicos do &kde; e, além disso, incluir automaticamente módulos na compilação, mesmo que especificados apenas indiretamente.</para>
+
+<example id="example-using-kde-module-sets">
+<title
+>Usar os conjuntos de módulos kde-projects</title>
+<programlisting
+># Adiciona apenas um módulo para juk (o repositório kde/kdemultimedia/juk)
+module-set <replaceable
+>juk-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>juk</replaceable>
+end module-set
+
+# Adiciona todos os módulos que estão em kde/multimedia/*, incluindo o
+# juk, mas nenhuma outra dependência.
+module-set <replaceable
+>multimedia-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde/multimedia</replaceable>
+end module-set
+
+# Adiciona todos os módulos que estão em kde/multimedia/* e todas as
+# dependências de projetos kde de fora de kde/kdemultimedia.
+module-set <replaceable
+>multimedia-deps-set</replaceable>
+    <option
+>repository</option
+> kde-projects
+    <option
+>use-modules</option
+> <replaceable
+>kde/multimedia</replaceable>
+    <option
+>include-dependencies</option
+> <replaceable
+>true</replaceable>
+end module-set
+
+# Todos os módulos criados a partir desses três conjuntos de módulos são
+# automaticamente colocados na ordem de dependência correta, independentemente
+# da configuração de include-dependencies.
+</programlisting>
+</example>
+
+<tip
+><para
+>Este construtor de conjunto de módulos <literal
+>kde-projects</literal
+> é o método principal para declarar quais módulos você deseja construir.</para
+></tip>
+
+<para
+>Todos os conjuntos de módulos usam as opções <link linkend="conf-repository"
+>repository</link
+> e <link linkend="conf-use-modules"
+>use-modules</link
+>. Os conjuntos de módulos <link linkend="kde-projects-module-sets"
+><literal
+>kde-projects</literal
+></link
+> têm um valor <option
+>repository</option
+> predefinido, mas outros tipos de conjuntos de módulos também usarão a opção <link linkend="conf-git-repository-base"
+>git-repository-base</link
+>. </para>
+</sect3>
+
+</sect2>
+
+<sect2 id="kde-projects-module-sets">
+<title
+>O banco de dados de módulos oficial do &kde;</title>
+
+<para
+>Os repositórios Git do &kde; permitem agrupar módulos Git relacionados em coleções de módulos relacionados (por exemplo, kdegraphics). O Git não reconhece esses agrupamentos, mas o &kdesrc-build; consegue entendê-los, usando <link linkend="module-sets"
+>conjuntos de módulos</link
+> com a opção <option
+>repository</option
+> definida como <quote
+><literal
+>kde-projects</literal
+></quote
+>.</para>
+
+<para
+>O &kdesrc-build; irá reconhecer que o repositório <literal
+>kde-projects</literal
+> precisa de tratamento especial e ajustar o processo de compilação em conformidade. Entre outras coisas, o &kdesrc-build; irá:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Baixe o último banco de dados de módulos do <ulink url="https://commits.kde.org/"
+>armazenamento git do &kde;</ulink
+>.</para
+></listitem>
+
+<listitem
+><para
+>Tentar procurar um módulo com o nome indicado na opção <option
+>use-modules</option
+> do conjunto de módulos neste banco de dados.</para
+></listitem>
+
+<listitem
+><para
+>Para cada módulo encontrado, o &kdesrc-build; buscará o repositório apropriado no banco de dados, com base na configuração <link linkend="conf-branch-group"
+>branch-group</link
+> em vigor. Se um repositório existir e estiver ativo para o grupo de ramificação, o &kdesrc-build; o utilizará automaticamente para baixar ou atualizar o código-fonte. </para
+></listitem>
+
+</itemizedlist>
+
+<note
+><para
+>No banco de dados atual, não só alguns grupos de módulos têm uma coleção de módulos, como <emphasis
+>também</emphasis
+> declaram o seu próprio repositório de &git;. Nestas situações, o &kdesrc-build; irá preferir o repositório de &git; do grupo em vez de incluir os repositórios dos filhos. </para
+></note>
+
+<para
+>O seguinte exemplo demonstra como usar o banco de dados de módulos do &kde; para instalar a biblioteca multimídia Phonon.</para>
+
+<informalexample>
+<programlisting
+>module-set <replaceable
+>media-support</replaceable>
+    # Esta opção deverá ser 'kde-projects' para usar o banco de dados de módulos.
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Esta opção escolhe quais os módulos procurar no banco de dados.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>phonon/phonon</replaceable
+> <replaceable
+>phonon-gstreamer</replaceable
+> <replaceable
+>phonon-vlc</replaceable>
+end module-set
+</programlisting>
+</informalexample>
+
+<tip
+><para
+>O <literal
+>phonon/phonon</literal
+> é usado uma vez que (com o projeto de banco de dados atual) o &kdesrc-build; caso contrário teria que decidir entre o grupo de projetos chamado <quote
+>phonon</quote
+> ou o projeto individual chamado <quote
+>phonon</quote
+>. Atualmente, o &kdesrc-build; pegaria o mais antigo, que compilaria mas infraestruturas do que o necessário.</para
+></tip>
+
+<para
+>O exemplo a seguir será talvez mais realista e demonstra uma funcionalidade que só está disponível no banco de dados de módulos do &kde;: a compilação de todos os aplicativos gráficos do &kde; com apenas uma única declaração.</para>
+
+<informalexample>
+<programlisting
+>module-set <replaceable
+>kdegraphics</replaceable>
+    # Esta opção deverá ser igual a 'kde-projects' para usar o banco de dados de módulos
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Esta opção escolhe os módulos a pesquisar no banco de dados.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <literal
+>kdegraphics/libs</literal
+> <literal
+>kdegraphics/*</literal>
+end module-set
+</programlisting>
+</informalexample>
+
+<para
+>Existem duas importantes habilidades demonstradas aqui:</para>
+
+<orderedlist>
+
+<listitem
+><para
+>O &kdesrc-build; permite que você especifique módulos que são descendentes de um determinado módulo, sem compilar o módulo pai, usando a sintaxe <userinput
+><replaceable
+>nome-módulo</replaceable
+>/*</userinput
+>. Isto é necessário de fato neste caso uma vez que o módulo base, o kdegraphics, está marcado como inativo, de modo que ele não seja acidentalmente compilado com seus módulos-filho. Especificar os módulos descendentes permite ao &kdesrc-build; pular o módulo desativado. </para
+></listitem>
+
+<listitem
+><para
+>O &kdesrc-build; também não adicionará um módulo fornecido a uma lista de compilação mais de uma vez. Isto nos permite definir manualmente que o<literal
+>kdegraphics/libs</literal
+> seja compilado primeiro, antes do restante do <literal
+>kdegraphics</literal
+>, sem que o <literal
+>kdegraphics/libs</literal
+> seja compilado duas vezes. Isso costumava ser requisito para o gerenciamento adequado de dependências e hoje permanece como uma opção alternativa caso o banco de dados do projeto &kde; não possua metadados de dependência. </para
+></listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="ignoring-project-modules">
+<title
+>Filtrar módulos do projeto do &kde;</title>
+
+<para
+>Você pode decidir que gostaria de compilar todos os programas dentro de um agrupamento de módulos do &kde;, <emphasis
+>exceto</emphasis
+> um determinado programa.</para>
+
+<para
+>Por exemplo, o grupo <literal
+>kdeutils</literal
+> inclui um programa chamado <application
+>kremotecontrol</application
+>. Se o seu computador não tiver o hardware adequado para receber os sinais enviados por controles remotos, você pode optar por não baixar, compilar e instalar o <application
+>kremotecontrol</application
+> todas as vezes que atualizar o <literal
+>kdeutils</literal
+>.</para>
+
+<para
+>Você pode fazer isso usando a opção de configuração <link linkend="conf-ignore-modules"
+>ignore-modules</link
+>. Na linha de comando, a opção <link linkend="ignoring-modules"
+>&cmd-ignore-modules;</link
+> faz a mesma coisa, mas é mais conveniente para filtrar um módulo apenas uma vez. </para>
+
+<example id="example-ignoring-a-module">
+<title
+>Exemplo para ignorar um módulo de um grupo do projeto KDE</title>
+<programlisting
+>module-set <replaceable
+>utils</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Esta opção escolhe quais os módulos procurar no banco de dados.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>kdeutils</replaceable>
+    # Esta opção "subtrai" os módulos escolhidos pela opção 'use-modules' acima.
+    <option
+><link linkend="conf-ignore-modules"
+>ignore-modules</link
+> </option
+> <replaceable
+>kremotecontrol</replaceable>
+end module-set
+
+module-set <replaceable
+>graphics</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <literal
+>kde-projects</literal>
+
+    # Esta opção escolhe os módulos a pesquisar no banco de dados.
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>extragear/graphics</replaceable>
+
+    # Esta opção "retira" os módulos dos escolhidos acima pelo 'use-modules'.
+    # Nesse caso, *tanto* o 'extragear/graphics/kipi-plugins' quanto o
+    # extragear/graphics/kipi-plugins/kipi-plugins-docs são ignorados
+    <option
+><link linkend="conf-ignore-modules"
+>ignore-modules</link
+></option
+> <replaceable
+>extragear/graphics/kipi-plugins</replaceable>
+end module-set
+</programlisting>
+</example>
+
+</sect2>
+
+</sect1>

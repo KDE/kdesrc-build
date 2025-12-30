@@ -1,0 +1,376 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<chapter id="kdesrc-buildrc">
+<title
+>Configurando o &kdesrc-build;</title>
+
+<sect1 id="kdesrc-buildrc-overview">
+<title
+>Visão geral da configuração do &kdesrc-build;</title>
+
+<para
+>Para usar o script, você deverá ter um arquivo na sua pasta pessoal chamado <filename
+>.kdesrc-buildrc</filename
+>, que descreve os módulos que deseja baixar e compilar, assim como todas as opções ou parâmetros de configuração a serem usados para esses módulos. </para>
+
+<sect2 id="kdesrc-buildrc-layout">
+<title
+>Layout do arquivo de configuração</title>
+
+<sect3 id="kdesrc-buildrc-layout-global">
+<title
+>Configuração global</title>
+
+<para
+>O arquivo de configuração começa com as opções globais, indicadas da seguinte forma: </para>
+
+<programlisting
+>global
+<replaceable
+>nome-opção valor-opção</replaceable>
+<replaceable
+>[...]</replaceable>
+end global
+</programlisting>
+
+</sect3>
+<sect3 id="kdesrc-buildrc-layout-modules">
+<title
+>Configuração do módulo</title>
+
+<para
+>Segue-se então uma ou mais seções dos módulos, especificadas em uma das duas formas a seguir: </para>
+
+<itemizedlist>
+<listitem>
+<programlisting
+>module <replaceable
+>nome-módulo</replaceable>
+<replaceable
+>nome-opção valor-opção</replaceable>
+<replaceable
+>[...]</replaceable>
+end module
+</programlisting>
+</listitem>
+
+<listitem>
+<programlisting
+>module-set <replaceable
+>nome-conjunto-módulos</replaceable>
+  repository <userinput
+>kde-projects</userinput
+> or <userinput
+><replaceable
+>git://host.org/path/to/repo.git</replaceable
+></userinput>
+  use-modules <replaceable
+>nomes-módulos</replaceable>
+
+# Outras opções podem também ser definidas
+<replaceable
+>nome-opção valor-opção</replaceable>
+<replaceable
+>[...]</replaceable>
+end module-set
+</programlisting>
+</listitem>
+</itemizedlist>
+
+<important
+><para
+>Note que a segunda forma, com conjuntos de módulos, <emphasis
+>só funciona para módulos baseados no Git</emphasis
+>.</para
+></important>
+
+<para
+>Para módulos Git, <replaceable
+>nome-módulo</replaceable
+> deve ser um módulo do repositório &kde; &git; (por exemplo, kdeartwork ou kde-wallpapers). </para>
+
+<para
+>Para módulos do Git, o nome do módulo pode ser essencialmente o que desejar, desde que ele não duplique qualquer outro nome de módulo na configuração. Tenha em mente que o layout do diretório de código e de compilação será baseado no nome do módulo se você não usar a opção <link linkend="conf-dest-dir"
+>dest-dir</link
+>. </para>
+
+<para
+>No entanto, para os <emphasis
+>conjuntos de módulos</emphasis
+> do Git o <replaceable
+>nomes-módulos</replaceable
+> devem corresponder com os módulos atuais do git no <option
+>repository</option
+> escolhido. Veja <link linkend="conf-git-repository-base"
+>git-repository-base</link
+> ou <link linkend="conf-use-modules"
+>use-modules</link
+> para mais informações. </para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-option-values">
+<title
+>Processamento de valores de opção</title>
+
+<para
+>Em geral, todo o conteúdo da linha após o <replaceable
+>nome-opção</replaceable
+> é usado como o <replaceable
+>valor-opção</replaceable
+>.</para>
+
+<para
+>Uma modificação que o &kdesrc-build; realiza é a substituição da sequência "<userinput
+>${<replaceable
+>nome-opção</replaceable
+>}</userinput
+>" pelo valor dessa opção da configuração global. Isso permite referenciar o valor de opções existentes, incluindo opções já definidas pelo &kdesrc-build;.</para>
+
+<para
+>Para ver um exemplo disso em uso, veja <xref linkend="make-options-example"/>.</para>
+
+<para
+>Você também pode introduzir suas próprias variáveis ​​globais não padronizadas para referenciá-las posteriormente na configuração. Para isso, o nome da sua opção deve ser precedido por um símbolo de sublinhado. Exemplo: <example id="custom-global-option-example">
+<title
+>Apresentando sua própria opção global para referência posterior na configuração.</title>
+<programlisting
+>global
+  _ver 6  # ← sua variável customizada (iniciando com sublinhado)
+  _kde ~/kde${_ver}  # ← a variável customizada pode conter outra variável definida
+  source-dir ${_kde}/src  # ← note que a variável aninhada (_kde → _ver) é também resolvida
+end global
+
+options kdepim
+  log-dir /custom/path/logs${_ver} # ← você pode usar a variável customizada como um padrão
+end options
+</programlisting>
+</example>
+</para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-options-groups">
+<title
+>Módulos de <quote
+>opções</quote
+></title>
+
+<para
+>Existe um tipo final de item do arquivo de configuração, os grupos <literal
+>options</literal
+>, que podem ser indicados sempre que um <literal
+>module</literal
+> ou <literal
+>module-set</literal
+> puder ser usado.</para>
+
+<programlisting
+>options <replaceable
+>nome-módulo</replaceable>
+<replaceable
+>nome-opção valor-opção</replaceable>
+<replaceable
+>[...]</replaceable>
+end options
+</programlisting>
+
+<para
+>Um grupo de <literal
+>options</literal
+> pode ter opções definidas para ele, como na declaração de um módulo, estando associado a um módulo existente. Todas as opções definidas dessa forma serão usadas para <emphasis
+>substituir</emphasis
+> as opções definidas para o módulo associado.</para>
+
+<important
+><para
+>O nome do módulo associado <emphasis
+>deve</emphasis
+> corresponder ao nome indicado na declaração <literal
+>options</literal
+>. Tenha cuidado com os erros na grafia do nome.</para
+></important>
+
+<para
+>Isto é útil para permitir declarar um <literal
+>module-set</literal
+> inteiro composto por vários módulos, todos com as mesmas opções e usando os grupos de <literal
+>options</literal
+> para fazer alterações individuais.</para>
+
+<para
+>Grupos de <literal
+>opções</literal
+> também podem ser aplicados a conjuntos de módulos nomeados. Isso permite que usuários experientes usem um arquivo de configuração comum (que inclui declarações de <literal
+>module-set</literal
+>) como base e, em seguida, façam alterações nas opções usadas por esses conjuntos de módulos em arquivos de configuração que usam o comando <literal
+><link linkend="kdesrc-buildrc-including"
+>include</link
+></literal
+> para referenciar a configuração base.</para>
+
+<example id="ex-options-group">
+<title
+>Exemplo de uso do 'options'</title>
+
+<para
+>Neste exemplo optamos por compilar todos os módulos do grupo de aplicativos multimídia do &kde;. Contudo, queremos usar uma versão diferente do aplicativo &kmix; (talvez para testar uma correção de erro). Isto funciona da seguinte forma:</para>
+
+<programlisting
+>module-set <replaceable
+>conjunto-kde-multimedia</replaceable>
+  repository <userinput
+>kde-projects</userinput>
+  use-modules <replaceable
+>kde/kdemultimedia</replaceable>
+  branch <replaceable
+>master</replaceable>
+end module-set
+
+# kmix é uma parte do grupo kde/kdemultimedia, ainda que nunca tenhamos
+# citado o kmix anteriormente, o &kdesrc-build; irá perceber a alteração.
+options <replaceable
+>kmix</replaceable>
+  branch <replaceable
+>KDE/4.12</replaceable>
+end options
+</programlisting>
+
+<para
+>Agora, quando executar o &kdesrc-build;, todos os programas multimídia do &kde; serão compilados a partir da ramificação <quote
+>master</quote
+> do repositório de código, mas o &kmix; será compilado a partir da ramificação mais antiga <quote
+>KDE/4.12</quote
+>. Ao usar o <literal
+>options</literal
+>, você não deve listar individualmente todos os <emphasis
+>outros</emphasis
+> programas multimídia do &kde; para lhes dar a opção de ramificação correta.</para>
+
+</example>
+
+<note>
+<para
+>Lembre-se de que essa funcionalidade só está disponível a partir da versão 1.16 do &kdesrc-build; ou da sua versão em desenvolvimento após o dia 12/01/2014.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-including">
+<title
+>Incluindo outros arquivos de configuração</title>
+
+<para
+>Dentro do arquivo de configuração, você pode referenciar outros arquivos usando a chave <literal
+>include</literal
+> com um arquivo, que funcionará como se o arquivo referenciado tivesse sido inserido no arquivo de configuração naquele ponto. </para>
+
+<informalexample
+><para
+>Por exemplo, você poderá fazer algo como isto:</para>
+<programlisting
+>global
+    include <replaceable
+>~/common-kdesrc-build-options</replaceable>
+
+    # Insira opções específicas aqui.
+
+end global
+</programlisting>
+</informalexample>
+
+<note
+><para
+>Se você não indicar o caminho completo do arquivo a incluir, então o arquivo será pesquisado a partir da pasta que contém o arquivo de origem. Isso funciona também de forma recursiva.</para
+></note>
+
+<para
+>Você pode usar variáveis ​​no valor da instrução include:</para>
+<programlisting
+>global
+  <replaceable
+>_ver</replaceable
+> <replaceable
+>6</replaceable>
+  source-dir ~/kde<replaceable
+>${_ver}</replaceable
+>/src
+  ...
+  persistent-data-file ~/kde<replaceable
+>${_ver}</replaceable
+>/persistent-options.json
+end global
+
+include ~/kde6/src/kdesrc-build/data/build-include/kf<replaceable
+>${_ver}</replaceable
+>-qt<replaceable
+>${_ver}</replaceable
+>.ksb
+
+</programlisting>
+</sect2>
+
+<sect2 id="kdesrc-buildrc-common">
+<title
+>Opções de configuração comumente usadas</title>
+
+<para
+>Segue-se uma lista das opções normalmente usadas. Clique na opção para descobrir mais sobre ela. Para visualizar a lista completa de opções, veja em <xref linkend="conf-options-table"/>. </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+> para definir as opções com que um módulo poderá ser configurado com o &cmake;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-branch"
+>branch</link
+>, para fazer checkout de um branch em vez de <literal
+>master</literal
+>.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-configure-flags"
+>configure-flags</link
+> para definir as opções com que o &Qt; poderá ser configurado.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>, para definir o diretório para instalar o &kde;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>, para passar opções ao programa &make; (como o número de CPUs a usar).</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-qt-install-dir"
+>qt-install-dir</link
+>, para definir o diretório para instalar o &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>, para mudar o local onde colocar o código transferido.</para
+></listitem>
+</itemizedlist>
+
+</sect2>
+</sect1
+>&conf-options-table; </chapter>

@@ -1,0 +1,552 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="advanced-features">
+<title
+>Funcionalidades avançadas</title>
+
+<sect2 id="partial-builds">
+<title
+>Compilar parcialmente um módulo</title>
+<para
+>É possível compilar apenas partes de um único módulo do &kde;. Por exemplo, você pode querer compilar apenas um programa de um módulo. O &kdesrc-build; possui funcionalidades para simplificar isto. Existem várias formas complementares de fazer esta tarefa. </para>
+
+<sect3 id="not-compiling">
+<title
+>Removendo pastas de uma compilação</title>
+<para
+>É possível baixar um repositório inteiro, mas fazer com que o sistema de compilação omita alguns diretórios durante a compilação. Isso requer que o módulo use o &cmake; e que o sistema de compilação do módulo permita que o diretório a ser removido seja opcional. </para>
+
+<para
+>Isso é controlado pela opção &do-not-compile;.</para>
+
+<important
+><para
+>Esta opção necessita pelo menos que o sistema de compilação do módulo seja reconfigurado após a alteração. Isto é feito com o comando <userinput
+><command
+>kdesrc-build</command
+> <option
+>&cmd-reconfigure;</option
+> <option
+><replaceable
+>módulo</replaceable
+></option
+></userinput
+>. </para
+></important>
+
+<informalexample>
+<para
+>Para remover a pasta <filename class="directory"
+>python</filename
+> do processo de compilação do 'kdebindings':</para>
+
+<screen
+>module <replaceable
+>kdebindings</replaceable>
+  &do-not-compile; <replaceable
+>python</replaceable>
+end module
+</screen>
+
+</informalexample>
+
+<note
+><para
+>Esta função depende de algumas convenções normais, usadas na maioria dos módulos do &kde;. Assim, ela poderá não funcionar para todos os programas.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="using-branches">
+<title
+>Suporte de marcas e ramificações do &kdesrc-build;</title>
+
+<sect3 id="branches-and-tags">
+<title
+>O que são ramificações e marcas?</title>
+
+<para
+>O &git; suporta o gerenciamento do histórico do código do &kde;. O &kde; usa esse suporte para criar ramificações ('branches') para desenvolvimento e para marcar o repositório com marcas ('tags'), sempre que lança uma nova versão. </para>
+
+<para
+>Por exemplo, os programadores do &kmail; poderão estar trabalhando numa nova funcionalidade, numa ramificação diferente, para evitar corromper a versão que está em uso pela maioria dos programadores. Esta ramificação tem desenvolvimentos em curso nela, mesmo quando a ramificação principal (chamada de master) também possua desenvolvimentos em curso nela. </para>
+
+<para
+>Uma marca, por outro lado, é uma imagem do repositório de código num determinado ponto. Isto é usado pela equipe de administração do &kde; para marcar uma versão do código adequada para lançamento, permitindo ainda aos programadores trabalharem no código. </para>
+
+</sect3>
+
+<sect3 id="branch-support">
+<title
+>Como usar as ramificações e marcas</title>
+
+<para
+>O suporte para ramificações e marcas é tratado por um conjunto de opções, que vão desde um simples pedido de uma versão até um &url; específico de transferência, para os usuários mais avançados. </para>
+
+<para
+>O método mais simples é usar as opções &branch; e &tag;. Você poderá usar a opção em conjunto com o nome da marca ou ramificação de um módulo, para que o &kdesrc-build; determine o local apropriado, dentro do repositório do &kde;, de onde deve baixar. Na maioria dos módulos do &kde;, isto funciona muito bem.</para>
+
+<informalexample>
+<para
+>Para baixar o 'kdelibs' do &kde; 4.6 (que é simplesmente conhecido pela ramificação '4.6'): </para>
+
+<screen
+>module kdelibs
+  branch <replaceable
+>4.6</replaceable>
+  # outras opções...
+end module
+</screen>
+
+<para
+>Ou, para baixar o 'kdemultimedia' como foi lançado no &kde; 4.6.1:</para>
+
+<screen
+>module kdemultimedia
+  tag <replaceable
+>4.6.1</replaceable>
+  # outras opções...
+end module
+</screen>
+
+</informalexample>
+
+<tip
+><para
+>Você poderá definir aqui um valor global para o 'branch'. Mas, se o fizer, não se esqueça de indicar uma ramificação diferente para os módulos que não devem usar a ramificação global! </para
+></tip>
+</sect3>
+
+</sect2>
+
+<sect2 id="stopping-the-build-early">
+<title
+>Interromper a compilação antecipadamente</title>
+
+<sect3 id="the-build-continues">
+<title
+>A compilação normalmente continua mesmo que ocorram falhas.</title>
+
+<para
+>O &kdesrc-build; normalmente atualiza, compila e instala todos os módulos na lista de módulos a serem compilados, mesmo que um módulo falhe na compilação. Isso geralmente é uma conveniência para permitir que você atualize pacotes de software mesmo se um erro simples for cometido em um dos repositórios de origem durante o desenvolvimento, o que causa a falha na compilação. </para>
+
+<para
+>No entanto, você pode desejar que o &kdesrc-build; interrompa sua execução assim que um módulo falhar na compilação e instalação. Isso pode ajudar a economizar tempo que seria perdido tentando progredir quando os módulos restantes na lista de compilação também não conseguiriam ser compilados com sucesso, especialmente se você nunca compilou com sucesso os módulos da lista. </para>
+
+</sect3>
+
+<sect3 id="stop-on-failure-stops-early">
+<title
+>Não interrompa antecipadamente com --no-stop-on-failure</title>
+
+<para
+>O método principal para fazer isso é usar a opção de linha de comando <link linkend="cmdline-stop-on-failure"
+>--no-stop-on-failure</link
+> ao executar o &kdesrc-build;. </para>
+
+<para
+>Esta opção também pode ser definida no <link linkend="conf-stop-on-failure"
+>arquivo de configuração</link
+> para torná-la o modo de operação normal. </para>
+
+<para
+>Também é possível instruir o &kdesrc-build; em tempo de execução a parar a compilação <emphasis
+>após</emphasis
+> concluir o módulo atual em que está trabalhando. Isso é diferente de interromper o &kdesrc-build; usando um comando como <keycombo action="simul"
+>&Ctrl;<keycap
+>C</keycap
+></keycombo
+>, que interrompe o &kdesrc-build; imediatamente, perdendo o progresso do módulo atual. </para>
+
+<important
+><para
+>Interromper o &kdesrc-build; durante a instalação de um módulo quando a opção <link linkend="conf-use-clean-install"
+>use-clean-install</link
+> estiver habilitada significará que o módulo interrompido ficará indisponível até que o &kdesrc-build; consiga compilar o módulo com sucesso!</para>
+
+<para
+>Se você precisar interromper o &kdesrc-build; sem permitir um encerramento correto nesta situação, pelo menos tente evitar fazer isso enquanto o &kdesrc-build; estiver instalando um módulo.</para>
+</important>
+
+</sect3>
+
+<sect3 id="stopping-early-without-stop-on-failure">
+<title
+>Interrompendo o &kdesrc-build; de forma controlada quando stop-on-failure for falso</title>
+
+<para
+>Como mencionado acima, é possível fazer com que o &kdesrc-build; seja encerrado de forma correta antecipadamente, assim que concluir o módulo em que está trabalhando. Para isso, você precisa enviar o sinal POSIX <literal
+>HUP</literal
+> para o &kdesrc-build; </para>
+
+<para
+>Você pode fazer isso com um comando como <command
+>pkill</command
+> (em sistemas &Linux;) da seguinte forma:</para>
+
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>pkill <option
+>-HUP</option
+> kdesrc-build</command
+></userinput
+>
+</programlisting>
+
+<para
+>Se a operação for bem-sucedida, você verá uma mensagem na saída do &kdesrc-build; similar a:</para>
+
+<programlisting
+>[ build ] recv SIGHUP, will end after this module
+</programlisting>
+
+<note>
+<para
+>O &kdesrc-build; pode exibir esta mensagem várias vezes, dependendo do número de processos &kdesrc-build; individuais que estão ativos. Isso é normal e não indica um erro.</para>
+</note>
+
+<para
+>Assim que o &kdesrc-build; reconhecer o sinal, ele interromperá o processamento após o módulo atual ser compilado e instalado. Se o &kdesrc-build; ainda estiver atualizando o código-fonte quando a solicitação for recebida, o &kdesrc-build; será interrompido após a conclusão da atualização do código-fonte do módulo. Assim que os processos de atualização e compilação forem interrompidos antecipadamente, o &kdesrc-build; imprimirá seus resultados parciais e será encerrado. </para>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="building-successfully">
+<title
+>Como o &kdesrc-build; tenta garantir uma compilação com sucesso</title>
+
+<sect3 id="automatic-rebuilds">
+<title
+>Recompilações automáticas</title>
+
+<para
+>O &kdesrc-build; costumava incluir recursos para automaticamente tentar recompilar o módulo após uma falha (uma vez que esta nova tentativa poderia funcionar, devido a falhas no sistema de compilação naquela época). Graças a mudança para o &cmake;, o sistema de compilação não sofre mais destas falhas, e assim o &kdesrc-build; não tentará compilar um módulo mais de uma vez. Existem situações onde o &kdesrc-build; automaticamente executará uma recompilação:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>Se você mudar o <link linkend="conf-configure-flags"
+>configure-flags</link
+> ou o <link linkend="conf-cmake-options"
+>cmake-options</link
+> para um módulo, então o &kdesrc-build; detectará e automaticamente re-executará o 'configure' ou o 'cmake' para aquele módulo.</para
+></listitem>
+
+<listitem
+><para
+>Se o sistema de compilação não existir (mesmo se o &kdesrc-build; não o removeu) então o &kdesrc-build; automaticamente irá recriá-lo. Isto é útil para permitir a execução de um <link linkend="cmdline-refresh-build"
+>--refresh-build</link
+> completo para um módulo específico sem ter que executá-lo em outros módulos.</para
+></listitem>
+
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="manual-rebuilds">
+<title
+>Recompilando manualmente um módulo</title>
+<para
+>Se você tiver feito alterações em alguma opção de um módulo, ou se o código-fonte do módulo mudar de uma forma que o &kdesrc-build; não reconheça, você poderá ter que recompilar o módulo manualmente.</para>
+
+<para
+>Você poderá se isto executando simplesmente o <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+><replaceable
+>módulo</replaceable
+></option
+></userinput
+>. </para>
+
+<para
+>Se você quiser que o &kdesrc-build; recompile de forma automática o módulo, durante a próxima atualização normal, você poderá criar um arquivo especial. Cada módulo possui uma pasta de compilação. Se você criar um arquivo chamado <filename
+>.refresh-me</filename
+> na pasta de compilação de um módulo, o &kdesrc-build; irá reconstruir o módulo da próxima vez que o processo de compilação rodar, mesmo que fosse executar normalmente a compilação incremental.</para>
+
+<tip>
+<para
+>Por padrão, a pasta de compilação é a <filename class="directory"
+>~/kde/build/<replaceable
+>módulo</replaceable
+>/</filename
+>. Se você mudar a opção &build-dir;, então use essa em vez da <filename class="directory"
+>~/kde/build</filename
+>.</para>
+</tip>
+
+<informalexample>
+<para
+>Recompilar usando o <filename
+>.refresh-me</filename
+> para o módulo <replaceable
+>kdelibs</replaceable
+>:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>touch</command
+> <filename
+>~/kdesrc/build/<replaceable
+>kdelibs</replaceable
+>/.refresh-me</filename
+></userinput>
+<prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+</informalexample>
+</sect3>
+
+</sect2>
+
+<sect2 id="changing-environment">
+<title
+>Mudando a configuração das variáveis de ambiente</title>
+<para
+>Normalmente, o &kdesrc-build; usa o ambiente que está presente quando inicia e executa os programas para atualizar e compilar. Isto é útil para quando você está rodando o &kdesrc-build; a partir da linha de comando.</para>
+
+<para
+>Contudo, você poderá desejar alterar a configuração das variáveis de ambiente para as quais o &kdesrc-build; não possui uma opção direta. (Por exemplo, para configurar qualquer variável de ambiente ao rodar o &kdesrc-build; em um agendador de tarefas como o &cron;) Isto é possível com a opção &set-env;.</para>
+
+<para
+>Ao contrário da maioria das opções, ela poderá ser definida mais de uma vez e aceita dois itens separados por um espaço. O primeiro item é o nome da variável de ambiente a definir e o resto da linha é o valor.</para>
+
+<informalexample>
+<para
+>Configura a <userinput
+><envar
+>DISTRO</envar
+>=<replaceable
+>BSD</replaceable
+></userinput
+> para todos os módulos:</para>
+<screen
+>global
+  set-env <replaceable
+>DISTRO</replaceable
+> <replaceable
+>BSD</replaceable>
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="resuming">
+<title
+>Prosseguir com as compilações</title>
+
+<sect3 id="resuming-failed">
+<title
+>Prosseguir uma compilação falhada ou cancelada</title>
+
+<para
+>Você poderá indicar ao &kdesrc-build; para começar a compilar a partir de um módulo diferente daquele onde iria prosseguir. Isto poderá ser útil quando falhou um conjunto de módulos ou se tiver cancelado a execução de uma compilação no meio. Você poderá controlar isto com as opões &cmd-resume-from; e &cmd-resume-after;.</para>
+
+<note
+><para
+>As versões mais antigas do &kdesrc-build; iriam saltar a atualização do código ao prosseguir com uma compilação. Isto já não é mais feito por padrão, mas você ainda poderá continuar a usar a opção da linha de comando <option
+>--no-src</option
+> para saltar a atualização do código.</para
+></note>
+
+<informalexample>
+<para
+>Prosseguir a compilação começando no 'kdebase':</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-from=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<informalexample>
+<para
+>Prosseguir a compilação começando após o 'kdebase' (no caso de você corrigir manualmente um problema e ter instalado o módulo você mesmo):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-after=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<para
+>Se a última compilação do &kdesrc-build; terminou com erro, você poderá também usar a opção <link linkend="cmdline-resume"
+>--resume</link
+> da linha de comando, a qual prossegue com a última compilação a partir do módulo que falhou. As atualizações de código e metadados também são ignoradas (porém, se precisar delas, normalmente é melhor usar a opção <link linkend="cmdline-resume-from"
+>--resume-from</link
+> em alternativa).</para>
+
+
+</sect3>
+
+<sect3 id="ignoring-modules">
+<title
+>Ignorando os módulos numa compilação</title>
+
+<para
+>Como acontece quando deseja <link linkend="resuming-failed"
+>prosseguir com a compilação de um módulo</link
+>, você poderá optar em alternativa por atualizar e compilar tudo normalmente, só que ignorando um conjunto de módulos.</para>
+
+<para
+>Você poderá fazer isso com a opção &cmd-ignore-modules;. Esta opção diz ao &kdesrc-build; para ignorar todos os módulos da linha de comando, ao efetuar a atualização e a compilação.</para>
+
+<informalexample>
+<para
+>Ignorar o extragear/multimedia e o kdereview numa execução completa:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--ignore-modules</option
+> <replaceable
+>extragear/multimedia kdereview</replaceable
+></userinput
+>
+</screen>
+</informalexample>
+
+</sect3>
+</sect2>
+
+<sect2 id="changing-env-from-cmd-line">
+<title
+>Mudando as opções na linha de comando</title>
+
+<sect3 id="changing-global-opts">
+<title
+>Modificando as opções globais</title>
+<para
+>Você poderá alterar a configuração das opções lidas do <link linkend="configure-data"
+>arquivo de configuração</link
+> diretamente a partir da linha de comando. Esta alteração irá substituir a configuração do arquivo, mas é apenas temporária. Só terá efeito enquanto ainda estiver presente na linha de comando.</para>
+
+<para
+>O &kdesrc-build; permite-lhe alterar as opções com nome do tipo <replaceable
+>nome-opção</replaceable
+> passando um argumento na linha de comando com o formato <userinput
+><option
+>--<replaceable
+>nome-opção</replaceable
+>=valor</option
+></userinput
+>. O &kdesrc-build; irá reconhecer se não souber qual a opção, e irá procurar o nome na sua lista de nomes de opções. Se não reconhecer o nome, ele irá avisá-lo, caso contrário irá recordar o valor que definiu e substituir o valor do arquivo de configuração.</para>
+
+<informalexample>
+<para
+>Configurar o &source-dir; como <filename
+>/dev/null</filename
+> para fins de teste:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+> <option
+>--<replaceable
+>source-dir</replaceable
+>=<replaceable
+>/dev/null</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+<sect3 id="changing-module-opts">
+<title
+>Mudando as opções do módulo</title>
+<para
+>Também é possível alterar as opções apenas para um módulo específico. A sintaxe é semelhante: --<replaceable
+>módulo</replaceable
+>,<replaceable
+>nome-opção</replaceable
+>=<replaceable
+>valor</replaceable
+>. </para>
+
+<para
+>Esta alteração substitui qualquer opção duplicada do módulo encontrado no <link linkend="configure-data"
+>arquivo de configuração</link
+> e só se aplica enquanto a opção for passada na linha de comando.</para>
+
+<informalexample>
+<para
+>Usando uma pasta de compilação diferente para o módulo 'kdeedu':</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--<replaceable
+>kdeedu</replaceable
+>,<replaceable
+>build-dir</replaceable
+>=<replaceable
+>temp-build</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+</sect2>
+
+</sect1>
