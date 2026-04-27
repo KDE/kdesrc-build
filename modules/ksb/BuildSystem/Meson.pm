@@ -43,12 +43,33 @@ sub configureInternal
     my @setupOptions = split_quoted_on_whitespace(
         $module->getOption('configure-flags', 'module') // '');
 
+    my @commands = ('meson', 'setup', $buildDir, '--prefix', $installdir, @setupOptions);
+
+    my $old_options = $module->getPersistentOption('last-meson-options') || '';
+    my $new_digest = get_list_digest(@commands);
+    my $alreadyConfigured = -e "$buildDir/meson-private/build.dat";
+
+    if ($alreadyConfigured
+        && $old_options eq $new_digest
+        && !$module->getOption('reconfigure'))
+    {
+        # Nothing changed; skip running meson setup. Ninja will re-invoke meson
+        # to regenerate as needed (including after a meson upgrade), which
+        # avoids tripping over a build.dat written by an older meson version.
+        whisper ("\tSkipping meson setup, build dir is already configured");
+        return 1;
+    }
+
+    if ($alreadyConfigured) {
+        # Force regeneration so changed configure-flags take effect (and to
+        # refresh a build.dat left behind by an older meson).
+        splice @commands, 3, 0, '--reconfigure';
+    }
+
+    $module->setPersistentOption('last-meson-options', $new_digest);
+
     return await_exitcode(
-        run_logged_p($module, 'meson-setup', $sourcedir, [
-            'meson', 'setup', $buildDir,
-            '--prefix', $installdir,
-            @setupOptions,
-        ])
+        run_logged_p($module, 'meson-setup', $sourcedir, \@commands)
     );
 }
 
