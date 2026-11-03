@@ -408,10 +408,23 @@ EOF
     return;
 }
 
+# Returns true if commit $ancestor is an ancestor of (or the same as) commit
+# $descendant in the current directory's repository. Throws if git fails.
+sub _isAncestor ($module, $ancestor, $descendant)
+{
+    system('git', 'merge-base', '--is-ancestor', $ancestor, $descendant);
+    my $status = $?;
+    # Exit code 1 means "not an ancestor"; anything else, incl. a signal, is a failure
+    croak_runtime("$module: Unable to compare $ancestor with $descendant")
+        if $status != 0 && $status != (1 << 8);
+    return $status == 0;
+}
+
 # Completes the steps needed to update a git checkout to be checked-out to
 # a given remote-tracking branch. Any existing local branch with the given
 # branch set as upstream will be used if one exists, otherwise one will be
-# created. The given branch will be rebased into the local branch.
+# created. The local branch is fast-forwarded to the given branch; if it has
+# commits of its own, it is left unchanged and the user is told about it.
 #
 # No checkout is done, this should be performed first.
 # Assumes we're already in the needed source dir.
@@ -468,12 +481,25 @@ sub _updateToRemoteHead ($self, $remoteName, $branch)
                 return $exitcode
                     unless $exitcode == 0;
 
-                $croak_reason = "$module: Unable to reset to remote development branch $branch";
+                # The stash only covers uncommitted changes, the branch may
+                # also have local commits: only fast-forward it.
+                my $remoteHead = "$remoteName/$branch";
+                my $localHead = "refs/heads/$branchName";
+                return 0
+                    if _isAncestor($module, $remoteHead, $localHead); # nothing new upstream
 
-                # Given that we're starting with a 'clean' checkout, it's now simply a fast-forward
-                # to the remote HEAD (previously we pulled, incurring additional network I/O).
-                return run_logged_p($module, 'git-rebase', undef,
-                          ['git', 'reset', '--hard', "$remoteName/$branch"]);
+                if (!_isAncestor($module, $localHead, $remoteHead)) {
+                    my $message = "y[b[*] b[$module] was not updated: branch b[$branchName] " .
+                        "has commits that are not in b[$remoteHead] (local commits, or a rewritten upstream " .
+                        "history). Rebase, merge or reset it yourself.";
+                    warning ("\t$message");
+                    $self->_notifyPostBuildMessage($message);
+                    return 0; # treat it like an up-to-date module
+                }
+
+                $croak_reason = "$module: Unable to fast-forward to remote development branch $branch";
+                return run_logged_p($module, 'git-merge-ff-only', undef,
+                          ['git', 'merge', '--ff-only', $remoteHead]);
             });
         }
 
