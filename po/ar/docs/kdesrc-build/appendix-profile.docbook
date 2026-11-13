@@ -1,0 +1,205 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<appendix id="appendix-profile">
+<title
+>إجراءات إعداد التشكيلة المستبدلة</title>
+
+<sect1 id="old-profile-setup">
+<title
+>إعداد تشكيلة دخول لكيدي</title>
+
+<para
+>تغطي هذه التعليمات كيفية إعداد التشكيلة المطلوبة لضمان قدرة حاسوبك على الدخول إلى سطح مكتب كيدي بلازما الذي بنيته حديثًا. يحاول كيدي-مصدر-بناء عادةً فعل ذلك آليًا (انظر <xref linkend="session-driver"/>). يمكن أن يكون هذا الملحق مفيدًا لمن لا يستطيعون استخدام دعم كيدي-مصدر-بناء لإعداد تشكيلة الدخول. لكن التعليمات قد لا تكون محدثة دائمًا، كما قد يكون من المفيد مراجعة ملف <filename
+>kde-env-master.sh.in</filename
+> المضمن مع مصدر كيدي-مصدر-بناء.</para>
+
+<sect2 id="changing-profile">
+<title
+>تغيير إعدادات تشكيلة البدء</title>
+
+<important
+><para
+>ملف <filename
+>.bash_profile</filename
+> هو ملف إعدادات الدخول للصدفة الشهيرة <application
+>bash</application
+> التي تستخدمها العديد من توزيعات لينكس. إذا كنت تستخدم صدفة مختلفة، فقد تحتاج إلى تعديل الأمثلة الواردة في هذا القسم لتناسب صدفةك الخاصة.</para
+></important>
+
+<para
+>افتح أو أنشئ ملف <filename
+>.bash_profile</filename
+> في الدليل الرئيسي بمحررك المفضل، وأضف إلى نهاية الملف: إذا كنت تبني وحدة كيوت (تفعل ذلك مبدئيًا)، أضف بدلًا من ذلك: <programlisting>
+PATH=${install-dir}/bin:${qt-install-dir}/bin:$PATH
+MANPATH=${qt-install-dir}/doc/man:$MANPATH
+
+# Act appropriately if LD_LIBRARY_PATH is not already set.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}:/lib:${qt-install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}:/lib:${qt-install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH MANPATH LD_LIBRARY_PATH
+</programlisting
+> أو، إذا كنت لا تقوم ببناء Qt (وتستخدم نظامك وQt بدلًا من ذلك)، فأضف هذا بدلًا من ذلك: <programlisting
+>PATH=${install-dir}/bin:${qt-install-dir}/bin:$PATH
+
+# Act appropriately if LD_LIBRARY_PATH is not already set.
+if [ -z $LD_LIBRARY_PATH ]; then
+  LD_LIBRARY_PATH=${install-dir}/lib
+else
+  LD_LIBRARY_PATH=${install-dir}/lib:$LD_LIBRARY_PATH
+fi
+
+export PATH LD_LIBRARY_PATH
+</programlisting>
+</para>
+
+<para
+>إذا كنت لا تستخدم مستخدمًا مخصصًا، اضبط $<envar
+>KDEHOME</envar
+> مختلفًا لبيئتك الجديدة في ملف <filename
+>.bash_profile</filename
+>: <programlisting
+>export KDEHOME="${HOME}/.kde-git"
+
+# Create it if needed
+[ ! -e ~/.kde-git ] &amp;&amp; mkdir ~/.kde-git
+</programlisting>
+</para>
+
+<note>
+<para
+>إذا كانت قائمة كي لديك فارغة لاحقًا أو مزدحمة جدًا بتطبيقات توزيعتك، قد تحتاج إلى ضبط متغيرات بيئة <acronym
+>XDG</acronym
+> في ملف <filename
+>.bash_profile</filename
+>: <programlisting
+>XDG_CONFIG_DIRS="/etc/xdg"
+XDG_DATA_DIRS="${install-dir}/share:/usr/share"
+export XDG_CONFIG_DIRS XDG_DATA_DIRS
+</programlisting>
+
+</para>
+</note>
+
+</sect2>
+<sect2 id="starting-kde">
+<title
+>بدء كيدي</title>
+
+<para
+>الآن بعد أن ضبطت إعدادات بيئتك لاستخدام كيدي الصحيح، من المهم ضمان استخدام النص البرمجي <command
+>startkde</command
+> الصحيح أيضًا. </para>
+
+<para
+>افتح ملف النص <filename
+>.xinitrc</filename
+> من الدليل الرئيسي، أو أنشئه إذا لزم الأمر. أضف السطر: <programlisting
+><command
+>exec</command
+> <option
+>${install-dir}/bin/startkde</option
+>
+</programlisting>
+</para>
+
+<important
+><para
+>في بعض التوزيعات، قد يكون من الضروري تنفيذ نفس الخطوات مع ملف <filename
+>.xsession</filename
+>، أيضًا في الدليل الرئيسي. هذا صحيح خاصة عند استخدام مديري دخول رسوميين مثل sddm، <application
+>gdm</application
+>، أو <application
+>xdm</application
+>.</para>
+</important>
+
+<para
+>ابدأ الآن كيدي الجديد: في أنظمة بي إس دي ولينكس مع دعم الطرفية الافتراضية، تُستخدم تركيبات ضغط المفاتيح <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F1</keycap
+></keycombo
+> ... <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F12</keycap
+></keycombo
+> للتبديل إلى الطرفية الافتراضية 1 إلى 12. يتيح لك هذا تشغيل أكثر من بيئة سطح مكتب في نفس الوقت. الستة الأولى هي طرفيات نصية والستة التالية هي شاشات رسومية. </para>
+
+<para
+>إذا عُرض عليك مدير العرض الرسومي عند بدء حاسوبك بدلًا من ذلك، يمكنك استخدام بيئة كيدي الجديدة، حتى لو لم تكن مدرجة كخيار. معظم مديري العرض، بما في ذلك sddm، لديهم خيار لاستخدام <quote
+>جلسة مخصصة</quote
+> عند دخولك. مع هذا الخيار، تُحمّل إعدادات جلستك من ملف <filename
+>.xsession</filename
+> في دليلك الرئيسي. إذا كنت قد عدّلت هذا الملف كما هو موصوف أعلاه، يجب أن يحمّلك هذا الخيار إلى تثبيت كيدي الجديد. </para>
+
+<para
+>إذا لم يفعل، هناك شيء آخر يمكنك تجربته يجب أن يعمل عادةً: اضغط <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+>، وسيُعرض عليك طرفية نصية. سجل الدخول باستخدام المستخدم المخصص واكتب: </para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<tip>
+<para
+>يمكنك تشغيل كيدي من المصادر وكيدي القديم في نفس الوقت! سجل الدخول باستخدام مستخدمك العادي، ابدأ سطح مكتب كيدي المستقر. اضغط <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F2</keycap
+></keycombo
+> (أو <keycap
+>F1</keycap
+>، <keycap
+>F3</keycap
+>، إلخ..)، وسيُعرض عليك طرفية نصية. سجل الدخول باستخدام مستخدم كيدي &git; المخصص واكتب:</para>
+
+<screen
+><command
+>startx</command
+> <option
+>--</option
+> <option
+>:1</option
+>
+</screen>
+
+<para
+>يمكنك العودة إلى سطح مكتب كيدي لمستخدمك العادي بالضغط على مفتاح الاختصار لسطح المكتب الجاري تشغيله بالفعل. هذا عادةً <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+>، قد تحتاج إلى استخدام <keycap
+>F6</keycap
+> أو <keycap
+>F8</keycap
+> بدلًا من ذلك. للعودة إلى كيدي المترجم بكيدي-مصدر-بناء، ستستخدم نفس التسلسل، باستثناء مفتاح الوظيفة التالي. على سبيل المثال، إذا كنت بحاجة إلى إدخال <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F7</keycap
+></keycombo
+> للتبديل إلى كيدي العادي، ستحتاج إلى إدخال <keycombo action="simul"
+>&Ctrl;&Alt;<keycap
+>F8</keycap
+></keycombo
+> للعودة إلى كيدي كيدي-مصدر-بناء.</para>
+</tip>
+
+</sect2>
+</sect1>
+
+</appendix>

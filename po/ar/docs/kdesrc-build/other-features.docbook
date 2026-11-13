@@ -1,0 +1,188 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="other-features">
+<title
+>ميزات &kdesrc-build; الأخرى</title>
+
+<sect2 id="changing-verbosity">
+<title
+>تغيير كمية المخرجات من &kdesrc-build;</title>
+<para
+>يمتلك &kdesrc-build; عدة خيارات للتحكم في كمية المخرجات التي يولدها النص البرمجي. على أي حال، ستُخرج الأخطاء دائمًا.</para>
+
+<table>
+  <title
+>جدول مستويات التنقيح</title>
+  <tgroup cols="3">
+  
+  <thead>
+    <row>
+      <entry
+>مستوى التنقيح</entry>
+      <entry
+>اسم المستوى</entry>
+      <entry
+>خيار سطر الأوامر</entry>
+    </row>
+  </thead>
+  <tbody>
+  
+  <row>
+    <entry
+>0</entry>
+    <entry
+>تنقيح</entry>
+    <entry
+>--debug</entry>
+  </row>
+    
+  <row>
+    <entry
+>1</entry>
+    <entry
+>همس</entry>
+    <entry
+>--verbose</entry>
+  </row>
+  
+  <row>
+    <entry
+>2</entry>
+    <entry
+>معلومات</entry>
+    <entry
+>مُحدد مبدئيًا</entry>
+  </row>
+  
+  <row>
+    <entry
+>3</entry>
+    <entry
+>ملاحظة</entry>
+    <entry
+>--quiet</entry>
+  </row>
+  
+  <row>
+    <entry
+>4</entry>
+    <entry
+>تحذير</entry>
+    <entry
+>--really-quiet</entry>
+  </row>
+  
+  <row>
+    <entry
+>5</entry>
+    <entry
+>خطأ</entry>
+    <entry
+>لا طريقة للتحديد</entry>
+  </row>
+  
+  </tbody>
+  </tgroup>
+</table>
+
+</sect2>
+
+<sect2 id="kdesrc-build-color">
+<title
+>مخرجات ملونة</title>
+<para
+>عند التشغيل من &konsole; أو طرفية مختلفة، سيعرض &kdesrc-build; عادةً بنص ملون.</para>
+
+<para
+>يمكنك تعطيل هذا باستخدام <option
+>--no-color</option
+> في سطر الأوامر، أو بضبط خيار &colorful-output; في <link linkend="configure-data"
+>ملف الضبط</link
+> إلى <userinput
+>false</userinput
+>. </para>
+
+<informalexample>
+<para
+>تعطيل المخرجات الملونة في ملف الضبط:</para>
+<screen
+>global
+  colorful-output false
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="deleting-build-dir">
+<title
+>إزلة الأدلة غير الضرورية بعد بناء</title>
+<para
+>هل مساحة قرصك ضيقة ولكنك لا تزال تريد تشغيل سحب &kde; متطور؟ يمكن لـ &kdesrc-build; المساعدة في تقليل استخدامك للقرص عند بناء &kde; من &git;.</para>
+
+<note
+><para
+>كن على علم بأن بناء &kde; يستهلك مساحة كبيرة. هناك عدة أجزاء رئيسية مستهلكة للمساحة عند استخدام &kdesrc-build;:</para
+></note>
+
+<orderedlist>
+<listitem
+><para
+>يمكن أن يستهلك سحب المصدر الفعلي قدرًا لا بأس به من المساحة. تستهلك الوحدات المبدئية حوالي 1.6 غيغابايت من مساحة القرص. يمكنك تقليل هذا المقدار بالتأكد من أنك تبني فقط عدد الوحدات التي تريدها فعلًا. لن يحذف &kdesrc-build; شيفرة المصدر من القرص حتى لو حذفت المدخل من <link linkend="configure-data"
+>ملف الضبط</link
+>، لذا تأكد من أن تذهب وتحذف سحوبات المصدر غير المستخدمة من دليل المصدر. لاحظ أن ملفات المصدر تُنزّل من الإنترنت، <emphasis
+>لا ينبغي</emphasis
+> حذفها إذا كنت تستخدمها فعلًا، على الأقل حتى تنتهي من استخدام &kdesrc-build;.</para>
+
+<para
+>أيضًا، إذا كان لديك بالفعل &Qt; مثبتًا من توزيعتك (والاحتمالات جيدة أن لديك)، فربما لا تحتاج إلى تثبيت وحدة qt. سيؤدي ذلك إلى تقليل حوالي 200 ميغابايت من حجم المصدر على القرص.</para>
+</listitem>
+
+<listitem>
+<para
+>سينشئ &kdesrc-build; دليل بناء منفصل لبناء شيفرة المصدر فيه. أحيانًا سيضطر &kdesrc-build; إلى نسخ دليل مصدر لإنشاء دليل بناء وهمي. عندما يحدث هذا، تُستخدم روابط رمزية موفرة للمساحة، لذا لا ينبغي أن يكون هذا مشكلة على مساحة القرص. سيكون دليل البناء عادةً أكبر بكثير من دليل المصدر لوحدة ما. على سبيل المثال، دليل البناء لـ kdebase يبلغ حوالي 1050 ميغابايت، بينما مصدر kdebase يبلغ حوالي 550 ميغابايت فقط.</para>
+
+<para
+>لحسن الحظ، دليل البناء غير مطلوب بعد بناء وحدة وتثبيتها بنجاح. يمكن لـ &kdesrc-build; إزالة دليل البناء آليًا بعد تثبيت وحدة، انظر الأمثلة أدناه لمزيد من المعلومات. لاحظ أن اتخاذ هذه الخطوة سيجعل من المستحيل على &kdesrc-build; تنفيذ عمليات البناء التزايدية الموفرة للوقت.</para>
+</listitem>
+
+<listitem
+><para
+>أخيرًا، هناك مساحة قرص مطلوبة للتثبيت الفعلي لـ &kde;، والذي لا يُشغّل من دليل البناء. يستهلك هذا عادةً مساحة أقل من دليل البناء. لكن من الأصعب الحصول على أرقام دقيقة. </para
+></listitem>
+</orderedlist>
+
+<para
+>كيف تقلل متطلبات المساحة لـ&kde;؟ إحدى الطرق هي استخدام أعلام المترجم المناسبة، لتحسين تقليل المساحة بدلًا من السرعة. طريقة أخرى، يمكن أن يكون لها تأثير كبير، هي إزالة معلومات التنقيح من بناء &kde; الخاص بك. </para>
+
+<warning
+><para
+>يجب أن تكون متأكدًا جدًا من أنك تعرف ما تفعله قبل أن تقرر إزالة معلومات التنقيح. تشغيل برامج متطورة يعني أنك تشغل برامج يحتمل أن تتعطل أكثر بكثير من إصدار مستقر. إذا كنت تشغل برامج بدون معلومات تنقيح، فقد يكون من الصعب جدًا إنشاء تقرير عطل جيد لحل العطل الخاص بك، وستحتاج على الأرجح إلى إعادة تمكين معلومات التنقيح للتطبيق المتأثر وإعادة البناء لمساعدة مطور في إصلاح العطل. لذا، أزل معلومات التنقيح على مسؤوليتك الخاصة! </para
+></warning>
+
+<informalexample>
+<para
+>إزالة دليل البناء بعد تثبيت وحدة. دليل المصدر لا يزال محفوظًا، والتنقيح مفعل:</para>
+
+<screen
+>global
+  configure-flags      --enable-debug
+  remove-after-install builddir        # Remove build directory after install
+end global
+</screen>
+
+<para
+>إزالة دليل البناء بعد التثبيت، بدون معلومات تنقيح، مع تحسين الحجم.</para>
+
+<screen
+>global
+</screen>
+</informalexample>
+</sect2>
+
+</sect1>

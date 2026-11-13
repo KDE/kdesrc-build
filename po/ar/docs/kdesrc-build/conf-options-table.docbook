@@ -1,0 +1,2532 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="conf-options-table">
+<title
+>جدول خيارات الضبط المتاحة</title>
+
+<para
+>إليك جداول بخيارات متنوعة، تحتوي على المعلومات التالية:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>اسم الخيار</para
+></listitem>
+
+<listitem
+><para
+>نطاق الخيار: <emphasis
+>عام</emphasis
+> أو <emphasis
+>وحدة</emphasis
+> أو <emphasis
+>مجموعة وحدات</emphasis
+>. يمكن تعريف الخيارات في نطاق <emphasis
+>وحدة</emphasis
+> و/أو <emphasis
+>مجموعة وحدات</emphasis
+> أيضًا في أقسام <emphasis
+>خيارات</emphasis
+>. </para
+></listitem>
+
+<listitem
+><para
+>تعليقات خاصة حول غرض الخيار واستخدامه.</para
+></listitem>
+
+</itemizedlist>
+
+<table id="options-global-table">
+<title
+>خيارات النطاق العام فقط</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>اسم الخيار</entry>
+<entry
+>الوصف</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-async">
+<entry
+><link linkend="conf-async"
+>async</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+<member
+>متاح منذ</member
+><member
+>1.6</member>
+</simplelist>
+<para
+>يفعّل هذا الخيار وضع التشغيل اللامتزامن، حيث يُجرى تحديث شيفرة المصدر وعملية البناء بالتوازي، بدلًا من انتظار جميع تحديثات شيفرة المصدر قبل بدء عملية البناء.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-async"/></para>
+</entry>
+</row>
+
+<row id="conf-colorful-output">
+<entry
+><link linkend="conf-colorful-output"
+>colorful-output</link
+></entry>
+<entry
+><simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+</simplelist
+><para
+>اضبط هذا الخيار إلى <userinput
+>false</userinput
+> لتعطيل المخرجات الملونة لـ &kdesrc-build;. لاحظ أن &kdesrc-build; لن يُخرج رموز الألوان إلا إلى طرفية (مثل xterm أو &konsole; أو وحدة التحكم العادية في &Linux;).</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-color"/></para>
+</entry>
+</row>
+
+<row id="conf-disable-agent-check">
+<entry
+><link linkend="conf-disable-agent-check"
+>disable-agent-check</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+</simplelist>
+<para
+>إذا كنت تستخدم &ssh; لتنزيل مصادر &git; (مثل استخدام بروتوكول git+ssh)، يتحكم هذا الخيار فيما إذا كان &kdesrc-build; سيحاول التأكد من أن ssh-agent يدير بالفعل بعض هويات &ssh; عند استخدامه. هذا لمنع &ssh; من طلب عبارة المرور لكل وحدة.</para>
+<para
+>خيار سطر الأوامر المرتبط: --disable-agent-check, --no-disable-agent-check</para>
+</entry>
+</row>
+
+<row id="conf-git-desired-protocol">
+<entry
+><link linkend="conf-git-desired-protocol"
+>git-desired-protocol</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>git</member>
+<member
+>معلومات السجل</member
+><member
+>أُضيف هذا الخيار في &kdesrc-build; 1.16. قبل الإصدار 20.06، كان هذا الخيار يُستخدم لضبط رابط الجلب بدلًا من رابط الدفع. اعتبارًا من 20.06، يُستخدم <literal
+>https</literal
+> دائمًا عند تحديث مشاريع كيدي.</member>
+</simplelist>
+<para
+>ينطبق هذا الخيار فقط على الوحدات من مستودع <link linkend="kde-projects-module-sets"
+>مشروع &kde;</link
+>.</para>
+
+<para
+>ما يفعله هذا الخيار فعليًا هو ضبط بروتوكول الشبكة المفضل عند دفع شيفرة المصدر لهذه الوحدات. عادةً يُستخدم بروتوكول <literal
+>git</literal
+> الفعال جدًا، لكن قد يُحظر في بعض الشبكات (مثل الشبكات الداخلية للشركات أو شبكات Wi-Fi العامة). البروتوكول البديل الذي يحظى بدعم أفضل هو بروتوكول <literal
+>https</literal
+> المستخدم في مواقع الويب على الإنترنت.</para>
+
+<para
+>إذا كنت تستخدم إحدى هذه الشبكات المقيدة، يمكنك ضبط هذا الخيار إلى <userinput
+>http</userinput
+> لتفضيل اتصالات <literal
+>https</literal
+> بدلًا من ذلك.</para>
+
+<tip
+><para
+>قد تحتاج أيضًا إلى خيار <link linkend="conf-http-proxy"
+>http-proxy</link
+> إذا كان وكيل HTTP مطلوبًا لحركة مرور الشبكة.</para
+></tip>
+
+<para
+>في أي حالة أخرى، لا ينبغي ضبط هذا الخيار لأن البروتوكول المبدئي هو الأكثر كفاءة.</para>
+
+</entry>
+</row>
+
+<row id="conf-git-repository-base">
+<entry
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>يُستخدم هذا الخيار لإنشاء اسم قصير للإشارة إلى رابط أساسي لمستودع Git معين في تصريحات <link linkend="module-sets"
+>مجموعة وحدات</link
+> لاحقة، وهو مفيد للتصريح السريع بالعديد من وحدات Git لبنائها.</para>
+
+<para
+>يجب تحديد شيئين (مفصولين بمسافة): الاسم الذي سيُسند إلى الرابط الأساسي، والرابط الأساسي الفعلي نفسه. على سبيل المثال:</para>
+
+<para>
+<programlisting
+>global
+    # other options
+    # This is the common path to all anonymous Git server modules.
+    git-repository-base <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+# Module declarations
+
+module-set
+    # Now you can use the alias you defined earlier, but <emphasis
+>only</emphasis
+> in a module-set.
+    repository <replaceable
+>kde-git</replaceable>
+    <link linkend="conf-use-modules"
+>use-modules</link
+> <replaceable
+>module1.git</replaceable
+> <replaceable
+>module2.git</replaceable>
+end module-set
+</programlisting>
+</para>
+
+<para
+>أنشأ خيار <literal
+>use-modules</literal
+> في مجموعة الوحدات وحدتين داخليًا، مع تصرف &kdesrc-build; كما لو أنه قرأ:</para>
+
+<programlisting
+>module module1
+    repository kde:<replaceable
+>module1.git</replaceable>
+end module
+
+module module2
+    repository kde:<replaceable
+>module2.git</replaceable>
+end module
+</programlisting>
+
+<para
+>البادئة <literal
+>kde:</literal
+> لمستودع &git; المستخدمة أعلاه هي اختصار سيُضبط بواسطة &kdesrc-build; آليًا. راجع مقالة TechBase <ulink url="https://techbase.kde.org/Development/Git/Configuration#URL_Renaming"
+>إعادة تسمية الرابط</ulink
+> لمزيد من المعلومات. لاحظ أنه على عكس معظم الخيارات الأخرى، يمكن تحديد هذا الخيار عدة مرات لإنشاء أكبر عدد من الأسماء المستعارة حسب الحاجة.</para>
+
+<tip
+><para
+>ليس من الضروري استخدام هذا الخيار للاستفادة من مجموعة الوحدات، هذا الخيار موجود لتسهيل استخدام نفس المستودع عبر العديد من مجموعات الوحدات المختلفة.</para
+></tip>
+</entry>
+</row>
+
+<row id="conf-install-environment-driver">
+<entry
+><link linkend="conf-install-environment-driver"
+>install-environment-driver</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+<member
+>متاح منذ</member
+><member
+>17.08</member>
+</simplelist>
+<para
+>ثبّت سكريبت صدفة يمكن استيراده في سكريبتات إعداد ملف تعريف المستخدم لإنشاء متغيرات البيئة اللازمة بسهولة لتشغيل سطح مكتب بلازما الذي بناه &kdesrc-build;.</para>
+
+<para
+>سيُعدّل هذا المُشغّل الملفات التالية:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (الموجود عادة في <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (الموجود عادة في <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>ملف <filename
+>kde-env-user.sh</filename
+> اختياري. وهو مخصص لتخصيصات المستخدم (انظر قسم <ulink url="https://userbase.kde.org/KDE_System_Administration/Environment_Variables#Troubleshooting_and_Debugging"
+>استكشاف الأخطاء وإصلاحها والتنقيح</ulink
+> في &kde; UserBase لأمثلة على الإعدادات القابلة للتخصيص)، ولكن يمكن ضبط هذه الإعدادات في مكان آخر من قبل المستخدم في نصوص إعداد التشكيلة الحالية لديه.</para>
+
+<para
+>يمكنك تعطيل هذه الميزة بضبط هذا الخيار إلى <replaceable
+>false</replaceable
+>، والتأكد من تعطيل خيار <link linkend="conf-install-session-driver"
+>install-session-driver</link
+> أيضًا.</para>
+
+<tip
+><para
+>لن يستبدل &kdesrc-build; ملفاتك الحالية (إن وُجدت) إلا إذا مررت أيضًا خيار سطر الأوامر <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+>.</para
+></tip>
+<para
+>خيار سطر الأوامر ذو الصلة: --install-environment-driver، --no-install-environment-driver</para>
+</entry>
+</row>
+
+<row id="conf-install-session-driver">
+<entry
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+<member
+>متاح منذ</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>إذا كان ممكّنًا، سيحاول &kdesrc-build; تثبيت برنامج تشغيل لمدير الدخول الرسومي يسمح لك بتسجيل الدخول إلى سطح مكتب &kde; المبني بواسطة &kdesrc-build;.</para>
+
+<para
+>سيُعدّل هذا المُشغّل الملفات التالية:</para>
+
+<itemizedlist>
+<listitem
+><para
+><filename
+>~/.xsession</filename
+></para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-master.sh</filename
+> (الموجود عادة في <filename
+>~/.config/kde-env-master.sh</filename
+>).</para
+></listitem>
+<listitem
+><para
+><filename
+>$XDG_CONFIG_HOME/kde-env-user.sh</filename
+> (الموجود عادة في <filename
+>~/.config/kde-env-user.sh</filename
+>).</para
+></listitem>
+</itemizedlist>
+
+<para
+>إذا كنت تحتفظ ببرنامج تشغيل دخول خاص بك، فيمكنك تعطيل هذه الميزة بضبط هذا الخيار إلى <replaceable
+>false</replaceable
+>. إذا كان ممكّنًا، تعمل هذه الميزة أيضًا على تمكين ميزة <link linkend="conf-install-environment-driver"
+>install-environment-driver</link
+>.</para>
+
+<tip
+><para
+>لن يستبدل &kdesrc-build; ملفاتك الحالية (إن وُجدت) إلا إذا مررت أيضًا خيار سطر الأوامر <option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+>.</para
+></tip>
+<para
+>خيار سطر الأوامر ذو الصلة: --install-session-driver، --no-install-session-driver</para>
+</entry>
+</row>
+
+<row id="conf-niceness">
+<entry
+><link linkend="conf-niceness"
+>niceness</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>عدد صحيح</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>10</member>
+</simplelist>
+<para
+>اضبط هذا الخيار على رقم بين 20 و0. كلما زاد الرقم، انخفضت الأولوية التي سيحددها &kdesrc-build; لنفسه، أي كلما زاد الرقم، كان البرنامج "ألطف".</para>
+<para
+>خيار سطر الأوامر ذو الصلة: <xref linkend="cmdline-nice"/></para>
+</entry>
+</row>
+
+<row id="conf-num-cores">
+<entry
+><link linkend="conf-num-cores"
+>num-cores</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>عدد صحيح</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>يعتمد على النظام</member>
+<member
+>متاح منذ</member
+><member
+>20.07</member>
+</simplelist>
+<para
+>يُعرف هذا الخيار بواسطة &kdesrc-build; (عند استخدام <command
+>kdesrc-build --generate-config</command
+>)، ويُضبط ليكون عدد وحدات المعالجة المركزية المتاحة (كما هو موضح بواسطة التطبيق الخارجي <application
+>nproc</application
+>). إذا لم يتمكن &kdesrc-build; من اكتشاف عدد وحدات المعالجة المركزية، تُضبط هذه القيمة إلى 4.</para>
+
+<para
+>انظر <xref linkend="make-options-example"/> للحصول على مثال لاستخدام هذا الخيار.</para>
+<para
+>خيار سطر الأوامر ذو الصلة: --num-cores <replaceable
+>value</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-num-cores-low-mem">
+<entry
+><link linkend="conf-num-cores-low-mem"
+>num-cores-low-mem</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>عدد صحيح</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>يعتمد على النظام</member>
+<member
+>متاح منذ</member
+><member
+>20.07</member>
+</simplelist>
+<para
+>يُعرف هذا الخيار بواسطة &kdesrc-build; (عند استخدام <command
+>kdesrc-build --generate-config</command
+>)، ويُضبط ليكون عدد وحدات المعالجة المركزية الذي يُعتبر آمنًا للوحدات الثقيلة أو عالية الكثافة الأخرى، مثل <literal
+>qtwebengine</literal
+>، لتجنب نفاد الذاكرة أثناء البناء.</para>
+
+<para
+>الحساب النموذجي هو نواة معالجة مركزية واحدة لكل 2 غيغابايت من الذاكرة الإجمالية. سيُحدد نواة واحدة على الأقل، ولن يُحدد أكثر من <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> نواة.</para>
+
+<para
+>على الرغم من أن هذا الخيار مخصص لدعم وحدات &Qt;، يمكنك استخدامه لأي وحدة من وحداتك بنفس طريقة استخدام <option
+>num-cores</option
+>.</para>
+
+<para
+>إذا لم يتمكن &kdesrc-build; من اكتشاف الذاكرة المتاحة، فستُضبط هذه القيمة إلى 2.</para>
+
+<para
+>خيار سطر الأوامر ذو الصلة: --num-cores-low-mem <replaceable
+>value</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-persistent-data-file">
+<entry
+><link linkend="conf-persistent-data-file"
+>persistent-data-file</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.15</member>
+</simplelist>
+<para
+>استخدم هذا الخيار لتغيير مكان تخزين &kdesrc-build; لبياناته الدائمة. المبدئي هو تخزين هذه البيانات في ملف يُسمى <filename
+>.kdesrc-build-data</filename
+>، موضوع في نفس دليل ملف الإعداد المستخدم. إذا كان ملف الإعداد العام قيد الاستخدام، فسيُحفظ في <filename
+>~/.local/state/kdesrc-build-data</filename
+> (<filename
+>$XDG_STATE_HOME/kdesrc-build-data</filename
+>، إذا كان <envar
+>$XDG_STATE_HOME</envar
+> مضبوطًا). إذا كان لديك عدة إعدادات متاحة في نفس الدليل، فقد ترغب في ضبط هذا الخيار يدويًا، حتى لا تنتهي الإعدادات المختلفة ببيانات دائمة متضاربة. </para>
+<para
+>خيار سطر الأوامر ذو الصلة: --persistent-data-file <replaceable
+>file</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-ssh-identity-file">
+<entry
+><link linkend="conf-ssh-identity-file"
+>ssh-identity-file</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.14.2</member>
+</simplelist>
+<para
+>اضبط هذا الخيار للتحكم في ملف مفتاح SSH الخاص الذي يُمرر إلى أمر <command
+>ssh-add</command
+> عندما يقوم &kdesrc-build; بتنزيل شيفرة المصدر من مستودعات تتطلب الاستيثاق. انظر أيضًا: <xref linkend="ssh-agent-reminder"/>.</para>
+</entry>
+</row>
+
+<row id="conf-use-idle-io-priority">
+<entry
+><link linkend="conf-use-idle-io-priority"
+>use-idle-io-priority</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+<member
+>متاح منذ</member
+><member
+>1.12</member>
+</simplelist>
+<para
+>استخدم أولوية أقل للقرص والإدخال/الإخراج الآخر، مما يمكن أن يحسن استجابة باقي النظام بشكل كبير على حساب أوقات تشغيل أطول قليلًا لـ &kdesrc-build;.</para>
+<para
+>خيار سطر الأوامر ذو الصلة: --use-idle-io-priority، --no-use-idle-io-priority</para>
+</entry>
+</row>
+
+<row id="conf-use-inactive-modules">
+<entry
+><link linkend="conf-use-inactive-modules"
+>use-inactive-modules</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+</simplelist>
+<para
+>اسمح لـ kdesrc-build باستنساخ وسحب من المستودعات الموسومة بأنها غير نشطة أيضًا.</para>
+<para
+>خيار سطر الأوامر ذو الصلة: --use-inactive-modules، --no-use-inactive-modules</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<!-- Between tables -->
+
+<table id="option-table">
+<title
+>جميع خيارات النطاقات (الوحدة، مجموعة الوحدات والعامة)</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>اسم الخيار</entry>
+<entry
+>الوصف</entry>
+</row>
+</thead>
+
+<tbody>
+
+<row id="conf-binpath">
+<entry
+><link linkend="conf-binpath"
+>binpath</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>اضبط هذا الخيار لضبط متغير البيئة PATH أثناء البناء. لا يمكنك تجاوز هذا الإعداد في خيار وحدة. القيمة المبدئية هي $<envar
+>PATH</envar
+> المضبوطة عند بدء التشغيل. يجب أن يتضمن متغير البيئة هذا المسارات المفصولة بنقطتين لأدوات التطوير الخاصة بك. تُضاف المسارات <filename class="directory"
+>${install-dir}/bin</filename
+> و <filename class="directory"
+>${qt-install-dir}/bin</filename
+> آليًا. يمكنك استخدام علامة التلدة (~) لأي مسارات تضيفها باستخدام هذا الخيار.</para>
+<para
+>خيار سطر الأوامر ذو الصلة: --binpath <replaceable
+>path</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-branch">
+<entry
+><link linkend="conf-branch"
+> الفرع</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>master</member>
+</simplelist>
+<para
+>اسحب الفرع المحدد بدلًا من الفرع المبدئي.</para>
+<note
+><para
+>بالنسبة لمعظم وحدات &kde;، ربما ترغب في استخدام خيار <link linkend="conf-branch-group"
+>branch-group</link
+> بدلًا من ذلك واستخدام هذا الخيار للاستثناءات حسب الحالة.</para
+></note>
+<para
+>خيار سطر الأوامر المرتبط: --branch <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-branch-group">
+<entry
+><link linkend="conf-branch-group"
+>branch-group</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.16-pre2</member>
+</simplelist>
+<para
+>اضبط هذا الخيار على مجموعة عامة تريد اختيار الوحدات منها.</para>
+
+<para
+>بالنسبة لأنواع وحدات &git; المدعومة، سيحدد &kdesrc-build; الفرع الفعلي للاستخدام آليًا بناءً على قواعد مشفرة من قبل مطوري &kde; (يمكن عرض هذه القواعد في مستودع المصدر <literal
+>kde-build-metadata</literal
+> في دليل المصدر الخاص بك). بعد تحديد فرع، يُستخدم ذلك الفرع كما لو كنت قد حددته بنفسك باستخدام خيار <link linkend="conf-branch"
+>branch</link
+>. </para>
+
+<para
+>هذا مفيد إذا كنت تحاول فقط البقاء محدثًا على مسار تطوير عادي دون الحاجة إلى الانتباه إلى جميع تغييرات أسماء الفروع.</para>
+
+<para
+>لاحظ أنه إذا اخترت <emphasis
+>أنت</emphasis
+> فرعًا <literal
+>branch</literal
+> بنفسك، فسيتجاوز هذا الإعداد. وينطبق الشيء نفسه على خيارات اختيار الفرع المحددة الأخرى مثل <link linkend="conf-tag"
+>tag</link
+>.</para>
+
+<note
+><para
+>ينطبق هذا الخيار فقط على وحدات &git; <literal
+>kde-projects</literal
+> (الحالة الشائعة). انظر أيضًا <xref linkend="kde-projects-module-sets"/>. </para
+></note>
+
+<para
+>خيار سطر الأوامر المرتبط: --branch-group <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-build-dir">
+<entry
+><link linkend="conf-build-dir"
+>build-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+><filename class="directory"
+>~/kde/build</filename
+></member>
+</simplelist>
+<para
+>استخدم هذا الخيار لتغيير الدليل الذي يحتوي على المصادر المبنية. هناك ثلاث طرق مختلفة لاستخدامه:</para>
+
+<orderedlist>
+
+<listitem
+><para
+>نسبة إلى دليل مصدر &kde; &git; (انظر <link linkend="conf-source-dir"
+>خيار source-dir</link
+>). هذا هو المبدئي، ويُختار إذا كتبت اسم دليل لا يبدأ بمدّة (~) أو شرطة مائلة (/).</para
+></listitem>
+
+<listitem
+><para
+>مسار مطلق. إذا حددت مسارًا يبدأ بـ /، فسيُستخدم ذلك المسار مباشرة. على سبيل المثال، <filename class="directory"
+>/tmp/kde-obj-dir/</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+>نسبة إلى دليل منزلك. إذا حددت مسارًا يبدأ بـ ~، فسيُستخدم المسار نسبة إلى دليل منزلك، مماثلًا لتوسيع المدّة في الصدفة. على سبيل المثال، سيضبط <filename class="directory"
+>~/builddir</filename
+> دليل البناء إلى <filename class="directory"
+>/home/user-name/builddir</filename
+>.</para
+></listitem>
+
+</orderedlist>
+
+<para
+>ربما بشكل مفاجئ، يمكن تغيير هذا الخيار لكل وحدة.</para>
+<para
+>خيار سطر الأوامر المرتبط: --build-dir <replaceable
+>مسار</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-build-when-unchanged">
+<entry
+><link linkend="conf-build-when-unchanged"
+>build-when-unchanged</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+</simplelist>
+<para
+>تحكم فيما إذا كان &kdesrc-build; يحاول دائمًا بناء وحدة لم تحصل على أي تحديثات لشفرة المصدر.</para>
+
+<para
+>إذا ضُبط على <userinput
+>true</userinput
+>، يحاول &kdesrc-build; دائمًا مرحلة البناء لوحدة، حتى لو لم تحصل الوحدة على أي تحديثات لشفرة المصدر. بهذه القيمة، من المرجح أن يؤدي إلى بناء صحيح.</para>
+
+<para
+>إذا ضُبط على <userinput
+>false</userinput
+>، سيحاول &kdesrc-build; فقط تشغيل مرحلة البناء لوحدة إذا كانت الوحدة لديها تحديث لشفرة المصدر، أو في حالات أخرى حيث من المحتمل أن تكون إعادة البناء مطلوبة فعلًا. يمكن أن يوفر هذا الوقت، خاصة إذا كنت تشغل &kdesrc-build; يوميًا، أو بشكل متكرر أكثر.</para>
+
+<important
+><para
+>تُقدم هذه الميزة كتحسين فقط. مثل العديد من التحسينات الأخرى، هناك مقايضات لصحة تثبيتك. على سبيل المثال، قد تؤدي التغييرات في وحدات qt أو kdelibs إلى ضرورة إعادة بناء وحدات أخرى، حتى لو لم تتغير شفرة المصدر على الإطلاق.</para
+></important>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-build-when-unchanged"/></para>
+</entry>
+</row>
+
+<row id="conf-cmake-generator">
+<entry
+><link linkend="conf-cmake-generator"
+>cmake-generator</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>Unix Makefiles</member>
+</simplelist>
+<para
+>حدد أي مولد لاستخدامه مع &cmake;. حاليًا، كل من <literal
+>Ninja</literal
+> و <literal
+>Unix Makefiles</literal
+> بالإضافة إلى المولدات الإضافية المبنية عليها مثل <literal
+>Eclipse CDT4 - Ninja </literal
+> مدعومة. القيم غير الصالحة (غير المدعومة) تُتجاهل وتُعامل كما لو كانت غير مضبوطة. </para>
+
+<para
+>لاحظ أنه إذا حُدد مولد صالح أيضًا من خلال <link linkend="conf-cmake-options"
+>cmake-options</link
+> فسيتجاوز القيمة لـ <literal
+>cmake-generator</literal
+>.</para>
+<para
+>خيار سطر الأوامر المرتبط: --cmake-generator <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-cmake-toolchain">
+<entry
+><link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>حدد ملف سلسلة أدوات لاستخدامه مع &cmake;. </para>
+<para
+>عند ضبط ملف سلسلة أدوات صالح، لن يضبط &kdesrc-build; <emphasis
+>متغيرات البيئة آليًا بعد الآن</emphasis
+>. يمكنك استخدام &set-env; و &binpath; و &libpath; لإصلاح البيئة يدويًا إذا كان ملف سلسلة الأدوات الخاص بك لا يعمل فورًا مع &kdesrc-build;. راجع <link linkend="kdesrc-build-std-flags"
+>نظرة عامة على الأعلام القياسية المضافة بواسطة &kdesrc-build;</link
+> لمزيد من المعلومات. </para>
+<para
+>لاحظ أنه إذا حُددت سلسلة أدوات صالحة أيضًا من خلال <link linkend="conf-cmake-options"
+>cmake-options</link
+> فستتجاوز القيمة لـ <literal
+>cmake-toolchain</literal
+>.</para>
+<para
+>خيار سطر الأوامر المرتبط: --cmake-toolchain <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-cmake-options">
+<entry
+><link linkend="conf-cmake-options"
+>cmake-options</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>يُلحق بالخيارات العامة لنظام البناء المبدئي، ويتجاوز الخيارات العامة لأنظمة البناء الأخرى.</para>
+<para
+>استخدم هذا الخيار لتحديد الأعلام التي تمررها إلى &cmake; عند إنشاء نظام البناء للوحدة. عندما يُستخدم كخيار عام، يُطبق على جميع الوحدات التي يبنيها هذا النص البرمجي. عندما يُستخدم كخيار وحدة، يُضاف إلى نهاية الخيارات العامة. يتيح لك هذا تحديد خيارات &cmake; الشائعة في القسم العام.</para>
+
+<para
+>لا ينطبق هذا الخيار على كيوتي (الذي لا يستخدم &cmake;). استخدم <link linkend="conf-configure-flags"
+>configure-flags</link
+> بدلًا من ذلك.</para>
+
+<para
+>إذا حُدد مولد صالح بين الخيارات المدرجة، فسيتجاوز قيمة <link linkend="conf-cmake-generator"
+>cmake-generator</link
+>. تُتجاهل المولدات غير الصالحة (غير المدعومة) ولن تُمرر إلى &cmake;. </para>
+
+<para
+>إذا حُدد ملف سلسلة أدوات صالح بين الخيارات المدرجة، فسيتجاوز قيمة <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>. تُتجاهل سلاسل الأدوات غير الصالحة ولن تُمرر إلى &cmake;. </para>
+
+<para
+>بما أن هذه الخيارات تُمرر مباشرة إلى سطر أوامر &cmake;، فيجب إعطاؤها كما ستُكتب في &cmake;. على سبيل المثال:</para>
+
+<programlisting
+>cmake-options -DCMAKE_BUILD_TYPE=RelWithDebInfo
+</programlisting>
+
+<para
+>بما أن هذا أمر مزعج، يبذل &kdesrc-build; جهدًا لضمان أنه طالما ضُبطت بقية الخيارات بشكل صحيح، يمكنك ترك هذا الخيار فارغًا. (بمعنى آخر، تُضبط معاملات &cmake; <emphasis
+>المطلوبة</emphasis
+> لك آليًا)</para>
+<para
+>خيار سطر الأوامر ذو الصلة: --cmake-options <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-compile-commands-export">
+<entry
+><link linkend="conf-compile-commands-export"
+>compile-commands-export</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+</simplelist>
+<para
+>يُمكّن إنشاء ملف <literal
+>compile_commands.json</literal
+> عبر CMake داخل دليل البناء. </para>
+<para
+>خيار سطر الأوامر ذو الصلة: --compile-commands-export، --no-compile-commands-export</para>
+</entry>
+</row>
+
+<row id="conf-compile-commands-linking">
+<entry
+><link linkend="conf-compile-commands-linking"
+>compile-commands-linking</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+</simplelist>
+<para
+>يُمكّن إنشاء روابط رمزية من <literal
+>compile_commands.json</literal
+> المُنشأ عبر CMake داخل دليل البناء إلى دليل المصدر المطابق. </para>
+<para
+>خيار سطر الأوامر ذو الصلة: --compile-commands-linking، --no-compile-commands-linking</para>
+</entry>
+</row>
+
+<row id="conf-configure-flags">
+<entry
+><link linkend="conf-configure-flags"
+>configure-flags</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>يُلحق بالخيارات العامة لنظام البناء المبدئي، ويتجاوز الخيارات العامة لأنظمة البناء الأخرى.</para>
+<para
+>استخدم هذا الخيار لتحديد الأعلام التي تمررها إلى ./configure عند إنشاء نظام البناء للوحدة. عندما يُستخدم كخيار عام، يُطبق على جميع الوحدات التي يبنيها هذا النص البرمجي. <emphasis
+>يعمل هذا الخيار فقط لـ كيوتي.</emphasis
+></para>
+
+<para
+>لتغيير إعدادات الضبط لوحدات كيدي، انظر <link linkend="conf-cmake-options"
+>cmake-options</link
+>. </para>
+<para
+>خيار سطر الأوامر ذو الصلة: --configure-flags <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-custom-build-command">
+<entry
+><link linkend="conf-custom-build-command"
+>custom-build-command</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+    <para
+>يمكن ضبط هذا الخيار لتشغيل أمر مختلف (غير <command
+>make</command
+>، على سبيل المثال) لأداء عملية البناء. يجب أن يقوم &kdesrc-build; بشكل عام بالشيء الصحيح، لذا لا ينبغي أن تحتاج لضبط هذا الخيار. ومع ذلك، قد يكون مفيدًا لاستخدام أنظمة بناء بديلة. </para>
+
+    <para
+>تُستخدم قيمة هذا الخيار كسطر أوامر للتشغيل، معدّلة بواسطة خيار <link linkend="conf-make-options"
+>make-options</link
+> كالمعتاد. </para>
+<para
+>خيار سطر الأوامر ذو الصلة: --custom-build-command <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-cxxflags">
+<entry
+><link linkend="conf-cxxflags"
+>cxxflags</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>يُلحق بالخيارات العامة لنظام البناء المبدئي، ويتجاوز الخيارات العامة لأنظمة البناء الأخرى.</para>
+<para
+>استخدم هذا الخيار لتحديد الأعلام المستخدمة لبناء الوحدة. يُحدد هذا الخيار هنا بدلًا من <link linkend="conf-configure-flags"
+>configure-flags</link
+> أو <link linkend="conf-cmake-options"
+>cmake-options</link
+> لأن هذا الخيار سيضبط أيضًا متغير البيئة <envar
+>CXXFLAGS</envar
+> أثناء عملية البناء.</para>
+
+<para
+>لاحظ أنه بالنسبة لـ &kde; 4 وأي وحدات أخرى تستخدم &cmake;، من الضروري ضبط خيار CMAKE_BUILD_TYPE إلى <userinput
+>none</userinput
+> عند ضبط الوحدة. يمكن فعل ذلك باستخدام خيار <link linkend="conf-cmake-options"
+>cmake-options</link
+>. </para>
+<para
+>خيار سطر الأوامر ذو الصلة: --cxxflags <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-dest-dir">
+<entry
+><link linkend="conf-dest-dir"
+>dest-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>استخدم هذا الخيار لتغيير الاسم الذي تُعطى به الوحدة على القرص. على سبيل المثال، إذا كانت وحدتك extragear/network، يمكنك إعادة تسميتها إلى extragear-network باستخدام هذا الخيار. لاحظ أنه على الرغم من أن هذا يغير اسم الوحدة على القرص، إلا أنه ليست فكرة جيدة تضمين أدلة أو فواصل أدلة في الاسم لأن هذا سيتداخل مع أي خيارات <link linkend="conf-build-dir"
+>build-dir</link
+> أو <link linkend="conf-source-dir"
+>source-dir</link
+>.</para>
+<para
+>خيار سطر الأوامر ذو الصلة: --dest-dir <replaceable
+>مسار</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-do-not-compile">
+<entry
+><link linkend="conf-do-not-compile"
+>do-not-compile</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>استخدم هذا الخيار لاختيار مجموعة محددة من الأدلة التي لا تُبنى في وحدة (بدلًا من كلها). يجب أن تكون الأدلة التي لا تُبنى مفصولة بمسافات.</para>
+
+<para
+>لاحظ أن مصادر البرامج ستُحمّل مع ذلك.</para>
+
+<para
+>على سبيل المثال، لتعطيل بناء دليلي <literal
+>codeeditor</literal
+> و <literal
+>minimaltest</literal
+> من إطار <literal
+>syntaxhighlighting</literal
+>، ستضيف <userinput
+>do-not-compile codeeditor minimaltest</userinput
+> للترجمة، ستضيف "do-not-compile juk kscd" إلى خيارات syntaxhighlighting الخاصة بك.</para>
+
+<para
+>انظر <xref linkend="not-compiling"/> للحصول على مثال.</para>
+<para
+>خيار سطر الأوامر ذو الصلة: --do-not-compile <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-git-user">
+<entry
+><link linkend="conf-git-user"
+>git-user</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>15.09</member>
+</simplelist>
+<para
+>هذا الخيار مخصص لمطوري &kde;. إذا ضُبط، سيُستخدم لضبط معلومات الهوية آليًا لبرنامج التحكم بالمصادر &git; لوحدات &git; <emphasis
+>المُحمّلة حديثًا</emphasis
+> (بما في ذلك الغالبية العظمى من وحدات &kde;).</para>
+
+<para
+>تحديدًا، يُملأ حقلا اسم المستخدم والبريد الإلكتروني لكل مستودع &git; جديد بالقيم المضبوطة بهذا الخيار.</para>
+
+<para
+>يجب تحديد القيمة بالشكل <option
+><replaceable
+>اسم المستخدم</replaceable
+> &lt;<replaceable
+>بريد@مثال.كوم</replaceable
+>&gt;</option
+>.</para>
+
+<para
+>على سبيل المثال، مطوّر اسمه <quote
+>فو بارباز</quote
+> مع عنوان بريد إلكتروني <quote
+>foo@abc.xyz</quote
+> سيستخدم:</para>
+<para>
+<programlisting
+><symbol
+>git-user</symbol
+> <replaceable
+>Foo Barbaz</replaceable
+> &lt;<replaceable
+>foo@abc.xyz</replaceable
+>&gt;
+</programlisting>
+</para>
+
+</entry>
+</row>
+
+<row id="conf-http-proxy">
+<entry
+><link linkend="conf-http-proxy"
+>http-proxy</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>هذا الخيار، إذا ضُبط، يستخدم عنوان URL المحدد كخادم وكيل لاستخدامه في أي اتصالات شبكة HTTP (على سبيل المثال، عند تنزيل <link linkend="kde-projects-module-sets"
+>قاعدة بيانات مشاريع كيدي</link
+>).</para>
+
+<para
+>بالإضافة إلى ذلك، سيحاول &kdesrc-build; ضمان أن الأدوات التي يعتمد عليها تستخدم أيضًا خادم الوكيل ذلك، إذا أمكن، عن طريق ضبط متغير البيئة <envar
+>http_proxy</envar
+> إلى الخادم المشار إليه، <emphasis
+>إذا لم يكن متغير البيئة ذلك مضبوطًا بالفعل</emphasis
+>.</para>
+<para
+>خيار سطر الأوامر المرتبط: --http-proxy <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-directory-layout">
+<entry
+><link linkend="conf-directory-layout"
+>directory-layout</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيم الصالحة</member
+><member
+><userinput
+>flat</userinput
+>، <userinput
+>invent</userinput
+>، <userinput
+>metadata</userinput
+></member>
+<member
+>القيمة المبدئيّة</member
+><member
+>شقة</member>
+</simplelist>
+<para
+>يُستخدم هذا الخيار لضبط التخطيط الذي يجب أن يستخدمه &kdesrc-build; عند إنشاء أدلة المصدر والبناء.</para>
+<para
+>سيجمع تخطيط <userinput
+>flat</userinput
+> جميع الوحدات مباشرةً تحت أدلة المصدر والبناء العليا. على سبيل المثال، <literal
+>source/extragear/network/telepathy/ktp-text-ui</literal
+> في تخطيط <userinput
+>metadata</userinput
+> سيكون <literal
+>source/ktp-text-ui</literal
+> باستخدام تخطيط <userinput
+>flat</userinput
+> بدلًا من ذلك. </para>
+<para
+>ينشئ تخطيط <userinput
+>invent</userinput
+> تسلسلًا هرميًا للأدلة يعكس المسارات النسبية للمستودعات على <ulink url="https://invent.kde.org/"
+>invent.kde.org</ulink
+>. على سبيل المثال <literal
+>source/kde/applications/kate</literal
+> في تخطيط <userinput
+>metadata</userinput
+> سيكون <literal
+>source/utilities/kate</literal
+> باستخدام تخطيط <userinput
+>invent</userinput
+> بدلًا من ذلك. يؤثر هذا التخطيط فقط على مشاريع كيدي. إنه اختيار جيد للأشخاص المبتدئين مع &kdesrc-build;. </para>
+<para
+>أخيرًا، تخطيط <userinput
+>metadata</userinput
+> هو نفسه السلوك المبدئي القديم. ينظم هذا التخطيط مشاريع كيدي وفقًا لمسارات المشروع المحددة في بيانات المشروع الوصفية لهذه الوحدات. هذا اختيار جيد إذا كنت تريد تخطيط أدلة يتتبع عمليات كيدي معينة، لكن لاحظ أن هذا المسار ليس مستقرًا دائمًا. نتيجة لذلك، قد يتخلى &kdesrc-build; عن نسخة قديمة من المستودع ويستنسخ نسخة جديدة لمشروع بسبب تغييرات في بيانات المشروع الوصفية.</para>
+<para
+>خيار سطر الأوامر المرتبط: --directory-layout <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-generate-vscode-project-config">
+<entry
+><link linkend="conf-generate-vscode-project-config"
+>generate-vscode-project-config</link
+></entry>
+
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+</simplelist>
+
+<para
+>إعداد الوحدة يتجاوز الإعداد العام</para>
+
+<para
+>اضبط هذا الخيار إلى <userinput
+>true</userinput
+> لجعل &kdesrc-build; ينشئ ملفات مشروع VS Code (دليل .vscode) في دليل مصدر الوحدة.</para>
+
+<para
+>سيُنشأ مجلد .vscode في دليل مصدر المشروع، فقط إذا لم يكن موجودًا بالفعل. ستمكن التهيئات استخدام LSP، والبناء، والتنقيح، وتشغيل المشروع من داخل VS Code.</para>
+
+<para
+>توصي التهيئة أيضًا بتثبيت ملحقات مفيدة للعمل على معظم مشاريع كيدي.</para>
+
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-generate-vscode-project-config"/></para>
+</entry>
+</row>
+
+<row id="conf-include-dependencies">
+<entry
+><link linkend="conf-include-dependencies"
+>include-dependencies</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+</simplelist>
+<para
+>يتحكم إذا كان &kdesrc-build; سيتضمن تبعيات معروفة لهذه الوحدة في بنائها، دون الحاجة إلى ذكر تلك التبعيات (حتى بشكل غير مباشر).</para>
+
+<note
+><para
+>يعمل هذا الخيار فقط مع <link linkend="kde-projects-module-sets"
+>الوحدات المستندة إلى <literal
+>kde-project</literal
+></link
+>، ويتطلب أن تكون البيانات الوصفية التي يحافظ عليها مطورو &kde; دقيقة لـ <link linkend="conf-branch-group"
+>مجموعة الفرع</link
+> المحددة.</para
+></note>
+
+<para
+>هذا لدعم بناء التطبيقات التي تحتاج إصدارات من &Qt; أو &plasma; أحدث من تلك المدعومة على أنظمة التشغيل الشائعة.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-include-dependencies"/></para>
+</entry>
+</row>
+
+<row id="conf-install-after-build">
+<entry
+><link linkend="conf-install-after-build"
+>install-after-build</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+</simplelist>
+<para
+>يُستخدم هذا الخيار لتثبيت الحزمة بعد بنائها بنجاح. يمكنك أيضًا استخدام علامة سطر الأوامر <link linkend="cmdline-no-install"
+><option
+>--no-install</option
+></link
+>.</para>
+<para
+>خيار سطر الأوامر المرتبط: --install-after-build، --no-install-after-build</para>
+</entry>
+</row>
+
+<row id="conf-install-dir">
+<entry
+><link linkend="conf-install-dir"
+>install-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+><filename class="directory"
+>~/kde/usr</filename
+></member>
+</simplelist>
+<para
+>يتحكم هذا الخيار في مكان تثبيت الوحدة بعد بنائها. إذا غيرت هذا إلى دليل يحتاج صلاحيات جذر، قد ترغب في القراءة عن خيار <link linkend="conf-make-install-prefix"
+>make-install-prefix</link
+> أيضًا.</para>
+<para
+>تغيير هذا الخيار لوحدة معينة يسمح لك بتثبيتها في دليل مختلف عن مكان تثبيت مكتبات منصة &kde;، مثل إذا كنت تستخدم &kdesrc-build; فقط لبناء التطبيقات.</para>
+<para
+>يمكنك استخدام <varname
+>${MODULE}</varname
+> أو <varname
+>$MODULE</varname
+> في المسار لتوسيعهما إلى اسم الوحدة.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-install-dir"/></para>
+</entry>
+</row>
+
+<row id="conf-libname">
+<entry
+><link linkend="conf-libname"
+>libname</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>اكتشاف آلي</member>
+</simplelist>
+<para
+>اضبط هذا الخيار لتغيير الاسم المبدئي لدليل المكتبة المثبتة داخل ${install-dir} و ${qt-install-dir}. على العديد من الأنظمة هذا إما "lib" أو "lib64". يُحاول الاكتشاف الآلي لضبط الاسم الصحيح مبدئيًا، لكن إذا كان التخمين خاطئًا فيمكن تغييره بهذا الإعداد.</para>
+<para
+>خيار سطر الأوامر المرتبط: --libname <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-libpath">
+<entry
+><link linkend="conf-libpath"
+>libpath</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>اضبط هذا الخيار لضبط متغير البيئة <envar
+>LD_LIBRARY_PATH</envar
+> أثناء البناء. لا يمكنك تجاوز هذا الإعداد في خيار وحدة. القيمة المبدئية فارغة، لكن المسارات <filename class="directory"
+>${install-dir}/$<envar
+>LIBNAME</envar
+></filename
+> و <filename class="directory"
+>${qt-install-dir}/$<envar
+>LIBNAME</envar
+></filename
+> تُضاف آليًا. يمكنك استخدام التلدة (~) لأي مسارات تضيفها باستخدام هذا الخيار.</para>
+<para
+>خيار سطر الأوامر المرتبط: --libpath <replaceable
+>مسار</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-log-dir">
+<entry
+><link linkend="conf-log-dir"
+>log-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>استخدم هذا الخيار لتغيير الدليل المستخدم لحفظ ملفات السجل التي يُنشئها النص البرمجي.</para>
+<para
+>خيار سطر الأوامر المرتبط: --log-dir <replaceable
+>مسار</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-make-install-prefix">
+<entry
+><link linkend="conf-make-install-prefix"
+>make-install-prefix</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>اضبط هذا المتغير على قائمة مفصولة بمسافات، والتي تُفسر كأمر وخياراته لسبق الأمر <userinput
+><command
+>make</command
+> <option
+>install</option
+></userinput
+> المستخدم لتثبيت الوحدات. هذا مفيد لتثبيت الحزم مع &sudo; على سبيل المثال، لكن يُرجى الحذر عند التعامل مع صلاحيات الجذر.</para>
+<para
+>خيار سطر الأوامر المرتبط: --make-install-prefix <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-make-options">
+<entry
+><link linkend="conf-make-options"
+>make-options</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>اضبط هذا المتغير لتمرير خيارات سطر الأوامر إلى الأمر <command
+>make</command
+>. هذا مفيد لبرامج مثل <ulink url="https://github.com/distcc/distcc"
+><application
+>distcc</application
+></ulink
+> أو الأنظمة التي تحتوي على أكثر من نواة معالج.</para>
+<para
+>لاحظ أن ليس كل أنظمة البناء المدعومة تستخدم <command
+>make</command
+>. لأنظمة البناء التي تستخدم <command
+>ninja</command
+> للبناء (مثل <link linkend="conf-override-build-system"
+><application
+>نظام بناء Meson</application
+></link
+>)، انظر إعداد <link linkend="conf-ninja-options"
+>ninja-options</link
+>.</para>
+<para
+>خيار سطر الأوامر المرتبط: --make-options <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-manual-build">
+<entry
+><link linkend="conf-manual-build"
+>manual-build</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+</simplelist>
+<para
+>اضبط قيمة الخيار على <userinput
+>true</userinput
+> لإبقاء عملية البناء من محاولة بناء هذه الوحدة. ستظل محدثة عند التحديث من &git;. هذا الخيار مكافئ تمامًا لخيار سطر الأوامر <link linkend="cmdline-no-build"
+> <option
+>--no-build</option
+> </link
+>. </para>
+</entry>
+</row>
+
+<row id="conf-manual-update">
+<entry
+><link linkend="conf-manual-update"
+>manual-update</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+</simplelist>
+<para
+>اضبط قيمة الخيار على <userinput
+>true</userinput
+> لإبقاء عملية البناء من محاولة تحديث (وبالتالي بناء أو تثبيت) هذه الوحدة. إذا ضبطت هذا الخيار لوحدة، فأنت بذلك قد علقت عليها فعليًا.</para>
+</entry>
+</row>
+
+<row id="conf-ninja-options">
+<entry
+><link linkend="conf-ninja-options"
+>ninja-options</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>اضبط هذا المتغير لتمرير خيارات سطر الأوامر إلى أمر البناء <command
+>ninja</command
+>. هذا يمكن أن يكون مفيدًا لتفعيل إخراج <quote
+>مفصل</quote
+> أو لتقليل عدد مهام البناء المتوازية التي سيستخدمها <command
+>ninja</command
+> يدويًا.</para>
+
+<note
+><para
+>لاحظ أن هذا الإعداد يتحكم فقط في ninja عند استخدامه بواسطة &kdesrc-build;. وحدة &Qt; <quote
+>webengine</quote
+> تستخدم <command
+>ninja</command
+> بشكل غير مباشر، لكنها تدعم رسميًا فقط البناء بواسطة <command
+>make</command
+>. في هذه الحالة، يمكنك ضبط <literal
+>NINJAFLAGS</literal
+> كطريقة لجعل <command
+>make</command
+> يمرر الأعلام المناسبة عندما يستدعي <command
+>ninja</command
+> لاحقًا، باستخدام <link linkend="conf-make-options"
+>make-options</link
+>.</para>
+
+<programlisting
+>خيارات <replaceable
+>qtwebengine</replaceable
+>
+</programlisting>
+</note>
+<para
+>خيار سطر الأوامر المرتبط: --ninja-options <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-override-build-system">
+<entry
+><link linkend="conf-override-build-system"
+>override-build-system</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>اكتشاف آلي</member>
+<member
+>القيم الصالحة</member
+><member
+>KDE، Qt، qmake، عام، autotools، meson</member>
+<member
+>متاح منذ</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>عادةً سيكتشف &kdesrc-build; نظام البناء المناسب لاستخدامه لوحدة بعد تنزيلها. يتم ذلك بالتحقق من وجود ملفات محددة في دليل مصدر الوحدة.</para>
+
+<para
+>قد تتضمن بعض الوحدات أكثر من مجموعة ملفات مطلوبة واحدة، مما قد يربك الاكتشاف الآلي. في هذه الحالة يمكنك تحديد نوع البناء الصحيح يدويًا.</para>
+
+<para
+>أنواع البناء المدعومة حاليًا التي يمكن ضبطها هي:</para>
+
+<variablelist>
+    <varlistentry>
+        <term
+>كيدي</term>
+        <listitem
+><para
+>يُستخدم لبناء وحدات &kde;. في الواقع يمكن استخدامه لبناء أي وحدة تقريبًا تستخدم &cmake; لكن من الأفضل عدم الاعتماد على هذا.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>Qt</term>
+        <listitem
+><para
+>يُستخدم لبناء مكتبة &Qt; نفسها.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>qmake</term>
+        <listitem
+><para
+>يُستخدم لبناء وحدات &Qt; التي تستخدم ملفات <literal
+>.pro</literal
+> بنمط <application
+>qmake</application
+>.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>generic</term>
+        <listitem
+><para
+>يُستخدم لبناء وحدات تستخدم ملفات Makefile عادية ولا تتطلب أي تهيئة خاصة.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>autotools</term>
+        <listitem
+><para
+>هذه هي أداة التهيئة القياسية المستخدمة لمعظم البرامج الحرة ومفتوحة المصدر غير الموجودة في أي من الفئات الأخرى.</para
+></listitem>
+    </varlistentry>
+    <varlistentry>
+        <term
+>meson</term>
+        <listitem
+><para
+>هذه <ulink url="https://mesonbuild.com"
+>أداة جديدة نسبيًا</ulink
+> تكتسب شعبية كبديل للأدوات الآلية وقد تكون مطلوبة لبعض الوحدات غير &kde;.</para
+></listitem>
+    </varlistentry>
+</variablelist>
+
+<para
+>خيار سطر الأوامر المرتبط: --override-build-system <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-purge-old-logs">
+<entry
+><link linkend="conf-purge-old-logs"
+>purge-old-logs</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+</simplelist>
+<para
+>يتحكم هذا الخيار في ما إذا كانت أدلة السجل القديمة تُحذف آليًا أم لا.</para>
+<para
+>خيار سطر الأوامر المرتبط: --purge-old-logs، --no-purge-old-logs</para>
+</entry>
+</row>
+
+<row id="conf-qmake-options">
+<entry
+><link linkend="conf-qmake-options"
+>qmake-options</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>أي خيارات محددة هنا تُمرر إلى الأمر <command
+>qmake</command
+>، للوحدات التي تستخدم نظام البناء <symbol
+>qmake</symbol
+>. على سبيل المثال، يمكنك استخدام الخيار <userinput
+>PREFIX=/path/to/qt</userinput
+> لـ qmake لتجاوز مكان تثبيت الوحدة. </para>
+<para
+>خيار سطر الأوامر المرتبط: --qmake-options <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-qt-install-dir">
+<entry
+><link linkend="conf-qt-install-dir"
+>qt-install-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>يتحكم هذا الخيار في مكان تثبيت وحدات qt بعد البناء. إذا لم تحدد هذا الخيار، سيفترض &kdesrc-build; أن &Qt; مُقدم من نظام التشغيل. </para>
+<para
+>خيار سطر الأوامر المرتبط: --qt-install-dir <replaceable
+>مسار</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-remove-after-install">
+<entry
+><link linkend="conf-remove-after-install"
+>remove-after-install</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيم الصالحة</member
+><member
+>none, builddir, all</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>none</member>
+</simplelist>
+<para
+>إذا كانت مساحة القرص الصلب لديك منخفضة، فقد ترغب في استخدام هذا الخيار لحذف دليل البناء آليًا (أو كل من دليلي المصدر والبناء للتنصيبات لمرة واحدة) بعد تثبيت الوحدة بنجاح. </para>
+<para
+>القيم الممكنة لهذا الخيار هي: <itemizedlist>
+<listitem
+><para
+>none - لا تحذف أي شيء.</para
+></listitem>
+<listitem
+><para
+>builddir - احذف دليل البناء، ولكن ليس المصدر.</para
+></listitem>
+<listitem
+><para
+>all - احذف كلًا من شفرة المصدر ودليل البناء.</para
+></listitem>
+</itemizedlist>
+</para>
+
+<para
+>لاحظ أن استخدام هذا الخيار قد يكون له تأثير سلبي كبير على كل من استخدام النطاق الترددي (إذا كنت تستخدم <replaceable
+>all</replaceable
+>) والوقت المستغرق لترجمة برمجيات &kde;، لأن &kdesrc-build; لن يكون قادرًا على إجراء بنيات تزايدية.</para>
+<para
+>خيار سطر الأوامر المرتبط: --remove-after-install <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-repository">
+<entry
+><link linkend="conf-repository"
+>repository</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.10</member>
+</simplelist>
+<para
+>يُستخدم هذا الخيار لتحديد مستودع &git; لتنزيل شفرة المصدر للوحدة. &Qt; (وبالتالي qt) سيحتاج إلى هذا الخيار، بالإضافة إلى وحدات &kde; المختلفة التي هي في طور التحويل لاستخدام &git;.</para
+></entry>
+</row>
+
+<row id="conf-revision">
+<entry
+><link linkend="conf-revision"
+>revision</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>إذا تم تعيين هذا الخيار إلى قيمة غير 0 (صفر)، فسيجبر &kdesrc-build; تحديث المصدر على جلب الوحدة إلى المراجعة الدقيقة المعطاة، حتى لو كانت خيارات مثل <link linkend="conf-branch"
+>الفرع</link
+> سارية المفعول. إذا كانت الوحدة بالفعل في المراجعة المعطاة، فلن يتم تحديثها أكثر ما لم يتم تغيير هذا الخيار أو إزالته من الإعدادات.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-revision"/></para>
+</entry>
+</row>
+
+<row id="conf-run-tests">
+<entry
+><link linkend="conf-run-tests"
+>run-tests</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+</simplelist>
+<para
+>إذا تم تعيينه إلى <userinput
+>true</userinput
+>، فسيتم بناء الوحدة مع دعم لتشغيل مجموعة اختباراتها، وسيتم تنفيذ مجموعة الاختبارات كجزء من عملية البناء. سيعرض &kdesrc-build; تقريرًا بسيطًا عن نتائج الاختبار. هذا مفيد للمطورين أو لمن يريدون التأكد من إعداد نظامهم بشكل صحيح.</para>
+<para
+>خيار سطر الأوامر المرتبط: --run-tests, --no-run-tests</para>
+</entry>
+</row>
+
+<row id="conf-set-env">
+<entry
+><link linkend="conf-set-env"
+>set-env</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+</simplelist>
+<para
+>يقبل هذا الخيار مجموعة من القيم مفصولة بمسافات، حيث القيمة الأولى هي متغير البيئة الذي سيتم تعيينه، وباقي القيم هي ما تريد تعيين المتغير إليه. على سبيل المثال، لتعيين المتغير <envar
+>RONALD</envar
+> إلى McDonald، ستضع في القسم المناسب هذا الأمر:</para>
+<programlisting
+><command
+>set-env</command
+> <envar
+>RONALD</envar
+> <userinput
+>McDonald</userinput
+>
+</programlisting>
+<para
+>هذا الخيار خاص حيث يمكن تكراره دون تجاوز إعدادات set-env السابقة في نفس القسم من <link linkend="configure-data"
+>ملف الإعدادات</link
+>. بهذه الطريقة يمكنك تعيين أكثر من متغير بيئة واحد لكل وحدة (أو عمومًا).</para>
+</entry>
+</row>
+
+<row id="conf-source-dir">
+<entry
+><link linkend="conf-source-dir"
+>source-dir</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>القيمة المبدئيّة</member
+><member
+><filename class="directory"
+>~/kde/src</filename
+></member>
+</simplelist>
+<para
+>يُستخدم هذا الخيار لتعيين الدليل على حاسوبك لتخزين مصادر &kde; &git; فيه. يمكنك استخدام علامة التلدة (~) لتمثيل الدليل الرئيسي إذا كنت تستخدم هذا الخيار.</para>
+<para
+>خيار سطر الأوامر المرتبط: --source-dir <replaceable
+>مسار</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-stop-on-failure">
+<entry
+><link linkend="conf-stop-on-failure"
+>stop-on-failure</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>صحيح</member>
+</simplelist>
+<para
+>تعيين هذا الخيار إلى <userinput
+>false</userinput
+> يسمح للبرنامج النصي بمواصلة التنفيذ بعد حدوث خطأ أثناء عملية البناء أو التثبيت.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-stop-on-failure"/></para>
+</entry>
+</row>
+
+<row id="conf-tag">
+<entry
+><link linkend="conf-tag"
+>tag</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>استخدم هذا الخيار لتنزيل إصدار معين من وحدة.</para>
+<para
+><emphasis
+>ملاحظة:</emphasis
+> الاحتمالات كبيرة جدًا أنك <emphasis
+>لا تريد</emphasis
+> استخدام هذا الخيار. إصدارات &kde; متاحة في شكل حزم مضغوطة من <ulink url="https://download.kde.org/"
+>موقع تنزيل &kde;</ulink
+>.</para>
+<para
+>خيار سطر الأوامر المرتبط: --tag <replaceable
+>قيمة</replaceable
+></para>
+</entry>
+</row>
+
+<row id="conf-use-clean-install">
+<entry
+><link linkend="conf-use-clean-install"
+>use-clean-install</link
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>منطقي</member>
+<member
+>القيمة المبدئيّة</member
+><member
+>خطأ</member>
+<member
+>متاح منذ</member
+><member
+>1.12</member>
+</simplelist>
+<para
+>عيّن هذا الخيار إلى <userinput
+>true</userinput
+> لكي يقوم &kdesrc-build; بتشغيل <command
+>make uninstall</command
+> مباشرة قبل تشغيل <command
+>make install</command
+>.</para>
+
+<para
+>يمكن أن يكون هذا مفيدًا في ضمان عدم وجود ملفات مكتبة قديمة شاذة، أو بيانات تعريف &cmake;، إلخ، التي يمكن أن تسبب مشكلات في تثبيتات &kde; طويلة الأمد. ومع ذلك، هذا يعمل فقط على أنظمة البناء التي تدعم <command
+>make uninstall</command
+>.</para>
+<para
+>خيار سطر الأوامر المرتبط: --use-clean-install, --no-use-clean-install</para>
+</entry>
+</row>
+
+</tbody>
+
+</tgroup>
+</table>
+
+<para
+>هذه الخيارات لا تتطلب أي قيمة (باستثناء "filter-out-phases"). يتم تطبيقها إذا تم تقديمها في قسم.</para>
+<table id="options-phase-selection-table">
+<title
+>Phase selection options</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>اسم الخيار</entry>
+<entry
+>النطاق</entry>
+<entry
+>الوصف</entry>
+</row>
+</thead>
+<tbody>
+
+<row id="conf-no-src">
+<entry
+><link linkend="conf-no-src"
+>no-src</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>أزل مرحلة <emphasis
+>التحديث</emphasis
+>. المراحل الأخرى التي تم تقديمها ستظل تُعالج.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-no-src"/></para>
+</entry>
+</row>
+
+<row id="conf-no-install">
+<entry
+><link linkend="conf-no-install"
+>no-install</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>أزل مرحلة <emphasis
+>التثبيت</emphasis
+>. المراحل الأخرى التي تم تقديمها ستظل تُعالج.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-no-install"/></para>
+</entry>
+</row>
+
+<row id="conf-no-tests">
+<entry
+><link linkend="conf-no-tests"
+>no-tests</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>أزل مرحلة <emphasis
+>الاختبار</emphasis
+>. ستظل المراحل الأخرى المقدمة قيد المعالجة.</para>
+<para
+>خيار سطر الأوامر المرتبط: --no-tests</para>
+</entry>
+</row>
+
+<row id="conf-no-build">
+<entry
+><link linkend="conf-no-build"
+>no-build</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>أزل مرحلة <emphasis
+>البناء</emphasis
+>. ستظل المراحل الأخرى المقدمة قيد المعالجة.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-no-build"/></para>
+</entry>
+</row>
+
+<row id="conf-build-only">
+<entry
+><link linkend="conf-build-only"
+>build-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>إن وُجدت مرحلة <emphasis
+>البناء</emphasis
+>، فأزل أي مراحل أخرى. وإلا، فأزل جميع المراحل.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-build-only"/></para>
+</entry>
+</row>
+
+<row id="conf-install-only">
+<entry
+><link linkend="conf-install-only"
+>install-only</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>إن وُجدت مرحلة <emphasis
+>التثبيت</emphasis
+>، فأزل أي مراحل أخرى. وإلا، فأزل جميع المراحل.</para>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-install-only"/></para>
+</entry>
+</row>
+
+<row id="conf-uninstall">
+<entry
+><link linkend="conf-uninstall"
+>uninstall</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>إن وُجدت مرحلة <emphasis
+>إلغاء التثبيت</emphasis
+>، فأزل أي مراحل أخرى. وإلا، فأزل جميع المراحل.</para>
+<para
+>خيار سطر الأوامر المرتبط: --uninstall</para>
+</entry>
+</row>
+
+<row id="conf-filter-out-phases">
+<entry
+><link linkend="conf-filter-out-phases"
+>filter-out-phases</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<para
+>أزل تلك المراحل المدرجة (مفصولة بفراغات) في هذا الخيار. ستظل المراحل الأخرى المقدمة قيد المعالجة.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+<table id="options-module-set-table">
+<title
+>خيارات انتقاء الوحدات</title>
+<tgroup cols="2">
+
+<thead>
+<row>
+<entry
+>اسم الخيار</entry>
+<entry
+>النطاق</entry>
+<entry
+>الوصف</entry>
+</row>
+</thead>
+<tbody>
+
+
+<row id="conf-ignore-modules">
+<entry
+><link linkend="conf-ignore-modules"
+>ignore-modules</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>global</member
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.16</member>
+</simplelist>
+<para
+>لاحظ أنه عند التحديد في القسم العام، لا يتجاوز خيار سطر الأوامر &cmd-ignore-modules; هذا، بل يُلحق بدلًا من ذلك.</para>
+<para
+>الوحدات المسماة بهذا الخيار، التي كانت ستُنتقى بواسطة &kdesrc-build; بسبب خيار <link linkend="conf-use-modules"
+>use-modules</link
+>، تُتجاوز بالكامل بدلًا من ذلك. استخدم هذا الخيار عندما تريد بناء مجموعة مشروع <link linkend="kde-projects-module-sets"
+>kde-projects</link
+> كاملة <emphasis
+>باستثناء</emphasis
+> بعض الوحدات المحددة.</para>
+
+<para
+>لا يجب بالضرورة أن تُسمى قيمة الخيار الوحدة مباشرة. أي وحدة تحتوي على أجزاء متتالية كاملة من <link linkend="kde-projects-module-sets"
+>مسار وحدة مشاريع &kde;</link
+> تطابق إحدى قيم الخيار ستُتجاهل، لذا يمكنك تجاهل وحدات متعددة بهذه الطريقة.</para>
+
+<para
+>على سبيل المثال، قيمة خيار <replaceable
+>libs</replaceable
+> ستؤدي إلى استبعاد كل من <symbol
+>kde/kdegraphics/libs</symbol
+> و <symbol
+>playground/libs</symbol
+> (وإن لم يكن <symbol
+>kde/kdelibs</symbol
+> لأن الجزء الكامل <quote
+>kdelibs</quote
+> هو ما يُقارن).</para>
+
+<tip
+><para
+>انظر أيضًا <xref linkend="example-ignoring-a-module"/>.</para
+></tip>
+<para
+>خيار سطر الأوامر المرتبط: <xref linkend="cmdline-ignore-modules"/></para>
+</entry>
+</row>
+
+<row id="conf-use-modules">
+<entry
+><link linkend="conf-use-modules"
+>use-modules</link
+></entry>
+<entry
+><simplelist type='vert'
+><member
+>module-set</member
+></simplelist
+></entry>
+<entry>
+<simplelist type='horiz' columns='2'>
+<member
+>النوع</member
+><member
+>سلسلة نصية</member>
+<member
+>متاح منذ</member
+><member
+>1.12.1</member>
+</simplelist>
+<para
+>يتيح لك هذا الخيار تحديد وحدات مختلفة كثيرة لبنائها بسهولة في نفس النقطة في <link linkend="kdesrc-buildrc"
+>ملف الضبط</link
+>.</para>
+
+<para
+>يُحوّل كل معرّف يُمرّر إلى هذا الخيار داخليًا إلى وحدة &kdesrc-build;، مع خيار <link linkend="conf-repository"
+><option
+>repository</option
+></link
+> مضبوطًا على مستودع مجموعة الوحدات مدمجًا مع اسم المعرّف لإعداد المستودع النهائي للتنزيل منه. تُنسخ أيضًا جميع الخيارات الأخرى المخصصة في مجموعة الوحدات إلى الوحدات المُنشأة دون تغيير.</para>
+
+<para
+>ترتيب تعريف الوحدات في هذا الخيار مهم، لأنه أيضًا الترتيب الذي سيعالج به &kdesrc-build; الوحدات المُنشأة عند التحديث والبناء والتثبيت. ستُعالج جميع الوحدات المعرفة في مجموعة الوحدات المعطاة قبل أن ينتقل &kdesrc-build; إلى الوحدة التالية بعد مجموعة الوحدات.</para>
+
+<para
+>إن احتجت تغيير الخيارات لوحدة مُنشأة، فما عليك سوى إعلان الوحدة مرة أخرى بعد تعريفها في مجموعة الوحدات، واضبط خياراتك حسب الحاجة. على الرغم من أنك ستغير الخيارات المحددة للوحدة بهذه الطريقة، ستظل الوحدة تُحدّث وتُبنى بالترتيب الذي حددته مجموعة الوحدات (أي لا يمكنك إعادة ترتيب تسلسل البناء بفعل هذا).</para>
+
+<important
+><para
+>الاسم الذي ستستخدمه للوحدة إن فعلت هذا هو ببساطة الاسم الذي مررته إلى <option
+>use-modules</option
+>، مع استثناء أن أي <literal
+>.git</literal
+> يُزال.</para
+></important>
+
+<para
+>انظر <xref linkend="module-sets"/> و <link linkend="conf-git-repository-base"
+>git-repository-base</link
+> لوصف استخدامه ومثال.</para>
+</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+
+</sect1>

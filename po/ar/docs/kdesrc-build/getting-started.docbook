@@ -1,0 +1,274 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<chapter id="getting-started">
+<title
+>البدء</title>
+
+<para
+>في هذا الفصل، نعرض كيفية استخدام &kdesrc-build; لسحب الوحدات من مستودع &kde; وبناؤها. كما نقدم شرحًا أساسيًا لهيكل شيفرة مصدر &kde; والخطوات التي يجب تنفيذها قبل تشغيل النص البرمجي. </para>
+
+<para
+>جميع المواضيع الواردة في هذا الفصل مغطاة بتفاصيل أكثر في مقال <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+>البناء من المصدر</ulink
+>، في <ulink url="https://community.kde.org/"
+>ويكي مجتمع &kde;</ulink
+>. إذا كنت تترجم &kde; لأول مرة، فمن الجيد قراءته أو الرجوع إليه كمصدر مرجعي. ستجد معلومات مفصلة عن أدوات التغليف والمتطلبات، والمزالق الشائعة في الترجمة واستراتيجياتها، ومعلومات عن تشغيل تثبيت &kde; الجديد. </para>
+
+<sect1 id="before-building">
+<title
+>تحضير النظام لبناء &kde;</title>
+
+<sect2 id="before-building-users">
+<title
+>إعداد حساب مستخدم جديد</title>
+
+<para
+>يُوصى باستخدام حساب مستخدم مختلف لبناء &kde; وتثبيته وتشغيله، نظرًا لضرورة صلاحيات أقل، ولتجنب التداخل مع حزم توزيعتك. إذا كانت لديك حزم &kde; مثبتة بالفعل، فسيكون الخيار الأفضل هو إنشاء مستخدم مختلف (مخصص) لبناء &kde; الجديد وتشغيله. </para>
+
+<tip
+><para
+>ترك &kde; النظام دون تغيير يتيح لك أيضًا وجود خيار احتياطي طارئ في حال تسبب خطأ برمجي في جعل أحدث بناء برمجي غير قابل للاستخدام. </para
+></tip>
+
+<para
+>يمكنك أيضًا الإعداد للتثبيت في دليل شامل للنظام (مثل <filename class="directory"
+>/usr/src/local</filename
+>) إذا أردت. لا تغطي هذه الوثيقة هذا النوع من التثبيت، لأننا نفترض أنك تعرف ما تفعله. </para>
+
+</sect2>
+<sect2 id="before-building-preparation">
+<title
+>تأكد من أن نظامك جاهز لبناء برمجيات &kde;</title>
+
+<para
+>قبل استخدام نص &kdesrc-build; (أو أي استراتيجية بناء أخرى)، يجب تثبيت أدوات التطوير والمكتبات اللازمة لـ &kde;. يمكن العثور على القائمة شبه الكاملة للأدوات المطلوبة من صفحة <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>متطلبات بناء &kde; في ويكي المجتمع</ulink
+>. </para>
+
+<para
+>إليك قائمة ببعض الأشياء التي ستحتاجها:</para>
+<itemizedlist>
+
+<listitem
+><para
+>ستحتاج إلى &cmake;، هذه البرمجيات هي ما يستخدمه &kde; للتعامل مع تهيئة وقت البناء للشيفرة المصدرية وتوليد أوامر البناء المحددة لنظامك. سيختلف الإصدار المطلوب حسب إصدارات برمجيات &kde; التي تبنيها (انظر TechBase للتفاصيل)، ولكن مع التوزيعات الحديثة، يجب أن يكون &cmake; المضمن في توزيعتك كافيًا تمامًا. </para
+></listitem>
+
+<listitem
+><para
+>يجب أيضًا تثبيت عملاء التحكم بالمصدر اللازمين لسحب شيفرة مصدر &kde;. هذا يعني أنك تحتاج على الأقل إلى ما يلي:</para>
+
+<itemizedlist>
+<listitem
+><para
+>مدير التحكم بالمصدر <ulink url="https://git-scm.com/"
+>Git</ulink
+>، المستخدم لجميع <ulink url="https://commits.kde.org/"
+>شيفرات مصدر &kde;</ulink
+></para
+></listitem>
+
+<listitem
+><para
+>على الرغم من أنه غير مطلوب، يُستخدم مدير التحكم بالمصدر <ulink url="http://bazaar.canonical.com/"
+>Bazaar</ulink
+> لوحدة واحدة (libdbusmenu-qt) مطلوبة لمكتبات &kde;. يمكن لمعظم المستخدمين تثبيت هذه المكتبة عبر حزم توزيعتهم، لكن &kdesrc-build; يدعم بنائها أيضًا إذا أردت. ولكن لبناء libdbusmenu-qt، يجب أن يكون Bazaar مثبتًا.</para
+></listitem>
+</itemizedlist
+></listitem>
+
+<listitem
+><para
+>لغة البرمجة Perl مطلوبة لـ &kdesrc-build;، وبعض مستودعات &kde;، و &Qt; (إذا بنيته من المصدر).</para>
+
+<para
+>يجب أن يكون Perl المرفق مع توزيعتك مناسبًا (يحتاج إلى أن يكون على الأقل Perl 5.14)، لكنك ستحتاج أيضًا إلى بعض الوحدات الإضافية (سيحذر &kdesrc-build; إذا لم تكن موجودة):</para>
+
+<itemizedlist>
+    <listitem
+><para
+>IO::Socket::SSL</para
+></listitem>
+    <listitem
+><para
+>JSON::PP أو JSON::XS</para
+></listitem>
+    <listitem
+><para
+>YAML::PP، أو YAML::XS، أو YAML::Syck</para
+></listitem>
+</itemizedlist>
+</listitem>
+
+<listitem
+><para
+>ستحتاج إلى بيئة تطوير C++ كاملة (مترجم، مكتبة قياسية، وقت تشغيل، وأي حزم تطوير مطلوبة). تختلف الإصدارات الدنيا المطلوبة حسب وحدة &kde;: مجموعة &kde; Frameworks 5 تدعم أقدم المترجمات، بينما تميل &kde; Plasma 5 و &kde; Applications إلى طلب مترجمات أحدث.</para>
+<para
+>المترجمان GCC 4.8 أو Clang 4 هما الحد الأدنى الموصى به. تدعم العديد من التوزيعات تثبيت هذه الأدوات بسهولة باستخدام حزمة <quote
+>build-essentials</quote
+>، أو خيار تثبيت "تبعيات البناء" مع &Qt;، أو ميزات مشابهة. يحتوي ويكي مجتمع KDE على صفحة <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/Install_the_dependencies"
+>تتتبع الحزم الموصى بها للتوزيعات الرئيسية</ulink
+>. </para>
+</listitem>
+
+<listitem
+><para
+>ستحتاج إلى أداة بناء تنفذ خطوات الترجمة فعليًا (كما تولدها &cmake;). يُوصى بـ GNU Make ويجب أن يكون متاحًا عبر مدير الحزم لديك. يدعم &cmake; خيارات أخرى، مثل أداة بناء &ninja;، التي يمكن استخدامها بواسطة &kdesrc-build; باستخدام خيار ملف التهيئة <link linkend="conf-custom-build-command"
+>custom-build-command</link
+>. </para
+></listitem>
+
+<listitem
+><para
+>أخيرًا، ستحتاج إلى مكتبات &Qt; المناسبة (بما في ذلك حزم التطوير) لإصدار برمجيات &kde; التي تبنيها. لا يدعم &kdesrc-build; رسميًا بناء &Qt; 5 (الإصدار الرئيسي الحالي)، لذا يُوصى باستخدام حزم التطوير من توزيعتك أو الاطلاع على صفحة ويكي مجتمع KDE حول <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source/OwnQt5"
+>البناء الذاتي لـ Qt 5</ulink
+>. </para
+></listitem>
+</itemizedlist>
+
+<note
+><para
+>تتضمن معظم توزيعات أنظمة التشغيل طريقة لتثبيت أدوات التطوير المطلوبة بسهولة. استشر صفحة ويكي المجتمع <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source#Install_required_devel_packages"
+>حزم التطوير المطلوبة</ulink
+> لمعرفة ما إذا كانت هذه التعليمات متاحة بالفعل.</para
+></note>
+
+<important
+><para
+>بعض هذه الحزم مقسمة إلى مكتبات (أو برامج أو أدوات مساعدة)، وحزم تطوير. ستحتاج على الأقل إلى البرنامج أو المكتبة <emphasis
+>و</emphasis
+> حزمة التطوير الخاصة بها. </para
+></important>
+
+</sect2>
+
+<sect2 id="before-building-prepare-script">
+<title
+>إعداد &kdesrc-build;</title>
+
+<sect3 id="get-kdesrc-build">
+<title
+>تثبيت &kdesrc-build;</title>
+<para
+>يجري مطورو &kde; تغييرات متكررة على &kdesrc-build; لإبقائه متزامنًا مع التطورات في تطوير &kde;، بما في ذلك تحسينات على تهيئة &kdesrc-build; الموصى بها، وإضافة وحدات، وتحسين أعلام &cmake;، &etc;</para>
+
+<para
+>بسبب هذا، نوصي بالحصول على &kdesrc-build; مباشرة من مستودعه المصدر ثم تحديثه دوريًا.</para>
+
+<para
+>يمكنك الحصول على &kdesrc-build; من مستودعه المصدر عن طريق تشغيل:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>clone</option
+> <option
+>https://invent.kde.org/sdk/kdesrc-build.git</option
+> <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput
+>
+</programlisting>
+
+<para
+>استبدل <option
+><replaceable
+>~/kdesrc-build</replaceable
+></option
+> بالدليل الذي ترغب في التثبيت إليه. </para>
+
+<para
+>يمكنك تحديث &kdesrc-build; لاحقًا عن طريق تشغيل:</para>
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>cd <option
+><filename class="directory"
+><replaceable
+>~/kdesrc-build</replaceable
+></filename
+></option
+></command
+></userinput>
+<prompt
+>$ </prompt
+><userinput
+><command
+>git <option
+>pull</option
+></command
+></userinput
+>
+</programlisting>
+
+<tip
+><para
+>نوصي بإضافة دليل تثبيت &kdesrc-build; إلى متغير البيئة <envar
+>PATH</envar
+>، لتتمكن من تشغيل &kdesrc-build; دون الحاجة إلى تحديد مساره الكامل في كل مرة.</para
+></tip>
+</sect3>
+
+<sect3 id="setup-rcfile">
+<title
+>جهّز ملف الضبط</title>
+
+<para
+>يستخدم &kdesrc-build; <link linkend="configure-data"
+>ملف ضبط</link
+> للتحكم في أي الوحدات تُبنى، وأين تُثبَّت، إلخ. يقع هذا الملف في <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>، إذا كان <envar
+>$XDG_CONFIG_HOME</envar
+> مضبوطًا).</para>
+
+<para
+>يمكنك استخدام <application
+>kdesrc-build --generate-config</application
+> لتحضير ضبط بسيط لـ kdesrc-build. يمكنك بعد ذلك تحرير ملف الضبط <filename
+>~/.config/kdesrc-buildrc</filename
+> لإجراء أي تغييرات تراها مناسبة.</para>
+
+<sect4 id="setup-rcfile-manually">
+<title
+>الإعداد اليدوي لملف الضبط</title>
+
+<para
+>يمكنك أيضًا إعداد ملف الضبط يدويًا، بنسخ ملف الضبط النموذجي المُضمَّن <filename
+>kdesrc-buildrc-kf5-sample</filename
+> إلى <filename
+>~/.config/kdesrc-buildrc</filename
+> ثم تحرير الملف. سيكون <xref linkend="kdesrc-buildrc"/> مرجعًا مفيدًا لهذا، خاصة <link linkend="conf-options-table"
+>جدول خيارات الضبط</link
+>. </para>
+
+<para
+>يحتوي &kdesrc-build; على العديد من ملفات الضبط الموصى بها لدعم &kde; Frameworks 5 و&plasma; 5 وتطبيقات &kde; الأخرى. انظر <xref linkend="kdesrc-buildrc-including"/> للحصول على معلومات حول كيفية استخدام ملفات ضبط أخرى من ملف <filename
+>kdesrc-buildrc</filename
+> الخاص بك. </para>
+
+<para
+>يمكنك العثور على مزيد من المعلومات حول صيغة <link linkend="configure-data"
+>ملف الضبط</link
+> في <xref linkend="configure-data"/> وفي <xref linkend="kdesrc-buildrc"/>. </para>
+</sect4>
+</sect3>
+</sect2>
+</sect1
+>&configure-data; &building-and-troubleshooting; &building-specific-modules; &environment; &kde-modules-and-selection; &quick-start-conclusion; </chapter>

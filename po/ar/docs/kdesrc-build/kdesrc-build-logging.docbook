@@ -1,0 +1,109 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="kdesrc-build-logging">
+<title
+>تسجيل بناء &kdesrc-build;</title>
+
+<sect2 id="logging-overview">
+<title
+>نظر عامة على السجل</title>
+
+<para
+>التسجيل هو خاصية من &kdesrc-build; يُحفظ فيها مخرجات كل أمر يشغله &kdesrc-build; في ملف لفحصها لاحقًا عند الحاجة. يُفعل ذلك لأنه غالبًا ما تكون مخرجات هذه البرامج ضرورية عند حدوث فشل في البناء، نظرًا لكثرة الأسباب التي قد تؤدي إلى فشل البناء في المقام الأول.</para>
+
+<sect3 id="log-directory-layout">
+<title
+>تخطيط دليل السجل</title>
+
+<para
+>تُخزَّن السجلات دائمًا تحت دليل السجلات. يُتحكم في وجهة دليل السجلات بواسطة خيار <link linkend="conf-log-dir"
+>log-dir</link
+>، الذي يكون مبدئيًا <filename class="directory"
+><symbol
+>${source-dir}</symbol
+>/log</filename
+> (حيث <symbol
+>${source-dir}</symbol
+> هي قيمة خيار <link linkend="conf-source-dir"
+>source-dir</link
+>. في باقي هذا القسم، ستُشار إلى هذه القيمة بـ <symbol
+>${log-dir}</symbol
+>).</para>
+
+<para
+>تحت <symbol
+>${log-dir}</symbol
+>، توجد مجموعة من الأدلة، دليل لكل مرة شُغِّل فيها &kdesrc-build;. يُسمى كل دليل بالتاريخ ورقم التشغيل. مثلًا، في المرة الثانية التي شُغِّل فيها &kdesrc-build; في 26 مايو 2004، سينشئ دليلًا باسم <filename
+>2004-05-26-02</filename
+>، حيث 2004-05-26 للتاريخ، و-02 لرقم التشغيل.</para>
+
+<para
+>لتسهيل الأمر عليك، سينشئ &kdesrc-build; أيضًا رابطًا إلى سجلات أحدث تشغيل لك، يُسمى <filename class="directory"
+>latest</filename
+>. لذا، ينبغي أن تكون سجلات أحدث تشغيل لـ &kdesrc-build; دائمًا تحت <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest</filename
+>. </para>
+
+<para
+>الآن، سيحتوي كل دليل لتشغيل &kdesrc-build; بذاته على مجموعة من الأدلة، دليل لكل وحدة من &kde; يحاول &kdesrc-build; بناؤها. أيضًا، سيُحتوى ملف يُسمى <filename
+>build-status</filename
+> في الدليل، مما سيسمح لك بتحديد أي الوحدات بُنيت وأيها فشلت.</para>
+
+<note
+><para
+>إذا كانت الوحدة بذاتها تحتوي على وحدة فرعية (مثل extragear/multimedia، أو playground/utils، أو KDE/kdelibs)، فسيكون هناك بالفعل تخطيط مطابق في دليل السجلات. مثلًا، سُتوجد سجلات KDE/kdelibs بعد آخر تشغيل لـ &kdesrc-build; في <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/KDE/kdelibs</filename
+>، وليس تحت <filename class="directory"
+><symbol
+>${log-dir}</symbol
+>/latest/kdelibs</filename
+>. </para
+></note>
+
+<para
+>في كل دليل سجلات وحدة، ستجد مجموعة من الملفات لكل عملية يؤديها &kdesrc-build;. إذا حدّث &kdesrc-build; وحدة، فقد ترى أسماء ملفات مثل <filename
+>git-checkout-update.log</filename
+> (لسحب وحدة أو عند تحديث وحدة سُحبت بالفعل). إذا شُغِّل الأمر <command
+>configure</command
+>، فتتوقع رؤية <filename
+>configure.log</filename
+> في ذلك الدليل.</para>
+
+<para
+>إذا حدث خطأ، ينبغي أن تتمكن من رؤية شرح لسببه في أحد الملفات. لمساعدتك في تحديد أي ملف يحتوي على الخطأ، سينشئ &kdesrc-build; رابطًا من الملف المحتوي على الخطأ (مثل <filename
+>build-1.log</filename
+> إلى ملف يُسمى <filename
+>error.log</filename
+>).</para>
+
+<para
+>خلاصة كل هذا هي أنه لرؤية سبب فشل بناء وحدة بعد آخر &kdesrc-build;، الملف الذي ينبغي أن تنظر إليه أولًا هو <filename
+><symbol
+>${log-dir}</symbol
+>/latest/<replaceable
+>module-name</replaceable
+>/error.log</filename
+>. </para>
+
+<tip
+><para
+>إذا كان الملف <filename
+>error.log</filename
+> فارغًا (خاصة بعد تثبيت)، فربما لم يكن هناك خطأ. بعض الأدوات المستخدمة من قبل نظام بناء &kde; ستُبلغ أحيانًا عن خطأ عن طريق الخطأ عندما لا يكون هناك أي خطأ.</para>
+
+<para
+>أيضًا، ستتجنب بعض الأوامر إعادة توجيه المخرجات لـ &kdesrc-build; وتتجاوز ملف السجل في ظروف معينة (عادة عند إجراء أول سحب لـ &git;)، والمخرجات الخطأ في تلك الحالة ليست في ملف السجل بل في &konsole; أو الطرفية حيث شغّلت &kdesrc-build;.</para>
+</tip>
+
+</sect3>
+</sect2>
+</sect1>

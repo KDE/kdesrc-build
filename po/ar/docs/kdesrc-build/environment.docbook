@@ -1,0 +1,181 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="environment">
+<title
+>ضبط البيئة لتشغيل سطح مكتب &kde; &plasma; الخاص بك</title>
+
+<para
+>بافتراض أنك تستخدم مستخدمًا مخصصًا لبناء &kde; &plasma;، وأن لديك بالفعل إصدارًا مثبتًا من &plasma;، فقد يكون تشغيل &plasma; الجديد صعبًا بعض الشيء، حيث يجب أن يكون لـ &plasma; الجديد الأولوية على القديم. يجب عليك تغيير متغيرات البيئة لنصوص تسجيل الدخول الخاصة بك للتأكد من استخدام سطح المكتب المُنشأ حديثًا. </para>
+
+<sect2 id="session-driver">
+<title
+>تثبيت مشغل تسجيل دخول آلي</title>
+
+<para
+>بدءًا من الإصدار 1.16، سيحاول &kdesrc-build; تثبيت مشغل تسجيل دخول مناسب، يسمح لك بتسجيل الدخول إلى سطح مكتب &kde; المُنشأ بواسطة &kdesrc-build; من مدير تسجيل الدخول الخاص بك. يمكن تعطيل هذا باستخدام خيار ملف الإعدادات <option
+><link linkend="conf-install-session-driver"
+>install-session-driver</link
+></option
+>.</para>
+
+<note
+><para
+>لا يحدث إعداد الجلسة أثناء تشغيل &kdesrc-build; في وضع المحاكاة.</para
+></note>
+
+<para
+>يعمل هذا المشغل عن طريق إعداد نوع جلسة <quote
+><literal
+>xsession</literal
+></quote
+> مخصص. يجب أن يعمل هذا النوع من الجلسات افتراضيًا مع مدير تسجيل الدخول sddm (حيث يظهر كجلسة <quote
+>مخصصة</quote
+>)، ولكن مديري تسجيل الدخول الآخرين (مثل <application
+>LightDM</application
+> و <application
+>gdm</application
+>) قد يتطلبون ملفات إضافية مثبتة لتمكين دعم <literal
+>xsession</literal
+>.</para>
+
+<sect3 id="xsession-distribution-setup">
+<title
+>إضافة دعم xsession للتوزيعات</title>
+
+<para
+>قد تتطلب مديري تسجيل الدخول الافتراضيين لبعض التوزيعات حزمًا إضافية ليتم تثبيتها لدعم عمليات تسجيل الدخول <literal
+>xsession</literal
+>.</para>
+
+<itemizedlist>
+<listitem
+><para
+>تتطلب توزيعة &Linux; <ulink url="https://getfedora.org/"
+>فيدورا</ulink
+> تثبيت الحزمة <literal
+>xorg-x11-xinit-session</literal
+> لدعم تسجيل الدخول المخصص <literal
+>xsession</literal
+>.</para
+></listitem>
+
+<listitem
+><para
+>يجب أن تدعم توزيعات &Linux; <ulink url="https://www.debian.org/"
+>ديبيان</ulink
+> والمشتقة من ديبيان عمليات تسجيل الدخول المخصصة <literal
+>xsession</literal
+>، ولكنها تتطلب تعيين الخيار <option
+><userinput
+>allow-user-xsession</userinput
+></option
+> في <filename
+>/etc/X11/Xsession.options</filename
+>. انظر أيضًا <ulink url="https://www.debian.org/doc/manuals/debian-reference/ch07.en.html#_customizing_the_x_session_classic_method"
+>توثيق ديبيان حول تخصيص جلسة X.</ulink
+></para
+></listitem>
+
+<listitem
+><para
+>بالنسبة للتوزيعات الأخرى، انتقل إلى <xref linkend="xsession-manual-setup"/>.</para
+></listitem>
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="xsession-manual-setup">
+<title
+>إضافة دعم xsession يدويًا</title>
+
+<para
+>إذا لم تكن هناك إرشادات خاصة بالتوزيعة لتوزيعتك في <xref linkend="xsession-distribution-setup"/>، يمكنك إضافة إدخال <quote
+>تسجيل دخول xsession مخصص</quote
+> يدويًا إلى قائمة أنواع الجلسات في توزيعتك كما يلي:</para>
+
+<procedure id="proc-adding-xsession-type">
+<title
+>إضافة نوع جلسة تسجيل دخول .xsession.</title>
+
+<note
+><para
+>من المحتمل أن يتطلب هذا الإجراء صلاحيات إدارية لإكماله. </para
+></note>
+
+<step performance="required">
+<para
+>أنشئ الملف <filename
+>/usr/share/xsessions/kdesrc-build.desktop</filename
+>.</para>
+</step>
+
+<step performance="required">
+<para
+>تأكد من أن الملف الذي تم إنشاؤه للتو يحتوي على النص التالي:</para>
+<literallayout
+><userinput>
+Type=XSession
+Exec=<co id="session-homedir"/><replaceable
+>$HOME</replaceable
+>/.xsession
+Name=KDE Plasma Desktop (unstable; kdesrc-build)
+</userinput
+></literallayout>
+
+<calloutlist>
+<callout arearefs="session-homedir"
+><para
+>يجب استبدال الإدخال <replaceable
+>$HOME</replaceable
+> بالمسار الكامل لدليل منزلك (مثال، <filename class="directory"
+>/home/<replaceable
+>user</replaceable
+></filename
+>). لا تسمح مواصفات إدخال سطح المكتب بملفات عامة للمستخدم. </para
+></callout>
+
+</calloutlist>
+</step>
+
+<step performance="optional"
+><para
+>عند إعادة تشغيل مدير تسجيل الدخول، يجب أن يظهر نوع جلسة جديد، <quote
+>سطح مكتب بلازما كيدي (غير مستقر؛ kdesrc-build)</quote
+> في قائمة الجلسات الخاصة به، والذي يجب أن يحاول تشغيل الملف <filename
+>.xsession</filename
+> المثبت بواسطة &kdesrc-build; إذا تم تحديده عند تسجيل الدخول.</para>
+
+<note
+><para
+>قد يكون من الأسهل إعادة تشغيل الحاسوب لإعادة تشغيل مدير تسجيل الدخول، إذا كان مدير تسجيل الدخول لا يتتبع التحديثات على الدليل <filename class="directory"
+>/usr/share/xsessions</filename
+>.</para
+></note>
+
+</step>
+
+</procedure>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="old-profile-instructions">
+<title
+>ضبط البيئة يدويًا</title>
+<para
+>اعتاد هذا التوثيق على تضمين إرشادات حول متغيرات البيئة التي يجب ضبطها لتحميل سطح المكتب المُنشأ حديثًا. تم نقل هذه الإرشادات إلى ملحق (<xref linkend="old-profile-setup"/>).</para>
+
+<para
+>إذا كنت تنوي إعداد دعم تسجيل الدخول الخاص بك، يمكنك الرجوع إلى ذلك الملحق أو عرض الملف <filename
+>kde-env-master.sh.in</filename
+> المضمن مع مصدر &kdesrc-build;.</para>
+
+</sect2>
+
+</sect1>

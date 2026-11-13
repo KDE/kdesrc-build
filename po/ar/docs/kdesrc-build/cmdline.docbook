@@ -1,0 +1,140 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<chapter id="cmdline">
+<title
+>خيارات سطر الأوامر ومتغيرات البيئة</title>
+
+<sect1 id="cmdline-usage">
+<title
+>استخدام سطر الأوامر</title>
+
+<para
+>صُمم &kdesrc-build; ليعمل على النحو التالي:</para>
+
+<cmdsynopsis
+><command
+>kdesrc-build</command
+> <arg rep="repeat"
+><replaceable
+>--خيارات</replaceable
+></arg
+> <arg rep="repeat"
+><replaceable
+>وحدات للبناء</replaceable
+></arg
+> </cmdsynopsis>
+
+<para
+>إذا لم تُحدد وحدات للبناء في سطر الأوامر، فسيبني kdesrc-build جميع الوحدات المعرفة في ملف إعداده، بالترتيب المذكور في ذلك الملف (رغم أن هذا يمكن تعديله بخيارات ملف الإعداد المختلفة).</para>
+
+<sect2 id="cmdline-usage-options">
+<title
+>خيارات سطر الأوامر شائعة الاستخدام</title>
+
+<para
+>القائمة الكاملة لخيارات سطر الأوامر مُعطاة في <xref linkend="supported-cmdline-params"/>. الخيارات الأكثر استخدامًا تشمل:</para>
+
+<variablelist>
+  <varlistentry>
+    <term
+><option
+>--pretend</option
+> (أو <option
+>-p</option
+>)</term>
+    <listitem
+><para
+>يتسبب هذا الخيار في إظهار &kdesrc-build; للإجراءات التي سيتخذها، دون تنفيذها فعليًا. قد يكون هذا مفيدًا للتأكد من أن الوحدات التي تعتقد أنك تبنيها ستبنى فعلًا.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--refresh-build</option
+></term>
+    <listitem
+><para
+>يجبر هذا الخيار &kdesrc-build; على بناء الوحدات المُعطاة من نقطة بداية جديدة تمامًا. يُحذف أي دليل بناء موجود لتلك الوحدة وتُعاد بناؤها. هذا الخيار مفيد إذا كانت لديك أخطاء في بناء وحدة، ويُطلب أحيانًا عندما تتغير مكتبات &Qt; أو &kde;.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-src</option
+></term>
+    <listitem
+><para
+>يتجاوز هذا الخيار عملية تحديث المصدر. قد تستخدمه إذا كنت قد حدثت كود المصدر مؤخرًا جدًا (ربما فعلتها يدويًا أو شغلت &kdesrc-build; مؤخرًا) ولكنك لا تزال تريد إعادة بناء بعض الوحدات.</para
+></listitem>
+  </varlistentry>
+
+  <varlistentry>
+    <term
+><option
+>--no-build</option
+></term>
+    <listitem
+><para
+>هذا الخيار مشابه لـ <option
+>--no-src</option
+> أعلاه، ولكن هذه المرة يُتجاوز عملية البناء.</para
+></listitem>
+  </varlistentry>
+</variablelist>
+
+</sect2>
+
+<sect2 id="cmdline-usage-modules">
+<title
+>تحديد الوحدات للبناء</title>
+
+<para
+>بشكل عام، تحديد الوحدات للبناء بسيط مثل تمرير اسم الوحدة كما عرفتها في ملف الإعداد. يمكنك أيضًا تمرير وحدات هي جزء من مجموعة وحدات، إما كما هو مسمى في <link linkend="conf-use-modules"
+>use-modules</link
+>، أو اسم مجموعة الوحدات بأكملها، إذا أعطيتها اسمًا.</para>
+
+<para
+>في الحالة الخاصة لمجموعات الوحدات المستندة إلى <link linkend="kde-projects-module-sets"
+>قاعدة مشاريع كيدي</link
+>، سيفك &kdesrc-build; مكونات اسم الوحدة لتحديد الوحدة الدقيقة التي تريدها. على سبيل المثال، يُحدد إدخال مشروع كيدي لـ &kdesrc-build; المشروع في <literal
+>extragear/utils/kdesrc-build</literal
+>. يمكنك تحديد أي مما يلي لبناء &kdesrc-build;:</para>
+
+<informalexample>
+<screen
+><prompt
+>&percnt;</prompt
+> <command
+>kdesrc-build</command
+> <option
+><replaceable
+>+extragear/utils/kdesrc-build</replaceable
+></option
+>
+</screen>
+</informalexample>
+
+<note
+><para
+>سبقت الأوامر في المثال السابق اسم الوحدة بـ <symbol
+>+</symbol
+>. يجبر هذا تفسير اسم الوحدة كوحدة من قاعدة مشاريع كيدي، حتى لو لم تُعرف تلك الوحدة في ملف الإعداد الخاص بك. </para
+></note>
+
+<para
+>كن حذرًا عند تحديد مشاريع عامة جدًا (مثل <literal
+>extragear/utils</literal
+> بمفردها)، حيث يمكن أن يؤدي هذا إلى بناء عدد كبير من الوحدات. يجب استخدام الخيار <option
+>--pretend</option
+> قبل بناء مجموعة وحدات جديدة لضمان أنها تبني فقط الوحدات التي تريدها.</para>
+
+</sect2>
+</sect1
+>&supported-envvars; &supported-cmdline-params; </chapter>

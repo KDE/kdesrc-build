@@ -1,0 +1,216 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<chapter id="features">
+<title
+>ميزات السكريبت</title>
+
+<sect1 id="features-overview">
+<title
+>نظرة عامة على الميزات</title>
+
+<para
+>تتضمن ميزات &kdesrc-build; ما يلي: </para>
+
+<itemizedlist>
+
+<listitem
+><para
+>يمكنك <quote
+>التظاهر</quote
+> بتنفيذ العمليات. إذا مررت <option
+>--pretend</option
+> أو <option
+>-p</option
+> في سطر الأوامر، سيعطي السكريبت وصفًا مفصلًا للأوامر التي سينفذها، دون تنفيذها فعليًا. ولكن إذا لم تشغل &kdesrc-build; من قبل، فستحتاج إلى تشغيل الأمر <command
+>kdesrc-build <option
+><link linkend="cmdline-metadata-only"
+>--metadata-only</link
+></option
+></command
+> أولًا لكي يعمل <option
+>--pretend</option
+>. <tip
+><para
+>للحصول على وصف أكثر تفصيلًا لما يفعله &kdesrc-build;، جرب استخدام الخيار <option
+>--debug</option
+>. </para
+></tip>
+
+</para
+></listitem>
+
+<listitem
+><para
+>يسمح لك &kdesrc-build; بسحب الوحدات بسرعة. إذا كانت الوحدة التي تسحبها قد سُحبت مسبقًا، فسيقوم &kdesrc-build; بتنزيل الالتزامات غير الموجودة على حاسوبك فقط. </para>
+
+<tip
+><para
+>لا حاجة عمومًا لأي تحضير خاص لإجراء السحب الأولي لوحدة Git، حيث يجب تنزيل مستودع Git بالكامل على أي حال، مما يسهل على الخادم تحديد ما يجب إرساله.</para
+></tip>
+
+<para
+>هذا أسرع لك، ويساعد في تخفيف العبء على خوادم &git; المجهولة في kde.org.</para>
+</listitem>
+
+<listitem
+><para
+>يُوفر تسريع آخر ببدء عملية بناء الوحدة فور تنزيل شيفرتها المصدرية. (متاح منذ الإصدار 1.6) </para
+></listitem>
+
+<listitem
+><para
+>دعم ممتاز لبناء مكتبة &Qt; (في حال اعتماد برنامج &kde; الذي تحاول بناءه على إصدار حديث من &Qt; غير متوفر في توزيعتك). </para
+></listitem>
+
+<listitem
+><para
+>لا يتطلب &kdesrc-build; وجود واجهة مستخدم رسومية <acronym
+>GUI</acronym
+> للتشغيل. لذا، يمكنك بناء برامج &kde; دون الحاجة لبيئة رسومية. </para
+></listitem>
+
+<listitem
+><para
+>يدعم ضبط خيارات مبدئية لجميع الوحدات (مثل إعدادات الترجمة أو خيارات الضبط). يمكن تغيير هذه الخيارات عادةً لوحدات محددة أيضًا.</para>
+
+<para
+>أيضًا، سيضيف &kdesrc-build; <link linkend="kdesrc-build-std-flags"
+>أعلامًا قياسية</link
+> حسب الاقتضاء لتوفير عناء كتابتها بنفسك والأخطاء المحتملة. ملاحظة: لا ينطبق هذا عند ضبط سلسلة أدوات (مخصصة) عبر مثل: <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+> </para
+></listitem>
+
+<listitem
+><para
+>يمكن لـ &kdesrc-build; سحب <link linkend="using-branches"
+>فرع أو وسم</link
+> محدد لوحدة. يمكنك أيضًا ضمان سحب <link linkend="conf-revision"
+>مراجعة</link
+> محددة من وحدة. </para
+></listitem>
+
+<listitem
+><para
+>يمكن لـ &kdesrc-build; تبديل دليل مصدر آليًا للسحب من مستودع أو فرع أو وسم مختلف. يحدث هذا آليًا عند تغيير خيار يغير ما يجب أن يكون عليه &url; المستودع، ولكن يجب استخدام الخيار <link linkend="cmdline-src-only"
+>--src-only</link
+> لإعلام &kdesrc-build; بأن التبديل مقبول. </para
+></listitem>
+
+<listitem
+><para
+>يمكن لـ &kdesrc-build; <link linkend="partial-builds"
+>سحب أجزاء فقط من وحدة</link
+>، لتلك الحالات التي تحتاج فيها لبرنامج واحد فقط من وحدة كبيرة. </para
+></listitem>
+
+<listitem
+><para
+>للمطورين: سيذكرك &kdesrc-build; <link linkend="ssh-agent-reminder"
+>بتذكير</link
+> إذا استخدمت git+ssh:// ولكن <application
+>ssh-agent</application
+> لا يعمل، لأن هذا سيؤدي لطلبات كلمة مرور متكررة من &ssh;. </para
+></listitem>
+
+<listitem
+><para
+>يمكن <link linkend="deleting-build-dir"
+>حذف دليل البناء</link
+> لوحدة بعد تثبيتها لتوفير مساحة على حساب وقت الترجمة المستقبلي. </para
+></listitem>
+
+<listitem
+><para
+>مواقع الأدلة التي يستخدمها &kdesrc-build; قابلة للضبط (حتى لكل وحدة). </para
+></listitem>
+
+<listitem
+><para
+>يمكن استخدام &sudo;، أو أمر مختلف يحدده المستخدم <link linkend="root-installation"
+>لتثبيت الوحدات</link
+> بحيث لا يحتاج &kdesrc-build; للتشغيل كمستخدم فائق. </para
+></listitem>
+
+<listitem
+><para
+>يعمل &kdesrc-build; <link linkend="build-priority"
+>بأولوية منخفضة</link
+> مبدئيًا للسماح لك باستخدام حاسوبك أثناء عمل &kdesrc-build;. </para
+></listitem>
+
+<listitem
+><para
+>لديه دعم لاستخدام <link linkend="using-branches"
+>الوسوم والفروع</link
+> الخاصة بـ &kde;. </para
+></listitem>
+
+<listitem
+><para
+>هناك دعم <link linkend="resuming"
+>لاستئناف بناء</link
+> من وحدة معينة. يمكنك حتى <link linkend="ignoring-modules"
+>تجاهل بعض الوحدات</link
+> مؤقتًا لبناء معين. </para
+></listitem>
+
+<listitem
+><para
+>سيعرض &kdesrc-build; <link linkend="build-progress"
+>تقدم بناءك</link
+> عند استخدام &cmake;، وسيوقت عملية البناء دائمًا لتعرف بعد ذلك كم استغرقت. </para
+></listitem>
+
+<listitem
+><para
+>يأتي مدمجًا مع مجموعة معقولة من الخيارات المبدئية المناسبة لبناء تثبيت أساسي لـ &kde; لمستخدم واحد من مستودعات المصدر المجهولة. </para
+></listitem>
+
+<listitem
+><para
+>توسيع التلدة لخيارات الضبط الخاصة بك. على سبيل المثال، يمكنك تحديد: <programlisting
+>install-dir ~/kde/usr</programlisting>
+</para
+></listitem>
+
+<listitem
+><para
+>يضبط نظام بناء آليًا، مع دليل مصدر غير مماثل لدليل البناء، للحفاظ على دليل المصدر نظيفًا. </para
+></listitem>
+
+<listitem
+><para
+>يمكنك تحديد خيارات عامة لتطبيقها على كل وحدة لسحبها، ويمكنك تحديد خيارات لتطبيقها على وحدات فردية أيضًا. </para
+></listitem>
+
+<listitem
+><para
+>إعادة بناء كاملة قسرية، بتشغيل &kdesrc-build; مع الخيار <option
+>--refresh-build</option
+>. </para
+></listitem>
+
+<listitem
+><para
+>يمكنك تحديد قيم بيئة متنوعة لاستخدامها أثناء البناء، بما في ذلك <envar
+>DO_NOT_COMPILE</envar
+> و <envar
+>CXXFLAGS</envar
+>. </para
+></listitem>
+
+<listitem
+><para
+>تسجيل الأوامر. السجلات مؤرخة ومرقمة بحيث يكون لديك دائمًا سجل لتشغيل النص البرمجي. أيضًا، يُنشأ رابط رمزي خاص يُسمى latest للإشارة دائمًا إلى أحدث مدخل سجل في دليل السجلات. </para
+></listitem>
+
+</itemizedlist>
+
+</sect1
+>&kdesrc-build-logging; </chapter>

@@ -1,0 +1,1154 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="supported-cmdline-params">
+<title
+>وسائط سطر الأوامر المدعومة</title>
+
+<sect2>
+<title
+>عامّ</title>
+<variablelist>
+
+<varlistentry id="cmdline-pretend">
+<term
+><option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+> (أو <option
+>--dry-run</option
+> أو <option
+>-p</option
+>)</term>
+<listitem
+><para
+>سيمر &kdesrc-build; بعملية التحديث والبناء، لكن بدلًا من تنفيذ أي إجراءات للتحديث أو البناء، سيخرج ما كانت النص البرمجي ستفعله (مثل الأوامر التي ستُشغّل، الخطوات العامة التي ستُتخذ، إلخ).</para>
+
+<note
+><para
+>قد تُشغّل الأوامر البسيطة للقراءة فقط (مثل قراءة معلومات الملفات) لجعل المخرجات أكثر صلة (مثل محاكاة ما إذا كان سيُسحب الكود المصدري أو يُحدّث بشكل صحيح). </para
+></note>
+
+<important
+><para
+>يتطلب هذا الخيار توفر بعض البيانات الوصفية الضرورية، والتي تُنزّل آليًا عادةً، لكن التنزيلات معطلة في وضع التظاهر. إذا لم تشغّل &kdesrc-build; مطلقًا (وبالتالي، لا تملك هذه البيانات الوصفية)، فعليك تشغيل <command
+>kdesrc-build <option
+>--metadata-only</option
+></command
+> لتنزيل البيانات الوصفية المطلوبة أولًا. </para
+></important>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-include-dependencies">
+<term
+><option
+><link linkend="cmdline-include-dependencies"
+>--include-dependencies</link
+></option
+> (أو <option
+>-d</option
+>)، <option
+>--no-include-dependencies</option
+> (أو <option
+>-D</option
+>)</term>
+<listitem
+><para
+>يتسبب هذا الخيار في تضمين &kdesrc-build; لوحدات &kde; و &Qt; الأخرى في البناء آليًا، إذا كانت مطلوبة للوحدات التي طلبت بنائها في سطر الأوامر أو في <link linkend="configure-data"
+>ملف الضبط</link
+> الخاص بك.</para>
+
+<para
+>الوحدات التي تُضاف هي كما هو مسجل ضمن نظام إدارة الكود المصدري لـ &kde;. انظر <xref linkend="kde-projects-module-sets"/>.</para>
+
+<para
+>خيار ملف الضبط المقابل هو <link linkend="conf-include-dependencies"
+>include-dependencies</link
+>.</para>
+
+<para
+>هذا الخيار مُفعّل مبدئيًا.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-ignore-modules">
+<term
+><option
+><link linkend="cmdline-ignore-modules"
+>--ignore-modules</link
+></option
+> (أو <option
+>-!</option
+>) <parameter
+>module [module ...]</parameter
+></term>
+<listitem
+><para
+>لا تضمّن الوحدات الممررة في بقية سطر الأوامر في عملية التحديث/البناء (هذا مفيد إذا أردت بناء معظم الوحدات في <link linkend="configure-data"
+>ملف الضبط</link
+> الخاص بك وتخطي القليل منها فقط). </para>
+<para
+>لاحظ أن هذا الخيار لا يتجاوز خيار الضبط <link linkend="conf-ignore-modules"
+>ignore-modules</link
+> في القسم العام. بل يُلحق به.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-run">
+<term
+><option
+><link linkend="cmdline-run"
+>--run</link
+></option
+> (أو <option
+>--start-program</option
+>) [-e|--exec name] [-f|--fork] <parameter
+>program [parameters ...]</parameter
+></term>
+<listitem
+><para
+>يفسر هذا الخيار العنصر التالي في سطر الأوامر كبرنامج لتشغيله، وسينهي &kdesrc-build; قراءة ملف الضبط، ويصدر ملف prefix.sh لتطبيق متغيرات البيئة، ثم ينفذ البرنامج المعطى.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-revision">
+<term
+><option
+><link linkend="cmdline-revision"
+>--revision</link
+></option
+> <replaceable
+>id</replaceable
+></term>
+<listitem
+><para
+>يتسبب هذا الخيار في سحب &kdesrc-build; لمراجعة مرقمة محددة لكل وحدة &git;، متجاوزًا أي خيارات <link linkend="conf-branch"
+>branch</link
+> أو <link linkend="conf-tag"
+>tag</link
+> أو <link linkend="conf-revision"
+>revision</link
+> مضبوطة مسبقًا لهذه الوحدات.</para>
+
+<para
+>هذا الخيار ليس فكرة جيدة على الأرجح، وهو مدعوم فقط للتوافق مع النصوص البرمجية الأقدم. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-delete-my-patches">
+<term
+><option
+><link linkend="cmdline-delete-my-patches"
+>--delete-my-patches</link
+></option
+>، <option
+>--no-delete-my-patches</option
+></term>
+<listitem
+><para
+>يُستخدم هذا الخيار للسماح لـ &kdesrc-build; بحذف أدلة المصدر التي قد تحتوي على بيانات مستخدم، بحيث يمكن إعادة تنزيل الوحدة. سيكون هذا مفيدًا عادةً فقط لمطوري &kde; (الذين قد يكون لديهم تغييرات محلية سيتم حذفها).</para>
+
+<para
+>لا ينبغي لك استخدام هذا الخيار عادةً، سيطالبك &kdesrc-build; بإعادة تشغيله به إذا كان ضروريًا.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-delete-my-settings">
+<term
+><option
+><link linkend="cmdline-delete-my-settings"
+>--delete-my-settings</link
+></option
+>، <option
+>--no-delete-my-settings</option
+></term>
+<listitem
+><para
+>يُستخدم هذا الخيار للسماح لـ &kdesrc-build; بالكتابة فوق الملفات الموجودة التي قد تحتوي على بيانات مستخدم.</para>
+
+<para
+>يُستخدم هذا حاليًا فقط لإعداد جلسة xsession لمدير الدخول. لا ينبغي لك استخدام هذا الخيار عادةً، سيطالبك &kdesrc-build; بإعادة تشغيله به إذا كان ضروريًا.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-option-name">
+<term
+><option
+><link linkend="cmdline-option-name"
+>--<replaceable
+>&lt;option-name&gt;</replaceable
+></link
+></option
+> <replaceable
+>value</replaceable
+></term>
+<listitem
+><para
+>يمكنك استخدام هذا الخيار لتجاوز خيار في <link linkend="configure-data"
+>ملف الضبط</link
+> الخاص بك لكل وحدة. على سبيل المثال، لتجاوز خيار <link linkend="conf-log-dir"
+>log-dir</link
+>، ستفعل: <userinput
+><parameter
+>--log-dir <filename class="directory"
+><replaceable
+>/path/to/dir</replaceable
+></filename
+></parameter
+></userinput
+>. </para>
+
+<note
+><para
+>يمكن استخدام هذه الميزة فقط لأسماء الخيارات المعترف بها بالفعل من قبل &kdesrc-build;، والتي لا تدعمها خيارات سطر الأوامر ذات الصلة بالفعل. على سبيل المثال، خيار ملف الضبط <link linkend="conf-async"
+>async</link
+> له خيارات سطر أوامر محددة <link linkend="cmdline-async"
+>--async</link
+> و <link linkend="cmdline-async"
+>--no-async</link
+> يفضلها &kdesrc-build;. </para
+></note>
+
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-set-module-option-value">
+<term
+><option
+><link linkend="cmdline-set-module-option-value"
+>--set-module-option-value</link
+> <replaceable
+>&lt;module-name&gt;</replaceable
+>,<replaceable
+>&lt;option-name&gt;</replaceable
+>,<replaceable
+>&lt;option-value&gt;</replaceable
+></option
+></term>
+<listitem
+><para
+>يمكنك استخدام هذا الخيار لتجاوز خيار في <link linkend="configure-data"
+>ملف الضبط</link
+> الخاص بك لوحدة محددة. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>الاستئناف والإيقاف</title>
+<variablelist>
+
+<varlistentry id="cmdline-resume-from">
+<term
+><option
+><link linkend="cmdline-resume-from"
+>--resume-from</link
+></option
+> (أو <option
+>--from</option
+> أو <option
+>-f</option
+>) <replaceable
+>وحدة</replaceable
+></term>
+<listitem
+><para
+>يُستخدم هذا الخيار لاستئناف البناء بدءًا من الوحدة المُعطاة. لا ينبغي لك تحديد أسماء وحدات أخرى في سطر الأوامر. </para>
+
+<note
+><para
+>إذا أردت تجنب تحديثات المصدر عند الاستئناف، فما عليك سوى تمرير <option
+>--no-src</option
+> بالإضافة إلى الخيارات الأخرى. </para
+></note>
+
+<para
+>انظر أيضًا: <link linkend="cmdline-resume-after"
+>--resume-after</link
+> و<xref linkend="resuming-failed"/>. قد تفضل استخدام خيار سطر الأوامر هذا إذا صححت خطأ البناء وتريد أن يكمل &kdesrc-build; البناء.</para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-resume-after">
+<term
+><option
+><link linkend="cmdline-resume-after"
+>--resume-after</link
+></option
+> (أو <option
+>--after</option
+> أو <option
+>-a</option
+>) <replaceable
+>وحدة</replaceable
+></term>
+<listitem
+><para
+>يُستخدم هذا الخيار لاستئناف البناء بدءًا بعد الوحدة المُعطاة. لا ينبغي لك تحديد أسماء وحدات أخرى في سطر الأوامر. </para>
+
+<note
+><para
+>إذا أردت تجنب تحديثات المصدر عند الاستئناف، فما عليك سوى تمرير <option
+><userinput
+>--no-src</userinput
+></option
+> بالإضافة إلى الخيارات الأخرى. </para
+></note>
+
+<para
+>انظر أيضًا: <link linkend="cmdline-resume-from"
+>--resume-from</link
+> و<xref linkend="resuming-failed"/>. قد تفضل استخدام خيار سطر الأوامر هذا إذا صححت خطأ البناء وقمت أيضًا ببناء وتثبيت الوحدة بنفسك، وتريد أن يبدأ &kdesrc-build; من جديد بالوحدة التالية.</para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-resume">
+<term
+><option
+><link linkend="cmdline-resume"
+>--resume</link
+></option
+></term>
+<listitem
+><para
+>يمكن استخدام هذا الخيار لتشغيل &kdesrc-build; بعد حدوث فشل في البناء. </para
+><para
+>يستأنف البناء من الوحدة التي فشلت، باستخدام قائمة الوحدات التي كانت تنتظر البناء سابقًا، ويعطل تحديثات المصدر والبيانات الوصفية أيضًا. حالة الاستخدام هي عندما يتسبب خطأ بسيط أو اعتماد مفقود في فشل البناء. بمجرد تصحيح الخطأ، يمكنك العودة بسرعة إلى بناء الوحدات التي كنت تبنيها من قبل، دون العبث بـ <option
+><link linkend="cmdline-resume-from"
+>--resume-from</link
+></option
+> و<option
+><link linkend="cmdline-stop-before"
+>--stop-before</link
+></option
+>. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-before">
+<term
+><option
+><link linkend="cmdline-stop-before"
+>--stop-before</link
+></option
+> (أو <option
+>--until</option
+>) <replaceable
+>وحدة</replaceable
+></term>
+<listitem
+><para
+>يُستخدم هذا الخيار لإيقاف عملية البناء العادية <emphasis
+>قبل</emphasis
+> أن تُبنى وحدة ما عادةً. </para
+><para
+>على سبيل المثال، إذا كانت قائمة البناء العادية هي <simplelist type="inline"
+> <member
+>moduleA</member
+><member
+>moduleB</member
+><member
+>moduleC</member
+></simplelist
+>، فإن <option
+>--stop-before <replaceable
+>moduleB</replaceable
+></option
+> ستجعل &kdesrc-build; يبني <literal
+>moduleA</literal
+> فقط. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-after">
+<term
+><option
+><link linkend="cmdline-stop-after"
+>--stop-after</link
+></option
+> (أو <option
+>--to</option
+>) <replaceable
+>وحدة</replaceable
+></term>
+<listitem
+><para
+>يُستخدم هذا الخيار لإيقاف عملية البناء العادية <emphasis
+>بعد</emphasis
+> أن تُبنى وحدة ما عادةً. </para
+><para
+>على سبيل المثال، إذا كانت قائمة البناء العادية هي <simplelist type="inline"
+> <member
+>moduleA</member
+><member
+>moduleB</member
+><member
+>moduleC</member
+></simplelist
+>، فإن <option
+>--stop-after <replaceable
+>moduleB</replaceable
+></option
+> ستجعل &kdesrc-build; يبني <literal
+>moduleA</literal
+> و<literal
+>moduleB</literal
+>. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-stop-on-failure">
+<term
+><option
+><link linkend="cmdline-stop-on-failure"
+>--stop-on-failure</link
+></option
+>، <option
+>--no-stop-on-failure</option
+></term>
+<listitem
+><para
+>يتحكم هذا الخيار في ما إذا كان البناء سيُلغى فور حدوث فشل. السلوك المبدئي هو --stop-on-failure. يمكنك تجاوزه إذا أردت المتابعة مع باقي الوحدات في البناء، لتجنب إضاعة الوقت في حال كانت المشكلة مع وحدة واحدة. </para
+><para
+>انظر أيضًا خيار ملف الضبط <link linkend="conf-stop-on-failure"
+>stop-on-failure</link
+>. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-rebuild-failures">
+<term
+><option
+><link linkend="cmdline-rebuild-failures"
+>--rebuild-failures</link
+></option
+></term>
+<listitem
+><para
+>استخدم هذا الخيار لبناء الوحدات التي فشلت في البناء فقط في تشغيلة سابقة لـ &kdesrc-build;. هذا مفيد إذا حدث عدد كبير من حالات الفشل مختلطةً مع بنيات ناجحة. بعد إصلاح المشكلة المسببة لفشل البناء، يمكنك بسهولة بناء الوحدات التي فشلت سابقًا فقط.</para>
+
+<note
+><para
+>لاحظ أن قائمة <quote
+>الوحدات التي فشلت سابقًا</quote
+> تُعاد ضبطها في كل مرة تنتهي فيها تشغيلة &kdesrc-build; مع بعض حالات فشل الوحدات. ومع ذلك، لا تُعاد ضبطها ببناء ناجح تمامًا، لذا يمكنك إعادة بناء وحدة أو اثنتين بنجاح وسيظل هذا العلم يعمل.</para
+></note>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>معلومات الوحدات</title>
+<variablelist>
+
+<varlistentry id="cmdline-query">
+<term
+><option
+><link linkend="cmdline-query"
+>--query</link
+></option
+> <userinput
+><replaceable
+>وضع</replaceable
+></userinput
+></term>
+<listitem
+><para
+>يتسبب هذا الأمر في استعلام &kdesrc-build; عن معامل للوحدات في قائمة البناء (إما ممررة في سطر الأوامر أو مقروءة من ملف الضبط)، مع إخراج النتيجة إلى الشاشة (وحدة واحدة لكل سطر).</para>
+
+<para
+>يجب توفير هذا الخيار مع <quote
+>وضع</quote
+>، والذي قد يكون أحد ما يلي:</para>
+    <itemizedlist>
+    <listitem
+><para
+><parameter
+>source-dir</parameter
+>، والذي يجعل &kdesrc-build; يخرج المسار الكامل لمكان تخزين شيفرة مصدر الوحدة. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>build-dir</parameter
+>، والذي يجعل &kdesrc-build; يخرج المسار الكامل لمكان حدوث عملية بناء الوحدة. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>install-dir</parameter
+>، والذي يجعل &kdesrc-build; يخرج المسار الكامل لمكان تثبيت الوحدة. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>project-path</parameter
+>، والذي يجعل &kdesrc-build; يخرج موقع الوحدة ضمن تسلسل مستودعات شيفرة كيدي المصدرية. انظر <xref linkend="kde-projects-module-sets"/> لمزيد من المعلومات عن هذا التسلسل. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>branch</parameter
+>، الذي يجعل &kdesrc-build; يُخرج اسم الفرع المُحلَّل من &git; الذي سيُستخدم لكل وحدة، بناءً على إعدادات <link linkend="conf-tag"
+>الوسم</link
+> و<link linkend="conf-branch"
+>الفرع</link
+> و<link linkend="conf-branch-group"
+>مجموعة الفروع</link
+> السارية. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>module-set</parameter
+>، الذي يجعل &kdesrc-build; يُخرج اسم مجموعة الوحدات التي تحتوي على الوحدة. يمكن استخدام هذا لتوليد خبيئة الإكمال التلقائي لـ zsh. </para
+></listitem>
+    <listitem
+><para
+><parameter
+>build-system</parameter
+>، الذي يجعل &kdesrc-build; يُخرج اسم نظام البناء المُكتشف للوحدة. يمكن استخدام هذا لتنقيح مشاكل الكشف التلقائي لنظام البناء، أو عند تطوير اختبارات لأنظمة بناء محددة. </para
+></listitem>
+    <listitem
+><para
+>أي اسم خيار صالح للوحدات في <link linkend="conf-options-table"
+>ملف الضبط</link
+>. </para
+></listitem>
+    </itemizedlist>
+
+<informalexample>
+<para
+>على سبيل المثال، الأمر <userinput
+><command
+>kdesrc-build</command
+> <option
+>--query</option
+> <option
+>branch</option
+> <replaceable
+>kactivities</replaceable
+> <replaceable
+>kdepim</replaceable
+></userinput
+> قد يُنتج مخرجات مثل:</para>
+<screen
+>kactivities: master
+</screen>
+</informalexample>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-dependency-tree">
+<term
+><option
+><link linkend="cmdline-dependency-tree"
+>--dependency-tree</link
+></option
+></term>
+<listitem>
+<para
+>يطبع معلومات التبعية عن الوحدات التي سيُبنى باستخدام تنسيق شجري (تكراري). تتضمن المعلومات المدرجة أيضًا أي commit/فرع/وسم محدد يُعتمد عليه وما إذا كانت التبعية ستُبنى. ملاحظة: قد يصبح المخرج المُولد كبيرًا جدًا للتطبيقات ذات التبعيات الكثيرة. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-dependency-tree-fullpath">
+<term
+><option
+><link linkend="cmdline-dependency-tree-fullpath"
+>--dependency-tree-fullpath</link
+></option
+></term>
+<listitem>
+<para
+>يطبع معلومات التبعية عن الوحدات التي سيُبنى باستخدام تنسيق شجري (تكراري). بتنسيق المسار الكامل. ملاحظة: قد يصبح المخرج المُولد كبيرًا جدًا للتطبيقات ذات التبعيات الكثيرة. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-list-installed">
+<term
+><option
+><link linkend="cmdline-list-installed"
+>--list-installed</link
+></option
+></term>
+<listitem>
+<para
+>اطبع الوحدات المُنصَّبة واخرج. يمكن استخدام هذا لتوليد الإكمال التلقائي للخيار --run. </para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>استبعد إجراءً محددًا</title>
+<variablelist>
+
+<varlistentry id="cmdline-no-metadata">
+<term
+><option
+><link linkend="cmdline-no-metadata"
+>--no-metadata</link
+></option
+> (أو <option
+>-M</option
+>)</term>
+<listitem
+><para
+>لا تُنزَّل آليًا البيانات الوصفية الإضافية اللازمة لوحدات &kde; git. ستظل تحديثات المصدر للوحدات نفسها تحدث ما لم تمرر <link linkend="cmdline-no-src"
+>--no-src</link
+> أيضًا. </para
+><para
+>قد يكون هذا مفيدًا إذا كنت تُعيد تشغيل &kdesrc-build; بشكل متكرر لأن البيانات الوصفية لا تتغير كثيرًا. لكن لاحظ أن العديد من الميزات الأخرى تتطلب توفر البيانات الوصفية. قد ترغب في التفكير في تشغيل &kdesrc-build; مع الخيار <link linkend="cmdline-metadata-only"
+>--metadata-only</link
+> مرة واحدة ثم استخدام هذا الخيار للتشغيلات اللاحقة. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-src">
+<term
+><option
+><link linkend="cmdline-no-src"
+>--no-src</link
+></option
+> (أو <option
+>-S</option
+>)</term>
+<listitem
+><para
+>تجاوز الاتصال بخادم &git;. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-build">
+<term
+><option
+><link linkend="cmdline-no-build"
+>--no-build</link
+></option
+></term>
+<listitem
+><para
+>تجاوز عملية البناء. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-no-install">
+<term
+><option
+><link linkend="cmdline-no-install"
+>--no-install</link
+></option
+></term>
+<listitem
+><para
+>لا تُنصَّب آليًا الحزم بعد بنائها. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>إجراء محدد فقط</title>
+<variablelist>
+
+<varlistentry id="cmdline-metadata-only">
+<term
+><option
+><link linkend="cmdline-metadata-only"
+>--metadata-only</link
+></option
+></term>
+<listitem
+><para
+>نفِّذ فقط عملية تنزيل البيانات الوصفية. يتعامل &kdesrc-build; مع هذا آليًا عادةً، لكن قد تستخدم هذا يدويًا للسماح للخيار <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+> من سطر الأوامر بالعمل. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-src-only">
+<term
+><option
+><link linkend="cmdline-src-only"
+>--src-only</link
+></option
+> (أو <option
+>-s</option
+>)</term>
+<listitem
+><para
+>نفِّذ فقط تحديث المصدر. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-build-only">
+<term
+><option
+><link linkend="cmdline-build-only"
+>--build-only</link
+></option
+></term>
+<listitem
+><para
+>نفِّذ فقط عملية البناء. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-only">
+<term
+><option
+><link linkend="cmdline-install-only"
+>--install-only</link
+></option
+></term>
+<listitem
+><para
+>إذا كان هذا هو الخيار الوحيد في سطر الأوامر، فإنه يحاول تثبيت جميع الوحدات الموجودة في <filename
+>log/latest/build-status</filename
+>. إذا حُددت خيارات سطر الأوامر بعد هذا الخيار، فإنها تُفترض جميعًا أنها وحدات لتثبيتها (حتى لو لم تُبنَ بنجاح في التشغيل الأخير). </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-build-system-only">
+<term
+><option
+><link linkend="cmdline-build-system-only"
+>--build-system-only</link
+></option
+></term>
+<listitem
+><para
+>يتسبب هذا الخيار في إحباط &kdesrc-build; بناء وحدة قبل تشغيل الأمر <command
+>make</command
+> مباشرةً. هذا مدعوم للتوافق مع الإصدارات الأقدم فقط، هذا التأثير ليس مفيدًا لنظام بناء &kde; الحالي. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>سلوك البناء</title>
+<variablelist>
+
+<varlistentry id="cmdline-build-when-unchanged">
+<term
+><option
+><link linkend="cmdline-build-when-unchanged"
+>--build-when-unchanged</link
+></option
+> (أو <option
+>--force-build</option
+>)، <option
+>--no-build-when-unchanged</option
+> (أو <option
+>--no-force-build</option
+>)</term>
+<listitem
+><para
+>تمكين هذا الخيار يُعطل صراحةً تخطي عملية البناء (تحسين يُتحكم فيه بواسطة الخيار <link linkend="conf-build-when-unchanged"
+>build-when-unchanged</link
+>). هذا مفيد لجعل &kdesrc-build; يُشغِّل البناء عندما تُغير شيئًا لا يستطيع &kdesrc-build; التحقق منه. هذا الخيار مُفعَّل مبدئيًا.</para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-refresh-build">
+<term
+><option
+><link linkend="cmdline-refresh-build"
+>--refresh-build</link
+></option
+> (أو <option
+>-r</option
+>)</term>
+<listitem
+><para
+>أعد إنشاء نظام البناء وابنِ من الصفر. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-reconfigure">
+<term
+><option
+><link linkend="cmdline-reconfigure"
+>--reconfigure</link
+></option
+></term>
+<listitem
+><para
+>شغِّل <command
+>cmake</command
+> (لوحدات &kde;) أو <command
+>configure</command
+> (لـ &Qt;) مرة أخرى، دون تنظيف دليل البناء. لا ينبغي أن تضطر عادةً إلى تحديد هذا، حيث سيكتشف &kdesrc-build; عندما تُغير الخيارات ذات الصلة ويُعيد تشغيل إعداد البناء آليًا. هذا الخيار مُضمَّن إذا استُخدم <parameter
+><link linkend="cmdline-refresh-build"
+>--refresh-build</link
+></parameter
+>. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-dir">
+<term
+><option
+><link linkend="cmdline-install-dir"
+>--install-dir</link
+> <replaceable
+>path</replaceable
+></option
+></term>
+<listitem
+><para
+>يتيح لك هذا تغيير الدليل حيث ستُثبَّت الوحدات إليه. هذا الخيار يستلزم <link linkend="cmdline-reconfigure"
+><option
+>--reconfigure</option
+></link
+>، لكن استخدام <link linkend="cmdline-refresh-build"
+><option
+>--refresh-build</option
+></link
+> قد يظل مطلوبًا. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-vscode-project-config">
+<term
+><option
+><link linkend="cmdline-generate-vscode-project-config"
+>--generate-vscode-project-config</link
+></option
+>، <option
+>--no-generate-vscode-project-config</option
+></term>
+<listitem
+><para
+>أنشئ دليل <filename
+>.vscode</filename
+> بإعدادات لبناء وتنقيح الأخطاء في Visual Studio Code. هذا الخيار معطَّل مبدئيًا. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>زمن تشغيل النص البرمجي</title>
+<variablelist>
+
+<varlistentry id="cmdline-async">
+<term
+><option
+><link linkend="cmdline-async"
+>--async</link
+></option
+>، <option
+>--no-async</option
+></term>
+<listitem
+><para
+>يفعِّل أو يعطِّل <link linkend="conf-async"
+>الوضع اللامتزامن</link
+>، الذي يمكنه أداء تحديثات الشيفرة المصدرية وبناء الوحدات في الوقت نفسه. إذا عُطِّل، سيُجرى التحديث بكامله قبل بدء البناء. تعطيل هذا الخيار سيُبطئ العملية الكلية. إذا واجهت أخطاء IPC أثناء تشغيل &kdesrc-build; فحاول تعطيله، وتقديم <ulink url="https://bugs.kde.org/"
+>تقرير عطل</ulink
+>. هذا الخيار مُفعَّل مبدئيًا. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-color">
+<term
+><option
+><link linkend="cmdline-color"
+>--color</link
+></option
+> (أو <option
+>--colorful-output</option
+>)، <option
+>--no-color</option
+> (أو <option
+>--no-colorful-output</option
+>)</term>
+<listitem
+><para
+>فعِّل أو عطِّل المخرجات الملونة. مبدئيًا، هذا الخيار مُفعَّل للأطراف التفاعلية. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-nice">
+<term
+><option
+><link linkend="cmdline-nice"
+>--nice</link
+></option
+> (أو <option
+>--niceness</option
+>) <replaceable
+>قيمة</replaceable
+></term>
+<listitem
+><para
+>هذه القيمة تضبط أولوية وحدة المعالجة المركزية للحاسوب التي يطلبها &kdesrc-build;، ويجب أن تكون في النطاق 0-20. 0 هي أعلى أولوية (لأنها الأقل <quote
+>لطفًا</quote
+>)، و20 هي أدنى أولوية. هذا الخيار مبدئيًا قيمته 10. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-rc-file">
+<term
+><option
+><link linkend="cmdline-rc-file"
+>--rc-file</link
+></option
+> <replaceable
+>ملف</replaceable
+></term>
+<listitem
+><para
+>الملف الذي ستُقرأ منه خيارات الضبط. القيمة المبدئية لهذه الوسيطة هي <filename
+>kdesrc-buildrc</filename
+> (يُفحص في دليل العمل الحالي). إذا لم يوجد هذا الملف، سيُستخدم <filename
+>~/.config/kdesrc-buildrc</filename
+> (<filename
+>$XDG_CONFIG_HOME/kdesrc-buildrc</filename
+>، إذا ضُبط <envar
+>$XDG_CONFIG_HOME</envar
+>) بدلًا منه. انظر أيضًا <xref linkend="kdesrc-buildrc"/>. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>الإعداد</title>
+<variablelist>
+
+<varlistentry id="cmdline-initial-setup">
+<term
+><option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></term>
+<listitem
+><para
+>يُجري &kdesrc-build; الإعداد المبدئي لمرة واحدة اللازم لتجهيز النظام لعمل &kdesrc-build;، ولتشغيل برمجيات &kde; المُثبَّتة حديثًا. </para>
+<para
+>يتضمن هذا:</para>
+<itemizedlist>
+<listitem
+><para
+>تثبيت التبعيات المعروفة (على توزيعات &Linux; المدعومة)</para
+></listitem>
+<listitem
+><para
+>إضافة متغيرات البيئة المطلوبة إلى <literal
+>~/.bashrc</literal
+></para
+></listitem>
+</itemizedlist>
+<para
+>هذا الخيار مكافئ تمامًا لاستخدام <option
+><link linkend="cmdline-install-distro-packages"
+>--install-distro-packages</link
+></option
+> <option
+><link linkend="cmdline-generate-config"
+>--generate-config</link
+></option
+> في الوقت نفسه. في kdesrc-build (تطبيق perl) يستخدم أيضًا "--install-distro-packages-perl". </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-install-distro-packages">
+<term
+><option
+><link linkend="cmdline-install-distro-packages"
+>--install-distro-packages</link
+></option
+></term>
+<listitem
+><para
+>يثبِّت حزم التوزيعة (على توزيعات &Linux; المدعومة) اللازمة لتجهيز النظام لعمل &kdesrc-build;، ولتشغيل برمجيات &kde; المُثبَّتة حديثًا. </para>
+<para
+>انظر أيضًا <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-generate-config">
+<term
+><option
+><link linkend="cmdline-generate-config"
+>--generate-config</link
+></option
+></term>
+<listitem
+><para
+>أنشئ ملف ضبط &kdesrc-build;. </para>
+<para
+>انظر أيضًا <option
+><link linkend="cmdline-initial-setup"
+>--initial-setup</link
+></option
+></para>
+</listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>مستوى الإطناب</title>
+ 
+<variablelist>
+
+<varlistentry id="cmdline-debug">
+<term
+><option
+><link linkend="cmdline-debug"
+>--debug</link
+></option
+></term>
+<listitem
+><para
+>يفعِّل وضع التنقيح للنص البرمجي. حاليًا، هذا يعني أن كل المخرجات ستُفرَّغ إلى المخرجات القياسية بالإضافة إلى تسجيلها في دليل السجل كالمعتاد. أيضًا، العديد من الدوال تكون أكثر إطنابًا بكثير حول ما تفعله في وضع التنقيح. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-quiet">
+<term
+><option
+><link linkend="cmdline-quiet"
+>--quiet</link
+></option
+> (أو <option
+>--quite</option
+> أو <option
+>-q</option
+>)</term>
+<listitem
+><para
+>لا تكن كثير الضوضاء في المخرجات. بهذا المفتاح تُخرج الأساسيات فقط. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-really-quiet">
+<term
+><option
+><link linkend="cmdline-really-quiet"
+>--really-quiet</link
+></option
+></term>
+<listitem
+><para
+>أخرج فقط التحذيرات والأخطاء. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-verbose">
+<term
+><option
+><link linkend="cmdline-verbose"
+>--verbose</link
+></option
+></term>
+<listitem
+><para
+>كن وصفيًا جدًا حول ما يجري، وما يفعله &kdesrc-build;. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+</sect2>
+
+<sect2>
+<title
+>معلومات النص البرمجي</title>
+<variablelist>
+
+<varlistentry id="cmdline-version">
+<term
+><option
+><link linkend="cmdline-version"
+>--version</link
+></option
+> (أو <option
+>-v</option
+>)</term>
+<listitem
+><para
+>اعرض إصدار البرنامج. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-help">
+<term
+><option
+><link linkend="cmdline-help"
+>--help</link
+></option
+> (أو <option
+>-h</option
+>)</term>
+<listitem
+><para
+>اعرض المساعدة البسيطة حول هذا السكريبت فقط. </para
+></listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-show-info">
+<term
+><option
+><link linkend="cmdline-show-info"
+>--show-info</link
+></option
+></term>
+<listitem
+><para
+>يعرض معلومات حول &kdesrc-build; ونظام التشغيل، قد تكون مفيدة في تقارير الأخطاء أو عند طلب المساعدة في المنتديات أو القوائم البريدية. </para>
+</listitem>
+</varlistentry>
+
+<varlistentry id="cmdline-show-options-specifiers">
+<term
+><option
+><link linkend="cmdline-show-options-specifiers"
+>--show-options-specifiers</link
+></option
+></term>
+<listitem
+><para
+>اطبع سطور المحددات (بالصيغة التي يقبلها GetOpts::Long) لجميع خيارات سطر الأوامر المدعومة من السكريبت. قد يستخدمها المطورون، مثلًا، لتوليد دوال الإكمال التلقائي لـ zsh. </para
+></listitem>
+</varlistentry>
+
+</variablelist>
+
+</sect2>
+</sect1>

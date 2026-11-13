@@ -1,0 +1,392 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="kde-modules-and-selection">
+<title
+>تنظيم الوحدات واختيارها</title>
+
+<sect2 id="kde-layers">
+<title
+>تنظيم برمجيات كيدي</title>
+
+<para
+>برمجيات &kde; مقسمة إلى مكونات مختلفة، يمكن بناء العديد منها بواسطة &kdesrc-build;. فهم هذا التنظيم سيساعدك في اختيار وحدات البرمجيات التي ترغب في بنائها بشكل صحيح. </para>
+
+<orderedlist>
+<listitem
+><para
+>في المستوى الأدنى تأتي مكتبة &Qt;، وهي مكتبة <quote
+>أدوات</quote
+> قوية جدًا ومتعددة المنصات. &kde; مبني على &Qt;، وبعض المكتبات غير التابعة لـ &kde; التي تتطلبها &kde; مبنية أيضًا على &Qt;. يمكن لـ &kdesrc-build; بناء &Qt;، أو استخدام النسخة المثبتة بالفعل على نظامك إذا كانت إصدارًا حديثًا بما يكفي.</para
+></listitem>
+
+<listitem
+><para
+>فوق &Qt; توجد المكتبات الضرورية اللازمة لعمل برمجيات &kde;. بعض هذه المكتبات لا تُعتبر جزءًا من &kde; نفسه نظرًا لطبيعتها العامة، لكنها لا تزال أساسية لمنصة &kde;. تُجمع هذه المكتبات تحت مجموعة وحدات <literal
+>kdesupport</literal
+> لكنها لا تُعتبر جزءًا من مكتبات <quote
+>الأطر</quote
+>.</para>
+</listitem>
+
+<listitem
+><para
+>فوق هذه المكتبات الأساسية تأتي <ulink url="https://community.kde.org/Frameworks"
+>أطر &kde;</ulink
+>، التي تُختصر أحيانًا باسم KF5، وهي مكتبات أساسية لسطح مكتب &kde; بلازما وتطبيقات &kde; وغيرها من البرمجيات الطرف الثالث. </para
+> </listitem>
+
+<listitem
+><para
+>فوق الأطر، تأتي عدة أشياء مختلفة:</para>
+    <itemizedlist>
+        <listitem
+><para
+>تطبيقات <quote
+>الطرف الثالث</quote
+>. هذه تطبيقات تستخدم أطر &kde; أو صُممت للعمل تحت &kde; بلازما لكنها ليست من تأليف أو بالاشتراك مع مشروع &kde;.</para
+></listitem>
+
+        <listitem
+><para
+>بلازما، وهي بيئة سطح مكتب <quote
+>مساحة عمل</quote
+> كاملة. هذا ما يراه المستخدمون عادةً عندما <quote
+>يسجلون الدخول إلى &kde;</quote
+>.</para
+></listitem>
+
+        <listitem
+><para
+>مجموعة تطبيقات &kde;. هذه مجموعة من البرمجيات المفيدة المضمنة مع المنصة وسطح مكتب &plasma;، مجمعة في وحدات فردية، بما في ذلك أدوات مساعدة مثل &dolphin;، وألعاب مثل <application
+>KSudoku</application
+>، وبرمجيات إنتاجية صدرت بواسطة &kde; مثل &kontact;.</para
+></listitem>
+
+        <listitem
+><para
+>أخيرًا، هناك مجموعة من البرمجيات (مجمعة أيضًا في وحدات) يُدعم تطويرها بموارد &kde; (مثل الترجمة، التحكم بالمصدر، تتبع الأخطاء، &etc;) لكنها لم تُصدر بواسطة &kde; كجزء من بلازما أو مجموعة التطبيقات. تُعرف هذه الوحدات باسم <quote
+>إكسترا غير</quote
+>. </para
+></listitem>
+    </itemizedlist>
+</listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="selecting-modules">
+<title
+>اختيار الوحدات لبنائها</title>
+
+<para
+>التحكم في اختيار أي من الوحدات الممكنة لبنائها يتم بواسطة <link linkend="kdesrc-buildrc"
+>ملف الإعدادات</link
+>. بعد القسم <literal
+>global</literal
+> تأتي قائمة بالوحدات المراد بناؤها، محصورة بين سطري module ... end module. مثال لإدخال وحدة موضح في <xref linkend="conf-module-example"/>.</para>
+
+<example id="conf-module-example">
+<title
+>مثال لإدخال وحدة في ملف الإعدادات</title>
+<programlisting
+>module <replaceable
+>kdesrc-build-git</replaceable
+>
+</programlisting>
+</example>
+
+<note
+><para
+>عمليًا، لا يُستخدم هذا البناء للوحدة مباشرةً عادةً. بدلًا من ذلك، تُحدد معظم الوحدات عبر مجموعات الوحدات كما هو موضح أدناه.</para
+></note>
+
+<para
+>عند استخدام إدخالات <literal
+>module</literal
+> فقط، يقوم &kdesrc-build; ببنائها بالترتيب الذي تدرجها به، ولا يحاول تنزيل أي مستودعات أخرى غير تلك التي تحددها مباشرةً. </para>
+
+</sect2>
+
+<sect2 id="module-sets">
+<title
+>مجموعات الوحدات</title>
+
+<para
+>كود مصدر &kde; مقسم إلى عدد كبير من المستودعات الصغيرة نسبيًا القائمة على Git. لتسهيل إدارة العدد الكبير من المستودعات المتضمنة في أي تثبيت مفيد قائم على &kde;، يدعم &kdesrc-build; تجميع وحدات متعددة ومعاملة المجموعة كـ <quote
+>مجموعة وحدات</quote
+>. </para>
+
+<sect3 id="module-set-concept">
+<title
+>مفهوم مجموعة الوحدات الأساسي</title>
+
+<para
+>باستخدام مجموعة وحدات، يمكنك بسرعة تعريف العديد من وحدات Git لتنزيلها وبنائها، كما لو كنت قد كتبت تعريف وحدة منفصل لكل واحدة. يُعالج الخيار <link linkend="conf-repository"
+>repository</link
+> بشكل خاص لإعداد مكان تنزيل كل وحدة منه، ويُنسخ كل خيار آخر موجود في مجموعة الوحدات إلى كل وحدة تُنشأ بهذه الطريقة.</para>
+
+<example id="example-using-module-sets">
+<title
+>استخدام مجموعات الوحدات</title>
+<programlisting
+>global
+    <option
+><link linkend="conf-git-repository-base"
+>git-repository-base</link
+></option
+> <replaceable
+>kde-git</replaceable
+> <replaceable
+>kde:</replaceable>
+end global
+
+module <replaceable
+>qt</replaceable>
+    # Options removed for brevity
+end module
+
+module-set <replaceable
+>kde-support-libs</replaceable>
+    <option
+><link linkend="conf-repository"
+>repository</link
+></option
+> <replaceable
+>kde-git</replaceable>
+    <option
+><link linkend="conf-use-modules"
+>use-modules</link
+></option
+> <replaceable
+>automoc</replaceable
+> <replaceable
+>attica</replaceable
+> <replaceable
+>akonadi</replaceable>
+end module-set
+
+# Other modules as necessary...
+module <replaceable
+>kdesupport</replaceable>
+end module
+</programlisting>
+</example>
+
+<para
+>في <xref linkend="example-using-module-sets"/> تظهر مجموعة وحدات مختصرة. عندما يواجه &kdesrc-build; مجموعة الوحدات هذه، يتصرف كما لو أنه، لكل وحدة معطاة في <option
+>use-modules</option
+>، قد تم تعريف وحدة فردية، مع <option
+>repository</option
+> الخاص بها مساويًا لـ <option
+>repository</option
+> الخاص بمجموعة الوحدات متبوعًا فورًا باسم الوحدة المعطى.</para>
+
+<para
+>بالإضافة إلى ذلك، يمكن تمرير خيارات أخرى في مجموعة وحدات، تُنسخ إلى كل وحدة جديدة تُنشأ بهذه الطريقة. باستخدام module-set، من الممكن تعريف العديد من وحدات Git بسرعة التي تستند جميعها إلى نفس عنوان URL للمستودع. بالإضافة إلى ذلك، من الممكن إعطاء مجموعات الوحدات اسمًا (كما هو موضح في المثال)، مما يسمح لك بالإشارة بسرعة إلى المجموعة الكاملة من الوحدات من سطر الأوامر.</para>
+
+</sect3>
+<sect3 id="module-sets-kde">
+<title
+>دعم خاص لمجموعات وحدات كيدي</title>
+
+<para
+>دعم مجموعة الوحدات الموصوف حتى الآن عام لأي وحدات قائمة على Git. بالنسبة لمستودعات Git الخاصة بـ &kde;، يتضمن &kdesrc-build; ميزات إضافية لتسهيل الأمور على المستخدمين والمطورين. يتم تفعيل هذا الدعم بتحديد <literal
+>kde-projects</literal
+> كـ <option
+>repository</option
+> لمجموعة الوحدات. </para>
+
+<para
+>عادةً ما يبني &kdesrc-build; فقط الوحدات التي أدرجتها في ملف الإعدادات الخاص بك، بالترتيب الذي تدرجها به. لكن مع مجموعة وحدات <literal
+>kde-projects</literal
+>، يمكن لـ &kdesrc-build; حل التبعيات للوحدات الخاصة بـ &kde;، وبالإضافة إلى ذلك تضمين الوحدات تلقائيًا في البناء حتى لو تم تحديدها بشكل غير مباشر فقط.</para>
+
+<example id="example-using-kde-module-sets">
+<title
+>استخدام مجموعات وحدات kde-projects</title>
+<programlisting
+># يضيف فقط وحدة لـ juk (مستودع kde/kdemultimedia/juk)
+</programlisting>
+</example>
+
+<tip
+><para
+>بناء مجموعة الوحدات <literal
+>kde-projects</literal
+> هذا هو الطريقة الرئيسية لتعريف الوحدات التي ترغب في بنائها.</para
+></tip>
+
+<para
+>جميع مجموعات الوحدات تستخدم خيارات <link linkend="conf-repository"
+>المستودع</link
+> و<link linkend="conf-use-modules"
+>استخدام-الوحدات</link
+>. مجموعات وحدات <link linkend="kde-projects-module-sets"
+><literal
+>kde-projects</literal
+></link
+> لها قيمة <option
+>repository</option
+> محددة مسبقًا، لكن الأنواع الأخرى من مجموعات الوحدات ستستخدم أيضًا خيار <link linkend="conf-git-repository-base"
+>git-repository-base</link
+>. </para>
+</sect3>
+
+</sect2>
+
+<sect2 id="kde-projects-module-sets">
+<title
+>قاعدة وحدات &kde; الرسمية</title>
+
+<para
+>مستودعات &git; الخاصة بـ &kde; تسمح بتجميع وحدات &git; ذات الصلة في مجموعات من الوحدات المرتبطة (مثل kdegraphics). &git; لا يتعرف على هذه التجميعات، لكن &kdesrc-build; يمكنه فهم هذه المجموعات، باستخدام <link linkend="module-sets"
+>مجموعات الوحدات</link
+> مع خيار <option
+>repository</option
+> مضبوط على <quote
+><literal
+>kde-projects</literal
+></quote
+>.</para>
+
+<para
+>سيتعرف &kdesrc-build; على أن مستودع <literal
+>kde-projects</literal
+> يتطلب معالجة خاصة، وسيضبط عملية البناء وفقًا لذلك. من بين أمور أخرى، سيقوم &kdesrc-build; بما يلي:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>تنزيل أحدث قاعدة وحدات من <ulink url="https://commits.kde.org/"
+>أرشيف &git; الخاص بـ &kde;</ulink
+>.</para
+></listitem>
+
+<listitem
+><para
+>محاولة إيجاد وحدة بالاسم المعطى في إعداد <option
+>use-modules</option
+> لمجموعة الوحدات في تلك القاعدة.</para
+></listitem>
+
+<listitem
+><para
+>لكل وحدة يتم العثور عليها، سيبحث &kdesrc-build; عن المستودع المناسب في القاعدة، بناءً على إعداد <link linkend="conf-branch-group"
+>branch-group</link
+> الساري. إذا كان المستودع موجودًا ونشطًا لمجموعة الفرع، فسيستخدمه &kdesrc-build; آليًا لتنزيل أو تحديث الشيفرة المصدرية. </para
+></listitem>
+
+</itemizedlist>
+
+<note
+><para
+>في القاعدة الحالية، بعض مجموعات الوحدات لا تحتوي فقط على مجموعة من الوحدات، بل تعلن <emphasis
+>أيضًا</emphasis
+> عن مستودع &git; الخاص بها. في هذه الحالات، سيفضل &kdesrc-build; حاليًا مستودع &git; الخاص بالمجموعة بدلًا من تضمين مستودعات الأطفال. </para
+></note>
+
+<para
+>المثال التالي يوضح كيفية استخدام قاعدة وحدات &kde; لتثبيت مكتبة الوسائط المتعددة Phonon.</para>
+
+<informalexample>
+<programlisting
+>module-set <replaceable
+>media-support</replaceable
+>
+</programlisting>
+</informalexample>
+
+<tip
+><para
+>يُستخدم <literal
+>phonon/phonon</literal
+> لأنه (مع قاعدة المشاريع الحالية) سيتعين على &kdesrc-build; الاختيار بين مجموعة المشاريع المسماة <quote
+>phonon</quote
+> أو المشروع الفردي المسمى <quote
+>phonon</quote
+>. حاليًا سيختار &kdesrc-build; الأول، مما سيبني العديد من الخلفيات أكثر من اللازم.</para
+></tip>
+
+<para
+>المثال التالي ربما يكون أكثر واقعية، ويظهر ميزة متاحة فقط مع قاعدة وحدات &kde;: بناء جميع تطبيقات رسوميات &kde; بإعلان واحد فقط.</para>
+
+<informalexample>
+<programlisting
+>module-set <replaceable
+>kdegraphics</replaceable
+>
+</programlisting>
+</informalexample>
+
+<para
+>هناك قدرتان مهمتان موضحتان هنا:</para>
+
+<orderedlist>
+
+<listitem
+><para
+>يسمح لك &kdesrc-build; بتحديد وحدات هي سليلة لوحدة معينة، دون بناء الوحدة الأم، باستخدام الصيغة <userinput
+><replaceable
+>module-name</replaceable
+>/*</userinput
+>. إنه مطلوب فعليًا في هذه الحالة لأن الوحدة الأساسية، kdegraphics، مُعلَمة كغير نشطة حتى لا تُبنى عن طريق الخطأ مع وحداتها الأطفال. تحديد الوحدات السليلة يسمح لـ &kdesrc-build; بتجاوز الوحدة المعطلة. </para
+></listitem>
+
+<listitem
+><para
+>لن يضيف &kdesrc-build; وحدة معينة إلى قائمة البناء أكثر من مرة. هذا يسمح لنا بتعيين <literal
+>kdegraphics/libs</literal
+> يدويًا للبناء أولًا، قبل باقي <literal
+>kdegraphics</literal
+>، دون محاولة بناء <literal
+>kdegraphics/libs</literal
+> مرتين. كان هذا مطلوبًا سابقًا للمعالجة الصحيحة للتبعيات، واليوم يبقى خيارًا احتياطيًا في حال كانت قاعدة مشاريع &kde; تفتقد بيانات وصفية للتبعيات. </para
+></listitem>
+</orderedlist>
+</sect2>
+
+<sect2 id="ignoring-project-modules">
+<title
+>تصفية وحدات مشروع &kde;</title>
+
+<para
+>قد تقرر أنك ترغب في بناء جميع البرامج ضمن تجميع وحدات &kde; <emphasis
+>باستثناء</emphasis
+> برنامج معين.</para>
+
+<para
+>على سبيل المثال، مجموعة <literal
+>kdeutils</literal
+> تتضمن برنامجًا اسمه <application
+>kremotecontrol</application
+>. إذا لم يكن لدى حاسوبك العتاد المناسب لاستقبال الإشارات المرسلة بواسطة أجهزة التحكم عن بعد، فقد تقرر أنك تفضل عدم تنزيل وبناء وتثبيت <application
+>kremotecontrol</application
+> في كل مرة تحدث فيها <literal
+>kdeutils</literal
+>.</para>
+
+<para
+>يمكنك تحقيق ذلك باستخدام خيار الضبط <link linkend="conf-ignore-modules"
+>ignore-modules</link
+>. في سطر الأوامر، يفعل خيار <link linkend="ignoring-modules"
+>&cmd-ignore-modules;</link
+> نفس الشيء، لكنه أكثر ملاءمة لتصفية وحدة مرة واحدة فقط. </para>
+
+<example id="example-ignoring-a-module">
+<title
+>مثال لتجاهل وحدة kde-project في مجموعة</title>
+<programlisting
+>module-set <replaceable
+>utils</replaceable
+>
+</programlisting>
+</example>
+
+</sect2>
+
+</sect1>

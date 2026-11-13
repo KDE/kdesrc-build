@@ -1,0 +1,130 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<appendix id="appendix-modules">
+<title
+>تنظيم وحدات كيدي وشفرة المصدر</title>
+<sect1 id="module-concept">
+<title
+>الوحدة</title>
+
+<para
+>تجمّع كيدي برمجياته في وحدات بأحجام مختلفة. كان هذا في البداية تجميعًا فضفاضًا لعدد قليل من الوحدات الكبيرة، ولكن مع تقديم مستودعات شفرة المصدر المبنية على غيت، قُسّمت هذه الوحدات الكبيرة إلى وحدات أصغر عديدة. </para>
+
+<para
+>يستخدم كدي‌إس‌آر‌سي-بيلد مفهوم الوحدة هذا أيضًا. في الجوهر، الوحدة هي تجميع لشفرة يمكن تنزيلها وبناؤها واختبارها وتثبيتها. </para>
+
+<sect2 id="single-modules">
+<title
+>الوحدات الفردية</title>
+
+<para
+>من السهل ضبط كدي‌إس‌آر‌سي-بيلد لبناء وحدة واحدة. القائمة التالية مثال على شكل تعريف لوحدة مبنية على غيت في ملف الضبط.</para>
+
+<programlisting
+>module <replaceable
+>kdefoo</replaceable
+>
+</programlisting>
+
+<tip
+><para
+>هذه وحدة مبنية على غيت لأنها لا تستخدم خيار المستودع. أيضًا، خيار cmake-options مذكور كمثال فقط، وهو ليس مطلوبًا.</para
+></tip>
+
+</sect2>
+<sect2 id="module-groups">
+<title
+>مجموعات الوحدات ذات الصلة</title>
+
+<para
+>الآن معظم وحدات مصدر كيدي مبنية على غيت، وتُجمّع عادةً في مجموعات من الوحدات.</para>
+
+<para
+>لذلك يدعم كدي‌إس‌آر‌سي-بيلد مجموعات الوحدات أيضًا، باستخدام مجموعات الوحدات. مثال:</para>
+
+<programlisting
+>module-set <replaceable
+>base-modules</replaceable
+>
+</programlisting>
+
+<tip
+><para
+>يمكنك ترك اسم مجموعة الوحدات فارغًا إذا أردت. يُخبر إعداد المستودع هذا كدي‌إس‌آر‌سي-بيلد من أين ينزّل المصدر، ولكن يمكنك أيضًا استخدام رابط git://.</para
+></tip>
+
+<para
+>ميزة خاصة لـ المستودع kde-projects هي أن كدي‌إس‌آر‌سي-بيلد سيضمّن آليًا أي وحدات غيت مجمّعة تحت الوحدات التي تسردها في قاعدة بيانات مشروع كيدي.</para>
+</sect2>
+
+<sect2 id="module-branch-groups">
+<title
+>مجموعات فروع الوحدات</title>
+
+<para
+>بتطوير مفهوم مجموعة الوحدات، وجد مطورو كيدي في النهاية أن مزامنة أسماء فروع غيت عبر عدد كبير من المستودعات أصبحت صعبة، خاصة أثناء الدفع التطويري لإطارات كيدي الجديدة لـ كيوت 5. </para>
+
+<para
+>لذلك طُوّر مفهوم مجموعات الفروع، للسماح للمستخدمين والمطورين باختيار واحدة من عدد قليل من المجموعات فقط، والسماح للنص باختيار فرع غيت المناسب آليًا. </para>
+
+<para
+>يدعم كدي‌إس‌آر‌سي-بيلد هذه الميزة منذ الإصدار 1.16-pre2، عبر خيار branch-group. </para>
+
+<example id="ex-branch-group">
+<title
+>مثال على استخدام branch-group</title>
+
+<para
+>يمكن استخدام branch-group في ملف الضبط كما يلي: </para>
+
+<programlisting
+>global
+    # Select KDE Frameworks 5 and other Qt5-based apps
+    <option
+>branch-group</option
+> <replaceable
+>kf5-qt5</replaceable>
+
+    # Other global options here ...
+end global
+
+module-set
+    # branch-group only works for kde-projects
+    <option
+>repository</option
+> kde-projects
+
+    # branch-group is inherited from the one set globally, but could
+    # specified here.
+
+    <option
+>use-modules</option
+> <replaceable
+>kdelibs kde-workspace</replaceable>
+end module-set
+
+# kdelibs's branch will be "frameworks"
+# kde-workspace's branch will be "master" (as of August 2013)
+</programlisting>
+
+<para
+>في هذه الحالة، يعطي نفس branch-group أسماء فروع مختلفة لكل وحدة غيت. </para>
+</example>
+
+<para
+>تتطلب هذه الميزة بعض البيانات التي يحافظ عليها مطورو كيدي في مستودع غيت اسمه kde-build-metadata، ولكن هذه الوحدة ستُضمّن آليًا بواسطة كدي‌إس‌آر‌سي-بيلد (رغم أنك قد تراها تظهر في مخرجات النص). </para>
+
+<tip
+><para
+>وحدات كيدي التي ليس لها اسم فرع محدد لمجموعة الفروع التي تختارها ستستخدم مبدئيًا اسم فرع مناسب، كما لو لم تحدد branch-group على الإطلاق. </para
+></tip>
+
+</sect2>
+
+</sect1>
+</appendix>

@@ -1,0 +1,143 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="configure-data">
+<title
+>ضبط بيانات الإعدادات</title>
+
+<para
+>لاستخدام &kdesrc-build;، يجب أن يكون لديك ملف في مجلد <filename
+>~/.config</filename
+> (أو في <envar
+>$XDG_CONFIG_HOME</envar
+>، إن ضُبط) باسم <filename
+>kdesrc-buildrc</filename
+>، يضبط الخيارات العامة ويحدد الوحدات التي ترغب في تنزيلها وبنائها. </para>
+
+<note
+><para
+>من الممكن استخدام ملفات إعدادات مختلفة لـ &kdesrc-build;، وهو ما يُشرح في <xref linkend="kdesrc-buildrc"/>. إذا احتجت استخدام إعدادات متعددة، فاطّلع على ذلك القسم. هنا، سنفترض أن الإعدادات مخزنة في <filename
+>~/.config/kdesrc-buildrc</filename
+>. </para
+></note>
+
+<para
+>أسهل طريقة للمتابعة هي استخدام ملف <filename
+>kdesrc-buildrc-kf5-sample</filename
+> كقالب، مع تغيير الخيارات العامة لتوافق رغباتك، وتغيير قائمة الوحدات التي تريد بناءها. </para>
+
+<para
+>ينبغي أن تكون الإعدادات المبدئية مناسبة لبناء &kde;. بعض الإعدادات التي قد ترغب في تغييرها تشمل: </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>، الذي يغير مجلد الوجهة الذي تُثبّت فيه برمجيات &kde;. المبدئي هو <filename class="directory"
+>~/kde/usr</filename
+>، وهو تثبيت لمستخدم واحد.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-branch-group"
+>branch-group</link
+>، الذي يمكن استخدامه لاختيار فرع التطوير المناسب لوحدات &kde; ككل. هناك العديد من تشكيلات البناء المدعومة لكنك على الأرجح ستختار <option
+>kf6-qt6</option
+> ليُحمّل &kdesrc-build; أحدث الشيفرات المبنية على &Qt; 6 و &kde; Frameworks 6.</para>
+
+<tip
+><para
+>سيستخدم &kdesrc-build; مجموعة فروع مبدئية إن لم تختر واحدة، لكن هذا المبدئي سيتغير مع الوقت، لذا من الأفضل اختيار واحدة لئلا تتغير مجموعة الفروع بشكل غير متوقع.</para
+></tip>
+</listitem>
+
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>، للتحكم في المجلد الذي يستخدمه &kdesrc-build; لتنزيل الشيفرة المصدرية، وتشغيل عملية البناء، وحفظ السجلات. المبدئي هو <filename class="directory"
+>~/kde/src</filename
+>.</para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+>، الذي يضبط الخيارات الممررة لأمر &cmake; عند بناء كل وحدة. يُستخدم عادةً للتبديل بين بنائي <quote
+>تنقيح</quote
+> أو <quote
+>إصدار</quote
+>، لتمكين (أو تعطيل) الميزات الاختيارية، أو تمرير معلومات لعملية البناء عن موقع المكتبات المطلوبة. </para
+></listitem>
+
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>، الذي يضبط الخيارات المستخدمة عند تشغيل أمر <application
+>make</application
+> فعليًا لبناء كل وحدة (بمجرد أن يُنشئ &cmake; نظام البناء). </para>
+
+<para
+>الخيار الأكثر شيوعًا هو <option
+>-j<replaceable
+>N</replaceable
+></option
+>، حيث يُستبدل <replaceable
+>N</replaceable
+> بالعدد الأقصى لمهام الترجمة التي تسمح بها. عدد أعلى (حتى عدد وحدات المعالجة المنطقية المتوفرة في نظامك) يؤدي إلى بنيات أسرع، لكنه يتطلب موارد نظام أكثر. </para>
+
+<tip
+><para
+>يضبط &kdesrc-build; الخيار <option
+><link linkend="conf-num-cores"
+>num-cores</link
+></option
+> على العدد المكتشف من أنوية المعالجة المتوفرة. يمكنك استخدام هذه القيمة في ملف إعداداتك الخاص لتجنب ضبطها يدويًا. </para
+></tip>
+
+<example id="make-options-example">
+<title
+>إعداد Make لاستخدام كل وحدات المعالجة المتوفرة، مع استثناءات</title>
+<screen
+>global
+    # This environment variable is automatically used by make, including
+    # make commands not run by kdesrc-build directly, such as Qt's configure
+    set-env MAKEFLAGS -j<literal
+>${num-cores}</literal>
+    &hellip;
+end global
+
+&hellip;
+
+module-set <replaceable
+>big-module-set</replaceable>
+    repository kde-projects
+    use-modules <replaceable
+>calligra</replaceable>
+    make-options -j2 # Reduced number of build jobs for just these modules
+end module-set
+</screen>
+</example>
+
+<note
+><para
+>بعض مستودعات Git الكبيرة جدًا قد تُثقل نظامك إن حاولت الترجمة بعدد كبير جدًا من مهام البناء في وقت واحد، خاصة مستودعات مثل &Qt; WebKit و &Qt; WebEngine. للحفاظ على تفاعلية النظام قد تضطر لتقليل عدد مهام البناء لوحدات محددة.</para>
+<para
+><xref linkend="make-options-example"/> يُعطي مثالًا على كيفية فعل ذلك.</para>
+</note>
+
+</listitem>
+</itemizedlist>
+
+<para
+>قد ترغب في اختيار وحدات مختلفة لبنائها، وهو ما يُشرح في <xref linkend="selecting-modules"/>.</para>
+
+</sect1>

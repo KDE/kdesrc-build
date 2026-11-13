@@ -1,0 +1,340 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<chapter id="kdesrc-buildrc">
+<title
+>اضبط &kdesrc-build;</title>
+
+<sect1 id="kdesrc-buildrc-overview">
+<title
+>نظرة عامة على ضبط &kdesrc-build;</title>
+
+<para
+>لاستخدام النص البرمجي، يجب أن يكون لديك ملف في دليلك الرئيسي باسم <filename
+>.kdesrc-buildrc</filename
+>، يصف الوحدات التي ترغب في تنزيلها وبنائها، وأي خيارات أو وسائط ضبط لاستخدامها لهذه الوحدات. </para>
+
+<sect2 id="kdesrc-buildrc-layout">
+<title
+>تخطيط ملف الضبط</title>
+
+<sect3 id="kdesrc-buildrc-layout-global">
+<title
+>الضبط العام</title>
+
+<para
+>يبدأ ملف الضبط بالخيارات العامة، المحددة كما يلي: </para>
+
+<programlisting
+>global
+<replaceable
+>option-name option-value</replaceable>
+<replaceable
+>[...]</replaceable>
+end global
+</programlisting>
+
+</sect3>
+<sect3 id="kdesrc-buildrc-layout-modules">
+<title
+>ضبط الوحدة</title>
+
+<para
+>يتبعه بعد ذلك قسم وحدة أو أكثر، محددة بأحد الشكلين التاليين: </para>
+
+<itemizedlist>
+<listitem>
+<programlisting
+>module <replaceable
+>اسم-الوحدة</replaceable
+>
+</programlisting>
+</listitem>
+
+<listitem>
+<programlisting
+>module-set <replaceable
+>اسم-مجموعة-الوحدات</replaceable
+>
+</programlisting>
+</listitem>
+</itemizedlist>
+
+<important
+><para
+>لاحظ أن الشكل الثاني، مجموعات الوحدات، <emphasis
+>يعمل فقط مع الوحدات القائمة على Git</emphasis
+>.</para
+></important>
+
+<para
+>لوحدات Git، يجب أن يكون <replaceable
+>اسم-الوحدة</replaceable
+> وحدة من مستودع &kde; &git; (مثلًا، kdeartwork أو kde-wallpapers). </para>
+
+<para
+>لوحدات Git، يمكن أن يكون اسم الوحدة ما تشاء أساسًا، طالما لا يكرر أي اسم وحدة آخر في الضبط. ضع في اعتبارك أن تخطيط دليل المصدر والبناء سيعتمد على اسم الوحدة إذا لم تستخدم خيار <link linkend="conf-dest-dir"
+>dest-dir</link
+>. </para>
+
+<para
+>ومع ذلك، لمجموعات وحدات Git <emphasis
+>module sets</emphasis
+>، يجب أن تتطابق <replaceable
+>أسماء-الوحدات</replaceable
+> مع وحدات git فعلية في <option
+>repository</option
+> المختار. انظر <link linkend="conf-git-repository-base"
+>git-repository-base</link
+> أو <link linkend="conf-use-modules"
+>use-modules</link
+> لمزيد من المعلومات. </para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-option-values">
+<title
+>معالجة قيم الخيارات</title>
+
+<para
+>بشكل عام، يُستخدم محتوى السطر بالكامل بعد <replaceable
+>اسم-الخيار</replaceable
+> كـ <replaceable
+>قيمة-الخيار</replaceable
+>.</para>
+
+<para
+>أحد التعديلات التي يجريها &kdesrc-build; هو أن تسلسل "<userinput
+>${<replaceable
+>اسم-الخيار</replaceable
+>}</userinput
+>" يُستبدل بقيمة ذلك الخيار من الضبط العام. يتيح لك هذا الإشارة إلى قيمة الخيارات الموجودة، بما في ذلك الخيارات المحددة مسبقًا بواسطة &kdesrc-build;.</para>
+
+<para
+>لرؤية مثال على هذا قيد الاستخدام، انظر <xref linkend="make-options-example"/>.</para>
+
+<para
+>يمكنك أيضًا تقديم متغيرات عامة غير قياسية خاصة بك للإشارة إليها لاحقًا في الضبط. لفعل هذا، يجب أن يُسبق اسم خيارك برمز الشرطة السفلية. مثال: <example id="custom-global-option-example">
+<title
+>تقديم خيار عام خاص بك للإشارة إليه لاحقًا في الضبط</title>
+<programlisting
+>global
+  _ver 6  # ← your custom variable (starting with underscore)
+  _kde ~/kde${_ver}  # ← custom variable can contain another defined variable
+  source-dir ${_kde}/src  # ← note that nested variable (_kde → _ver) is also resolved
+end global
+
+options kdepim
+  log-dir /custom/path/logs${_ver} # ← you can use custom variable just like a standard
+end options
+</programlisting>
+</example>
+</para>
+
+</sect3>
+
+<sect3 id="kdesrc-buildrc-options-groups">
+<title
+>وحدات <quote
+>options</quote
+></title>
+
+<para
+>هناك نوع نهائي من إدخالات ملف الضبط، مجموعات <literal
+>options</literal
+>، التي يمكن وضعها أينما يمكن استخدام <literal
+>module</literal
+> أو <literal
+>module-set</literal
+>.</para>
+
+<programlisting
+>options <replaceable
+>اسم-الوحدة</replaceable
+>
+</programlisting>
+
+<para
+>يمكن أن تُضبط خيارات لمجموعة <literal
+>options</literal
+> تمامًا مثل تعريف وحدة، وتُربط بوحدة موجودة. أي خيارات تُضبط بهذه الطريقة ستُستخدم <emphasis
+>لتجاوز</emphasis
+> الخيارات المضبوطة للوحدة المرتبطة.</para>
+
+<important
+><para
+>يجب أن يتطابق اسم الوحدة المرتبطة <emphasis
+>بالضرورة</emphasis
+> مع الاسم المعطى في تعريف <literal
+>options</literal
+>. كن حذرًا من الخطأ في كتابة الاسم.</para
+></important>
+
+<para
+>هذا مفيد للسماح بتعريف مجموعة كاملة من الوحدات بقيمة <literal
+>module-set</literal
+>، جميعها تستخدم نفس الخيارات، ثم استخدام مجموعات <literal
+>options</literal
+> لإجراء تغييرات فردية.</para>
+
+<para
+>يمكن أن تنطبق مجموعات <literal
+>options</literal
+> أيضًا على مجموعات الوحدات المسماة. يتيح هذا للمستخدمين الخبراء استخدام ملف ضبط شائع (يتضمن تعريفات <literal
+>module-set</literal
+>) كخط أساس، ثم إجراء تغييرات على الخيارات المستخدمة من قبل مجموعات الوحدات تلك في ملفات ضبط تستخدم أمر <literal
+><link linkend="kdesrc-buildrc-including"
+>include</link
+></literal
+> للإشارة إلى الضبط الأساسي.</para>
+
+<example id="ex-options-group">
+<title
+>مثال على استخدام options</title>
+
+<para
+>في هذا المثال نختار بناء جميع الوحدات من مجموعة برامج الوسائط المتعددة &kde;. ومع ذلك نريد استخدام إصدار مختلف من تطبيق &kmix; (ربما لاختبار إصلاح عطل). يعمل كما يلي:</para>
+
+<programlisting
+>module-set <replaceable
+>kde-multimedia-set</replaceable
+>
+</programlisting>
+
+<para
+>الآن عندما تشغّل &kdesrc-build;، ستُبنى جميع برامج الوسائط المتعددة &kde; من فرع <quote
+>master</quote
+> لمستودع المصدر، لكن &kmix; سيُبنى من الفرع الأقدم <quote
+>KDE/4.12</quote
+>. باستخدام <literal
+>options</literal
+> لم تضطر إلى سرد جميع برامج الوسائط المتعددة <emphasis
+>الأخرى</emphasis
+> &kde; بشكل فردي لإعطائها خيار الفرع الصحيح.</para>
+
+</example>
+
+<note>
+<para
+>لاحظ أن هذه الميزة متوفرة فقط في &kdesrc-build; من الإصدار 1.16، أو باستخدام النسخة التطويرية من &kdesrc-build; بعد 2014-01-12.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="kdesrc-buildrc-including">
+<title
+>تضمين ملفات إعدادات أخرى</title>
+
+<para
+>داخل ملف الإعدادات، يمكنك الإشارة إلى ملفات أخرى باستخدام الكلمة المفتاحية <literal
+>include</literal
+> مع ملف، مما سيعمل كما لو أن الملف المشار إليه أُدرج في ملف الإعدادات عند تلك النقطة. </para>
+
+<informalexample
+><para
+>على سبيل المثال، يمكنك أن يكون لديك شيء كهذا:</para>
+<programlisting
+>global
+    include <replaceable
+>~/common-kdesrc-build-options</replaceable>
+
+    # Insert specific options here.
+
+end global
+</programlisting>
+</informalexample>
+
+<note
+><para
+>إذا لم تحدد المسار الكامل للملف المراد تضمينه، فسيُبحث عن الملف بدءًا من الدليل الذي يحتوي على الملف المصدر. يعمل هذا بشكل تكراري أيضًا.</para
+></note>
+
+<para
+>يمكنك استخدام متغيرات في قيمة تعليمة التضمين:</para>
+<programlisting
+>global
+  <replaceable
+>_ver</replaceable
+> <replaceable
+>6</replaceable>
+  source-dir ~/kde<replaceable
+>${_ver}</replaceable
+>/src
+  ...
+  persistent-data-file ~/kde<replaceable
+>${_ver}</replaceable
+>/persistent-options.json
+end global
+
+include ~/kde6/src/kdesrc-build/data/build-include/kf<replaceable
+>${_ver}</replaceable
+>-qt<replaceable
+>${_ver}</replaceable
+>.ksb
+
+</programlisting>
+</sect2>
+
+<sect2 id="kdesrc-buildrc-common">
+<title
+>خيارات إعدادات شائعة الاستخدام</title>
+
+<para
+>فيما يلي قائمة بالخيارات شائعة الاستخدام. انقر على الخيار لمعرفة المزيد عنه. لرؤية القائمة الكاملة للخيارات، انظر <xref linkend="conf-options-table"/>. </para>
+
+<itemizedlist>
+<listitem
+><para
+><link linkend="conf-cmake-options"
+>cmake-options</link
+> لتعريف العلامات التي ستُضبط بها وحدة باستخدام &cmake;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-branch"
+>branch</link
+>، للسحب من فرع بدلًا من <literal
+>master</literal
+>.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-configure-flags"
+>configure-flags</link
+> لتعريف العلامات التي ستُضبط بها &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-install-dir"
+>install-dir</link
+>، لتعيين الدليل الذي سيُثبَّت فيه &kde;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-make-options"
+>make-options</link
+>، لتمرير خيارات إلى برنامج &make; (مثل عدد وحدات المعالجة المركزية المستخدمة).</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-qt-install-dir"
+>qt-install-dir</link
+>، لتعيين الدليل الذي سيُثبَّت فيه &Qt;.</para
+></listitem>
+<listitem
+><para
+><link linkend="conf-source-dir"
+>source-dir</link
+>، لتغيير مكان تنزيل الشيفرة المصدرية إليه.</para
+></listitem>
+</itemizedlist>
+
+</sect2>
+</sect1
+>&conf-options-table; </chapter>

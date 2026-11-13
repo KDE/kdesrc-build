@@ -1,0 +1,171 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="building-and-troubleshooting">
+<title
+>استخدام نص &kdesrc-build; البرمجي</title>
+<para
+>بعد إنشاء بيانات الضبط، أصبحت الآن جاهزًا لتشغيل النص البرمجي. حتى لو كان لديك بعض التعديلات أو القراءات الإضافية التي ترغب في القيام بها، فمن الجيد على الأقل تحميل بيانات تعريف مشروع &kde;.</para>
+
+<sect2 id="loading-kdesrc-build-metadata">
+<title
+>تحميل بيانات تعريف المشروع</title>
+
+<para
+>من نافذة طرفية، سجّل الدخول إلى المستخدم الذي تستخدمه لتجميع برمجيات &kde; ونفّذ النص البرمجي: </para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--metadata-only</option
+></userinput
+>
+</screen>
+
+<para
+>سينشئ هذا الأمر دليل المصدر ويتصل بمستودعات &git; الخاصة بـ &kde; لتنزيل قاعدة بيانات مستودعات git الخاصة بـ &kde;، وقاعدة بيانات بيانات تعريف التبعيات، دون إجراء أي تغييرات إضافية. من المفيد تشغيل هذا بشكل منفصل لأن بيانات التعريف هذه مفيدة لأوامر &kdesrc-build; الأخرى. </para>
+
+</sect2>
+
+<sect2 id="pretend-mode">
+<title
+>معاينة ما سيحدث عند تشغيل kdesrc-build</title>
+
+<para
+>بعد تثبيت بيانات تعريف المشروع، يمكن معاينة ما سيفعله &kdesrc-build; عند تشغيله. يمكن القيام بذلك باستخدام خيار سطر الأوامر <option
+><link linkend="cmdline-pretend"
+>--pretend</link
+></option
+>.</para>
+
+<screen
+><prompt
+>&percnt; </prompt
+><command
+>./kdesrc-build</command
+> <option
+>--pretend</option
+>
+</screen>
+
+<para
+>يجب أن ترى رسالة تفيد بأن بعض الحزم بُنيت بنجاح (على الرغم من عدم بناء أي شيء فعليًا). إذا لم تظهر مشاكل كبيرة، يمكنك المتابعة لتشغيل النص البرمجي فعليًا.</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput
+>
+</screen>
+
+<para
+>سينزّل هذا الأمر شيفرة المصدر المناسبة، ويبني ويُثبّت كل وحدة بالترتيب. بعد ذلك، يجب أن ترى مخرجات مشابهة لتلك الموجودة في <xref linkend="example-build-sequence"/>:</para>
+
+<example id="example-build-sequence">
+<title
+>مثال على مخرجات تشغيل kdesrc-build</title>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+></userinput>
+Updating kde-build-metadata (to branch master)
+Updating sysadmin-repo-metadata (to branch master)
+
+Building libdbusmenu-qt (1/200)
+        No changes to libdbusmenu-qt source, proceeding to build.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building taglib (2/200)
+        Updating taglib (to branch master)
+        Source update complete for taglib: 68 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+Building extra-cmake-modules from &lt;module-set at line 32&gt; (3/200)
+        Updating extra-cmake-modules (to branch master)
+        Source update complete for extra-cmake-modules: 2 files affected.
+        Compiling... succeeded (after 0 seconds)
+        Installing.. succeeded (after 0 seconds)
+
+        ...
+
+Building kdevelop from kdev (200/200)
+        Updating kdevelop (to branch master)
+        Source update complete for kdevelop: 29 files affected.
+        Compiling... succeeded (after 1 minute, and 34 seconds)
+        Installing.. succeeded (after 2 seconds)
+
+&lt;&lt;&lt;  PACKAGES SUCCESSFULLY BUILT  &gt;&gt;&gt;
+Built 200 modules
+
+Your logs are saved in /home/kde-src/kdesrc/log/2018-01-20-07
+</screen>
+</example>
+</sect2>
+
+<sect2 id="fixing-build-failures">
+<title
+>حل إخفاقات البناء</title>
+
+<para
+>اعتمادًا على عدد الوحدات التي تنزّلها، من الممكن ألا ينجح &kdesrc-build; في المرة الأولى التي تجمّع فيها برمجيات &kde;. لا تيأس! </para>
+
+<para
+>يسجّل &kdesrc-build; مخرجات كل أمر يشغّله. افتراضيًا، تُحفظ ملفات السجل في <filename class="directory"
+>~/kdesrc/log</filename
+>. لمعرفة سبب خطأ لوحدة في آخر أمر &kdesrc-build;، يكفي عادةً النظر إلى <filename class="directory"
+>~/kdesrc/log/latest/<replaceable
+>module-name</replaceable
+>/error.log</filename
+>.</para>
+
+<tip
+><para
+>ربما تكون أسهل طريقة لمعرفة الخطأ الذي تسبب في فشل بناء وحدة هي البحث للخلف مع تجاهل حالة الأحرف، بدءًا من نهاية الملف بحثًا عن الكلمة <literal
+>error</literal
+>. بمجرد العثور عليها، انتقل لأعلى للتأكد من عدم وجود رسائل خطأ أخرى قريبة. أول رسالة خطأ في مجموعة هي عادةً المشكلة الأساسية.</para
+></tip>
+
+<para
+>في ذلك الملف، سترى الخطأ الذي تسبب في فشل بناء تلك الوحدة. إذا كان الملف يقول (في الأسفل) أنك تفتقد بعض الحزم، فحاول تثبيت الحزمة (بما في ذلك أي حزم -dev مناسبة) قبل محاولة بناء تلك الوحدة مرة أخرى. تأكد من تمرير خيار <link linkend="cmdline-reconfigure"
+>--reconfigure</link
+> عند تشغيل &kdesrc-build; مرة أخرى ليجبر الوحدة على التحقق من الحزم المفقودة مرة أخرى.</para>
+
+<para
+>أو، إذا بدا الخطأ كخطأ بناء (مثل خطأ نحوي، <quote
+>نموذج أولي غير صحيح</quote
+>، <quote
+>نوع غير معروف</quote
+>، أو ما شابه) فمن المحتمل أنه خطأ في شيفرة &kde; المصدرية، والذي سيُحل في غضون بضعة أيام على أمل. إذا لم يُحل خلال ذلك الوقت، فلا تتردد في إرسال بريد إلكتروني إلى القائمة البريدية <email
+>kde-devel@kde.org</email
+> (قد يكون الاشتراك مطلوبًا أولًا) للإبلاغ عن فشل البناء.</para>
+
+<para
+>يمكنك العثور على أمثلة أكثر شيوعًا للأشياء التي قد تسوء وحلولها، بالإضافة إلى نصائح واستراتيجيات عامة لبناء برمجيات &kde; في <ulink url="https://community.kde.org/Guidelines_and_HOWTOs/Build_from_source"
+>البناء من المصدر</ulink
+>. </para>
+
+<para
+>من ناحية أخرى، بافتراض أن كل شيء سار على ما يرام، يجب أن يكون لديك تثبيت جديد لـ &kde; على حاسوبك، والآن الأمر مجرد تشغيله، كما هو موصوف في <xref linkend="environment"/>.</para>
+
+<note
+><para
+>لمزيد من المعلومات حول ميزات التسجيل في &kdesrc-build;، يُرجى الاطلاع على <xref linkend="kdesrc-build-logging"/>.</para
+></note>
+</sect2>
+
+</sect1>

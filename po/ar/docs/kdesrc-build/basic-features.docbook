@@ -1,0 +1,235 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="basic-features">
+<title
+>ميزات &kdesrc-build; الأساسية</title>
+
+<sect2 id="using-qt">
+<title
+>دعم Qt</title>
+<para
+>يدعم &kdesrc-build; بناء مجموعة أدوات &Qt; التي تستخدمها برمجيات &kde; كتسهيل للمستخدمين. تُعالج هذه الدعم بواسطة وحدة خاصة اسمها qt.</para>
+
+<note
+><para
+>يُطوَّر &Qt; تحت مستودع منفصل عن برمجيات &kde; موجود في <ulink url="http://code.qt.io/cgit/qt/"
+>http://code.qt.io/cgit/qt/</ulink
+>.</para
+></note>
+
+<para
+>لبناء &Qt;، ينبغي أن تتأكد من أن خيار <link linkend="conf-qt-install-dir"
+>qt-install-dir</link
+> مضبوط على الدليل الذي ترغب في تثبيت &Qt; إليه، كما هو موصوف في <xref linkend="configure-data"/>.</para>
+
+<para
+>ينبغي بعدها أن تتأكد من أن وحدة qt مضافة إلى <filename
+>.kdesrc-buildrc</filename
+>، قبل أي وحدات أخرى في الملف. إذا كنت تستخدم ملف الضبط النموذجي، يمكنك ببساطة إلغاء تعليق المدخل الحالي لوحدة qt.</para>
+
+<para
+>الآن ينبغي أن تتحقق من أن خيار <link linkend="conf-repository"
+>repository</link
+> وخيار <link linkend="conf-branch"
+>branch</link
+> مضبوطان بشكل مناسب:</para>
+
+<orderedlist>
+<listitem
+><para
+>الخيار الأول هو بناء &Qt; باستخدام مرآة مُدارة على مستودعات مصدر &kde; (لا تُطبق أي تغييرات أخرى، إنه ببساطة استنساخ للمصدر الرسمي). هذا موصى به بشدة بسبب مشكلات عرضية مع استنساخ وحدة &Qt; الكاملة من مستودعها الرسمي.</para>
+
+<para
+>يمكنك ضبط خيار <option
+>repository</option
+> لوحدة qt إلى <userinput
+>kde:qt</userinput
+> لاستخدام هذا الخيار.</para>
+</listitem>
+
+<listitem
+><para
+>وإلا، لبناء &Qt; القياسي، اضبط خيار <option
+>repository</option
+> إلى <userinput
+>git://gitorious.org/qt/qt.git</userinput
+>. لاحظ أنك قد تواجه مشكلات في إجراء الاستنساخ الأولي لـ &Qt; من هذا المستودع.</para
+></listitem>
+</orderedlist>
+
+<para
+>في كلتا الحالتين، ينبغي ضبط خيار الفرع إلى <userinput
+>master</userinput
+> (إلا إذا كنت ترغب في بناء فرع مختلف).</para>
+
+</sect2>
+
+<sect2 id="kdesrc-build-std-flags">
+<title
+>الأعلام القياسية المضافة بواسطة &kdesrc-build;</title>
+<para
+>ملاحظة مهمة: لا ينطبق هذا القسم على الوحدات التي ضبطت لها سلسلة أدوات مخصصة، باستخدام مثلًا <link linkend="conf-cmake-toolchain"
+>cmake-toolchain</link
+>.</para>
+
+<para
+>لتوفير وقتك، يضيف &kdesrc-build; بعض المسارات القياسية إلى بيئتك لك: </para>
+
+<itemizedlist>
+<listitem
+><para
+>يُضاف المسار إلى مكتبات &kde; و &Qt; إلى المتغير <envar
+>LD_LIBRARY_PATH</envar
+> آليًا. هذا يعني أنك لا تحتاج إلى تحرير &libpath; لتضمينها. </para
+></listitem>
+
+<listitem
+><para
+>تُضاف المسارات إلى برامج دعم التطوير لـ &kde; و &Qt; إلى المتغير <envar
+>PATH</envar
+> آليًا. هذا يعني أنك لا تحتاج إلى تحرير &binpath; لتضمينها. </para
+></listitem>
+
+<listitem
+><para
+>يُضاف المسار إلى <application
+>pkg-config</application
+> المقدم من &kde; آليًا إلى <envar
+>PKG_CONFIG_PATH</envar
+>. هذا يعني أنك لا تحتاج إلى استخدام &set-env; لإضافة هذه. </para
+></listitem>
+
+</itemizedlist>
+
+</sect2>
+
+<sect2 id="build-priority">
+<title
+>تغيير أولوية بناء &kdesrc-build;</title>
+<para
+>يمكن للبرامج أن تعمل بمستويات أولوية مختلفة على أنظمة التشغيل، بما في ذلك &Linux; و &BSD;. هذا يسمح للنظام بتخصيص وقت للبرامج المختلفة وفقًا لمدى أهميتها. </para>
+
+<para
+>يخصص &kdesrc-build; لنفسه عادة أولوية منخفضة بحيث لا تتأثر بقية البرامج على نظامك ويمكنها العمل بشكل طبيعي. باستخدام هذه التقنية، سيستخدم &kdesrc-build; معالجًا إضافيًا عندما يكون متاحًا. </para>
+
+<para
+>سيحافظ &kdesrc-build; مع ذلك على مستوى أولوية عالٍ بما يكفي بحيث يعمل قبل عمليات الدفعات الروتينية وقبل برامج التبرع بالمعالج مثل <ulink url="http://setiathome.ssl.berkeley.edu/"
+>Seti@Home</ulink
+>. </para>
+
+<para
+>لتغيير &kdesrc-build; بحيث يستخدم مستوى أولوية أعلى (أو أدنى) بشكل دائم، فأنت بحاجة إلى ضبط إعداد &niceness; في <link linkend="configure-data"
+>ملف الضبط</link
+>. يتحكم إعداد &niceness; في مدى <quote
+>لطف</quote
+> &kdesrc-build; تجاه البرامج الأخرى. بعبارة أخرى، وجود &niceness; أعلى يعطي &kdesrc-build; أولوية أدنى. لذا لإعطاء &kdesrc-build; أولوية أعلى، قلل &niceness; (والعكس صحيح). يمكن أن يتراوح &niceness; من 0 (ليس لطيفًا على الإطلاق، أعلى أولوية) إلى 20 (لطيف جدًا، أدنى أولوية).</para>
+
+<para
+>يمكنك أيضًا تغيير الأولوية لـ &kdesrc-build; مؤقتًا باستخدام خيار سطر الأوامر &cmd-nice; <link linkend="cmdline"
+>command line option</link
+>. تُستخدم قيمة الخيار تمامًا كما هو الحال مع &niceness;.</para>
+
+<note
+><para
+>من الممكن لبعض البرامج التي يديرها المستخدم الفائق أن يكون لها قيمة nice سالبة، مع أولوية أعلى مقابلًا لمثل هذه البرامج. ضبط &niceness; سالب (أو حتى 0) لـ &kdesrc-build; ليس فكرة جيدة، لأنه لن يساعد في وقت التشغيل بشكل كبير، لكنه سيجعل حاسوبك يبدو بطيئًا جدًا إذا كنت لا تزال بحاجة إلى استخدامه. </para
+></note>
+
+<informalexample>
+<para
+>لتشغيل &kdesrc-build; بقيمة nice تساوي 15 (أولوية أدنى من العادية):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--nice=<replaceable
+>15</replaceable
+></option
+></userinput
+>
+</screen>
+
+<para
+>أو، يمكنك تحرير <link linkend="configure-data"
+>ملف الضبط</link
+> لجعل التغيير دائمًا:</para>
+
+<screen
+>&niceness; <replaceable
+>15</replaceable
+>
+</screen>
+</informalexample>
+
+<tip>
+<para
+>يؤثر خيار <link linkend="conf-niceness"
+>niceness</link
+> فقط على استخدام معالج(ات) الحاسوب. تأثير رئيس آخر على أداء الحاسوب يتعلق بكمية إدخال أو إخراج البيانات (<acronym
+>I/O</acronym
+>) التي يستخدمها البرنامج. للتحكم في كمية <acronym
+>I/O</acronym
+> التي يمكن لبرنامج استخدامها، تدعم أنظمة &Linux; الحديثة أداة مشابهة تسمى <application
+>ionice</application
+>. يدعم &kdesrc-build; <application
+>ionice</application
+>، (ولكن فقط لتمكينه أو تعطيله بالكامل) باستخدام خيار <link linkend="conf-use-idle-io-priority"
+>use-idle-io-priority</link
+>، منذ إصدار &kdesrc-build; 1.12. </para>
+</tip>
+
+</sect2>
+
+<sect2 id="root-installation">
+<title
+>التثبيت كمستخدم فائق</title>
+<para
+>قد ترغب في أن يدير &kdesrc-build; التثبيت بصلاحيات المستخدم الفائق. قد يكون هذا للتثبيت على مستوى النظام غير الموصى به. هذا مفيد أيضًا عند استخدام بناء &kde; لمستخدم واحد موصى به، مع ذلك. وذلك لأن بعض الوحدات (خاصة kdebase) تثبت برامج ستحتاج لفترة وجيزة إلى صلاحيات مرتفعة عند تشغيلها. لا يمكنها تحقيق مستويات الصلاحية هذه إلا إذا تم تثبيتها بالصلاحيات المرتفعة. </para>
+
+<para
+>يمكنك ببساطة تشغيل &kdesrc-build; كمستخدم فائق مباشرة، لكن هذا غير موصى به، لأن البرنامج لم يُدقّق لهذا النوع من الاستخدام. مع أنه من المفترض أن يكون تشغيل البرنامج بهذه الطريقة آمنًا، فمن الأفضل تجنب التشغيل كمستخدم فائق عند الإمكان.</para>
+
+<para
+>للتغلب على هذا، يوفر &kdesrc-build; خيار &make-install-prefix;. يمكنك استخدام هذا الخيار لتحديد أمر لتنفيذ التثبيت كمستخدم آخر. الطريقة الموصى بها لاستخدام هذا الأمر هي مع برنامج &sudo;، الذي سيشغل أمر التثبيت كمستخدم فائق. </para>
+
+<informalexample>
+<para
+>على سبيل المثال، لتثبيت جميع الوحدات باستخدام &sudo;، يمكنك فعل شيء كهذا:</para>
+
+<screen
+>global
+  &make-install-prefix; <replaceable
+>sudo</replaceable>
+  # Other options
+end global
+</screen>
+
+<para
+>لاستخدام &make-install-prefix; لوحدة واحدة فقط، سيعمل هذا: </para>
+
+<screen
+>وحدة <replaceable
+>اسم-الوحدة-ما</replaceable
+>
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="build-progress">
+<title
+>عرض تقدم بناء وحدة</title>
+<para
+>هذه الميزة متاحة دائمًا، وتُفعّل آليًا عند الإمكان. ما تفعله هو عرض تقدم بناء مقدر أثناء بناء وحدة؛ بهذه الطريقة تعرف كم من الوقت سيبقى تقريبًا لبناء الوحدة. </para>
+
+</sect2>
+
+</sect1>

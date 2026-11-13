@@ -1,0 +1,540 @@
+<!--
+SPDX-FileCopyrightText: 2005 - 2008, 2010 - 2022 Michael Pyne <mpyne@kde.org>
+SPDX-FileCopyrightText: 2005 - 2024 The kdesrc-build authors
+
+SPDX-License-Identifier: GFDL-1.2-no-invariants-or-later
+-->
+
+<sect1 id="advanced-features">
+<title
+>الميزات المتقدمة</title>
+
+<sect2 id="partial-builds">
+<title
+>بناء وحدة بشكل جزئي</title>
+<para
+>من الممكن بناء أجزاء فقط من وحدة &kde; واحدة. على سبيل المثال، قد ترغب في ترجمة برنامج واحد فقط من وحدة. يوفر &kdesrc-build; ميزات لتسهيل ذلك. توجد عدة طرق متكاملة لفعل هذا. </para>
+
+<sect3 id="not-compiling">
+<title
+>إزالة أدلة من بناء</title>
+<para
+>من الممكن تنزيل مستودع كامل ولكن جعل نظام البناء يتجاهل بعض الأدلة عند تنفيذ البناء. يتطلب هذا أن تستخدم الوحدة &cmake; وأن يسمح نظام بناء الوحدة بأن يكون الدليل المراد إزالته اختياريًا. </para>
+
+<para
+>يُتحكم في هذا باستخدام الخيار &do-not-compile;.</para>
+
+<important
+><para
+>يتطلب هذا الخيار على الأقل إعادة ضبط نظام بناء الوحدة بعد تغييره. يُفعل ذلك باستخدام الأمر <userinput
+><command
+>kdesrc-build</command
+> <option
+>&cmd-reconfigure;</option
+> <option
+><replaceable
+>module</replaceable
+></option
+></userinput
+>. </para
+></important>
+
+<informalexample>
+<para
+>لإزالة الدليل <filename class="directory"
+>python</filename
+> من عملية بناء kdebindings:</para>
+
+<screen
+>module <replaceable
+>kdebindings</replaceable
+>
+</screen>
+
+</informalexample>
+
+<note
+><para
+>تعتمد هذه الوظيفة على بعض الاصطلاحات القياسية المستخدمة في معظم وحدات &kde;. لذلك قد لا تعمل مع جميع البرامج.</para
+></note>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="using-branches">
+<title
+>دعم التفرع والوسم لـ &kdesrc-build;</title>
+
+<sect3 id="branches-and-tags">
+<title
+>ما هي الفروع والوسوم؟</title>
+
+<para
+>يدعم &git; إدارة تاريخ شيفرة مصدر &kde;. تستخدم &kde; هذا الدعم لإنشاء فروع للتطوير، ووسم المستودع بين الحين والآخر بإصدار جديد. </para>
+
+<para
+>على سبيل المثال، قد يعمل مطورو &kmail; على ميزة جديدة في فرع مختلف لتجنب كسر الإصدار المستخدم من قبل معظم المطورين. يجري التطوير داخل هذا الفرع، حتى بينما قد يجري التطوير داخل الفرع الرئيس (المسمى master). </para>
+
+<para
+>أما الوسم، من ناحية أخرى، فهو نقطة محددة في مستودع الشيفرة المصدرية عند موضع زمني. يُستخدم من قبل فريق إدارة &kde; لتحديد نسخة من الشيفرة مناسبة للإصدار مع السماح للمطورين بالعمل على الشيفرة. </para>
+
+</sect3>
+
+<sect3 id="branch-support">
+<title
+>كيفية استخدام الفروع والوسوم</title>
+
+<para
+>يُتعامل مع دعم الفروع والوسوم بواسطة مجموعة من الخيارات، تتراوح من طلب عام لإصدار، إلى &url; محدد للتنزيل للمستخدمين المتقدمين. </para>
+
+<para
+>أسهل طريقة هي استخدام الخيارين &branch; و &tag;. تستخدم الخيار ببساطة مع اسم الفرع أو الوسم المطلوب لوحدة، وسيحاول &kdesrc-build; تحديد الموقع المناسب داخل مستودع &kde; للتنزيل منه. يعمل هذا جيدًا مع معظم وحدات &kde;.</para>
+
+<informalexample>
+<para
+>لتنزيل kdelibs من &kde; 4.6 (المعروف ببساطة باسم فرع 4.6): </para>
+
+<screen
+>module kdelibs
+  branch <replaceable
+>4.6</replaceable>
+  # other options...
+end module
+</screen>
+
+<para
+>أو، لتنزيل kdemultimedia كما صدر مع &kde; 4.6.1:</para>
+
+<screen
+>module kdemultimedia
+</screen>
+
+</informalexample>
+
+<tip
+><para
+>يمكنك تحديد قيمة فرع عامة. ولكن إذا فعلت ذلك، فلا تنسَ تحديد فرع مختلف للوحدات التي لا ينبغي أن تستخدم الفرع العام! </para
+></tip>
+</sect3>
+
+</sect2>
+
+<sect2 id="stopping-the-build-early">
+<title
+>إيقاف البناء مبكرًا</title>
+
+<sect3 id="the-build-continues">
+<title
+>يستمر البناء عادة حتى في حال حدوث إخفاقات</title>
+
+<para
+>سيقوم &kdesrc-build; عادة بتحديث وبناء وتثبيت جميع الوحدات في القائمة المحددة للبناء، حتى لو فشلت وحدة في البناء. هذا عادة ما يكون تسهيلًا للسماح لك بتحديث حزم البرامج حتى لو حدث خطأ بسيط في أحد مستودعات المصدر أثناء التطوير يتسبب في كسر البناء. </para>
+
+<para
+>ولكن قد ترغب في أن يتوقف &kdesrc-build; عما يفعله بمجرد فشل وحدة في البناء والتثبيت. يمكن أن يساعد هذا في توفير وقتك الذي سيُهدر في محاولة التقدم عندما لا تستطيع الوحدات المتبقية في قائمة البناء البناء بنجاح أيضًا، خاصة إذا لم تكن قد بنيت الوحدات في القائمة بنجاح من قبل. </para>
+
+</sect3>
+
+<sect3 id="stop-on-failure-stops-early">
+<title
+>عدم التوقف مبكرًا باستخدام --no-stop-on-failure</title>
+
+<para
+>الطريقة الأساسية لفعل هذا هي استخدام خيار سطر الأوامر <link linkend="cmdline-stop-on-failure"
+>--no-stop-on-failure</link
+> عند تشغيل &kdesrc-build;. </para>
+
+<para
+>يمكن أيضًا ضبط هذا الخيار في <link linkend="conf-stop-on-failure"
+>ملف الضبط</link
+> لجعله نمط التشغيل العادي. </para>
+
+<para
+>من الممكن أيضًا إخبار &kdesrc-build; في وقت التشغيل بالتوقف عن البناء <emphasis
+>بعد</emphasis
+> إكمال الوحدة الحالية التي يعمل عليها. هذا على عكس مقاطعة &kdesrc-build; باستخدام أمر مثل <keycombo action="simul"
+>&Ctrl;<keycap
+>C</keycap
+></keycombo
+>، الذي يقاطع &kdesrc-build; فورًا، مما يفقد تقدم الوحدة الحالية. </para>
+
+<important
+><para
+>مقاطعة &kdesrc-build; أثناء تثبيت وحدة عندما يكون الخيار <link linkend="conf-use-clean-install"
+>use-clean-install</link
+> مفعلًا يعني أن الوحدة المقاطعة ستكون غير متاحة حتى يتمكن &kdesrc-build; من بناء الوحدة بنجاح!</para>
+
+<para
+>إذا احتجت مقاطعة &kdesrc-build; دون السماح بإيقاف تشغيل مهذب في هذه الحالة، فحاول على الأقل تجنب فعل ذلك أثناء تثبيت &kdesrc-build; لوحدة.</para>
+</important>
+
+</sect3>
+
+<sect3 id="stopping-early-without-stop-on-failure">
+<title
+>إيقاف &kdesrc-build; مهذبًا عندما يكون stop-on-failure خاطئًا</title>
+
+<para
+>كما ذُكر أعلاه، من الممكن جعل &kdesrc-build; يغلق مبكرًا مهذبًا حالما يكمل الوحدة التي يعمل عليها حاليًا. لفعل هذا، تحتاج إرسال إشارة POSIX <literal
+>HUP</literal
+> إلى &kdesrc-build; </para>
+
+<para
+>يمكنك فعل هذا بأمر مثل <command
+>pkill</command
+> (على أنظمة &Linux;) كما يلي:</para>
+
+<programlisting
+><prompt
+>$ </prompt
+><userinput
+><command
+>pkill <option
+>-HUP</option
+> kdesrc-build</command
+></userinput
+>
+</programlisting>
+
+<para
+>إذا فُعل بنجاح، سترى رسالة في مخرجات &kdesrc-build; مشابهة لـ:</para>
+
+<programlisting
+>[ build ] استقبل SIGHUP، سينتهي بعد هذه الوحدة
+</programlisting>
+
+<note>
+<para
+>قد يُظهر &kdesrc-build; هذه الرسالة مرات متعددة اعتمادًا على عدد عمليات &kdesrc-build; الفردية النشطة. هذا طبيعي وليس مؤشرًا على خطأ.</para>
+</note>
+
+<para
+>بمجرد أن يُقر &kdesrc-build; بالإشارة، سيتوقف عن المعالجة بعد بناء وتثبيت الوحدة الحالية. إذا كان &kdesrc-build; لا يزال يُحدّث شفرة المصدر عند استلام الطلب، سيتوقف &kdesrc-build; بعد اكتمال تحديث شفرة مصدر الوحدة. حالما يتوقف كل من عمليتي التحديث والبناء مبكرًا، سيطبع &kdesrc-build; نتائجه الجزئية ويخرج. </para>
+
+</sect3>
+
+</sect2>
+
+<sect2 id="building-successfully">
+<title
+>كيف يحاول &kdesrc-build; ضمان بناء ناجح</title>
+
+<sect3 id="automatic-rebuilds">
+<title
+>إعادة بناء آلية</title>
+
+<para
+>اعتاد &kdesrc-build; تضمين ميزات لمحاولة إعادة بناء الوحدة آليًا بعد فشل (حيث كانت هذه المحاولة أحيانًا تنجح بسبب أخطاء في نظام البناء في ذلك الوقت). بفضل التحول إلى &cmake;، لم يعد نظام البناء يعاني من هذه الأخطاء، ولذا لن يحاول &kdesrc-build; بناء وحدة أكثر من مرة. هناك حالات حيث سيتخذ &kdesrc-build; إجراءً آليًا رغم ذلك:</para>
+
+<itemizedlist>
+
+<listitem
+><para
+>إذا غيرت <link linkend="conf-configure-flags"
+>configure-flags</link
+> أو <link linkend="conf-cmake-options"
+>cmake-options</link
+> لوحدة، فسيكتشف &kdesrc-build; ذلك ويعيد تشغيل configure أو cmake آليًا لتلك الوحدة.</para
+></listitem>
+
+<listitem
+><para
+>إذا لم يكن نظام البناء موجودًا (حتى لو لم يحذفه &kdesrc-build;)، فسيعيد &kdesrc-build; إنشاءه آليًا. هذا مفيد للسماح بأداء <link linkend="cmdline-refresh-build"
+>--refresh-build</link
+> كامل لوحدة محددة دون تنفيذ ذلك على وحدات أخرى.</para
+></listitem>
+
+</itemizedlist>
+
+</sect3>
+
+<sect3 id="manual-rebuilds">
+<title
+>إعادة بناء وحدة يدويًا</title>
+<para
+>إذا أجريت تغييرًا على إعدادات خيارات وحدة، أو تغيرت شفرة مصدر الوحدة بطريقة لا يتعرف عليها &kdesrc-build;، قد تحتاج إعادة بناء الوحدة يدويًا.</para>
+
+<para
+>يمكنك فعل هذا ببساطة بتشغيل <userinput
+><command
+>kdesrc-build</command
+> <option
+>--refresh-build</option
+> <option
+><replaceable
+>module</replaceable
+></option
+></userinput
+>. </para>
+
+<para
+>إذا أردت جعل &kdesrc-build; يعيد بناء الوحدة آليًا أثناء تحديث البناء العادي التالي بدلًا من ذلك، يمكنك إنشاء ملف خاص. لكل وحدة دليل بناء. إذا أنشأت ملفًا اسمه <filename
+>.refresh-me</filename
+> في دليل البناء لوحدة، سيعيد &kdesrc-build; بناء الوحدة في المرة التالية التي تحدث فيها عملية البناء، حتى لو كان سيؤدي عادةً البناء التزايدي الأسرع.</para>
+
+<tip>
+<para
+>مبدئيًا، دليل البناء هو <filename class="directory"
+>~/kde/build/<replaceable
+>module</replaceable
+>/</filename
+>. إذا غيرت إعداد خيار &build-dir;، فاستخدم ذلك بدلًا من <filename class="directory"
+>~/kde/build</filename
+>.</para>
+</tip>
+
+<informalexample>
+<para
+>إعادة بناء باستخدام <filename
+>.refresh-me</filename
+> لوحدة <replaceable
+>kdelibs</replaceable
+>:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>touch</command
+> <filename
+>~/kdesrc/build/<replaceable
+>kdelibs</replaceable
+>/.refresh-me</filename
+></userinput
+>
+</screen>
+</informalexample>
+</sect3>
+
+</sect2>
+
+<sect2 id="changing-environment">
+<title
+>تغيير إعدادات متغيرات البيئة</title>
+<para
+>عادةً يستخدم &kdesrc-build; البيئة الموجودة عند بدء التشغيل عند تشغيل البرامج لأداء التحديثات والبناءات. هذا مفيد عندما تشغل &kdesrc-build; من سطر الأوامر.</para>
+
+<para
+>لكن، قد ترغب تغيير إعداد متغيرات البيئة التي لا يوفر &kdesrc-build; خيارًا لها مباشرة. (مثلًا، لإعداد أي متغيرات بيئة مطلوبة عند تشغيل &kdesrc-build; على مؤقت مثل &cron;) هذا ممكن مع خيار &set-env;.</para>
+
+<para
+>على عكس معظم الخيارات، يمكن ضبطه أكثر من مرة، ويقبل مدخلين، مفصولين بمسافة. الأول هو اسم متغير البيئة لضبطه، وباقي السطر هو القيمة.</para>
+
+<informalexample>
+<para
+>اضبط <userinput
+><envar
+>DISTRO</envar
+>=<replaceable
+>BSD</replaceable
+></userinput
+> لكل الوحدات:</para>
+<screen
+>global
+  set-env <replaceable
+>DISTRO</replaceable
+> <replaceable
+>BSD</replaceable>
+end global
+</screen>
+</informalexample>
+
+</sect2>
+
+<sect2 id="resuming">
+<title
+>استئناف البناءات</title>
+
+<sect3 id="resuming-failed">
+<title
+>استئناف بناء فاشل أو ملغى</title>
+
+<para
+>يمكنك إخبار &kdesrc-build; ببدء البناء من وحدة مختلفة عما سيفعله عادةً. هذا قد يكون مفيدًا عندما فشلت مجموعة من الوحدات، أو إذا ألغيت تشغيل بناء في المنتصف. يمكنك التحكم بهذا باستخدام خيار &cmd-resume-from; وخيار &cmd-resume-after;.</para>
+
+<note
+><para
+>كانت الإصدارات الأقدم من &kdesrc-build; تتخطى تحديث المصدر عند استئناف بناء. لم يعد هذا يُفعل مبدئيًا، لكن يمكنك دائمًا استخدام خيار سطر الأوامر <option
+>--no-src</option
+> لتخطي تحديث المصدر.</para
+></note>
+
+<informalexample>
+<para
+>استئناف البناء بدءًا من kdebase:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-from=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<informalexample>
+<para
+>استئناف البناء بدءًا من بعد kdebase (في حال أصلحت المشكلة يدويًا ونصّبت الوحدة بنفسك):</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--resume-after=<replaceable
+>kdebase</replaceable
+></option
+></userinput
+>
+</screen>
+</informalexample>
+
+<para
+>إذا انتهى آخر بناء لـ &kdesrc-build; بفشل في البناء، يمكنك أيضًا استخدام خيار سطر الأوامر <link linkend="cmdline-resume"
+>--resume</link
+>، الذي يستأنف آخر بناء بدءًا من الوحدة التي فشلت. يُتجاوز تحديث المصدر والبيانات الوصفية أيضًا (لكن إذا احتجت إليها، فمن الأفضل عمومًا استخدام <link linkend="cmdline-resume-from"
+>--resume-from</link
+> بدلًا من ذلك).</para>
+
+
+</sect3>
+
+<sect3 id="ignoring-modules">
+<title
+>تجاهل الوحدات في بناء</title>
+
+<para
+>على غرار الطريقة التي يمكنك بها <link linkend="resuming-failed"
+>استئناف البناء من وحدة</link
+>، يمكنك بدلًا من ذلك اختيار تحديث وبناء كل شيء بشكل عادي، لكن تجاهل مجموعة من الوحدات.</para>
+
+<para
+>يمكنك فعل ذلك باستخدام خيار &cmd-ignore-modules;. يُخبر هذا الخيار &kdesrc-build; بتجاهل جميع الوحدات في سطر الأوامر عند تنفيذ التحديث والبناء.</para>
+
+<informalexample>
+<para
+>تجاهل extragear/multimedia و kdereview أثناء تشغيل كامل:</para>
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--ignore-modules</option
+> <replaceable
+>extragear/multimedia kdereview</replaceable
+></userinput
+>
+</screen>
+</informalexample>
+
+</sect3>
+</sect2>
+
+<sect2 id="changing-env-from-cmd-line">
+<title
+>تغيير الخيارات من سطر الأوامر</title>
+
+<sect3 id="changing-global-opts">
+<title
+>تغيير الخيارات العامة</title>
+<para
+>يمكنك تغيير إعداد الخيارات المقروءة من <link linkend="configure-data"
+>ملف الضبط</link
+> مباشرة من سطر الأوامر. سيتجاوز هذا التغيير إعداد ملف الضبط، لكنه مؤقت فقط. يسري المفعول فقط طالما أنه ما زال موجودًا على سطر الأوامر.</para>
+
+<para
+>يسمح لك &kdesrc-build; بتغيير خيارات مسماة مثل <replaceable
+>option-name</replaceable
+> بتمرير وسيط على سطر الأوامر بالصيغة <userinput
+><option
+>--<replaceable
+>option-name</replaceable
+>=value</option
+></userinput
+>. سيتعرف &kdesrc-build; على ما إذا كان لا يعرف ماهية الخيار، ويبحث عن الاسم في قائمته لأسماء الخيارات. إذا لم يتعرف على الاسم، سيحذرك، وإلا سيتذكر القيمة التي ضبطتها عليها ويتجاوز أي إعداد من ملف الضبط.</para>
+
+<informalexample>
+<para
+>ضبط خيار &source-dir; إلى <filename
+>/dev/null</filename
+> للاختبار:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--pretend</option
+> <option
+>--<replaceable
+>source-dir</replaceable
+>=<replaceable
+>/dev/null</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+<sect3 id="changing-module-opts">
+<title
+>تغيير خيارات الوحدة</title>
+<para
+>من الممكن أيضًا تغيير الخيارات لوحدة محددة فقط. الصيغة مشابهة: --<replaceable
+>module</replaceable
+>,<replaceable
+>option-name</replaceable
+>=<replaceable
+>value</replaceable
+>. </para>
+
+<para
+>يتجاوز هذا التغيير أي إعداد مكرر للوحدة موجود في <link linkend="configure-data"
+>ملف الضبط</link
+>، ويُطبق فقط طالما أن الخيار مُمرر على سطر الأوامر.</para>
+
+<informalexample>
+<para
+>استخدام دليل بناء مختلف لوحدة kdeedu:</para>
+
+<screen
+><prompt
+>&percnt;</prompt
+> <userinput
+><command
+>kdesrc-build</command
+> <option
+>--<replaceable
+>kdeedu</replaceable
+>,<replaceable
+>build-dir</replaceable
+>=<replaceable
+>temp-build</replaceable
+></option
+></userinput
+>
+</screen>
+
+</informalexample>
+
+</sect3>
+
+</sect2>
+
+</sect1>
